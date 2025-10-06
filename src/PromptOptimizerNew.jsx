@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap } from 'lucide-react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu } from 'lucide-react';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -11,7 +11,8 @@ export default function ModernPromptOptimizer() {
   const [copied, setCopied] = useState(false);
   const [qualityScore, setQualityScore] = useState(null);
   const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true); // Default to open
+  const [showResults, setShowResults] = useState(false);
 
   const modes = [
     { id: 'optimize', name: 'Standard Prompt', icon: Sparkles, description: 'Optimize any prompt' },
@@ -60,9 +61,9 @@ export default function ModernPromptOptimizer() {
     }
   }, []);
 
-  // Lazy loading effect - typewriter animation
+  // Lazy loading effect - typewriter animation (only on results page)
   useEffect(() => {
-    if (!optimizedPrompt) {
+    if (!optimizedPrompt || !showResults) {
       setDisplayedPrompt('');
       return;
     }
@@ -73,14 +74,14 @@ export default function ModernPromptOptimizer() {
     const intervalId = setInterval(() => {
       if (currentIndex <= optimizedPrompt.length) {
         setDisplayedPrompt(optimizedPrompt.slice(0, currentIndex));
-        currentIndex += 2;
+        currentIndex += 3;
       } else {
         clearInterval(intervalId);
       }
-    }, 10);
+    }, 5);
 
     return () => clearInterval(intervalId);
-  }, [optimizedPrompt]);
+  }, [optimizedPrompt, showResults]);
 
   const saveToHistory = (input, output, score) => {
     const newEntry = {
@@ -166,6 +167,8 @@ export default function ModernPromptOptimizer() {
       setOptimizedPrompt(optimized);
       setQualityScore(score);
       saveToHistory(inputPrompt, optimized, score);
+      setShowResults(true);
+      setShowHistory(false);
     } catch (error) {
       console.error('Optimization failed:', error);
       alert('Failed to optimize prompt. Please make sure the server is running.');
@@ -212,6 +215,18 @@ export default function ModernPromptOptimizer() {
     URL.revokeObjectURL(url);
   };
 
+  const handleEdit = () => {
+    setShowResults(false);
+  };
+
+  const handleCreateNew = () => {
+    setInputPrompt('');
+    setOptimizedPrompt('');
+    setDisplayedPrompt('');
+    setQualityScore(null);
+    setShowResults(false);
+  };
+
   const loadFromHistory = (entry) => {
     setInputPrompt(entry.input);
     setOptimizedPrompt(entry.output);
@@ -219,6 +234,7 @@ export default function ModernPromptOptimizer() {
     setQualityScore(entry.score);
     setSelectedMode(entry.mode);
     setShowHistory(false);
+    setShowResults(true);
   };
 
   const getModeInfo = () => {
@@ -230,18 +246,20 @@ export default function ModernPromptOptimizer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex">
+      {/* Hamburger Menu Button - Fixed Position */}
+      <button
+        onClick={() => setShowHistory(!showHistory)}
+        className="fixed top-6 left-6 z-50 p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
+      >
+        <Menu className="w-5 h-5 text-gray-700" />
+      </button>
+
       {/* Left Sidebar - History */}
       <div className={`${showHistory ? 'w-64' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden`}>
         {showHistory && (
           <>
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="p-4 pt-20 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Recent</h3>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
               {history.length === 0 ? (
@@ -285,7 +303,7 @@ export default function ModernPromptOptimizer() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center px-6 py-16 overflow-y-auto">
+      <div className={`flex-1 flex flex-col items-center px-6 py-16 overflow-y-auto ${showHistory ? 'ml-0' : 'ml-0'}`}>
       {/* Hero Section */}
       <div className="max-w-4xl w-full text-center mb-12">
         <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -364,18 +382,6 @@ export default function ModernPromptOptimizer() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-center gap-3 mb-12">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
-          >
-            <Clock className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
-              {showHistory ? 'Hide History' : 'Show History'}
-            </span>
-          </button>
-        </div>
-
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {quickActions.map((action) => {
             const Icon = action.icon;
@@ -409,85 +415,88 @@ export default function ModernPromptOptimizer() {
         </div>
       )}
 
-      {/* Results Section */}
-      {displayedPrompt && !isProcessing && (
-        <div className="max-w-4xl w-full">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-gray-900" />
-                <h2 className="text-xl font-semibold text-gray-900">Your Optimized Prompt</h2>
-              </div>
-
-              {qualityScore !== null && (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600">Quality Score:</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-gray-400 to-gray-900 transition-all duration-500"
-                        style={{ width: `${qualityScore}%` }}
-                      />
-                    </div>
-                    <span className="text-lg font-bold text-gray-900">{qualityScore}%</span>
-                  </div>
-                </div>
-              )}
+      {/* Results Section - Shows after optimization */}
+      {showResults && displayedPrompt && !isProcessing && (
+        <div className="max-w-5xl w-full">
+          {/* Lazy Prompt Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Lazy Prompt</h2>
+              <button
+                onClick={handleEdit}
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                <span className="text-sm font-semibold">Edit</span>
+              </button>
             </div>
+            <div className="bg-white rounded-xl border-4 border-gray-900 p-8">
+              <p className="text-gray-800 text-lg leading-relaxed">{inputPrompt}</p>
+            </div>
+          </div>
 
-            <div className="bg-gray-50 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+          {/* Reasoning Prompt Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Reasoning Prompt</h2>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span className="text-sm font-semibold">{copied ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
+            <div className="bg-white rounded-xl border-4 border-gray-900 p-8">
+              <pre className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap font-sans">
                 {displayedPrompt}
               </pre>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copied!' : 'Copy to Clipboard'}
-              </button>
-
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg transition-colors">
-                  <Download className="w-4 h-4" />
-                  Export
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between mt-8">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCreateNew}
+                  className="px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors font-semibold"
+                >
+                  Create New
                 </button>
-                <div className="absolute left-0 bottom-full mb-2 w-40 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                  <button
-                    onClick={() => handleExport('text')}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-t-lg transition-colors"
-                  >
-                    Text (.txt)
+
+                <div className="relative group">
+                  <button className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 rounded-lg transition-colors font-semibold">
+                    <Download className="w-4 h-4" />
+                    Export
                   </button>
-                  <button
-                    onClick={() => handleExport('markdown')}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
-                  >
-                    Markdown (.md)
-                  </button>
-                  <button
-                    onClick={() => handleExport('json')}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-b-lg transition-colors"
-                  >
-                    JSON (.json)
-                  </button>
+                  <div className="absolute left-0 bottom-full mb-2 w-44 bg-white rounded-lg shadow-xl border-2 border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                    <button
+                      onClick={() => handleExport('text')}
+                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 rounded-t-lg transition-colors"
+                    >
+                      Text (.txt)
+                    </button>
+                    <button
+                      onClick={() => handleExport('markdown')}
+                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Markdown (.md)
+                    </button>
+                    <button
+                      onClick={() => handleExport('json')}
+                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 rounded-b-lg transition-colors"
+                    >
+                      JSON (.json)
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setInputPrompt('');
-                  setOptimizedPrompt('');
-                  setDisplayedPrompt('');
-                  setQualityScore(null);
-                }}
-                className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg transition-colors"
-              >
-                Start Over
-              </button>
+              {qualityScore !== null && (
+                <div className="flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-lg">
+                  <span className="text-sm font-semibold">Quality Score:</span>
+                  <span className="text-2xl font-bold">{qualityScore}%</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
