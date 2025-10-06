@@ -19,83 +19,125 @@ app.post('/api/optimize', async (req, res) => {
 
   let systemPrompt = '';
 
-  if (mode === 'research') {
-    systemPrompt = `You are a deep research expert. Transform this query into a comprehensive research plan with the following structure:
+  if (mode === 'reasoning') {
+    systemPrompt = `You are optimizing prompts for reasoning models. These models think deeply before responding, so the prompt should be clear and direct without over-structuring their reasoning process.
+
+Transform this query into an optimized reasoning prompt:
+
+**Task**
+[Clear, concise problem statement - what needs to be solved or understood]
+
+**Key Constraints**
+[Important limitations, requirements, or parameters]
+
+**Success Criteria**
+[How to evaluate if the solution/answer is good]
+
+**Reasoning Guidance** (optional)
+[Only if needed: "Consider edge cases", "Think about tradeoffs", "Verify assumptions"]
+
+Query: "${prompt}"
+
+IMPORTANT: Keep it minimal. Trust the reasoning model to think deeply. Only add structure where it clarifies the problem. Ensure the optimized prompt is self-contained and can be used directly without further editing.
+
+Provide ONLY the optimized prompt in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+  } else if (mode === 'research') {
+    systemPrompt = `You are a research methodology expert. Transform this into a comprehensive research plan:
 
 **Research Objective**
 [Clear statement of what needs to be investigated]
 
-**Key Research Questions**
-[5-7 specific questions that need to be answered]
+**Core Research Questions**
+[5-7 specific, answerable questions in priority order]
 
-**Research Methodology**
-[Approach and sources to consult]
+**Methodology**
+[Research approach and methods to be used]
 
 **Information Sources**
-[Types of sources and where to find them]
+[Specific types of sources with quality criteria]
 
-**Analysis Framework**
-[How to evaluate and synthesize findings]
+**Success Metrics**
+[How to determine if research is sufficient]
 
-**Expected Deliverables**
-[What the final research output should include]
+**Synthesis Framework**
+[How to analyze and integrate findings across sources]
 
-**Potential Challenges**
-[Obstacles and how to address them]
+**Deliverable Format**
+[Structure and style of the final output]
+
+**Anticipated Challenges**
+[Potential obstacles and mitigation strategies]
 
 Query: "${prompt}"
 
-Provide ONLY the research plan in the format above.`;
+Make this actionable and specific. Ensure the research plan is self-contained and can be used directly without further editing.
+
+Provide ONLY the research plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   } else if (mode === 'socratic') {
-    systemPrompt = `You are a Socratic learning guide. Transform this topic into a learning journey using guided questions:
+    systemPrompt = `You are a Socratic learning guide. Create a learning journey through strategic questioning:
 
-**Learning Goal**
-[What the learner aims to understand]
+**Learning Objective**
+[What the learner should understand by the end]
 
-**Foundational Questions**
-[3-4 questions to establish baseline understanding]
+**Prior Knowledge Check**
+[2-3 questions to assess current understanding]
 
-**Exploratory Questions**
-[5-6 questions that deepen understanding progressively]
+**Foundation Questions**
+[3-4 questions building core concepts]
 
-**Critical Thinking Questions**
-[3-4 questions that challenge assumptions]
+**Deepening Questions**
+[4-5 questions that progressively challenge understanding]
 
-**Application Questions**
-[3-4 questions connecting theory to practice]
+**Application & Synthesis**
+[3-4 questions connecting concepts to real scenarios]
 
-**Reflection Prompts**
-[Questions for self-assessment]
+**Metacognitive Reflection**
+[2-3 questions about the learning process itself: "What surprised you?", "What's still unclear?"]
 
-**Next Steps**
-[Suggested areas for further exploration]
+**Common Misconceptions**
+[2-3 misconceptions to address through questioning]
+
+**Extension Paths**
+[Suggested directions for continued exploration]
 
 Topic: "${prompt}"
 
-Provide ONLY the Socratic learning plan in the format above.`;
+Focus on questions that spark insight, not just recall. Ensure the learning plan is self-contained and can be used directly without further editing.
+
+Provide ONLY the learning plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   } else {
     // Default optimize mode
-    systemPrompt = `You are a prompt optimization expert. Analyze this rough prompt and transform it into a well-structured, comprehensive prompt following this format:
+    systemPrompt = `You are a prompt engineering expert. Transform this rough prompt into a clear, effective prompt:
 
 **Goal**
-[Clear statement of what the prompt aims to achieve]
-
-**Return Format**
-[Structured outline of how the response should be organized]
-
-**Warnings**
-[Things to avoid or be careful about]
+[Single sentence stating what the prompt aims to achieve]
 
 **Context**
-[Background information and assumptions about the user's needs]
+[Essential background information and assumptions about the task/user]
 
-**Additional Guidelines**
-[Any extra tips or requirements]
+**Requirements**
+[Specific constraints, format requirements, or must-have elements]
 
-Here's the rough prompt to optimize:
-"${prompt}"
+**Instructions**
+[Step-by-step guidance on how to approach the task, if applicable]
 
-Please provide ONLY the optimized prompt in the format above, without any preamble or explanation.`;
+**Success Criteria**
+[How to evaluate if the response is good]
+
+**Output Format**
+[Exact structure the response should follow]
+
+**Examples** (if helpful)
+[Brief example showing desired output style]
+
+**Avoid**
+[Common pitfalls or things to explicitly not do]
+
+Original prompt: "${prompt}"
+
+Create a prompt that's self-contained and immediately usable. Ensure the optimized prompt can be used directly without further editing.
+
+Provide ONLY the optimized prompt in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   }
 
   try {
@@ -123,7 +165,16 @@ Please provide ONLY the optimized prompt in the format above, without any preamb
     }
 
     const data = await response.json();
-    res.json({ optimizedPrompt: data.content[0].text });
+    const optimizedText = data.content[0].text;
+
+    // Basic validation - check for meta-commentary
+    if (optimizedText.toLowerCase().includes('here is') ||
+        optimizedText.toLowerCase().includes('i\'ve created') ||
+        optimizedText.toLowerCase().startsWith('sure')) {
+      console.warn('⚠️  Response contains meta-commentary, may need refinement');
+    }
+
+    res.json({ optimizedPrompt: optimizedText });
   } catch (error) {
     console.error('Server error:', error);
     res.status(500).json({ error: 'Internal server error', message: error.message });

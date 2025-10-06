@@ -19,6 +19,7 @@ export default function ModernPromptOptimizer() {
 
   const modes = [
     { id: 'optimize', name: 'Standard Prompt', icon: Sparkles, description: 'Optimize any prompt' },
+    { id: 'reasoning', name: 'Reasoning Prompt', icon: Lightbulb, description: 'Deep thinking & verification' },
     { id: 'research', name: 'Deep Research', icon: Search, description: 'Create research plans' },
     { id: 'socratic', name: 'Socratic Learning', icon: GraduationCap, description: 'Learning journeys' }
   ];
@@ -389,9 +390,9 @@ export default function ModernPromptOptimizer() {
               <button
                 onClick={handleOptimize}
                 disabled={!inputPrompt.trim() || isProcessing}
-                className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-3 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
               >
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -433,11 +434,11 @@ export default function ModernPromptOptimizer() {
 
       {/* Results Section - Shows after optimization */}
       {showResults && displayedPrompt && !isProcessing && (
-        <div className="max-w-5xl w-full">
+        <div className="max-w-3xl w-full mt-8">
           {/* Lazy Prompt Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Lazy Prompt</h2>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-900">Lazy Prompt</h2>
               <button
                 onClick={handleEdit}
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -446,15 +447,15 @@ export default function ModernPromptOptimizer() {
                 <span className="text-sm font-semibold">Edit</span>
               </button>
             </div>
-            <div className="bg-white rounded-xl border-4 border-gray-900 p-8">
-              <p className="text-gray-800 text-lg leading-relaxed">{inputPrompt}</p>
+            <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
+              <p className="text-gray-800 text-base leading-relaxed">{inputPrompt}</p>
             </div>
           </div>
 
           {/* Reasoning Prompt Section */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Reasoning Prompt</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-900">Reasoning Prompt</h2>
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -463,43 +464,43 @@ export default function ModernPromptOptimizer() {
                 <span className="text-sm font-semibold">{copied ? 'Copied!' : 'Copy'}</span>
               </button>
             </div>
-            <div className="bg-white rounded-xl border-4 border-gray-900 p-8">
-              <pre className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
+              <pre className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
                 {displayedPrompt}
               </pre>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between mt-8">
+            <div className="flex items-center justify-between mt-6">
               <div className="flex gap-3">
                 <button
                   onClick={handleCreateNew}
-                  className="px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors font-semibold"
+                  className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors font-semibold"
                 >
                   Create New
                 </button>
 
                 <div className="relative group">
-                  <button className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 rounded-lg transition-colors font-semibold">
+                  <button className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 rounded-lg transition-colors font-semibold">
                     <Download className="w-4 h-4" />
                     Export
                   </button>
                   <div className="absolute left-0 bottom-full mb-2 w-44 bg-white rounded-lg shadow-xl border-2 border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                     <button
                       onClick={() => handleExport('text')}
-                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 rounded-t-lg transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 rounded-t-lg transition-colors"
                     >
                       Text (.txt)
                     </button>
                     <button
                       onClick={() => handleExport('markdown')}
-                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 transition-colors"
                     >
                       Markdown (.md)
                     </button>
                     <button
                       onClick={() => handleExport('json')}
-                      className="w-full px-4 py-3 text-left text-sm font-medium hover:bg-gray-50 rounded-b-lg transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 rounded-b-lg transition-colors"
                     >
                       JSON (.json)
                     </button>
@@ -508,9 +509,9 @@ export default function ModernPromptOptimizer() {
               </div>
 
               {qualityScore !== null && (
-                <div className="flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-lg">
+                <div className="flex items-center gap-3 bg-gray-900 text-white px-4 py-2.5 rounded-lg">
                   <span className="text-sm font-semibold">Quality Score:</span>
-                  <span className="text-2xl font-bold">{qualityScore}%</span>
+                  <span className="text-xl font-bold">{qualityScore}%</span>
                 </div>
               )}
             </div>
