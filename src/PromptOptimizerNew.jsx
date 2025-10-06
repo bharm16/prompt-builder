@@ -315,26 +315,26 @@ export default function ModernPromptOptimizer() {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col items-center px-6 py-16 overflow-y-auto ${showHistory ? 'ml-0' : 'ml-0'}`}>
+      <div className={`flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto ${showHistory ? 'ml-0' : 'ml-0'}`}>
       {/* Hero Section */}
-      <div className="max-w-4xl w-full text-center mb-12">
-        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-          Turn your lazy prompts into great ones
+      <div className="max-w-3xl w-full text-center mb-8">
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+          Turn messy thoughts into structured prompts
         </h1>
-        <p className="text-xl text-gray-600 mb-12">
+        <p className="text-lg text-gray-600 mb-8">
           Idea to prompt in seconds - get much better results from{' '}
           <span className="font-semibold text-gray-900 inline-flex items-center">
             <span className="transition-opacity duration-300">
               {aiNames[currentAIIndex]}
             </span>
           </span>
-          <span className="inline-block w-1 h-6 bg-gray-900 ml-1 animate-pulse"></span>
+          <span className="inline-block w-1 h-5 bg-gray-900 ml-1 animate-pulse"></span>
         </p>
 
         {/* Main Input Section */}
-        <div className="relative mb-8">
-          <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-hidden">
-            <div className="p-6">
+        <div className="relative mb-6">
+          <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-hidden">
+            <div className="p-4">
               <textarea
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
@@ -345,12 +345,12 @@ export default function ModernPromptOptimizer() {
                   }
                 }}
                 placeholder="I want a prompt that will..."
-                rows={3}
-                className="w-full text-lg text-gray-900 placeholder-gray-400 outline-none bg-transparent resize-none"
+                rows={2}
+                className="w-full text-base text-gray-900 placeholder-gray-400 outline-none bg-transparent resize-none"
               />
             </div>
 
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
               <div className="relative">
                 <button
                   onClick={() => setShowModeDropdown(!showModeDropdown)}
@@ -398,17 +398,17 @@ export default function ModernPromptOptimizer() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <button
                 key={action.label}
                 onClick={() => handleQuickAction(action)}
-                className="flex items-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
               >
-                <Icon className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{action.label}</span>
+                <Icon className="w-3 h-3 text-gray-600" />
+                <span className="text-xs font-medium text-gray-700">{action.label}</span>
               </button>
             );
           })}
