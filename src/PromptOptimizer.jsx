@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Check, Download, History, Save } from 'lucide-react';
+import { Sparkles, Copy, Check, Download, History, Save, Search, GraduationCap } from 'lucide-react';
 
 export default function PromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
   const [optimizedPrompt, setOptimizedPrompt] = useState('');
+  const [displayedPrompt, setDisplayedPrompt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [qualityScore, setQualityScore] = useState(null);
   const [useAI, setUseAI] = useState(true);
+  const [mode, setMode] = useState('optimize'); // 'optimize', 'research', 'socratic'
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -18,6 +20,28 @@ export default function PromptOptimizer() {
       setHistory(JSON.parse(savedHistory));
     }
   }, []);
+
+  // Lazy loading effect - typewriter animation
+  useEffect(() => {
+    if (!optimizedPrompt) {
+      setDisplayedPrompt('');
+      return;
+    }
+
+    setDisplayedPrompt('');
+    let currentIndex = 0;
+
+    const intervalId = setInterval(() => {
+      if (currentIndex <= optimizedPrompt.length) {
+        setDisplayedPrompt(optimizedPrompt.slice(0, currentIndex));
+        currentIndex += 2; // Adjust speed (higher = faster)
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 10); // Adjust interval (lower = faster)
+
+    return () => clearInterval(intervalId);
+  }, [optimizedPrompt]);
 
   // Save to history
   const saveToHistory = (input, output, score) => {
@@ -48,6 +72,7 @@ export default function PromptOptimizer() {
 
     // AI mode - call proxy server
     console.log('AI mode is ON - calling Claude API...');
+    console.log('Mode:', mode);
     try {
       console.log('Sending request to http://localhost:3001/api/optimize');
       const response = await fetch('http://localhost:3001/api/optimize', {
@@ -56,7 +81,8 @@ export default function PromptOptimizer() {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          prompt: rough
+          prompt: rough,
+          mode: mode
         })
       });
 
@@ -316,7 +342,7 @@ export default function PromptOptimizer() {
           <p className="text-amber-700 text-lg">Transform rough ideas into structured, powerful prompts</p>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4 mt-4">
+          <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg transition-colors shadow-sm"
@@ -324,6 +350,20 @@ export default function PromptOptimizer() {
               <History className="w-4 h-4" />
               {showHistory ? 'Hide History' : 'Show History'}
             </button>
+
+            {/* Mode Selector */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
+              <span className="text-sm font-medium text-gray-700">Mode:</span>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="text-sm font-medium text-gray-700 bg-transparent border-none focus:outline-none cursor-pointer"
+              >
+                <option value="optimize">✨ Optimize</option>
+                <option value="research">🔍 Deep Research</option>
+                <option value="socratic">🎓 Socratic Learning</option>
+              </select>
+            </div>
 
             <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
               <Sparkles className="w-4 h-4 text-amber-600" />
@@ -370,11 +410,21 @@ export default function PromptOptimizer() {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Rough Prompt</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              {mode === 'optimize' && 'Your Rough Prompt'}
+              {mode === 'research' && 'Research Topic'}
+              {mode === 'socratic' && 'Learning Topic'}
+            </h2>
             <textarea
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Enter your rough prompt here... e.g., 'give me an overview of digital camera specs'"
+              placeholder={
+                mode === 'optimize'
+                  ? "Enter your rough prompt here... e.g., 'give me an overview of digital camera specs'"
+                  : mode === 'research'
+                  ? "Enter a topic to research... e.g., 'impact of AI on healthcare'"
+                  : "Enter a topic to learn... e.g., 'quantum computing basics'"
+              }
               className="w-full h-64 p-4 border-2 border-amber-200 rounded-lg focus:outline-none focus:border-amber-400 resize-none"
             />
             <button
@@ -382,15 +432,28 @@ export default function PromptOptimizer() {
               disabled={!inputPrompt.trim() || isProcessing}
               className="mt-4 w-full bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-5 h-5" />
-              {isProcessing ? 'Optimizing...' : 'Optimize Prompt'}
+              {mode === 'optimize' && <Sparkles className="w-5 h-5" />}
+              {mode === 'research' && <Search className="w-5 h-5" />}
+              {mode === 'socratic' && <GraduationCap className="w-5 h-5" />}
+              {isProcessing
+                ? 'Processing...'
+                : mode === 'optimize'
+                  ? 'Optimize Prompt'
+                  : mode === 'research'
+                  ? 'Generate Research Plan'
+                  : 'Create Learning Path'
+              }
             </button>
           </div>
 
           {/* Output Section */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Optimized Prompt</h2>
+              <h2 className="text-xl font-semibold text-gray-800">
+                {mode === 'optimize' && 'Optimized Prompt'}
+                {mode === 'research' && 'Research Plan'}
+                {mode === 'socratic' && 'Learning Path'}
+              </h2>
               {optimizedPrompt && (
                 <div className="flex gap-2">
                   <button
@@ -432,8 +495,12 @@ export default function PromptOptimizer() {
             )}
 
             <div className="h-64 overflow-y-auto p-4 border-2 border-amber-200 rounded-lg bg-amber-50">
-              {optimizedPrompt ? (
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{optimizedPrompt}</pre>
+              {displayedPrompt ? (
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{displayedPrompt}</pre>
+              ) : optimizedPrompt ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-pulse text-amber-600">Loading...</div>
+                </div>
               ) : (
                 <p className="text-gray-400 italic">Your optimized prompt will appear here...</p>
               )}
