@@ -13,6 +13,9 @@ export default function ModernPromptOptimizer() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(true); // Default to open
   const [showResults, setShowResults] = useState(false);
+  const [currentAIIndex, setCurrentAIIndex] = useState(0);
+
+  const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'];
 
   const modes = [
     { id: 'optimize', name: 'Standard Prompt', icon: Sparkles, description: 'Optimize any prompt' },
@@ -60,6 +63,15 @@ export default function ModernPromptOptimizer() {
       setHistory(JSON.parse(savedHistory));
     }
   }, []);
+
+  // Cycle through AI names
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentAIIndex((prev) => (prev + 1) % aiNames.length);
+    }, 3000); // Change every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [aiNames.length]);
 
   // Lazy loading effect - typewriter animation (only on results page)
   useEffect(() => {
@@ -311,7 +323,11 @@ export default function ModernPromptOptimizer() {
         </h1>
         <p className="text-xl text-gray-600 mb-12">
           Idea to prompt in seconds - get much better results from{' '}
-          <span className="font-semibold text-gray-900">Claude AI</span>
+          <span className="font-semibold text-gray-900 inline-flex items-center">
+            <span className="transition-opacity duration-300">
+              {aiNames[currentAIIndex]}
+            </span>
+          </span>
           <span className="inline-block w-1 h-6 bg-gray-900 ml-1 animate-pulse"></span>
         </p>
 
