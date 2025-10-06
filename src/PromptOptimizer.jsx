@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Check, Download, History, Save, Search, GraduationCap } from 'lucide-react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap } from 'lucide-react';
 
 export default function PromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
