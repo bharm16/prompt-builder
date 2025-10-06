@@ -333,7 +333,7 @@ export default function ModernPromptOptimizer() {
 
         {/* Main Input Section */}
         <div className="relative mb-6">
-          <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-visible">
             <div className="p-4">
               <textarea
                 value={inputPrompt}
@@ -362,7 +362,7 @@ export default function ModernPromptOptimizer() {
                 </button>
 
                 {showModeDropdown && (
-                  <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-64 z-10">
+                  <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-64 z-50">
                     {modes.map((mode) => {
                       const Icon = mode.icon;
                       return (
