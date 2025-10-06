@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu } from 'lucide-react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle } from 'lucide-react';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -22,6 +22,29 @@ export default function ModernPromptOptimizer() {
     { id: 'reasoning', name: 'Reasoning Prompt', icon: Lightbulb, description: 'Deep thinking & verification' },
     { id: 'research', name: 'Deep Research', icon: Search, description: 'Create research plans' },
     { id: 'socratic', name: 'Socratic Learning', icon: GraduationCap, description: 'Learning journeys' }
+  ];
+
+  const randomPrompts = [
+    'explain how blockchain technology works',
+    'write a marketing strategy for a new mobile app',
+    'compare different project management methodologies',
+    'create a step-by-step guide for making sourdough bread',
+    'analyze the impact of remote work on productivity',
+    'design a workout plan for beginners',
+    'explain the basics of investing in stocks',
+    'write a product description for wireless headphones',
+    'create a social media content calendar',
+    'explain machine learning in simple terms',
+    'write a proposal for a sustainability initiative',
+    'analyze customer retention strategies',
+    'create a lesson plan for teaching coding to kids',
+    'write an email newsletter about tech trends',
+    'explain how search engines rank websites',
+    'create a budget plan for small businesses',
+    'analyze different leadership styles',
+    'write a guide for starting a podcast',
+    'explain the psychology of habit formation',
+    'create a content strategy for a blog'
   ];
 
   const quickActions = [
@@ -54,6 +77,12 @@ export default function ModernPromptOptimizer() {
       icon: GraduationCap,
       mode: 'socratic',
       prompt: 'quantum computing basics'
+    },
+    {
+      label: 'Random prompt',
+      icon: Shuffle,
+      mode: 'optimize',
+      prompt: 'random'
     }
   ];
 
@@ -192,7 +221,12 @@ export default function ModernPromptOptimizer() {
 
   const handleQuickAction = (action) => {
     setSelectedMode(action.mode);
-    setInputPrompt(action.prompt);
+    if (action.prompt === 'random') {
+      const randomIndex = Math.floor(Math.random() * randomPrompts.length);
+      setInputPrompt(randomPrompts[randomIndex]);
+    } else {
+      setInputPrompt(action.prompt);
+    }
   };
 
   const handleCopy = () => {
