@@ -351,104 +351,106 @@ export default function ModernPromptOptimizer() {
 
       {/* Main Content */}
       <div className={`flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto ${showHistory ? 'ml-0' : 'ml-0'}`}>
-      {/* Hero Section */}
-      <div className="max-w-3xl w-full text-center mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-          Turn messy thoughts into structured prompts
-        </h1>
-        <p className="text-lg text-gray-600 mb-8">
-          Idea to prompt in seconds - get much better results from{' '}
-          <span className="font-semibold text-gray-900 inline-flex items-center">
-            <span className="transition-opacity duration-300">
-              {aiNames[currentAIIndex]}
+      {/* Hero Section - Only show when NOT showing results */}
+      {!showResults && (
+        <div className="max-w-3xl w-full text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+            Turn messy thoughts into structured prompts
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            Idea to prompt in seconds - get much better results from{' '}
+            <span className="font-semibold text-gray-900 inline-flex items-center">
+              <span className="transition-opacity duration-300">
+                {aiNames[currentAIIndex]}
+              </span>
             </span>
-          </span>
-          <span className="inline-block w-1 h-5 bg-gray-900 ml-1 animate-pulse"></span>
-        </p>
+            <span className="inline-block w-1 h-5 bg-gray-900 ml-1 animate-pulse"></span>
+          </p>
 
-        {/* Main Input Section */}
-        <div className="relative mb-6">
-          <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-visible">
-            <div className="p-4">
-              <textarea
-                value={inputPrompt}
-                onChange={(e) => setInputPrompt(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleOptimize();
-                  }
-                }}
-                placeholder="I want a prompt that will..."
-                rows={2}
-                className="w-full text-base text-gray-900 placeholder-gray-400 outline-none bg-transparent resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-              <div className="relative">
-                <button
-                  onClick={() => setShowModeDropdown(!showModeDropdown)}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  <ModeIcon className="w-4 h-4" />
-                  <span className="font-medium">{currentMode.name}</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {showModeDropdown && (
-                  <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-64 z-50">
-                    {modes.map((mode) => {
-                      const Icon = mode.icon;
-                      return (
-                        <button
-                          key={mode.id}
-                          onClick={() => {
-                            setSelectedMode(mode.id);
-                            setShowModeDropdown(false);
-                          }}
-                          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                        >
-                          <Icon className="w-5 h-5 text-gray-600 mt-0.5" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{mode.name}</div>
-                            <div className="text-xs text-gray-500">{mode.description}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+          {/* Main Input Section */}
+          <div className="relative mb-6">
+            <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-visible">
+              <div className="p-4">
+                <textarea
+                  value={inputPrompt}
+                  onChange={(e) => setInputPrompt(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleOptimize();
+                    }
+                  }}
+                  placeholder="I want a prompt that will..."
+                  rows={2}
+                  className="w-full text-base text-gray-900 placeholder-gray-400 outline-none bg-transparent resize-none"
+                />
               </div>
 
-              <button
-                onClick={handleOptimize}
-                disabled={!inputPrompt.trim() || isProcessing}
-                className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowModeDropdown(!showModeDropdown)}
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  >
+                    <ModeIcon className="w-4 h-4" />
+                    <span className="font-medium">{currentMode.name}</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+
+                  {showModeDropdown && (
+                    <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-64 z-50">
+                      {modes.map((mode) => {
+                        const Icon = mode.icon;
+                        return (
+                          <button
+                            key={mode.id}
+                            onClick={() => {
+                              setSelectedMode(mode.id);
+                              setShowModeDropdown(false);
+                            }}
+                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                          >
+                            <Icon className="w-5 h-5 text-gray-600 mt-0.5" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{mode.name}</div>
+                              <div className="text-xs text-gray-500">{mode.description}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleOptimize}
+                  disabled={!inputPrompt.trim() || isProcessing}
+                  className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.label}
-                onClick={() => handleQuickAction(action)}
-                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
-              >
-                <Icon className="w-3 h-3 text-gray-600" />
-                <span className="text-xs font-medium text-gray-700">{action.label}</span>
-              </button>
-            );
-          })}
+          {/* Quick Actions */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.label}
+                  onClick={() => handleQuickAction(action)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
+                >
+                  <Icon className="w-3 h-3 text-gray-600" />
+                  <span className="text-xs font-medium text-gray-700">{action.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Processing State */}
       {isProcessing && (
