@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle } from 'lucide-react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut } from 'lucide-react';
+import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -14,6 +16,11 @@ export default function ModernPromptOptimizer() {
   const [showHistory, setShowHistory] = useState(true); // Default to open
   const [showResults, setShowResults] = useState(false);
   const [currentAIIndex, setCurrentAIIndex] = useState(0);
+
+  // Auth state
+  const [user, setUser] = useState(null);
+  const [showAuthMenu, setShowAuthMenu] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'];
 
@@ -86,13 +93,37 @@ export default function ModernPromptOptimizer() {
     }
   ];
 
-  // Load history from localStorage on mount
+  // Listen for auth state changes
   useEffect(() => {
-    const savedHistory = localStorage.getItem('promptHistory');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Load history from Firestore when user logs in
+        await loadHistoryFromFirestore(currentUser.uid);
+      } else {
+        // Load from localStorage when logged out
+        const savedHistory = localStorage.getItem('promptHistory');
+        if (savedHistory) {
+          setHistory(JSON.parse(savedHistory));
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  // Load history from Firestore
+  const loadHistoryFromFirestore = async (userId) => {
+    setIsLoadingHistory(true);
+    try {
+      const prompts = await getUserPrompts(userId, 10);
+      setHistory(prompts);
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   // Cycle through AI names
   useEffect(() => {
@@ -125,18 +156,56 @@ export default function ModernPromptOptimizer() {
     return () => clearInterval(intervalId);
   }, [optimizedPrompt, showResults]);
 
-  const saveToHistory = (input, output, score) => {
+  // Handle Google Sign In
+  const handleSignIn = async () => {
+    try {
+      const user = await signInWithGoogle();
+      console.log('Signed in as:', user.email);
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      alert('Failed to sign in. Please try again.');
+    }
+  };
+
+  // Handle Sign Out
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      setHistory([]);
+      console.log('Signed out successfully');
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
+  };
+
+  const saveToHistory = async (input, output, score) => {
     const newEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
       input,
       output,
       score,
       mode: selectedMode
     };
-    const updatedHistory = [newEntry, ...history].slice(0, 10);
-    setHistory(updatedHistory);
-    localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
+
+    if (user) {
+      // Save to Firestore if logged in
+      try {
+        const docId = await savePromptToFirestore(user.uid, newEntry);
+        const entryWithId = { id: docId, timestamp: new Date().toISOString(), ...newEntry };
+        setHistory([entryWithId, ...history].slice(0, 10));
+      } catch (error) {
+        console.error('Error saving to Firestore:', error);
+      }
+    } else {
+      // Save to localStorage if not logged in
+      const entryWithLocalId = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        ...newEntry
+      };
+      const updatedHistory = [entryWithLocalId, ...history].slice(0, 10);
+      setHistory(updatedHistory);
+      localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
+    }
   };
 
   const calculateQualityScore = (input, output) => {
@@ -307,9 +376,16 @@ export default function ModernPromptOptimizer() {
           <>
             <div className="p-4 pt-20 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Recent</h3>
+              {!user && (
+                <p className="text-xs text-gray-500 mt-1">Sign in to sync across devices</p>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              {history.length === 0 ? (
+              {isLoadingHistory ? (
+                <div className="p-4 text-center text-sm text-gray-400">
+                  Loading...
+                </div>
+              ) : history.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-400">
                   No history yet
                 </div>
@@ -343,6 +419,49 @@ export default function ModernPromptOptimizer() {
                     );
                   })}
                 </div>
+              )}
+            </div>
+
+            {/* Auth Section at bottom of sidebar */}
+            <div className="border-t border-gray-200 p-3">
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAuthMenu(!showAuthMenu)}
+                    className="w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName}
+                      className="w-8 h-8 rounded-full flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{user.displayName}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-gray-700 flex-shrink-0" />
+                  </button>
+
+                  {showAuthMenu && (
+                    <div className="absolute bottom-full left-0 mb-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-1">
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-700">Sign out</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={handleSignIn}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Sign in with Google</span>
+                </button>
               )}
             </div>
           </>
