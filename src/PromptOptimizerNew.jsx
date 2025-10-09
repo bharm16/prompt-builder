@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut, PanelLeft, Plus } from 'lucide-react';
 import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -21,6 +21,10 @@ export default function ModernPromptOptimizer() {
   const [user, setUser] = useState(null);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Refs for click-outside detection
+  const modeDropdownRef = useRef(null);
+  const authMenuRef = useRef(null);
 
   const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'];
 
@@ -92,6 +96,23 @@ export default function ModernPromptOptimizer() {
       prompt: 'random'
     }
   ];
+
+  // Handle clicks outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target)) {
+        setShowModeDropdown(false);
+      }
+      if (authMenuRef.current && !authMenuRef.current.contains(event.target)) {
+        setShowAuthMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -279,7 +300,7 @@ export default function ModernPromptOptimizer() {
       setQualityScore(score);
       saveToHistory(inputPrompt, optimized, score);
       setShowResults(true);
-      setShowHistory(false);
+      setShowHistory(true);
     } catch (error) {
       console.error('Optimization failed:', error);
       alert('Failed to optimize prompt. Please make sure the server is running.');
@@ -361,26 +382,34 @@ export default function ModernPromptOptimizer() {
   const ModeIcon = currentMode.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex">
-      {/* Hamburger Menu Button - Fixed Position */}
-      <button
-        onClick={() => setShowHistory(!showHistory)}
-        className="fixed top-6 left-6 z-50 p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
-      >
-        <Menu className="w-5 h-5 text-gray-700" />
-      </button>
+    <div className="h-screen bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+      {/* Sidebar Menu and New Chat Buttons - Fixed Position */}
+      <div className="fixed top-6 left-6 z-50 flex items-center gap-2">
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
+        >
+          <PanelLeft className="w-5 h-5 text-gray-700" />
+        </button>
+        <button
+          onClick={handleCreateNew}
+          className="p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
+        >
+          <Plus className="w-5 h-5 text-gray-700" />
+        </button>
+      </div>
 
       {/* Left Sidebar - History */}
-      <div className={`${showHistory ? 'w-64' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col overflow-hidden`}>
+      <div className={`${showHistory ? 'w-64' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 h-screen max-h-screen fixed left-0 top-0 z-40 overflow-hidden`}>
         {showHistory && (
-          <>
-            <div className="p-4 pt-20 border-b border-gray-200">
+          <div className="h-screen max-h-screen flex flex-col overflow-hidden">
+            <div className="p-4 pt-20 border-b border-gray-200 flex-shrink-0">
               <h3 className="font-semibold text-gray-900">Recent</h3>
               {!user && (
                 <p className="text-xs text-gray-500 mt-1">Sign in to sync across devices</p>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-2 min-h-0 overflow-x-hidden">
               {isLoadingHistory ? (
                 <div className="p-4 text-center text-sm text-gray-400">
                   Loading...
@@ -423,9 +452,9 @@ export default function ModernPromptOptimizer() {
             </div>
 
             {/* Auth Section at bottom of sidebar */}
-            <div className="border-t border-gray-200 p-3">
+            <div className="border-t border-gray-200 p-3 flex-shrink-0 bg-white">
               {user ? (
-                <div className="relative">
+                <div className="relative" ref={authMenuRef}>
                   <button
                     onClick={() => setShowAuthMenu(!showAuthMenu)}
                     className="w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -464,12 +493,12 @@ export default function ModernPromptOptimizer() {
                 </button>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto ${showHistory ? 'ml-0' : 'ml-0'}`}>
+      <div className={`h-screen flex flex-col items-center px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-64' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}>
       {/* Hero Section - Only show when NOT showing results */}
       {!showResults && (
         <div className="max-w-3xl w-full text-center mb-8">
@@ -506,7 +535,7 @@ export default function ModernPromptOptimizer() {
               </div>
 
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                <div className="relative">
+                <div className="relative" ref={modeDropdownRef}>
                   <button
                     onClick={() => setShowModeDropdown(!showModeDropdown)}
                     className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -589,7 +618,7 @@ export default function ModernPromptOptimizer() {
 
       {/* Results Section - Shows after optimization */}
       {showResults && displayedPrompt && !isProcessing && (
-        <div className="max-w-3xl w-full mt-8">
+        <div className="max-w-3xl w-full h-full overflow-y-auto mt-8 pb-8">
           {/* Lazy Prompt Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
