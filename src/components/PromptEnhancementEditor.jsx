@@ -1,0 +1,211 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Loader2, Sparkles, X } from 'lucide-react';
+
+export default function PromptEnhancementEditor({ promptContent, onPromptUpdate, originalUserPrompt, onShowSuggestionsChange }) {
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const contentRef = useRef(null);
+  const panelRef = useRef(null);
+
+  // Handle text selection
+  const handleMouseUp = async () => {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+
+    if (text.length > 0 && contentRef.current?.contains(selection.anchorNode)) {
+      setSelectedText(text);
+
+      // Save the range to restore selection later
+      const range = selection.getRangeAt(0).cloneRange();
+      setSelectionRange(range);
+
+      // Fetch AI suggestions
+      await fetchEnhancementSuggestions(text);
+    }
+  };
+
+  // Restore selection when showing suggestions
+  useEffect(() => {
+    if (selectionRange && showSuggestions) {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(selectionRange);
+    }
+  }, [showSuggestions, selectionRange]);
+
+  // Notify parent component about suggestions state
+  useEffect(() => {
+    if (onShowSuggestionsChange) {
+      onShowSuggestionsChange({
+        show: showSuggestions,
+        selectedText,
+        suggestions,
+        isLoading,
+        onSuggestionClick: handleSuggestionClick,
+        onClose: handleClose
+      });
+    }
+  }, [showSuggestions, selectedText, suggestions, isLoading]);
+
+  // Fetch enhancement suggestions from API
+  const fetchEnhancementSuggestions = async (highlightedText) => {
+    setIsLoading(true);
+    setShowSuggestions(true);
+    setSuggestions([]);
+
+    try {
+      // Extract context around the highlighted text
+      const fullText = promptContent;
+      const highlightIndex = fullText.indexOf(highlightedText);
+
+      const contextBefore = fullText.substring(
+        Math.max(0, highlightIndex - 300),
+        highlightIndex
+      ).trim();
+
+      const contextAfter = fullText.substring(
+        highlightIndex + highlightedText.length,
+        Math.min(fullText.length, highlightIndex + highlightedText.length + 300)
+      ).trim();
+
+      const response = await fetch('http://localhost:3001/api/get-enhancement-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          fullPrompt: fullText,
+          originalUserPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch suggestions');
+      }
+
+      const data = await response.json();
+      setSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([
+        { text: 'Failed to load suggestions. Please try again.' }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Replace selected text with chosen suggestion
+  const handleSuggestionClick = (suggestionText) => {
+    const updatedPrompt = promptContent.replace(selectedText, suggestionText);
+    onPromptUpdate(updatedPrompt);
+    handleClose();
+  };
+
+  // Close suggestions panel
+  const handleClose = () => {
+    setShowSuggestions(false);
+    setSelectedText('');
+    setSelectionRange(null);
+    window.getSelection().removeAllRanges();
+  };
+
+  return (
+    <div
+      ref={contentRef}
+      onMouseUp={handleMouseUp}
+      className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed font-sans select-text cursor-text"
+      style={{ userSelect: 'text' }}
+    >
+      {promptContent}
+    </div>
+  );
+}
+
+// Separate component for the suggestions panel
+export function SuggestionsPanel({ suggestionsData }) {
+  if (!suggestionsData || !suggestionsData.show) {
+    return null;
+  }
+
+  const { selectedText, suggestions, isLoading, onSuggestionClick, onClose } = suggestionsData;
+
+  return (
+    <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-xl border-2 border-gray-900 max-h-[calc(100vh-12rem)] flex flex-col sticky top-8">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-semibold text-gray-900">
+            AI Suggestions
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-gray-200 rounded transition-colors"
+        >
+          <X className="w-4 h-4 text-gray-600" />
+        </button>
+      </div>
+
+      {/* Selected Text Display */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-blue-50 flex-shrink-0">
+        <p className="text-xs text-gray-600 mb-1 font-semibold">Selected text:</p>
+        <p className="text-sm text-gray-800 italic line-clamp-3">"{selectedText}"</p>
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <span className="text-sm text-gray-600">Analyzing context...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions List */}
+      {!isLoading && suggestions.length > 0 && (
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              onClick={() => onSuggestionClick(suggestion.text)}
+              className="w-full text-left p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border-2 border-gray-200 hover:border-blue-300 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                    {index + 1}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-sans">
+                    {suggestion.text}
+                  </pre>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && suggestions.length === 0 && (
+        <div className="flex-1 flex items-center justify-center py-12">
+          <div className="text-center px-4">
+            <p className="text-sm text-gray-500">
+              No suggestions available. Try selecting a different section.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, C
 import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import PromptImprovementForm from './PromptImprovementForm';
+import PromptEnhancementEditor, { SuggestionsPanel } from './components/PromptEnhancementEditor';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -27,6 +28,9 @@ export default function ModernPromptOptimizer() {
   // Prompt improvement state
   const [showImprover, setShowImprover] = useState(false);
   const [improvementContext, setImprovementContext] = useState(null);
+
+  // Enhancement suggestions state
+  const [suggestionsData, setSuggestionsData] = useState(null);
 
   // Refs for click-outside detection
   const modeDropdownRef = useRef(null);
@@ -665,7 +669,7 @@ export default function ModernPromptOptimizer() {
 
       {/* Processing State */}
       {isProcessing && (
-        <div className="max-w-4xl w-full">
+        <div className="max-w-6xl w-full">
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
             <div className="flex flex-col items-center justify-center gap-4">
               <div className="flex items-center gap-2">
@@ -681,7 +685,9 @@ export default function ModernPromptOptimizer() {
 
       {/* Results Section - Shows after optimization */}
       {showResults && displayedPrompt && !isProcessing && (
-        <div className="max-w-3xl w-full h-full overflow-y-auto mt-8 pb-8">
+        <div className="w-full h-full overflow-y-auto mt-8 pb-8 flex gap-6 items-start max-w-7xl">
+          {/* Main Content Column */}
+          <div className="flex-1 max-w-4xl">
           {/* Lazy Prompt Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -712,9 +718,15 @@ export default function ModernPromptOptimizer() {
               </button>
             </div>
             <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
-              <pre className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                {displayedPrompt}
-              </pre>
+              <PromptEnhancementEditor
+                promptContent={displayedPrompt}
+                onPromptUpdate={(updatedPrompt) => {
+                  setOptimizedPrompt(updatedPrompt);
+                  setDisplayedPrompt(updatedPrompt);
+                }}
+                originalUserPrompt={inputPrompt}
+                onShowSuggestionsChange={setSuggestionsData}
+              />
             </div>
 
             {/* Action Buttons */}
@@ -763,6 +775,10 @@ export default function ModernPromptOptimizer() {
               )}
             </div>
           </div>
+          </div>
+
+          {/* Right Side - Suggestions Panel */}
+          <SuggestionsPanel suggestionsData={suggestionsData} />
         </div>
       )}
       </div>

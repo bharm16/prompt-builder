@@ -311,6 +311,105 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
   }
 });
 
+app.post('/api/get-enhancement-suggestions', async (req, res) => {
+  const { highlightedText, contextBefore, contextAfter, fullPrompt, originalUserPrompt } = req.body;
+
+  console.log('📥 Received enhancement request for:', highlightedText.slice(0, 50) + '...');
+
+  if (!highlightedText) {
+    return res.status(400).json({ error: 'Highlighted text is required' });
+  }
+
+  const aiPrompt = `You are a prompt engineering expert. Analyze this highlighted section and generate 3-5 concrete improvements.
+
+**HIGHLIGHTED SECTION:**
+"${highlightedText}"
+
+**CONTEXT BEFORE:**
+"${contextBefore}"
+
+**CONTEXT AFTER:**
+"${contextAfter}"
+
+**FULL PROMPT:**
+${fullPrompt}
+
+**ORIGINAL USER REQUEST:**
+"${originalUserPrompt}"
+
+Generate 3-5 complete rewrites of the highlighted section. Each rewrite should:
+1. Be a drop-in replacement for the highlighted text
+2. Make the prompt more effective, specific, and actionable
+3. Flow naturally with the surrounding context
+4. Be meaningfully different from the other suggestions
+5. Address potential ambiguities or add helpful structure
+
+Focus on improving clarity, specificity, and actionability. Consider:
+- Adding concrete examples or criteria
+- Breaking down vague instructions into specific steps
+- Specifying formats or structures more clearly
+- Adding constraints or success criteria
+- Making implicit requirements explicit
+
+Return ONLY a JSON array in this exact format (no markdown, no code blocks, no explanations):
+
+[
+  {"text": "first complete rewrite of the highlighted section..."},
+  {"text": "second complete rewrite of the highlighted section..."},
+  {"text": "third complete rewrite of the highlighted section..."},
+  {"text": "fourth complete rewrite of the highlighted section..."},
+  {"text": "fifth complete rewrite of the highlighted section..."}
+]
+
+Each "text" value should be a complete, self-contained replacement for the highlighted section that can be directly inserted into the prompt.`;
+
+  try {
+    console.log('🤖 Calling Claude API for enhancement suggestions...');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: aiPrompt
+        }]
+      })
+    });
+
+    console.log('📡 Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('❌ Claude API Error:', errorData);
+      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+    }
+
+    const data = await response.json();
+    let suggestionsText = data.content[0].text;
+
+    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+
+    // Clean up response - remove markdown code blocks if present
+    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const suggestions = JSON.parse(suggestionsText);
+
+    console.log('✅ Successfully parsed suggestions:', suggestions.length, 'suggestions');
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
 });
