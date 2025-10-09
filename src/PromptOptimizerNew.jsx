@@ -417,15 +417,16 @@ export default function ModernPromptOptimizer() {
 
   return (
     <div className="h-screen bg-gradient-to-b from-gray-50 to-white overflow-hidden">
-      {/* Improvement Form Modal */}
+      {/* Improvement Form Modal Overlay */}
       {showImprover && (
-        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
-          <div className="min-h-screen p-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl my-8">
             <button
               onClick={() => setShowImprover(false)}
-              className="mb-6 text-blue-600 hover:text-blue-700 font-medium"
+              className="mb-4 text-white hover:text-gray-200 font-medium flex items-center gap-2"
             >
-              ← Back to editor
+              <X className="w-5 h-5" />
+              Close
             </button>
             <PromptImprovementForm
               initialPrompt={inputPrompt}
