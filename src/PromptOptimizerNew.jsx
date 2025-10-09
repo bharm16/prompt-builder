@@ -400,6 +400,97 @@ export default function ModernPromptOptimizer() {
     setDisplayedPrompt('');
     setQualityScore(null);
     setShowResults(false);
+    setSuggestionsData(null);
+  };
+
+  // Fetch enhancement suggestions for selected text
+  const fetchEnhancementSuggestions = async (highlightedText, fullPrompt, selectionRange) => {
+    const highlightIndex = fullPrompt.indexOf(highlightedText);
+
+    const contextBefore = fullPrompt.substring(
+      Math.max(0, highlightIndex - 300),
+      highlightIndex
+    ).trim();
+
+    const contextAfter = fullPrompt.substring(
+      highlightIndex + highlightedText.length,
+      Math.min(fullPrompt.length, highlightIndex + highlightedText.length + 300)
+    ).trim();
+
+    // Set loading state
+    setSuggestionsData({
+      show: true,
+      selectedText: highlightedText,
+      suggestions: [],
+      isLoading: true,
+      onSuggestionClick: (suggestionText) => {
+        const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
+        setOptimizedPrompt(updatedPrompt);
+        setDisplayedPrompt(updatedPrompt);
+        setSuggestionsData(null);
+        window.getSelection().removeAllRanges();
+      },
+      onClose: () => {
+        setSuggestionsData(null);
+        window.getSelection().removeAllRanges();
+      }
+    });
+
+    try {
+      const response = await fetch('http://localhost:3001/api/get-enhancement-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          fullPrompt,
+          originalUserPrompt: inputPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch suggestions');
+      }
+
+      const data = await response.json();
+
+      // Update with fetched suggestions
+      setSuggestionsData({
+        show: true,
+        selectedText: highlightedText,
+        suggestions: data.suggestions || [],
+        isLoading: false,
+        onSuggestionClick: (suggestionText) => {
+          const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
+          setOptimizedPrompt(updatedPrompt);
+          setDisplayedPrompt(updatedPrompt);
+          setSuggestionsData(null);
+          window.getSelection().removeAllRanges();
+        },
+        onClose: () => {
+          setSuggestionsData(null);
+          window.getSelection().removeAllRanges();
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestionsData({
+        show: true,
+        selectedText: highlightedText,
+        suggestions: [{ text: 'Failed to load suggestions. Please try again.' }],
+        isLoading: false,
+        onSuggestionClick: () => {
+          setSuggestionsData(null);
+        },
+        onClose: () => {
+          setSuggestionsData(null);
+          window.getSelection().removeAllRanges();
+        }
+      });
+    }
   };
 
   const loadFromHistory = (entry) => {
@@ -718,14 +809,30 @@ export default function ModernPromptOptimizer() {
               </button>
             </div>
             <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
-              <PromptEnhancementEditor
-                promptContent={displayedPrompt}
-                onPromptUpdate={(updatedPrompt) => {
-                  setOptimizedPrompt(updatedPrompt);
-                  setDisplayedPrompt(updatedPrompt);
+              <textarea
+                value={displayedPrompt}
+                onChange={(e) => {
+                  setDisplayedPrompt(e.target.value);
+                  setOptimizedPrompt(e.target.value);
                 }}
-                originalUserPrompt={inputPrompt}
-                onShowSuggestionsChange={setSuggestionsData}
+                onMouseUp={(e) => {
+                  // Handle text selection for AI suggestions
+                  const selection = window.getSelection();
+                  const text = selection.toString().trim();
+
+                  if (text.length > 0) {
+                    // Create a synthetic event for the PromptEnhancementEditor logic
+                    const range = selection.getRangeAt(0).cloneRange();
+
+                    // Fetch AI suggestions
+                    fetchEnhancementSuggestions(text, displayedPrompt, range);
+                  }
+                }}
+                className="w-full text-sm text-gray-800 leading-relaxed font-sans resize-none outline-none bg-transparent"
+                style={{
+                  minHeight: '400px',
+                  fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                }}
               />
             </div>
 
