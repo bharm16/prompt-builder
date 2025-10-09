@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut, PanelLeft, Plus } from 'lucide-react';
 import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import PromptImprovementForm from './PromptImprovementForm';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -22,6 +23,10 @@ export default function ModernPromptOptimizer() {
   const [user, setUser] = useState(null);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Prompt improvement state
+  const [showImprover, setShowImprover] = useState(false);
+  const [improvementContext, setImprovementContext] = useState(null);
 
   // Refs for click-outside detection
   const modeDropdownRef = useRef(null);
@@ -262,7 +267,7 @@ export default function ModernPromptOptimizer() {
     return Math.min(score, 100);
   };
 
-  const analyzeAndOptimize = async (prompt) => {
+  const analyzeAndOptimize = async (prompt, context = null) => {
     console.log('AI mode is ON - calling Claude API...');
     console.log('Mode:', selectedMode);
 
@@ -275,7 +280,8 @@ export default function ModernPromptOptimizer() {
         },
         body: JSON.stringify({
           prompt: prompt,
-          mode: selectedMode
+          mode: selectedMode,
+          context: context
         })
       });
 
@@ -296,8 +302,20 @@ export default function ModernPromptOptimizer() {
     }
   };
 
-  const handleOptimize = async () => {
+  const handleImproveFirst = () => {
     if (!inputPrompt.trim()) return;
+    setShowImprover(true);
+  };
+
+  const handleImprovementComplete = async (enhancedPrompt, context) => {
+    setShowImprover(false);
+    setImprovementContext(context);
+    setInputPrompt(enhancedPrompt);
+    handleOptimize(enhancedPrompt, context);
+  };
+
+  const handleOptimize = async (promptToOptimize = inputPrompt, context = improvementContext) => {
+    if (!promptToOptimize.trim()) return;
 
     setIsProcessing(true);
     setOptimizedPrompt('');
@@ -306,15 +324,15 @@ export default function ModernPromptOptimizer() {
     setSkipAnimation(false); // Enable animation for new optimizations
 
     try {
-      const optimized = await analyzeAndOptimize(inputPrompt);
+      const optimized = await analyzeAndOptimize(promptToOptimize, context);
       console.log('📝 Received optimized prompt:', optimized);
 
-      const score = calculateQualityScore(inputPrompt, optimized);
+      const score = calculateQualityScore(promptToOptimize, optimized);
       console.log('📊 Quality score:', score);
 
       setOptimizedPrompt(optimized);
       setQualityScore(score);
-      saveToHistory(inputPrompt, optimized, score);
+      saveToHistory(promptToOptimize, optimized, score);
       setShowResults(true);
       setShowHistory(true);
     } catch (error) {
@@ -399,6 +417,24 @@ export default function ModernPromptOptimizer() {
 
   return (
     <div className="h-screen bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+      {/* Improvement Form Modal */}
+      {showImprover && (
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-screen p-8">
+            <button
+              onClick={() => setShowImprover(false)}
+              className="mb-6 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              ← Back to editor
+            </button>
+            <PromptImprovementForm
+              initialPrompt={inputPrompt}
+              onComplete={handleImprovementComplete}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Sidebar Menu and New Chat Buttons - Fixed Position */}
       <div className="fixed top-6 left-6 z-50 flex items-center gap-2">
         <button
@@ -586,13 +622,23 @@ export default function ModernPromptOptimizer() {
                   )}
                 </div>
 
-                <button
-                  onClick={handleOptimize}
-                  disabled={!inputPrompt.trim() || isProcessing}
-                  className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleImproveFirst}
+                    disabled={!inputPrompt.trim() || isProcessing}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-full transition-all duration-200 text-sm font-medium disabled:cursor-not-allowed"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Improve First
+                  </button>
+                  <button
+                    onClick={handleOptimize}
+                    disabled={!inputPrompt.trim() || isProcessing}
+                    className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

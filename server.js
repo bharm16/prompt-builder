@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/optimize', async (req, res) => {
-  const { prompt, mode } = req.body;
+  const { prompt, mode, context } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
@@ -140,6 +140,27 @@ Create a prompt that's self-contained and immediately usable. Ensure the optimiz
 Provide ONLY the optimized prompt in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   }
 
+  // Add context enhancement if provided
+  if (context && Object.keys(context).some(k => context[k])) {
+    systemPrompt += '\n\n**IMPORTANT - User has provided additional context:**\n';
+    systemPrompt += 'The user has provided additional context. Incorporate this into the optimized prompt:\n\n';
+
+    if (context.specificAspects) {
+      systemPrompt += `**Specific Focus Areas:** ${context.specificAspects}\n`;
+      systemPrompt += 'Make sure the optimized prompt explicitly addresses these aspects.\n\n';
+    }
+
+    if (context.backgroundLevel) {
+      systemPrompt += `**Target Audience Level:** ${context.backgroundLevel}\n`;
+      systemPrompt += 'Adjust the complexity and terminology to match this level.\n\n';
+    }
+
+    if (context.intendedUse) {
+      systemPrompt += `**Intended Use Case:** ${context.intendedUse}\n`;
+      systemPrompt += 'Format the prompt to suit this specific use case.\n\n';
+    }
+  }
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -177,6 +198,115 @@ Provide ONLY the optimized prompt in the specified format. No preamble, no expla
     res.json({ optimizedPrompt: optimizedText });
   } catch (error) {
     console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+app.post('/api/generate-questions', async (req, res) => {
+  const { prompt } = req.body;
+
+  console.log('📥 Received generate-questions request for:', prompt);
+
+  if (!prompt) {
+    console.log('❌ No prompt provided');
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  const systemPrompt = `You are an expert at understanding user intent and generating relevant clarifying questions.
+
+Given the user's initial prompt: "${prompt}"
+
+Generate 3 highly relevant, context-specific questions that will help improve and clarify this prompt. The questions should:
+
+1. Be directly relevant to the specific content and intent of the user's prompt
+2. Help uncover important details, constraints, or preferences
+3. Be natural and conversational
+4. Include 3-4 example answers for each question
+
+Return ONLY a valid JSON object in this exact format (no markdown, no code blocks, no explanations):
+
+{
+  "questions": [
+    {
+      "id": 1,
+      "title": "Context-specific question about the main focus or key details?",
+      "description": "Why this question matters for this specific prompt",
+      "field": "specificAspects",
+      "examples": [
+        "Example answer 1",
+        "Example answer 2",
+        "Example answer 3",
+        "Example answer 4"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Question about audience, expertise level, or background?",
+      "description": "Why this matters for tailoring the response",
+      "field": "backgroundLevel",
+      "examples": [
+        "Example answer 1",
+        "Example answer 2",
+        "Example answer 3"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Question about purpose, use case, or intended outcome?",
+      "description": "Why understanding this helps",
+      "field": "intendedUse",
+      "examples": [
+        "Example answer 1",
+        "Example answer 2",
+        "Example answer 3"
+      ]
+    }
+  ]
+}`;
+
+  try {
+    console.log('🤖 Calling Claude API to generate questions...');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: systemPrompt
+        }]
+      })
+    });
+
+    console.log('📡 Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('❌ Claude API Error:', errorData);
+      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+    }
+
+    const data = await response.json();
+    let questionsText = data.content[0].text;
+
+    console.log('📝 Raw Claude response:', questionsText.slice(0, 200) + '...');
+
+    // Clean up response - remove markdown code blocks if present
+    questionsText = questionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const questionsData = JSON.parse(questionsText);
+
+    console.log('✅ Successfully parsed questions:', questionsData.questions?.length, 'questions');
+
+    res.json(questionsData);
+  } catch (error) {
+    console.error('❌ Server error:', error);
     res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 });
