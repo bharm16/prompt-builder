@@ -16,6 +16,7 @@ export default function ModernPromptOptimizer() {
   const [showHistory, setShowHistory] = useState(true); // Default to open
   const [showResults, setShowResults] = useState(false);
   const [currentAIIndex, setCurrentAIIndex] = useState(0);
+  const [skipAnimation, setSkipAnimation] = useState(false);
 
   // Auth state
   const [user, setUser] = useState(null);
@@ -114,6 +115,14 @@ export default function ModernPromptOptimizer() {
     };
   }, []);
 
+  // Load localStorage history on mount (for non-logged-in users)
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('promptHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -162,6 +171,12 @@ export default function ModernPromptOptimizer() {
       return;
     }
 
+    // Skip animation if loading from history
+    if (skipAnimation) {
+      setDisplayedPrompt(optimizedPrompt);
+      return;
+    }
+
     setDisplayedPrompt('');
     let currentIndex = 0;
 
@@ -175,7 +190,7 @@ export default function ModernPromptOptimizer() {
     }, 5);
 
     return () => clearInterval(intervalId);
-  }, [optimizedPrompt, showResults]);
+  }, [optimizedPrompt, showResults, skipAnimation]);
 
   // Handle Google Sign In
   const handleSignIn = async () => {
@@ -288,6 +303,7 @@ export default function ModernPromptOptimizer() {
     setOptimizedPrompt('');
     setDisplayedPrompt('');
     setQualityScore(null);
+    setSkipAnimation(false); // Enable animation for new optimizations
 
     try {
       const optimized = await analyzeAndOptimize(inputPrompt);
@@ -365,12 +381,12 @@ export default function ModernPromptOptimizer() {
   };
 
   const loadFromHistory = (entry) => {
+    setSkipAnimation(true);
     setInputPrompt(entry.input);
     setOptimizedPrompt(entry.output);
     setDisplayedPrompt(entry.output);
     setQualityScore(entry.score);
     setSelectedMode(entry.mode);
-    setShowHistory(false);
     setShowResults(true);
   };
 
