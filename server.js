@@ -506,6 +506,95 @@ Each "text" value should be a complete, self-contained replacement for the highl
   }
 });
 
+app.post('/api/get-custom-suggestions', async (req, res) => {
+  const { highlightedText, customRequest, fullPrompt } = req.body;
+
+  console.log('📥 Received custom suggestion request:', customRequest);
+
+  if (!highlightedText || !customRequest) {
+    return res.status(400).json({ error: 'Highlighted text and custom request are required' });
+  }
+
+  // Detect if this is a video prompt
+  const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
+                        fullPrompt.includes('**Technical Parameters:**') ||
+                        fullPrompt.includes('Camera Movement:');
+
+  const aiPrompt = `You are a ${isVideoPrompt ? 'video prompt expert for AI video generation (Sora, Veo3, RunwayML)' : 'prompt engineering expert'}.
+
+The user has selected this text:
+"${highlightedText}"
+
+They want you to modify it with this specific request:
+"${customRequest}"
+
+Context from full prompt:
+${fullPrompt.substring(0, 1000)}
+
+Generate 3-5 alternative rewrites that specifically address the user's request. Each rewrite should:
+1. Be a complete drop-in replacement for the selected text
+2. Directly implement what the user asked for
+3. Flow naturally with the surrounding context
+4. Be meaningfully different from each other
+${isVideoPrompt ? '5. Maintain compatibility with AI video generation models and include appropriate cinematic details' : '5. Maintain the overall tone and purpose of the prompt'}
+
+Return ONLY a JSON array in this exact format (no markdown, no code blocks, no explanations):
+
+[
+  {"text": "first rewrite implementing the user's request..."},
+  {"text": "second rewrite with different approach..."},
+  {"text": "third rewrite with alternative interpretation..."},
+  {"text": "fourth rewrite with unique variation..."},
+  {"text": "fifth rewrite with creative take..."}
+]`;
+
+  try {
+    console.log('🤖 Calling Claude API for custom suggestions...');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: aiPrompt
+        }]
+      })
+    });
+
+    console.log('📡 Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('❌ Claude API Error:', errorData);
+      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+    }
+
+    const data = await response.json();
+    let suggestionsText = data.content[0].text;
+
+    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+
+    // Clean up response - remove markdown code blocks if present
+    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const suggestions = JSON.parse(suggestionsText);
+
+    console.log('✅ Successfully parsed custom suggestions:', suggestions.length, 'suggestions');
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
 });

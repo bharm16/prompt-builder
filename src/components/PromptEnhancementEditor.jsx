@@ -130,11 +130,55 @@ export default function PromptEnhancementEditor({ promptContent, onPromptUpdate,
 
 // Separate component for the suggestions panel
 export function SuggestionsPanel({ suggestionsData }) {
+  const [customRequest, setCustomRequest] = useState('');
+  const [isCustomLoading, setIsCustomLoading] = useState(false);
+
   if (!suggestionsData || !suggestionsData.show) {
     return null;
   }
 
   const { selectedText, suggestions, isLoading, onSuggestionClick, onClose } = suggestionsData;
+
+  // Handle custom suggestion request
+  const handleCustomRequest = async () => {
+    if (!customRequest.trim()) return;
+
+    setIsCustomLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:3001/api/get-custom-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          highlightedText: selectedText,
+          customRequest: customRequest.trim(),
+          fullPrompt: suggestionsData.fullPrompt || '',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch custom suggestions');
+      }
+
+      const data = await response.json();
+
+      // Replace suggestions with custom ones
+      if (suggestionsData.setSuggestions) {
+        suggestionsData.setSuggestions(data.suggestions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching custom suggestions:', error);
+      if (suggestionsData.setSuggestions) {
+        suggestionsData.setSuggestions([
+          { text: 'Failed to load custom suggestions. Please try again.' }
+        ]);
+      }
+    } finally {
+      setIsCustomLoading(false);
+    }
+  };
 
   return (
     <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-xl border-2 border-gray-900 max-h-[calc(100vh-12rem)] flex flex-col sticky top-8">
@@ -158,6 +202,35 @@ export function SuggestionsPanel({ suggestionsData }) {
       <div className="px-4 py-3 border-b border-gray-200 bg-blue-50 flex-shrink-0">
         <p className="text-xs text-gray-600 mb-1 font-semibold">Selected text:</p>
         <p className="text-sm text-gray-800 italic line-clamp-3">"{selectedText}"</p>
+      </div>
+
+      {/* Custom Request Input */}
+      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+        <p className="text-xs text-gray-600 mb-2 font-semibold">Custom request:</p>
+        <textarea
+          value={customRequest}
+          onChange={(e) => setCustomRequest(e.target.value)}
+          placeholder="e.g., Make it more cinematic, Add more emotion, Simplify the language..."
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          rows={2}
+        />
+        <button
+          onClick={handleCustomRequest}
+          disabled={!customRequest.trim() || isCustomLoading}
+          className="mt-2 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isCustomLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Get Custom Suggestions
+            </>
+          )}
+        </button>
       </div>
 
       {/* Loading State */}

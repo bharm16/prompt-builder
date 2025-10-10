@@ -424,6 +424,14 @@ export default function ModernPromptOptimizer() {
       selectedText: highlightedText,
       suggestions: [],
       isLoading: true,
+      fullPrompt: fullPrompt,
+      setSuggestions: (newSuggestions) => {
+        setSuggestionsData(prev => ({
+          ...prev,
+          suggestions: newSuggestions,
+          isLoading: false
+        }));
+      },
       onSuggestionClick: (suggestionText) => {
         const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
         setOptimizedPrompt(updatedPrompt);
@@ -464,6 +472,14 @@ export default function ModernPromptOptimizer() {
         selectedText: highlightedText,
         suggestions: data.suggestions || [],
         isLoading: false,
+        fullPrompt: fullPrompt,
+        setSuggestions: (newSuggestions) => {
+          setSuggestionsData(prev => ({
+            ...prev,
+            suggestions: newSuggestions,
+            isLoading: false
+          }));
+        },
         onSuggestionClick: (suggestionText) => {
           const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
           setOptimizedPrompt(updatedPrompt);
@@ -483,6 +499,14 @@ export default function ModernPromptOptimizer() {
         selectedText: highlightedText,
         suggestions: [{ text: 'Failed to load suggestions. Please try again.' }],
         isLoading: false,
+        fullPrompt: fullPrompt,
+        setSuggestions: (newSuggestions) => {
+          setSuggestionsData(prev => ({
+            ...prev,
+            suggestions: newSuggestions,
+            isLoading: false
+          }));
+        },
         onSuggestionClick: () => {
           setSuggestionsData(null);
         },
