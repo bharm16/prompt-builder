@@ -183,14 +183,17 @@ export function SuggestionsPanel({ suggestionsData }) {
       const data = await response.json();
 
       if (suggestionsData.setSuggestions) {
-        suggestionsData.setSuggestions(data.suggestions || []);
+        // Don't change isPlaceholder mode when doing custom requests
+        // The second parameter is undefined, so it will preserve the current isPlaceholder state
+        suggestionsData.setSuggestions(data.suggestions || [], undefined);
       }
     } catch (error) {
       console.error('Error fetching custom suggestions:', error);
       if (suggestionsData.setSuggestions) {
+        // Preserve isPlaceholder state even on error
         suggestionsData.setSuggestions([
           { text: 'Failed to load custom suggestions. Please try again.' }
-        ]);
+        ], undefined);
       }
     } finally {
       setIsCustomLoading(false);

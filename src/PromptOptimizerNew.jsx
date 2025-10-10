@@ -404,31 +404,60 @@ export default function ModernPromptOptimizer() {
     setSuggestionsData(null);
   };
 
+  // Debounce timer ref for preventing rapid-fire requests
+  const debounceTimerRef = useRef(null);
+  const lastRequestRef = useRef(null);
+
   // Fetch enhancement suggestions for selected text
   const fetchEnhancementSuggestions = async (highlightedText, fullPrompt, selectionRange) => {
-    const highlightIndex = fullPrompt.indexOf(highlightedText);
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
 
-    const contextBefore = fullPrompt.substring(
-      Math.max(0, highlightIndex - 300),
-      highlightIndex
-    ).trim();
+    // Prevent duplicate requests for the same text
+    if (suggestionsData?.selectedText === highlightedText && suggestionsData?.show) {
+      console.log('🚫 Skipping duplicate request for:', highlightedText);
+      return;
+    }
 
-    const contextAfter = fullPrompt.substring(
-      highlightIndex + highlightedText.length,
-      Math.min(fullPrompt.length, highlightIndex + highlightedText.length + 300)
-    ).trim();
+    // Prevent rapid-fire requests (debounce 300ms)
+    debounceTimerRef.current = setTimeout(async () => {
+      // Double-check the selection hasn't changed
+      const currentSelection = window.getSelection().toString().trim();
+      if (currentSelection !== highlightedText) {
+        console.log('🚫 Selection changed, ignoring stale request');
+        return;
+      }
 
-    // Set loading state
-    setSuggestionsData({
+      // Store this request to prevent duplicates
+      lastRequestRef.current = highlightedText;
+
+      const highlightIndex = fullPrompt.indexOf(highlightedText);
+
+      const contextBefore = fullPrompt.substring(
+        Math.max(0, highlightIndex - 300),
+        highlightIndex
+      ).trim();
+
+      const contextAfter = fullPrompt.substring(
+        highlightIndex + highlightedText.length,
+        Math.min(fullPrompt.length, highlightIndex + highlightedText.length + 300)
+      ).trim();
+
+      // Set loading state
+      setSuggestionsData({
       show: true,
       selectedText: highlightedText,
       suggestions: [],
       isLoading: true,
+      isPlaceholder: false,
       fullPrompt: fullPrompt,
-      setSuggestions: (newSuggestions) => {
+      setSuggestions: (newSuggestions, newIsPlaceholder) => {
         setSuggestionsData(prev => ({
           ...prev,
           suggestions: newSuggestions,
+          isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
           isLoading: false
         }));
       },
@@ -472,11 +501,13 @@ export default function ModernPromptOptimizer() {
         selectedText: highlightedText,
         suggestions: data.suggestions || [],
         isLoading: false,
+        isPlaceholder: data.isPlaceholder || false,
         fullPrompt: fullPrompt,
-        setSuggestions: (newSuggestions) => {
+        setSuggestions: (newSuggestions, newIsPlaceholder) => {
           setSuggestionsData(prev => ({
             ...prev,
             suggestions: newSuggestions,
+            isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
             isLoading: false
           }));
         },
@@ -499,11 +530,13 @@ export default function ModernPromptOptimizer() {
         selectedText: highlightedText,
         suggestions: [{ text: 'Failed to load suggestions. Please try again.' }],
         isLoading: false,
+        isPlaceholder: false,
         fullPrompt: fullPrompt,
-        setSuggestions: (newSuggestions) => {
+        setSuggestions: (newSuggestions, newIsPlaceholder) => {
           setSuggestionsData(prev => ({
             ...prev,
             suggestions: newSuggestions,
+            isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
             isLoading: false
           }));
         },
@@ -516,6 +549,7 @@ export default function ModernPromptOptimizer() {
         }
       });
     }
+    }, 300); // 300ms debounce delay
   };
 
   const loadFromHistory = (entry) => {
