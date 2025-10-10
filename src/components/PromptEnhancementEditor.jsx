@@ -112,10 +112,90 @@ export default function PromptEnhancementEditor({
   };
 
   // Replace selected text with chosen suggestion
-  const handleSuggestionClick = (suggestionText) => {
+  const handleSuggestionClick = async (suggestionText) => {
     const updatedPrompt = promptContent.replace(selectedText, suggestionText);
+
+    // Check if this is an environment change in a WHERE section
+    await detectAndHandleSceneChange(selectedText, suggestionText, updatedPrompt);
+
     onPromptUpdate(updatedPrompt);
     handleClose();
+  };
+
+  // Detect if changing Environment Type and offer to update related fields
+  const detectAndHandleSceneChange = async (oldValue, newValue, updatedPrompt) => {
+    // Check if we're in the WHERE section and changing Environment Type
+    const whereMatch = promptContent.match(/\*\*WHERE - LOCATION\/SETTING\*\*[\s\S]*?(?=\*\*WHEN|$)/);
+    if (!whereMatch) return;
+
+    const whereSection = whereMatch[0];
+    const envTypeMatch = whereSection.match(/- Environment Type: \[(.*?)\]/);
+
+    // Check if the selected text is the Environment Type value
+    if (!envTypeMatch || !whereSection.includes(selectedText)) return;
+
+    const isEnvironmentType = whereSection.indexOf(selectedText) > whereSection.indexOf('- Environment Type:') &&
+                               whereSection.indexOf(selectedText) < whereSection.indexOf('- Architectural Details:');
+
+    if (!isEnvironmentType) return;
+
+    // Define the related fields that might need updating
+    const affectedFieldsMap = {
+      'Architectural Details': whereSection.match(/- Architectural Details: \[(.*?)\]/)?.[1] || '',
+      'Environmental Scale': whereSection.match(/- Environmental Scale: \[(.*?)\]/)?.[1] || '',
+      'Atmospheric Conditions': whereSection.match(/- Atmospheric Conditions: \[(.*?)\]/)?.[1] || '',
+      'Background Elements': whereSection.match(/- Background Elements: \[(.*?)\]/)?.[1] || '',
+      'Foreground Elements': whereSection.match(/- Foreground Elements: \[(.*?)\]/)?.[1] || '',
+      'Spatial Depth': whereSection.match(/- Spatial Depth: \[(.*?)\]/)?.[1] || '',
+      'Environmental Storytelling': whereSection.match(/- Environmental Storytelling: \[(.*?)\]/)?.[1] || ''
+    };
+
+    try {
+      const response = await fetch('http://localhost:3001/api/detect-scene-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          changedField: 'Environment Type',
+          oldValue,
+          newValue,
+          fullPrompt: updatedPrompt,
+          affectedFields: affectedFieldsMap
+        })
+      });
+
+      if (!response.ok) return;
+
+      const result = await response.json();
+
+      if (result.isSceneChange && result.confidence !== 'low') {
+        // Show confirmation dialog
+        const shouldUpdate = window.confirm(
+          `🎬 Scene Change Detected!\n\n` +
+          `Changing from "${oldValue}" to "${newValue}" represents a complete environment change.\n\n` +
+          `Would you like to automatically update the related location fields to match this new environment?\n\n` +
+          `${result.reasoning}`
+        );
+
+        if (shouldUpdate && result.suggestedUpdates) {
+          // Apply the suggested updates
+          let finalPrompt = updatedPrompt;
+
+          Object.entries(result.suggestedUpdates).forEach(([fieldName, newFieldValue]) => {
+            const oldFieldValue = affectedFieldsMap[fieldName];
+            if (oldFieldValue && newFieldValue) {
+              // Replace the old value with the new value for this field
+              const fieldPattern = new RegExp(`(- ${fieldName}: \\[)${oldFieldValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\])`, 'g');
+              finalPrompt = finalPrompt.replace(fieldPattern, `$1${newFieldValue}$2`);
+            }
+          });
+
+          onPromptUpdate(finalPrompt);
+        }
+      }
+    } catch (error) {
+      console.error('Error detecting scene change:', error);
+      // Silently fail - don't disrupt the user's workflow
+    }
   };
 
   // Close suggestions panel

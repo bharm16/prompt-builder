@@ -810,6 +810,101 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
   }
 });
 
+app.post('/api/detect-scene-change', async (req, res) => {
+  const { changedField, newValue, oldValue, fullPrompt, affectedFields } = req.body;
+
+  console.log('📥 Scene change detection request');
+  console.log('Changed field:', changedField);
+  console.log('Old value:', oldValue?.substring(0, 50));
+  console.log('New value:', newValue?.substring(0, 50));
+
+  if (!changedField || !newValue) {
+    return res.status(400).json({ error: 'Changed field and new value are required' });
+  }
+
+  // Detect if this represents a significant scene/environment change
+  const aiPrompt = `You are an expert video production assistant analyzing whether a field change represents a COMPLETE SCENE/ENVIRONMENT CHANGE that would require updating related fields.
+
+**Field that changed:** ${changedField}
+**Old value:** "${oldValue || 'Not set'}"
+**New value:** "${newValue}"
+
+**Full prompt context:**
+${fullPrompt.substring(0, 1500)}
+
+**Your task:**
+Determine if this change represents a COMPLETE SCENE CHANGE (like changing from "coffee shop interior" to "underwater cave" or "urban street" to "mountain peak").
+
+**Analysis criteria:**
+- Does the new value describe a fundamentally different ENVIRONMENT/LOCATION than the old value?
+- Would this change make the current values in related fields (architectural details, atmospheric conditions, background elements, etc.) INCOMPATIBLE or NONSENSICAL?
+- Is this a minor refinement (e.g., "modern coffee shop" → "vintage coffee shop") or a major scene change (e.g., "coffee shop" → "underwater cave")?
+
+**Related fields that might need updating if this is a scene change:**
+${JSON.stringify(affectedFields, null, 2)}
+
+Return ONLY a JSON object in this exact format (no markdown, no code blocks):
+
+{
+  "isSceneChange": true or false,
+  "confidence": "high" or "medium" or "low",
+  "reasoning": "brief explanation of why this is or isn't a scene change",
+  "suggestedUpdates": {
+    "field1": "suggested new value that fits the new environment",
+    "field2": "suggested new value that fits the new environment"
+  }
+}
+
+If isSceneChange is FALSE, return suggestedUpdates as an empty object {}.
+If isSceneChange is TRUE, provide specific suggested values for ALL affected fields that would fit the new environment.`;
+
+  try {
+    console.log('🤖 Calling Claude API for scene change detection...');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: aiPrompt
+        }]
+      })
+    });
+
+    console.log('📡 Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('❌ Claude API Error:', errorData);
+      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+    }
+
+    const data = await response.json();
+    let resultText = data.content[0].text;
+
+    console.log('📝 Raw Claude response:', resultText.slice(0, 200) + '...');
+
+    // Clean up response - remove markdown code blocks if present
+    resultText = resultText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const result = JSON.parse(resultText);
+
+    console.log('✅ Scene change detection result:', result.isSceneChange ? 'YES' : 'NO', `(${result.confidence})`);
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.post('/api/get-creative-suggestions', async (req, res) => {
   const { elementType, currentValue, context, concept } = req.body;
 
