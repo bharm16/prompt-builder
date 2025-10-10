@@ -352,6 +352,52 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
   }
 });
 
+// Helper function to detect if highlighted text is a placeholder
+function detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt) {
+  const text = highlightedText.toLowerCase().trim();
+
+  // Pattern 1: Single word that's commonly a placeholder
+  const placeholderKeywords = [
+    'location', 'place', 'venue', 'setting', 'where',
+    'person', 'character', 'who', 'speaker', 'audience',
+    'time', 'when', 'date', 'period', 'era', 'occasion',
+    'style', 'tone', 'mood', 'atmosphere',
+    'event', 'action', 'activity', 'scene',
+    'color', 'texture', 'material',
+    'angle', 'perspective', 'viewpoint'
+  ];
+
+  if (text.split(/\s+/).length <= 2 && placeholderKeywords.includes(text)) {
+    return true;
+  }
+
+  // Pattern 2: Text in parentheses or brackets
+  if (contextBefore.includes('(') || contextAfter.startsWith(')') ||
+      contextBefore.includes('[') || contextAfter.startsWith(']')) {
+    return true;
+  }
+
+  // Pattern 3: Preceded by phrases like "such as", "like", "e.g.", "for example"
+  const precedingPhrases = ['such as', 'like', 'e.g.', 'for example', 'including', 'specify'];
+  if (precedingPhrases.some(phrase => contextBefore.toLowerCase().includes(phrase))) {
+    return true;
+  }
+
+  // Pattern 4: In a list or comma-separated context suggesting it's a placeholder
+  if ((contextBefore.includes(':') || contextBefore.includes('-')) &&
+      text.split(/\s+/).length <= 3) {
+    return true;
+  }
+
+  // Pattern 5: Part of "include [word]" or "set [word]" pattern
+  const includePattern = /\b(include|set|choose|specify|add|provide|give)\s+[^,\n]{0,20}$/i;
+  if (includePattern.test(contextBefore)) {
+    return true;
+  }
+
+  return false;
+}
+
 app.post('/api/get-enhancement-suggestions', async (req, res) => {
   const { highlightedText, contextBefore, contextAfter, fullPrompt, originalUserPrompt } = req.body;
 
@@ -361,16 +407,66 @@ app.post('/api/get-enhancement-suggestions', async (req, res) => {
     return res.status(400).json({ error: 'Highlighted text is required' });
   }
 
-  // Detect if this is a video prompt based on content
+  // Detect if this is a video prompt
   const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
                         fullPrompt.includes('**Technical Parameters:**') ||
-                        fullPrompt.includes('**Alternative Variations:**') ||
-                        fullPrompt.includes('Camera Movement:') ||
-                        fullPrompt.includes('Aspect Ratio:');
+                        fullPrompt.includes('Camera Movement:');
 
-  let aiPrompt = '';
+  // Check if highlighted text is a placeholder/parameter
+  const isPlaceholder = detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt);
 
-  if (isVideoPrompt) {
+  let aiPrompt;
+
+  if (isPlaceholder) {
+    // Generate context-aware VALUE suggestions
+    aiPrompt = `You are an expert prompt engineer analyzing a placeholder value in a prompt.
+
+**Context Analysis:**
+Full prompt context: ${fullPrompt.substring(0, 1500)}
+
+Context before: "${contextBefore}"
+HIGHLIGHTED PLACEHOLDER: "${highlightedText}"
+Context after: "${contextAfter}"
+
+Original user request: "${originalUserPrompt}"
+
+**Your Task:**
+The user has highlighted "${highlightedText}" which appears to be a placeholder or parameter that needs a specific value. Analyze the full context and generate 5-8 concrete, specific suggestions for what should replace this placeholder.
+
+**Analysis Guidelines:**
+1. Understand what TYPE of value is needed (location, person, time, event, audience, style, etc.)
+2. Consider the broader context and requirements in the prompt
+3. Provide SPECIFIC, CONCRETE values - not rewrites or explanations
+4. Each suggestion should be a direct drop-in replacement
+5. Suggestions should be meaningfully different from each other
+6. Consider historical accuracy, realism, or creative appropriateness based on context
+${isVideoPrompt ? '7. For video prompts: consider cinematic/visual implications of each option' : '7. Consider how each option affects the overall prompt goal'}
+
+**Example Output Patterns:**
+- If placeholder is about LOCATION: provide specific place names
+- If placeholder is about PERSON: provide specific names or roles
+- If placeholder is about TIME: provide specific times, dates, or periods
+- If placeholder is about STYLE: provide specific style descriptors
+- If placeholder is about AUDIENCE: provide specific audience types
+- If placeholder is about ACTION/EVENT: provide specific actions or events
+
+Return ONLY a JSON array in this exact format (no markdown, no code blocks):
+
+[
+  {"text": "first specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "second specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "third specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "fourth specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "fifth specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "sixth specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "seventh specific value option", "explanation": "brief 1-sentence rationale"},
+  {"text": "eighth specific value option", "explanation": "brief 1-sentence rationale"}
+]
+
+Each "text" should be a SHORT, SPECIFIC value (1-10 words max) that can directly replace the highlighted placeholder.`;
+  } else {
+    // Generate general rewrite suggestions (original behavior)
+    if (isVideoPrompt) {
     aiPrompt = `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML). Analyze this highlighted section from a video generation prompt and generate 3-5 enhanced alternatives.
 
 **HIGHLIGHTED SECTION:**
@@ -457,10 +553,12 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
 ]
 
 Each "text" value should be a complete, self-contained replacement for the highlighted section that can be directly inserted into the prompt.`;
+    }
   }
 
   try {
     console.log('🤖 Calling Claude API for enhancement suggestions...');
+    console.log('📌 Mode:', isPlaceholder ? 'VALUE SUGGESTIONS' : 'REWRITE SUGGESTIONS');
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -499,7 +597,10 @@ Each "text" value should be a complete, self-contained replacement for the highl
 
     console.log('✅ Successfully parsed suggestions:', suggestions.length, 'suggestions');
 
-    res.json({ suggestions });
+    res.json({
+      suggestions,
+      isPlaceholder // Let frontend know what type of suggestions these are
+    });
   } catch (error) {
     console.error('❌ Server error:', error);
     res.status(500).json({ error: 'Internal server error', message: error.message });

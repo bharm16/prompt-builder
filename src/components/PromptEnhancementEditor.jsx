@@ -1,14 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { Loader2, Sparkles, X, Info } from 'lucide-react';
 
-export default function PromptEnhancementEditor({ promptContent, onPromptUpdate, originalUserPrompt, onShowSuggestionsChange }) {
+export default function PromptEnhancementEditor({
+  promptContent,
+  onPromptUpdate,
+  originalUserPrompt,
+  onShowSuggestionsChange
+}) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isPlaceholder, setIsPlaceholder] = useState(false); // NEW: Track suggestion type
   const contentRef = useRef(null);
-  const panelRef = useRef(null);
 
   // Handle text selection
   const handleMouseUp = async () => {
@@ -44,17 +49,21 @@ export default function PromptEnhancementEditor({ promptContent, onPromptUpdate,
         selectedText,
         suggestions,
         isLoading,
+        isPlaceholder, // NEW: Pass placeholder flag
+        fullPrompt: promptContent,
+        setSuggestions, // Allow panel to update suggestions
         onSuggestionClick: handleSuggestionClick,
         onClose: handleClose
       });
     }
-  }, [showSuggestions, selectedText, suggestions, isLoading]);
+  }, [showSuggestions, selectedText, suggestions, isLoading, isPlaceholder]);
 
   // Fetch enhancement suggestions from API
   const fetchEnhancementSuggestions = async (highlightedText) => {
     setIsLoading(true);
     setShowSuggestions(true);
     setSuggestions([]);
+    setIsPlaceholder(false);
 
     try {
       // Extract context around the highlighted text
@@ -91,6 +100,7 @@ export default function PromptEnhancementEditor({ promptContent, onPromptUpdate,
 
       const data = await response.json();
       setSuggestions(data.suggestions || []);
+      setIsPlaceholder(data.isPlaceholder || false); // NEW: Set placeholder flag
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSuggestions([
@@ -113,6 +123,7 @@ export default function PromptEnhancementEditor({ promptContent, onPromptUpdate,
     setShowSuggestions(false);
     setSelectedText('');
     setSelectionRange(null);
+    setIsPlaceholder(false);
     window.getSelection().removeAllRanges();
   };
 
@@ -137,7 +148,14 @@ export function SuggestionsPanel({ suggestionsData }) {
     return null;
   }
 
-  const { selectedText, suggestions, isLoading, onSuggestionClick, onClose } = suggestionsData;
+  const {
+    selectedText,
+    suggestions,
+    isLoading,
+    onSuggestionClick,
+    onClose,
+    isPlaceholder // New prop to differentiate suggestion types
+  } = suggestionsData;
 
   // Handle custom suggestion request
   const handleCustomRequest = async () => {
@@ -164,7 +182,6 @@ export function SuggestionsPanel({ suggestionsData }) {
 
       const data = await response.json();
 
-      // Replace suggestions with custom ones
       if (suggestionsData.setSuggestions) {
         suggestionsData.setSuggestions(data.suggestions || []);
       }
@@ -177,47 +194,57 @@ export function SuggestionsPanel({ suggestionsData }) {
       }
     } finally {
       setIsCustomLoading(false);
+      setCustomRequest('');
     }
   };
 
   return (
-    <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-xl border-2 border-gray-900 max-h-[calc(100vh-12rem)] flex flex-col sticky top-8">
+    <div className="fixed right-6 top-24 w-96 bg-white border-2 border-gray-300 rounded-xl shadow-2xl flex flex-col max-h-[calc(100vh-120px)] z-50">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-semibold text-gray-900">
-            AI Suggestions
-          </span>
+      <div className="flex items-center justify-between p-4 border-b-2 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="flex items-center gap-2 flex-1">
+          <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-bold text-gray-900 truncate">
+              {isPlaceholder ? 'Value Suggestions' : 'AI Suggestions'}
+            </h3>
+            <p className="text-xs text-gray-600 truncate">
+              "{selectedText}"
+            </p>
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-gray-200 rounded transition-colors"
+          className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
         >
-          <X className="w-4 h-4 text-gray-600" />
+          <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
 
-      {/* Selected Text Display */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-blue-50 flex-shrink-0">
-        <p className="text-xs text-gray-600 mb-1 font-semibold">Selected text:</p>
-        <p className="text-sm text-gray-800 italic line-clamp-3">"{selectedText}"</p>
-      </div>
+      {/* Context hint for placeholder mode */}
+      {isPlaceholder && !isLoading && suggestions.length > 0 && (
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-blue-800">
+            These are context-aware values that can replace your placeholder
+          </p>
+        </div>
+      )}
 
       {/* Custom Request Input */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-        <p className="text-xs text-gray-600 mb-2 font-semibold">Custom request:</p>
+      <div className="p-3 border-b-2 border-gray-200 bg-gray-50">
+        <p className="text-xs text-gray-700 mb-2 font-medium">Custom request:</p>
         <textarea
           value={customRequest}
           onChange={(e) => setCustomRequest(e.target.value)}
           placeholder="e.g., Make it more cinematic, Add more emotion, Simplify the language..."
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
           rows={2}
         />
         <button
           onClick={handleCustomRequest}
           disabled={!customRequest.trim() || isCustomLoading}
-          className="mt-2 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="mt-2 w-full px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
         >
           {isCustomLoading ? (
             <>
@@ -238,30 +265,45 @@ export function SuggestionsPanel({ suggestionsData }) {
         <div className="flex-1 flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="text-sm text-gray-600">Analyzing context...</span>
+            <span className="text-sm text-gray-600">
+              {isPlaceholder ? 'Finding relevant values...' : 'Analyzing context...'}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Suggestions List */}
+      {/* Suggestions List - Enhanced for placeholder mode */}
       {!isLoading && suggestions.length > 0 && (
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {suggestions.map((suggestion, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(suggestion.text)}
-              className="w-full text-left p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border-2 border-gray-200 hover:border-blue-300 shadow-sm"
+              className="w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border-2 border-gray-200 hover:border-blue-300 shadow-sm group"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
-                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                  <div className="w-6 h-6 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center text-xs font-bold shadow-sm transition-colors">
                     {index + 1}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-sans">
-                    {suggestion.text}
-                  </pre>
+                  {isPlaceholder && suggestion.explanation ? (
+                    // Value suggestion with explanation
+                    <>
+                      <div className="font-semibold text-gray-900 text-sm mb-1">
+                        {suggestion.text}
+                      </div>
+                      <div className="text-xs text-gray-600 leading-relaxed">
+                        {suggestion.explanation}
+                      </div>
+                    </>
+                  ) : (
+                    // Regular rewrite suggestion
+                    <pre className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-sans">
+                      {suggestion.text}
+                    </pre>
+                  )}
                 </div>
               </div>
             </button>
