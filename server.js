@@ -105,6 +105,47 @@ Topic: "${prompt}"
 Focus on questions that spark insight, not just recall. Ensure the learning plan is self-contained and can be used directly without further editing.
 
 Provide ONLY the learning plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+  } else if (mode === 'video') {
+    systemPrompt = `You are a video prompt generation expert specializing in AI video generation models like Sora, Veo3, RunwayML, and similar platforms. Transform this video concept into a detailed, high-quality video generation prompt.
+
+**Main Prompt:**
+[Create a vivid, detailed description including: subject, setting, lighting, camera work, motion, and mood. Be specific about visual elements while maintaining creative flow. 150-250 words.]
+
+**Technical Parameters:**
+- Duration: [Recommended duration in seconds, typically 5-15s]
+- Aspect Ratio: [16:9, 9:16, 1:1, or other appropriate ratio]
+- Style: [Cinematic, documentary, anime, stop-motion, etc.]
+- Camera Movement: [Static, tracking, dolly, crane, handheld, etc.]
+- Frame Rate: [24fps for cinematic, 30fps for standard, 60fps for smooth motion]
+
+**Alternative Variations:**
+1. [First variation with different angle/mood/emphasis]
+2. [Second variation exploring different creative direction]
+3. [Third variation with alternative technical approach]
+
+**Platform-Specific Notes:**
+[Tips for optimization on specific platforms - Sora, Veo3, RunwayML, etc. Include any model-specific syntax or best practices.]
+
+**Avoid:**
+- Vague descriptions or generic terms
+- Conflicting visual elements or impossible physics
+- Overly complex prompts that confuse the AI
+- Requesting copyrighted characters or trademarked content
+
+User's video concept: "${prompt}"
+
+**IMPORTANT GUIDELINES:**
+1. Balance technical precision with creative vision
+2. Include specific visual details (colors, textures, mood)
+3. Specify camera angles and movement clearly
+4. Consider lighting conditions (golden hour, harsh shadows, soft diffused, etc.)
+5. Describe motion and pacing (slow motion, time-lapse, real-time)
+6. Ensure variations offer meaningfully different creative directions
+7. Keep prompts compatible with multiple video generation platforms
+
+Create a comprehensive video prompt package that will generate consistent, high-quality results. Ensure the prompt is self-contained and can be used directly without further editing.
+
+Provide ONLY the video prompt package in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   } else {
     // Default optimize mode
     systemPrompt = `You are a prompt engineering expert. Transform this rough prompt into a clear, effective prompt:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut, PanelLeft, Plus } from 'lucide-react';
+import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut, PanelLeft, Plus, Video } from 'lucide-react';
 import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import PromptImprovementForm from './PromptImprovementForm';
@@ -42,7 +42,8 @@ export default function ModernPromptOptimizer() {
     { id: 'optimize', name: 'Standard Prompt', icon: Sparkles, description: 'Optimize any prompt' },
     { id: 'reasoning', name: 'Reasoning Prompt', icon: Lightbulb, description: 'Deep thinking & verification' },
     { id: 'research', name: 'Deep Research', icon: Search, description: 'Create research plans' },
-    { id: 'socratic', name: 'Socratic Learning', icon: GraduationCap, description: 'Learning journeys' }
+    { id: 'socratic', name: 'Socratic Learning', icon: GraduationCap, description: 'Learning journeys' },
+    { id: 'video', name: 'Video Prompt', icon: Video, description: 'Generate AI video prompts' }
   ];
 
   const randomPrompts = [
