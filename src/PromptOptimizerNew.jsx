@@ -4,6 +4,7 @@ import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserProm
 import { onAuthStateChanged } from 'firebase/auth';
 import PromptImprovementForm from './PromptImprovementForm';
 import PromptEnhancementEditor, { SuggestionsPanel } from './components/PromptEnhancementEditor';
+import CreativeBrainstorm from './components/CreativeBrainstorm';
 
 export default function ModernPromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -31,6 +32,10 @@ export default function ModernPromptOptimizer() {
 
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState(null);
+
+  // Creative brainstorm state
+  const [showBrainstorm, setShowBrainstorm] = useState(false);
+  const [conceptElements, setConceptElements] = useState(null);
 
   // Refs for click-outside detection
   const modeDropdownRef = useRef(null);
@@ -320,6 +325,12 @@ export default function ModernPromptOptimizer() {
   };
 
   const handleOptimize = async (promptToOptimize = inputPrompt, context = improvementContext) => {
+    // Show brainstorm for video mode if elements not defined and no input
+    if (selectedMode === 'video' && !conceptElements && !inputPrompt.trim()) {
+      setShowBrainstorm(true);
+      return;
+    }
+
     if (!promptToOptimize.trim()) return;
 
     setIsProcessing(true);
@@ -346,6 +357,45 @@ export default function ModernPromptOptimizer() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleConceptComplete = async (finalConcept, elements) => {
+    setConceptElements(elements);
+    setInputPrompt(finalConcept);
+    setShowBrainstorm(false);
+
+    // Use the same logic as handleOptimize
+    setTimeout(async () => {
+      setIsProcessing(true);
+      setOptimizedPrompt('');
+      setDisplayedPrompt('');
+      setQualityScore(null);
+      setSkipAnimation(false);
+
+      try {
+        const optimized = await analyzeAndOptimize(finalConcept);
+        console.log('📝 Received optimized prompt:', optimized);
+
+        const score = calculateQualityScore(finalConcept, optimized);
+        console.log('📊 Quality score:', score);
+
+        setOptimizedPrompt(optimized);
+        setQualityScore(score);
+        saveToHistory(finalConcept, optimized, score);
+        setShowResults(true);
+        setShowHistory(true);
+      } catch (error) {
+        console.error('Optimization failed:', error);
+        alert('Failed to optimize prompt. Please make sure the server is running.');
+      } finally {
+        setIsProcessing(false);
+      }
+    }, 100);
+  };
+
+  const handleSkipBrainstorm = () => {
+    setShowBrainstorm(false);
+    setConceptElements({ skipped: true });
   };
 
   const handleQuickAction = (action) => {
@@ -571,6 +621,26 @@ export default function ModernPromptOptimizer() {
 
   return (
     <div className="h-screen bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+      {/* Creative Brainstorm Modal */}
+      {showBrainstorm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-50 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={handleSkipBrainstorm}
+              className="absolute top-4 right-4 text-sm text-gray-600 hover:text-gray-900 underline z-10"
+            >
+              Skip to Advanced Mode →
+            </button>
+            <div className="p-6">
+              <CreativeBrainstorm
+                onConceptComplete={handleConceptComplete}
+                initialConcept={inputPrompt}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Improvement Form Modal Overlay */}
       {showImprover && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 overflow-y-auto">
@@ -788,7 +858,7 @@ export default function ModernPromptOptimizer() {
                   </button>
                   <button
                     onClick={handleOptimize}
-                    disabled={!inputPrompt.trim() || isProcessing}
+                    disabled={(!inputPrompt.trim() && selectedMode !== 'video') || isProcessing}
                     className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                   >
                     <ArrowRight className="w-4 h-4" />

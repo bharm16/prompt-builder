@@ -106,46 +106,160 @@ Focus on questions that spark insight, not just recall. Ensure the learning plan
 
 Provide ONLY the learning plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
   } else if (mode === 'video') {
-    systemPrompt = `You are a video prompt generation expert specializing in AI video generation models like Sora, Veo3, RunwayML, and similar platforms. Transform this video concept into a detailed, high-quality video generation prompt.
-
-**Main Prompt:**
-[Create a vivid, detailed description including: subject, setting, lighting, camera work, motion, and mood. Be specific about visual elements while maintaining creative flow. 150-250 words.]
-
-**Technical Parameters:**
-- Duration: [Recommended duration in seconds, typically 5-15s]
-- Aspect Ratio: [16:9, 9:16, 1:1, or other appropriate ratio]
-- Style: [Cinematic, documentary, anime, stop-motion, etc.]
-- Camera Movement: [Static, tracking, dolly, crane, handheld, etc.]
-- Frame Rate: [24fps for cinematic, 30fps for standard, 60fps for smooth motion]
-
-**Alternative Variations:**
-1. [First variation with different angle/mood/emphasis]
-2. [Second variation exploring different creative direction]
-3. [Third variation with alternative technical approach]
-
-**Platform-Specific Notes:**
-[Tips for optimization on specific platforms - Sora, Veo3, RunwayML, etc. Include any model-specific syntax or best practices.]
-
-**Avoid:**
-- Vague descriptions or generic terms
-- Conflicting visual elements or impossible physics
-- Overly complex prompts that confuse the AI
-- Requesting copyrighted characters or trademarked content
+    systemPrompt = `You are an expert cinematographer and creative director specializing in AI video generation (Sora, Veo3, RunwayML, Kling, Luma, etc.). Transform this video concept into an ultra-detailed, production-ready video generation prompt with ultimate creative control.
 
 User's video concept: "${prompt}"
 
-**IMPORTANT GUIDELINES:**
-1. Balance technical precision with creative vision
-2. Include specific visual details (colors, textures, mood)
-3. Specify camera angles and movement clearly
-4. Consider lighting conditions (golden hour, harsh shadows, soft diffused, etc.)
-5. Describe motion and pacing (slow motion, time-lapse, real-time)
-6. Ensure variations offer meaningfully different creative directions
-7. Keep prompts compatible with multiple video generation platforms
+Create a comprehensive video prompt with the following structure:
 
-Create a comprehensive video prompt package that will generate consistent, high-quality results. Ensure the prompt is self-contained and can be used directly without further editing.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎬 CREATIVE FOUNDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide ONLY the video prompt package in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+**WHO - SUBJECT/CHARACTER** [Define the focal point]
+- Physical Description: [Age, appearance, clothing, distinctive features]
+- Character State: [Emotion, energy level, physical condition]
+- Positioning: [Where in frame, relationship to camera]
+- Scale: [Close-up details vs full body vs environment dominance]
+- Identity/Role: [Professional, archetype, or narrative function]
+- Expression: [Facial expression, body language, mood indicators]
+- Interaction: [Engaging with environment, objects, or other subjects]
+
+**WHAT - ACTION/ACTIVITY** [Define the movement and narrative]
+- Primary Action: [Main activity happening in frame]
+- Motion Type: [Dynamic/static, fluid/jerky, fast/slow]
+- Action Arc: [Beginning state → transformation → end state]
+- Intensity: [Subtle gesture vs dramatic movement]
+- Rhythm: [Pacing, beats, moments of stillness vs activity]
+- Secondary Actions: [Background movement, environmental dynamics]
+- Cause & Effect: [Actions triggering reactions or changes]
+
+**WHERE - LOCATION/SETTING** [Define the environment]
+- Environment Type: [Interior/exterior, natural/built, real/abstract]
+- Architectural Details: [Structures, surfaces, spatial layout]
+- Environmental Scale: [Intimate space vs vast landscape]
+- Atmospheric Conditions: [Weather, air quality, particles, fog, haze]
+- Background Elements: [What fills negative space, depth layers]
+- Foreground Elements: [Objects between camera and subject]
+- Spatial Depth: [How far can we see, layers of depth]
+- Environmental Storytelling: [What the location reveals about context]
+
+**WHEN - TIME/PERIOD/LIGHTING** [Define temporal and light context]
+- Time of Day: [Dawn, morning, noon, golden hour, dusk, night, etc.]
+- Lighting Quality: [Hard/soft, warm/cool, natural/artificial]
+- Light Direction: [Front-lit, back-lit, side-lit, top-lit, under-lit]
+- Light Color: [Specific color temperatures, tints, color casts]
+- Shadow Character: [Long/short, sharp/diffused, presence/absence]
+- Temporal Period: [Historical era, futuristic, timeless, anachronistic]
+- Time Progression: [Static moment vs visible time passing]
+- Seasonal Markers: [Visual indicators of season if relevant]
+
+**WHY - EVENT/CONTEXT/PURPOSE** [Define narrative and intent]
+- Narrative Context: [What story moment is this]
+- Emotional Purpose: [What should viewer feel]
+- Visual Objective: [What should draw attention]
+- Conceptual Theme: [Abstract idea being expressed]
+- Commercial Intent: [If product/brand video - key message]
+- Audience Consideration: [Who is this for, what do they expect]
+- Symbolic Elements: [Metaphors, visual poetry, subtext]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎥 CINEMATOGRAPHY & TECHNICAL EXECUTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**CAMERA - SETUP & PERSPECTIVE**
+- Lens Choice: [Wide/normal/telephoto, focal length implications]
+- Depth of Field: [Shallow/deep, what's in/out of focus]
+- Focal Point: [Exact point of sharpest focus]
+- Camera Height: [Ground level/eye level/high angle/overhead]
+- Camera Angle: [Straight-on/Dutch tilt/canted angle]
+- Perspective: [First-person POV/third-person/aerial/macro/etc.]
+- Frame Composition: [Rule of thirds, centered, off-balance, etc.]
+
+**CAMERA - MOVEMENT & DYNAMICS**
+- Movement Type: [Static/locked-off, handheld, Steadicam, drone]
+- Camera Motion: [Pan, tilt, dolly, track, crane, orbit, zoom]
+- Movement Speed: [Slow creep, steady glide, rapid whip]
+- Movement Motivation: [Motivated by action, reveal, or aesthetic]
+- Stabilization: [Smooth/fluid vs intentional shake/energy]
+- Complex Moves: [Combination movements, transitions mid-shot]
+- Movement Start/End: [How movement begins and concludes]
+
+**LIGHTING - DESIGN & MOOD**
+- Primary Light Source: [Sun, window, practical, artificial, etc.]
+- Fill Light: [Presence, intensity, direction, color]
+- Accent/Rim Lighting: [Edge definition, separation from background]
+- Practical Lights: [Visible light sources in scene]
+- Light Intensity: [Bright/exposed vs dark/moody vs balanced]
+- Light Contrast: [High contrast vs low contrast vs flat]
+- Shadows: [Quality, length, direction, storytelling role]
+- Light Behavior: [Static, flickering, moving, pulsing, changing]
+
+**COLOR - GRADING & PALETTE**
+- Overall Color Grade: [Warm/cool, saturated/desaturated, etc.]
+- Primary Color Palette: [2-3 dominant colors in frame]
+- Color Contrast: [Complementary, analogous, monochrome]
+- Color Temperature: [Specific Kelvin values or relative warmth]
+- Color Mood: [Emotional associations of color choices]
+- Color Symbolism: [Intentional color meaning]
+- Skin Tones: [Natural, stylized, specific rendering]
+- Color Transitions: [How colors shift through duration]
+
+**MOTION - DYNAMICS & TEMPORAL EFFECTS**
+- Subject Speed: [Real-time, slow-motion, time-lapse, speed ramping]
+- Frame Rate Intent: [Cinematic 24fps, smooth 60fps, etc.]
+- Motion Blur: [Natural, enhanced, frozen/sharp]
+- Temporal Effects: [Freeze frames, stutter effects, reverse]
+- Rhythm & Pacing: [Beat, tempo, breathing room vs intensity]
+- Action Choreography: [Specific blocking and movement patterns]
+- Momentum: [Building energy vs winding down vs constant]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ SCENE SYNTHESIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**PRIMARY PROMPT** [150-300 words]
+[Synthesize all above elements into ONE cohesive, vivid, flowing description that reads naturally while incorporating specific technical and creative details. This should feel like a cinematographer describing their vision, not a checklist. Prioritize the most important creative and technical aspects.]
+
+**TECHNICAL PARAMETERS**
+- Duration: [Recommended clip length, e.g., 5s, 10s, 15s]
+- Aspect Ratio: [16:9, 9:16, 1:1, 2.39:1, etc.]
+- Visual Style: [Cinematic, documentary, commercial, anime, etc.]
+- Reference Aesthetic: [Film stock, era, or visual movement if relevant]
+
+**ALTERNATIVE DIRECTIONS** [3 distinct creative variations]
+
+Version A - [One sentence describing creative pivot]
+[75-150 word alternative that changes key creative elements while maintaining concept]
+
+Version B - [One sentence describing creative pivot]
+[75-150 word alternative that explores different mood/style/approach]
+
+Version C - [One sentence describing creative pivot]
+[75-150 word alternative with bold creative departure]
+
+**PLATFORM OPTIMIZATION**
+- Best For: [Which AI video platforms suit this prompt - Sora/Veo3/RunwayML/etc.]
+- Platform-Specific Tips: [Any syntax, token limits, or optimization notes]
+- Compatibility Notes: [Elements that may need adjustment per platform]
+
+**REFINEMENT GUIDANCE** [What user might want to adjust]
+- Tone Adjustments: [Suggestions for shifting mood/atmosphere]
+- Technical Tweaks: [Camera, lighting, or movement refinements]
+- Narrative Variations: [Story/concept pivots to explore]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**IMPORTANT CREATIVE PRINCIPLES:**
+1. Be hyper-specific about visual details while maintaining narrative flow
+2. Balance technical precision with creative emotion
+3. Consider how every element supports the central vision
+4. Provide enough detail for consistency without over-constraining AI creativity
+5. Ensure primary prompt feels cinematic and inspired, not mechanical
+6. Make alternatives meaningfully different, not just minor tweaks
+7. Think like a director AND a cinematographer
+
+Provide ONLY the video prompt package in this format. No preamble, no explanation, no meta-commentary. Go directly into the structured template.`;
   } else {
     // Default optimize mode
     systemPrompt = `You are a prompt engineering expert. Transform this rough prompt into a clear, effective prompt:
@@ -688,6 +802,194 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
     const suggestions = JSON.parse(suggestionsText);
 
     console.log('✅ Successfully parsed custom suggestions:', suggestions.length, 'suggestions');
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+app.post('/api/get-creative-suggestions', async (req, res) => {
+  const { elementType, currentValue, context, concept } = req.body;
+
+  console.log('📥 Creative suggestion request for:', elementType);
+
+  if (!elementType) {
+    return res.status(400).json({ error: 'Element type is required' });
+  }
+
+  const elementPrompts = {
+    subject: `Generate creative suggestions for the SUBJECT/CHARACTER of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 diverse, creative subjects that would make compelling video content. Consider:
+- People (specific types, ages, professions, activities)
+- Products (tech, fashion, food, vehicles, etc.)
+- Animals (specific species with interesting behaviors)
+- Objects (with narrative potential)
+- Abstract concepts (visualized creatively)
+
+Each suggestion should be SPECIFIC and VISUAL. Not "a person" but "elderly street musician" or "parkour athlete in motion".`,
+
+    action: `Generate creative suggestions for the ACTION/ACTIVITY in a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 dynamic, visual actions that work well in video. Consider:
+- Physical movement (running, jumping, dancing, floating, falling)
+- Transformation (morphing, dissolving, assembling, exploding)
+- Interaction (holding, throwing, catching, touching)
+- Performance (playing instrument, cooking, creating art)
+- Natural phenomena (growing, flowing, burning, freezing)
+
+Each action should be SPECIFIC and CINEMATIC. Not "moving" but "leaping over obstacles in slow motion".`,
+
+    location: `Generate creative suggestions for the LOCATION/SETTING of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 visually interesting locations. Consider:
+- Urban environments (specific types of streets, buildings, infrastructure)
+- Natural settings (specific landscapes, weather conditions, times of day)
+- Interior spaces (architectural styles, purposes, atmospheres)
+- Unusual/creative settings (underwater, in space, abstract void, miniature world)
+- Cultural/historical settings (specific eras, cultures, styles)
+
+Each location should be SPECIFIC and EVOCATIVE. Not "a building" but "abandoned Victorian warehouse with shattered skylights".`,
+
+    time: `Generate creative suggestions for the TIME/PERIOD of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 specific time/lighting conditions that create visual interest:
+- Time of day (golden hour, blue hour, high noon, midnight, dawn, dusk)
+- Historical period (specific eras with visual characteristics)
+- Season (spring bloom, autumn colors, winter frost, summer haze)
+- Weather timing (during storm, after rain, before sunset)
+- Future/past (specific sci-fi or period aesthetics)
+
+Each suggestion should specify LIGHTING and MOOD implications. Not just "morning" but "early morning mist with low golden sun".`,
+
+    mood: `Generate creative suggestions for the MOOD/ATMOSPHERE of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 distinct moods/atmospheres. Consider:
+- Emotional tones (melancholic, joyful, tense, peaceful, mysterious)
+- Energy levels (frenetic, languid, pulsing, static, building)
+- Sensory qualities (warm, cold, harsh, soft, textured)
+- Narrative feelings (nostalgic, foreboding, hopeful, triumphant)
+- Abstract atmospheres (dreamlike, surreal, hyperreal, gritty)
+
+Each mood should be SPECIFIC and suggest visual/color implications. Not "happy" but "warm, golden nostalgia like a faded photograph".`,
+
+    style: `Generate creative suggestions for the VISUAL STYLE of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 distinct visual styles. Consider:
+- Film genres (cinematic blockbuster, documentary, film noir, etc.)
+- Animation styles (anime, claymation, CGI, rotoscope)
+- Art movements (impressionist, cubist, minimalist, maximalist)
+- Photographic styles (vintage film, digital clean, lomography)
+- Technical approaches (slow-motion, time-lapse, hyper-lapse, macro)
+
+Each style should be SPECIFIC with technical implications. Not "artistic" but "1970s Super 8 film with warm grain and light leaks".`,
+
+    event: `Generate creative suggestions for the EVENT/CONTEXT of a video.
+
+Context: ${context || 'No other elements defined yet'}
+Full concept: ${concept || 'User is building from scratch'}
+Current value: ${currentValue || 'Not set'}
+
+Provide 8 specific events or contexts. Consider:
+- Commercial contexts (product launch, demonstration, unboxing, reveal)
+- Narrative events (discovery, transformation, conflict, resolution)
+- Celebrations (specific types of parties, ceremonies, milestones)
+- Processes (creation, destruction, assembly, metamorphosis)
+- Abstract contexts (dream sequence, memory, vision, imagination)
+
+Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`
+  };
+
+  const systemPrompt = elementPrompts[elementType] || elementPrompts.subject;
+
+  const fullPrompt = `${systemPrompt}
+
+Based on all context provided, generate 8 creative, specific suggestions for this element.
+
+IMPORTANT: If there is existing context about other elements, make sure your suggestions COMPLEMENT and work well with those elements. For example:
+- If subject is "athlete", suggest actions like "parkour vaulting" not "sleeping"
+- If location is "underwater", suggest subjects like "scuba diver" not "race car"
+- If mood is "tense", suggest styles like "high-contrast noir" not "bright cheerful animation"
+
+Return ONLY a JSON array in this exact format (no markdown, no code blocks):
+
+[
+  {"text": "specific suggestion 1", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 2", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 3", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 4", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 5", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 6", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 7", "explanation": "why this works well with the context"},
+  {"text": "specific suggestion 8", "explanation": "why this works well with the context"}
+]
+
+Each "text" should be SHORT and SPECIFIC (2-8 words). Each "explanation" should be a brief sentence about why it fits.`;
+
+  try {
+    console.log('🤖 Calling Claude API for creative suggestions...');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: fullPrompt
+        }]
+      })
+    });
+
+    console.log('📡 Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('❌ Claude API Error:', errorData);
+      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+    }
+
+    const data = await response.json();
+    let suggestionsText = data.content[0].text;
+
+    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+
+    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const suggestions = JSON.parse(suggestionsText);
+
+    console.log('✅ Successfully parsed creative suggestions:', suggestions.length, 'suggestions');
 
     res.json({ suggestions });
   } catch (error) {
