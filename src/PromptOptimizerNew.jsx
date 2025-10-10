@@ -230,6 +230,8 @@ export default function ModernPromptOptimizer() {
   };
 
   const saveToHistory = async (input, output, score) => {
+    console.log('💾 saveToHistory called with:', { input: input?.substring(0, 50), output: output?.substring(0, 50), score, mode: selectedMode });
+
     const newEntry = {
       input,
       output,
@@ -239,23 +241,30 @@ export default function ModernPromptOptimizer() {
 
     if (user) {
       // Save to Firestore if logged in
+      console.log('💾 User logged in, saving to Firestore...');
       try {
         const docId = await savePromptToFirestore(user.uid, newEntry);
         const entryWithId = { id: docId, timestamp: new Date().toISOString(), ...newEntry };
-        setHistory([entryWithId, ...history].slice(0, 10));
+        console.log('✅ Saved to Firestore, updating history state...');
+        setHistory(prevHistory => [entryWithId, ...prevHistory].slice(0, 10));
       } catch (error) {
-        console.error('Error saving to Firestore:', error);
+        console.error('❌ Error saving to Firestore:', error);
       }
     } else {
       // Save to localStorage if not logged in
+      console.log('💾 No user, saving to localStorage...');
       const entryWithLocalId = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
         ...newEntry
       };
-      const updatedHistory = [entryWithLocalId, ...history].slice(0, 10);
-      setHistory(updatedHistory);
-      localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
+      setHistory(prevHistory => {
+        const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 10);
+        console.log('✅ Updating history state with:', updatedHistory.length, 'items');
+        localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
+        console.log('✅ Saved to localStorage');
+        return updatedHistory;
+      });
     }
   };
 
@@ -409,7 +418,8 @@ export default function ModernPromptOptimizer() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(optimizedPrompt);
+    // Copy the displayed (possibly edited) version
+    navigator.clipboard.writeText(displayedPrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -419,17 +429,17 @@ export default function ModernPromptOptimizer() {
     const timestamp = new Date().toLocaleString();
 
     if (format === 'markdown') {
-      content = `# Prompt Optimization\n\n**Date:** ${timestamp}\n\n## Original Prompt\n${inputPrompt}\n\n## Optimized Prompt\n${optimizedPrompt}`;
+      content = `# Prompt Optimization\n\n**Date:** ${timestamp}\n\n## Original Prompt\n${inputPrompt}\n\n## Optimized Prompt\n${displayedPrompt}`;
     } else if (format === 'json') {
       content = JSON.stringify({
         timestamp,
         original: inputPrompt,
-        optimized: optimizedPrompt,
+        optimized: displayedPrompt,
         qualityScore,
         mode: selectedMode
       }, null, 2);
     } else {
-      content = `PROMPT OPTIMIZATION\nDate: ${timestamp}\n\n=== ORIGINAL ===\n${inputPrompt}\n\n=== OPTIMIZED ===\n${optimizedPrompt}`;
+      content = `PROMPT OPTIMIZATION\nDate: ${timestamp}\n\n=== ORIGINAL ===\n${inputPrompt}\n\n=== OPTIMIZED ===\n${displayedPrompt}`;
     }
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -941,8 +951,10 @@ export default function ModernPromptOptimizer() {
               <textarea
                 value={displayedPrompt}
                 onChange={(e) => {
+                  // Only update displayedPrompt when user edits
+                  // Don't update optimizedPrompt to avoid triggering typewriter effect
                   setDisplayedPrompt(e.target.value);
-                  setOptimizedPrompt(e.target.value);
+                  setSkipAnimation(true); // Disable animation for manual edits
                 }}
                 onMouseUp={(e) => {
                   // Handle text selection for AI suggestions
