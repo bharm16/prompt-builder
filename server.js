@@ -361,7 +361,61 @@ app.post('/api/get-enhancement-suggestions', async (req, res) => {
     return res.status(400).json({ error: 'Highlighted text is required' });
   }
 
-  const aiPrompt = `You are a prompt engineering expert. Analyze this highlighted section and generate 3-5 concrete improvements.
+  // Detect if this is a video prompt based on content
+  const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
+                        fullPrompt.includes('**Technical Parameters:**') ||
+                        fullPrompt.includes('**Alternative Variations:**') ||
+                        fullPrompt.includes('Camera Movement:') ||
+                        fullPrompt.includes('Aspect Ratio:');
+
+  let aiPrompt = '';
+
+  if (isVideoPrompt) {
+    aiPrompt = `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML). Analyze this highlighted section from a video generation prompt and generate 3-5 enhanced alternatives.
+
+**HIGHLIGHTED SECTION:**
+"${highlightedText}"
+
+**CONTEXT BEFORE:**
+"${contextBefore}"
+
+**CONTEXT AFTER:**
+"${contextAfter}"
+
+**FULL PROMPT:**
+${fullPrompt}
+
+**ORIGINAL USER REQUEST:**
+"${originalUserPrompt}"
+
+Generate 3-5 complete rewrites of the highlighted section. Each rewrite should:
+1. Be a drop-in replacement for the highlighted text
+2. Add more cinematic detail, camera work specifics, lighting descriptions, or motion details
+3. Flow naturally with the surrounding context
+4. Be meaningfully different from the other suggestions
+5. Maintain compatibility with AI video generation models
+
+Focus on enhancing visual storytelling. Consider:
+- More specific camera angles and movements (crane shot, Dutch angle, tracking shot, etc.)
+- Detailed lighting descriptions (golden hour, rim lighting, volumetric fog, etc.)
+- Motion and pacing details (slow-motion, time-lapse, dynamic action, etc.)
+- Color grading and mood (warm tones, desaturated, high contrast, etc.)
+- Composition and framing (rule of thirds, close-up, wide shot, etc.)
+- Environmental details (weather, atmosphere, background elements)
+
+Return ONLY a JSON array in this exact format (no markdown, no code blocks, no explanations):
+
+[
+  {"text": "first enhanced rewrite with more cinematic detail..."},
+  {"text": "second enhanced rewrite with different visual approach..."},
+  {"text": "third enhanced rewrite with alternative camera work..."},
+  {"text": "fourth enhanced rewrite with different lighting/mood..."},
+  {"text": "fifth enhanced rewrite with unique perspective..."}
+]
+
+Each "text" value should be a complete, self-contained replacement for the highlighted section that can be directly inserted into the video prompt.`;
+  } else {
+    aiPrompt = `You are a prompt engineering expert. Analyze this highlighted section and generate 3-5 concrete improvements.
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
@@ -403,6 +457,7 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
 ]
 
 Each "text" value should be a complete, self-contained replacement for the highlighted section that can be directly inserted into the prompt.`;
+  }
 
   try {
     console.log('🤖 Calling Claude API for enhancement suggestions...');
