@@ -28,20 +28,36 @@ export class MetricsService {
       registers: [this.register],
     });
 
-    // Claude API calls counter
+    // Claude API calls counter (enhanced with mode tracking)
     this.claudeAPICallsTotal = new promClient.Counter({
       name: 'claude_api_calls_total',
       help: 'Total Claude API calls',
-      labelNames: ['endpoint', 'status'],
+      labelNames: ['endpoint', 'status', 'mode'],
       registers: [this.register],
     });
 
-    // Claude API duration histogram
+    // Claude API duration histogram (enhanced with mode tracking)
     this.claudeAPIDuration = new promClient.Histogram({
       name: 'claude_api_duration_seconds',
       help: 'Duration of Claude API calls in seconds',
-      labelNames: ['endpoint'],
-      buckets: [1, 2, 5, 10, 15, 20, 30],
+      labelNames: ['endpoint', 'mode'],
+      buckets: [1, 2, 5, 10, 15, 20, 30, 45, 60],
+      registers: [this.register],
+    });
+
+    // Token usage counter (new metric for cost tracking)
+    this.claudeTokensTotal = new promClient.Counter({
+      name: 'claude_tokens_total',
+      help: 'Total tokens consumed by Claude API',
+      labelNames: ['type', 'mode'], // type: input or output
+      registers: [this.register],
+    });
+
+    // Request coalescing metrics (new)
+    this.coalescedRequests = new promClient.Counter({
+      name: 'coalesced_requests_total',
+      help: 'Total number of coalesced requests',
+      labelNames: ['type'], // type: middleware or client
       registers: [this.register],
     });
 
@@ -121,15 +137,17 @@ export class MetricsService {
 
   /**
    * Record Claude API call
+   * Enhanced with mode tracking for better per-endpoint analysis
    */
-  recordClaudeAPICall(endpoint, duration, success) {
+  recordClaudeAPICall(endpoint, duration, success, mode = 'default') {
     this.claudeAPICallsTotal.inc({
       endpoint,
       status: success ? 'success' : 'error',
+      mode, // Track which optimization mode was used
     });
 
     if (duration) {
-      this.claudeAPIDuration.observe({ endpoint }, duration / 1000);
+      this.claudeAPIDuration.observe({ endpoint, mode }, duration / 1000);
     }
   }
 
@@ -177,6 +195,25 @@ export class MetricsService {
   async getMetricsJSON() {
     const metrics = await this.register.getMetricsAsJSON();
     return metrics;
+  }
+
+  /**
+   * Record token usage
+   */
+  recordTokenUsage(inputTokens, outputTokens, mode = 'default') {
+    if (inputTokens) {
+      this.claudeTokensTotal.inc({ type: 'input', mode }, inputTokens);
+    }
+    if (outputTokens) {
+      this.claudeTokensTotal.inc({ type: 'output', mode }, outputTokens);
+    }
+  }
+
+  /**
+   * Record coalesced request
+   */
+  recordCoalescedRequest(type = 'middleware') {
+    this.coalescedRequests.inc({ type });
   }
 }
 

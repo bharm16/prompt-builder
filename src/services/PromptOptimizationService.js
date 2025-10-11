@@ -39,7 +39,7 @@ export class PromptOptimizationService {
     const systemPrompt = this.buildSystemPrompt(prompt, mode, context);
 
     // Determine timeout based on mode (video prompts are much larger and need more time)
-    const timeout = mode === 'video' ? 60000 : 30000; // 60s for video, 30s for others
+    const timeout = mode === 'video' ? 90000 : 30000; // 90s for video, 30s for others
 
     // Call Claude API
     const response = await this.claudeClient.complete(systemPrompt, {
