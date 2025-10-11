@@ -1,9 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap, Edit, Menu, Shuffle, LogIn, LogOut, PanelLeft, Plus, Video } from 'lucide-react';
-import { auth, signInWithGoogle, signOutUser, savePromptToFirestore, getUserPrompts } from './firebase';
+import {
+  Sparkles,
+  Search,
+  FileText,
+  Lightbulb,
+  User,
+  ArrowRight,
+  ChevronDown,
+  Copy,
+  Check,
+  Download,
+  Clock,
+  X,
+  GraduationCap,
+  Edit,
+  Menu,
+  Shuffle,
+  LogIn,
+  LogOut,
+  PanelLeft,
+  Plus,
+  Video,
+} from 'lucide-react';
+import {
+  auth,
+  signInWithGoogle,
+  signOutUser,
+  savePromptToFirestore,
+  getUserPrompts,
+} from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import PromptImprovementForm from './PromptImprovementForm';
-import PromptEnhancementEditor, { SuggestionsPanel } from './components/PromptEnhancementEditor';
+import PromptEnhancementEditor, {
+  SuggestionsPanel,
+} from './components/PromptEnhancementEditor';
 import CreativeBrainstorm from './components/CreativeBrainstorm';
 
 export default function ModernPromptOptimizer() {
@@ -44,11 +74,36 @@ export default function ModernPromptOptimizer() {
   const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'];
 
   const modes = [
-    { id: 'optimize', name: 'Standard Prompt', icon: Sparkles, description: 'Optimize any prompt' },
-    { id: 'reasoning', name: 'Reasoning Prompt', icon: Lightbulb, description: 'Deep thinking & verification' },
-    { id: 'research', name: 'Deep Research', icon: Search, description: 'Create research plans' },
-    { id: 'socratic', name: 'Socratic Learning', icon: GraduationCap, description: 'Learning journeys' },
-    { id: 'video', name: 'Video Prompt', icon: Video, description: 'Generate AI video prompts' }
+    {
+      id: 'optimize',
+      name: 'Standard Prompt',
+      icon: Sparkles,
+      description: 'Optimize any prompt',
+    },
+    {
+      id: 'reasoning',
+      name: 'Reasoning Prompt',
+      icon: Lightbulb,
+      description: 'Deep thinking & verification',
+    },
+    {
+      id: 'research',
+      name: 'Deep Research',
+      icon: Search,
+      description: 'Create research plans',
+    },
+    {
+      id: 'socratic',
+      name: 'Socratic Learning',
+      icon: GraduationCap,
+      description: 'Learning journeys',
+    },
+    {
+      id: 'video',
+      name: 'Video Prompt',
+      icon: Video,
+      description: 'Generate AI video prompts',
+    },
   ];
 
   const randomPrompts = [
@@ -71,7 +126,7 @@ export default function ModernPromptOptimizer() {
     'analyze different leadership styles',
     'write a guide for starting a podcast',
     'explain the psychology of habit formation',
-    'create a content strategy for a blog'
+    'create a content strategy for a blog',
   ];
 
   const quickActions = [
@@ -79,44 +134,47 @@ export default function ModernPromptOptimizer() {
       label: 'Research a topic',
       icon: Search,
       mode: 'research',
-      prompt: 'impact of AI on healthcare'
+      prompt: 'impact of AI on healthcare',
     },
     {
       label: 'Analyze data',
       icon: FileText,
       mode: 'optimize',
-      prompt: 'analyze customer feedback data and identify trends'
+      prompt: 'analyze customer feedback data and identify trends',
     },
     {
       label: 'Draft a document',
       icon: FileText,
       mode: 'optimize',
-      prompt: 'write a business plan for a coffee shop'
+      prompt: 'write a business plan for a coffee shop',
     },
     {
       label: 'Brainstorm ideas',
       icon: Lightbulb,
       mode: 'optimize',
-      prompt: 'brainstorm innovative product ideas for sustainable living'
+      prompt: 'brainstorm innovative product ideas for sustainable living',
     },
     {
       label: 'Learn something',
       icon: GraduationCap,
       mode: 'socratic',
-      prompt: 'quantum computing basics'
+      prompt: 'quantum computing basics',
     },
     {
       label: 'Random prompt',
       icon: Shuffle,
       mode: 'optimize',
-      prompt: 'random'
-    }
+      prompt: 'random',
+    },
   ];
 
   // Handle clicks outside dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target)) {
+      if (
+        modeDropdownRef.current &&
+        !modeDropdownRef.current.contains(event.target)
+      ) {
         setShowModeDropdown(false);
       }
       if (authMenuRef.current && !authMenuRef.current.contains(event.target)) {
@@ -230,13 +288,18 @@ export default function ModernPromptOptimizer() {
   };
 
   const saveToHistory = async (input, output, score) => {
-    console.log('💾 saveToHistory called with:', { input: input?.substring(0, 50), output: output?.substring(0, 50), score, mode: selectedMode });
+    console.log('💾 saveToHistory called with:', {
+      input: input?.substring(0, 50),
+      output: output?.substring(0, 50),
+      score,
+      mode: selectedMode,
+    });
 
     const newEntry = {
       input,
       output,
       score,
-      mode: selectedMode
+      mode: selectedMode,
     };
 
     if (user) {
@@ -244,9 +307,13 @@ export default function ModernPromptOptimizer() {
       console.log('💾 User logged in, saving to Firestore...');
       try {
         const docId = await savePromptToFirestore(user.uid, newEntry);
-        const entryWithId = { id: docId, timestamp: new Date().toISOString(), ...newEntry };
+        const entryWithId = {
+          id: docId,
+          timestamp: new Date().toISOString(),
+          ...newEntry,
+        };
         console.log('✅ Saved to Firestore, updating history state...');
-        setHistory(prevHistory => [entryWithId, ...prevHistory].slice(0, 10));
+        setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 10));
       } catch (error) {
         console.error('❌ Error saving to Firestore:', error);
       }
@@ -256,11 +323,15 @@ export default function ModernPromptOptimizer() {
       const entryWithLocalId = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        ...newEntry
+        ...newEntry,
       };
-      setHistory(prevHistory => {
+      setHistory((prevHistory) => {
         const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 10);
-        console.log('✅ Updating history state with:', updatedHistory.length, 'items');
+        console.log(
+          '✅ Updating history state with:',
+          updatedHistory.length,
+          'items'
+        );
         localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
         console.log('✅ Saved to localStorage');
         return updatedHistory;
@@ -280,7 +351,8 @@ export default function ModernPromptOptimizer() {
     score += Math.min(sections * 10, 30);
 
     if (output.includes('Goal')) score += 15;
-    if (output.includes('Return Format') || output.includes('Research')) score += 15;
+    if (output.includes('Return Format') || output.includes('Research'))
+      score += 15;
     if (output.includes('Context') || output.includes('Learning')) score += 15;
 
     return Math.min(score, 100);
@@ -295,13 +367,13 @@ export default function ModernPromptOptimizer() {
       const response = await fetch('http://localhost:3001/api/optimize', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           prompt: prompt,
           mode: selectedMode,
-          context: context
-        })
+          context: context,
+        }),
       });
 
       console.log('Response status:', response.status);
@@ -333,7 +405,10 @@ export default function ModernPromptOptimizer() {
     handleOptimize(enhancedPrompt, context);
   };
 
-  const handleOptimize = async (promptToOptimize = inputPrompt, context = improvementContext) => {
+  const handleOptimize = async (
+    promptToOptimize = inputPrompt,
+    context = improvementContext
+  ) => {
     // Show brainstorm for video mode if elements not defined and no input
     if (selectedMode === 'video' && !conceptElements && !inputPrompt.trim()) {
       setShowBrainstorm(true);
@@ -362,7 +437,9 @@ export default function ModernPromptOptimizer() {
       setShowHistory(true);
     } catch (error) {
       console.error('Optimization failed:', error);
-      alert('Failed to optimize prompt. Please make sure the server is running.');
+      alert(
+        'Failed to optimize prompt. Please make sure the server is running.'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -395,7 +472,9 @@ export default function ModernPromptOptimizer() {
         setShowHistory(true);
       } catch (error) {
         console.error('Optimization failed:', error);
-        alert('Failed to optimize prompt. Please make sure the server is running.');
+        alert(
+          'Failed to optimize prompt. Please make sure the server is running.'
+        );
       } finally {
         setIsProcessing(false);
       }
@@ -431,13 +510,17 @@ export default function ModernPromptOptimizer() {
     if (format === 'markdown') {
       content = `# Prompt Optimization\n\n**Date:** ${timestamp}\n\n## Original Prompt\n${inputPrompt}\n\n## Optimized Prompt\n${displayedPrompt}`;
     } else if (format === 'json') {
-      content = JSON.stringify({
-        timestamp,
-        original: inputPrompt,
-        optimized: displayedPrompt,
-        qualityScore,
-        mode: selectedMode
-      }, null, 2);
+      content = JSON.stringify(
+        {
+          timestamp,
+          original: inputPrompt,
+          optimized: displayedPrompt,
+          qualityScore,
+          mode: selectedMode,
+        },
+        null,
+        2
+      );
     } else {
       content = `PROMPT OPTIMIZATION\nDate: ${timestamp}\n\n=== ORIGINAL ===\n${inputPrompt}\n\n=== OPTIMIZED ===\n${displayedPrompt}`;
     }
@@ -469,14 +552,21 @@ export default function ModernPromptOptimizer() {
   const lastRequestRef = useRef(null);
 
   // Fetch enhancement suggestions for selected text
-  const fetchEnhancementSuggestions = async (highlightedText, fullPrompt, selectionRange) => {
+  const fetchEnhancementSuggestions = async (
+    highlightedText,
+    fullPrompt,
+    selectionRange
+  ) => {
     // Clear any existing debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     // Prevent duplicate requests for the same text
-    if (suggestionsData?.selectedText === highlightedText && suggestionsData?.show) {
+    if (
+      suggestionsData?.selectedText === highlightedText &&
+      suggestionsData?.show
+    ) {
       console.log('🚫 Skipping duplicate request for:', highlightedText);
       return;
     }
@@ -495,84 +585,44 @@ export default function ModernPromptOptimizer() {
 
       const highlightIndex = fullPrompt.indexOf(highlightedText);
 
-      const contextBefore = fullPrompt.substring(
-        Math.max(0, highlightIndex - 300),
-        highlightIndex
-      ).trim();
+      const contextBefore = fullPrompt
+        .substring(Math.max(0, highlightIndex - 300), highlightIndex)
+        .trim();
 
-      const contextAfter = fullPrompt.substring(
-        highlightIndex + highlightedText.length,
-        Math.min(fullPrompt.length, highlightIndex + highlightedText.length + 300)
-      ).trim();
+      const contextAfter = fullPrompt
+        .substring(
+          highlightIndex + highlightedText.length,
+          Math.min(
+            fullPrompt.length,
+            highlightIndex + highlightedText.length + 300
+          )
+        )
+        .trim();
 
       // Set loading state
       setSuggestionsData({
-      show: true,
-      selectedText: highlightedText,
-      suggestions: [],
-      isLoading: true,
-      isPlaceholder: false,
-      fullPrompt: fullPrompt,
-      setSuggestions: (newSuggestions, newIsPlaceholder) => {
-        setSuggestionsData(prev => ({
-          ...prev,
-          suggestions: newSuggestions,
-          isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
-          isLoading: false
-        }));
-      },
-      onSuggestionClick: (suggestionText) => {
-        const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
-        setOptimizedPrompt(updatedPrompt);
-        setDisplayedPrompt(updatedPrompt);
-        setSuggestionsData(null);
-        window.getSelection().removeAllRanges();
-      },
-      onClose: () => {
-        setSuggestionsData(null);
-        window.getSelection().removeAllRanges();
-      }
-    });
-
-    try {
-      const response = await fetch('http://localhost:3001/api/get-enhancement-suggestions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          originalUserPrompt: inputPrompt,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch suggestions');
-      }
-
-      const data = await response.json();
-
-      // Update with fetched suggestions
-      setSuggestionsData({
         show: true,
         selectedText: highlightedText,
-        suggestions: data.suggestions || [],
-        isLoading: false,
-        isPlaceholder: data.isPlaceholder || false,
+        suggestions: [],
+        isLoading: true,
+        isPlaceholder: false,
         fullPrompt: fullPrompt,
         setSuggestions: (newSuggestions, newIsPlaceholder) => {
-          setSuggestionsData(prev => ({
+          setSuggestionsData((prev) => ({
             ...prev,
             suggestions: newSuggestions,
-            isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
-            isLoading: false
+            isPlaceholder:
+              newIsPlaceholder !== undefined
+                ? newIsPlaceholder
+                : prev.isPlaceholder,
+            isLoading: false,
           }));
         },
         onSuggestionClick: (suggestionText) => {
-          const updatedPrompt = displayedPrompt.replace(highlightedText, suggestionText);
+          const updatedPrompt = displayedPrompt.replace(
+            highlightedText,
+            suggestionText
+          );
           setOptimizedPrompt(updatedPrompt);
           setDisplayedPrompt(updatedPrompt);
           setSuggestionsData(null);
@@ -581,34 +631,98 @@ export default function ModernPromptOptimizer() {
         onClose: () => {
           setSuggestionsData(null);
           window.getSelection().removeAllRanges();
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching suggestions:', error);
-      setSuggestionsData({
-        show: true,
-        selectedText: highlightedText,
-        suggestions: [{ text: 'Failed to load suggestions. Please try again.' }],
-        isLoading: false,
-        isPlaceholder: false,
-        fullPrompt: fullPrompt,
-        setSuggestions: (newSuggestions, newIsPlaceholder) => {
-          setSuggestionsData(prev => ({
-            ...prev,
-            suggestions: newSuggestions,
-            isPlaceholder: newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
-            isLoading: false
-          }));
         },
-        onSuggestionClick: () => {
-          setSuggestionsData(null);
-        },
-        onClose: () => {
-          setSuggestionsData(null);
-          window.getSelection().removeAllRanges();
-        }
       });
-    }
+
+      try {
+        const response = await fetch(
+          'http://localhost:3001/api/get-enhancement-suggestions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              highlightedText,
+              contextBefore,
+              contextAfter,
+              fullPrompt,
+              originalUserPrompt: inputPrompt,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch suggestions');
+        }
+
+        const data = await response.json();
+
+        // Update with fetched suggestions
+        setSuggestionsData({
+          show: true,
+          selectedText: highlightedText,
+          suggestions: data.suggestions || [],
+          isLoading: false,
+          isPlaceholder: data.isPlaceholder || false,
+          fullPrompt: fullPrompt,
+          setSuggestions: (newSuggestions, newIsPlaceholder) => {
+            setSuggestionsData((prev) => ({
+              ...prev,
+              suggestions: newSuggestions,
+              isPlaceholder:
+                newIsPlaceholder !== undefined
+                  ? newIsPlaceholder
+                  : prev.isPlaceholder,
+              isLoading: false,
+            }));
+          },
+          onSuggestionClick: (suggestionText) => {
+            const updatedPrompt = displayedPrompt.replace(
+              highlightedText,
+              suggestionText
+            );
+            setOptimizedPrompt(updatedPrompt);
+            setDisplayedPrompt(updatedPrompt);
+            setSuggestionsData(null);
+            window.getSelection().removeAllRanges();
+          },
+          onClose: () => {
+            setSuggestionsData(null);
+            window.getSelection().removeAllRanges();
+          },
+        });
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestionsData({
+          show: true,
+          selectedText: highlightedText,
+          suggestions: [
+            { text: 'Failed to load suggestions. Please try again.' },
+          ],
+          isLoading: false,
+          isPlaceholder: false,
+          fullPrompt: fullPrompt,
+          setSuggestions: (newSuggestions, newIsPlaceholder) => {
+            setSuggestionsData((prev) => ({
+              ...prev,
+              suggestions: newSuggestions,
+              isPlaceholder:
+                newIsPlaceholder !== undefined
+                  ? newIsPlaceholder
+                  : prev.isPlaceholder,
+              isLoading: false,
+            }));
+          },
+          onSuggestionClick: () => {
+            setSuggestionsData(null);
+          },
+          onClose: () => {
+            setSuggestionsData(null);
+            window.getSelection().removeAllRanges();
+          },
+        });
+      }
     }, 300); // 300ms debounce delay
   };
 
@@ -623,21 +737,21 @@ export default function ModernPromptOptimizer() {
   };
 
   const getModeInfo = () => {
-    return modes.find(m => m.id === selectedMode) || modes[0];
+    return modes.find((m) => m.id === selectedMode) || modes[0];
   };
 
   const currentMode = getModeInfo();
   const ModeIcon = currentMode.icon;
 
   return (
-    <div className="h-screen bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+    <div className="h-screen overflow-hidden bg-gradient-to-b from-gray-50 to-white">
       {/* Creative Brainstorm Modal */}
       {showBrainstorm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-50 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-gray-50">
             <button
               onClick={handleSkipBrainstorm}
-              className="absolute top-4 right-4 text-sm text-gray-600 hover:text-gray-900 underline z-10"
+              className="absolute right-4 top-4 z-10 text-sm text-gray-600 underline hover:text-gray-900"
             >
               Skip to Advanced Mode →
             </button>
@@ -653,13 +767,13 @@ export default function ModernPromptOptimizer() {
 
       {/* Improvement Form Modal Overlay */}
       {showImprover && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl my-8">
+        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50 p-4">
+          <div className="my-8 w-full max-w-3xl">
             <button
               onClick={() => setShowImprover(false)}
-              className="mb-4 text-white hover:text-gray-200 font-medium flex items-center gap-2"
+              className="mb-4 flex items-center gap-2 font-medium text-white hover:text-gray-200"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
               Close
             </button>
             <PromptImprovementForm
@@ -671,32 +785,36 @@ export default function ModernPromptOptimizer() {
       )}
 
       {/* Sidebar Menu and New Chat Buttons - Fixed Position */}
-      <div className="fixed top-6 left-6 z-50 flex items-center gap-2">
+      <div className="fixed left-6 top-6 z-50 flex items-center gap-2">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
+          className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg transition-colors hover:bg-gray-100"
         >
-          <PanelLeft className="w-5 h-5 text-gray-700" />
+          <PanelLeft className="h-5 w-5 text-gray-700" />
         </button>
         <button
           onClick={handleCreateNew}
-          className="p-3 bg-white hover:bg-gray-100 rounded-lg shadow-lg border border-gray-200 transition-colors"
+          className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg transition-colors hover:bg-gray-100"
         >
-          <Plus className="w-5 h-5 text-gray-700" />
+          <Plus className="h-5 w-5 text-gray-700" />
         </button>
       </div>
 
       {/* Left Sidebar - History */}
-      <div className={`${showHistory ? 'w-64' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 h-screen max-h-screen fixed left-0 top-0 z-40 overflow-hidden`}>
+      <div
+        className={`${showHistory ? 'w-64' : 'w-0'} fixed left-0 top-0 z-40 h-screen max-h-screen overflow-hidden border-r border-gray-200 bg-white transition-all duration-300`}
+      >
         {showHistory && (
-          <div className="h-screen max-h-screen flex flex-col overflow-hidden">
-            <div className="p-4 pt-20 border-b border-gray-200 flex-shrink-0">
+          <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+            <div className="flex-shrink-0 border-b border-gray-200 p-4 pt-20">
               <h3 className="font-semibold text-gray-900">Recent</h3>
               {!user && (
-                <p className="text-xs text-gray-500 mt-1">Sign in to sync across devices</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Sign in to sync across devices
+                </p>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto p-2 min-h-0 overflow-x-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
               {isLoadingHistory ? (
                 <div className="p-4 text-center text-sm text-gray-400">
                   Loading...
@@ -708,19 +826,21 @@ export default function ModernPromptOptimizer() {
               ) : (
                 <div className="space-y-1">
                   {history.map((entry) => {
-                    const modeInfo = modes.find(m => m.id === entry.mode);
+                    const modeInfo = modes.find((m) => m.id === entry.mode);
                     const ModeIcon = modeInfo?.icon || Sparkles;
                     return (
                       <button
                         key={entry.id}
                         onClick={() => loadFromHistory(entry)}
-                        className="w-full text-left p-3 hover:bg-gray-100 rounded-lg transition-colors group"
+                        className="group w-full rounded-lg p-3 text-left transition-colors hover:bg-gray-100"
                       >
                         <div className="flex items-start gap-2">
-                          <ModeIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 truncate">{entry.input}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                          <ModeIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm text-gray-900">
+                              {entry.input}
+                            </p>
+                            <div className="mt-1 flex items-center gap-2">
                               <span className="text-xs text-gray-400">
                                 {new Date(entry.timestamp).toLocaleDateString()}
                               </span>
@@ -739,32 +859,36 @@ export default function ModernPromptOptimizer() {
             </div>
 
             {/* Auth Section at bottom of sidebar */}
-            <div className="border-t border-gray-200 p-3 flex-shrink-0 bg-white">
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white p-3">
               {user ? (
                 <div className="relative" ref={authMenuRef}>
                   <button
                     onClick={() => setShowAuthMenu(!showAuthMenu)}
-                    className="w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-100"
                   >
                     <img
                       src={user.photoURL}
                       alt={user.displayName}
-                      className="w-8 h-8 rounded-full flex-shrink-0"
+                      className="h-8 w-8 flex-shrink-0 rounded-full"
                     />
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{user.displayName}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {user.displayName}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {user.email}
+                      </p>
                     </div>
-                    <ChevronDown className="w-4 h-4 text-gray-700 flex-shrink-0" />
+                    <ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-700" />
                   </button>
 
                   {showAuthMenu && (
-                    <div className="absolute bottom-full left-0 mb-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-1">
+                    <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
                       <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-gray-50"
                       >
-                        <LogOut className="w-4 h-4 text-gray-600" />
+                        <LogOut className="h-4 w-4 text-gray-600" />
                         <span className="text-sm text-gray-700">Sign out</span>
                       </button>
                     </div>
@@ -773,10 +897,12 @@ export default function ModernPromptOptimizer() {
               ) : (
                 <button
                   onClick={handleSignIn}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-white transition-colors hover:bg-gray-800"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span className="text-sm font-semibold">Sign in with Google</span>
+                  <LogIn className="h-4 w-4" />
+                  <span className="text-sm font-semibold">
+                    Sign in with Google
+                  </span>
                 </button>
               )}
             </div>
@@ -785,250 +911,289 @@ export default function ModernPromptOptimizer() {
       </div>
 
       {/* Main Content */}
-      <div className={`h-screen flex flex-col items-center px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-64' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}>
-      {/* Hero Section - Only show when NOT showing results */}
-      {!showResults && (
-        <div className="max-w-3xl w-full text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-            Turn messy thoughts into structured prompts
-          </h1>
-          <p className="text-lg text-gray-600 mb-8">
-            Idea to prompt in seconds - get much better results from{' '}
-            <span className="font-semibold text-gray-900 inline-flex items-center">
-              <span className="transition-opacity duration-300">
-                {aiNames[currentAIIndex]}
+      <div
+        className={`flex h-screen flex-col items-center px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-64' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
+      >
+        {/* Hero Section - Only show when NOT showing results */}
+        {!showResults && (
+          <div className="mb-8 w-full max-w-3xl text-center">
+            <h1 className="mb-4 text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
+              Turn messy thoughts into structured prompts
+            </h1>
+            <p className="mb-8 text-lg text-gray-600">
+              Idea to prompt in seconds - get much better results from{' '}
+              <span className="inline-flex items-center font-semibold text-gray-900">
+                <span className="transition-opacity duration-300">
+                  {aiNames[currentAIIndex]}
+                </span>
               </span>
-            </span>
-            <span className="inline-block w-1 h-5 bg-gray-900 ml-1 animate-pulse"></span>
-          </p>
+              <span className="ml-1 inline-block h-5 w-1 animate-pulse bg-gray-900"></span>
+            </p>
 
-          {/* Main Input Section */}
-          <div className="relative mb-6">
-            <div className="bg-white rounded-xl shadow-md border-2 border-gray-200 focus-within:border-gray-400 transition-all overflow-visible">
-              <div className="p-4">
-                <textarea
-                  value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleOptimize();
-                    }
-                  }}
-                  placeholder="I want a prompt that will..."
-                  rows={2}
-                  className="w-full text-base text-gray-900 placeholder-gray-400 outline-none bg-transparent resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                <div className="relative" ref={modeDropdownRef}>
-                  <button
-                    onClick={() => setShowModeDropdown(!showModeDropdown)}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                  >
-                    <ModeIcon className="w-4 h-4" />
-                    <span className="font-medium">{currentMode.name}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-
-                  {showModeDropdown && (
-                    <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-64 z-50">
-                      {modes.map((mode) => {
-                        const Icon = mode.icon;
-                        return (
-                          <button
-                            key={mode.id}
-                            onClick={() => {
-                              setSelectedMode(mode.id);
-                              setShowModeDropdown(false);
-                            }}
-                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                          >
-                            <Icon className="w-5 h-5 text-gray-600 mt-0.5" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{mode.name}</div>
-                              <div className="text-xs text-gray-500">{mode.description}</div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+            {/* Main Input Section */}
+            <div className="relative mb-6">
+              <div className="overflow-visible rounded-xl border-2 border-gray-200 bg-white shadow-md transition-all focus-within:border-gray-400">
+                <div className="p-4">
+                  <textarea
+                    value={inputPrompt}
+                    onChange={(e) => setInputPrompt(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleOptimize();
+                      }
+                    }}
+                    placeholder="I want a prompt that will..."
+                    rows={2}
+                    className="w-full resize-none bg-transparent text-base text-gray-900 placeholder-gray-400 outline-none"
+                  />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleImproveFirst}
-                    disabled={!inputPrompt.trim() || isProcessing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-full transition-all duration-200 text-sm font-medium disabled:cursor-not-allowed"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Improve First
-                  </button>
-                  <button
-                    onClick={handleOptimize}
-                    disabled={(!inputPrompt.trim() && selectedMode !== 'video') || isProcessing}
-                    className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white rounded-full p-2 transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.label}
-                  onClick={() => handleQuickAction(action)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full transition-all duration-200 transform hover:scale-105"
-                >
-                  <Icon className="w-3 h-3 text-gray-600" />
-                  <span className="text-xs font-medium text-gray-700">{action.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Processing State */}
-      {isProcessing && (
-        <div className="max-w-6xl w-full">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
-            <div className="flex flex-col items-center justify-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-              <p className="text-gray-600">Optimizing your prompt...</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Results Section - Shows after optimization */}
-      {showResults && displayedPrompt && !isProcessing && (
-        <div className="w-full h-full overflow-y-auto mt-8 pb-8 flex gap-6 items-start max-w-7xl">
-          {/* Main Content Column */}
-          <div className="flex-1 max-w-4xl">
-          {/* Lazy Prompt Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-gray-900">Lazy Prompt</h2>
-              <button
-                onClick={handleEdit}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                <span className="text-sm font-semibold">Edit</span>
-              </button>
-            </div>
-            <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
-              <p className="text-gray-800 text-base leading-relaxed">{inputPrompt}</p>
-            </div>
-          </div>
-
-          {/* Reasoning Prompt Section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-gray-900">Reasoning Prompt</h2>
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span className="text-sm font-semibold">{copied ? 'Copied!' : 'Copy'}</span>
-              </button>
-            </div>
-            <div className="bg-white rounded-xl border-4 border-gray-900 p-5">
-              <textarea
-                value={displayedPrompt}
-                onChange={(e) => {
-                  // Only update displayedPrompt when user edits
-                  // Don't update optimizedPrompt to avoid triggering typewriter effect
-                  setDisplayedPrompt(e.target.value);
-                  setSkipAnimation(true); // Disable animation for manual edits
-                }}
-                onMouseUp={(e) => {
-                  // Handle text selection for AI suggestions
-                  const selection = window.getSelection();
-                  const text = selection.toString().trim();
-
-                  if (text.length > 0) {
-                    // Create a synthetic event for the PromptEnhancementEditor logic
-                    const range = selection.getRangeAt(0).cloneRange();
-
-                    // Fetch AI suggestions
-                    fetchEnhancementSuggestions(text, displayedPrompt, range);
-                  }
-                }}
-                className="w-full text-sm text-gray-800 leading-relaxed font-sans resize-none outline-none bg-transparent"
-                style={{
-                  minHeight: '400px',
-                  fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                }}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between mt-6">
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCreateNew}
-                  className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors font-semibold"
-                >
-                  Create New
-                </button>
-
-                <div className="relative group">
-                  <button className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 rounded-lg transition-colors font-semibold">
-                    <Download className="w-4 h-4" />
-                    Export
-                  </button>
-                  <div className="absolute left-0 bottom-full mb-2 w-44 bg-white rounded-lg shadow-xl border-2 border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3">
+                  <div className="relative" ref={modeDropdownRef}>
                     <button
-                      onClick={() => handleExport('text')}
-                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 rounded-t-lg transition-colors"
+                      onClick={() => setShowModeDropdown(!showModeDropdown)}
+                      className="flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900"
                     >
-                      Text (.txt)
+                      <ModeIcon className="h-4 w-4" />
+                      <span className="font-medium">{currentMode.name}</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+
+                    {showModeDropdown && (
+                      <div className="absolute left-0 top-full z-50 mt-2 min-w-64 rounded-xl border border-gray-200 bg-white py-2 shadow-xl">
+                        {modes.map((mode) => {
+                          const Icon = mode.icon;
+                          return (
+                            <button
+                              key={mode.id}
+                              onClick={() => {
+                                setSelectedMode(mode.id);
+                                setShowModeDropdown(false);
+                              }}
+                              className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                            >
+                              <Icon className="mt-0.5 h-5 w-5 text-gray-600" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {mode.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {mode.description}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleImproveFirst}
+                      disabled={!inputPrompt.trim() || isProcessing}
+                      className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Improve First
                     </button>
                     <button
-                      onClick={() => handleExport('markdown')}
-                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 transition-colors"
+                      onClick={handleOptimize}
+                      disabled={
+                        (!inputPrompt.trim() && selectedMode !== 'video') ||
+                        isProcessing
+                      }
+                      className="transform rounded-full bg-gray-900 p-2 text-white transition-all duration-200 hover:scale-105 hover:bg-gray-800 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
-                      Markdown (.md)
-                    </button>
-                    <button
-                      onClick={() => handleExport('json')}
-                      className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 rounded-b-lg transition-colors"
-                    >
-                      JSON (.json)
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {qualityScore !== null && (
-                <div className="flex items-center gap-3 bg-gray-900 text-white px-4 py-2.5 rounded-lg">
-                  <span className="text-sm font-semibold">Quality Score:</span>
-                  <span className="text-xl font-bold">{qualityScore}%</span>
-                </div>
-              )}
+            {/* Quick Actions */}
+            <div className="mb-8 flex flex-wrap justify-center gap-2">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.label}
+                    onClick={() => handleQuickAction(action)}
+                    className="flex transform items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 transition-all duration-200 hover:scale-105 hover:border-gray-300 hover:bg-gray-50"
+                  >
+                    <Icon className="h-3 w-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-700">
+                      {action.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          </div>
+        )}
 
-          {/* Right Side - Suggestions Panel */}
-          <SuggestionsPanel suggestionsData={suggestionsData} />
-        </div>
-      )}
+        {/* Processing State */}
+        {isProcessing && (
+          <div className="w-full max-w-6xl">
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 shadow-lg">
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-3 w-3 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: '0ms' }}
+                  ></div>
+                  <div
+                    className="h-3 w-3 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: '150ms' }}
+                  ></div>
+                  <div
+                    className="h-3 w-3 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: '300ms' }}
+                  ></div>
+                </div>
+                <p className="text-gray-600">Optimizing your prompt...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results Section - Shows after optimization */}
+        {showResults && displayedPrompt && !isProcessing && (
+          <div className="mt-8 flex h-full w-full max-w-7xl items-start gap-6 overflow-y-auto pb-8">
+            {/* Main Content Column */}
+            <div className="max-w-4xl flex-1">
+              {/* Lazy Prompt Section */}
+              <div className="mb-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Lazy Prompt
+                  </h2>
+                  <button
+                    onClick={handleEdit}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Edit</span>
+                  </button>
+                </div>
+                <div className="rounded-xl border-4 border-gray-900 bg-white p-5">
+                  <p className="text-base leading-relaxed text-gray-800">
+                    {inputPrompt}
+                  </p>
+                </div>
+              </div>
+
+              {/* Reasoning Prompt Section */}
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Reasoning Prompt
+                  </h2>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    <span className="text-sm font-semibold">
+                      {copied ? 'Copied!' : 'Copy'}
+                    </span>
+                  </button>
+                </div>
+                <div className="rounded-xl border-4 border-gray-900 bg-white p-5">
+                  <textarea
+                    value={displayedPrompt}
+                    onChange={(e) => {
+                      // Only update displayedPrompt when user edits
+                      // Don't update optimizedPrompt to avoid triggering typewriter effect
+                      setDisplayedPrompt(e.target.value);
+                      setSkipAnimation(true); // Disable animation for manual edits
+                    }}
+                    onMouseUp={(e) => {
+                      // Handle text selection for AI suggestions
+                      const selection = window.getSelection();
+                      const text = selection.toString().trim();
+
+                      if (text.length > 0) {
+                        // Create a synthetic event for the PromptEnhancementEditor logic
+                        const range = selection.getRangeAt(0).cloneRange();
+
+                        // Fetch AI suggestions
+                        fetchEnhancementSuggestions(
+                          text,
+                          displayedPrompt,
+                          range
+                        );
+                      }
+                    }}
+                    className="w-full resize-none bg-transparent font-sans text-sm leading-relaxed text-gray-800 outline-none"
+                    style={{
+                      minHeight: '400px',
+                      fontFamily:
+                        'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    }}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCreateNew}
+                      className="rounded-lg bg-gray-900 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-gray-800"
+                    >
+                      Create New
+                    </button>
+
+                    <div className="group relative">
+                      <button className="flex items-center gap-2 rounded-lg border-2 border-gray-300 bg-white px-5 py-2.5 font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                        <Download className="h-4 w-4" />
+                        Export
+                      </button>
+                      <div className="invisible absolute bottom-full left-0 z-10 mb-2 w-44 rounded-lg border-2 border-gray-200 bg-white opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+                        <button
+                          onClick={() => handleExport('text')}
+                          className="w-full rounded-t-lg px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-gray-50"
+                        >
+                          Text (.txt)
+                        </button>
+                        <button
+                          onClick={() => handleExport('markdown')}
+                          className="w-full px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-gray-50"
+                        >
+                          Markdown (.md)
+                        </button>
+                        <button
+                          onClick={() => handleExport('json')}
+                          className="w-full rounded-b-lg px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-gray-50"
+                        >
+                          JSON (.json)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {qualityScore !== null && (
+                    <div className="flex items-center gap-3 rounded-lg bg-gray-900 px-4 py-2.5 text-white">
+                      <span className="text-sm font-semibold">
+                        Quality Score:
+                      </span>
+                      <span className="text-xl font-bold">{qualityScore}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Suggestions Panel */}
+            <SuggestionsPanel suggestionsData={suggestionsData} />
+          </div>
+        )}
       </div>
     </div>
   );

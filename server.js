@@ -9,7 +9,7 @@ import {
   suggestionSchema,
   customSuggestionSchema,
   sceneChangeSchema,
-  creativeSuggestionSchema
+  creativeSuggestionSchema,
 } from './utils/validation.js';
 
 dotenv.config();
@@ -19,7 +19,9 @@ try {
   validateEnv();
 } catch (error) {
   console.error('❌ Environment validation failed:', error.message);
-  console.error('Please check your .env file. See .env.example for required variables.');
+  console.error(
+    'Please check your .env file. See .env.example for required variables.'
+  );
   process.exit(1);
 }
 
@@ -38,17 +40,19 @@ async function callClaudeAPI(systemPrompt, maxTokens = 4096) {
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: maxTokens,
-        messages: [{
-          role: 'user',
-          content: systemPrompt
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: systemPrompt,
+          },
+        ],
       }),
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
@@ -75,24 +79,27 @@ app.use(helmet());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP'
+  message: 'Too many requests from this IP',
 });
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 10, // max 10 Claude API calls per minute
-  message: 'Too many API requests, please try again later'
+  message: 'Too many API requests, please try again later',
 });
 
 app.use('/api/', apiLimiter);
 
 // Configure CORS properly
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL || 'https://yourdomain.com']
-    : ['http://localhost:5173', 'http://localhost:5174'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? [process.env.FRONTEND_URL || 'https://yourdomain.com']
+        : ['http://localhost:5173', 'http://localhost:5174'],
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -107,7 +114,7 @@ app.post('/api/optimize', async (req, res) => {
     console.error('❌ Request body was:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details[0].message
+      details: error.details[0].message,
     });
   }
 
@@ -392,18 +399,22 @@ Provide ONLY the optimized prompt in the specified format. No preamble, no expla
   }
 
   // Add context enhancement if provided
-  if (context && Object.keys(context).some(k => context[k])) {
-    systemPrompt += '\n\n**IMPORTANT - User has provided additional context:**\n';
-    systemPrompt += 'The user has provided additional context. Incorporate this into the optimized prompt:\n\n';
+  if (context && Object.keys(context).some((k) => context[k])) {
+    systemPrompt +=
+      '\n\n**IMPORTANT - User has provided additional context:**\n';
+    systemPrompt +=
+      'The user has provided additional context. Incorporate this into the optimized prompt:\n\n';
 
     if (context.specificAspects) {
       systemPrompt += `**Specific Focus Areas:** ${context.specificAspects}\n`;
-      systemPrompt += 'Make sure the optimized prompt explicitly addresses these aspects.\n\n';
+      systemPrompt +=
+        'Make sure the optimized prompt explicitly addresses these aspects.\n\n';
     }
 
     if (context.backgroundLevel) {
       systemPrompt += `**Target Audience Level:** ${context.backgroundLevel}\n`;
-      systemPrompt += 'Adjust the complexity and terminology to match this level.\n\n';
+      systemPrompt +=
+        'Adjust the complexity and terminology to match this level.\n\n';
     }
 
     if (context.intendedUse) {
@@ -418,38 +429,48 @@ Provide ONLY the optimized prompt in the specified format. No preamble, no expla
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: systemPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: systemPrompt,
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
       console.error('API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
     const optimizedText = data.content[0].text;
 
     // Basic validation - check for meta-commentary
-    if (optimizedText.toLowerCase().includes('here is') ||
-        optimizedText.toLowerCase().includes('i\'ve created') ||
-        optimizedText.toLowerCase().startsWith('sure')) {
-      console.warn('⚠️  Response contains meta-commentary, may need refinement');
+    if (
+      optimizedText.toLowerCase().includes('here is') ||
+      optimizedText.toLowerCase().includes("i've created") ||
+      optimizedText.toLowerCase().startsWith('sure')
+    ) {
+      console.warn(
+        '⚠️  Response contains meta-commentary, may need refinement'
+      );
     }
 
     res.json({ optimizedPrompt: optimizedText });
   } catch (error) {
     console.error('Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 
@@ -523,16 +544,18 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: systemPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: systemPrompt,
+          },
+        ],
+      }),
     });
 
     console.log('📡 Claude API response status:', response.status);
@@ -540,7 +563,9 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Claude API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
@@ -549,32 +574,69 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
     console.log('📝 Raw Claude response:', questionsText.slice(0, 200) + '...');
 
     // Clean up response - remove markdown code blocks if present
-    questionsText = questionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    questionsText = questionsText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     const questionsData = JSON.parse(questionsText);
 
-    console.log('✅ Successfully parsed questions:', questionsData.questions?.length, 'questions');
+    console.log(
+      '✅ Successfully parsed questions:',
+      questionsData.questions?.length,
+      'questions'
+    );
 
     res.json(questionsData);
   } catch (error) {
     console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 
 // Helper function to detect if highlighted text is a placeholder
-function detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt) {
+function detectPlaceholder(
+  highlightedText,
+  contextBefore,
+  contextAfter,
+  fullPrompt
+) {
   const text = highlightedText.toLowerCase().trim();
 
   // Pattern 1: Single word that's commonly a placeholder
   const placeholderKeywords = [
-    'location', 'place', 'venue', 'setting', 'where',
-    'person', 'character', 'who', 'speaker', 'audience',
-    'time', 'when', 'date', 'period', 'era', 'occasion',
-    'style', 'tone', 'mood', 'atmosphere',
-    'event', 'action', 'activity', 'scene',
-    'color', 'texture', 'material',
-    'angle', 'perspective', 'viewpoint'
+    'location',
+    'place',
+    'venue',
+    'setting',
+    'where',
+    'person',
+    'character',
+    'who',
+    'speaker',
+    'audience',
+    'time',
+    'when',
+    'date',
+    'period',
+    'era',
+    'occasion',
+    'style',
+    'tone',
+    'mood',
+    'atmosphere',
+    'event',
+    'action',
+    'activity',
+    'scene',
+    'color',
+    'texture',
+    'material',
+    'angle',
+    'perspective',
+    'viewpoint',
   ];
 
   if (text.split(/\s+/).length <= 2 && placeholderKeywords.includes(text)) {
@@ -582,25 +644,43 @@ function detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPro
   }
 
   // Pattern 2: Text in parentheses or brackets
-  if (contextBefore.includes('(') || contextAfter.startsWith(')') ||
-      contextBefore.includes('[') || contextAfter.startsWith(']')) {
+  if (
+    contextBefore.includes('(') ||
+    contextAfter.startsWith(')') ||
+    contextBefore.includes('[') ||
+    contextAfter.startsWith(']')
+  ) {
     return true;
   }
 
   // Pattern 3: Preceded by phrases like "such as", "like", "e.g.", "for example"
-  const precedingPhrases = ['such as', 'like', 'e.g.', 'for example', 'including', 'specify'];
-  if (precedingPhrases.some(phrase => contextBefore.toLowerCase().includes(phrase))) {
+  const precedingPhrases = [
+    'such as',
+    'like',
+    'e.g.',
+    'for example',
+    'including',
+    'specify',
+  ];
+  if (
+    precedingPhrases.some((phrase) =>
+      contextBefore.toLowerCase().includes(phrase)
+    )
+  ) {
     return true;
   }
 
   // Pattern 4: In a list or comma-separated context suggesting it's a placeholder
-  if ((contextBefore.includes(':') || contextBefore.includes('-')) &&
-      text.split(/\s+/).length <= 3) {
+  if (
+    (contextBefore.includes(':') || contextBefore.includes('-')) &&
+    text.split(/\s+/).length <= 3
+  ) {
     return true;
   }
 
   // Pattern 5: Part of "include [word]" or "set [word]" pattern
-  const includePattern = /\b(include|set|choose|specify|add|provide|give)\s+[^,\n]{0,20}$/i;
+  const includePattern =
+    /\b(include|set|choose|specify|add|provide|give)\s+[^,\n]{0,20}$/i;
   if (includePattern.test(contextBefore)) {
     return true;
   }
@@ -619,21 +699,36 @@ app.post('/api/get-enhancement-suggestions', async (req, res) => {
     console.error('❌ Request body was:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details[0].message
+      details: error.details[0].message,
     });
   }
 
-  const { highlightedText, contextBefore, contextAfter, fullPrompt, originalUserPrompt } = value;
+  const {
+    highlightedText,
+    contextBefore,
+    contextAfter,
+    fullPrompt,
+    originalUserPrompt,
+  } = value;
 
-  console.log('📥 Processing enhancement request for:', highlightedText.slice(0, 50) + '...');
+  console.log(
+    '📥 Processing enhancement request for:',
+    highlightedText.slice(0, 50) + '...'
+  );
 
   // Detect if this is a video prompt
-  const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
-                        fullPrompt.includes('**Technical Parameters:**') ||
-                        fullPrompt.includes('Camera Movement:');
+  const isVideoPrompt =
+    fullPrompt.includes('**Main Prompt:**') ||
+    fullPrompt.includes('**Technical Parameters:**') ||
+    fullPrompt.includes('Camera Movement:');
 
   // Check if highlighted text is a placeholder/parameter
-  const isPlaceholder = detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt);
+  const isPlaceholder = detectPlaceholder(
+    highlightedText,
+    contextBefore,
+    contextAfter,
+    fullPrompt
+  );
 
   let aiPrompt;
 
@@ -687,7 +782,7 @@ Each "text" should be a SHORT, SPECIFIC value (1-10 words max) that can directly
   } else {
     // Generate general rewrite suggestions (original behavior)
     if (isVideoPrompt) {
-    aiPrompt = `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML). Analyze this highlighted section from a video generation prompt and generate 3-5 enhanced alternatives.
+      aiPrompt = `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML). Analyze this highlighted section from a video generation prompt and generate 3-5 enhanced alternatives.
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
@@ -730,8 +825,8 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
 ]
 
 Each "text" value should be a complete, self-contained replacement for the highlighted section that can be directly inserted into the video prompt.`;
-  } else {
-    aiPrompt = `You are a prompt engineering expert. Analyze this highlighted section and generate 3-5 concrete improvements.
+    } else {
+      aiPrompt = `You are a prompt engineering expert. Analyze this highlighted section and generate 3-5 concrete improvements.
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
@@ -778,23 +873,28 @@ Each "text" value should be a complete, self-contained replacement for the highl
 
   try {
     console.log('🤖 Calling Claude API for enhancement suggestions...');
-    console.log('📌 Mode:', isPlaceholder ? 'VALUE SUGGESTIONS' : 'REWRITE SUGGESTIONS');
+    console.log(
+      '📌 Mode:',
+      isPlaceholder ? 'VALUE SUGGESTIONS' : 'REWRITE SUGGESTIONS'
+    );
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: aiPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: aiPrompt,
+          },
+        ],
+      }),
     });
 
     console.log('📡 Claude API response status:', response.status);
@@ -802,28 +902,42 @@ Each "text" value should be a complete, self-contained replacement for the highl
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Claude API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
     let suggestionsText = data.content[0].text;
 
-    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+    console.log(
+      '📝 Raw Claude response:',
+      suggestionsText.slice(0, 200) + '...'
+    );
 
     // Clean up response - remove markdown code blocks if present
-    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    suggestionsText = suggestionsText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     const suggestions = JSON.parse(suggestionsText);
 
-    console.log('✅ Successfully parsed suggestions:', suggestions.length, 'suggestions');
+    console.log(
+      '✅ Successfully parsed suggestions:',
+      suggestions.length,
+      'suggestions'
+    );
 
     res.json({
       suggestions,
-      isPlaceholder // Let frontend know what type of suggestions these are
+      isPlaceholder, // Let frontend know what type of suggestions these are
     });
   } catch (error) {
     console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 
@@ -833,7 +947,7 @@ app.post('/api/get-custom-suggestions', async (req, res) => {
   if (error) {
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details[0].message
+      details: error.details[0].message,
     });
   }
 
@@ -842,9 +956,10 @@ app.post('/api/get-custom-suggestions', async (req, res) => {
   console.log('📥 Received custom suggestion request:', customRequest);
 
   // Detect if this is a video prompt
-  const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
-                        fullPrompt.includes('**Technical Parameters:**') ||
-                        fullPrompt.includes('Camera Movement:');
+  const isVideoPrompt =
+    fullPrompt.includes('**Main Prompt:**') ||
+    fullPrompt.includes('**Technical Parameters:**') ||
+    fullPrompt.includes('Camera Movement:');
 
   const aiPrompt = `You are a ${isVideoPrompt ? 'video prompt expert for AI video generation (Sora, Veo3, RunwayML)' : 'prompt engineering expert'}.
 
@@ -882,16 +997,18 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: aiPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: aiPrompt,
+          },
+        ],
+      }),
     });
 
     console.log('📡 Claude API response status:', response.status);
@@ -899,25 +1016,39 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Claude API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
     let suggestionsText = data.content[0].text;
 
-    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+    console.log(
+      '📝 Raw Claude response:',
+      suggestionsText.slice(0, 200) + '...'
+    );
 
     // Clean up response - remove markdown code blocks if present
-    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    suggestionsText = suggestionsText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     const suggestions = JSON.parse(suggestionsText);
 
-    console.log('✅ Successfully parsed custom suggestions:', suggestions.length, 'suggestions');
+    console.log(
+      '✅ Successfully parsed custom suggestions:',
+      suggestions.length,
+      'suggestions'
+    );
 
     res.json({ suggestions });
   } catch (error) {
     console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 
@@ -927,11 +1058,12 @@ app.post('/api/detect-scene-change', async (req, res) => {
   if (error) {
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details[0].message
+      details: error.details[0].message,
     });
   }
 
-  const { changedField, newValue, oldValue, fullPrompt, affectedFields } = value;
+  const { changedField, newValue, oldValue, fullPrompt, affectedFields } =
+    value;
 
   console.log('📥 Scene change detection request');
   console.log('Changed field:', changedField);
@@ -982,16 +1114,18 @@ If isSceneChange is TRUE, provide specific suggested values for ALL affected fie
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: aiPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: aiPrompt,
+          },
+        ],
+      }),
     });
 
     console.log('📡 Claude API response status:', response.status);
@@ -999,7 +1133,9 @@ If isSceneChange is TRUE, provide specific suggested values for ALL affected fie
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Claude API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
@@ -1008,16 +1144,25 @@ If isSceneChange is TRUE, provide specific suggested values for ALL affected fie
     console.log('📝 Raw Claude response:', resultText.slice(0, 200) + '...');
 
     // Clean up response - remove markdown code blocks if present
-    resultText = resultText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    resultText = resultText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     const result = JSON.parse(resultText);
 
-    console.log('✅ Scene change detection result:', result.isSceneChange ? 'YES' : 'NO', `(${result.confidence})`);
+    console.log(
+      '✅ Scene change detection result:',
+      result.isSceneChange ? 'YES' : 'NO',
+      `(${result.confidence})`
+    );
 
     res.json(result);
   } catch (error) {
     console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 
@@ -1027,7 +1172,7 @@ app.post('/api/get-creative-suggestions', async (req, res) => {
   if (error) {
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details[0].message
+      details: error.details[0].message,
     });
   }
 
@@ -1139,7 +1284,7 @@ Provide 8 specific events or contexts. Consider:
 - Processes (creation, destruction, assembly, metamorphosis)
 - Abstract contexts (dream sequence, memory, vision, imagination)
 
-Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`
+Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`,
   };
 
   const systemPrompt = elementPrompts[elementType] || elementPrompts.subject;
@@ -1176,16 +1321,18 @@ Each "text" should be SHORT and SPECIFIC (2-8 words). Each "explanation" should 
       headers: {
         'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: fullPrompt
-        }]
-      })
+        messages: [
+          {
+            role: 'user',
+            content: fullPrompt,
+          },
+        ],
+      }),
     });
 
     console.log('📡 Claude API response status:', response.status);
@@ -1193,24 +1340,38 @@ Each "text" should be SHORT and SPECIFIC (2-8 words). Each "explanation" should 
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Claude API Error:', errorData);
-      return res.status(response.status).json({ error: 'API request failed', details: errorData });
+      return res
+        .status(response.status)
+        .json({ error: 'API request failed', details: errorData });
     }
 
     const data = await response.json();
     let suggestionsText = data.content[0].text;
 
-    console.log('📝 Raw Claude response:', suggestionsText.slice(0, 200) + '...');
+    console.log(
+      '📝 Raw Claude response:',
+      suggestionsText.slice(0, 200) + '...'
+    );
 
-    suggestionsText = suggestionsText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    suggestionsText = suggestionsText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     const suggestions = JSON.parse(suggestionsText);
 
-    console.log('✅ Successfully parsed creative suggestions:', suggestions.length, 'suggestions');
+    console.log(
+      '✅ Successfully parsed creative suggestions:',
+      suggestions.length,
+      'suggestions'
+    );
 
     res.json({ suggestions });
   } catch (error) {
     console.error('❌ Server error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', message: error.message });
   }
 });
 

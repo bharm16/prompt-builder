@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Search, FileText, Lightbulb, User, ArrowRight, ChevronDown, Copy, Check, Download, Clock, X, GraduationCap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Sparkles,
+  Search,
+  Copy,
+  Check,
+  Download,
+  GraduationCap,
+  History,
+} from 'lucide-react';
 
 export default function PromptOptimizer() {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -50,7 +58,7 @@ export default function PromptOptimizer() {
       timestamp: new Date().toISOString(),
       input,
       output,
-      score
+      score,
     };
     const updatedHistory = [newEntry, ...history].slice(0, 10); // Keep last 10
     setHistory(updatedHistory);
@@ -65,7 +73,7 @@ export default function PromptOptimizer() {
         topic: extractTopic(rough),
         intent: extractIntent(rough),
         complexity: assessComplexity(rough),
-        missingElements: identifyMissingElements(rough)
+        missingElements: identifyMissingElements(rough),
       };
       return generateStructuredPrompt(rough, analysis);
     }
@@ -78,12 +86,12 @@ export default function PromptOptimizer() {
       const response = await fetch('http://localhost:3001/api/optimize', {
         method: 'POST',
         headers: {
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
           prompt: rough,
-          mode: mode
-        })
+          mode: mode,
+        }),
       });
 
       console.log('Response status:', response.status);
@@ -105,7 +113,7 @@ export default function PromptOptimizer() {
         topic: extractTopic(rough),
         intent: extractIntent(rough),
         complexity: assessComplexity(rough),
-        missingElements: identifyMissingElements(rough)
+        missingElements: identifyMissingElements(rough),
       };
       return generateStructuredPrompt(rough, analysis);
     }
@@ -113,25 +121,58 @@ export default function PromptOptimizer() {
 
   const extractTopic = (text) => {
     const lower = text.toLowerCase();
-    if (lower.includes('camera') || lower.includes('photo')) return 'Photography/Cameras';
-    if (lower.includes('code') || lower.includes('program')) return 'Programming';
-    if (lower.includes('write') || lower.includes('essay') || lower.includes('article')) return 'Writing';
-    if (lower.includes('market') || lower.includes('business')) return 'Business/Marketing';
-    if (lower.includes('health') || lower.includes('medical')) return 'Healthcare';
+    if (lower.includes('camera') || lower.includes('photo'))
+      return 'Photography/Cameras';
+    if (lower.includes('code') || lower.includes('program'))
+      return 'Programming';
+    if (
+      lower.includes('write') ||
+      lower.includes('essay') ||
+      lower.includes('article')
+    )
+      return 'Writing';
+    if (lower.includes('market') || lower.includes('business'))
+      return 'Business/Marketing';
+    if (lower.includes('health') || lower.includes('medical'))
+      return 'Healthcare';
     if (lower.includes('legal') || lower.includes('law')) return 'Legal';
-    if (lower.includes('design') || lower.includes('ui/ux') || lower.includes('ui')) return 'Design';
-    if (lower.includes('data') || lower.includes('analytics') || lower.includes('statistics')) return 'Data Analysis';
-    if (lower.includes('explain') || lower.includes('how does')) return 'Education/Explanation';
+    if (
+      lower.includes('design') ||
+      lower.includes('ui/ux') ||
+      lower.includes('ui')
+    )
+      return 'Design';
+    if (
+      lower.includes('data') ||
+      lower.includes('analytics') ||
+      lower.includes('statistics')
+    )
+      return 'Data Analysis';
+    if (lower.includes('explain') || lower.includes('how does'))
+      return 'Education/Explanation';
     return 'General Information';
   };
 
   const extractIntent = (text) => {
     const lower = text.toLowerCase();
-    if (lower.includes('how') || lower.includes('explain')) return 'understanding';
-    if (lower.includes('create') || lower.includes('make') || lower.includes('build')) return 'creation';
-    if (lower.includes('compare') || lower.includes('versus') || lower.includes('vs')) return 'comparison';
-    if (lower.includes('recommend') || lower.includes('suggest')) return 'recommendation';
-    if (lower.includes('overview') || lower.includes('summary')) return 'overview';
+    if (lower.includes('how') || lower.includes('explain'))
+      return 'understanding';
+    if (
+      lower.includes('create') ||
+      lower.includes('make') ||
+      lower.includes('build')
+    )
+      return 'creation';
+    if (
+      lower.includes('compare') ||
+      lower.includes('versus') ||
+      lower.includes('vs')
+    )
+      return 'comparison';
+    if (lower.includes('recommend') || lower.includes('suggest'))
+      return 'recommendation';
+    if (lower.includes('overview') || lower.includes('summary'))
+      return 'overview';
     return 'information';
   };
 
@@ -199,43 +240,60 @@ export default function PromptOptimizer() {
     structured += 'Structure the response as follows:\n';
 
     if (analysis.intent === 'understanding') {
-      structured += '1. Core Concept: Define the main topic clearly and concisely\n';
-      structured += '2. Key Components: Break down the subject into digestible parts with explanations\n';
-      structured += '3. Practical Applications: Show how this applies in real-world scenarios\n';
-      structured += '4. Common Misconceptions: Address frequent misunderstandings or confusion points\n';
+      structured +=
+        '1. Core Concept: Define the main topic clearly and concisely\n';
+      structured +=
+        '2. Key Components: Break down the subject into digestible parts with explanations\n';
+      structured +=
+        '3. Practical Applications: Show how this applies in real-world scenarios\n';
+      structured +=
+        '4. Common Misconceptions: Address frequent misunderstandings or confusion points\n';
     } else if (analysis.intent === 'overview') {
       structured += '1. Introduction: Brief overview of what will be covered\n';
-      structured += '2. Main Topics: Detailed sections for each major aspect (use clear subheadings)\n';
+      structured +=
+        '2. Main Topics: Detailed sections for each major aspect (use clear subheadings)\n';
       structured += '3. Key Takeaways: Summarize the most important points\n';
-      structured += '4. Next Steps or Recommendations: Provide actionable guidance\n';
+      structured +=
+        '4. Next Steps or Recommendations: Provide actionable guidance\n';
     } else if (analysis.intent === 'comparison') {
-      structured += '1. Overview: Brief introduction to what is being compared\n';
-      structured += '2. Comparison Matrix: Side-by-side analysis of key attributes\n';
-      structured += '3. Use Case Scenarios: When to choose one option over another\n';
-      structured += '4. Recommendation: Guidance based on different needs or contexts\n';
+      structured +=
+        '1. Overview: Brief introduction to what is being compared\n';
+      structured +=
+        '2. Comparison Matrix: Side-by-side analysis of key attributes\n';
+      structured +=
+        '3. Use Case Scenarios: When to choose one option over another\n';
+      structured +=
+        '4. Recommendation: Guidance based on different needs or contexts\n';
     } else {
       structured += '1. Main Response: Address the core query directly\n';
       structured += '2. Supporting Details: Provide context and examples\n';
-      structured += '3. Practical Guidance: Include actionable advice or steps\n';
+      structured +=
+        '3. Practical Guidance: Include actionable advice or steps\n';
     }
     structured += '\n';
 
     // Warnings Section
     structured += '**Warnings**\n';
-    structured += '- Avoid overwhelming the user with excessive technical jargon without clear explanations\n';
+    structured +=
+      '- Avoid overwhelming the user with excessive technical jargon without clear explanations\n';
 
     if (analysis.topic.includes('Photo')) {
-      structured += '- Do not conflate different specifications or measurement systems\n';
+      structured +=
+        '- Do not conflate different specifications or measurement systems\n';
       structured += '- Ensure comparisons use consistent units and contexts\n';
     } else if (analysis.topic.includes('Program')) {
-      structured += '- Do not provide code without explanation of what it does\n';
+      structured +=
+        '- Do not provide code without explanation of what it does\n';
       structured += '- Avoid recommending deprecated or insecure practices\n';
     } else if (analysis.topic.includes('Business')) {
-      structured += '- Do not make claims without supporting evidence or reasoning\n';
-      structured += '- Avoid one-size-fits-all recommendations without considering context\n';
+      structured +=
+        '- Do not make claims without supporting evidence or reasoning\n';
+      structured +=
+        '- Avoid one-size-fits-all recommendations without considering context\n';
     }
 
-    structured += '- Do not make assumptions about the user\'s expertise level; explain terms when first introduced\n';
+    structured +=
+      "- Do not make assumptions about the user's expertise level; explain terms when first introduced\n";
     structured += '- Ensure all information is current and accurate\n\n';
 
     // Context Section
@@ -243,27 +301,35 @@ export default function PromptOptimizer() {
     structured += `The user is seeking information about ${analysis.topic.toLowerCase()}. `;
 
     if (analysis.complexity === 'low') {
-      structured += 'The query suggests they are in the early stages of learning about this topic. ';
+      structured +=
+        'The query suggests they are in the early stages of learning about this topic. ';
     } else if (analysis.complexity === 'medium') {
-      structured += 'The query indicates they have some basic knowledge but need clarification on specific aspects. ';
+      structured +=
+        'The query indicates they have some basic knowledge but need clarification on specific aspects. ';
     } else {
-      structured += 'The query shows they are exploring multiple facets and may have intermediate knowledge. ';
+      structured +=
+        'The query shows they are exploring multiple facets and may have intermediate knowledge. ';
     }
 
-    structured += 'Tailor the response to be accessible yet informative, bridging any knowledge gaps while avoiding condescension. ';
+    structured +=
+      'Tailor the response to be accessible yet informative, bridging any knowledge gaps while avoiding condescension. ';
 
     if (analysis.missingElements.length > 0) {
       structured += `The original query may benefit from additional clarity on: ${analysis.missingElements.join(', ')}. `;
     }
 
-    structured += 'Assume the user values clear, practical information they can immediately apply or understand.\n\n';
+    structured +=
+      'Assume the user values clear, practical information they can immediately apply or understand.\n\n';
 
     // Additional Guidelines
     structured += '**Additional Guidelines**\n';
-    structured += '- Use examples and analogies where appropriate to clarify complex concepts\n';
-    structured += '- Include relevant data, statistics, or benchmarks when available\n';
+    structured +=
+      '- Use examples and analogies where appropriate to clarify complex concepts\n';
+    structured +=
+      '- Include relevant data, statistics, or benchmarks when available\n';
     structured += '- Maintain a helpful, professional tone throughout\n';
-    structured += '- If the topic has evolved recently, note any significant changes or updates\n';
+    structured +=
+      '- If the topic has evolved recently, note any significant changes or updates\n';
 
     return structured;
   };
@@ -305,12 +371,16 @@ export default function PromptOptimizer() {
     if (format === 'markdown') {
       content = `# Prompt Optimization\n\n**Date:** ${timestamp}\n\n## Original Prompt\n${inputPrompt}\n\n## Optimized Prompt\n${optimizedPrompt}`;
     } else if (format === 'json') {
-      content = JSON.stringify({
-        timestamp,
-        original: inputPrompt,
-        optimized: optimizedPrompt,
-        qualityScore
-      }, null, 2);
+      content = JSON.stringify(
+        {
+          timestamp,
+          original: inputPrompt,
+          optimized: optimizedPrompt,
+          qualityScore,
+        },
+        null,
+        2
+      );
     } else {
       content = `PROMPT OPTIMIZATION\nDate: ${timestamp}\n\n=== ORIGINAL ===\n${inputPrompt}\n\n=== OPTIMIZED ===\n${optimizedPrompt}`;
     }
@@ -333,31 +403,35 @@ export default function PromptOptimizer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Sparkles className="w-10 h-10 text-amber-600" />
-            <h1 className="text-4xl font-bold text-amber-900">Prompt Optimizer</h1>
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 text-center">
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <Sparkles className="h-10 w-10 text-amber-600" />
+            <h1 className="text-4xl font-bold text-amber-900">
+              Prompt Optimizer
+            </h1>
           </div>
-          <p className="text-amber-700 text-lg">Transform rough ideas into structured, powerful prompts</p>
+          <p className="text-lg text-amber-700">
+            Transform rough ideas into structured, powerful prompts
+          </p>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg transition-colors shadow-sm"
+              className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-amber-700 shadow-sm transition-colors hover:bg-amber-50"
             >
-              <History className="w-4 h-4" />
+              <History className="h-4 w-4" />
               {showHistory ? 'Hide History' : 'Show History'}
             </button>
 
             {/* Mode Selector */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
+            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 shadow-sm">
               <span className="text-sm font-medium text-gray-700">Mode:</span>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value)}
-                className="text-sm font-medium text-gray-700 bg-transparent border-none focus:outline-none cursor-pointer"
+                className="cursor-pointer border-none bg-transparent text-sm font-medium text-gray-700 focus:outline-none"
               >
                 <option value="optimize">✨ Optimize</option>
                 <option value="research">🔍 Deep Research</option>
@@ -365,17 +439,17 @@ export default function PromptOptimizer() {
               </select>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
-              <Sparkles className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 shadow-sm">
+              <Sparkles className="h-4 w-4 text-amber-600" />
               <span className="text-sm font-medium text-gray-700">AI Mode</span>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
                   checked={useAI}
                   onChange={(e) => setUseAI(e.target.checked)}
-                  className="sr-only peer"
+                  className="peer sr-only"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-amber-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300"></div>
               </label>
             </div>
           </div>
@@ -383,16 +457,18 @@ export default function PromptOptimizer() {
 
         {/* History Panel */}
         {showHistory && history.length > 0 && (
-          <div className="mb-6 bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Optimizations</h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+          <div className="mb-6 rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+              Recent Optimizations
+            </h3>
+            <div className="max-h-64 space-y-3 overflow-y-auto">
               {history.map((entry) => (
                 <button
                   key={entry.id}
                   onClick={() => loadFromHistory(entry)}
-                  className="w-full text-left p-3 border-2 border-amber-100 hover:border-amber-300 rounded-lg transition-colors"
+                  className="w-full rounded-lg border-2 border-amber-100 p-3 text-left transition-colors hover:border-amber-300"
                 >
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="mb-1 flex items-center justify-between">
                     <span className="text-xs text-gray-500">
                       {new Date(entry.timestamp).toLocaleString()}
                     </span>
@@ -400,17 +476,19 @@ export default function PromptOptimizer() {
                       Score: {entry.score}%
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 truncate">{entry.input}</p>
+                  <p className="truncate text-sm text-gray-700">
+                    {entry.input}
+                  </p>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
           {/* Input Section */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          <div className="rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="mb-4 text-xl font-semibold text-gray-800">
               {mode === 'optimize' && 'Your Rough Prompt'}
               {mode === 'research' && 'Research Topic'}
               {mode === 'socratic' && 'Learning Topic'}
@@ -422,33 +500,32 @@ export default function PromptOptimizer() {
                 mode === 'optimize'
                   ? "Enter your rough prompt here... e.g., 'give me an overview of digital camera specs'"
                   : mode === 'research'
-                  ? "Enter a topic to research... e.g., 'impact of AI on healthcare'"
-                  : "Enter a topic to learn... e.g., 'quantum computing basics'"
+                    ? "Enter a topic to research... e.g., 'impact of AI on healthcare'"
+                    : "Enter a topic to learn... e.g., 'quantum computing basics'"
               }
-              className="w-full h-64 p-4 border-2 border-amber-200 rounded-lg focus:outline-none focus:border-amber-400 resize-none"
+              className="h-64 w-full resize-none rounded-lg border-2 border-amber-200 p-4 focus:border-amber-400 focus:outline-none"
             />
             <button
               onClick={handleOptimize}
               disabled={!inputPrompt.trim() || isProcessing}
-              className="mt-4 w-full bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-700 disabled:bg-gray-400"
             >
-              {mode === 'optimize' && <Sparkles className="w-5 h-5" />}
-              {mode === 'research' && <Search className="w-5 h-5" />}
-              {mode === 'socratic' && <GraduationCap className="w-5 h-5" />}
+              {mode === 'optimize' && <Sparkles className="h-5 w-5" />}
+              {mode === 'research' && <Search className="h-5 w-5" />}
+              {mode === 'socratic' && <GraduationCap className="h-5 w-5" />}
               {isProcessing
                 ? 'Processing...'
                 : mode === 'optimize'
                   ? 'Optimize Prompt'
                   : mode === 'research'
-                  ? 'Generate Research Plan'
-                  : 'Create Learning Path'
-              }
+                    ? 'Generate Research Plan'
+                    : 'Create Learning Path'}
             </button>
           </div>
 
           {/* Output Section */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="rounded-lg bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-800">
                 {mode === 'optimize' && 'Optimized Prompt'}
                 {mode === 'research' && 'Research Plan'}
@@ -458,20 +535,39 @@ export default function PromptOptimizer() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+                    className="flex items-center gap-2 rounded-lg bg-amber-100 px-4 py-2 text-amber-700 transition-colors hover:bg-amber-200"
                   >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
-                  <div className="relative group">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors">
-                      <Download className="w-4 h-4" />
+                  <div className="group relative">
+                    <button className="flex items-center gap-2 rounded-lg bg-amber-100 px-4 py-2 text-amber-700 transition-colors hover:bg-amber-200">
+                      <Download className="h-4 w-4" />
                       Export
                     </button>
-                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                      <button onClick={() => handleExport('text')} className="w-full px-4 py-2 text-left hover:bg-amber-50 rounded-t-lg">Text</button>
-                      <button onClick={() => handleExport('markdown')} className="w-full px-4 py-2 text-left hover:bg-amber-50">Markdown</button>
-                      <button onClick={() => handleExport('json')} className="w-full px-4 py-2 text-left hover:bg-amber-50 rounded-b-lg">JSON</button>
+                    <div className="invisible absolute right-0 z-10 mt-2 w-32 rounded-lg bg-white opacity-0 shadow-lg transition-all group-hover:visible group-hover:opacity-100">
+                      <button
+                        onClick={() => handleExport('text')}
+                        className="w-full rounded-t-lg px-4 py-2 text-left hover:bg-amber-50"
+                      >
+                        Text
+                      </button>
+                      <button
+                        onClick={() => handleExport('markdown')}
+                        className="w-full px-4 py-2 text-left hover:bg-amber-50"
+                      >
+                        Markdown
+                      </button>
+                      <button
+                        onClick={() => handleExport('json')}
+                        className="w-full rounded-b-lg px-4 py-2 text-left hover:bg-amber-50"
+                      >
+                        JSON
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -480,55 +576,77 @@ export default function PromptOptimizer() {
 
             {/* Quality Score */}
             {qualityScore !== null && (
-              <div className="mb-4 p-3 bg-amber-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-700">Quality Score</span>
-                  <span className="text-lg font-bold text-amber-600">{qualityScore}%</span>
+              <div className="mb-4 rounded-lg bg-amber-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">
+                    Quality Score
+                  </span>
+                  <span className="text-lg font-bold text-amber-600">
+                    {qualityScore}%
+                  </span>
                 </div>
-                <div className="w-full bg-amber-200 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-amber-200">
                   <div
-                    className="bg-amber-600 h-2 rounded-full transition-all duration-500"
+                    className="h-2 rounded-full bg-amber-600 transition-all duration-500"
                     style={{ width: `${qualityScore}%` }}
                   />
                 </div>
               </div>
             )}
 
-            <div className="h-64 overflow-y-auto p-4 border-2 border-amber-200 rounded-lg bg-amber-50">
+            <div className="h-64 overflow-y-auto rounded-lg border-2 border-amber-200 bg-amber-50 p-4">
               {displayedPrompt ? (
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">{displayedPrompt}</pre>
+                <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+                  {displayedPrompt}
+                </pre>
               ) : optimizedPrompt ? (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex h-full items-center justify-center">
                   <div className="animate-pulse text-amber-600">Loading...</div>
                 </div>
               ) : (
-                <p className="text-gray-400 italic">Your optimized prompt will appear here...</p>
+                <p className="italic text-gray-400">
+                  Your optimized prompt will appear here...
+                </p>
               )}
             </div>
           </div>
         </div>
 
         {/* Example Section */}
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Try These Examples</h3>
-          <div className="grid md:grid-cols-3 gap-4">
+        <div className="mt-8 rounded-lg bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800">
+            Try These Examples
+          </h3>
+          <div className="grid gap-4 md:grid-cols-3">
             <button
               onClick={() => setInputPrompt('explain machine learning to me')}
-              className="p-4 border-2 border-amber-200 hover:border-amber-400 rounded-lg text-left transition-colors"
+              className="rounded-lg border-2 border-amber-200 p-4 text-left transition-colors hover:border-amber-400"
             >
-              <p className="text-sm text-gray-700">explain machine learning to me</p>
+              <p className="text-sm text-gray-700">
+                explain machine learning to me
+              </p>
             </button>
             <button
-              onClick={() => setInputPrompt('how do I start a podcast? what equipment do I need?')}
-              className="p-4 border-2 border-amber-200 hover:border-amber-400 rounded-lg text-left transition-colors"
+              onClick={() =>
+                setInputPrompt(
+                  'how do I start a podcast? what equipment do I need?'
+                )
+              }
+              className="rounded-lg border-2 border-amber-200 p-4 text-left transition-colors hover:border-amber-400"
             >
-              <p className="text-sm text-gray-700">how do I start a podcast? what equipment do I need?</p>
+              <p className="text-sm text-gray-700">
+                how do I start a podcast? what equipment do I need?
+              </p>
             </button>
             <button
-              onClick={() => setInputPrompt('write me a business plan for a coffee shop')}
-              className="p-4 border-2 border-amber-200 hover:border-amber-400 rounded-lg text-left transition-colors"
+              onClick={() =>
+                setInputPrompt('write me a business plan for a coffee shop')
+              }
+              className="rounded-lg border-2 border-amber-200 p-4 text-left transition-colors hover:border-amber-400"
             >
-              <p className="text-sm text-gray-700">write me a business plan for a coffee shop</p>
+              <p className="text-sm text-gray-700">
+                write me a business plan for a coffee shop
+              </p>
             </button>
           </div>
         </div>

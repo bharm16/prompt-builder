@@ -1,7 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, ArrowRight, Lightbulb, MapPin, User, Calendar, Zap, Palette, Loader2, X, RefreshCw } from 'lucide-react';
+import {
+  Sparkles,
+  ArrowRight,
+  Lightbulb,
+  MapPin,
+  User,
+  Calendar,
+  Zap,
+  Palette,
+  Loader2,
+  X,
+  RefreshCw,
+} from 'lucide-react';
 
-export default function CreativeBrainstorm({ onConceptComplete, initialConcept = '' }) {
+export default function CreativeBrainstorm({
+  onConceptComplete,
+  initialConcept = '',
+}) {
   const [concept, setConcept] = useState(initialConcept);
   const [elements, setElements] = useState({
     subject: '',
@@ -10,7 +25,7 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
     time: '',
     mood: '',
     style: '',
-    event: ''
+    event: '',
   });
   const [activeElement, setActiveElement] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
@@ -24,60 +39,76 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
       label: 'Subject/Character',
       placeholder: 'Who or what is the main focus?',
       color: 'blue',
-      examples: ['person', 'product', 'animal', 'vehicle', 'object']
+      examples: ['person', 'product', 'animal', 'vehicle', 'object'],
     },
     action: {
       icon: Zap,
       label: 'Action/Activity',
       placeholder: 'What is happening?',
       color: 'purple',
-      examples: ['walking', 'floating', 'exploding', 'transforming', 'dancing']
+      examples: ['walking', 'floating', 'exploding', 'transforming', 'dancing'],
     },
     location: {
       icon: MapPin,
       label: 'Location/Setting',
       placeholder: 'Where does this take place?',
       color: 'green',
-      examples: ['urban street', 'mountain peak', 'underwater', 'space', 'studio']
+      examples: [
+        'urban street',
+        'mountain peak',
+        'underwater',
+        'space',
+        'studio',
+      ],
     },
     time: {
       icon: Calendar,
       label: 'Time/Period',
       placeholder: 'When does this happen?',
       color: 'orange',
-      examples: ['golden hour', 'midnight', 'future', 'past', 'present']
+      examples: ['golden hour', 'midnight', 'future', 'past', 'present'],
     },
     mood: {
       icon: Palette,
       label: 'Mood/Atmosphere',
       placeholder: 'What feeling should it evoke?',
       color: 'pink',
-      examples: ['dramatic', 'peaceful', 'energetic', 'mysterious', 'romantic']
+      examples: ['dramatic', 'peaceful', 'energetic', 'mysterious', 'romantic'],
     },
     style: {
       icon: Sparkles,
       label: 'Visual Style',
       placeholder: 'What artistic style?',
       color: 'indigo',
-      examples: ['cinematic', 'documentary', 'anime', 'abstract', 'vintage']
+      examples: ['cinematic', 'documentary', 'anime', 'abstract', 'vintage'],
     },
     event: {
       icon: Lightbulb,
       label: 'Event/Context',
-      placeholder: 'What\'s the occasion or context?',
+      placeholder: "What's the occasion or context?",
       color: 'yellow',
-      examples: ['product launch', 'celebration', 'demonstration', 'transformation', 'reveal']
-    }
+      examples: [
+        'product launch',
+        'celebration',
+        'demonstration',
+        'transformation',
+        'reveal',
+      ],
+    },
   };
 
   const colorClasses = {
     blue: 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100',
-    purple: 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100',
+    purple:
+      'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100',
     green: 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100',
-    orange: 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100',
+    orange:
+      'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100',
     pink: 'bg-pink-50 border-pink-300 text-pink-700 hover:bg-pink-100',
-    indigo: 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100',
-    yellow: 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100'
+    indigo:
+      'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100',
+    yellow:
+      'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100',
   };
 
   // Watch for changes in other elements when suggestions panel is open
@@ -89,7 +120,7 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
 
     // Check if any OTHER element changed (not the active one)
     const previousElements = previousElementsRef.current;
-    const hasOtherElementChanged = Object.keys(elements).some(key => {
+    const hasOtherElementChanged = Object.keys(elements).some((key) => {
       if (key === activeElement) return false; // Skip the active element
       return elements[key] !== previousElements[key];
     });
@@ -113,16 +144,19 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
 
-      const response = await fetch('http://localhost:3001/api/get-creative-suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          elementType,
-          currentValue: elements[elementType],
-          context,
-          concept
-        })
-      });
+      const response = await fetch(
+        'http://localhost:3001/api/get-creative-suggestions',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            elementType,
+            currentValue: elements[elementType],
+            context,
+            concept,
+          }),
+        }
+      );
 
       if (!response.ok) throw new Error('Failed to fetch suggestions');
 
@@ -138,9 +172,9 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
 
   const handleSuggestionClick = (suggestion) => {
     if (activeElement) {
-      setElements(prev => ({
+      setElements((prev) => ({
         ...prev,
-        [activeElement]: suggestion.text
+        [activeElement]: suggestion.text,
       }));
       setActiveElement(null);
       setSuggestions([]);
@@ -157,34 +191,34 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
     onConceptComplete(finalConcept, elements);
   };
 
-  const filledCount = Object.values(elements).filter(v => v).length;
+  const filledCount = Object.values(elements).filter((v) => v).length;
   const isReadyToGenerate = filledCount >= 3;
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="mx-auto w-full max-w-4xl">
+      <div className="mb-8 text-center">
+        <h2 className="mb-2 text-3xl font-bold text-gray-900">
           Build Your Video Concept
         </h2>
         <p className="text-gray-600">
-          Define the basic elements first, then we'll add technical details
+          Define the basic elements first, then we&apos;ll add technical details
         </p>
       </div>
 
-      <div className="mb-8 bg-white rounded-xl shadow-md border-2 border-gray-200 p-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+      <div className="mb-8 rounded-xl border-2 border-gray-200 bg-white p-6 shadow-md">
+        <label className="mb-2 block text-sm font-semibold text-gray-700">
           Quick Concept (Optional)
         </label>
         <textarea
           value={concept}
           onChange={(e) => setConcept(e.target.value)}
           placeholder="Describe your video idea in a sentence or two... Or use the element builder below"
-          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none resize-none"
+          className="w-full resize-none rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none"
           rows={3}
         />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 mb-8">
+      <div className="mb-8 grid gap-4 md:grid-cols-2">
         {Object.entries(elementConfig).map(([key, config]) => {
           const Icon = config.icon;
           const isActive = activeElement === key;
@@ -193,22 +227,28 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
           return (
             <div
               key={key}
-              className={`relative bg-white rounded-xl shadow-md border-2 transition-all ${
+              className={`relative rounded-xl border-2 bg-white shadow-md transition-all ${
                 isActive
                   ? 'border-blue-500 ring-2 ring-blue-200'
                   : isFilled
-                  ? 'border-green-400'
-                  : 'border-gray-200'
+                    ? 'border-green-400'
+                    : 'border-gray-200'
               }`}
             >
               <div className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`p-2 rounded-lg border-2 ${colorClasses[config.color]}`}>
-                    <Icon className="w-4 h-4" />
+                <div className="mb-2 flex items-center gap-2">
+                  <div
+                    className={`rounded-lg border-2 p-2 ${colorClasses[config.color]}`}
+                  >
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <h3 className="font-semibold text-gray-900">{config.label}</h3>
+                  <h3 className="font-semibold text-gray-900">
+                    {config.label}
+                  </h3>
                   {isFilled && (
-                    <span className="ml-auto text-xs text-green-600 font-medium">✓ Set</span>
+                    <span className="ml-auto text-xs font-medium text-green-600">
+                      ✓ Set
+                    </span>
                   )}
                 </div>
 
@@ -216,14 +256,19 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
                   <input
                     type="text"
                     value={elements[key]}
-                    onChange={(e) => setElements(prev => ({ ...prev, [key]: e.target.value }))}
+                    onChange={(e) =>
+                      setElements((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                      }))
+                    }
                     onFocus={() => {
                       if (suggestions.length === 0 || activeElement !== key) {
                         fetchSuggestionsForElement(key);
                       }
                     }}
                     placeholder={config.placeholder}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
@@ -231,17 +276,19 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
                   {config.examples.slice(0, 3).map((example, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setElements(prev => ({ ...prev, [key]: example }))}
-                      className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+                      onClick={() =>
+                        setElements((prev) => ({ ...prev, [key]: example }))
+                      }
+                      className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-200"
                     >
                       {example}
                     </button>
                   ))}
                   <button
                     onClick={() => fetchSuggestionsForElement(key)}
-                    className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded-full text-blue-600 transition-colors font-medium"
+                    className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-200"
                   >
-                    <Sparkles className="w-3 h-3 inline mr-1" />
+                    <Sparkles className="mr-1 inline h-3 w-3" />
                     More
                   </button>
                 </div>
@@ -252,19 +299,19 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
       </div>
 
       {activeElement && (
-        <div className="mb-8 bg-white rounded-xl shadow-lg border-2 border-blue-300 p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 rounded-xl border-2 border-blue-300 bg-white p-6 shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">
-              <Sparkles className="w-5 h-5 inline text-blue-600 mr-2" />
+              <Sparkles className="mr-2 inline h-5 w-5 text-blue-600" />
               Suggestions for {elementConfig[activeElement].label}
             </h3>
             <div className="flex items-center gap-2">
               {needsRefresh && !isLoadingSuggestions && (
                 <button
                   onClick={() => fetchSuggestionsForElement(activeElement)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm font-medium"
+                  className="flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-200"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="h-4 w-4" />
                   Refresh
                 </button>
               )}
@@ -276,33 +323,36 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
                 }}
                 className="text-sm text-gray-500 hover:text-gray-700"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
 
           {needsRefresh && !isLoadingSuggestions && (
-            <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+            <div className="mb-4 rounded-lg border-2 border-yellow-200 bg-yellow-50 p-3">
               <p className="text-sm text-yellow-800">
-                💡 Other elements have changed. Click "Refresh" to get updated suggestions based on your new context.
+                💡 Other elements have changed. Click &quot;Refresh&quot; to get
+                updated suggestions based on your new context.
               </p>
             </div>
           )}
 
           {isLoadingSuggestions ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Finding creative options...</p>
+            <div className="py-8 text-center">
+              <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-600" />
+              <p className="text-sm text-gray-600">
+                Finding creative options...
+              </p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {suggestions.map((suggestion, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="text-left p-4 border-2 border-gray-200 hover:border-blue-400 rounded-lg transition-all hover:shadow-md"
+                  className="rounded-lg border-2 border-gray-200 p-4 text-left transition-all hover:border-blue-400 hover:shadow-md"
                 >
-                  <div className="font-semibold text-gray-900 mb-1">
+                  <div className="mb-1 font-semibold text-gray-900">
                     {suggestion.text}
                   </div>
                   {suggestion.explanation && (
@@ -317,8 +367,8 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-md border-2 border-blue-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-md">
+        <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-gray-900">Concept Progress</h3>
             <p className="text-sm text-gray-600">
@@ -327,14 +377,16 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">{Math.round((filledCount / 7) * 100)}%</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {Math.round((filledCount / 7) * 100)}%
+            </div>
             <div className="text-xs text-gray-600">Complete</div>
           </div>
         </div>
 
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+        <div className="mb-4 h-2 w-full rounded-full bg-gray-200">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className="h-2 rounded-full bg-blue-600 transition-all duration-300"
             style={{ width: `${(filledCount / 7) * 100}%` }}
           ></div>
         </div>
@@ -342,17 +394,15 @@ export default function CreativeBrainstorm({ onConceptComplete, initialConcept =
         <button
           onClick={handleGenerateTemplate}
           disabled={!isReadyToGenerate}
-          className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {isReadyToGenerate ? (
             <>
               Generate Detailed Template
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="h-5 w-5" />
             </>
           ) : (
-            <>
-              Fill at least 3 elements to continue
-            </>
+            <>Fill at least 3 elements to continue</>
           )}
         </button>
       </div>

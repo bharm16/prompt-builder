@@ -5,6 +5,7 @@ AI-powered prompt optimization tool using Claude Sonnet 4.
 ## Quick Start
 
 ### Option 1: Run both servers together
+
 ```bash
 ./start.sh
 ```
@@ -12,11 +13,13 @@ AI-powered prompt optimization tool using Claude Sonnet 4.
 ### Option 2: Run servers separately
 
 **Terminal 1 (Backend):**
+
 ```bash
 npm run server
 ```
 
 **Terminal 2 (Frontend):**
+
 ```bash
 npm run dev
 ```
