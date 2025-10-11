@@ -75,20 +75,22 @@ async function callClaudeAPI(systemPrompt, maxTokens = 4096) {
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP',
-});
+// Rate limiting (disabled in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP',
+  });
 
-const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // max 10 Claude API calls per minute
-  message: 'Too many API requests, please try again later',
-});
+  const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 10, // max 10 Claude API calls per minute
+    message: 'Too many API requests, please try again later',
+  });
 
-app.use('/api/', apiLimiter);
+  app.use('/api/', apiLimiter);
+}
 
 // Configure CORS properly
 app.use(
@@ -1375,6 +1377,12 @@ Each "text" should be SHORT and SPECIFIC (2-8 words). Each "explanation" should 
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
-});
+// Only start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
+  });
+}
+
+// Export app for testing
+export default app;
