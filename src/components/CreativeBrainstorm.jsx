@@ -148,7 +148,10 @@ export default function CreativeBrainstorm({
         'http://localhost:3001/api/get-creative-suggestions',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': 'dev-key-12345'
+          },
           body: JSON.stringify({
             elementType,
             currentValue: elements[elementType],

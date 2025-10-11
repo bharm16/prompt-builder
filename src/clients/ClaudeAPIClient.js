@@ -133,6 +133,7 @@ export class ClaudeAPIClient {
         body: JSON.stringify({
           model: options.model || this.model,
           max_tokens: options.maxTokens || 4096,
+          temperature: options.temperature !== undefined ? options.temperature : 1.0,
           system: systemPrompt,
           messages: [{ role: 'user', content: options.userMessage || 'Please proceed.' }],
         }),

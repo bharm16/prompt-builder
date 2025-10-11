@@ -1,5 +1,7 @@
 import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
+import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 
 /**
  * Service for generating creative suggestions for video elements
@@ -46,19 +48,32 @@ export class CreativeSuggestionService {
       concept,
     });
 
-    // Call Claude API
-    const response = await this.claudeClient.complete(systemPrompt, {
-      maxTokens: 2048,
+    // Define schema for validation
+    const schema = {
+      type: 'array',
+      items: {
+        required: ['text', 'explanation'],
+      },
+    };
+
+    // Get optimal temperature for creative suggestions
+    const temperature = TemperatureOptimizer.getOptimalTemperature('creative-suggestion', {
+      diversity: 'high',
+      precision: 'low',
     });
 
-    // Parse response
-    let suggestionsText = response.content[0].text;
-    suggestionsText = suggestionsText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-
-    const suggestions = JSON.parse(suggestionsText);
+    // Call Claude API with structured output enforcement
+    const suggestions = await StructuredOutputEnforcer.enforceJSON(
+      this.claudeClient,
+      systemPrompt,
+      {
+        schema,
+        isArray: true, // Expecting array of suggestions
+        maxTokens: 2048,
+        maxRetries: 2,
+        temperature,
+      }
+    );
 
     const result = { suggestions };
 
@@ -80,6 +95,30 @@ export class CreativeSuggestionService {
    * @private
    */
   buildSystemPrompt({ elementType, currentValue, context, concept }) {
+    const analysisProcess = `<analysis_process>
+Step 1: Understand the element type and creative requirements
+- Element: ${elementType}
+- Current value: ${currentValue || 'Not set - starting fresh'}
+- What makes this element type visually compelling?
+
+Step 2: Analyze existing context
+- Context: ${context || 'No constraints - full creative freedom'}
+- Concept: ${concept || 'Building from scratch'}
+- What constraints or themes are established?
+- What creative direction is implied?
+
+Step 3: Ensure contextual harmony
+- Do suggestions complement existing elements?
+- Is there thematic consistency?
+- Do suggestions avoid contradicting established context?
+
+Step 4: Maximize creative diversity
+- Generate 8 distinct, specific options
+- Vary tone, style, intensity, and approach
+- Each should offer a meaningfully different creative direction
+- Ensure all are immediately usable and visually evocative
+</analysis_process>`;
+
     const elementPrompts = {
       subject: `Generate creative suggestions for the SUBJECT/CHARACTER of a video.
 
@@ -190,28 +229,44 @@ Each event should provide NARRATIVE PURPOSE. Not "something happening" but "prod
     const basePrompt =
       elementPrompts[elementType] || elementPrompts.subject;
 
-    return `${basePrompt}
+    return `You are a creative video consultant specializing in contextually-aware, visually compelling suggestions.
 
-Based on all context provided, generate 8 creative, specific suggestions for this element.
+${analysisProcess}
 
-IMPORTANT: If there is existing context about other elements, make sure your suggestions COMPLEMENT and work well with those elements. For example:
-- If subject is "athlete", suggest actions like "parkour vaulting" not "sleeping"
-- If location is "underwater", suggest subjects like "scuba diver" not "race car"
-- If mood is "tense", suggest styles like "high-contrast noir" not "bright cheerful animation"
+${basePrompt}
 
-Return ONLY a JSON array in this exact format (no markdown, no code blocks):
+**Your Task:**
+Generate 8 creative, specific suggestions for this element.
+
+**Contextual Harmony Requirements:**
+✓ If existing context provided, ensure suggestions COMPLEMENT those elements
+✓ Maintain thematic consistency across all suggestions
+✓ Avoid contradictions (e.g., "underwater" location → don't suggest "race car" subject)
+✓ Consider implied tone and style from existing elements
+
+**Examples of Good Contextual Fit:**
+- Subject "athlete" → Actions like "parkour vaulting" not "sleeping"
+- Location "underwater" → Subjects like "scuba diver" not "race car"
+- Mood "tense" → Styles like "high-contrast noir" not "bright cheerful animation"
+
+**Quality Criteria:**
+✓ Each suggestion is SHORT and SPECIFIC (2-8 words)
+✓ All 8 suggestions are meaningfully different
+✓ Explanations clearly show contextual reasoning
+✓ Visually evocative and immediately usable
+
+**Output Format:**
+Return ONLY a JSON array (no markdown, no code blocks):
 
 [
-  {"text": "specific suggestion 1", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 2", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 3", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 4", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 5", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 6", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 7", "explanation": "why this works well with the context"},
-  {"text": "specific suggestion 8", "explanation": "why this works well with the context"}
-]
-
-Each "text" should be SHORT and SPECIFIC (2-8 words). Each "explanation" should be a brief sentence about why it fits.`;
+  {"text": "specific suggestion 1", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 2", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 3", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 4", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 5", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 6", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 7", "explanation": "why this works with the context"},
+  {"text": "specific suggestion 8", "explanation": "why this works with the context"}
+]`;
   }
 }

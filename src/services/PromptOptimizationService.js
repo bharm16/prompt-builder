@@ -1,5 +1,7 @@
 import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
+import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
+import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
 
 /**
  * Service for optimizing prompts across different modes
@@ -17,9 +19,10 @@ export class PromptOptimizationService {
    * @param {string} params.prompt - Original prompt
    * @param {string} params.mode - Optimization mode
    * @param {Object} params.context - Additional context
+   * @param {boolean} params.useConstitutionalAI - Whether to apply Constitutional AI review (default: false)
    * @returns {Promise<string>} Optimized prompt
    */
-  async optimize({ prompt, mode, context }) {
+  async optimize({ prompt, mode, context, useConstitutionalAI = false }) {
     logger.info('Optimizing prompt', { mode, promptLength: prompt?.length });
 
     // Check cache first
@@ -41,13 +44,45 @@ export class PromptOptimizationService {
     // Determine timeout based on mode (video prompts are much larger and need more time)
     const timeout = mode === 'video' ? 90000 : 30000; // 90s for video, 30s for others
 
+    // Get optimal temperature for the task
+    const temperature = TemperatureOptimizer.getOptimalTemperature('optimization', {
+      diversity: 'medium',
+      precision: 'medium',
+    });
+
     // Call Claude API
     const response = await this.claudeClient.complete(systemPrompt, {
       maxTokens: 4096,
       timeout,
+      temperature,
     });
 
-    const optimizedText = response.content[0].text;
+    let optimizedText = response.content[0].text;
+
+    // Apply Constitutional AI review if requested
+    if (useConstitutionalAI) {
+      logger.debug('Applying Constitutional AI review', { mode });
+
+      const principles = ConstitutionalAI.getPrinciplesForDomain('technical-content');
+      const reviewResult = await ConstitutionalAI.applyConstitutionalReview(
+        this.claudeClient,
+        prompt,
+        optimizedText,
+        {
+          principles,
+          autoRevise: true,
+          threshold: 0.7,
+        }
+      );
+
+      optimizedText = reviewResult.output;
+
+      if (reviewResult.revised) {
+        logger.info('Constitutional AI revised the output', {
+          issuesFound: reviewResult.improvements.length,
+        });
+      }
+    }
 
     // Validate response
     this.validateResponse(optimizedText);
@@ -60,6 +95,7 @@ export class PromptOptimizationService {
     logger.info('Prompt optimization completed', {
       mode,
       outputLength: optimizedText.length,
+      constitutionalReview: useConstitutionalAI,
     });
 
     return optimizedText;
@@ -102,27 +138,67 @@ export class PromptOptimizationService {
    * @private
    */
   getReasoningPrompt(prompt) {
-    return `You are optimizing prompts for reasoning models. These models think deeply before responding, so the prompt should be clear and direct without over-structuring their reasoning process.
+    return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and encourage systematic thinking.
 
-Transform this query into an optimized reasoning prompt:
+<reasoning_optimization_process>
+First, analyze the user's query to identify:
+1. Core problem or question to be solved
+2. Implicit assumptions or constraints
+3. Expected output format and quality criteria
+4. Cognitive complexity level required
+5. Domain-specific knowledge needed
 
-**Task**
-[Clear, concise problem statement - what needs to be solved or understood]
+Then, structure an optimized prompt that:
+- States the problem with precision and clarity
+- Makes implicit constraints explicit
+- Provides scaffolding for systematic reasoning
+- Includes verification checkpoints
+- Defines clear success metrics
+</reasoning_optimization_process>
 
-**Key Constraints**
-[Important limitations, requirements, or parameters]
+Transform this query: "${prompt}"
 
-**Success Criteria**
-[How to evaluate if the solution/answer is good]
+Create an optimized reasoning prompt with this structure:
 
-**Reasoning Guidance** (optional)
-[Only if needed: "Consider edge cases", "Think about tradeoffs", "Verify assumptions"]
+**OBJECTIVE**
+[One clear sentence stating what needs to be accomplished]
 
-Query: "${prompt}"
+**PROBLEM STATEMENT**
+[Precise articulation of the problem, including scope and boundaries]
 
-IMPORTANT: Keep it minimal. Trust the reasoning model to think deeply. Only add structure where it clarifies the problem. Ensure the optimized prompt is self-contained and can be used directly without further editing.
+**GIVEN CONSTRAINTS**
+[Explicit limitations, requirements, assumptions, or parameters that must be satisfied]
 
-Provide ONLY the optimized prompt in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+**REASONING APPROACH**
+[Suggested methodology or framework for systematic thinking:
+- Break down into sub-problems
+- Identify key decision points
+- Consider edge cases and exceptions
+- Verify assumptions
+- Think through tradeoffs]
+
+**VERIFICATION CRITERIA**
+[Specific checkpoints to validate the solution:
+- Completeness checks
+- Logical consistency tests
+- Constraint satisfaction verification
+- Edge case validation]
+
+**SUCCESS METRICS**
+[How to evaluate solution quality - be specific and measurable]
+
+**EXPECTED OUTPUT**
+[Exact format and structure of the final answer]
+
+CRITICAL INSTRUCTIONS:
+1. Be explicit rather than implicit - reasoning models benefit from clarity
+2. Include verification steps to encourage self-checking
+3. Structure the prompt to guide systematic thinking without over-constraining
+4. Make the prompt self-contained and immediately usable
+5. Use precise language and avoid ambiguity
+6. Balance structure with flexibility for deep reasoning
+
+Provide ONLY the optimized prompt following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**OBJECTIVE**".`;
   }
 
   /**
@@ -130,37 +206,76 @@ Provide ONLY the optimized prompt in the specified format. No preamble, no expla
    * @private
    */
   getResearchPrompt(prompt) {
-    return `You are a research methodology expert. Transform this into a comprehensive research plan:
+    return `You are a research methodology expert specializing in comprehensive, actionable research planning.
 
-**Research Objective**
-[Clear statement of what needs to be investigated]
+<research_planning_process>
+Step 1: Understand the research domain and scope
+- Query: "${prompt}"
+- What field or domain does this belong to?
+- What is the depth and breadth of investigation required?
+- Is this exploratory, explanatory, or evaluative research?
 
-**Core Research Questions**
-[5-7 specific, answerable questions in priority order]
+Step 2: Identify key research components
+- What are the core questions that must be answered?
+- What methodologies best suit this inquiry?
+- What types of sources will be most valuable?
+- What challenges might arise?
 
-**Methodology**
-[Research approach and methods to be used]
+Step 3: Structure a systematic approach
+- Prioritize questions by importance and dependency
+- Define clear success criteria
+- Establish a framework for synthesis
+- Anticipate obstacles and plan mitigations
 
-**Information Sources**
-[Specific types of sources with quality criteria]
+Step 4: Ensure actionability
+- Make all elements specific and immediately usable
+- Provide clear guidance for execution
+- Define deliverable expectations
+</research_planning_process>
 
-**Success Metrics**
-[How to determine if research is sufficient]
+Transform this query into a comprehensive research plan: "${prompt}"
 
-**Synthesis Framework**
-[How to analyze and integrate findings across sources]
+Create an optimized research plan with this structure:
 
-**Deliverable Format**
-[Structure and style of the final output]
+**RESEARCH OBJECTIVE**
+[One clear, specific statement of what needs to be investigated and why]
 
-**Anticipated Challenges**
-[Potential obstacles and mitigation strategies]
+**CORE RESEARCH QUESTIONS**
+[5-7 specific, answerable questions in priority order - each should advance understanding]
 
-Query: "${prompt}"
+**METHODOLOGY**
+[Specific research approaches and methods: literature review, comparative analysis, case studies, interviews, experiments, etc.]
 
-Make this actionable and specific. Ensure the research plan is self-contained and can be used directly without further editing.
+**INFORMATION SOURCES**
+[Specific types of sources with quality criteria:
+- Academic: journals, papers, textbooks
+- Industry: reports, whitepapers, expert opinions
+- Primary: data, interviews, observations
+- Quality criteria for each source type]
 
-Provide ONLY the research plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+**SUCCESS METRICS**
+[Concrete measures to determine if research is sufficient and comprehensive]
+
+**SYNTHESIS FRAMEWORK**
+[Systematic approach to analyze and integrate findings:
+- How to organize information
+- How to identify patterns and themes
+- How to draw conclusions across sources]
+
+**DELIVERABLE FORMAT**
+[Precise structure and style requirements for the final output]
+
+**ANTICIPATED CHALLENGES**
+[Specific obstacles and practical mitigation strategies for each]
+
+CRITICAL INSTRUCTIONS:
+1. Make every element actionable and specific (not generic)
+2. Ensure questions build on each other logically
+3. Tailor methodology to the specific research domain
+4. Provide practical, executable guidance
+5. Make this self-contained and immediately usable
+
+Provide ONLY the research plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**RESEARCH OBJECTIVE**".`;
   }
 
   /**
@@ -168,37 +283,83 @@ Provide ONLY the research plan in the specified format. No preamble, no explanat
    * @private
    */
   getSocraticPrompt(prompt) {
-    return `You are a Socratic learning guide. Create a learning journey through strategic questioning:
+    return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions.
 
-**Learning Objective**
-[What the learner should understand by the end]
+<socratic_design_process>
+Step 1: Analyze the learning topic
+- Topic: "${prompt}"
+- What are the core concepts to be understood?
+- What prerequisite knowledge is needed?
+- What are common misconceptions?
 
-**Prior Knowledge Check**
-[2-3 questions to assess current understanding]
+Step 2: Map the learning journey
+- What sequence of questions will guide discovery?
+- How to scaffold from simple to complex?
+- What insights should emerge at each stage?
+- How to encourage active thinking vs passive recall?
 
-**Foundation Questions**
-[3-4 questions building core concepts]
+Step 3: Design question types
+- Prior knowledge: Assess starting point
+- Foundation: Build conceptual base
+- Deepening: Challenge and extend thinking
+- Application: Connect to real contexts
+- Metacognitive: Reflect on learning process
 
-**Deepening Questions**
-[4-5 questions that progressively challenge understanding]
+Step 4: Anticipate learner needs
+- What will confuse or mislead?
+- What examples will clarify?
+- What extensions will engage advanced learners?
+</socratic_design_process>
 
-**Application & Synthesis**
-[3-4 questions connecting concepts to real scenarios]
+Create a Socratic learning journey for: "${prompt}"
 
-**Metacognitive Reflection**
-[2-3 questions about the learning process itself: "What surprised you?", "What's still unclear?"]
+Design an optimized learning plan with this structure:
 
-**Common Misconceptions**
-[2-3 misconceptions to address through questioning]
+**LEARNING OBJECTIVE**
+[Clear, specific statement of what the learner will understand and be able to do by the end]
 
-**Extension Paths**
-[Suggested directions for continued exploration]
+**PRIOR KNOWLEDGE CHECK**
+[2-3 diagnostic questions to assess current understanding and identify gaps]
 
-Topic: "${prompt}"
+**FOUNDATION QUESTIONS**
+[3-4 carefully sequenced questions that build core conceptual understanding:
+- Start with concrete, accessible entry points
+- Progress toward abstract principles
+- Each question should reveal something new]
 
-Focus on questions that spark insight, not just recall. Ensure the learning plan is self-contained and can be used directly without further editing.
+**DEEPENING QUESTIONS**
+[4-5 progressively challenging questions that extend understanding:
+- Explore edge cases and exceptions
+- Examine relationships and dependencies
+- Challenge assumptions
+- Encourage multiple perspectives]
 
-Provide ONLY the learning plan in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+**APPLICATION & SYNTHESIS**
+[3-4 questions connecting concepts to real-world scenarios:
+- Practical applications
+- Transfer to new contexts
+- Integration of multiple concepts]
+
+**METACOGNITIVE REFLECTION**
+[2-3 questions about the learning process itself:
+- "What surprised or challenged you?"
+- "What connections did you make?"
+- "What remains unclear or intriguing?"]
+
+**COMMON MISCONCEPTIONS**
+[2-3 frequent misconceptions with questions designed to surface and correct them]
+
+**EXTENSION PATHS**
+[Suggested directions for continued exploration based on learner interest and mastery]
+
+CRITICAL INSTRUCTIONS:
+1. Questions should spark insight and discovery, not just recall
+2. Build complexity gradually but meaningfully
+3. Encourage active thinking at every step
+4. Avoid questions with simple yes/no answers
+5. Make this self-contained and immediately usable
+
+Provide ONLY the learning plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**LEARNING OBJECTIVE**".`;
   }
 
   /**
@@ -369,37 +530,82 @@ Provide ONLY the video prompt package in this format. No preamble, no explanatio
    * @private
    */
   getDefaultPrompt(prompt) {
-    return `You are a prompt engineering expert. Transform this rough prompt into a clear, effective prompt:
+    return `You are a prompt engineering expert specializing in transforming rough ideas into clear, effective, production-ready prompts.
 
-**Goal**
-[Single sentence stating what the prompt aims to achieve]
+<prompt_optimization_process>
+Step 1: Understand the user's intent
+- Original prompt: "${prompt}"
+- What is the user trying to accomplish?
+- What domain or context does this belong to?
+- What output are they expecting?
 
-**Context**
-[Essential background information and assumptions about the task/user]
+Step 2: Identify gaps and ambiguities
+- What information is missing or unclear?
+- What assumptions are implicit?
+- What could be misinterpreted?
+- What constraints should be explicit?
 
-**Requirements**
-[Specific constraints, format requirements, or must-have elements]
+Step 3: Structure for clarity and completeness
+- Define clear goal and success criteria
+- Make all requirements explicit
+- Provide actionable instructions
+- Specify output format precisely
+- Add examples where helpful
+- Note what to avoid
 
-**Instructions**
-[Step-by-step guidance on how to approach the task, if applicable]
+Step 4: Optimize for effectiveness
+- Ensure self-contained and immediately usable
+- Balance structure with flexibility
+- Use clear, unambiguous language
+- Remove unnecessary complexity
+</prompt_optimization_process>
 
-**Success Criteria**
-[How to evaluate if the response is good]
+Transform this original prompt: "${prompt}"
 
-**Output Format**
-[Exact structure the response should follow]
+Create an optimized prompt with this structure:
 
-**Examples** (if helpful)
-[Brief example showing desired output style]
+**GOAL**
+[One clear, specific sentence stating what this prompt aims to achieve]
 
-**Avoid**
-[Common pitfalls or things to explicitly not do]
+**CONTEXT**
+[Essential background information, domain knowledge, and assumptions needed to complete the task effectively]
 
-Original prompt: "${prompt}"
+**REQUIREMENTS**
+[Specific, explicit constraints, format requirements, or must-have elements:
+- Technical requirements
+- Content requirements
+- Style/tone requirements
+- Quality standards]
 
-Create a prompt that's self-contained and immediately usable. Ensure the optimized prompt can be used directly without further editing.
+**INSTRUCTIONS**
+[Clear, step-by-step guidance on how to approach the task:
+- Break down complex tasks into steps
+- Specify methodology or approach
+- Indicate priorities or sequence]
 
-Provide ONLY the optimized prompt in the specified format. No preamble, no explanation, no meta-commentary about what you're doing.`;
+**SUCCESS CRITERIA**
+[Concrete, measurable ways to evaluate if the response is high-quality:
+- Completeness checks
+- Quality indicators
+- Evaluation criteria]
+
+**OUTPUT FORMAT**
+[Exact structure, style, and format the response should follow - be specific]
+
+**EXAMPLES** (if helpful)
+[Brief, concrete example(s) showing desired output style and quality]
+
+**AVOID**
+[Common pitfalls, misconceptions, or things to explicitly not do]
+
+CRITICAL INSTRUCTIONS:
+1. Make the prompt self-contained and immediately usable
+2. Be specific rather than vague or generic
+3. Use clear, unambiguous language
+4. Ensure all implicit requirements are made explicit
+5. Balance structure with appropriate flexibility
+
+Provide ONLY the optimized prompt following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**GOAL**".`;
   }
 
   /**

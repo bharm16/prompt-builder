@@ -2,6 +2,7 @@ import NodeCache from 'node-cache';
 import crypto from 'crypto';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
+import { SemanticCacheEnhancer } from '../utils/SemanticCacheEnhancer.js';
 
 /**
  * Cache service for storing API responses
@@ -44,9 +45,22 @@ export class CacheService {
    * Generate cache key from data
    * @param {string} namespace - Cache namespace
    * @param {Object} data - Data to hash
+   * @param {Object} options - Options for semantic caching
    * @returns {string} Cache key
    */
-  generateKey(namespace, data) {
+  generateKey(namespace, data, options = {}) {
+    const { useSemantic = true, normalizeWhitespace = true, ignoreCase = true, sortKeys = true } = options;
+
+    // Use semantic caching by default for better hit rates
+    if (useSemantic) {
+      return SemanticCacheEnhancer.generateSemanticKey(namespace, data, {
+        normalizeWhitespace,
+        ignoreCase,
+        sortKeys,
+      });
+    }
+
+    // Fallback to standard hashing
     const hash = crypto
       .createHash('sha256')
       .update(JSON.stringify(data))

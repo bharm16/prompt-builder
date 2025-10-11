@@ -86,7 +86,8 @@ export default function PromptOptimizer() {
       const response = await fetch('http://localhost:3001/api/optimize', {
         method: 'POST',
         headers: {
-          'content-type': 'application/json',
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345'
         },
         body: JSON.stringify({
           prompt: rough,

@@ -1,5 +1,7 @@
 import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
+import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 
 /**
  * Service for detecting scene changes in video prompts
@@ -52,19 +54,30 @@ export class SceneDetectionService {
       affectedFields,
     });
 
-    // Call Claude API
-    const response = await this.claudeClient.complete(systemPrompt, {
-      maxTokens: 2048,
+    // Define schema for validation
+    const schema = {
+      type: 'object',
+      required: ['isSceneChange', 'confidence', 'reasoning', 'suggestedUpdates'],
+    };
+
+    // Get optimal temperature for scene detection
+    const temperature = TemperatureOptimizer.getOptimalTemperature('scene-detection', {
+      diversity: 'low',
+      precision: 'high',
     });
 
-    // Parse response
-    let resultText = response.content[0].text;
-    resultText = resultText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-
-    const result = JSON.parse(resultText);
+    // Call Claude API with structured output enforcement
+    const result = await StructuredOutputEnforcer.enforceJSON(
+      this.claudeClient,
+      systemPrompt,
+      {
+        schema,
+        isArray: false, // Expecting object
+        maxTokens: 2048,
+        maxRetries: 2,
+        temperature,
+      }
+    );
 
     // Cache the result
     await cacheService.set(cacheKey, result, {
@@ -90,39 +103,70 @@ export class SceneDetectionService {
     fullPrompt,
     affectedFields,
   }) {
-    return `You are an expert video production assistant analyzing whether a field change represents a COMPLETE SCENE/ENVIRONMENT CHANGE that would require updating related fields.
+    return `You are an expert video production assistant with deep understanding of scene coherence and environmental compatibility.
 
-**Field that changed:** ${changedField}
-**Old value:** "${oldValue || 'Not set'}"
-**New value:** "${newValue}"
+<analysis_process>
+Step 1: Assess the magnitude of change
+- Old value: "${oldValue || 'Not set'}"
+- New value: "${newValue}"
+- Field: ${changedField}
+- Is this a refinement within the same environment, or a fundamental location/environment shift?
 
-**Full prompt context:**
+Step 2: Evaluate environmental compatibility
+- What environmental assumptions does the old value imply?
+- What environmental assumptions does the new value imply?
+- Are these compatible or contradictory?
+- Example: "coffee shop" → "vintage coffee shop" (compatible refinement)
+- Example: "coffee shop" → "underwater cave" (incompatible scene change)
+
+Step 3: Analyze impact on related fields
+- Review affected fields: ${JSON.stringify(affectedFields, null, 2)}
+- For each field, would current values still make sense?
+- Which fields would become nonsensical or incompatible?
+
+Step 4: Determine confidence level
+- HIGH: Clear and obvious scene change (indoor → outdoor, urban → nature, earth → space)
+- MEDIUM: Significant change but some overlap (city street → suburban street)
+- LOW: Minor refinement or ambiguous case
+
+Step 5: Generate suggestions if needed
+- If scene change detected, suggest coherent values for ALL affected fields
+- Ensure suggestions maintain thematic and visual consistency with new environment
+</analysis_process>
+
+**Field Changed:** ${changedField}
+**Old Value:** "${oldValue || 'Not set'}"
+**New Value:** "${newValue}"
+
+**Full Prompt Context:**
 ${fullPrompt.substring(0, 1500)}
 
-**Your task:**
-Determine if this change represents a COMPLETE SCENE CHANGE (like changing from "coffee shop interior" to "underwater cave" or "urban street" to "mountain peak").
-
-**Analysis criteria:**
-- Does the new value describe a fundamentally different ENVIRONMENT/LOCATION than the old value?
-- Would this change make the current values in related fields (architectural details, atmospheric conditions, background elements, etc.) INCOMPATIBLE or NONSENSICAL?
-- Is this a minor refinement (e.g., "modern coffee shop" → "vintage coffee shop") or a major scene change (e.g., "coffee shop" → "underwater cave")?
-
-**Related fields that might need updating if this is a scene change:**
+**Potentially Affected Fields:**
 ${JSON.stringify(affectedFields, null, 2)}
 
-Return ONLY a JSON object in this exact format (no markdown, no code blocks):
+**Your Task:**
+Determine if this represents a COMPLETE SCENE/ENVIRONMENT CHANGE requiring updates to related fields.
+
+**Scene Change Criteria:**
+✓ Fundamentally different environment/location (not just refinement)
+✓ Would make existing related field values incompatible or nonsensical
+✓ Requires rethinking architectural, atmospheric, or environmental details
+
+**Output Format:**
+Return ONLY a JSON object (no markdown, no code blocks):
 
 {
-  "isSceneChange": true or false,
-  "confidence": "high" or "medium" or "low",
-  "reasoning": "brief explanation of why this is or isn't a scene change",
+  "isSceneChange": true,
+  "confidence": "high",
+  "reasoning": "clear explanation of the environmental incompatibility",
   "suggestedUpdates": {
-    "field1": "suggested new value that fits the new environment",
-    "field2": "suggested new value that fits the new environment"
+    "field1": "specific value fitting new environment",
+    "field2": "specific value fitting new environment"
   }
 }
 
-If isSceneChange is FALSE, return suggestedUpdates as an empty object {}.
-If isSceneChange is TRUE, provide specific suggested values for ALL affected fields that would fit the new environment.`;
+**Important:**
+- If isSceneChange is FALSE: return suggestedUpdates as empty object {}
+- If isSceneChange is TRUE: provide specific suggested values for ALL affected fields`;
   }
 }
