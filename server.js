@@ -1,21 +1,117 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { validateEnv } from './utils/validateEnv.js';
+import {
+  promptSchema,
+  suggestionSchema,
+  customSuggestionSchema,
+  sceneChangeSchema,
+  creativeSuggestionSchema
+} from './utils/validation.js';
 
 dotenv.config();
 
-const app = express();
-const PORT = 3001;
+// Validate environment variables at startup
+try {
+  validateEnv();
+} catch (error) {
+  console.error('❌ Environment validation failed:', error.message);
+  console.error('Please check your .env file. See .env.example for required variables.');
+  process.exit(1);
+}
 
-app.use(cors());
-app.use(express.json());
+const app = express();
+const PORT = process.env.PORT || 3001;
+const CLAUDE_TIMEOUT = parseInt(process.env.CLAUDE_TIMEOUT_MS) || 30000;
+
+// Helper function to make Claude API calls with timeout
+async function callClaudeAPI(systemPrompt, maxTokens = 4096) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens,
+        messages: [{
+          role: 'user',
+          content: systemPrompt
+        }]
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`API request failed: ${errorData}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - Claude API took too long to respond');
+    }
+    throw error;
+  }
+}
+
+// Security middleware
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP'
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // max 10 Claude API calls per minute
+  message: 'Too many API requests, please try again later'
+});
+
+app.use('/api/', apiLimiter);
+
+// Configure CORS properly
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL || 'https://yourdomain.com']
+    : ['http://localhost:5173', 'http://localhost:5174'],
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
 
 app.post('/api/optimize', async (req, res) => {
-  const { prompt, mode, context } = req.body;
+  console.log('📥 Received /api/optimize request');
+  console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
 
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
+  // Validate request body
+  const { error, value } = promptSchema.validate(req.body);
+  if (error) {
+    console.error('❌ Validation error:', error.details[0].message);
+    console.error('❌ Request body was:', JSON.stringify(req.body, null, 2));
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: error.details[0].message
+    });
   }
+
+  const { prompt, mode, context } = value;
 
   let systemPrompt = '';
 
@@ -513,13 +609,23 @@ function detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPro
 }
 
 app.post('/api/get-enhancement-suggestions', async (req, res) => {
-  const { highlightedText, contextBefore, contextAfter, fullPrompt, originalUserPrompt } = req.body;
+  console.log('📥 Received /api/get-enhancement-suggestions request');
+  console.log('📦 Request body keys:', Object.keys(req.body));
 
-  console.log('📥 Received enhancement request for:', highlightedText.slice(0, 50) + '...');
-
-  if (!highlightedText) {
-    return res.status(400).json({ error: 'Highlighted text is required' });
+  // Validate request body
+  const { error, value } = suggestionSchema.validate(req.body);
+  if (error) {
+    console.error('❌ Validation error:', error.details[0].message);
+    console.error('❌ Request body was:', JSON.stringify(req.body, null, 2));
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: error.details[0].message
+    });
   }
+
+  const { highlightedText, contextBefore, contextAfter, fullPrompt, originalUserPrompt } = value;
+
+  console.log('📥 Processing enhancement request for:', highlightedText.slice(0, 50) + '...');
 
   // Detect if this is a video prompt
   const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
@@ -722,13 +828,18 @@ Each "text" value should be a complete, self-contained replacement for the highl
 });
 
 app.post('/api/get-custom-suggestions', async (req, res) => {
-  const { highlightedText, customRequest, fullPrompt } = req.body;
+  // Validate request body
+  const { error, value } = customSuggestionSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: error.details[0].message
+    });
+  }
+
+  const { highlightedText, customRequest, fullPrompt } = value;
 
   console.log('📥 Received custom suggestion request:', customRequest);
-
-  if (!highlightedText || !customRequest) {
-    return res.status(400).json({ error: 'Highlighted text and custom request are required' });
-  }
 
   // Detect if this is a video prompt
   const isVideoPrompt = fullPrompt.includes('**Main Prompt:**') ||
@@ -811,16 +922,21 @@ Return ONLY a JSON array in this exact format (no markdown, no code blocks, no e
 });
 
 app.post('/api/detect-scene-change', async (req, res) => {
-  const { changedField, newValue, oldValue, fullPrompt, affectedFields } = req.body;
+  // Validate request body
+  const { error, value } = sceneChangeSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: error.details[0].message
+    });
+  }
+
+  const { changedField, newValue, oldValue, fullPrompt, affectedFields } = value;
 
   console.log('📥 Scene change detection request');
   console.log('Changed field:', changedField);
   console.log('Old value:', oldValue?.substring(0, 50));
   console.log('New value:', newValue?.substring(0, 50));
-
-  if (!changedField || !newValue) {
-    return res.status(400).json({ error: 'Changed field and new value are required' });
-  }
 
   // Detect if this represents a significant scene/environment change
   const aiPrompt = `You are an expert video production assistant analyzing whether a field change represents a COMPLETE SCENE/ENVIRONMENT CHANGE that would require updating related fields.
@@ -906,13 +1022,18 @@ If isSceneChange is TRUE, provide specific suggested values for ALL affected fie
 });
 
 app.post('/api/get-creative-suggestions', async (req, res) => {
-  const { elementType, currentValue, context, concept } = req.body;
+  // Validate request body
+  const { error, value } = creativeSuggestionSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: error.details[0].message
+    });
+  }
+
+  const { elementType, currentValue, context, concept } = value;
 
   console.log('📥 Creative suggestion request for:', elementType);
-
-  if (!elementType) {
-    return res.status(400).json({ error: 'Element type is required' });
-  }
 
   const elementPrompts = {
     subject: `Generate creative suggestions for the SUBJECT/CHARACTER of a video.
