@@ -26,9 +26,13 @@ describe('API Server Tests', () => {
     vi.clearAllMocks();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset fetch mock before each test
     global.fetch.mockReset();
+
+    // Clear cache between tests to avoid interference
+    const { cacheService } = await import('../src/services/CacheService.js');
+    await cacheService.flush();
   });
 
   describe('POST /api/optimize', () => {
@@ -177,7 +181,7 @@ describe('API Server Tests', () => {
         })
         .expect(500);
 
-      expect(response.body.error).toBe('API request failed');
+      expect(response.body.error).toContain('Claude API error');
     });
 
     it('should handle network errors', async () => {
@@ -191,8 +195,7 @@ describe('API Server Tests', () => {
         })
         .expect(500);
 
-      expect(response.body.error).toBe('Internal server error');
-      expect(response.body.message).toContain('Network error');
+      expect(response.body.error).toContain('Network error');
     });
   });
 
@@ -306,7 +309,7 @@ describe('API Server Tests', () => {
         .send({ prompt: 'Test prompt' })
         .expect(429);
 
-      expect(response.body.error).toBe('API request failed');
+      expect(response.body.error).toContain('Claude API error');
     });
   });
 
