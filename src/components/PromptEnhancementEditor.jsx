@@ -90,6 +90,7 @@ export default function PromptEnhancementEditor({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-API-Key': 'dev-key-12345'
           },
           body: JSON.stringify({
             highlightedText,
@@ -183,7 +184,10 @@ export default function PromptEnhancementEditor({
         'http://localhost:3001/api/detect-scene-change',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': 'dev-key-12345'
+          },
           body: JSON.stringify({
             changedField: 'Environment Type',
             oldValue,
@@ -294,6 +298,7 @@ export function SuggestionsPanel({ suggestionsData }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-API-Key': 'dev-key-12345'
           },
           body: JSON.stringify({
             highlightedText: selectedText,
