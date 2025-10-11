@@ -21,6 +21,10 @@ services:
       - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
       - CLAUDE_TIMEOUT_MS=30000
       - LOG_LEVEL=info
+      - ALLOWED_API_KEYS=${ALLOWED_API_KEYS}
+      - METRICS_TOKEN=${METRICS_TOKEN}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - FRONTEND_URL=${FRONTEND_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
@@ -82,7 +86,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana

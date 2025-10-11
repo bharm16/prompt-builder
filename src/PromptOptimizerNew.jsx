@@ -368,6 +368,7 @@ export default function ModernPromptOptimizer() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345',
         },
         body: JSON.stringify({
           prompt: prompt,
@@ -641,6 +642,7 @@ export default function ModernPromptOptimizer() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'X-API-Key': 'dev-key-12345',
             },
             body: JSON.stringify({
               highlightedText,

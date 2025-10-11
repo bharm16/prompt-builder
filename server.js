@@ -24,6 +24,7 @@ import { CreativeSuggestionService } from './src/services/CreativeSuggestionServ
 // Import middleware
 import { requestIdMiddleware } from './src/middleware/requestId.js';
 import { errorHandler } from './src/middleware/errorHandler.js';
+import { apiAuthMiddleware } from './src/middleware/apiAuth.js';
 
 // Import routes
 import { createAPIRoutes } from './src/routes/api.routes.js';
@@ -71,8 +72,50 @@ logger.info('All services initialized successfully');
 // Middleware Stack
 // ============================================================================
 
-// Security middleware
-app.use(helmet());
+// Security middleware - Enhanced Helmet configuration
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: [
+          "'self'",
+          'https://api.anthropic.com',
+          'https://*.firebaseapp.com',
+          'https://*.googleapis.com',
+          'https://*.google.com',
+        ],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: {
+      policy: 'strict-origin-when-cross-origin',
+    },
+    permittedCrossDomainPolicies: {
+      permittedPolicies: 'none',
+    },
+  })
+);
+
+// Additional security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  next();
+});
 
 // Compression middleware
 app.use(
@@ -103,19 +146,48 @@ if (process.env.NODE_ENV !== 'test') {
   logger.info('Rate limiting enabled');
 }
 
-// CORS configuration
+// Enhanced CORS configuration
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? [process.env.FRONTEND_URL || 'https://yourdomain.com']
-        : ['http://localhost:5173', 'http://localhost:5174'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const allowedOrigins =
+        process.env.NODE_ENV === 'production'
+          ? (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+              .split(',')
+              .map((o) => o.trim())
+              .filter(Boolean)
+          : ['http://localhost:5173', 'http://localhost:5174'];
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn('CORS blocked request from unauthorized origin', {
+          origin,
+          allowedOrigins,
+        });
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    exposedHeaders: ['X-Request-Id'],
+    maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 
-// Body parser
+// Body parsers with size limits
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.raw({ limit: '10mb' }));
+app.use(express.text({ limit: '10mb' }));
 
 // Request ID middleware
 app.use(requestIdMiddleware);
@@ -138,7 +210,7 @@ const healthRoutes = createHealthRoutes({
 });
 app.use('/', healthRoutes);
 
-// API routes
+// API routes with authentication
 const apiRoutes = createAPIRoutes({
   promptOptimizationService,
   questionGenerationService,
@@ -146,7 +218,7 @@ const apiRoutes = createAPIRoutes({
   sceneDetectionService,
   creativeSuggestionService,
 });
-app.use('/api', apiRoutes);
+app.use('/api', apiAuthMiddleware, apiRoutes);
 
 // 404 handler
 app.use((req, res) => {

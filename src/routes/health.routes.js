@@ -1,5 +1,6 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
 
 /**
  * Create health check routes
@@ -48,9 +49,10 @@ export function createHealthRoutes(dependencies) {
     });
   });
 
-  // GET /metrics - Prometheus metrics endpoint
+  // GET /metrics - Prometheus metrics endpoint (protected)
   router.get(
     '/metrics',
+    metricsAuthMiddleware,
     asyncHandler(async (req, res) => {
       res.set('Content-Type', metricsService.register.contentType);
       const metrics = await metricsService.getMetrics();
@@ -58,8 +60,8 @@ export function createHealthRoutes(dependencies) {
     })
   );
 
-  // GET /stats - Application statistics (JSON format)
-  router.get('/stats', (req, res) => {
+  // GET /stats - Application statistics (JSON format, protected)
+  router.get('/stats', metricsAuthMiddleware, (req, res) => {
     const cacheStats = cacheService.getCacheStats();
     const claudeStats = claudeClient.getStats();
 

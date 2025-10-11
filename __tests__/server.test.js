@@ -11,6 +11,8 @@ process.env.VITE_FIREBASE_STORAGE_BUCKET = 'test.appspot.com';
 process.env.VITE_FIREBASE_MESSAGING_SENDER_ID = '123456789';
 process.env.VITE_FIREBASE_APP_ID = 'test-app-id';
 process.env.NODE_ENV = 'test';
+process.env.ALLOWED_API_KEYS = 'dev-key-12345,test-key-67890';
+process.env.METRICS_TOKEN = 'dev-metrics-token-12345';
 
 // Mock fetch globally
 global.fetch = vi.fn();
