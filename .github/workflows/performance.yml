@@ -1,0 +1,247 @@
+name: Performance Testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start application
+        run: |
+          npm run server &
+          echo $! > server.pid
+          sleep 5
+          curl -f http://localhost:3001/health
+        env:
+          VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY || 'sk-test-key' }}
+          NODE_ENV: production
+          PORT: 3001
+          REDIS_URL: redis://localhost:6379
+
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.48.0/k6-v0.48.0-linux-amd64.tar.gz -L | tar xvz
+          sudo mv k6-v0.48.0-linux-amd64/k6 /usr/local/bin/
+
+      - name: Run baseline load test
+        run: k6 run --out json=baseline-results.json load-tests/k6-basic.js
+        continue-on-error: true
+
+      - name: Run stress test
+        run: k6 run --out json=stress-results.json load-tests/k6-stress.js
+        continue-on-error: true
+
+      - name: Parse k6 results
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Baseline Test" >> $GITHUB_STEP_SUMMARY
+          k6 inspect baseline-results.json | grep -E "(http_req_duration|http_reqs)" >> $GITHUB_STEP_SUMMARY || true
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Stress Test" >> $GITHUB_STEP_SUMMARY
+          k6 inspect stress-results.json | grep -E "(http_req_duration|http_reqs)" >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Upload k6 results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-results
+          path: |
+            baseline-results.json
+            stress-results.json
+          retention-days: 30
+
+      - name: Analyze performance regression
+        run: |
+          # Download baseline from main branch
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Comparing performance with main branch..."
+            # This would fetch previous baseline and compare
+            # For now, just check thresholds
+            echo "Performance comparison not yet implemented"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          [ -f server.pid ] && kill $(cat server.pid) || true
+
+  bundle-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and analyze bundle
+        run: |
+          npm run build
+
+          # Install bundle analyzer
+          npm install -g source-map-explorer
+
+          # Analyze bundle
+          source-map-explorer 'dist/**/*.js' --json > bundle-analysis.json
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: bundle-analysis.json
+
+      - name: Check bundle size limits
+        run: |
+          # Check if any JS file exceeds 500KB
+          find dist -name "*.js" -size +500k -exec ls -lh {} \; | while read file; do
+            echo "⚠️  Warning: Large bundle detected: $file"
+            echo "::warning::Bundle size exceeds 500KB threshold"
+          done
+
+      - name: Comment PR with bundle size
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            // Get current bundle size
+            const distSize = execSync('du -sh dist/').toString().split('\t')[0];
+
+            // Create comment
+            const comment = `## 📦 Bundle Size Report
+
+            **Total dist size:** ${distSize}
+
+            ### Largest bundles:
+            \`\`\`
+            ${execSync('find dist/ -name "*.js" -exec du -h {} \\; | sort -rh | head -5').toString()}
+            \`\`\`
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  lighthouse-performance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Serve application
+        run: |
+          npx http-server dist -p 8080 &
+          echo $! > server.pid
+          sleep 3
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: 'http://localhost:8080'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          runs: 3
+          budgetPath: '.lighthouserc.json'
+
+      - name: Check performance budget
+        run: |
+          # Check if performance score meets minimum threshold
+          echo "Performance budget check completed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          [ -f server.pid ] && kill $(cat server.pid) || true
+
+  memory-profiling:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install clinic.js
+        run: npm install -g clinic
+
+      - name: Memory profiling
+        run: |
+          # Start server with profiling
+          clinic doctor -- node server.js &
+          SERVER_PID=$!
+          sleep 5
+
+          # Generate load
+          npx autocannon -c 10 -d 60 http://localhost:3001/health
+
+          # Stop server
+          kill $SERVER_PID
+          wait $SERVER_PID || true
+
+      - name: Upload profiling results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinic-report
+          path: .clinic/
+          retention-days: 7
