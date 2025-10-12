@@ -336,7 +336,7 @@ export function SuggestionsPanel({ suggestionsData }) {
 
   return (
     <aside
-      className="fixed right-6 top-24 z-popover flex max-h-[calc(100vh-120px)] w-96 flex-col card-elevated border-2 animate-slide-up"
+      className="sticky top-2 right-0 z-popover flex h-fit max-h-[calc(100vh-100px)] w-96 flex-shrink-0 flex-col card-elevated border-2 animate-slide-up"
       role="complementary"
       aria-labelledby="suggestions-title"
     >
@@ -351,7 +351,7 @@ export function SuggestionsPanel({ suggestionsData }) {
             <h3 id="suggestions-title" className="truncate text-sm font-bold text-neutral-900">
               {isPlaceholder ? 'Value Suggestions' : 'AI Suggestions'}
             </h3>
-            <p className="truncate text-xs text-neutral-600" aria-label={`Selected text: ${selectedText}`}>
+            <p className="break-words text-xs text-neutral-600 line-clamp-2" aria-label={`Selected text: ${selectedText}`}>
               &quot;{selectedText}&quot;
             </p>
           </div>
@@ -369,7 +369,7 @@ export function SuggestionsPanel({ suggestionsData }) {
       {isPlaceholder && !isLoading && suggestions.length > 0 && (
         <div className="alert-info p-3 border-b">
           <Info className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          <p className="text-xs">
+          <p className="text-xs break-words">
             These are context-aware values that can replace your placeholder
           </p>
         </div>
@@ -443,20 +443,20 @@ export function SuggestionsPanel({ suggestionsData }) {
                     {index + 1}
                   </div>
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 overflow-hidden">
                   {isPlaceholder && suggestion.explanation ? (
                     // Value suggestion with explanation
                     <>
-                      <div className="mb-1 text-sm font-semibold text-neutral-900">
+                      <div className="mb-1 text-sm font-semibold text-neutral-900 break-words">
                         {suggestion.text}
                       </div>
-                      <div className="text-xs leading-relaxed text-neutral-600">
+                      <div className="text-xs leading-relaxed text-neutral-600 break-words">
                         {suggestion.explanation}
                       </div>
                     </>
                   ) : (
                     // Regular rewrite suggestion
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-800">
+                    <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-neutral-800">
                       {suggestion.text}
                     </pre>
                   )}
