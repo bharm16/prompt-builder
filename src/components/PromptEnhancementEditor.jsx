@@ -346,10 +346,6 @@ export function SuggestionsPanel({ suggestionsData }) {
       {/* Header */}
       <header className="flex items-center justify-between card-header bg-gradient-to-r from-primary-50 to-secondary-50">
         <div className="flex flex-1 items-center gap-2">
-          <Sparkles
-            className="h-5 w-5 flex-shrink-0 text-primary-600"
-            aria-hidden="true"
-          />
           <div className="min-w-0 flex-1">
             <h3 id="suggestions-title" className="truncate text-sm font-bold text-neutral-900">
               {isPlaceholder ? 'Value Suggestions' : 'Smart Suggestions'}

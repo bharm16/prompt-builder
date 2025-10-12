@@ -1131,7 +1131,7 @@ function ModernPromptOptimizerContent() {
 
             {/* Main Input Section */}
             <div className="relative mb-8 w-full">
-              <div className="card overflow-visible border-2 focus-within:border-primary-500 focus-within:ring focus-within:ring-primary-500 focus-within:ring-opacity-20 transition-all duration-200 hover:shadow-md">
+              <div className="card overflow-visible border border-neutral-200 transition-all duration-200 hover:shadow-md">
                 <div className="p-4">
                   <label htmlFor="prompt-input" className="sr-only">
                     Enter your prompt idea
@@ -1148,7 +1148,7 @@ function ModernPromptOptimizerContent() {
                     }}
                     placeholder="I want a prompt that will..."
                     rows={3}
-                    className="w-full resize-none bg-transparent text-base text-neutral-900 placeholder-neutral-400 outline-none"
+                    className="w-full resize-none bg-transparent text-base text-neutral-900 placeholder-neutral-400 outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
                     aria-label="Prompt input"
                   />
                 </div>
@@ -1173,11 +1173,10 @@ function ModernPromptOptimizerContent() {
                       (!inputPrompt.trim() && selectedMode !== 'video') ||
                       isProcessing
                     }
-                    className="btn-primary btn-lg hover-scale ripple glow"
+                    className="btn-primary btn-sm hover-scale ripple glow"
                     aria-label="Optimize prompt"
                     title="Optimize (⌘Enter)"
                   >
-                    <Sparkles className="h-5 w-5" />
                     <span className="font-bold">Optimize</span>
                   </button>
                 </div>
