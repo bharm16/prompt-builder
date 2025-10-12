@@ -612,11 +612,12 @@ function ModernPromptOptimizerContent() {
     setOptimizedPrompt('');
     setDisplayedPrompt('');
     setQualityScore(null);
-    setPreviousQualityScore(null);
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
     setImprovementContext(null);
+    setIsEditingInput(false);
+    setEditedInput('');
   };
 
   const handleClearAllData = () => {
@@ -1227,8 +1228,8 @@ function ModernPromptOptimizerContent() {
         {showResults && displayedPrompt && !isProcessing && (
           <div className="flex flex-col h-full w-full overflow-hidden animate-fade-in">
             {/* Your Input Container */}
-            <div className="flex-shrink-0 w-full bg-gradient-to-r from-neutral-50 to-neutral-100 border-b-2 border-neutral-200 px-6 py-4">
-              <div className="max-w-4xl mx-auto">
+            <div className="flex-shrink-0 w-full bg-gradient-to-r from-neutral-50 to-neutral-100 border-b-2 border-neutral-200 px-4 py-2">
+              <div className="max-w-2xl mx-auto">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-primary-600" aria-hidden="true" />
@@ -1290,7 +1291,7 @@ function ModernPromptOptimizerContent() {
               {/* Canvas - Main Document */}
               <div className="flex-1 flex flex-col h-full bg-white border-r border-neutral-200 shadow-lg">
                 {/* Canvas Toolbar */}
-                <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-200 bg-neutral-50">
+                <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-neutral-200 bg-neutral-50">
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-neutral-600">{currentMode.name}</span>
                   </div>
@@ -1361,7 +1362,7 @@ function ModernPromptOptimizerContent() {
 
                 {/* Canvas Document Content */}
                 <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-8 py-8">
+                <div className="max-w-2xl mx-auto px-4 py-4">
                   <textarea
                     value={displayedPrompt}
                     onChange={(e) => {
