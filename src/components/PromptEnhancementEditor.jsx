@@ -18,17 +18,20 @@ export default function PromptEnhancementEditor({
   // Handle text selection
   const handleMouseUp = async () => {
     const selection = window.getSelection();
-    const text = selection.toString().trim();
+    let text = selection.toString().trim();
 
     if (text.length > 0 && contentRef.current?.contains(selection.anchorNode)) {
-      setSelectedText(text);
+      // Remove leading dash and whitespace from bullet points
+      const cleanedText = text.replace(/^-\s*/, '');
+
+      setSelectedText(cleanedText);
 
       // Save the range to restore selection later
       const range = selection.getRangeAt(0).cloneRange();
       setSelectionRange(range);
 
-      // Fetch AI suggestions
-      await fetchEnhancementSuggestions(text);
+      // Fetch AI suggestions with cleaned text
+      await fetchEnhancementSuggestions(cleanedText);
     }
   };
 
@@ -349,7 +352,7 @@ export function SuggestionsPanel({ suggestionsData }) {
           />
           <div className="min-w-0 flex-1">
             <h3 id="suggestions-title" className="truncate text-sm font-bold text-neutral-900">
-              {isPlaceholder ? 'Value Suggestions' : 'AI Suggestions'}
+              {isPlaceholder ? 'Value Suggestions' : 'Smart Suggestions'}
             </h3>
             <p className="break-words text-xs text-neutral-600 line-clamp-2" aria-label={`Selected text: ${selectedText}`}>
               &quot;{selectedText}&quot;

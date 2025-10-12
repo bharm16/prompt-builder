@@ -634,6 +634,7 @@ function ModernPromptOptimizerContent() {
   // Fetch enhancement suggestions
   const fetchEnhancementSuggestions = async (
     highlightedText,
+    originalText,
     fullPrompt,
     selectionRange
   ) => {
@@ -650,7 +651,8 @@ function ModernPromptOptimizerContent() {
 
     debounceTimerRef.current = setTimeout(async () => {
       const currentSelection = window.getSelection().toString().trim();
-      if (currentSelection !== highlightedText) {
+      const cleanedCurrentSelection = currentSelection.replace(/^-\s*/, '');
+      if (cleanedCurrentSelection !== highlightedText) {
         return;
       }
 
@@ -674,6 +676,7 @@ function ModernPromptOptimizerContent() {
       setSuggestionsData({
         show: true,
         selectedText: highlightedText,
+        originalText: originalText,
         suggestions: [],
         isLoading: true,
         isPlaceholder: false,
@@ -691,7 +694,7 @@ function ModernPromptOptimizerContent() {
         },
         onSuggestionClick: (suggestionText) => {
           const updatedPrompt = displayedPrompt.replace(
-            highlightedText,
+            originalText,
             suggestionText
           );
           setOptimizedPrompt(updatedPrompt);
@@ -734,6 +737,7 @@ function ModernPromptOptimizerContent() {
         setSuggestionsData({
           show: true,
           selectedText: highlightedText,
+          originalText: originalText,
           suggestions: data.suggestions || [],
           isLoading: false,
           isPlaceholder: data.isPlaceholder || false,
@@ -751,7 +755,7 @@ function ModernPromptOptimizerContent() {
           },
           onSuggestionClick: (suggestionText) => {
             const updatedPrompt = displayedPrompt.replace(
-              highlightedText,
+              originalText,
               suggestionText
             );
             setOptimizedPrompt(updatedPrompt);
@@ -1371,11 +1375,14 @@ function ModernPromptOptimizerContent() {
                     }}
                     onMouseUp={(e) => {
                       const selection = window.getSelection();
-                      const text = selection.toString().trim();
+                      let text = selection.toString().trim();
 
                       if (text.length > 0) {
+                        // Remove leading dash and whitespace from bullet points for suggestions
+                        const cleanedText = text.replace(/^-\s*/, '');
                         const range = selection.getRangeAt(0).cloneRange();
-                        fetchEnhancementSuggestions(text, displayedPrompt, range);
+                        // Pass both cleaned text (for suggestions) and original text (for replacement)
+                        fetchEnhancementSuggestions(cleanedText, text, displayedPrompt, range);
                       }
                     }}
                     className="w-full resize-none bg-transparent font-sans text-base leading-relaxed text-neutral-900 outline-none border-0 focus:outline-none"
