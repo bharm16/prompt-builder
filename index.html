@@ -4,6 +4,47 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Prompt Optimizer</title>
+    <style>
+      /* FORCE LIGHT MODE - Nuclear option */
+      html, body {
+        background-color: white !important;
+        color: #171717 !important;
+      }
+      html.dark, html.dark body {
+        background-color: white !important;
+        color: #171717 !important;
+      }
+    </style>
+    <script>
+      // Force light mode immediately - before anything else loads
+      (function() {
+        document.documentElement.classList.remove('dark');
+
+        // Clear dark mode from localStorage
+        try {
+          const settings = localStorage.getItem('app-settings');
+          if (settings) {
+            const parsed = JSON.parse(settings);
+            parsed.darkMode = false;
+            localStorage.setItem('app-settings', JSON.stringify(parsed));
+          }
+        } catch (e) {
+          console.error('Failed to clear dark mode:', e);
+        }
+
+        // Watch for any attempts to add dark class and remove it
+        const observer = new MutationObserver(() => {
+          if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+          }
+        });
+
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
