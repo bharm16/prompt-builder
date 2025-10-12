@@ -21,6 +21,7 @@ import {
   Keyboard,
   Shuffle,
   Zap,
+  MessageSquare,
 } from 'lucide-react';
 import {
   auth,
@@ -94,6 +95,7 @@ function ModernPromptOptimizerContent() {
   // Refs
   const authMenuRef = useRef(null);
   const exportMenuRef = useRef(null);
+  const editorRef = useRef(null);
 
   const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'];
 
@@ -101,7 +103,7 @@ function ModernPromptOptimizerContent() {
     {
       id: 'optimize',
       name: 'Standard Prompt',
-      icon: Sparkles,
+      icon: MessageSquare,
       description: 'Optimize any prompt',
     },
     {
@@ -232,9 +234,15 @@ function ModernPromptOptimizerContent() {
 
   // Load localStorage history on mount and ensure light mode
   useEffect(() => {
-    const savedHistory = localStorage.getItem('promptHistory');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
+    try {
+      const savedHistory = localStorage.getItem('promptHistory');
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory);
+        setHistory(parsedHistory);
+      }
+    } catch (error) {
+      console.error('Error loading history from localStorage:', error);
+      localStorage.removeItem('promptHistory'); // Clear corrupted data
     }
 
     // Force remove dark class if settings say dark mode is off
@@ -250,9 +258,15 @@ function ModernPromptOptimizerContent() {
       if (currentUser) {
         await loadHistoryFromFirestore(currentUser.uid);
       } else {
-        const savedHistory = localStorage.getItem('promptHistory');
-        if (savedHistory) {
-          setHistory(JSON.parse(savedHistory));
+        try {
+          const savedHistory = localStorage.getItem('promptHistory');
+          if (savedHistory) {
+            const parsedHistory = JSON.parse(savedHistory);
+            setHistory(parsedHistory);
+          }
+        } catch (error) {
+          console.error('Error loading history from localStorage:', error);
+          localStorage.removeItem('promptHistory');
         }
       }
     });
@@ -300,7 +314,8 @@ function ModernPromptOptimizerContent() {
 
     const intervalId = setInterval(() => {
       if (currentIndex <= optimizedPrompt.length) {
-        setDisplayedPrompt(optimizedPrompt.slice(0, currentIndex));
+        const text = optimizedPrompt.slice(0, currentIndex);
+        setDisplayedPrompt(text);
         currentIndex += 3;
       } else {
         clearInterval(intervalId);
@@ -309,6 +324,13 @@ function ModernPromptOptimizerContent() {
 
     return () => clearInterval(intervalId);
   }, [optimizedPrompt, showResults, skipAnimation]);
+
+  // Update contentEditable div when displayedPrompt changes
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.textContent !== displayedPrompt) {
+      editorRef.current.textContent = displayedPrompt;
+    }
+  }, [displayedPrompt]);
 
   // Handle Google Sign In
   const handleSignIn = async () => {
@@ -350,26 +372,25 @@ function ModernPromptOptimizerContent() {
           ...newEntry,
         };
         setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 10));
-        if (settings.autoSave) {
-          toast.success('Saved to your history');
-        }
       } catch (error) {
         console.error('Error saving to Firestore:', error);
         toast.error('Failed to save to cloud');
       }
     } else {
-      const entryWithLocalId = {
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        ...newEntry,
-      };
-      setHistory((prevHistory) => {
-        const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 10);
-        localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
-        return updatedHistory;
-      });
-      if (settings.autoSave) {
-        toast.success('Saved locally');
+      try {
+        const entryWithLocalId = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          ...newEntry,
+        };
+        setHistory((prevHistory) => {
+          const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 10);
+          localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
+          return updatedHistory;
+        });
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+        toast.error('Failed to save to history');
       }
     }
   };
@@ -439,11 +460,6 @@ function ModernPromptOptimizerContent() {
     promptToOptimize = inputPrompt,
     context = improvementContext
   ) => {
-    if (selectedMode === 'video' && !conceptElements && !inputPrompt.trim()) {
-      setShowBrainstorm(true);
-      return;
-    }
-
     if (!promptToOptimize.trim()) {
       toast.warning('Please enter a prompt');
       return;
@@ -949,7 +965,7 @@ function ModernPromptOptimizerContent() {
       {/* Left Sidebar - History */}
       <aside
         id="history-sidebar"
-        className={`${showHistory ? 'w-72' : 'w-0'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-white transition-all duration-300`}
+        className={`${showHistory ? 'w-72' : 'w-0'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-neutral-100 transition-all duration-300`}
         aria-label="Prompt history"
         aria-hidden={!showHistory}
       >
@@ -974,7 +990,7 @@ function ModernPromptOptimizerContent() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search history..."
-                    className="w-full pl-9 pr-3 py-2 text-sm border-2 border-neutral-200 rounded-lg bg-white focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-20 transition-colors"
+                    className="w-full pl-9 pr-3 py-2 text-sm border-2 border-neutral-200 rounded-lg bg-white focus:bg-white focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-20 transition-colors"
                   />
                   {searchQuery && (
                     <button
@@ -1015,7 +1031,7 @@ function ModernPromptOptimizerContent() {
                         <li key={entry.id} className="stagger-item">
                           <button
                             onClick={() => loadFromHistory(entry)}
-                            className="group w-full rounded-lg p-3 text-left transition-all duration-200 hover:bg-neutral-100 focus-ring hover-scale"
+                            className="group w-full rounded-lg p-3 text-left transition-all duration-200 hover:bg-neutral-200 focus-ring hover-scale"
                             aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
                           >
                             <div className="flex items-start gap-2">
@@ -1048,12 +1064,12 @@ function ModernPromptOptimizerContent() {
             </div>
 
             {/* Auth Section */}
-            <footer className="flex-shrink-0 border-t border-neutral-200 bg-white p-3">
+            <footer className="flex-shrink-0 border-t border-neutral-200 bg-neutral-100 p-3">
               {user ? (
                 <div className="relative" ref={authMenuRef}>
                   <button
                     onClick={() => setShowAuthMenu(!showAuthMenu)}
-                    className="flex w-full items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-neutral-100 focus-ring"
+                    className="flex w-full items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-neutral-200 focus-ring"
                     aria-expanded={showAuthMenu}
                     aria-label="User menu"
                   >
@@ -1140,10 +1156,14 @@ function ModernPromptOptimizerContent() {
                     id="prompt-input"
                     value={inputPrompt}
                     onChange={(e) => setInputPrompt(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        handleOptimize();
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        // For standard prompt mode, just Enter works
+                        // For other modes, require Cmd/Ctrl+Enter
+                        if (selectedMode === 'optimize' || e.metaKey || e.ctrlKey) {
+                          e.preventDefault();
+                          handleOptimize();
+                        }
                       }
                     }}
                     placeholder="I want a prompt that will..."
@@ -1167,18 +1187,30 @@ function ModernPromptOptimizerContent() {
                     </button>
                   </div>
 
-                  <button
-                    onClick={handleOptimize}
-                    disabled={
-                      (!inputPrompt.trim() && selectedMode !== 'video') ||
-                      isProcessing
-                    }
-                    className="btn-primary btn-sm hover-scale ripple glow"
-                    aria-label="Optimize prompt"
-                    title="Optimize (⌘Enter)"
-                  >
-                    <span className="font-bold">Optimize</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {selectedMode === 'video' && (
+                      <button
+                        onClick={() => setShowBrainstorm(true)}
+                        disabled={isProcessing}
+                        className="btn-secondary btn-sm hover-scale ripple"
+                        aria-label="Build video concept with guided workflow"
+                        title="Build a video concept step-by-step"
+                      >
+                        <Lightbulb className="h-4 w-4" />
+                        <span className="font-bold">Build Concept</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleOptimize}
+                      disabled={!inputPrompt.trim() || isProcessing}
+                      className="btn-primary btn-sm hover-scale ripple glow"
+                      aria-label="Optimize prompt"
+                      title="Optimize (⌘Enter)"
+                    >
+                      <span className="font-bold">Optimize</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1361,15 +1393,16 @@ function ModernPromptOptimizerContent() {
                     <span className="hidden sm:inline">New</span>
                   </button>
                 </div>
-                </div>
 
                 {/* Canvas Document Content */}
                 <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto px-4 py-4">
-                  <textarea
-                    value={displayedPrompt}
-                    onChange={(e) => {
-                      setDisplayedPrompt(e.target.value);
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => {
+                      setDisplayedPrompt(e.currentTarget.textContent);
                       setSkipAnimation(true);
                     }}
                     onMouseUp={(e) => {
@@ -1384,14 +1417,26 @@ function ModernPromptOptimizerContent() {
                         fetchEnhancementSuggestions(cleanedText, text, displayedPrompt, range);
                       }
                     }}
-                    className="w-full resize-none bg-transparent font-sans text-base leading-relaxed text-neutral-900 outline-none border-0 focus:outline-none"
-                    style={{ minHeight: 'calc(100vh - 200px)' }}
+                    className="w-full resize-none bg-transparent font-sans text-sm leading-loose text-neutral-900 outline-none border-0 focus:outline-none"
+                    style={{
+                      minHeight: 'calc(100vh - 200px)',
+                      lineHeight: '1.8',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      paddingLeft: '3em',
+                      textIndent: '-3em'
+                    }}
+                    role="textbox"
                     aria-label="Optimized prompt (editable)"
-                    placeholder="Your optimized prompt will appear here..."
-                  />
+                    aria-multiline="true"
+                  >
+                    {!displayedPrompt && <span className="text-neutral-400">Your optimized prompt will appear here...</span>}
+                  </div>
                 </div>
               </div>
             </div>
+              </div>
 
               {/* Right Side - Suggestions Panel */}
               <SuggestionsPanel suggestionsData={suggestionsData} />

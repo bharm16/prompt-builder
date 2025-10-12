@@ -257,12 +257,18 @@ export default function PromptEnhancementEditor({
     <div
       ref={contentRef}
       onMouseUp={handleMouseUp}
-      className="cursor-text select-text whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-800"
+      className="cursor-text select-text font-sans text-sm leading-loose text-gray-800"
       style={{
         userSelect: 'text',
         WebkitUserSelect: 'text',
         MozUserSelect: 'text',
         msUserSelect: 'text',
+        lineHeight: '1.8',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        paddingLeft: '20px',
+        textIndent: '-20px'
       }}
     >
       {promptContent}
