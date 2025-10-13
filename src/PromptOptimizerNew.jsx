@@ -1386,82 +1386,83 @@ function ModernPromptOptimizerContent() {
               </div>
             </div>
 
+            {/* Canvas Toolbar - Now sticky under Your Input */}
+            <div className="sticky top-0 z-10 flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-neutral-200 bg-neutral-50 shadow-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-neutral-600">{currentMode.name}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopy}
+                  className={`btn-ghost btn-sm hover-scale ripple ${copied ? 'text-success-600' : ''}`}
+                  aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
+                  title="Copy (⌘C)"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
+                </button>
+
+                <div className="relative" ref={exportMenuRef}>
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="btn-ghost btn-sm hover-scale"
+                    aria-expanded={showExportMenu}
+                    aria-label="Export menu"
+                    title="Export"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                  {showExportMenu && (
+                    <div className="dropdown-menu top-full mt-2 w-44 right-0">
+                      <button
+                        onClick={() => handleExport('text')}
+                        className="dropdown-item"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Text (.txt)
+                      </button>
+                      <button
+                        onClick={() => handleExport('markdown')}
+                        className="dropdown-item"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Markdown (.md)
+                      </button>
+                      <button
+                        onClick={() => handleExport('json')}
+                        className="dropdown-item"
+                      >
+                        <FileText className="h-4 w-4" />
+                        JSON (.json)
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleCreateNew}
+                  className="btn-primary btn-sm hover-scale ripple"
+                  title="New prompt (⌘N)"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">New</span>
+                </button>
+              </div>
+            </div>
+
             {/* Canvas and Suggestions Container */}
             <div className="flex flex-1 items-start gap-0 overflow-hidden">
               {/* Canvas - Main Document */}
               <div className="flex-1 flex flex-col h-full bg-white border-r border-neutral-200 shadow-lg">
-                {/* Canvas Toolbar */}
-                <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-neutral-200 bg-neutral-50">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-neutral-600">{currentMode.name}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleCopy}
-                    className={`btn-ghost btn-sm hover-scale ripple ${copied ? 'text-success-600' : ''}`}
-                    aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
-                    title="Copy (⌘C)"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                    <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
-                  </button>
-
-                  <div className="relative" ref={exportMenuRef}>
-                    <button
-                      onClick={() => setShowExportMenu(!showExportMenu)}
-                      className="btn-ghost btn-sm hover-scale"
-                      aria-expanded={showExportMenu}
-                      aria-label="Export menu"
-                      title="Export"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span className="hidden sm:inline">Export</span>
-                    </button>
-                    {showExportMenu && (
-                      <div className="dropdown-menu top-full mt-2 w-44 right-0">
-                        <button
-                          onClick={() => handleExport('text')}
-                          className="dropdown-item"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Text (.txt)
-                        </button>
-                        <button
-                          onClick={() => handleExport('markdown')}
-                          className="dropdown-item"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Markdown (.md)
-                        </button>
-                        <button
-                          onClick={() => handleExport('json')}
-                          className="dropdown-item"
-                        >
-                          <FileText className="h-4 w-4" />
-                          JSON (.json)
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleCreateNew}
-                    className="btn-primary btn-sm hover-scale ripple"
-                    title="New prompt (⌘N)"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">New</span>
-                  </button>
-                </div>
-
                 {/* Canvas Document Content */}
                 <div className="flex-1 overflow-y-auto">
-                <div className="max-w-2xl mx-auto px-4 py-4">
+                  <div className="max-w-2xl mx-auto px-4 py-4">
                   <div
                     ref={editorRef}
                     contentEditable
@@ -1501,10 +1502,9 @@ function ModernPromptOptimizerContent() {
                 </div>
               </div>
             </div>
-              </div>
 
-              {/* Right Side - Suggestions Panel */}
-              <SuggestionsPanel suggestionsData={suggestionsData} />
+            {/* Right Side - Suggestions Panel */}
+            <SuggestionsPanel suggestionsData={suggestionsData} />
             </div>
           </div>
         )}
