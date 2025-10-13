@@ -29,6 +29,8 @@ import {
   signOutUser,
   savePromptToFirestore,
   getUserPrompts,
+  checkUserPromptsRaw,
+  deleteUserPromptsRaw,
 } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import PromptImprovementForm from './PromptImprovementForm';
@@ -254,10 +256,45 @@ function ModernPromptOptimizerContent() {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log('Auth state changed:', currentUser ? currentUser.uid : 'Not signed in');
       setUser(currentUser);
       if (currentUser) {
-        await loadHistoryFromFirestore(currentUser.uid);
+        // Expose functions to window for debugging and migration
+        window.checkAllPrompts = async () => {
+          try {
+            const prompts = await checkUserPromptsRaw(currentUser.uid);
+            console.log('Your prompts:', prompts);
+            return prompts;
+          } catch (error) {
+            console.error('Failed to check prompts:', error);
+          }
+        };
+
+        window.deleteOldPrompts = async () => {
+          try {
+            const count = await deleteUserPromptsRaw(currentUser.uid);
+            console.log(`✓ Deleted ${count} old prompts from Firebase`);
+            localStorage.removeItem('promptHistory');
+            console.log('✓ Cleared localStorage');
+            setHistory([]);
+            alert(`Deleted ${count} old prompts from Firebase and cleared localStorage. Page will reload.`);
+            window.location.reload();
+          } catch (error) {
+            console.error('Failed to delete prompts:', error);
+            alert('Failed to delete prompts. Check console for details.');
+          }
+        };
+
+        // Clear localStorage on mount when user is signed in
+        localStorage.removeItem('promptHistory');
+        console.log('Cleared localStorage on mount');
+
+        // Wait a bit to ensure auth tokens are ready
+        setTimeout(async () => {
+          await loadHistoryFromFirestore(currentUser.uid);
+        }, 500);
       } else {
+        delete window.deleteOldPrompts;
         try {
           const savedHistory = localStorage.getItem('promptHistory');
           if (savedHistory) {
@@ -276,13 +313,41 @@ function ModernPromptOptimizerContent() {
 
   // Load history from Firestore
   const loadHistoryFromFirestore = async (userId) => {
+    console.log('Loading history from Firestore for user:', userId);
     setIsLoadingHistory(true);
     try {
       const prompts = await getUserPrompts(userId, 10);
+      console.log('Successfully loaded prompts from Firestore:', prompts.length);
       setHistory(prompts);
+
+      // Also update localStorage with the latest from Firestore
+      if (prompts.length > 0) {
+        try {
+          localStorage.setItem('promptHistory', JSON.stringify(prompts));
+        } catch (e) {
+          console.warn('Could not save to localStorage:', e);
+        }
+      }
     } catch (error) {
-      console.error('Error loading history:', error);
-      toast.error('Failed to load history from cloud');
+      console.error('Error loading history from Firestore:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        name: error.name
+      });
+
+      // Try to load from localStorage as fallback
+      try {
+        const savedHistory = localStorage.getItem('promptHistory');
+        if (savedHistory) {
+          const parsedHistory = JSON.parse(savedHistory);
+          console.log('Loaded history from localStorage fallback:', parsedHistory.length);
+          setHistory(parsedHistory);
+        }
+        // Don't show error toast - having no history is normal
+      } catch (localError) {
+        console.error('Error loading from localStorage fallback:', localError);
+      }
     } finally {
       setIsLoadingHistory(false);
     }
@@ -1204,7 +1269,7 @@ function ModernPromptOptimizerContent() {
                     <button
                       onClick={handleOptimize}
                       disabled={!inputPrompt.trim() || isProcessing}
-                      className="btn-primary btn-sm hover-scale ripple glow"
+                      className="btn-primary btn-sm hover-scale ripple"
                       aria-label="Optimize prompt"
                       title="Optimize (⌘Enter)"
                     >

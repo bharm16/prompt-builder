@@ -14,6 +14,8 @@ import {
   orderBy,
   limit,
   getDocs,
+  serverTimestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
@@ -61,7 +63,7 @@ export const savePromptToFirestore = async (userId, promptData) => {
     const docRef = await addDoc(collection(db, 'prompts'), {
       userId,
       ...promptData,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
     });
     return docRef.id;
   } catch (error) {
@@ -84,7 +86,85 @@ export const getUserPrompts = async (userId, limitCount = 10) => {
       ...doc.data(),
     }));
   } catch (error) {
+    // Check for index error - silently return empty array
+    if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+      console.log('Firestore index not yet created. History will be available once the index is built.');
+      return [];
+    }
+
+    // For other errors, log and throw
     console.error('Error fetching prompts:', error);
+    throw error;
+  }
+};
+
+// Check user's prompts (simple query without orderBy to avoid index)
+export const checkUserPromptsRaw = async (userId) => {
+  try {
+    const q = query(
+      collection(db, 'prompts'),
+      where('userId', '==', userId)
+    );
+    const querySnapshot = await getDocs(q);
+    console.log(`Total prompts for user: ${querySnapshot.size}`);
+    querySnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      console.log('Prompt:', doc.id, {
+        timestamp: data.timestamp,
+        timestampType: typeof data.timestamp,
+        input: data.input?.substring(0, 50)
+      });
+    });
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching prompts:', error);
+    throw error;
+  }
+};
+
+// Delete user's prompts (simple query without orderBy to avoid index)
+export const deleteUserPromptsRaw = async (userId) => {
+  try {
+    const q = query(
+      collection(db, 'prompts'),
+      where('userId', '==', userId)
+    );
+    const querySnapshot = await getDocs(q);
+    console.log(`Found ${querySnapshot.size} prompts to delete`);
+
+    const deletePromises = querySnapshot.docs.map((doc) =>
+      deleteDoc(doc.ref)
+    );
+
+    await Promise.all(deletePromises);
+    console.log('All prompts deleted successfully');
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('Error deleting prompts:', error);
+    throw error;
+  }
+};
+
+// Delete all user's prompts (for migration)
+export const deleteAllUserPrompts = async (userId) => {
+  try {
+    const q = query(
+      collection(db, 'prompts'),
+      where('userId', '==', userId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    console.log(`Found ${querySnapshot.size} prompts to delete`);
+
+    const deletePromises = querySnapshot.docs.map((doc) =>
+      deleteDoc(doc.ref)
+    );
+
+    await Promise.all(deletePromises);
+    console.log('All prompts deleted successfully');
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('Error deleting prompts:', error);
     throw error;
   }
 };

@@ -187,18 +187,9 @@ export default function EmptyState({
 
 export function HistoryEmptyState({ onCreateNew }) {
   return (
-    <EmptyState
-      variant="history"
-      action={
-        onCreateNew
-          ? {
-              label: 'Create your first prompt',
-              icon: Sparkles,
-              onClick: onCreateNew,
-            }
-          : null
-      }
-    />
+    <div className="p-4 text-center">
+      {/* Empty state - no content when there's no history */}
+    </div>
   );
 }
 

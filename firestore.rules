@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Prompts collection - users can only read/write their own prompts
+    match /prompts/{promptId} {
+      // Allow users to read their own prompts
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Allow users to create prompts with their own userId
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Allow users to update/delete their own prompts
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+  }
+}
