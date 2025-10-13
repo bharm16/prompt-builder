@@ -100,8 +100,11 @@ export class EnhancementService {
       }
     );
 
+    // Ensure diversity in suggestions
+    const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
+
     const result = {
-      suggestions,
+      suggestions: diverseSuggestions,
       isPlaceholder,
     };
 
@@ -111,8 +114,9 @@ export class EnhancementService {
     });
 
     logger.info('Enhancement suggestions generated', {
-      count: suggestions.length,
+      count: diverseSuggestions.length,
       type: isPlaceholder ? 'placeholder' : 'rewrite',
+      diversityEnforced: diverseSuggestions.length !== suggestions.length,
     });
 
     return result;
@@ -182,14 +186,20 @@ export class EnhancementService {
       }
     );
 
-    const result = { suggestions };
+    // Ensure diversity in custom suggestions too
+    const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
+
+    const result = { suggestions: diverseSuggestions };
 
     // Cache the result
     await cacheService.set(cacheKey, result, {
       ttl: this.cacheConfig.ttl,
     });
 
-    logger.info('Custom suggestions generated', { count: suggestions.length });
+    logger.info('Custom suggestions generated', {
+      count: diverseSuggestions.length,
+      diversityEnforced: diverseSuggestions.length !== suggestions.length,
+    });
 
     return result;
   }
@@ -582,5 +592,467 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "fourth option with unique spin..."},
   {"text": "fifth creative implementation..."}
 ]`;
+  }
+
+  /**
+   * Transfer style to text while maintaining meaning
+   * @param {string} text - Original text
+   * @param {string} targetStyle - Target style (technical, creative, academic, casual, formal)
+   * @returns {Promise<string>} Text with transferred style
+   */
+  async transferStyle(text, targetStyle) {
+    const styles = {
+      technical: {
+        formality: 'high',
+        jargon: 'specialized',
+        structure: 'systematic',
+        tone: 'objective',
+        examples: 'code snippets, specifications, metrics',
+      },
+      creative: {
+        formality: 'low',
+        jargon: 'accessible',
+        structure: 'flowing',
+        tone: 'engaging',
+        examples: 'metaphors, imagery, narrative',
+      },
+      academic: {
+        formality: 'high',
+        jargon: 'scholarly',
+        structure: 'argumentative',
+        tone: 'authoritative',
+        examples: 'citations, evidence, analysis',
+      },
+      casual: {
+        formality: 'low',
+        jargon: 'everyday',
+        structure: 'conversational',
+        tone: 'friendly',
+        examples: 'personal anecdotes, simple comparisons',
+      },
+      formal: {
+        formality: 'high',
+        jargon: 'professional',
+        structure: 'hierarchical',
+        tone: 'respectful',
+        examples: 'case studies, reports, documentation',
+      },
+    };
+
+    const styleConfig = styles[targetStyle] || styles.formal;
+
+    const styleTransferPrompt = `Transform the following text to ${targetStyle} style while preserving its core meaning and information.
+
+Original text: "${text}"
+
+Target style characteristics:
+- Formality level: ${styleConfig.formality}
+- Language type: ${styleConfig.jargon}
+- Structure: ${styleConfig.structure}
+- Tone: ${styleConfig.tone}
+- Examples style: ${styleConfig.examples}
+
+Requirements:
+1. Maintain all factual information from the original
+2. Adapt vocabulary to match the target style
+3. Restructure sentences appropriately for the style
+4. Preserve the core message and intent
+5. Make it feel natural in the new style
+
+Provide ONLY the transformed text, no explanations:`;
+
+    try {
+      const response = await this.claudeClient.complete(styleTransferPrompt, {
+        maxTokens: 1024,
+        temperature: 0.7,
+      });
+
+      return response.content[0].text.trim();
+    } catch (error) {
+      logger.warn('Failed to transfer style', { error });
+      return text; // Return original on error
+    }
+  }
+
+  /**
+   * Ensure diversity in suggestions by checking similarity
+   * @param {Array} suggestions - Array of suggestion objects
+   * @returns {Promise<Array>} Filtered/regenerated diverse suggestions
+   */
+  async ensureDiverseSuggestions(suggestions) {
+    if (!suggestions || suggestions.length <= 1) return suggestions;
+
+    // Calculate similarity matrix
+    const similarities = [];
+    for (let i = 0; i < suggestions.length; i++) {
+      for (let j = i + 1; j < suggestions.length; j++) {
+        const sim = await this.calculateSimilarity(
+          suggestions[i].text,
+          suggestions[j].text
+        );
+        similarities.push({ i, j, similarity: sim });
+      }
+    }
+
+    // Find too-similar pairs (threshold: 0.7)
+    const threshold = 0.7;
+    const tooSimilar = similarities.filter(s => s.similarity > threshold);
+
+    if (tooSimilar.length === 0) {
+      return suggestions; // Already diverse
+    }
+
+    // Mark indices that need replacement
+    const toReplace = new Set();
+    tooSimilar.forEach(pair => {
+      // Keep the first, replace the second
+      toReplace.add(pair.j);
+    });
+
+    // Generate replacements for similar suggestions
+    const diverseSuggestions = [...suggestions];
+    for (const idx of toReplace) {
+      diverseSuggestions[idx] = await this.generateDiverseAlternative(
+        suggestions,
+        idx
+      );
+    }
+
+    logger.info('Enforced diversity', {
+      original: suggestions.length,
+      replaced: toReplace.size,
+    });
+
+    return diverseSuggestions;
+  }
+
+  /**
+   * Calculate similarity between two texts
+   * @private
+   */
+  async calculateSimilarity(text1, text2) {
+    // Simple character-level similarity (Jaccard)
+    const set1 = new Set(text1.toLowerCase().split(/\s+/));
+    const set2 = new Set(text2.toLowerCase().split(/\s+/));
+
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+
+    if (union.size === 0) return 0;
+
+    // Also check for substring containment
+    const substringPenalty =
+      text1.includes(text2) || text2.includes(text1) ? 0.3 : 0;
+
+    return intersection.size / union.size + substringPenalty;
+  }
+
+  /**
+   * Generate a diverse alternative to replace a similar suggestion
+   * @private
+   */
+  async generateDiverseAlternative(suggestions, indexToReplace) {
+    const original = suggestions[indexToReplace];
+    const otherSuggestions = suggestions.filter((_, i) => i !== indexToReplace);
+
+    const diversityPrompt = `Generate a diverse alternative that is meaningfully different from the existing suggestions.
+
+Original suggestion to replace: "${original.text}"
+
+Existing suggestions to differ from:
+${otherSuggestions.map((s, i) => `${i + 1}. "${s.text}"`).join('\n')}
+
+Requirements:
+1. Must serve the same purpose as the original
+2. Must be meaningfully different in approach or style
+3. Should explore a different angle or perspective
+4. Maintain quality and relevance
+
+Provide a JSON object with the new suggestion:
+{"text": "your diverse alternative", "explanation": "why this is different"}`;
+
+    try {
+      const response = await this.claudeClient.complete(diversityPrompt, {
+        maxTokens: 256,
+        temperature: 0.9, // Higher temperature for diversity
+      });
+
+      const alternative = JSON.parse(response.content[0].text);
+      return alternative;
+    } catch (error) {
+      logger.warn('Failed to generate diverse alternative', { error });
+      // Fallback: return original with slight modification
+      return {
+        text: original.text + ' (alternative approach)',
+        explanation: original.explanation || 'Alternative variation',
+      };
+    }
+  }
+
+  /**
+   * Generate ensemble suggestions using multiple approaches
+   * @param {Object} params - Generation parameters
+   * @returns {Promise<Array>} Combined and ranked suggestions
+   */
+  async generateEnsembleSuggestions({
+    highlightedText,
+    contextBefore,
+    contextAfter,
+    fullPrompt,
+  }) {
+    logger.info('Generating ensemble suggestions');
+
+    // Generate suggestions using different approaches in parallel
+    const approaches = await Promise.all([
+      this.generateWithHighTemperature({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+      }),
+      this.generateWithExamples({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+      }),
+      this.generateWithConstraints({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+      }),
+      this.generateWithReasoning({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+      }),
+    ]);
+
+    // Combine all suggestions
+    const combined = approaches.flat();
+
+    // Remove duplicates and rank
+    const unique = this.removeDuplicates(combined);
+    const ranked = await this.rankByCriteria(unique, {
+      diversity: 0.3,
+      quality: 0.4,
+      relevance: 0.3,
+    });
+
+    return ranked.slice(0, 8); // Return top 8
+  }
+
+  /**
+   * Generate suggestions with high temperature for creativity
+   * @private
+   */
+  async generateWithHighTemperature(params) {
+    const prompt = this.buildRewritePrompt(params);
+
+    try {
+      const response = await this.claudeClient.complete(prompt, {
+        maxTokens: 1024,
+        temperature: 0.95,
+      });
+
+      return JSON.parse(response.content[0].text);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Generate suggestions with examples for guidance
+   * @private
+   */
+  async generateWithExamples(params) {
+    const examplePrompt = `${this.buildRewritePrompt(params)}
+
+Here are excellent examples of similar enhancements:
+1. Original: "make it better" → Enhanced: "optimize for performance, readability, and maintainability"
+2. Original: "add some features" → Enhanced: "implement user authentication, data validation, and error handling"
+
+Follow the pattern of being specific and actionable.`;
+
+    try {
+      const response = await this.claudeClient.complete(examplePrompt, {
+        maxTokens: 1024,
+        temperature: 0.7,
+      });
+
+      return JSON.parse(response.content[0].text);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Generate suggestions with specific constraints
+   * @private
+   */
+  async generateWithConstraints(params) {
+    const constraintPrompt = `${this.buildRewritePrompt(params)}
+
+Additional constraints:
+- Each suggestion must be 20-50% longer than the original
+- Use active voice and strong verbs
+- Include specific metrics or criteria when possible
+- Avoid generic terms`;
+
+    try {
+      const response = await this.claudeClient.complete(constraintPrompt, {
+        maxTokens: 1024,
+        temperature: 0.6,
+      });
+
+      return JSON.parse(response.content[0].text);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Generate suggestions with reasoning
+   * @private
+   */
+  async generateWithReasoning(params) {
+    const reasoningPrompt = `First, analyze what makes the highlighted text unclear or improvable.
+
+Highlighted: "${params.highlightedText}"
+Context: "${params.contextBefore}[HIGHLIGHT]${params.contextAfter}"
+
+Issues to address:
+1. Vagueness or ambiguity
+2. Missing specifics
+3. Unclear structure
+4. Implicit assumptions
+
+Now generate improvements that specifically address these issues.
+
+${this.buildRewritePrompt(params)}`;
+
+    try {
+      const response = await this.claudeClient.complete(reasoningPrompt, {
+        maxTokens: 1024,
+        temperature: 0.5,
+      });
+
+      // Extract JSON from response (may include reasoning)
+      const jsonMatch = response.content[0].text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Remove duplicate suggestions
+   * @private
+   */
+  removeDuplicates(suggestions) {
+    const seen = new Set();
+    return suggestions.filter(suggestion => {
+      const key = suggestion.text.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  /**
+   * Rank suggestions by multiple criteria
+   * @private
+   */
+  async rankByCriteria(suggestions, weights) {
+    // Simple scoring based on heuristics
+    const scoredSuggestions = suggestions.map(suggestion => {
+      const scores = {
+        diversity: this.scoreDiversity(suggestion, suggestions),
+        quality: this.scoreQuality(suggestion),
+        relevance: this.scoreRelevance(suggestion),
+      };
+
+      const totalScore =
+        scores.diversity * weights.diversity +
+        scores.quality * weights.quality +
+        scores.relevance * weights.relevance;
+
+      return {
+        ...suggestion,
+        score: totalScore,
+      };
+    });
+
+    return scoredSuggestions.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Score suggestion diversity
+   * @private
+   */
+  scoreDiversity(suggestion, allSuggestions) {
+    // Higher score for unique words not in other suggestions
+    const words = new Set(suggestion.text.toLowerCase().split(/\s+/));
+    let uniqueCount = 0;
+
+    words.forEach(word => {
+      let isUnique = true;
+      allSuggestions.forEach(other => {
+        if (other !== suggestion && other.text.toLowerCase().includes(word)) {
+          isUnique = false;
+        }
+      });
+      if (isUnique) uniqueCount++;
+    });
+
+    return Math.min(uniqueCount / words.size, 1);
+  }
+
+  /**
+   * Score suggestion quality
+   * @private
+   */
+  scoreQuality(suggestion) {
+    let score = 0;
+
+    // Length (not too short, not too long)
+    const length = suggestion.text.length;
+    if (length > 20 && length < 200) score += 0.3;
+
+    // Has explanation
+    if (suggestion.explanation && suggestion.explanation.length > 20) score += 0.3;
+
+    // Contains specific terms (not vague)
+    const specificTerms = ['specifically', 'exactly', 'must', 'should', 'criteria'];
+    specificTerms.forEach(term => {
+      if (suggestion.text.toLowerCase().includes(term)) score += 0.1;
+    });
+
+    return Math.min(score, 1);
+  }
+
+  /**
+   * Score suggestion relevance
+   * @private
+   */
+  scoreRelevance(suggestion) {
+    // Basic heuristic: longer explanations often indicate better understanding
+    const explanationScore = suggestion.explanation
+      ? Math.min(suggestion.explanation.length / 100, 0.5)
+      : 0;
+
+    // Contains action words
+    const actionWords = ['create', 'implement', 'build', 'design', 'develop', 'analyze'];
+    let actionScore = 0;
+    actionWords.forEach(word => {
+      if (suggestion.text.toLowerCase().includes(word)) actionScore += 0.1;
+    });
+
+    return Math.min(explanationScore + actionScore, 1);
   }
 }
