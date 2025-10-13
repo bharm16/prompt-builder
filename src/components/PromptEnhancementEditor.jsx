@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Loader2, Sparkles, X, Info } from 'lucide-react';
 
 export default function PromptEnhancementEditor({
@@ -110,6 +110,16 @@ export default function PromptEnhancementEditor({
       }
 
       const data = await response.json();
+      console.log('Enhancement API Response:', {
+        isPlaceholder: data.isPlaceholder,
+        hasCategories: data.hasCategories,
+        suggestionsCount: data.suggestions?.length,
+        firstSuggestion: data.suggestions?.[0],
+        suggestions: data.suggestions,
+        isGrouped: data.suggestions?.[0]?.suggestions !== undefined
+      });
+
+      // Pass the suggestions directly - they may be grouped or flat
       setSuggestions(data.suggestions || []);
       setIsPlaceholder(data.isPlaceholder || false); // NEW: Set placeholder flag
     } catch (error) {
@@ -280,19 +290,61 @@ export default function PromptEnhancementEditor({
 export function SuggestionsPanel({ suggestionsData }) {
   const [customRequest, setCustomRequest] = useState('');
   const [isCustomLoading, setIsCustomLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null);
 
+  // Extract data safely with defaults
+  const selectedText = suggestionsData?.selectedText || '';
+  const suggestions = suggestionsData?.suggestions || [];
+  const isLoading = suggestionsData?.isLoading || false;
+  const onSuggestionClick = suggestionsData?.onSuggestionClick || (() => {});
+  const onClose = suggestionsData?.onClose || (() => {});
+  const isPlaceholder = suggestionsData?.isPlaceholder || false;
+
+  // Check if suggestions are categorized
+  const hasCategories = suggestions?.length > 0 && suggestions[0]?.category !== undefined;
+  const isGroupedFormat = suggestions?.length > 0 && suggestions[0]?.suggestions !== undefined;
+
+  // Process suggestions into categories - MUST be called on every render
+  const categories = useMemo(() => {
+    if (!suggestions || suggestions.length === 0) return [];
+
+    if (isGroupedFormat) {
+      // Already grouped format from backend
+      return suggestions;
+    } else if (hasCategories) {
+      // Group flat suggestions by category
+      const grouped = {};
+      suggestions.forEach(suggestion => {
+        const cat = suggestion.category || 'Other';
+        if (!grouped[cat]) {
+          grouped[cat] = { category: cat, suggestions: [] };
+        }
+        grouped[cat].suggestions.push(suggestion);
+      });
+      return Object.values(grouped);
+    } else {
+      // No categories - return as single group
+      return [{ category: 'Suggestions', suggestions }];
+    }
+  }, [suggestions, hasCategories, isGroupedFormat]);
+
+  // Set initial active category - MUST be called on every render
+  useEffect(() => {
+    if (categories.length > 0 && !activeCategory) {
+      setActiveCategory(categories[0].category);
+    }
+  }, [categories, activeCategory]);
+
+  // Get current category's suggestions - MUST be called on every render
+  const currentSuggestions = useMemo(() => {
+    const current = categories.find(cat => cat.category === activeCategory);
+    return current?.suggestions || [];
+  }, [categories, activeCategory]);
+
+  // Conditional return AFTER all hooks
   if (!suggestionsData || !suggestionsData.show) {
     return null;
   }
-
-  const {
-    selectedText,
-    suggestions,
-    isLoading,
-    onSuggestionClick,
-    onClose,
-    isPlaceholder,
-  } = suggestionsData;
 
   // Handle custom suggestion request
   const handleCustomRequest = async () => {
@@ -345,12 +397,13 @@ export function SuggestionsPanel({ suggestionsData }) {
 
   return (
     <aside
-      className="sticky top-2 right-0 z-popover flex h-fit max-h-[calc(100vh-100px)] w-96 flex-shrink-0 flex-col card-elevated border-2 animate-slide-up"
+      className="fixed top-24 right-4 bottom-4 z-popover flex w-96 flex-col card-elevated border-2 animate-slide-up overflow-hidden"
       role="complementary"
       aria-labelledby="suggestions-title"
+      style={{ maxHeight: 'calc(100vh - 120px)' }}
     >
       {/* Header */}
-      <header className="flex items-center justify-between card-header bg-gradient-to-r from-primary-50 to-secondary-50">
+      <header className="flex-shrink-0 flex items-center justify-between card-header bg-gradient-to-r from-primary-50 to-secondary-50">
         <div className="flex flex-1 items-center gap-2">
           <div className="min-w-0 flex-1">
             <h3 id="suggestions-title" className="truncate text-sm font-bold text-neutral-900">
@@ -372,7 +425,7 @@ export function SuggestionsPanel({ suggestionsData }) {
 
       {/* Context hint for placeholder mode */}
       {isPlaceholder && !isLoading && suggestions.length > 0 && (
-        <div className="alert-info p-3 border-b">
+        <div className="flex-shrink-0 alert-info p-3 border-b">
           <Info className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
           <p className="text-xs break-words">
             These are context-aware values that can replace your placeholder
@@ -380,8 +433,30 @@ export function SuggestionsPanel({ suggestionsData }) {
         </div>
       )}
 
+      {/* Category Tabs - Only show if we have multiple categories */}
+      {!isLoading && categories.length > 1 && (
+        <div className="flex-shrink-0 flex flex-wrap gap-1 p-2 border-b bg-neutral-50">
+          {categories.map((cat) => (
+            <button
+              key={cat.category}
+              onClick={() => setActiveCategory(cat.category)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                activeCategory === cat.category
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-200'
+              }`}
+              aria-pressed={activeCategory === cat.category}
+              aria-label={`Category: ${cat.category} (${cat.suggestions.length} options)`}
+            >
+              {cat.category}
+              <span className="ml-1.5 opacity-70">({cat.suggestions.length})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Custom Request Input */}
-      <div className="border-b-2 border-neutral-200 bg-neutral-50 p-3">
+      <div className="flex-shrink-0 border-b-2 border-neutral-200 bg-neutral-50 p-3">
         <label htmlFor="custom-request" className="block mb-2 text-xs font-medium text-neutral-700">
           Custom request:
         </label>
@@ -390,7 +465,7 @@ export function SuggestionsPanel({ suggestionsData }) {
           value={customRequest}
           onChange={(e) => setCustomRequest(e.target.value)}
           placeholder="e.g., Make it more cinematic, Add more emotion, Simplify the language..."
-          className="textarea text-sm"
+          className="textarea text-sm resize-none"
           rows={2}
           aria-describedby="custom-request-hint"
         />
@@ -417,24 +492,33 @@ export function SuggestionsPanel({ suggestionsData }) {
         </button>
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex flex-1 items-center justify-center py-12" role="status" aria-live="polite">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden="true" />
-            <span className="text-sm text-neutral-700">
-              {isPlaceholder
-                ? 'Finding relevant values...'
-                : 'Analyzing context...'}
-            </span>
+      {/* Scrollable Content Container */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-1 items-center justify-center py-12" role="status" aria-live="polite">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden="true" />
+              <span className="text-sm text-neutral-700">
+                {isPlaceholder
+                  ? 'Finding relevant values...'
+                  : 'Analyzing context...'}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Suggestions List */}
-      {!isLoading && suggestions.length > 0 && (
-        <div className="flex-1 space-y-2 overflow-y-auto p-3" role="list" aria-label="Suggestion options">
-          {suggestions.map((suggestion, index) => (
+        {/* Suggestions List */}
+        {!isLoading && currentSuggestions.length > 0 && (
+          <div
+            className="flex-1 min-h-0 space-y-2 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-400 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-500"
+            role="list"
+            aria-label="Suggestion options"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#9ca3af #f3f4f6'
+            }}>
+          {currentSuggestions.map((suggestion, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(suggestion.text)}
@@ -468,24 +552,25 @@ export function SuggestionsPanel({ suggestionsData }) {
                 </div>
               </div>
             </button>
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && suggestions.length === 0 && (
-        <div className="flex flex-1 items-center justify-center py-12">
-          <div className="px-4 text-center">
-            <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" aria-hidden="true" />
-            <p className="text-sm text-neutral-600 font-medium mb-1">
-              No suggestions available
-            </p>
-            <p className="text-xs text-neutral-500">
-              Try selecting a different section or use a custom request
-            </p>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Empty State */}
+        {!isLoading && (!suggestions || suggestions.length === 0 || currentSuggestions.length === 0) && (
+          <div className="flex flex-1 items-center justify-center py-12">
+            <div className="px-4 text-center">
+              <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" aria-hidden="true" />
+              <p className="text-sm text-neutral-600 font-medium mb-1">
+                No suggestions available
+              </p>
+              <p className="text-xs text-neutral-500">
+                Try selecting a different section or use a custom request
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

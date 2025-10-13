@@ -77,7 +77,7 @@ export class EnhancementService {
     const schema = {
       type: 'array',
       items: {
-        required: ['text', 'explanation'],
+        required: ['text', 'explanation', ...(isPlaceholder ? ['category'] : [])],
       },
     };
 
@@ -100,13 +100,42 @@ export class EnhancementService {
       }
     );
 
+    // Log raw suggestions from Claude
+    logger.info('Raw suggestions from Claude', {
+      isPlaceholder,
+      suggestionsCount: suggestions?.length,
+      firstSuggestion: suggestions?.[0],
+      hasCategory: suggestions?.[0]?.category !== undefined,
+      allCategories: suggestions?.map(s => s.category).filter(Boolean)
+    });
+
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
-    const result = {
-      suggestions: diverseSuggestions,
+    // Debug logging
+    logger.info('Processing suggestions for categorization', {
       isPlaceholder,
+      hasCategoryField: diverseSuggestions[0]?.category !== undefined,
+      firstSuggestion: diverseSuggestions[0],
+      totalSuggestions: diverseSuggestions.length
+    });
+
+    // Group suggestions by category if they have categories
+    const groupedSuggestions = isPlaceholder && diverseSuggestions[0]?.category
+      ? this.groupSuggestionsByCategory(diverseSuggestions)
+      : diverseSuggestions;
+
+    const result = {
+      suggestions: groupedSuggestions,
+      isPlaceholder,
+      hasCategories: isPlaceholder && diverseSuggestions[0]?.category ? true : false,
     };
+
+    logger.info('Final result structure', {
+      isGrouped: Array.isArray(groupedSuggestions) && groupedSuggestions[0]?.suggestions !== undefined,
+      categoriesCount: groupedSuggestions[0]?.suggestions ? groupedSuggestions.length : 0,
+      hasCategories: result.hasCategories
+    });
 
     // Cache the result
     await cacheService.set(cacheKey, result, {
@@ -211,7 +240,22 @@ export class EnhancementService {
   detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt) {
     const text = highlightedText.toLowerCase().trim();
 
-    // Pattern 1: Single word that's commonly a placeholder
+    // Enhanced Pattern 1: Material/substance detection
+    const materialKeywords = [
+      'wooden', 'wood', 'metal', 'metallic', 'glass', 'plastic',
+      'stone', 'marble', 'granite', 'concrete', 'brick', 'ceramic',
+      'fabric', 'leather', 'steel', 'iron', 'copper', 'brass',
+      'aluminum', 'chrome', 'gold', 'silver', 'bronze'
+    ];
+
+    // Enhanced Pattern 2: Style/aesthetic detection
+    const styleKeywords = [
+      'modern', 'vintage', 'rustic', 'industrial', 'minimalist',
+      'ornate', 'classic', 'contemporary', 'traditional', 'art deco',
+      'gothic', 'baroque', 'victorian', 'scandinavian', 'bohemian'
+    ];
+
+    // Enhanced Pattern 3: Single word that's commonly a placeholder
     const placeholderKeywords = [
       'location',
       'place',
@@ -245,11 +289,16 @@ export class EnhancementService {
       'viewpoint',
     ];
 
+    // Check if it's a material or style (very likely to be a placeholder value)
+    if (materialKeywords.includes(text) || styleKeywords.includes(text)) {
+      return true;
+    }
+
     if (text.split(/\s+/).length <= 2 && placeholderKeywords.includes(text)) {
       return true;
     }
 
-    // Pattern 2: Text in parentheses or brackets
+    // Pattern 4: Text in parentheses or brackets
     if (
       contextBefore.includes('(') ||
       contextAfter.startsWith(')') ||
@@ -259,7 +308,7 @@ export class EnhancementService {
       return true;
     }
 
-    // Pattern 3: Preceded by phrases like "such as", "like", "e.g."
+    // Pattern 5: Preceded by phrases like "such as", "like", "e.g."
     const precedingPhrases = [
       'such as',
       'like',
@@ -276,7 +325,7 @@ export class EnhancementService {
       return true;
     }
 
-    // Pattern 4: In a list or comma-separated context
+    // Pattern 6: In a list or comma-separated context
     if (
       (contextBefore.includes(':') || contextBefore.includes('-')) &&
       text.split(/\s+/).length <= 3
@@ -284,14 +333,65 @@ export class EnhancementService {
       return true;
     }
 
-    // Pattern 5: Part of "include [word]" or "set [word]" pattern
+    // Pattern 7: Part of "include [word]" or "set [word]" pattern
     const includePattern =
       /\b(include|set|choose|specify|add|provide|give)\s+[^,\n]{0,20}$/i;
     if (includePattern.test(contextBefore)) {
       return true;
     }
 
+    // Pattern 8: Adjective describing a physical property
+    const physicalPropertyContext = /\b(desk|table|chair|wall|floor|surface|object|item|piece|structure)\b/i;
+    if (physicalPropertyContext.test(contextAfter) && text.split(/\s+/).length <= 2) {
+      return true;
+    }
+
     return false;
+  }
+
+  /**
+   * Detect the semantic type of a placeholder for better categorization
+   * @private
+   */
+  detectPlaceholderType(highlightedText, contextBefore, contextAfter) {
+    const text = highlightedText.toLowerCase();
+    const combinedContext = (contextBefore + ' ' + contextAfter).toLowerCase();
+
+    // Material context
+    if (/\b(desk|table|chair|furniture|surface|made of|constructed|built)\b/.test(combinedContext)) {
+      return 'material';
+    }
+
+    // Style context
+    if (/\b(style|design|aesthetic|look|appearance|decorated|themed)\b/.test(combinedContext)) {
+      return 'style';
+    }
+
+    // Location context
+    if (/\b(location|place|venue|setting|room|space|area|environment)\b/.test(combinedContext)) {
+      return 'location';
+    }
+
+    // Time context
+    if (/\b(time|when|period|era|age|century|year|season)\b/.test(combinedContext)) {
+      return 'time';
+    }
+
+    // Person context
+    if (/\b(person|character|individual|speaker|audience|role)\b/.test(combinedContext)) {
+      return 'person';
+    }
+
+    // Default to analyzing the text itself
+    const materialWords = ['wooden', 'metal', 'glass', 'stone', 'plastic', 'fabric'];
+    const styleWords = ['modern', 'vintage', 'classic', 'rustic', 'minimalist'];
+    const locationWords = ['location', 'place', 'venue', 'room'];
+
+    if (materialWords.some(w => text.includes(w))) return 'material';
+    if (styleWords.some(w => text.includes(w))) return 'style';
+    if (locationWords.some(w => text.includes(w))) return 'location';
+
+    return 'general';
   }
 
   /**
@@ -318,30 +418,34 @@ export class EnhancementService {
     originalUserPrompt,
     isVideoPrompt,
   }) {
+    // Detect the semantic type of the placeholder
+    const placeholderType = this.detectPlaceholderType(highlightedText, contextBefore, contextAfter);
+
     return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.
 
 <analysis_process>
-Step 1: Identify the placeholder type
+Step 1: Identify the placeholder type and context
 - Analyze: "${highlightedText}"
-- Classify: Is this a location, person, time, event, style, audience, action, attribute, or other parameter type?
+- Detected Type: ${placeholderType}
+- Classify the semantic category and expected value type
 - Context clues: What do the surrounding words suggest about expected value type?
 
-Step 2: Understand contextual constraints
-- Examine full prompt context for compatibility requirements
-- Identify domain (creative, technical, business, educational, etc.)
-- Note any explicit or implicit constraints
-- Consider the original user's intent: "${originalUserPrompt}"
+Step 2: Generate DIVERSE CATEGORIES of suggestions
+- CRITICAL: Do NOT generate all suggestions from the same category
+- If placeholder is a material (like "wooden"), provide alternatives from DIFFERENT categories:
+  * Different materials (metal, glass, stone, etc.)
+  * Different styles (modern, vintage, rustic, etc.)
+  * Different textures (smooth, rough, polished, etc.)
+  * Different aesthetics (minimalist, ornate, industrial, etc.)
 
-Step 3: Evaluate specificity requirements
-- Should suggestions be concrete/specific or conceptual/abstract?
-- What level of detail is appropriate given the context?
-- Are there style, tone, or domain-specific considerations?
+Step 3: Ensure categorical diversity
+- Each suggestion should represent a DIFFERENT approach or category
+- Avoid variations of the same thing (not just oak, walnut, cherry)
+- Think broadly about what could replace this placeholder
 
-Step 4: Generate diverse, high-quality options
-- Create 5-8 meaningfully different suggestions
-- Ensure each is a direct drop-in replacement
-- Vary the suggestions to cover different possibilities within the constraint space
-- Prioritize contextual fit and practical usability
+Step 4: Consider context appropriateness
+- Original user's intent: "${originalUserPrompt}"
+- Each category should still fit the overall context
 </analysis_process>
 
 **Context Analysis:**
@@ -355,28 +459,34 @@ Surrounding context:
 Original user request: "${originalUserPrompt}"
 
 **Your Task:**
-Generate 5-8 concrete, specific suggestions to replace "${highlightedText}".
+Generate 12-15 suggestions to replace "${highlightedText}" organized into 4-5 CATEGORIES with 2-4 suggestions per category.
 
-**Quality Criteria:**
-✓ Each suggestion is a SHORT, SPECIFIC value (1-10 words max)
-✓ Direct drop-in replacement - no rewriting needed
-✓ Meaningfully different from each other
-✓ Contextually appropriate and compatible
-✓ Specific enough to be immediately useful
-${isVideoPrompt ? '✓ For video: consider cinematic/visual implications' : '✓ Aligns with overall prompt objectives'}
+**CRITICAL REQUIREMENTS:**
+✓ Create 4-5 distinct categories
+✓ Include 2-4 suggestions per category (not just one!)
+✓ Categories should represent different conceptual approaches
+✓ Each suggestion within a category should still be unique
+✓ Include category label for ALL suggestions
+✓ Direct drop-in replacements - no rewriting needed
+✓ Contextually appropriate despite being diverse
+${isVideoPrompt ? '✓ For video: consider different visual/cinematic approaches' : '✓ Different approaches to achieve the goal'}
 
 **Output Format:**
-Return ONLY a JSON array (no markdown, no code blocks, no preamble):
+Return ONLY a JSON array with categorized suggestions (2-4 per category):
 
 [
-  {"text": "specific value 1", "explanation": "why this fits the context"},
-  {"text": "specific value 2", "explanation": "why this fits the context"},
-  {"text": "specific value 3", "explanation": "why this fits the context"},
-  {"text": "specific value 4", "explanation": "why this fits the context"},
-  {"text": "specific value 5", "explanation": "why this fits the context"},
-  {"text": "specific value 6", "explanation": "why this fits the context"},
-  {"text": "specific value 7", "explanation": "why this fits the context"},
-  {"text": "specific value 8", "explanation": "why this fits the context"}
+  {"text": "oak", "category": "Natural Wood", "explanation": "Classic hardwood with prominent grain"},
+  {"text": "walnut", "category": "Natural Wood", "explanation": "Premium dark wood with rich tones"},
+  {"text": "mahogany", "category": "Natural Wood", "explanation": "Deep red-brown luxury wood"},
+  {"text": "brushed steel", "category": "Modern Materials", "explanation": "Contemporary industrial aesthetic"},
+  {"text": "glass", "category": "Modern Materials", "explanation": "Transparent/translucent modern look"},
+  {"text": "chrome", "category": "Modern Materials", "explanation": "Reflective high-tech finish"},
+  {"text": "marble", "category": "Stone & Mineral", "explanation": "Elegant stone with veining patterns"},
+  {"text": "granite", "category": "Stone & Mineral", "explanation": "Durable speckled stone surface"},
+  {"text": "quartz", "category": "Stone & Mineral", "explanation": "Engineered stone with consistent pattern"},
+  {"text": "weathered", "category": "Surface Finishes", "explanation": "Aged, worn surface quality"},
+  {"text": "polished", "category": "Surface Finishes", "explanation": "Smooth, reflective finish"},
+  {"text": "distressed", "category": "Surface Finishes", "explanation": "Intentionally aged appearance"}
 ]`;
   }
 
@@ -595,6 +705,29 @@ Return ONLY a JSON array (no markdown, no code blocks):
   }
 
   /**
+   * Group suggestions by their categories
+   * @param {Array} suggestions - Array of suggestions with category field
+   * @returns {Object} Grouped suggestions by category
+   */
+  groupSuggestionsByCategory(suggestions) {
+    const grouped = {};
+
+    suggestions.forEach(suggestion => {
+      const category = suggestion.category || 'Other';
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(suggestion);
+    });
+
+    // Convert to array format for easier frontend handling
+    return Object.entries(grouped).map(([category, items]) => ({
+      category,
+      suggestions: items
+    }));
+  }
+
+  /**
    * Transfer style to text while maintaining meaning
    * @param {string} text - Original text
    * @param {string} targetStyle - Target style (technical, creative, academic, casual, formal)
@@ -682,6 +815,11 @@ Provide ONLY the transformed text, no explanations:`;
   async ensureDiverseSuggestions(suggestions) {
     if (!suggestions || suggestions.length <= 1) return suggestions;
 
+    // Special handling for categorized suggestions
+    if (suggestions[0]?.category) {
+      return this.ensureCategoricalDiversity(suggestions);
+    }
+
     // Calculate similarity matrix
     const similarities = [];
     for (let i = 0; i < suggestions.length; i++) {
@@ -724,6 +862,62 @@ Provide ONLY the transformed text, no explanations:`;
     });
 
     return diverseSuggestions;
+  }
+
+  /**
+   * Ensure diversity across categories
+   * @private
+   */
+  ensureCategoricalDiversity(suggestions) {
+    // Group by category
+    const categoryCounts = {};
+    suggestions.forEach(s => {
+      const cat = s.category || 'Other';
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+
+    // Check if any category is over-represented (more than 40% of suggestions)
+    const totalSuggestions = suggestions.length;
+    const maxPerCategory = Math.ceil(totalSuggestions * 0.4);
+
+    let needsRebalancing = false;
+    for (const [category, count] of Object.entries(categoryCounts)) {
+      if (count > maxPerCategory) {
+        logger.info('Category over-represented', { category, count, max: maxPerCategory });
+        needsRebalancing = true;
+        break;
+      }
+    }
+
+    if (!needsRebalancing) {
+      return suggestions; // Already balanced
+    }
+
+    // Rebalance by limiting each category
+    const balanced = [];
+    const categoryLimits = {};
+
+    // First pass: take up to max from each category
+    suggestions.forEach(suggestion => {
+      const cat = suggestion.category || 'Other';
+      if (!categoryLimits[cat]) categoryLimits[cat] = 0;
+
+      if (categoryLimits[cat] < maxPerCategory) {
+        balanced.push(suggestion);
+        categoryLimits[cat]++;
+      }
+    });
+
+    // Ensure we have enough diversity in categories
+    const uniqueCategories = Object.keys(categoryCounts);
+    if (uniqueCategories.length < 3 && totalSuggestions >= 6) {
+      logger.warn('Not enough category diversity', {
+        categories: uniqueCategories.length,
+        suggestions: totalSuggestions
+      });
+    }
+
+    return balanced;
   }
 
   /**
