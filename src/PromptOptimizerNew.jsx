@@ -37,7 +37,7 @@ import PromptImprovementForm from './PromptImprovementForm';
 import PromptEnhancementEditor, {
   SuggestionsPanel,
 } from './components/PromptEnhancementEditor';
-import CreativeBrainstorm from './components/CreativeBrainstorm';
+import CreativeBrainstormEnhanced from './components/CreativeBrainstormEnhanced';
 import { ToastProvider, useToast } from './components/Toast';
 import Settings, { useSettings } from './components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from './components/KeyboardShortcuts';
@@ -950,7 +950,7 @@ function ModernPromptOptimizerContent() {
                 Skip to Advanced Mode →
               </button>
               <div className="p-6">
-                <CreativeBrainstorm
+                <CreativeBrainstormEnhanced
                   onConceptComplete={handleConceptComplete}
                   initialConcept={inputPrompt}
                 />

@@ -20,6 +20,7 @@ import { QuestionGenerationService } from './src/services/QuestionGenerationServ
 import { EnhancementService } from './src/services/EnhancementService.js';
 import { SceneDetectionService } from './src/services/SceneDetectionService.js';
 import { CreativeSuggestionService } from './src/services/CreativeSuggestionService.js';
+import { CreativeSuggestionEnhancedService } from './src/services/CreativeSuggestionEnhancedService.js';
 
 // Import middleware
 import { requestIdMiddleware } from './src/middleware/requestId.js';
@@ -65,6 +66,8 @@ const questionGenerationService = new QuestionGenerationService(claudeClient);
 const enhancementService = new EnhancementService(claudeClient);
 const sceneDetectionService = new SceneDetectionService(claudeClient);
 const creativeSuggestionService = new CreativeSuggestionService(claudeClient);
+// Initialize enhanced service for new features (keeping original for backward compatibility)
+const creativeSuggestionEnhancedService = new CreativeSuggestionEnhancedService(claudeClient);
 
 logger.info('All services initialized successfully');
 
@@ -217,6 +220,7 @@ const apiRoutes = createAPIRoutes({
   enhancementService,
   sceneDetectionService,
   creativeSuggestionService,
+  creativeSuggestionEnhancedService, // Add enhanced service
 });
 app.use('/api', apiAuthMiddleware, apiRoutes);
 

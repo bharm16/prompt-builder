@@ -23,6 +23,7 @@ export function createAPIRoutes(services) {
     enhancementService,
     sceneDetectionService,
     creativeSuggestionService,
+    creativeSuggestionEnhancedService, // Add enhanced service
   } = services;
 
   // POST /api/optimize - Optimize prompt
@@ -134,6 +135,202 @@ export function createAPIRoutes(services) {
         currentValue,
         context,
         concept,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/check-compatibility - Check element compatibility
+  router.post(
+    '/check-compatibility',
+    asyncHandler(async (req, res) => {
+      const { elementType, value, existingElements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.checkCompatibility({
+        elementType,
+        value,
+        existingElements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/complete-scene - Complete scene with AI suggestions
+  router.post(
+    '/complete-scene',
+    asyncHandler(async (req, res) => {
+      const { existingElements, concept } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.completeScene({
+        existingElements,
+        concept,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/generate-variations - Generate scene variations
+  router.post(
+    '/generate-variations',
+    asyncHandler(async (req, res) => {
+      const { elements, concept } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.generateVariations({
+        elements,
+        concept,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/parse-concept - Parse concept into elements
+  router.post(
+    '/parse-concept',
+    asyncHandler(async (req, res) => {
+      const { concept } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.parseConcept({
+        concept,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/get-refinements - Get refinement suggestions
+  router.post(
+    '/get-refinements',
+    asyncHandler(async (req, res) => {
+      const { elements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.getRefinementSuggestions({
+        elements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/detect-conflicts - Detect element conflicts
+  router.post(
+    '/detect-conflicts',
+    asyncHandler(async (req, res) => {
+      const { elements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.detectConflicts({
+        elements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/generate-technical-params - Generate technical parameters
+  router.post(
+    '/generate-technical-params',
+    asyncHandler(async (req, res) => {
+      const { elements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.generateTechnicalParams({
+        elements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/validate-prompt - Validate prompt quality
+  router.post(
+    '/validate-prompt',
+    asyncHandler(async (req, res) => {
+      const { elements, concept } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.validatePrompt({
+        elements,
+        concept,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/get-smart-defaults - Get smart defaults for element
+  router.post(
+    '/get-smart-defaults',
+    asyncHandler(async (req, res) => {
+      const { elementType, existingElements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.getSmartDefaults({
+        elementType,
+        existingElements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/save-template - Save element template
+  router.post(
+    '/save-template',
+    asyncHandler(async (req, res) => {
+      const { name, elements, concept, userId } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.saveTemplate({
+        name,
+        elements,
+        concept,
+        userId,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/get-template-recommendations - Get template recommendations
+  router.post(
+    '/get-template-recommendations',
+    asyncHandler(async (req, res) => {
+      const { userId, currentElements } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.getTemplateRecommendations({
+        userId,
+        currentElements,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/record-user-choice - Record user element choice
+  router.post(
+    '/record-user-choice',
+    asyncHandler(async (req, res) => {
+      const { elementType, chosen, rejected, userId } = req.body;
+
+      const result = await creativeSuggestionService.recordUserChoice({
+        elementType,
+        chosen,
+        rejected,
+        userId,
+      });
+
+      res.json(result);
+    })
+  );
+
+  // POST /api/get-alternative-phrasings - Get alternative phrasings
+  router.post(
+    '/get-alternative-phrasings',
+    asyncHandler(async (req, res) => {
+      const { elementType, value } = req.body;
+
+      const result = await creativeSuggestionEnhancedService.getAlternativePhrasings({
+        elementType,
+        value,
       });
 
       res.json(result);
