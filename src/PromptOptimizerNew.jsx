@@ -1109,8 +1109,8 @@ function ModernPromptOptimizerContent() {
                                   {entry.input}
                                 </p>
                                 <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
-                                  <time dateTime={entry.timestamp}>
-                                    {new Date(entry.timestamp).toLocaleDateString()}
+                                  <time dateTime={entry.timestamp || ''}>
+                                    {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'No date'}
                                   </time>
                                   <span>•</span>
                                   <span className="badge-success badge px-1.5 py-0.5">

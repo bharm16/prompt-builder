@@ -81,10 +81,23 @@ export const getUserPrompts = async (userId, limitCount = 10) => {
       limit(limitCount)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Convert Firestore timestamp to ISO string
+      let timestamp = data.timestamp;
+      if (timestamp && timestamp.toDate) {
+        // It's a Firestore Timestamp object
+        timestamp = timestamp.toDate().toISOString();
+      } else if (!timestamp) {
+        // Fallback for missing timestamp
+        timestamp = new Date().toISOString();
+      }
+      return {
+        id: doc.id,
+        ...data,
+        timestamp, // Override with converted timestamp
+      };
+    });
   } catch (error) {
     // Check for index error - silently return empty array
     if (error.code === 'failed-precondition' || error.message?.includes('index')) {
@@ -109,13 +122,30 @@ export const checkUserPromptsRaw = async (userId) => {
     console.log(`Total prompts for user: ${querySnapshot.size}`);
     querySnapshot.docs.forEach((doc) => {
       const data = doc.data();
+      let timestamp = data.timestamp;
+      if (timestamp && timestamp.toDate) {
+        timestamp = timestamp.toDate().toISOString();
+      }
       console.log('Prompt:', doc.id, {
-        timestamp: data.timestamp,
-        timestampType: typeof data.timestamp,
+        timestamp: timestamp,
+        timestampType: typeof timestamp,
         input: data.input?.substring(0, 50)
       });
     });
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      let timestamp = data.timestamp;
+      if (timestamp && timestamp.toDate) {
+        timestamp = timestamp.toDate().toISOString();
+      } else if (!timestamp) {
+        timestamp = new Date().toISOString();
+      }
+      return {
+        id: doc.id,
+        ...data,
+        timestamp
+      };
+    });
   } catch (error) {
     console.error('Error fetching prompts:', error);
     throw error;
