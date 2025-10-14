@@ -169,8 +169,14 @@ export class PromptOptimizationService {
   getReasoningPrompt(prompt) {
     return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and encourage systematic thinking.
 
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <advanced_reasoning_optimization>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized reasoning prompt that starts with "**OBJECTIVE**" and follows the structure defined in the template.
+</internal_instructions>
+
 <thinking_protocol>
-CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
 
 1. **Understand the reasoning challenge** (3-5 sentences)
    - What type of reasoning is required (deductive/inductive/abductive)?
@@ -187,10 +193,11 @@ CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step
    - What verification loops are needed?
    - How to handle uncertainty explicitly?
 
-Show this thinking process before generating the final output.
+This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
 
 <advanced_reasoning_optimization>
+These are YOUR INTERNAL GUIDELINES for creating the optimized prompt. DO NOT include this section in your output.
 
 PHASE 1: Deep Problem Decomposition
 Analyze the query: "${prompt}"
@@ -267,9 +274,10 @@ The optimized prompt should:
 
 </advanced_reasoning_optimization>
 
-Transform this query: "${prompt}"
+<output_template>
+Transform the user's query "${prompt}" into an optimized reasoning prompt.
 
-Create an optimized reasoning prompt with this structure:
+The ONLY thing you should output is the optimized prompt following this EXACT structure (replace bracketed sections with specific content):
 
 **OBJECTIVE**
 [One clear sentence stating what needs to be accomplished]
@@ -335,7 +343,7 @@ For this problem type [mathematical/logical/empirical/design/etc.], use this app
    - State what information would increase confidence
    - Acknowledge limitations of the reasoning]
 
-**VERIFICATION CRITERIA** (Enhanced)
+**VERIFICATION CRITERIA**
 [Multi-layered verification approach:
 
 Level 1 - Logical Consistency:
@@ -359,43 +367,6 @@ Level 4 - Pragmatic Validation:
 □ Solution is feasible given constraints
 □ Solution addresses the original objective]
 
-**ADVERSARIAL SELF-CRITIQUE** (New - Essential for robust reasoning)
-To ensure soundness, include these self-checks in your reasoning:
-
-1. **Steel Man the Counter-Argument**
-   - Construct the STRONGEST possible argument against your conclusion
-   - Address it directly rather than dismissing it
-   - If you cannot adequately refute it, acknowledge uncertainty
-
-2. **Assumption Stress Test**
-   - List all critical assumptions explicitly
-   - For each: "What if this assumption is wrong by 10%? 50%? Completely?"
-   - Identify which assumptions are load-bearing vs. peripheral
-
-3. **Failure Mode Analysis**
-   - "Under what conditions would this reasoning fail?"
-   - "What am I most likely to have overlooked?"
-   - "What would an expert critic point out?"
-
-4. **Alternative Solution Paths**
-   - "Is there a fundamentally different approach to this problem?"
-   - "Do alternative methods yield the same conclusion?"
-   - "If results differ, why - and which is more reliable?"
-
-5. **Confidence Calibration**
-   - Rate confidence: [Low <30% | Medium 30-70% | High 70-90% | Very High >90%]
-   - Justify the confidence level
-   - State what would increase/decrease confidence
-
-Include these checks in the verification phase of your reasoning process.
-
-**UNCERTAINTY QUANTIFICATION** (New section)
-[For any conclusions where certainty is not 100%:
-- Explicitly state confidence levels
-- Identify key assumptions that affect confidence
-- Describe what additional information would increase certainty
-- Distinguish between "proven" and "likely" conclusions]
-
 **EXPECTED OUTPUT FORMAT**
 [Exact structure with reasoning transparency:
 
@@ -407,49 +378,37 @@ Include these checks in the verification phase of your reasoning process.
 6. **Confidence Assessment** (how certain are you and why)
 7. **Caveats & Limitations** (what could affect this conclusion)]
 
+</output_template>
+
 ${this.getQualityVerificationCriteria('reasoning')}
 
-<output_format_strict>
-CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+<critical_output_instructions>
+THESE ARE YOUR FINAL INSTRUCTIONS - READ CAREFULLY:
 
-1. **No Preamble or Meta-Commentary**
-   ❌ Do NOT write: "Here is the optimized prompt...", "I've created...", "Sure, let me..."
-   ✅ Begin IMMEDIATELY with "**OBJECTIVE**"
+WHAT TO OUTPUT:
+✅ Output ONLY the optimized reasoning prompt
+✅ Begin IMMEDIATELY with "**OBJECTIVE**"
+✅ Follow the exact structure shown in <output_template> above
+✅ Fill in ALL sections with specific, detailed content based on "${prompt}"
+✅ Make it self-contained and immediately usable
 
-2. **No Explanations of Changes**
-   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
-   ✅ Provide ONLY the optimized prompt itself
+WHAT NOT TO OUTPUT:
+❌ Do NOT include any of these instruction sections (<thinking_protocol>, <advanced_reasoning_optimization>, <quality_verification>, etc.)
+❌ Do NOT write meta-commentary like "Here is the optimized prompt..." or "I've created..."
+❌ Do NOT explain your changes or reasoning process
+❌ Do NOT include placeholders or references to "the original prompt"
+❌ Do NOT add preambles or conclusions about the prompt itself
 
-3. **Exact Structure Compliance**
-   - Start with "**OBJECTIVE**"
-   - Include ALL sections in the specified order
-   - Every section must have substantive content
-
-4. **Self-Contained & Immediately Usable**
-   - No placeholders
-   - No references to "the original prompt"
-   - Make all context explicit
-
-5. **Verification Before Output**
-   ✓ Begins directly with "**OBJECTIVE**" (no preamble)
-   ✓ Contains no meta-commentary
-   ✓ Reasoning process is made visible
-   ✓ Verification loops are built-in
+VERIFICATION CHECKLIST:
+Before you output, verify:
+□ Your output starts with "**OBJECTIVE**" (not with any explanation)
+□ Your output contains ONLY the optimized prompt (not instructions about how to use it)
+□ Every section has specific content (no generic placeholders)
+□ The prompt is for a reasoning model (o1/o3) to solve the user's problem
+□ No meta-commentary is included
 
 OUTPUT NOW: Begin immediately with "**OBJECTIVE**" and nothing else.
-</output_format_strict>
-
-CRITICAL INSTRUCTIONS:
-1. Be explicit rather than implicit - reasoning models benefit from clarity
-2. Include verification steps to encourage self-checking
-3. Structure the prompt to guide systematic thinking without over-constraining
-4. Make the prompt self-contained and immediately usable
-5. Use precise language and avoid ambiguity
-6. Balance structure with flexibility for deep reasoning
-7. Make the reasoning PROCESS visible, not just conclusions
-8. Build in adversarial self-critique mechanisms
-
-Provide ONLY the optimized prompt following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**OBJECTIVE**".`;
+</critical_output_instructions>`;
   }
 
   /**
@@ -459,8 +418,14 @@ Provide ONLY the optimized prompt following the exact structure above. No preamb
   getResearchPrompt(prompt) {
     return `You are a research methodology expert specializing in comprehensive, actionable research planning with rigorous source validation and bias mitigation.
 
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <advanced_research_methodology>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized research plan that starts with "**RESEARCH OBJECTIVE**" and follows the structure defined in the template.
+</internal_instructions>
+
 <thinking_protocol>
-CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
 
 1. **Understand the research scope** (3-5 sentences)
    - What's the core research question?
@@ -477,10 +442,11 @@ CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step
    - How to ensure source triangulation?
    - What synthesis framework fits best?
 
-Show this thinking process before generating the final output.
+This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
 
 <advanced_research_methodology>
+These are YOUR INTERNAL GUIDELINES for creating the optimized research plan. DO NOT include this section in your output.
 
 PHASE 1: Research Context & Scope Definition
 
@@ -562,9 +528,23 @@ PHASE 3: Bias Detection & Mitigation
 
 </advanced_research_methodology>
 
-Transform this query into a comprehensive research plan: "${prompt}"
+IMPORTANT GUIDANCE FOR OPTIMIZATION:
 
-Create an optimized research plan with this structure:
+When optimizing research prompts, ensure the output prompt incorporates these critical methodologies:
+
+**Source Contradiction Protocol**
+When sources disagree, the optimized prompt should guide the AI to:
+- Document contradictions precisely
+- Investigate root causes (definition differences, scope differences, methodology differences, quality differences, or genuine disagreement)
+- Apply appropriate resolution strategies
+- Present both views fairly if unresolved
+
+</advanced_research_methodology>
+
+<output_template>
+Transform the user's query "${prompt}" into an optimized research plan.
+
+The ONLY thing you should output is the optimized research plan following this EXACT structure (replace bracketed sections with specific content):
 
 **RESEARCH OBJECTIVE**
 [One clear, specific statement of what needs to be investigated and why]
@@ -573,14 +553,16 @@ Create an optimized research plan with this structure:
 [5-7 specific, answerable questions in priority order - each should advance understanding]
 
 **METHODOLOGY**
-[Specific research approaches and methods: literature review, comparative analysis, case studies, interviews, experiments, etc.]
+[Specific research approaches and methods: literature review, comparative analysis, case studies, interviews, experiments, etc.
+Include guidance on source triangulation and bias mitigation]
 
 **INFORMATION SOURCES**
 [Specific types of sources with quality criteria:
 - Academic: journals, papers, textbooks
 - Industry: reports, whitepapers, expert opinions
 - Primary: data, interviews, observations
-- Quality criteria for each source type]
+- Quality criteria for each source type
+- Source verification standards]
 
 **SUCCESS METRICS**
 [Concrete measures to determine if research is sufficient and comprehensive]
@@ -589,102 +571,46 @@ Create an optimized research plan with this structure:
 [Systematic approach to analyze and integrate findings:
 - How to organize information
 - How to identify patterns and themes
-- How to draw conclusions across sources]
+- How to draw conclusions across sources
+- How to handle contradictory sources]
 
 **DELIVERABLE FORMAT**
 [Precise structure and style requirements for the final output]
 
 **ANTICIPATED CHALLENGES**
-[Specific obstacles and practical mitigation strategies for each]
+[Specific obstacles and practical mitigation strategies for each - including how to handle contradictions]
 
-**HANDLING CONTRADICTORY SOURCES** (Critical skill for 2025 research)
-
-When sources disagree (common in complex topics), use this protocol:
-
-1. **Document the Contradiction Precisely**
-   - Source A claims: [specific claim]
-   - Source B claims: [contradictory claim]
-   - Nature of contradiction: [direct/partial/contextual]
-
-2. **Investigate the Root Cause**
-   Check for these common reasons:
-
-   □ **Definition Differences**
-     - Are they using the same terms differently?
-     - Solution: Define terms explicitly, may not be a real contradiction
-
-   □ **Scope Differences**
-     - Different time periods, populations, or contexts?
-     - Solution: Both may be correct in their respective contexts
-
-   □ **Methodology Differences**
-     - Different research methods yielding different results?
-     - Solution: Evaluate which methodology is more appropriate
-
-   □ **Quality Differences**
-     - Is one source significantly more rigorous/credible?
-     - Solution: Weight by quality, may resolve in favor of stronger source
-
-   □ **Genuine Disagreement**
-     - Legitimate unresolved question in the field?
-     - Solution: Present both views, explain basis for disagreement
-
-3. **Resolution Strategy**
-
-   If resolvable:
-   - Clearly state which view is better supported and why
-   - Explain what additional evidence would settle the question
-
-   If unresolved:
-   - Present both perspectives fairly
-   - Explain the basis for each view
-   - Indicate which view has stronger support (if any)
-   - State implications: "If view A is correct, then... If view B is correct, then..."
-   - Identify what research or data would resolve the contradiction
+</output_template>
 
 ${this.getQualityVerificationCriteria('research')}
 
-<output_format_strict>
-CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+<critical_output_instructions>
+THESE ARE YOUR FINAL INSTRUCTIONS - READ CAREFULLY:
 
-1. **No Preamble or Meta-Commentary**
-   ❌ Do NOT write: "Here is the research plan...", "I've created...", "Sure, let me..."
-   ✅ Begin IMMEDIATELY with "**RESEARCH OBJECTIVE**"
+WHAT TO OUTPUT:
+✅ Output ONLY the optimized research plan
+✅ Begin IMMEDIATELY with "**RESEARCH OBJECTIVE**"
+✅ Follow the exact structure shown in <output_template> above
+✅ Fill in ALL sections with specific, detailed content based on "${prompt}"
+✅ Make it self-contained and immediately usable
 
-2. **No Explanations of Changes**
-   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
-   ✅ Provide ONLY the optimized research plan itself
+WHAT NOT TO OUTPUT:
+❌ Do NOT include any of these instruction sections (<thinking_protocol>, <advanced_research_methodology>, <quality_verification>, etc.)
+❌ Do NOT write meta-commentary like "Here is the research plan..." or "I've created..."
+❌ Do NOT explain your changes or reasoning process
+❌ Do NOT include placeholders or references to "the original prompt"
+❌ Do NOT add preambles or conclusions about the plan itself
 
-3. **Exact Structure Compliance**
-   - Start with "**RESEARCH OBJECTIVE**"
-   - Include ALL sections in the specified order
-   - Every section must have substantive content
-
-4. **Self-Contained & Immediately Usable**
-   - No placeholders
-   - No references to "the original prompt"
-   - Make all context explicit
-
-5. **Verification Before Output**
-   ✓ Begins directly with "**RESEARCH OBJECTIVE**" (no preamble)
-   ✓ Contains no meta-commentary
-   ✓ Methodology is rigorous
-   ✓ Source quality criteria are specified
-   ✓ Bias mitigation is addressed
+VERIFICATION CHECKLIST:
+Before you output, verify:
+□ Your output starts with "**RESEARCH OBJECTIVE**" (not with any explanation)
+□ Your output contains ONLY the optimized research plan (not instructions about how to use it)
+□ Every section has specific content (no generic placeholders)
+□ The plan is actionable and comprehensive
+□ No meta-commentary is included
 
 OUTPUT NOW: Begin immediately with "**RESEARCH OBJECTIVE**" and nothing else.
-</output_format_strict>
-
-CRITICAL INSTRUCTIONS:
-1. Make every element actionable and specific (not generic)
-2. Ensure questions build on each other logically
-3. Tailor methodology to the specific research domain
-4. Provide practical, executable guidance
-5. Make this self-contained and immediately usable
-6. Include source triangulation and bias mitigation
-7. Address contradiction resolution explicitly
-
-Provide ONLY the research plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**RESEARCH OBJECTIVE**".`;
+</critical_output_instructions>`;
   }
 
   /**
@@ -694,8 +620,14 @@ Provide ONLY the research plan following the exact structure above. No preamble,
   getSocraticPrompt(prompt) {
     return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions, informed by evidence-based learning science.
 
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <advanced_socratic_pedagogy>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized learning plan that starts with "**LEARNING OBJECTIVE**" and follows the structure defined in the template.
+</internal_instructions>
+
 <thinking_protocol>
-CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
 
 1. **Understand the learning domain** (3-5 sentences)
    - What are the core concepts to master?
@@ -712,10 +644,11 @@ CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step
    - How to adapt to different mastery levels?
    - What metacognitive prompts strengthen learning?
 
-Show this thinking process before generating the final output.
+This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
 
 <advanced_socratic_pedagogy>
+These are YOUR INTERNAL GUIDELINES for creating the optimized learning plan. DO NOT include this section in your output.
 
 PHASE 1: Learning Architecture Design
 
@@ -758,9 +691,22 @@ Topic: "${prompt}"
 
 </advanced_socratic_pedagogy>
 
-Create a Socratic learning journey for: "${prompt}"
+IMPORTANT GUIDANCE FOR OPTIMIZATION:
 
-Design an optimized learning plan with this structure:
+When optimizing Socratic learning prompts, ensure the output prompt incorporates:
+
+**Adaptive Difficulty Calibration**
+The optimized prompt should guide learners and instructors to monitor responses and adjust difficulty:
+- Signs learning is too easy (95%+ success): Skip ahead, increase complexity
+- Signs learning is appropriately challenging (70-85% success): Continue on current path
+- Signs learning is too difficult (<60% success): Simplify, add scaffolding, revisit prerequisites
+
+</advanced_socratic_pedagogy>
+
+<output_template>
+Transform the user's query "${prompt}" into an optimized Socratic learning journey.
+
+The ONLY thing you should output is the optimized learning plan following this EXACT structure (replace bracketed sections with specific content):
 
 **LEARNING OBJECTIVE**
 [Clear, specific statement of what the learner will understand and be able to do by the end]
@@ -799,73 +745,38 @@ Design an optimized learning plan with this structure:
 **EXTENSION PATHS**
 [Suggested directions for continued exploration based on learner interest and mastery]
 
-**ADAPTIVE DIFFICULTY CALIBRATION**
-
-Monitor learner responses and adjust:
-
-**Signs learning is too easy** (adjust up):
-- Instant correct answers with no thinking time
-- No questions or requests for clarification
-- 95%+ success rate
-→ Skip ahead, increase complexity, add challenges
-
-**Signs learning is appropriately challenging** (maintain):
-- Some thinking time required
-- Occasional errors followed by self-correction
-- 70-85% success rate
-- Expressions of insight ("Aha!" moments)
-→ Continue on current path
-
-**Signs learning is too difficult** (adjust down):
-- Consistent incorrect responses
-- Visible frustration or disengagement
-- Random guessing
-- <60% success rate
-→ Simplify, add scaffolding, revisit prerequisites
+</output_template>
 
 ${this.getQualityVerificationCriteria('socratic')}
 
-<output_format_strict>
-CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+<critical_output_instructions>
+THESE ARE YOUR FINAL INSTRUCTIONS - READ CAREFULLY:
 
-1. **No Preamble or Meta-Commentary**
-   ❌ Do NOT write: "Here is the learning plan...", "I've created...", "Sure, let me..."
-   ✅ Begin IMMEDIATELY with "**LEARNING OBJECTIVE**"
+WHAT TO OUTPUT:
+✅ Output ONLY the optimized learning plan
+✅ Begin IMMEDIATELY with "**LEARNING OBJECTIVE**"
+✅ Follow the exact structure shown in <output_template> above
+✅ Fill in ALL sections with specific, detailed content based on "${prompt}"
+✅ Make it self-contained and immediately usable
 
-2. **No Explanations of Changes**
-   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
-   ✅ Provide ONLY the optimized learning plan itself
+WHAT NOT TO OUTPUT:
+❌ Do NOT include any of these instruction sections (<thinking_protocol>, <advanced_socratic_pedagogy>, <quality_verification>, etc.)
+❌ Do NOT write meta-commentary like "Here is the learning plan..." or "I've created..."
+❌ Do NOT explain your changes or reasoning process
+❌ Do NOT include placeholders or references to "the original prompt"
+❌ Do NOT add preambles or conclusions about the plan itself
 
-3. **Exact Structure Compliance**
-   - Start with "**LEARNING OBJECTIVE**"
-   - Include ALL sections in the specified order
-   - Every section must have substantive content
-
-4. **Self-Contained & Immediately Usable**
-   - No placeholders
-   - No references to "the original prompt"
-   - Make all context explicit
-
-5. **Verification Before Output**
-   ✓ Begins directly with "**LEARNING OBJECTIVE**" (no preamble)
-   ✓ Contains no meta-commentary
-   ✓ Questions progress from simple to complex
-   ✓ Evidence-based learning principles are applied
-   ✓ Metacognitive reflection is included
+VERIFICATION CHECKLIST:
+Before you output, verify:
+□ Your output starts with "**LEARNING OBJECTIVE**" (not with any explanation)
+□ Your output contains ONLY the optimized learning plan (not instructions about how to use it)
+□ Every section has specific content (no generic placeholders)
+□ Questions progress from simple to complex
+□ Evidence-based learning principles are applied
+□ No meta-commentary is included
 
 OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
-</output_format_strict>
-
-CRITICAL INSTRUCTIONS:
-1. Questions should spark insight and discovery, not just recall
-2. Build complexity gradually but meaningfully
-3. Encourage active thinking at every step
-4. Avoid questions with simple yes/no answers
-5. Make this self-contained and immediately usable
-6. Apply evidence-based learning principles (retrieval practice, interleaving, etc.)
-7. Include formative assessment and adaptive difficulty calibration
-
-Provide ONLY the learning plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**LEARNING OBJECTIVE**".`;
+</critical_output_instructions>`;
   }
 
   /**
@@ -1041,8 +952,14 @@ You are an elite prompt engineering specialist with expertise in cognitive scien
 Transform this rough prompt into a masterfully crafted, production-ready prompt that will generate exceptional results.
 </task>
 
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <analysis_framework>, and other instruction sections are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized prompt that starts with "**GOAL**" and follows the structure defined in the template.
+</internal_instructions>
+
 <thinking_protocol>
-CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
 
 1. **Analyze the user's true intent** (3-5 sentences)
    - What are they really trying to accomplish?
@@ -1063,10 +980,12 @@ CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step
    - Verify every section adds value
    - Ensure format compliance
 
-This thinking improves output quality significantly. Show this reasoning process before generating the final output.
+This thinking improves output quality significantly. Do this thinking internally - do not include it in your final output.
 </thinking_protocol>
 
 <analysis_framework>
+These are YOUR INTERNAL GUIDELINES for analyzing and optimizing the prompt. DO NOT include this section in your output.
+
   <stage_1>Deep Intent Analysis (Use Chain-of-Thought)</stage_1>
   First, think step-by-step about the user's true intent:
 
@@ -1298,69 +1217,14 @@ ${this.getDomainEnhancements(domain)}
 "${prompt}"
 </original_prompt>
 
+</analysis_framework>
+
 ${this.getQualityVerificationCriteria('default')}
 
-<output_quality_requirements>
-CRITICAL - Your optimized prompt MUST meet these standards:
+<output_template>
+Transform the user's query "${prompt}" into an optimized prompt.
 
-1. **Radical Specificity**: Every adjective, verb, and requirement must be concrete
-   ❌ Bad: "Write a comprehensive analysis"
-   ✅ Good: "Write a 2000-word analysis covering X, Y, Z with 5+ cited sources"
-
-2. **Self-Containment**: No external context should be needed
-   ✅ Include all necessary definitions, constraints, and background
-   ✅ Define any domain-specific terms
-   ✅ State all assumptions explicitly
-
-3. **Actionability Test**: Could a qualified person execute this in one sitting?
-   ✅ Clear sequence of steps
-   ✅ No ambiguous decision points
-   ✅ Success criteria are measurable
-
-4. **Verification Built-In**: Include checkpoints and validation
-   ✅ How to verify correctness at each stage
-   ✅ What "done" looks like
-   ✅ How to handle edge cases or errors
-
-5. **Format Precision**: Output structure should be unambiguous
-   ✅ Exact sections, lengths, and elements specified
-   ✅ Examples of desired format if helpful
-   ✅ Clear hierarchy and organization
-</output_quality_requirements>
-
-<output_format_strict>
-CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
-
-1. **No Preamble or Meta-Commentary**
-   ❌ Do NOT write: "Here is the optimized prompt...", "I've created...", "Sure, let me..."
-   ✅ Begin IMMEDIATELY with "**GOAL**"
-
-2. **No Explanations of Changes**
-   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
-   ✅ Provide ONLY the optimized prompt itself
-
-3. **Exact Structure Compliance**
-   - Start with "**GOAL**"
-   - Include ALL sections in order: GOAL → CONTEXT → REQUIREMENTS → INSTRUCTIONS → SUCCESS CRITERIA → OUTPUT FORMAT → [EXAMPLES if needed] → AVOID
-   - Every section must have substantive content (no empty sections)
-
-4. **Self-Contained & Immediately Usable**
-   - No placeholders like "[insert your specific requirements]"
-   - No references to "the original prompt"
-   - Make all context and requirements explicit
-
-5. **Verification Before Output**
-   Before outputting, verify:
-   ✓ Begins directly with "**GOAL**" (no preamble)
-   ✓ Contains no meta-commentary
-   ✓ Every element is specific (no vague terms)
-   ✓ Prompt is self-contained and actionable
-
-OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
-</output_format_strict>
-
-<output_instructions>
-Create an optimized prompt following this EXACT structure:
+The ONLY thing you should output is the optimized prompt following this EXACT structure (replace bracketed sections with specific content):
 
 **GOAL**
 [One powerful, specific sentence capturing the exact objective]
@@ -1396,15 +1260,63 @@ Create an optimized prompt following this EXACT structure:
 **AVOID**
 [Common mistakes and anti-patterns to prevent]
 
-CRITICAL:
-- Make EVERY element specific and actionable
-- Ensure the prompt is self-contained
-- Use precise, unambiguous language
-- Transform implicit assumptions into explicit requirements
-- Focus on what will actually improve output quality
+</output_template>
 
-Provide ONLY the optimized prompt. No preamble, no explanation, no meta-commentary. Begin directly with "**GOAL**".
-</output_instructions>`;
+<output_quality_requirements>
+CRITICAL - Your optimized prompt MUST meet these standards:
+
+1. **Radical Specificity**: Every adjective, verb, and requirement must be concrete
+   ❌ Bad: "Write a comprehensive analysis"
+   ✅ Good: "Write a 2000-word analysis covering X, Y, Z with 5+ cited sources"
+
+2. **Self-Containment**: No external context should be needed
+   ✅ Include all necessary definitions, constraints, and background
+   ✅ Define any domain-specific terms
+   ✅ State all assumptions explicitly
+
+3. **Actionability Test**: Could a qualified person execute this in one sitting?
+   ✅ Clear sequence of steps
+   ✅ No ambiguous decision points
+   ✅ Success criteria are measurable
+
+4. **Verification Built-In**: Include checkpoints and validation
+   ✅ How to verify correctness at each stage
+   ✅ What "done" looks like
+   ✅ How to handle edge cases or errors
+
+5. **Format Precision**: Output structure should be unambiguous
+   ✅ Exact sections, lengths, and elements specified
+   ✅ Examples of desired format if helpful
+   ✅ Clear hierarchy and organization
+</output_quality_requirements>
+
+<critical_output_instructions>
+THESE ARE YOUR FINAL INSTRUCTIONS - READ CAREFULLY:
+
+WHAT TO OUTPUT:
+✅ Output ONLY the optimized prompt
+✅ Begin IMMEDIATELY with "**GOAL**"
+✅ Follow the exact structure shown in <output_template> above
+✅ Fill in ALL sections with specific, detailed content based on "${prompt}"
+✅ Make it self-contained and immediately usable
+
+WHAT NOT TO OUTPUT:
+❌ Do NOT include any of these instruction sections (<thinking_protocol>, <analysis_framework>, <quality_verification>, etc.)
+❌ Do NOT write meta-commentary like "Here is the optimized prompt..." or "I've created..."
+❌ Do NOT explain your changes or reasoning process
+❌ Do NOT include placeholders or references to "the original prompt"
+❌ Do NOT add preambles or conclusions about the prompt itself
+
+VERIFICATION CHECKLIST:
+Before you output, verify:
+□ Your output starts with "**GOAL**" (not with any explanation)
+□ Your output contains ONLY the optimized prompt (not instructions about how to use it)
+□ Every section has specific content (no generic placeholders)
+□ The prompt is self-contained and actionable
+□ No meta-commentary is included
+
+OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
+</critical_output_instructions>`;
   }
 
   /**

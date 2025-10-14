@@ -141,12 +141,14 @@ function PromptOptimizerContent() {
   }, [promptOptimizer.optimizedPrompt, showResults, promptOptimizer.skipAnimation]);
 
   // Handle optimization
-  const handleOptimize = async (promptToOptimize = promptOptimizer.inputPrompt, context = promptOptimizer.improvementContext) => {
-    console.log('handleOptimize called with:', { promptToOptimize, context, selectedMode });
-    const result = await promptOptimizer.optimize(promptToOptimize, context);
+  const handleOptimize = async (promptToOptimize, context) => {
+    const prompt = promptToOptimize || promptOptimizer.inputPrompt;
+    const ctx = context || promptOptimizer.improvementContext;
+    console.log('handleOptimize called with:', { prompt, ctx, selectedMode });
+    const result = await promptOptimizer.optimize(prompt, ctx);
     console.log('optimize result:', result);
     if (result) {
-      promptHistory.saveToHistory(promptToOptimize, result.optimized, result.score, selectedMode);
+      promptHistory.saveToHistory(prompt, result.optimized, result.score, selectedMode);
       setShowResults(true);
       setShowHistory(true);
     }

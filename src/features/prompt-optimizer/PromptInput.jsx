@@ -137,9 +137,13 @@ export const PromptInput = ({
     }
   };
 
-  const handleOptimizeClick = () => {
+  const handleOptimizeClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('Optimize button clicked, inputPrompt:', inputPrompt, 'isProcessing:', isProcessing);
-    onOptimize();
+    if (inputPrompt && inputPrompt.trim()) {
+      onOptimize();
+    }
   };
 
   return (
