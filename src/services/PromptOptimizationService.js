@@ -12,6 +12,15 @@ export class PromptOptimizationService {
     this.claudeClient = claudeClient;
     this.cacheConfig = cacheService.getConfig('promptOptimization');
     this.exampleBank = this.initializeExampleBank();
+
+    // Template versions for tracking improvements
+    this.templateVersions = {
+      default: '2.0.0', // Updated version with 2025 improvements
+      reasoning: '2.0.0',
+      research: '2.0.0',
+      socratic: '2.0.0',
+      video: '1.0.0'
+    };
   }
 
   /**
@@ -33,12 +42,13 @@ export class PromptOptimizationService {
       logger.info('Auto-detected mode', { detectedMode: mode });
     }
 
-    // Check cache first
+    // Check cache first (include template version to prevent serving outdated cached results)
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
       prompt,
       mode,
       context,
       useIterativeRefinement,
+      templateVersion: this.templateVersions[mode] || '1.0.0',
     });
 
     const cached = await cacheService.get(cacheKey, 'prompt-optimization');
@@ -74,6 +84,9 @@ export class PromptOptimizationService {
     });
 
     let optimizedText = response.content[0].text;
+
+    // Log optimization metrics
+    this.logOptimizationMetrics(prompt, optimizedText, mode, response);
 
     // Apply Constitutional AI review if requested
     if (useConstitutionalAI) {
@@ -156,21 +169,103 @@ export class PromptOptimizationService {
   getReasoningPrompt(prompt) {
     return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and encourage systematic thinking.
 
-<reasoning_optimization_process>
-First, analyze the user's query to identify:
-1. Core problem or question to be solved
-2. Implicit assumptions or constraints
-3. Expected output format and quality criteria
-4. Cognitive complexity level required
-5. Domain-specific knowledge needed
+<thinking_protocol>
+CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
 
-Then, structure an optimized prompt that:
-- States the problem with precision and clarity
-- Makes implicit constraints explicit
-- Provides scaffolding for systematic reasoning
-- Includes verification checkpoints
-- Defines clear success metrics
-</reasoning_optimization_process>
+1. **Understand the reasoning challenge** (3-5 sentences)
+   - What type of reasoning is required (deductive/inductive/abductive)?
+   - What makes this problem complex?
+   - What's the expected depth of reasoning?
+
+2. **Identify verification needs** (bullet list)
+   - What could go wrong in the reasoning process?
+   - Where should self-checks be inserted?
+   - What assumptions need stress-testing?
+
+3. **Design reasoning scaffolding** (prioritized list)
+   - What decomposition strategy is optimal?
+   - What verification loops are needed?
+   - How to handle uncertainty explicitly?
+
+Show this thinking process before generating the final output.
+</thinking_protocol>
+
+<advanced_reasoning_optimization>
+
+PHASE 1: Deep Problem Decomposition
+Analyze the query: "${prompt}"
+
+Use recursive decomposition:
+1. **Core Problem Identification**
+   - What is the fundamental question that needs answering?
+   - Can this problem be broken into sub-problems? If yes, what's the dependency structure?
+   - What's the minimal problem that, if solved, would unlock the larger solution?
+
+2. **Constraint Mapping**
+   - Explicit constraints (stated): [list]
+   - Implicit constraints (inferred): [list with justification]
+   - Potential constraint conflicts: [identify and note]
+   - Constraints that limit solution space most: [priority ranked]
+
+3. **Reasoning Complexity Assessment**
+   - Type: [deductive/inductive/abductive/analogical/causal/probabilistic]
+   - Depth: [shallow (1-2 steps) / moderate (3-5 steps) / deep (6+ steps)]
+   - Uncertainty level: [low/medium/high - affects need for probabilistic reasoning]
+   - Domain expertise required: [none/basic/intermediate/expert]
+
+PHASE 2: Reasoning Scaffold Design
+
+Design a reasoning structure that:
+
+A. **Encourages Extended Thinking** (o1/o3 models benefit from this)
+   - Don't just ask for the answer - ask for the THINKING PROCESS
+   - Include explicit "think step-by-step" instructions
+   - Request intermediate reasoning states, not just final conclusions
+   - Encourage exploration of multiple solution paths before committing
+
+B. **Builds in Verification Loops**
+   - After each reasoning step: "Does this conclusion follow logically?"
+   - Before finalizing: "What would disprove this reasoning?"
+   - Adversarial check: "What's the strongest argument AGAINST this conclusion?"
+   - Sanity checks: "Does this result make sense given [baseline expectations]?"
+
+C. **Handles Uncertainty Explicitly**
+   - When confidence is not 100%, request explicit uncertainty quantification
+   - Ask: "What additional information would increase confidence?"
+   - Request: "What are the key assumptions, and how sensitive is the conclusion to them?"
+
+PHASE 3: Meta-Reasoning Enhancement
+
+Add these meta-cognitive elements:
+
+1. **Reasoning Strategy Selection**
+   - Guide the model to choose optimal reasoning strategy:
+     * For mathematical problems: formal proof structure
+     * For open-ended problems: systematic hypothesis generation and testing
+     * For debugging: differential diagnosis approach
+     * For optimization: constraint satisfaction with iterative refinement
+
+2. **Self-Monitoring Instructions**
+   - "Pause after each major step and assess: Am I on the right track?"
+   - "If you notice circular reasoning, backtrack and try a different approach"
+   - "If complexity is increasing, consider whether you're overcomplicating"
+
+3. **Edge Case Anticipation**
+   - "What boundary conditions should be tested?"
+   - "What special cases might break this reasoning?"
+   - "What happens at extremes (zero, infinity, negative values, etc.)?"
+
+PHASE 4: Quality Assurance Framework
+
+The optimized prompt should:
+✓ Make the reasoning process VISIBLE (not just conclusions)
+✓ Include multiple verification checkpoints
+✓ Encourage adversarial self-critique
+✓ Quantify uncertainty where appropriate
+✓ Define what "thorough" means for this specific problem
+✓ Provide scaffolding without over-constraining creativity
+
+</advanced_reasoning_optimization>
 
 Transform this query: "${prompt}"
 
@@ -203,8 +298,146 @@ Create an optimized reasoning prompt with this structure:
 **SUCCESS METRICS**
 [How to evaluate solution quality - be specific and measurable]
 
-**EXPECTED OUTPUT**
-[Exact format and structure of the final answer]
+**PROBLEM DECOMPOSITION** (New section - critical for reasoning models)
+[Break the problem into logical sub-components:
+- List 3-5 key sub-problems or questions
+- Show dependencies: "Before solving X, we need Y"
+- Identify which sub-problems are critical path vs. supporting
+- Note any sub-problems that could be solved in parallel]
+
+**REASONING APPROACH**
+[Suggested methodology tailored to problem type:
+
+For this problem type [mathematical/logical/empirical/design/etc.], use this approach:
+
+1. **Initial Analysis Phase**
+   - Gather and organize known information
+   - Identify what's unknown or uncertain
+   - List relevant principles, laws, or frameworks that apply
+
+2. **Solution Generation Phase**
+   - [Specific strategy based on problem type]
+   - Generate multiple solution candidates if applicable
+   - For each major reasoning step:
+     * State the step clearly
+     * Explain the logical justification
+     * Identify any assumptions being made
+
+3. **Verification Phase**
+   - For each conclusion: "Does this logically follow from the premises?"
+   - Adversarial check: "What's the strongest counter-argument?"
+   - Boundary testing: "Does this hold at edge cases?"
+   - Assumption testing: "What if assumption X is wrong?"
+
+4. **Confidence Assessment**
+   - Rate confidence in the solution: [low/medium/high]
+   - Identify key uncertainties that affect confidence
+   - State what information would increase confidence
+   - Acknowledge limitations of the reasoning]
+
+**VERIFICATION CRITERIA** (Enhanced)
+[Multi-layered verification approach:
+
+Level 1 - Logical Consistency:
+□ All steps follow logically from previous steps
+□ No circular reasoning detected
+□ Assumptions are explicitly stated and reasonable
+
+Level 2 - Completeness:
+□ All sub-problems have been addressed
+□ No critical gaps in the reasoning chain
+□ Edge cases have been considered
+
+Level 3 - Adversarial Testing:
+□ Strongest counter-arguments have been considered and addressed
+□ Alternative interpretations have been explored
+□ Potential failure modes have been analyzed
+
+Level 4 - Pragmatic Validation:
+□ Solution makes intuitive sense (sanity check)
+□ Solution is consistent with domain knowledge
+□ Solution is feasible given constraints
+□ Solution addresses the original objective]
+
+**ADVERSARIAL SELF-CRITIQUE** (New - Essential for robust reasoning)
+To ensure soundness, include these self-checks in your reasoning:
+
+1. **Steel Man the Counter-Argument**
+   - Construct the STRONGEST possible argument against your conclusion
+   - Address it directly rather than dismissing it
+   - If you cannot adequately refute it, acknowledge uncertainty
+
+2. **Assumption Stress Test**
+   - List all critical assumptions explicitly
+   - For each: "What if this assumption is wrong by 10%? 50%? Completely?"
+   - Identify which assumptions are load-bearing vs. peripheral
+
+3. **Failure Mode Analysis**
+   - "Under what conditions would this reasoning fail?"
+   - "What am I most likely to have overlooked?"
+   - "What would an expert critic point out?"
+
+4. **Alternative Solution Paths**
+   - "Is there a fundamentally different approach to this problem?"
+   - "Do alternative methods yield the same conclusion?"
+   - "If results differ, why - and which is more reliable?"
+
+5. **Confidence Calibration**
+   - Rate confidence: [Low <30% | Medium 30-70% | High 70-90% | Very High >90%]
+   - Justify the confidence level
+   - State what would increase/decrease confidence
+
+Include these checks in the verification phase of your reasoning process.
+
+**UNCERTAINTY QUANTIFICATION** (New section)
+[For any conclusions where certainty is not 100%:
+- Explicitly state confidence levels
+- Identify key assumptions that affect confidence
+- Describe what additional information would increase certainty
+- Distinguish between "proven" and "likely" conclusions]
+
+**EXPECTED OUTPUT FORMAT**
+[Exact structure with reasoning transparency:
+
+1. **Problem Analysis** (your initial understanding)
+2. **Solution Approach** (why you chose this method)
+3. **Detailed Reasoning** (step-by-step with justifications - this is where o1/o3 models excel)
+4. **Verification** (how you checked your work)
+5. **Final Answer** (clear, concise statement)
+6. **Confidence Assessment** (how certain are you and why)
+7. **Caveats & Limitations** (what could affect this conclusion)]
+
+${this.getQualityVerificationCriteria('reasoning')}
+
+<output_format_strict>
+CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+
+1. **No Preamble or Meta-Commentary**
+   ❌ Do NOT write: "Here is the optimized prompt...", "I've created...", "Sure, let me..."
+   ✅ Begin IMMEDIATELY with "**OBJECTIVE**"
+
+2. **No Explanations of Changes**
+   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
+   ✅ Provide ONLY the optimized prompt itself
+
+3. **Exact Structure Compliance**
+   - Start with "**OBJECTIVE**"
+   - Include ALL sections in the specified order
+   - Every section must have substantive content
+
+4. **Self-Contained & Immediately Usable**
+   - No placeholders
+   - No references to "the original prompt"
+   - Make all context explicit
+
+5. **Verification Before Output**
+   ✓ Begins directly with "**OBJECTIVE**" (no preamble)
+   ✓ Contains no meta-commentary
+   ✓ Reasoning process is made visible
+   ✓ Verification loops are built-in
+
+OUTPUT NOW: Begin immediately with "**OBJECTIVE**" and nothing else.
+</output_format_strict>
 
 CRITICAL INSTRUCTIONS:
 1. Be explicit rather than implicit - reasoning models benefit from clarity
@@ -213,6 +446,8 @@ CRITICAL INSTRUCTIONS:
 4. Make the prompt self-contained and immediately usable
 5. Use precise language and avoid ambiguity
 6. Balance structure with flexibility for deep reasoning
+7. Make the reasoning PROCESS visible, not just conclusions
+8. Build in adversarial self-critique mechanisms
 
 Provide ONLY the optimized prompt following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**OBJECTIVE**".`;
   }
@@ -222,32 +457,110 @@ Provide ONLY the optimized prompt following the exact structure above. No preamb
    * @private
    */
   getResearchPrompt(prompt) {
-    return `You are a research methodology expert specializing in comprehensive, actionable research planning.
+    return `You are a research methodology expert specializing in comprehensive, actionable research planning with rigorous source validation and bias mitigation.
 
-<research_planning_process>
-Step 1: Understand the research domain and scope
-- Query: "${prompt}"
-- What field or domain does this belong to?
-- What is the depth and breadth of investigation required?
-- Is this exploratory, explanatory, or evaluative research?
+<thinking_protocol>
+CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
 
-Step 2: Identify key research components
-- What are the core questions that must be answered?
-- What methodologies best suit this inquiry?
-- What types of sources will be most valuable?
-- What challenges might arise?
+1. **Understand the research scope** (3-5 sentences)
+   - What's the core research question?
+   - What type of research is this (exploratory/explanatory/evaluative)?
+   - What depth and breadth are needed?
 
-Step 3: Structure a systematic approach
-- Prioritize questions by importance and dependency
-- Define clear success criteria
-- Establish a framework for synthesis
-- Anticipate obstacles and plan mitigations
+2. **Identify methodological requirements** (bullet list)
+   - What source types are essential?
+   - What quality standards apply?
+   - What biases need mitigation?
 
-Step 4: Ensure actionability
-- Make all elements specific and immediately usable
-- Provide clear guidance for execution
-- Define deliverable expectations
-</research_planning_process>
+3. **Design research structure** (prioritized list)
+   - What's the optimal question hierarchy?
+   - How to ensure source triangulation?
+   - What synthesis framework fits best?
+
+Show this thinking process before generating the final output.
+</thinking_protocol>
+
+<advanced_research_methodology>
+
+PHASE 1: Research Context & Scope Definition
+
+Query: "${prompt}"
+
+1. **Research Type Classification**
+   Determine the research paradigm (can be multiple):
+   □ Exploratory: Discovering what's known/unknown about a topic
+   □ Explanatory: Understanding why/how something works
+   □ Evaluative: Assessing effectiveness or comparing alternatives
+   □ Prescriptive: Determining best practices or recommendations
+   □ Predictive: Forecasting trends or outcomes
+
+   Primary type: [select based on query analysis]
+   Secondary type: [if applicable]
+
+2. **Domain & Interdisciplinary Analysis**
+   - Primary domain: [field/discipline]
+   - Related domains that should be consulted: [list 2-3]
+   - Why these domains matter: [justification]
+   - Domain maturity: [emerging/developing/mature - affects source availability]
+
+3. **Scope Boundaries** (Critical for preventing scope creep)
+   INCLUDE:
+   - [Specific aspects to investigate]
+   - [Time period: e.g., "last 5 years" or "historical perspective"]
+   - [Geographic/demographic scope if relevant]
+   - [Depth level: surface/moderate/deep dive]
+
+   EXCLUDE:
+   - [Related topics that are out of scope]
+   - [Why these are excluded: time/relevance/complexity]
+
+PHASE 2: Source Strategy & Quality Framework
+
+4. **Source Triangulation Protocol** (New - Critical Addition)
+
+   To ensure reliability, apply this verification process:
+
+   For any key claim or finding:
+   - Verify with at least 3 independent sources
+   - Ensure sources use different methodologies (don't cite each other)
+   - Check for consistency: Do they agree? If not, why?
+   - Identify potential biases in each source
+   - Weight sources by credibility and recency
+
+   Red flags requiring extra verification:
+   ⚠ Only one source makes this claim
+   ⚠ Sources are outdated (>5 years in fast-moving fields)
+   ⚠ Sources have clear conflicts of interest
+   ⚠ Claim seems too good/bad to be true
+   ⚠ Methodology is not described or seems flawed
+
+PHASE 3: Bias Detection & Mitigation
+
+5. **Bias Awareness Framework** (New - Essential for 2025)
+
+   Common biases to watch for:
+
+   **In Sources:**
+   - Selection bias: Are contrary viewpoints represented?
+   - Recency bias: Over-weighting recent findings
+   - Publication bias: Null results are less likely to be published
+   - Commercial bias: Funded research may favor sponsor's interests
+   - Geographic bias: Is research limited to specific regions?
+
+   **In Synthesis:**
+   - Confirmation bias: Favoring sources that match initial hypothesis
+   - Availability bias: Over-weighting easily accessible sources
+   - Authority bias: Assuming prestigious sources are always right
+   - Narrative bias: Crafting story that fits preconceptions
+
+   Mitigation strategies:
+   ✓ Actively seek disconfirming evidence
+   ✓ Include sources from diverse perspectives
+   ✓ Acknowledge limitations and uncertainties
+   ✓ Use systematic review methods where possible
+   ✓ Document reasoning for including/excluding sources
+
+</advanced_research_methodology>
 
 Transform this query into a comprehensive research plan: "${prompt}"
 
@@ -284,12 +597,92 @@ Create an optimized research plan with this structure:
 **ANTICIPATED CHALLENGES**
 [Specific obstacles and practical mitigation strategies for each]
 
+**HANDLING CONTRADICTORY SOURCES** (Critical skill for 2025 research)
+
+When sources disagree (common in complex topics), use this protocol:
+
+1. **Document the Contradiction Precisely**
+   - Source A claims: [specific claim]
+   - Source B claims: [contradictory claim]
+   - Nature of contradiction: [direct/partial/contextual]
+
+2. **Investigate the Root Cause**
+   Check for these common reasons:
+
+   □ **Definition Differences**
+     - Are they using the same terms differently?
+     - Solution: Define terms explicitly, may not be a real contradiction
+
+   □ **Scope Differences**
+     - Different time periods, populations, or contexts?
+     - Solution: Both may be correct in their respective contexts
+
+   □ **Methodology Differences**
+     - Different research methods yielding different results?
+     - Solution: Evaluate which methodology is more appropriate
+
+   □ **Quality Differences**
+     - Is one source significantly more rigorous/credible?
+     - Solution: Weight by quality, may resolve in favor of stronger source
+
+   □ **Genuine Disagreement**
+     - Legitimate unresolved question in the field?
+     - Solution: Present both views, explain basis for disagreement
+
+3. **Resolution Strategy**
+
+   If resolvable:
+   - Clearly state which view is better supported and why
+   - Explain what additional evidence would settle the question
+
+   If unresolved:
+   - Present both perspectives fairly
+   - Explain the basis for each view
+   - Indicate which view has stronger support (if any)
+   - State implications: "If view A is correct, then... If view B is correct, then..."
+   - Identify what research or data would resolve the contradiction
+
+${this.getQualityVerificationCriteria('research')}
+
+<output_format_strict>
+CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+
+1. **No Preamble or Meta-Commentary**
+   ❌ Do NOT write: "Here is the research plan...", "I've created...", "Sure, let me..."
+   ✅ Begin IMMEDIATELY with "**RESEARCH OBJECTIVE**"
+
+2. **No Explanations of Changes**
+   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
+   ✅ Provide ONLY the optimized research plan itself
+
+3. **Exact Structure Compliance**
+   - Start with "**RESEARCH OBJECTIVE**"
+   - Include ALL sections in the specified order
+   - Every section must have substantive content
+
+4. **Self-Contained & Immediately Usable**
+   - No placeholders
+   - No references to "the original prompt"
+   - Make all context explicit
+
+5. **Verification Before Output**
+   ✓ Begins directly with "**RESEARCH OBJECTIVE**" (no preamble)
+   ✓ Contains no meta-commentary
+   ✓ Methodology is rigorous
+   ✓ Source quality criteria are specified
+   ✓ Bias mitigation is addressed
+
+OUTPUT NOW: Begin immediately with "**RESEARCH OBJECTIVE**" and nothing else.
+</output_format_strict>
+
 CRITICAL INSTRUCTIONS:
 1. Make every element actionable and specific (not generic)
 2. Ensure questions build on each other logically
 3. Tailor methodology to the specific research domain
 4. Provide practical, executable guidance
 5. Make this self-contained and immediately usable
+6. Include source triangulation and bias mitigation
+7. Address contradiction resolution explicitly
 
 Provide ONLY the research plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**RESEARCH OBJECTIVE**".`;
   }
@@ -299,33 +692,71 @@ Provide ONLY the research plan following the exact structure above. No preamble,
    * @private
    */
   getSocraticPrompt(prompt) {
-    return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions.
+    return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions, informed by evidence-based learning science.
 
-<socratic_design_process>
-Step 1: Analyze the learning topic
-- Topic: "${prompt}"
-- What are the core concepts to be understood?
-- What prerequisite knowledge is needed?
-- What are common misconceptions?
+<thinking_protocol>
+CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
 
-Step 2: Map the learning journey
-- What sequence of questions will guide discovery?
-- How to scaffold from simple to complex?
-- What insights should emerge at each stage?
-- How to encourage active thinking vs passive recall?
+1. **Understand the learning domain** (3-5 sentences)
+   - What are the core concepts to master?
+   - What prerequisite knowledge is essential?
+   - What are the common misconceptions?
 
-Step 3: Design question types
-- Prior knowledge: Assess starting point
-- Foundation: Build conceptual base
-- Deepening: Challenge and extend thinking
-- Application: Connect to real contexts
-- Metacognitive: Reflect on learning process
+2. **Design learning progression** (bullet list)
+   - What's the optimal question sequence?
+   - Where should difficulty increase?
+   - What active learning techniques apply?
 
-Step 4: Anticipate learner needs
-- What will confuse or mislead?
-- What examples will clarify?
-- What extensions will engage advanced learners?
-</socratic_design_process>
+3. **Plan assessment integration** (prioritized list)
+   - What formative assessment points are needed?
+   - How to adapt to different mastery levels?
+   - What metacognitive prompts strengthen learning?
+
+Show this thinking process before generating the final output.
+</thinking_protocol>
+
+<advanced_socratic_pedagogy>
+
+PHASE 1: Learning Architecture Design
+
+Topic: "${prompt}"
+
+1. **Concept Dependency Mapping**
+
+   Create a learning graph:
+   - **Foundation concepts** (must understand first): [list 2-3]
+   - **Core concepts** (main learning objectives): [list 2-4]
+   - **Advanced concepts** (extend understanding): [list 1-2]
+   - **Integration concepts** (connect to broader knowledge): [list 1-2]
+
+   Dependencies:
+   - To understand [core concept X], learner must first grasp [foundation Y]
+   - Concepts that can be learned in parallel: [list]
+   - Concepts that build sequentially: [show progression]
+
+2. **Evidence-Based Learning Principles Integration**
+
+   This design incorporates:
+   ✓ **Retrieval Practice**: Frequent low-stakes recall questions
+   ✓ **Spaced Repetition**: Concepts revisited in different contexts
+   ✓ **Interleaving**: Mixed practice rather than blocked
+   ✓ **Elaborative Interrogation**: "Why" and "how" questions throughout
+   ✓ **Desirable Difficulties**: Appropriate challenge (70-80% success rate)
+   ✓ **Metacognitive Monitoring**: Self-assessment and strategy awareness
+   ✓ **Transfer Preparation**: Multiple contexts and novel applications
+
+3. **Cognitive Load Management** (Critical for effective learning)
+
+   For this topic:
+   - Intrinsic complexity: [low/medium/high]
+   - Optimal chunk size: [how much to tackle at once]
+   - Mitigation strategies:
+     * Use concrete examples before abstractions
+     * Introduce one new variable at a time
+     * Provide worked examples for complex procedures
+     * Allow time for consolidation before adding complexity
+
+</advanced_socratic_pedagogy>
 
 Create a Socratic learning journey for: "${prompt}"
 
@@ -368,12 +799,71 @@ Design an optimized learning plan with this structure:
 **EXTENSION PATHS**
 [Suggested directions for continued exploration based on learner interest and mastery]
 
+**ADAPTIVE DIFFICULTY CALIBRATION**
+
+Monitor learner responses and adjust:
+
+**Signs learning is too easy** (adjust up):
+- Instant correct answers with no thinking time
+- No questions or requests for clarification
+- 95%+ success rate
+→ Skip ahead, increase complexity, add challenges
+
+**Signs learning is appropriately challenging** (maintain):
+- Some thinking time required
+- Occasional errors followed by self-correction
+- 70-85% success rate
+- Expressions of insight ("Aha!" moments)
+→ Continue on current path
+
+**Signs learning is too difficult** (adjust down):
+- Consistent incorrect responses
+- Visible frustration or disengagement
+- Random guessing
+- <60% success rate
+→ Simplify, add scaffolding, revisit prerequisites
+
+${this.getQualityVerificationCriteria('socratic')}
+
+<output_format_strict>
+CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+
+1. **No Preamble or Meta-Commentary**
+   ❌ Do NOT write: "Here is the learning plan...", "I've created...", "Sure, let me..."
+   ✅ Begin IMMEDIATELY with "**LEARNING OBJECTIVE**"
+
+2. **No Explanations of Changes**
+   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
+   ✅ Provide ONLY the optimized learning plan itself
+
+3. **Exact Structure Compliance**
+   - Start with "**LEARNING OBJECTIVE**"
+   - Include ALL sections in the specified order
+   - Every section must have substantive content
+
+4. **Self-Contained & Immediately Usable**
+   - No placeholders
+   - No references to "the original prompt"
+   - Make all context explicit
+
+5. **Verification Before Output**
+   ✓ Begins directly with "**LEARNING OBJECTIVE**" (no preamble)
+   ✓ Contains no meta-commentary
+   ✓ Questions progress from simple to complex
+   ✓ Evidence-based learning principles are applied
+   ✓ Metacognitive reflection is included
+
+OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
+</output_format_strict>
+
 CRITICAL INSTRUCTIONS:
 1. Questions should spark insight and discovery, not just recall
 2. Build complexity gradually but meaningfully
 3. Encourage active thinking at every step
 4. Avoid questions with simple yes/no answers
 5. Make this self-contained and immediately usable
+6. Apply evidence-based learning principles (retrieval practice, interleaving, etc.)
+7. Include formative assessment and adaptive difficulty calibration
 
 Provide ONLY the learning plan following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**LEARNING OBJECTIVE**".`;
   }
@@ -551,36 +1041,141 @@ You are an elite prompt engineering specialist with expertise in cognitive scien
 Transform this rough prompt into a masterfully crafted, production-ready prompt that will generate exceptional results.
 </task>
 
-<analysis_framework>
-  <stage_1>Deep Intent Analysis</stage_1>
-  Examine: "${prompt}"
-  - What is the TRUE underlying goal?
-  - What implicit assumptions need to be explicit?
-  - What output would genuinely solve the user's problem?
-  - What expertise or perspective is needed?
+<thinking_protocol>
+CRITICAL: Before outputting the optimized prompt, engage in visible step-by-step thinking:
 
-  <stage_2>Domain Detection</stage_2>
+1. **Analyze the user's true intent** (3-5 sentences)
+   - What are they really trying to accomplish?
+   - What implicit needs or constraints exist?
+   - What would make this successful from their perspective?
+
+2. **Identify key optimization opportunities** (bullet list)
+   - What's vague that needs specificity?
+   - What's missing that needs to be added?
+   - What's unclear that needs structure?
+
+3. **Select enhancement strategies** (prioritized list)
+   - Which improvements will have the biggest impact?
+   - What's the optimal structure for this use case?
+
+4. **Self-critique your draft**
+   - Scan for ambiguities, gaps, or weak points
+   - Verify every section adds value
+   - Ensure format compliance
+
+This thinking improves output quality significantly. Show this reasoning process before generating the final output.
+</thinking_protocol>
+
+<analysis_framework>
+  <stage_1>Deep Intent Analysis (Use Chain-of-Thought)</stage_1>
+  First, think step-by-step about the user's true intent:
+
+  Original prompt: "${prompt}"
+
+  Ask yourself:
+  - What is the user ACTUALLY trying to accomplish (look beyond surface request)?
+  - What would success look like from the user's perspective?
+  - What implicit assumptions or context am I bringing to this interpretation?
+  - Are there multiple valid interpretations? If so, which is most likely given the wording?
+  - What constraints are implied but not stated?
+  - What level of expertise does the user have (beginner/intermediate/expert)?
+
+  Document your reasoning before proceeding to stage 2.
+
+  <stage_2>Gap Analysis with Self-Critique</stage_2>
+  Now identify what's missing or unclear:
+
+  Context gaps:
+  - What background information is needed but missing?
+  - What assumptions need to be made explicit?
+  - What scope boundaries should be defined?
+
+  Specificity gaps:
+  - Which terms are vague or ambiguous?
+  - What requirements need quantification?
+  - What quality criteria are implied but not stated?
+
+  Structure gaps:
+  - How should information be organized?
+  - What hierarchy or sequence is optimal?
+  - What format will make this most actionable?
+
+  Validation gaps:
+  - How will the user know if the output meets their needs?
+  - What checkpoints or milestones should be defined?
+  - What constitutes "good enough" vs "excellent"?
+
+  Self-critique: Have I made any unjustified assumptions in this gap analysis?
+
+  <stage_3>Domain Contextualization</stage_3>
   Detected characteristics:
   - Word count: ${wordCount}
   - Likely domain: ${domain}
   - Complexity level: ${wordCount < 10 ? 'simple' : wordCount < 30 ? 'moderate' : 'complex'}
+  - Inferred expertise level: [novice/practitioner/expert]
+  - Likely use case: [exploration/production/learning/analysis]
 
-  <stage_3>Gap Identification</stage_3>
-  Missing elements to identify:
-  - Context gaps (background, constraints, scope)
-  - Specificity gaps (vague terms, ambiguous requirements)
-  - Structure gaps (organization, flow, hierarchy)
-  - Output gaps (format, style, deliverables)
+  Apply domain-specific patterns and terminology that match this context.
 
-  <stage_4>Enhancement Strategies</stage_4>
-  Apply these proven techniques:
-  - Role definition for optimal perspective
-  - Context injection for better understanding
-  - Constraint specification for focused output
-  - Success criteria for quality assurance
-  - Example provision for clarity
-  - Anti-pattern identification to prevent common errors
+  <stage_4>Enhancement Strategy Selection</stage_4>
+  Based on the analysis above, select the most impactful enhancements:
+
+  Primary strategies (choose 2-3 that best address identified gaps):
+  □ Role engineering: Define optimal perspective and expertise
+  □ Context injection: Add essential background and constraints
+  □ Structured decomposition: Break complex tasks into clear steps
+  □ Example provision: Include concrete illustrations
+  □ Success criteria definition: Make quality measurable
+  □ Anti-pattern specification: Prevent common errors
+  □ Output format specification: Define exact deliverable structure
+  □ Verification protocol: Include self-checking mechanisms
+
+  Secondary strategies (optional, apply if they add significant value):
+  □ Few-shot learning: Provide pattern examples
+  □ Constraint specification: Define explicit boundaries
+  □ Reasoning scaffolding: Guide systematic thinking
+  □ Audience adaptation: Tailor complexity to user level
+
+  <stage_5>Quality Assurance Check</stage_5>
+  Before outputting the optimized prompt, verify:
+  ✓ Is every element specific and actionable (no vague terms)?
+  ✓ Can someone with appropriate expertise execute this immediately?
+  ✓ Are success criteria clear and measurable?
+  ✓ Is the prompt self-contained (no external references needed)?
+  ✓ Have I removed all meta-commentary and preamble?
+  ✓ Does the structure guide the user through execution naturally?
+  ✓ Are edge cases and potential ambiguities addressed?
+
+  If any check fails, revise before proceeding.
 </analysis_framework>
+
+<ambiguity_detection_phase>
+CRITICAL PHASE: Scan for Ambiguities
+
+Before optimizing, identify and mark ambiguities in "${prompt}":
+
+**Vague Quantifiers to Eliminate**:
+- Scan for: "some", "many", "few", "several", "large", "small", "quick", "soon"
+- Action: Replace with specific numbers, ranges, or measurements
+
+**Undefined Terms**:
+- Scan for: Technical jargon, domain terms, acronyms without context
+- Action: Define, explain, or replace with clearer language
+
+**Unclear Scope**:
+- Scan for: Open-ended verbs like "analyze", "write", "research" without bounds
+- Action: Add constraints (depth, breadth, format, length)
+
+**Ambiguous References**:
+- Scan for: "It", "this", "that", "they" without clear antecedent
+- Action: Replace with explicit nouns
+
+**Multiple Possible Interpretations**:
+- Identify phrases that could mean different things
+- Action: Choose most likely interpretation and make it explicit
+
+For each ambiguity found, note: [ambiguous element] → [specific replacement]
+</ambiguity_detection_phase>
 
 <few_shot_examples>
   <example_1>
@@ -702,6 +1297,67 @@ ${this.getDomainEnhancements(domain)}
 <original_prompt>
 "${prompt}"
 </original_prompt>
+
+${this.getQualityVerificationCriteria('default')}
+
+<output_quality_requirements>
+CRITICAL - Your optimized prompt MUST meet these standards:
+
+1. **Radical Specificity**: Every adjective, verb, and requirement must be concrete
+   ❌ Bad: "Write a comprehensive analysis"
+   ✅ Good: "Write a 2000-word analysis covering X, Y, Z with 5+ cited sources"
+
+2. **Self-Containment**: No external context should be needed
+   ✅ Include all necessary definitions, constraints, and background
+   ✅ Define any domain-specific terms
+   ✅ State all assumptions explicitly
+
+3. **Actionability Test**: Could a qualified person execute this in one sitting?
+   ✅ Clear sequence of steps
+   ✅ No ambiguous decision points
+   ✅ Success criteria are measurable
+
+4. **Verification Built-In**: Include checkpoints and validation
+   ✅ How to verify correctness at each stage
+   ✅ What "done" looks like
+   ✅ How to handle edge cases or errors
+
+5. **Format Precision**: Output structure should be unambiguous
+   ✅ Exact sections, lengths, and elements specified
+   ✅ Examples of desired format if helpful
+   ✅ Clear hierarchy and organization
+</output_quality_requirements>
+
+<output_format_strict>
+CRITICAL OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+
+1. **No Preamble or Meta-Commentary**
+   ❌ Do NOT write: "Here is the optimized prompt...", "I've created...", "Sure, let me..."
+   ✅ Begin IMMEDIATELY with "**GOAL**"
+
+2. **No Explanations of Changes**
+   ❌ Do NOT write: "I've made these improvements...", "This version is better because..."
+   ✅ Provide ONLY the optimized prompt itself
+
+3. **Exact Structure Compliance**
+   - Start with "**GOAL**"
+   - Include ALL sections in order: GOAL → CONTEXT → REQUIREMENTS → INSTRUCTIONS → SUCCESS CRITERIA → OUTPUT FORMAT → [EXAMPLES if needed] → AVOID
+   - Every section must have substantive content (no empty sections)
+
+4. **Self-Contained & Immediately Usable**
+   - No placeholders like "[insert your specific requirements]"
+   - No references to "the original prompt"
+   - Make all context and requirements explicit
+
+5. **Verification Before Output**
+   Before outputting, verify:
+   ✓ Begins directly with "**GOAL**" (no preamble)
+   ✓ Contains no meta-commentary
+   ✓ Every element is specific (no vague terms)
+   ✓ Prompt is self-contained and actionable
+
+OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
+</output_format_strict>
 
 <output_instructions>
 Create an optimized prompt following this EXACT structure:
@@ -1341,79 +1997,6 @@ Understand recursion as a problem-solving technique, recognize recursive pattern
   }
 
   /**
-   * Get reasoning prompt with example injection
-   * @private
-   */
-  getReasoningPrompt(prompt) {
-    const examples = this.selectRelevantExamples(prompt, 'reasoning');
-    const exampleText = this.formatExamples(examples);
-
-    return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and encourage systematic thinking.
-
-${exampleText ? `Here are examples of excellent reasoning prompt transformations:\n\n${exampleText}\n` : ''}
-
-<reasoning_optimization_process>
-First, analyze the user's query to identify:
-1. Core problem or question to be solved
-2. Implicit assumptions or constraints
-3. Expected output format and quality criteria
-4. Cognitive complexity level required
-5. Domain-specific knowledge needed
-
-Then, structure an optimized prompt that:
-- States the problem with precision and clarity
-- Makes implicit constraints explicit
-- Provides scaffolding for systematic reasoning
-- Includes verification checkpoints
-- Defines clear success metrics
-</reasoning_optimization_process>
-
-Transform this query: "${prompt}"
-
-Create an optimized reasoning prompt with this structure:
-
-**OBJECTIVE**
-[One clear sentence stating what needs to be accomplished]
-
-**PROBLEM STATEMENT**
-[Precise articulation of the problem, including scope and boundaries]
-
-**GIVEN CONSTRAINTS**
-[Explicit limitations, requirements, assumptions, or parameters that must be satisfied]
-
-**REASONING APPROACH**
-[Suggested methodology or framework for systematic thinking:
-- Break down into sub-problems
-- Identify key decision points
-- Consider edge cases and exceptions
-- Verify assumptions
-- Think through tradeoffs]
-
-**VERIFICATION CRITERIA**
-[Specific checkpoints to validate the solution:
-- Completeness checks
-- Logical consistency tests
-- Constraint satisfaction verification
-- Edge case validation]
-
-**SUCCESS METRICS**
-[How to evaluate solution quality - be specific and measurable]
-
-**EXPECTED OUTPUT**
-[Exact format and structure of the final answer]
-
-CRITICAL INSTRUCTIONS:
-1. Be explicit rather than implicit - reasoning models benefit from clarity
-2. Include verification steps to encourage self-checking
-3. Structure the prompt to guide systematic thinking without over-constraining
-4. Make the prompt self-contained and immediately usable
-5. Use precise language and avoid ambiguity
-6. Balance structure with flexibility for deep reasoning
-
-Provide ONLY the optimized prompt following the exact structure above. No preamble, no explanation, no meta-commentary. Begin directly with "**OBJECTIVE**".`;
-  }
-
-  /**
    * Format examples for inclusion in prompts
    * @private
    */
@@ -1431,5 +2014,99 @@ Why this works: ${ex.explanation}
 ${'─'.repeat(50)}`;
       })
       .join('\n\n');
+  }
+
+  /**
+   * Get quality verification criteria for optimized prompts
+   * @private
+   */
+  getQualityVerificationCriteria(mode) {
+    return `
+<quality_verification>
+Before finalizing the optimized prompt, verify these quality standards:
+
+**Specificity Check** (Target: 9/10)
+□ Every requirement has concrete, measurable criteria
+□ Vague adjectives (good, better, comprehensive) are quantified
+□ All deliverables have precise specifications (format, length, content)
+□ No ambiguous terms remain without clarification
+
+**Completeness Check** (Target: 9/10)
+□ All necessary context is included (no external references needed)
+□ Edge cases and exceptions are addressed
+□ Success criteria are defined clearly
+□ Failure modes or common errors are prevented
+
+**Actionability Check** (Target: 10/10)
+□ Someone with appropriate expertise can execute immediately
+□ Each step has clear inputs and expected outputs
+□ Dependencies between steps are explicit
+□ No guesswork or interpretation required
+
+**Structure Check** (Target: 9/10)
+□ Logical flow from start to finish
+□ Clear hierarchy and organization
+□ Scannable with headers and formatting
+□ Key information is prominent
+
+${this.getModeSpecificCriteria(mode)}
+
+ONLY output the optimized prompt if ALL checks pass. If any fail, revise first.
+</quality_verification>
+`;
+  }
+
+  /**
+   * Get mode-specific quality criteria
+   * @private
+   */
+  getModeSpecificCriteria(mode) {
+    const criteria = {
+      reasoning: `**Reasoning Quality** (Target: 9/10)
+□ Problem decomposition is systematic
+□ Verification steps are built-in
+□ Reasoning process is made visible
+□ Uncertainty is handled explicitly`,
+
+      research: `**Research Quality** (Target: 9/10)
+□ Methodology is rigorous and transparent
+□ Source quality criteria are specified
+□ Synthesis framework is provided
+□ Bias mitigation strategies are included`,
+
+      socratic: `**Learning Quality** (Target: 9/10)
+□ Questions progress from simple to complex
+□ Misconceptions are addressed proactively
+□ Active learning principles are applied
+□ Metacognitive reflection is included`,
+
+      default: `**General Quality** (Target: 9/10)
+□ Prompt achieves intended purpose effectively
+□ Quality standards are measurable
+□ Output format is precisely defined
+□ Examples are provided where helpful`
+    };
+
+    return criteria[mode] || criteria.default;
+  }
+
+  /**
+   * Log prompt optimization metrics for analysis
+   * @private
+   */
+  logOptimizationMetrics(originalPrompt, optimizedPrompt, mode, response) {
+    const metrics = {
+      mode,
+      originalLength: originalPrompt.length,
+      optimizedLength: optimizedPrompt.length,
+      expansionRatio: (optimizedPrompt.length / originalPrompt.length).toFixed(2),
+      templateVersion: this.templateVersions[mode] || '1.0.0',
+      timestamp: new Date().toISOString(),
+      tokensUsed: response.usage?.total_tokens,
+    };
+
+    logger.info('Prompt optimization metrics', metrics);
+
+    return metrics;
   }
 }
