@@ -391,9 +391,7 @@ User's video concept: "${prompt}"
 
 Create a comprehensive video prompt with the following structure:
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎬 CREATIVE FOUNDATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+═══ CREATIVE FOUNDATION ══════════════════════════════════
 
 **WHO - SUBJECT/CHARACTER** [Define the focal point]
 - Physical Description: [Age, appearance, clothing, distinctive features]
@@ -442,9 +440,7 @@ Create a comprehensive video prompt with the following structure:
 - Audience Consideration: [Who is this for, what do they expect]
 - Symbolic Elements: [Metaphors, visual poetry, subtext]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎥 CINEMATOGRAPHY & TECHNICAL EXECUTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+═══ CINEMATOGRAPHY & TECHNICAL EXECUTION ═════════════════
 
 **CAMERA - SETUP & PERSPECTIVE**
 - Lens Choice: [Wide/normal/telephoto, focal length implications]
@@ -493,9 +489,7 @@ Create a comprehensive video prompt with the following structure:
 - Action Choreography: [Specific blocking and movement patterns]
 - Momentum: [Building energy vs winding down vs constant]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✨ SCENE SYNTHESIS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+═══ SCENE SYNTHESIS ══════════════════════════════════════
 
 **PRIMARY PROMPT** [150-300 words]
 [Synthesize all above elements into ONE cohesive, vivid, flowing description that reads naturally while incorporating specific technical and creative details. This should feel like a cinematographer describing their vision, not a checklist. Prioritize the most important creative and technical aspects.]

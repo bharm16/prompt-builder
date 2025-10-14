@@ -33,12 +33,12 @@
   }
 
   body {
-    @apply font-sans text-neutral-900 bg-white;
+    @apply font-sans text-neutral-900 bg-neutral-50;
   }
 
-  /* Improved focus visibility for accessibility */
+  /* Improved focus visibility for accessibility - More subtle */
   *:focus-visible {
-    @apply outline-none ring ring-primary-500 ring-opacity-50 ring-offset-2;
+    @apply outline-none ring-2 ring-primary-500 ring-opacity-30 ring-offset-2;
   }
 
   /* Remove focus ring for mouse users but keep for keyboard users */
@@ -51,9 +51,9 @@
     scroll-behavior: smooth;
   }
 
-  /* Improve text selection */
+  /* Improve text selection - Refined colors */
   ::selection {
-    @apply bg-primary-200 text-primary-900;
+    @apply bg-primary-100 text-primary-900;
   }
 
   /* Custom scrollbar styling */
@@ -89,28 +89,29 @@
            disabled:cursor-not-allowed disabled:opacity-60;
   }
 
-  /* Primary button */
+  /* Primary button - Professional slate */
   .btn-primary {
-    @apply btn bg-primary-600 text-white
-           hover:bg-primary-700 active:bg-primary-800
-           focus-visible:ring-primary-500
-           shadow-sm hover:shadow-md;
+    @apply btn bg-primary-700 text-white
+           hover:bg-primary-800 active:bg-primary-900
+           focus-visible:ring-primary-500 focus-visible:ring-opacity-40
+           shadow-sm hover:shadow;
   }
 
-  /* Secondary button */
+  /* Secondary button - Refined neutral */
   .btn-secondary {
-    @apply btn bg-neutral-100 text-neutral-900 border-2 border-neutral-300
-           hover:bg-neutral-200 hover:border-neutral-400
-           active:bg-neutral-300
-           focus-visible:ring-neutral-500;
+    @apply btn bg-white text-neutral-700 border border-neutral-300
+           hover:bg-neutral-50 hover:border-neutral-400
+           active:bg-neutral-100
+           focus-visible:ring-neutral-400 focus-visible:ring-opacity-40
+           shadow-xs;
   }
 
-  /* Tertiary/Ghost button */
+  /* Tertiary/Ghost button - Minimal interaction */
   .btn-ghost {
-    @apply btn bg-transparent text-neutral-700
-           hover:bg-neutral-100
-           active:bg-neutral-200
-           focus-visible:ring-neutral-500;
+    @apply btn bg-transparent text-neutral-600
+           hover:bg-neutral-50 hover:text-neutral-900
+           active:bg-neutral-100
+           focus-visible:ring-neutral-400 focus-visible:ring-opacity-30;
   }
 
   /* Danger button */
@@ -165,14 +166,15 @@
 
   /* ===== INPUT COMPONENTS ===== */
 
-  /* Base input styles */
+  /* Base input styles - Refined and minimal */
   .input {
     @apply w-full px-4 py-2.5 rounded-lg
-           bg-white border-2 border-neutral-300
+           bg-white border border-neutral-300
            text-neutral-900 placeholder-neutral-400
            transition-all duration-200
-           focus:outline-none focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-20
-           disabled:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60;
+           focus:outline-none focus:border-primary-600 focus:ring-1 focus:ring-primary-500 focus:ring-opacity-20
+           disabled:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60
+           shadow-xs;
   }
 
   /* Input error state */
@@ -199,22 +201,22 @@
 
   /* ===== CARD COMPONENTS ===== */
 
-  /* Base card */
+  /* Base card - Clean and minimal */
   .card {
-    @apply rounded-xl bg-white border border-neutral-200 shadow-sm
+    @apply rounded-lg bg-white border border-neutral-200 shadow-xs
            transition-all duration-200;
   }
 
-  /* Interactive card (hoverable/clickable) */
+  /* Interactive card (hoverable/clickable) - Subtle interaction */
   .card-interactive {
     @apply card cursor-pointer
-           hover:shadow-md hover:border-neutral-300
-           active:scale-[0.99];
+           hover:shadow-sm hover:border-neutral-300
+           active:shadow-xs;
   }
 
-  /* Elevated card */
+  /* Elevated card - Refined elevation */
   .card-elevated {
-    @apply card shadow-lg border-neutral-300;
+    @apply card shadow-md border-neutral-200;
   }
 
   /* Card sections */
@@ -567,56 +569,37 @@
     @apply dark-transition;
   }
 
-  /* ===== RIPPLE EFFECT ===== */
+  /* ===== SUBTLE PRESS EFFECT (replaces ripple) ===== */
   .ripple {
-    position: relative;
-    overflow: hidden;
+    transition: transform 0.1s ease, opacity 0.1s ease;
   }
 
-  .ripple::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
+  .ripple:active {
+    transform: scale(0.98);
+    opacity: 0.9;
   }
 
-  .ripple:active::after {
-    width: 300px;
-    height: 300px;
-  }
-
-  /* ===== SCALE ANIMATIONS ===== */
+  /* ===== REFINED SCALE ANIMATIONS ===== */
   .hover-scale {
-    transition: transform 0.2s ease;
+    transition: transform 0.15s ease;
   }
 
   .hover-scale:hover {
-    transform: scale(1.05);
+    transform: scale(1.01);
   }
 
   .hover-scale:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
   }
 
-  /* ===== GLOW EFFECT ===== */
+  /* ===== SUBTLE FOCUS GLOW (replaces glow-pulse) ===== */
   .glow {
-    box-shadow: 0 0 20px rgba(12, 143, 235, 0.3);
-    animation: glow-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(100, 116, 139, 0);
+    transition: box-shadow 0.2s ease;
   }
 
-  @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: 0 0 20px rgba(12, 143, 235, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 30px rgba(12, 143, 235, 0.5);
-    }
+  .glow:focus-visible {
+    box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.12);
   }
 
   /* ===== SHIMMER LOADING EFFECT ===== */
@@ -714,6 +697,33 @@
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
     }
+  }
+
+  /* ===== CONTENTEDITABLE PLACEHOLDER ===== */
+  [contenteditable][data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  /* Remove focus ring from contentEditable elements */
+  [contenteditable]:focus,
+  [contenteditable]:focus-visible {
+    outline: none !important;
+    ring: none !important;
+    box-shadow: none !important;
+  }
+
+  /* ===== MODERN PROSE STYLING FOR CANVAS ===== */
+  .prose-canvas {
+    @apply text-[15px] leading-relaxed text-neutral-900;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system;
+    letter-spacing: -0.011em;
+  }
+
+  .prose-canvas:focus {
+    outline: none;
   }
 }
 

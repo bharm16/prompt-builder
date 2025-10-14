@@ -9,47 +9,47 @@ export default {
       // Comprehensive semantic color palette with full shade ranges
       // ============================================
       colors: {
-        // Primary Brand Colors
+        // Primary Brand Colors - Refined professional blue
         primary: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          200: '#b9ddfe',
-          300: '#7cc4fd',
-          400: '#36a9fa',
-          500: '#0c8feb', // Main primary
-          600: '#0070c9',
-          700: '#0059a3',
-          800: '#024b86',
-          900: '#083f6f',
-          950: '#06284a',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b', // Main primary - muted slate blue
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617',
         },
-        // Secondary/Accent Colors
+        // Secondary/Accent Colors - Subtle indigo for highlights
         secondary: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#a855f7', // Main secondary
-          600: '#9333ea',
-          700: '#7e22ce',
-          800: '#6b21a8',
-          900: '#581c87',
-          950: '#3b0764',
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1', // Main secondary - refined indigo
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
         },
-        // Neutral Grays (for backgrounds, text, borders)
+        // Neutral Slate (for backgrounds, text, borders) - Cooler, more sophisticated
         neutral: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
-          950: '#0a0a0a',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617',
         },
         // Success States
         success: {
@@ -211,16 +211,16 @@ export default {
       // Elevation levels for depth hierarchy
       // ============================================
       boxShadow: {
-        'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        'sm': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
-        'DEFAULT': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
-        'md': '0 6px 12px -2px rgba(0, 0, 0, 0.15), 0 3px 6px -3px rgba(0, 0, 0, 0.1)',
-        'lg': '0 10px 20px -3px rgba(0, 0, 0, 0.1), 0 4px 8px -4px rgba(0, 0, 0, 0.1)',
-        'xl': '0 20px 40px -4px rgba(0, 0, 0, 0.15), 0 8px 16px -6px rgba(0, 0, 0, 0.1)',
-        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        'inner': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
-        'focus': '0 0 0 3px rgba(12, 143, 235, 0.2)', // Primary color focus ring
-        'focus-error': '0 0 0 3px rgba(239, 68, 68, 0.2)', // Error focus ring
+        'xs': '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
+        'sm': '0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
+        'DEFAULT': '0 2px 4px -1px rgba(15, 23, 42, 0.06), 0 4px 6px -1px rgba(15, 23, 42, 0.08)',
+        'md': '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06)',
+        'lg': '0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.06)',
+        'xl': '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.06)',
+        '2xl': '0 25px 50px -12px rgba(15, 23, 42, 0.12)',
+        'inner': 'inset 0 2px 4px 0 rgba(15, 23, 42, 0.05)',
+        'focus': '0 0 0 3px rgba(100, 116, 139, 0.12)', // Refined slate focus ring
+        'focus-error': '0 0 0 3px rgba(239, 68, 68, 0.12)', // Subtle error focus ring
         'none': 'none',
       },
 

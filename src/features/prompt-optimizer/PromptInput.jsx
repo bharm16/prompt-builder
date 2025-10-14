@@ -15,7 +15,7 @@ const QuickActionButton = memo(({ action, onClick }) => {
   return (
     <button
       onClick={() => onClick(action)}
-      className="btn-ghost btn-sm border border-neutral-200 hover:border-primary-300 hover:bg-primary-50 hover-scale stagger-item"
+      className="btn-ghost btn-sm border border-neutral-300 hover:border-neutral-400 hover:bg-white hover-scale stagger-item"
       aria-label={`Use ${action.label} template`}
     >
       <Icon className="h-3.5 w-3.5" />
@@ -136,18 +136,17 @@ export const PromptInput = ({
   };
 
   return (
-    <div className="mb-8 w-full max-w-4xl text-center animate-fade-in">
-      <h1 className="mb-4 text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-neutral-900 text-balance">
-        Turn messy thoughts into structured prompts
+    <div className="mb-12 w-full max-w-4xl text-center animate-fade-in">
+      <h1 className="mb-3 text-3xl sm:text-4xl font-semibold leading-snug text-neutral-900 text-balance">
+        Professional Prompt Builder
       </h1>
-      <p className="mb-8 text-base sm:text-lg text-neutral-600">
-        Idea to prompt in seconds - get much better results from{' '}
-        <span className="inline-flex items-center font-semibold text-neutral-900">
+      <p className="mb-10 text-base sm:text-lg text-neutral-600 max-w-2xl mx-auto">
+        Transform ideas into structured prompts for{' '}
+        <span className="inline-flex items-center font-medium text-neutral-800">
           <span className="transition-opacity duration-300">
             {aiNames[currentAIIndex]}
           </span>
         </span>
-        <span className="ml-1 inline-block h-5 w-1 animate-pulse bg-primary-600"></span>
       </p>
 
       {/* Mode Selector - Horizontal Tabs */}

@@ -267,18 +267,19 @@ export default function PromptEnhancementEditor({
     <div
       ref={contentRef}
       onMouseUp={handleMouseUp}
-      className="cursor-text select-text font-sans text-sm leading-loose text-gray-800"
+      className="cursor-text select-text font-sans text-base leading-relaxed text-neutral-900"
       style={{
         userSelect: 'text',
         WebkitUserSelect: 'text',
         MozUserSelect: 'text',
         msUserSelect: 'text',
-        lineHeight: '1.8',
+        lineHeight: '1.75',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
         overflowWrap: 'break-word',
         paddingLeft: '20px',
-        textIndent: '-20px'
+        textIndent: '-20px',
+        letterSpacing: '-0.01em'
       }}
     >
       {promptContent}
@@ -416,16 +417,16 @@ export function SuggestionsPanel({ suggestionsData }) {
 
   return (
     <aside
-      className="fixed top-24 right-4 bottom-4 z-popover flex w-96 flex-col card-elevated border-2 animate-slide-up overflow-hidden"
+      className="fixed top-24 right-6 bottom-6 z-popover flex w-80 flex-col bg-white rounded-xl border border-neutral-200 shadow-xl animate-slide-up overflow-hidden"
       role="complementary"
       aria-labelledby="suggestions-title"
-      style={{ maxHeight: 'calc(100vh - 120px)' }}
+      style={{ maxHeight: 'calc(100vh - 144px)' }}
     >
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between card-header bg-gradient-to-r from-primary-50 to-secondary-50">
+      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
         <div className="flex flex-1 items-center gap-2">
           <div className="min-w-0 flex-1">
-            <h3 id="suggestions-title" className="truncate text-sm font-bold text-neutral-900">
+            <h3 id="suggestions-title" className="truncate text-sm font-semibold text-neutral-900">
               {isPlaceholder ? 'Value Suggestions' : 'Smart Suggestions'}
             </h3>
             <p className="break-words text-xs text-neutral-600 line-clamp-2" aria-label={`Selected text: ${selectedText}`}>
@@ -435,18 +436,18 @@ export function SuggestionsPanel({ suggestionsData }) {
         </div>
         <button
           onClick={onClose}
-          className="btn-icon-secondary btn-sm"
+          className="btn-ghost btn-sm"
           aria-label="Close suggestions panel"
         >
-          <X className="h-5 w-5" aria-hidden="true" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </header>
 
       {/* Context hint for placeholder mode */}
       {isPlaceholder && !isLoading && suggestions.length > 0 && (
-        <div className="flex-shrink-0 alert-info p-3 border-b">
-          <Info className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          <p className="text-xs break-words">
+        <div className="flex-shrink-0 flex items-start gap-2 bg-info-50 border-l-2 border-info-600 p-3 border-b border-neutral-200">
+          <Info className="h-4 w-4 flex-shrink-0 text-info-700 mt-0.5" aria-hidden="true" />
+          <p className="text-xs break-words text-info-900">
             These are context-aware values that can replace your placeholder
           </p>
         </div>
@@ -454,29 +455,29 @@ export function SuggestionsPanel({ suggestionsData }) {
 
       {/* Category Tabs - Only show if we have multiple categories */}
       {!isLoading && categories.length > 1 && (
-        <div className="flex-shrink-0 flex flex-wrap gap-1 p-2 border-b bg-neutral-50">
+        <div className="flex-shrink-0 flex flex-wrap gap-1.5 p-3 border-b bg-neutral-50">
           {categories.map((cat) => (
             <button
               key={cat.category}
               onClick={() => setActiveCategory(cat.category)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                 activeCategory === cat.category
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-200'
+                  ? 'bg-primary-700 text-white shadow-xs'
+                  : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-300'
               }`}
               aria-pressed={activeCategory === cat.category}
               aria-label={`Category: ${cat.category} (${cat.suggestions.length} options)`}
             >
               {cat.category}
-              <span className="ml-1.5 opacity-70">({cat.suggestions.length})</span>
+              <span className="ml-1.5 opacity-75">({cat.suggestions.length})</span>
             </button>
           ))}
         </div>
       )}
 
       {/* Custom Request Input */}
-      <div className="flex-shrink-0 border-b-2 border-neutral-200 bg-neutral-50 p-3">
-        <label htmlFor="custom-request" className="block mb-2 text-xs font-medium text-neutral-700">
+      <div className="flex-shrink-0 border-b border-neutral-200 bg-neutral-50 p-3">
+        <label htmlFor="custom-request" className="block mb-2 text-xs font-medium text-neutral-800">
           Custom request:
         </label>
         <textarea
@@ -484,7 +485,7 @@ export function SuggestionsPanel({ suggestionsData }) {
           value={customRequest}
           onChange={(e) => setCustomRequest(e.target.value)}
           placeholder="e.g., Make it more cinematic, Add more emotion, Simplify the language..."
-          className="textarea text-sm resize-none"
+          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:border-primary-600 focus:ring-1 focus:ring-primary-600 transition-colors shadow-xs resize-none"
           rows={2}
           aria-describedby="custom-request-hint"
         />
@@ -494,7 +495,7 @@ export function SuggestionsPanel({ suggestionsData }) {
         <button
           onClick={handleCustomRequest}
           disabled={!customRequest.trim() || isCustomLoading}
-          className="btn-primary w-full mt-2"
+          className="btn-primary w-full mt-2 btn-sm"
           aria-label="Generate custom suggestions based on your request"
         >
           {isCustomLoading ? (
@@ -517,8 +518,8 @@ export function SuggestionsPanel({ suggestionsData }) {
         {isLoading && (
           <div className="flex flex-1 items-center justify-center py-12" role="status" aria-live="polite">
             <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-6 w-6 animate-spin text-primary-600" aria-hidden="true" />
-              <span className="text-sm text-neutral-700">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-700" aria-hidden="true" />
+              <span className="text-sm text-neutral-600 font-medium">
                 {isPlaceholder
                   ? 'Finding relevant values...'
                   : 'Analyzing context...'}
@@ -530,46 +531,37 @@ export function SuggestionsPanel({ suggestionsData }) {
         {/* Suggestions List */}
         {!isLoading && currentSuggestions.length > 0 && (
           <div
-            className="flex-1 min-h-0 space-y-2 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-400 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-500"
+            className="flex-1 min-h-0 space-y-2 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
             role="list"
             aria-label="Suggestion options"
             style={{
               scrollbarWidth: 'thin',
-              scrollbarColor: '#9ca3af #f3f4f6'
+              scrollbarColor: '#d1d5db #f3f4f6'
             }}>
           {currentSuggestions.map((suggestion, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(suggestion.text)}
-              className="card-interactive w-full p-3 text-left hover:border-primary-400 hover:bg-primary-50"
+              className="group w-full p-3 text-left rounded-lg border border-neutral-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm transition-all"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestion.text.substring(0, 50)}...`}
             >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-xs font-bold text-white transition-colors group-hover:bg-primary-700">
-                    {index + 1}
+              {isPlaceholder && suggestion.explanation ? (
+                // Value suggestion with explanation
+                <div className="space-y-1.5">
+                  <div className="text-sm font-medium text-neutral-900 break-words group-hover:text-primary-900">
+                    {suggestion.text}
+                  </div>
+                  <div className="text-xs leading-relaxed text-neutral-600 break-words">
+                    {suggestion.explanation}
                   </div>
                 </div>
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  {isPlaceholder && suggestion.explanation ? (
-                    // Value suggestion with explanation
-                    <>
-                      <div className="mb-1 text-sm font-semibold text-neutral-900 break-words">
-                        {suggestion.text}
-                      </div>
-                      <div className="text-xs leading-relaxed text-neutral-600 break-words">
-                        {suggestion.explanation}
-                      </div>
-                    </>
-                  ) : (
-                    // Regular rewrite suggestion
-                    <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-neutral-800">
-                      {suggestion.text}
-                    </pre>
-                  )}
+              ) : (
+                // Regular rewrite suggestion
+                <div className="text-sm leading-relaxed text-neutral-800 break-words whitespace-pre-wrap group-hover:text-neutral-900">
+                  {suggestion.text}
                 </div>
-              </div>
+              )}
             </button>
             ))}
           </div>
@@ -579,11 +571,11 @@ export function SuggestionsPanel({ suggestionsData }) {
         {!isLoading && (!suggestions || suggestions.length === 0 || currentSuggestions.length === 0) && (
           <div className="flex flex-1 items-center justify-center py-12">
             <div className="px-4 text-center">
-              <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" aria-hidden="true" />
-              <p className="text-sm text-neutral-600 font-medium mb-1">
+              <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-400" aria-hidden="true" />
+              <p className="text-sm text-neutral-700 font-medium mb-1">
                 No suggestions available
               </p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-600">
                 Try selecting a different section or use a custom request
               </p>
             </div>

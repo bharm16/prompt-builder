@@ -389,7 +389,10 @@ function PromptOptimizerContent() {
   });
 
   return (
-    <div className="h-screen overflow-hidden gradient-neutral transition-colors duration-300">
+    <div
+      className="h-screen overflow-hidden gradient-neutral transition-colors duration-300"
+      style={{ '--sidebar-width': showHistory ? '18rem' : '0px' }}
+    >
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only-focusable top-4 left-4">
         Skip to main content
@@ -424,10 +427,11 @@ function PromptOptimizerContent() {
             <div className="modal-content-xl max-h-[90vh] overflow-y-auto">
               <button
                 onClick={handleSkipBrainstorm}
-                className="absolute right-4 top-4 z-10 btn-ghost btn-sm"
-                aria-label="Skip brainstorm"
+                className="absolute right-4 top-4 z-10 rounded-lg p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                aria-label="Close concept builder"
+                title="Close (Esc)"
               >
-                Skip to Advanced Mode →
+                <X className="h-6 w-6" />
               </button>
               <div className="p-6">
                 <CreativeBrainstormEnhanced

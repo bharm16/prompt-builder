@@ -24,12 +24,12 @@ const HistoryItem = memo(({ entry, modes, onLoad }) => {
     <li className="stagger-item">
       <button
         onClick={() => onLoad(entry)}
-        className="group w-full rounded-lg p-3 text-left transition-all duration-200 hover:bg-neutral-200 focus-ring hover-scale"
+        className="group w-full rounded-lg p-3 text-left transition-all duration-200 hover:bg-white focus-ring hover-scale"
         aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
       >
         <div className="flex items-start gap-2">
           <ModeIcon
-            className="mt-0.5 h-4 w-4 flex-shrink-0 text-neutral-400 group-hover:text-primary-600 transition-colors"
+            className="mt-0.5 h-4 w-4 flex-shrink-0 text-neutral-500 group-hover:text-primary-700 transition-colors"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
@@ -41,7 +41,7 @@ const HistoryItem = memo(({ entry, modes, onLoad }) => {
                 {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'No date'}
               </time>
               <span>•</span>
-              <span className="badge-success badge px-1.5 py-0.5">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-success-100 text-success-800">
                 {entry.score}%
               </span>
             </div>
@@ -78,7 +78,7 @@ const AuthMenu = ({ user, onSignIn, onSignOut }) => {
     return (
       <button
         onClick={onSignIn}
-        className="btn-primary w-full hover-scale ripple"
+        className="btn-primary w-full hover-scale"
         aria-label="Sign in with Google"
       >
         <LogIn className="h-4 w-4" />
@@ -91,7 +91,7 @@ const AuthMenu = ({ user, onSignIn, onSignOut }) => {
     <div className="relative" ref={authMenuRef}>
       <button
         onClick={() => setShowAuthMenu(!showAuthMenu)}
-        className="flex w-full items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-neutral-200 focus-ring"
+        className="flex w-full items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-white focus-ring"
         aria-expanded={showAuthMenu}
         aria-label="User menu"
       >
@@ -163,7 +163,7 @@ export const HistorySidebar = ({
   return (
     <aside
       id="history-sidebar"
-      className={`${showHistory ? 'w-72' : 'w-0'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-neutral-100 transition-all duration-300`}
+      className={`${showHistory ? 'w-72' : 'w-0'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-neutral-50 transition-all duration-300`}
       aria-label="Prompt history"
       aria-hidden={!showHistory}
     >
@@ -188,12 +188,12 @@ export const HistorySidebar = ({
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   placeholder="Search history..."
-                  className="w-full pl-9 pr-3 py-2 text-sm border-2 border-neutral-200 rounded-lg bg-white focus:bg-white focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-20 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:bg-white focus:border-primary-600 focus:ring-1 focus:ring-primary-600 transition-colors shadow-xs"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => onSearchChange('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-neutral-200 rounded"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-neutral-100 rounded"
                     aria-label="Clear search"
                   >
                     <X className="h-3 w-3" />
@@ -236,7 +236,7 @@ export const HistorySidebar = ({
           </div>
 
           {/* Auth Section */}
-          <footer className="flex-shrink-0 border-t border-neutral-200 bg-neutral-100 p-3">
+          <footer className="flex-shrink-0 border-t border-neutral-200 bg-neutral-50 p-3">
             <AuthMenu
               user={user}
               onSignIn={handleSignIn}

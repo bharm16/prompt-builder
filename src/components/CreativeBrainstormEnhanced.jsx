@@ -554,7 +554,7 @@ export default function CreativeBrainstormEnhanced({
   const isReadyToGenerate = filledCount >= 3;
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full max-w-6xl relative pb-24">
       {/* Header with mode toggle */}
       <div className="mb-8">
         <div className="mb-4 text-center">
@@ -632,31 +632,50 @@ export default function CreativeBrainstormEnhanced({
         </div>
       </div>
 
-      {/* Template Library Button */}
-      <div className="mb-4 flex justify-end gap-2">
-        <button
-          onClick={() => setShowTemplates(!showTemplates)}
-          className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2"
-        >
-          <BookOpen className="h-4 w-4" />
-          Templates
-        </button>
-        <button
-          onClick={completeScene}
-          disabled={filledCount === 0}
-          className="px-4 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-2 disabled:opacity-50"
-        >
-          <Wand2 className="h-4 w-4" />
-          Complete Scene
-        </button>
-        <button
-          onClick={generateVariations}
-          disabled={filledCount < 3}
-          className="px-4 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 flex items-center gap-2 disabled:opacity-50"
-        >
-          <Shuffle className="h-4 w-4" />
-          Generate Variations
-        </button>
+      {/* Quality Score and Utility Buttons */}
+      <div className="mb-4 flex justify-between items-center gap-4">
+        {/* Compact Quality Score Badge */}
+        {validationScore && (
+          <div className="flex items-center gap-3 px-4 py-2 border border-blue-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">Quality Score</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-xl font-bold text-blue-600">
+                {validationScore.score}%
+              </div>
+              {validationScore.score >= 80 && <CheckCircle className="h-4 w-4 text-green-600" />}
+              {validationScore.score < 60 && <AlertCircle className="h-4 w-4 text-orange-600" />}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTemplates(!showTemplates)}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            Templates
+          </button>
+          <button
+            onClick={completeScene}
+            disabled={filledCount === 0}
+            className="px-4 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-2 disabled:opacity-50"
+          >
+            <Wand2 className="h-4 w-4" />
+            Complete Scene
+          </button>
+          <button
+            onClick={generateVariations}
+            disabled={filledCount < 3}
+            className="px-4 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 flex items-center gap-2 disabled:opacity-50"
+          >
+            <Shuffle className="h-4 w-4" />
+            Generate Variations
+          </button>
+        </div>
       </div>
 
       {/* Templates Panel */}
@@ -682,8 +701,8 @@ export default function CreativeBrainstormEnhanced({
 
       {/* Concept Mode */}
       {mode === 'concept' && (
-        <div className="mb-8 rounded-xl border-2 border-gray-200 bg-white p-6 shadow-md">
-          <label className="mb-2 block text-sm font-semibold text-gray-700">
+        <div className="mb-8 mx-auto max-w-2xl rounded-xl border-2 border-gray-200 bg-white p-6 shadow-md">
+          <label className="mb-2 block text-sm font-semibold text-gray-700 text-center">
             Describe Your Concept
           </label>
           <textarea
@@ -691,44 +710,18 @@ export default function CreativeBrainstormEnhanced({
             onChange={(e) => setConcept(e.target.value)}
             placeholder="Describe your video idea in detail. AI will break it down into elements..."
             className="w-full resize-none rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none"
-            rows={4}
+            rows={3}
           />
-          <button
-            onClick={parseConceptToElements}
-            disabled={!concept}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            <Brain className="inline h-4 w-4 mr-2" />
-            Parse Into Elements
-          </button>
-        </div>
-      )}
-
-      {/* Validation Score */}
-      {validationScore && (
-        <div className="mb-6 p-4 border-2 border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Prompt Quality Score</h3>
-            <div className="text-2xl font-bold text-blue-600">
-              {validationScore.score}%
-            </div>
+          <div className="flex justify-center">
+            <button
+              onClick={parseConceptToElements}
+              disabled={!concept}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Brain className="inline h-4 w-4 mr-2" />
+              Parse Into Elements
+            </button>
           </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full mb-3">
-            <div
-              className="h-2 bg-blue-600 rounded-full transition-all"
-              style={{ width: `${validationScore.score}%` }}
-            />
-          </div>
-          {validationScore.feedback.length > 0 && (
-            <div className="space-y-1">
-              {validationScore.feedback.map((msg, idx) => (
-                <div key={idx} className="text-sm text-gray-600 flex items-center gap-2">
-                  <Info className="h-3 w-3" />
-                  {msg}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -976,57 +969,16 @@ export default function CreativeBrainstormEnhanced({
         </div>
       )}
 
-      {/* Export Options */}
-      <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-md">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-900">Export Options</h3>
-            <p className="text-sm text-gray-600">
-              {filledCount} of 7 elements defined
-              {!isReadyToGenerate && ' (minimum 3 required)'}
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">
-              {Math.round((filledCount / 7) * 100)}%
-            </div>
-            <div className="text-xs text-gray-600">Complete</div>
-          </div>
-        </div>
-
-        <div className="mb-4 h-2 w-full rounded-full bg-gray-200">
-          <div
-            className="h-2 rounded-full bg-blue-600 transition-all duration-300"
-            style={{ width: `${(filledCount / 7) * 100}%` }}
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <button
-            onClick={() => handleGenerateTemplate('concise')}
-            disabled={!isReadyToGenerate}
-            className="flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FileText className="h-4 w-4" />
-            Concise
-          </button>
-          <button
-            onClick={() => handleGenerateTemplate('detailed')}
-            disabled={!isReadyToGenerate}
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-          >
-            <FileText className="h-4 w-4" />
-            Detailed
-          </button>
-          <button
-            onClick={() => handleGenerateTemplate('technical')}
-            disabled={!isReadyToGenerate}
-            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-100 px-4 py-3 font-medium text-indigo-700 transition-colors hover:bg-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Settings className="h-4 w-4" />
-            Technical
-          </button>
-        </div>
+      {/* Generate Button - Bottom Right */}
+      <div className="flex justify-end mt-8">
+        <button
+          onClick={() => handleGenerateTemplate('detailed')}
+          disabled={!isReadyToGenerate}
+          className="flex items-center justify-center gap-2 rounded-full bg-primary-700 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:bg-primary-800 hover:shadow-xl disabled:cursor-not-allowed disabled:bg-neutral-400 disabled:opacity-60 hover-scale"
+          title={isReadyToGenerate ? 'Generate optimized prompt' : 'Fill at least 3 elements to continue'}
+        >
+          <ArrowRight className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );

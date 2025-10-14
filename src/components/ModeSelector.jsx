@@ -72,8 +72,8 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
                 focus-ring
                 ${
                   isSelected
-                    ? 'bg-primary-600 text-white shadow-md scale-105'
-                    : 'bg-white text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200 hover:border-primary-300 hover:scale-102'
+                    ? 'bg-primary-700 text-white shadow-sm'
+                    : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-300 hover:border-neutral-400'
                 }
               `}
               role="tab"
@@ -83,18 +83,10 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
               title={mode.description}
             >
               <Icon
-                className={`h-4 w-4 transition-transform duration-200 ${isSelected ? 'text-white' : 'text-neutral-600'} group-hover:scale-110`}
+                className={`h-4 w-4 transition-colors duration-200 ${isSelected ? 'text-white' : 'text-neutral-600'}`}
                 aria-hidden="true"
               />
               <span>{mode.name}</span>
-
-              {/* Active indicator */}
-              {isSelected && (
-                <div
-                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-primary-600 rounded-full animate-pulse"
-                  aria-hidden="true"
-                />
-              )}
             </button>
           );
         })}
@@ -107,13 +99,13 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white border-2 border-neutral-200 hover:border-primary-400 transition-colors duration-200 focus-ring"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white border border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50 transition-colors duration-200 focus-ring shadow-xs"
         aria-haspopup="listbox"
         aria-expanded={showDropdown}
         aria-label={`Current mode: ${currentMode.name}. Click to change mode.`}
       >
         <div className="flex items-center gap-2">
-          <CurrentIcon className="h-5 w-5 text-primary-600" aria-hidden="true" />
+          <CurrentIcon className="h-5 w-5 text-primary-700" aria-hidden="true" />
           <div className="text-left">
             <div className="text-sm font-semibold text-neutral-900">
               {currentMode.name}
@@ -131,7 +123,7 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
 
       {showDropdown && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 z-dropdown max-h-[400px] overflow-y-auto bg-white rounded-lg border-2 border-neutral-200 shadow-xl animate-slide-down"
+          className="absolute top-full left-0 right-0 mt-2 z-dropdown max-h-[400px] overflow-y-auto bg-white rounded-lg border border-neutral-300 shadow-lg animate-slide-down"
           role="listbox"
           aria-label="Available prompt modes"
         >
@@ -147,13 +139,13 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
                   w-full flex items-start gap-3 px-4 py-3 text-left
                   transition-colors duration-150
                   ${isSelected ? 'bg-primary-50' : 'hover:bg-neutral-50'}
-                  border-b border-neutral-100 last:border-b-0
+                  border-b border-neutral-200 last:border-b-0
                 `}
                 role="option"
                 aria-selected={isSelected}
               >
                 <Icon
-                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${isSelected ? 'text-primary-600' : 'text-neutral-600'}`}
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${isSelected ? 'text-primary-700' : 'text-neutral-600'}`}
                   aria-hidden="true"
                 />
                 <div className="flex-1 min-w-0">
@@ -162,7 +154,7 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
                       {mode.name}
                     </span>
                     {isSelected && (
-                      <Check className="h-4 w-4 text-primary-600" aria-hidden="true" />
+                      <Check className="h-4 w-4 text-primary-700" aria-hidden="true" />
                     )}
                   </div>
                   <p className="text-xs text-neutral-600 mt-0.5">

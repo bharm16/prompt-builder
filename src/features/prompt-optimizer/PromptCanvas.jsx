@@ -38,15 +38,12 @@ const CanvasToolbar = memo(({
   }, [showExportMenu, onToggleExportMenu]);
 
   return (
-    <div className="sticky top-0 z-10 flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-neutral-200 bg-neutral-50 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-neutral-600">{currentMode.name}</span>
-      </div>
-
-      <div className="flex items-center gap-2">
+    <div className="sticky top-0 z-10 flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
+      <div className="flex items-center gap-4">
+        {/* Left actions group */}
         <button
           onClick={onCopy}
-          className={`btn-ghost btn-sm hover-scale ripple ${copied ? 'text-success-600' : ''}`}
+          className={`btn-ghost btn-sm hover-scale ${copied ? 'text-success-600' : ''}`}
           aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
           title="Copy (⌘C)"
         >
@@ -70,7 +67,7 @@ const CanvasToolbar = memo(({
             <span className="hidden sm:inline">Export</span>
           </button>
           {showExportMenu && (
-            <div className="dropdown-menu top-full mt-2 w-44 right-0">
+            <div className="dropdown-menu top-full mt-2 w-44 left-0">
               <button
                 onClick={() => onExport('text')}
                 className="dropdown-item"
@@ -95,10 +92,12 @@ const CanvasToolbar = memo(({
             </div>
           )}
         </div>
+      </div>
 
+      <div className="flex items-center gap-2">
         <button
           onClick={onCreateNew}
-          className="btn-primary btn-sm hover-scale ripple"
+          className="btn-primary btn-sm hover-scale"
           title="New prompt (⌘N)"
         >
           <Plus className="h-4 w-4" />
@@ -110,77 +109,6 @@ const CanvasToolbar = memo(({
 });
 
 CanvasToolbar.displayName = 'CanvasToolbar';
-
-// Input Edit Section Component
-const InputEditSection = ({
-  inputPrompt,
-  isEditingInput,
-  editedInput,
-  onEditChange,
-  onEdit,
-  onSaveEdit,
-  onCancelEdit
-}) => {
-  return (
-    <div className="flex-shrink-0 w-full bg-gradient-to-r from-neutral-50 to-neutral-100 border-b-2 border-neutral-200 px-4 py-2">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-primary-600" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide">
-              Your Input
-            </h3>
-          </div>
-          {!isEditingInput && (
-            <button
-              onClick={onEdit}
-              className="btn-ghost btn-sm hover-scale"
-              aria-label="Edit input"
-              title="Edit your input"
-            >
-              <Edit className="h-3.5 w-3.5" />
-              <span className="text-xs">Edit</span>
-            </button>
-          )}
-        </div>
-
-        {isEditingInput ? (
-          <div className="space-y-3">
-            <textarea
-              value={editedInput}
-              onChange={(e) => onEditChange(e.target.value)}
-              className="w-full resize-none bg-white border-2 border-primary-300 rounded-lg px-4 py-3 text-base text-neutral-900 leading-relaxed focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-20 transition-colors"
-              rows={4}
-              autoFocus
-              placeholder="Enter your prompt..."
-            />
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onSaveEdit}
-                className="btn-primary btn-sm hover-scale ripple"
-                disabled={!editedInput.trim()}
-              >
-                <Check className="h-4 w-4" />
-                <span>Save & Re-optimize</span>
-              </button>
-              <button
-                onClick={onCancelEdit}
-                className="btn-secondary btn-sm hover-scale"
-              >
-                <X className="h-4 w-4" />
-                <span>Cancel</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-base text-neutral-900 leading-relaxed">
-            {inputPrompt}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // Main PromptCanvas Component
 export const PromptCanvas = ({
@@ -286,20 +214,77 @@ export const PromptCanvas = ({
     }
   };
 
-  return (
-    <div className="flex flex-col h-full w-full overflow-hidden animate-fade-in">
-      {/* Your Input Container */}
-      <InputEditSection
-        inputPrompt={inputPrompt}
-        isEditingInput={isEditingInput}
-        editedInput={editedInput}
-        onEditChange={setEditedInput}
-        onEdit={handleEdit}
-        onSaveEdit={handleSaveEdit}
-        onCancelEdit={handleCancelEdit}
-      />
+  const handleCopyEvent = (e) => {
+    // Ensure proper text copying from contentEditable
+    const selection = window.getSelection();
+    if (selection && selection.toString()) {
+      const selectedText = selection.toString();
+      e.clipboardData.setData('text/plain', selectedText);
+      e.preventDefault();
+    }
+  };
 
-      {/* Canvas Toolbar */}
+  return (
+    <div className="fixed inset-0 flex flex-col overflow-hidden animate-fade-in" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
+      {/* Your Input Container - Full Width */}
+      <div className="flex-shrink-0 w-full border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-transparent">
+        <div className="max-w-3xl mx-auto px-8 py-6">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  Your Input
+                </span>
+                {!isEditingInput && (
+                  <button
+                    onClick={handleEdit}
+                    className="text-neutral-400 hover:text-neutral-700 transition-colors"
+                    aria-label="Edit input"
+                    title="Edit your input"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {isEditingInput ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={editedInput}
+                    onChange={(e) => setEditedInput(e.target.value)}
+                    className="w-full resize-none bg-white border border-neutral-300 rounded-lg px-4 py-3 text-base text-neutral-900 leading-relaxed focus:border-neutral-400 focus:outline-none transition-all shadow-sm"
+                    rows={3}
+                    autoFocus
+                    placeholder="Enter your prompt..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      className="btn-primary btn-sm hover-scale"
+                      disabled={!editedInput.trim()}
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Save & Re-optimize</span>
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="btn-ghost btn-sm hover-scale"
+                    >
+                      <X className="h-4 w-4" />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-700 leading-relaxed">
+                  {inputPrompt}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Canvas Toolbar - Full Width */}
       <CanvasToolbar
         currentMode={currentMode}
         onCopy={handleCopy}
@@ -311,12 +296,12 @@ export const PromptCanvas = ({
       />
 
       {/* Canvas and Suggestions Container */}
-      <div className="flex flex-1 items-start gap-0 overflow-hidden">
+      <div className="flex flex-1 items-start gap-0 overflow-hidden bg-white">
         {/* Canvas - Main Document */}
-        <div className="flex-1 flex flex-col h-full bg-white border-r border-neutral-200 shadow-lg">
+        <div className="flex-1 flex flex-col h-full">
           {/* Canvas Document Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl mx-auto px-4 py-4">
+            <div className="max-w-3xl mx-auto px-8 py-12">
               <div
                 ref={editorRef}
                 contentEditable
@@ -326,22 +311,21 @@ export const PromptCanvas = ({
                   onSkipAnimation(true);
                 }}
                 onMouseUp={handleTextSelection}
-                className="w-full resize-none bg-transparent font-sans text-sm leading-loose text-neutral-900 outline-none border-0 focus:outline-none"
+                onCopy={handleCopyEvent}
+                className="w-full min-h-screen bg-transparent text-[15px] leading-relaxed text-neutral-900 outline-none focus:outline-none transition-all duration-200"
                 style={{
-                  minHeight: 'calc(100vh - 200px)',
-                  lineHeight: '1.8',
+                  lineHeight: '1.75',
                   wordBreak: 'break-word',
                   overflowWrap: 'break-word',
                   whiteSpace: 'pre-wrap',
-                  paddingLeft: '3em',
-                  textIndent: '-3em'
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system',
+                  letterSpacing: '-0.011em'
                 }}
                 role="textbox"
                 aria-label="Optimized prompt (editable)"
                 aria-multiline="true"
-              >
-                {!displayedPrompt && <span className="text-neutral-400">Your optimized prompt will appear here...</span>}
-              </div>
+                data-placeholder="Your optimized prompt will appear here..."
+              />
             </div>
           </div>
         </div>
