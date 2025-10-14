@@ -126,12 +126,23 @@ export const PromptInput = ({
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      console.log('Enter pressed, mode:', selectedMode, 'metaKey:', e.metaKey, 'ctrlKey:', e.ctrlKey);
       // For standard prompt mode, just Enter works
       // For other modes, require Cmd/Ctrl+Enter
       if (selectedMode === 'optimize' || e.metaKey || e.ctrlKey) {
         e.preventDefault();
+        console.log('Calling onOptimize from Enter key');
         onOptimize();
       }
+    }
+  };
+
+  const handleOptimizeClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Optimize button clicked, inputPrompt:', inputPrompt, 'isProcessing:', isProcessing);
+    if (inputPrompt && inputPrompt.trim()) {
+      onOptimize();
     }
   };
 
@@ -206,7 +217,7 @@ export const PromptInput = ({
             </div>
 
             <button
-              onClick={onOptimize}
+              onClick={handleOptimizeClick}
               disabled={!inputPrompt.trim() || isProcessing}
               className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Optimize prompt"

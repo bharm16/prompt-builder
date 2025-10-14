@@ -198,10 +198,18 @@ export const useKeyboardShortcuts = (callbacks) => {
         callbacks.improveFirst?.();
       }
 
-      // Cmd/Ctrl + C - Copy (only in results view)
+      // Cmd/Ctrl + C - Copy (only in results view and only when no text is selected)
       if (isMod && e.key === 'c' && callbacks.canCopy?.()) {
-        e.preventDefault();
-        callbacks.copy?.();
+        // Check if there's a text selection
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        // Only intercept if there's no text selection
+        // This allows normal browser copy to work when text is selected
+        if (!selectedText) {
+          e.preventDefault();
+          callbacks.copy?.();
+        }
       }
 
       // Cmd/Ctrl + E - Export
