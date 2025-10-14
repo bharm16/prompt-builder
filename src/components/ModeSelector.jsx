@@ -53,7 +53,7 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
   if (!isMobile) {
     return (
       <div
-        className={`flex items-center gap-2 overflow-x-auto scrollbar-hide px-2 ${className}`}
+        className={`flex items-center justify-center gap-2 flex-wrap ${className}`}
         role="tablist"
         aria-label="Prompt mode selector"
       >
@@ -66,14 +66,14 @@ export default function ModeSelector({ modes, selectedMode, onModeChange, classN
               key={mode.id}
               onClick={() => handleModeSelect(mode.id)}
               className={`
-                group relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-                font-medium text-sm whitespace-nowrap w-44
+                group relative flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+                font-medium text-sm whitespace-nowrap
                 transition-all duration-200
                 focus-ring
                 ${
                   isSelected
-                    ? 'bg-primary-700 text-white shadow-sm'
-                    : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-300 hover:border-neutral-400'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-200 hover:border-neutral-300'
                 }
               `}
               role="tab"

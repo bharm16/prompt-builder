@@ -136,21 +136,19 @@ export const PromptInput = ({
   };
 
   return (
-    <div className="mb-12 w-full max-w-4xl text-center animate-fade-in">
-      <h1 className="mb-3 text-3xl sm:text-4xl font-semibold leading-snug text-neutral-900 text-balance">
-        Professional Prompt Builder
-      </h1>
-      <p className="mb-10 text-base sm:text-lg text-neutral-600 max-w-2xl mx-auto">
-        Transform ideas into structured prompts for{' '}
-        <span className="inline-flex items-center font-medium text-neutral-800">
-          <span className="transition-opacity duration-300">
-            {aiNames[currentAIIndex]}
-          </span>
-        </span>
-      </p>
+    <div className="mb-12 w-full max-w-3xl text-center animate-fade-in">
+      {/* Hero Section */}
+      <div className="mb-12">
+        <h1 className="mb-4 text-4xl font-bold text-neutral-900 tracking-tight">
+          Prompt Builder
+        </h1>
+        <p className="text-base text-neutral-600 max-w-lg mx-auto">
+          Transform your ideas into optimized prompts for AI
+        </p>
+      </div>
 
-      {/* Mode Selector - Horizontal Tabs */}
-      <div className="mb-6">
+      {/* Mode Selector - Minimal Tabs */}
+      <div className="mb-8">
         <ModeSelector
           modes={modes}
           selectedMode={selectedMode}
@@ -158,78 +156,81 @@ export const PromptInput = ({
         />
       </div>
 
-      {/* Main Input Section */}
-      <div className="relative mb-8 w-full">
-        <div className="card overflow-visible border border-neutral-200 transition-all duration-200 hover:shadow-md">
-          <div className="p-4">
+      {/* Main Input Section - Clean Design */}
+      <div className="relative mb-6 w-full">
+        <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden transition-all duration-200 focus-within:border-neutral-400 focus-within:shadow-sm">
+          <div className="p-6">
             <label htmlFor="prompt-input" className="sr-only">
-              Enter your prompt idea
+              Enter your prompt
             </label>
             <textarea
               id="prompt-input"
               value={inputPrompt}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="I want a prompt that will..."
-              rows={3}
-              className="w-full resize-none bg-transparent text-base text-neutral-900 placeholder-neutral-400 outline-none border-none focus:outline-none focus:ring-0 focus:border-none"
+              placeholder="Describe what you want to create..."
+              rows={4}
+              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed"
+              style={{
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+              }}
               aria-label="Prompt input"
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border-neutral-200 px-4 py-3 bg-white">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onImproveFirst}
-                disabled={!inputPrompt.trim() || isProcessing}
-                className="btn-secondary btn-sm hover-scale ripple"
-                aria-label="Improve prompt before optimizing"
-                title="Improve first (⌘I)"
-              >
-                <Zap className="h-4 w-4" />
-                <span className="hidden sm:inline">Improve First</span>
-              </button>
-            </div>
-
+          {/* Action Bar */}
+          <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-3 bg-neutral-50">
             <div className="flex items-center gap-2">
               {selectedMode === 'video' && (
                 <button
                   onClick={onShowBrainstorm}
                   disabled={isProcessing}
-                  className="btn-secondary btn-sm hover-scale ripple"
-                  aria-label="Build video concept with guided workflow"
-                  title="Build a video concept step-by-step"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-white transition-colors"
+                  aria-label="Build video concept"
+                  title="Build concept"
                 >
-                  <Lightbulb className="h-4 w-4" />
-                  <span className="font-bold">Build Concept</span>
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  <span>Build Concept</span>
                 </button>
               )}
-
               <button
-                onClick={onOptimize}
+                onClick={onImproveFirst}
                 disabled={!inputPrompt.trim() || isProcessing}
-                className="btn-primary btn-sm hover-scale ripple"
-                aria-label="Optimize prompt"
-                title="Optimize (⌘Enter)"
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Improve prompt first"
+                title="Improve first"
               >
-                <span className="font-bold">Optimize</span>
+                <Zap className="h-3.5 w-3.5" />
+                <span>Improve</span>
               </button>
             </div>
+
+            <button
+              onClick={onOptimize}
+              disabled={!inputPrompt.trim() || isProcessing}
+              className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Optimize prompt"
+              title="Optimize (⌘Enter)"
+            >
+              <span>Optimize</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {quickActions.map((action, idx) => (
-            <QuickActionButton
-              key={idx}
-              action={action}
-              onClick={handleQuickAction}
-            />
-          ))}
-        </div>
+      {/* Quick Actions - Simplified */}
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+        <span className="text-xs text-neutral-500 mr-1">Try:</span>
+        {quickActions.slice(0, 4).map((action, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleQuickAction(action)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-600 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
+          >
+            <action.icon className="h-3 w-3" />
+            {action.label}
+          </button>
+        ))}
       </div>
     </div>
   );
