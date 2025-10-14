@@ -5,9 +5,12 @@ import {
   Plus,
   FileText,
   Check,
+  Info,
+  X,
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
+import { adaptiveEngine } from '../../utils/AdaptivePatternEngine';
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -37,6 +40,96 @@ const formatTextToHTML = (text) => {
       .replace(/'/g, '&#039;');
   };
 
+  /**
+   * Intelligent phrase highlighting system using ML-based pattern recognition
+   *
+   * NO HARDCODED PATTERNS - Everything is learned and adapted:
+   * 1. Automatic phrase extraction using TF-IDF and statistical analysis
+   * 2. Semantic categorization using word embeddings and context
+   * 3. User behavior learning - adapts based on what you click
+   * 4. Reinforcement learning - improves over time
+   * 5. Fuzzy matching - auto-corrects typos
+   * 6. Confidence scoring - only shows high-confidence highlights
+   * 7. Smart structure detection - skips headers and labels
+   */
+  const highlightValueWords = (text) => {
+    if (!text) return '';
+
+    // Check if this text is a structural element (header, label, descriptor)
+    const isStructuralElement = (text) => {
+      const trimmed = text.trim();
+
+      // Headers: ALL CAPS with 5+ characters
+      if (/^[A-Z\s\-&/]{5,}$/.test(trimmed)) return true;
+
+      // Emoji headers (🎬, 🎥, ✨, etc.) - check first character
+      if (trimmed.length > 0) {
+        const firstChar = trimmed.charCodeAt(0);
+        // Emoji range: 0x1F300 to 0x1F9FF
+        if (firstChar >= 0xD83C || firstChar >= 0xD83D) return true;
+      }
+
+      // Section labels ending with dash (WHO - SUBJECT/CHARACTER)
+      if (/^[A-Z\s]+\s+-\s+[A-Z\s/]+$/.test(trimmed)) return true;
+
+      // Category labels (bold text ending with colon or dash)
+      if (/^\*\*[^*]+\*\*[\s:-]*$/.test(trimmed)) return true;
+
+      // Standalone labels ending with colon
+      if (/^[A-Z][^:]{0,40}:$/.test(trimmed) && trimmed.length < 50) return true;
+
+      // Separator lines (━━━ or similar)
+      if (/^[━─═▬▭\-=_*]{3,}$/.test(trimmed)) return true;
+
+      return false;
+    };
+
+    // Skip highlighting for structural elements
+    if (isStructuralElement(text)) {
+      return escapeHtml(text);
+    }
+
+    // Check if text starts with a label prefix (e.g., "Positioning: actual content here")
+    // We want to skip highlighting the label but highlight the content
+    const labelMatch = text.match(/^([A-Z][^:]{0,40}:)\s*(.+)$/);
+    if (labelMatch) {
+      const label = labelMatch[1];
+      const content = labelMatch[2];
+
+      // Don't highlight the label, only the content
+      return escapeHtml(label) + ' ' + highlightValueWords(content);
+    }
+
+    // Process text through adaptive engine
+    const { matches } = adaptiveEngine.processText(text);
+
+    // Build HTML with highlights
+    let result = '';
+    let lastIndex = 0;
+
+    matches.forEach(match => {
+      // Track that this highlight was shown
+      adaptiveEngine.recordShown(match.phrase, match.category, match.confidence);
+
+      // Add text before match
+      result += escapeHtml(text.slice(lastIndex, match.start));
+
+      // Add visual indicator for confidence level
+      const confidenceClass = match.confidence >= 80 ? 'high-confidence' :
+                             match.confidence >= 65 ? 'medium-confidence' : 'low-confidence';
+
+      // Add highlighted match with category-specific color and confidence indicator
+      result += `<span class="value-word value-word-${match.category} ${confidenceClass}" data-category="${match.category}" data-confidence="${match.confidence}" data-phrase="${escapeHtml(match.text)}" style="background-color: ${match.color.bg}; border-bottom: 1px solid ${match.color.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(match.text)}</span>`;
+
+      lastIndex = match.end;
+    });
+
+    // Add remaining text
+    result += escapeHtml(text.slice(lastIndex));
+
+    return result;
+  };
+
   while (i < lines.length) {
     const line = lines[i];
     const trimmedLine = line.trim();
@@ -55,7 +148,7 @@ const formatTextToHTML = (text) => {
         const afterLine = lines[i + 2].trim();
 
         if (nextLine && nextLine.length > 0 && afterLine.match(/^[=\-*_━─═▬▭]+$/)) {
-          const cleanText = escapeHtml(removeEmojis(nextLine));
+          const cleanText = highlightValueWords(removeEmojis(nextLine));
           html += `<h1 style="font-size: 1.5rem; font-weight: 700; color: rgb(23, 23, 23); margin-bottom: 1.5rem; margin-top: 3rem; line-height: 1.2; letter-spacing: -0.025em;">${cleanText}</h1>`;
           i += 3;
           continue;
@@ -69,7 +162,7 @@ const formatTextToHTML = (text) => {
     if (trimmedLine.match(/^[A-Z\s]{5,}:?$/) ||
         trimmedLine.match(/^#{1,3}\s+(.+)$/) ||
         trimmedLine.match(/^\*\*(.+)\*\*:?$/)) {
-      const cleanText = escapeHtml(removeEmojis(
+      const cleanText = highlightValueWords(removeEmojis(
         trimmedLine
           .replace(/^#+\s+/, '')
           .replace(/^\*\*(.+)\*\*:?$/, '$1')
@@ -82,7 +175,7 @@ const formatTextToHTML = (text) => {
 
     // Section headers (lines ending with colon)
     if (trimmedLine.match(/^.+:$/)) {
-      const cleanText = escapeHtml(removeEmojis(trimmedLine.replace(/:$/, '')));
+      const cleanText = highlightValueWords(removeEmojis(trimmedLine.replace(/:$/, '')));
       html += `<h3 style="font-size: 1rem; font-weight: 600; color: rgb(38, 38, 38); margin-bottom: 0.75rem; margin-top: 1.5rem; line-height: 1.2; letter-spacing: -0.025em;">${cleanText}</h3>`;
       i++;
       continue;
@@ -90,7 +183,7 @@ const formatTextToHTML = (text) => {
 
     // Bullet points
     if (trimmedLine.match(/^[-•]\s+(.+)$/)) {
-      const cleanText = escapeHtml(removeEmojis(trimmedLine.replace(/^[-•]\s+/, '')));
+      const cleanText = highlightValueWords(removeEmojis(trimmedLine.replace(/^[-•]\s+/, '')));
       html += `<div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;"><span style="color: rgb(163, 163, 163); margin-top: 0.25rem; flex-shrink: 0;">•</span><p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; flex: 1; margin: 0;">${cleanText}</p></div>`;
       i++;
       continue;
@@ -99,7 +192,7 @@ const formatTextToHTML = (text) => {
     // Numbered lists
     if (trimmedLine.match(/^\d+\.\s+(.+)$/)) {
       const match = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
-      const cleanText = escapeHtml(removeEmojis(match[2]));
+      const cleanText = highlightValueWords(removeEmojis(match[2]));
       html += `<div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;"><span style="color: rgb(115, 115, 115); font-weight: 500; margin-top: 0.125rem; flex-shrink: 0; font-size: 0.875rem;">${match[1]}.</span><p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; flex: 1; margin: 0;">${cleanText}</p></div>`;
       i++;
       continue;
@@ -121,12 +214,85 @@ const formatTextToHTML = (text) => {
       i++;
     }
 
-    const paragraphText = escapeHtml(removeEmojis(paragraphLines.join(' ').replace(/\*\*/g, '')));
+    const paragraphText = highlightValueWords(removeEmojis(paragraphLines.join(' ').replace(/\*\*/g, '')));
     html += `<p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; margin-bottom: 1rem;">${paragraphText}</p>`;
   }
 
   return html;
 };
+
+// Category Legend Component
+const CategoryLegend = memo(({ show, onClose }) => {
+  if (!show) return null;
+
+  const categories = [
+    { name: 'Camera', color: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)', example: 'slow zoom in, aerial shot, panning' },
+    { name: 'Descriptive', color: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)', example: 'dramatic lighting, vibrant colors' },
+    { name: 'Subjects', color: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)', example: 'art deco facades, urban landscape' },
+    { name: 'Actions', color: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.4)', example: 'emerging from shadow, walking through' },
+    { name: 'Lighting', color: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)', example: 'golden hour lighting, neon signs casting' },
+    { name: 'Technical', color: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)', example: 'shallow depth of field, bokeh effect' },
+    { name: 'Colors', color: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)', example: 'neon red, golden yellow, deep shadows' },
+    { name: 'Environment', color: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)', example: 'light mist hanging, wet asphalt gleaming' },
+    { name: 'Emotions', color: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.4)', example: 'peaceful, mysterious, late hour' },
+    { name: 'Measurements', color: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.4)', example: '24fps, 50mm, f/2.8' },
+  ];
+
+  return (
+    <div className="fixed top-20 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-neutral-500" />
+          <h3 className="text-sm font-semibold text-neutral-900">Highlight Categories</h3>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-neutral-400 hover:text-neutral-600 transition-colors"
+          aria-label="Close legend"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="p-3 max-h-96 overflow-y-auto">
+        <div className="space-y-2">
+          {categories.map((cat) => (
+            <div key={cat.name} className="flex items-start gap-2">
+              <div
+                className="flex-shrink-0 w-16 h-6 rounded border mt-0.5"
+                style={{
+                  backgroundColor: cat.color,
+                  borderColor: cat.border,
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-neutral-900">{cat.name}</div>
+                <div className="text-xs text-neutral-500 truncate">{cat.example}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 pt-3 border-t border-neutral-200">
+          <p className="text-xs text-neutral-500 leading-relaxed mb-2">
+            <strong>Intelligent Learning System:</strong>
+          </p>
+          <ul className="text-xs text-neutral-500 space-y-1 ml-3">
+            <li>• NO hardcoded patterns - learns from your text</li>
+            <li>• Auto-extracts phrases using TF-IDF</li>
+            <li>• Semantic categorization with ML</li>
+            <li>• Learns from your clicks (reinforcement)</li>
+            <li>• Adapts confidence over time</li>
+            <li>• Auto-corrects typos with fuzzy matching</li>
+          </ul>
+          <p className="text-xs text-neutral-500 leading-relaxed mt-2">
+            Click highlights to teach the system what's important to you.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+CategoryLegend.displayName = 'CategoryLegend';
 
 // Minimal Floating Toolbar Component
 const FloatingToolbar = memo(({
@@ -135,7 +301,9 @@ const FloatingToolbar = memo(({
   onCreateNew,
   copied,
   showExportMenu,
-  onToggleExportMenu
+  onToggleExportMenu,
+  showLegend,
+  onToggleLegend
 }) => {
   const exportMenuRef = useRef(null);
 
@@ -166,6 +334,19 @@ const FloatingToolbar = memo(({
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied && <span className="text-xs">Copied</span>}
+      </button>
+
+      <button
+        onClick={() => onToggleLegend(!showLegend)}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          showLegend
+            ? 'text-blue-700 bg-blue-50'
+            : 'text-neutral-700 hover:bg-neutral-100'
+        }`}
+        aria-label="Toggle highlight legend"
+        title="Highlight Legend"
+      >
+        <Info className="h-4 w-4" />
       </button>
 
       <div className="relative" ref={exportMenuRef}>
@@ -235,6 +416,7 @@ export const PromptCanvas = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
 
   const editorRef = useRef(null);
   const toast = useToast();
@@ -294,6 +476,45 @@ export const PromptCanvas = ({
     }
   };
 
+  // Handle clicks on highlighted words
+  const handleHighlightClick = (e) => {
+    // Check if clicked element or its parent is a highlighted word
+    let targetElement = e.target;
+
+    // Traverse up to find a value-word span (in case user clicks on text inside the span)
+    while (targetElement && targetElement !== editorRef.current) {
+      if (targetElement.classList && targetElement.classList.contains('value-word')) {
+        // Prevent default text selection behavior
+        e.preventDefault();
+
+        // Get the word text and metadata
+        const wordText = targetElement.textContent.trim();
+        const category = targetElement.getAttribute('data-category');
+        const phrase = targetElement.getAttribute('data-phrase');
+
+        // Track this click for behavior learning
+        adaptiveEngine.recordClick(phrase || wordText, category);
+
+        if (wordText && onFetchSuggestions) {
+          // Create a range for the clicked word
+          const range = document.createRange();
+          range.selectNodeContents(targetElement);
+
+          // Clear any existing selection
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          // Trigger suggestions for this word
+          onFetchSuggestions(wordText, wordText, displayedPrompt, range);
+        }
+
+        return;
+      }
+      targetElement = targetElement.parentElement;
+    }
+  };
+
   const handleCopyEvent = (e) => {
     // Always copy the original unformatted text
     e.clipboardData.setData('text/plain', displayedPrompt);
@@ -310,34 +531,188 @@ export const PromptCanvas = ({
 
   // Update the editor content when displayedPrompt changes
   useEffect(() => {
-    if (editorRef.current && formattedHTML) {
+    if (editorRef.current && displayedPrompt) {
+      const newHTML = formattedHTML || displayedPrompt;
+
       // Only update if content has actually changed to preserve cursor position
-      if (editorRef.current.innerHTML !== formattedHTML) {
+      const currentText = editorRef.current.innerText || editorRef.current.textContent || '';
+      const newText = displayedPrompt;
+
+      if (currentText !== newText) {
         const selection = window.getSelection();
         const hadFocus = document.activeElement === editorRef.current;
+        let cursorPosition = 0;
 
-        editorRef.current.innerHTML = formattedHTML;
+        // Try to save cursor position
+        if (hadFocus && selection.rangeCount > 0) {
+          try {
+            const range = selection.getRangeAt(0);
+            cursorPosition = range.startOffset;
+          } catch (e) {
+            // Ignore cursor position errors
+          }
+        }
 
-        // Restore focus if it had it before
-        if (hadFocus && selection) {
+        // Set the HTML content
+        editorRef.current.innerHTML = newHTML;
+
+        // Restore focus and cursor if it had focus before
+        if (hadFocus) {
           try {
             editorRef.current.focus();
-            // Move cursor to end
-            const range = document.createRange();
-            range.selectNodeContents(editorRef.current);
-            range.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(range);
           } catch (e) {
-            // Ignore errors with cursor positioning
+            // Ignore focus errors
           }
         }
       }
+    } else if (editorRef.current && !displayedPrompt) {
+      editorRef.current.innerHTML = '<p style="color: rgb(163, 163, 163); font-size: 0.875rem;">Your optimized prompt will appear here...</p>';
     }
-  }, [formattedHTML]);
+  }, [displayedPrompt, formattedHTML]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
+      {/* Inject CSS for value word hover effects */}
+      <style>{`
+        /* Base value word styles */
+        .value-word {
+          position: relative;
+          user-select: text;
+          -webkit-user-select: text;
+          -moz-user-select: text;
+          -ms-user-select: text;
+        }
+
+        /* Confidence level indicators */
+        .high-confidence {
+          opacity: 1;
+        }
+
+        .medium-confidence {
+          opacity: 0.9;
+        }
+
+        .low-confidence {
+          opacity: 0.8;
+          border-style: dashed !important;
+        }
+
+        /* Enhanced hover effects for all categories */
+        .value-word:hover {
+          filter: brightness(0.95);
+          border-bottom-width: 2px !important;
+          transform: translateY(-0.5px);
+          cursor: pointer !important;
+          opacity: 1 !important;
+        }
+
+        .value-word:active {
+          transform: translateY(0px);
+        }
+
+        /* Category-specific hover enhancements */
+        .value-word-camera:hover {
+          background-color: rgba(139, 92, 246, 0.2) !important;
+          border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+        }
+
+        .value-word-descriptive:hover {
+          background-color: rgba(250, 204, 21, 0.25) !important;
+          border-bottom-color: rgba(250, 204, 21, 0.6) !important;
+        }
+
+        .value-word-subjects:hover {
+          background-color: rgba(59, 130, 246, 0.2) !important;
+          border-bottom-color: rgba(59, 130, 246, 0.6) !important;
+        }
+
+        .value-word-actions:hover {
+          background-color: rgba(34, 197, 94, 0.2) !important;
+          border-bottom-color: rgba(34, 197, 94, 0.6) !important;
+        }
+
+        .value-word-lighting:hover {
+          background-color: rgba(249, 115, 22, 0.2) !important;
+          border-bottom-color: rgba(249, 115, 22, 0.6) !important;
+        }
+
+        .value-word-technical:hover {
+          background-color: rgba(99, 102, 241, 0.2) !important;
+          border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+        }
+
+        .value-word-colors:hover {
+          background-color: rgba(244, 63, 94, 0.2) !important;
+          border-bottom-color: rgba(244, 63, 94, 0.6) !important;
+        }
+
+        .value-word-environment:hover {
+          background-color: rgba(6, 182, 212, 0.2) !important;
+          border-bottom-color: rgba(6, 182, 212, 0.6) !important;
+        }
+
+        .value-word-emotions:hover {
+          background-color: rgba(16, 185, 129, 0.2) !important;
+          border-bottom-color: rgba(16, 185, 129, 0.6) !important;
+        }
+
+        .value-word-measurements:hover {
+          background-color: rgba(100, 116, 139, 0.2) !important;
+          border-bottom-color: rgba(100, 116, 139, 0.6) !important;
+        }
+
+        /* Tooltip on hover - shows category */
+        .value-word::before {
+          content: attr(data-category);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-4px);
+          background-color: rgba(23, 23, 23, 0.9);
+          color: white;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: 500;
+          text-transform: capitalize;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 1000;
+          letter-spacing: 0.5px;
+        }
+
+        .value-word::after {
+          content: '';
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-4px);
+          border: 4px solid transparent;
+          border-top-color: rgba(23, 23, 23, 0.9);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 1000;
+        }
+
+        .value-word:hover::before,
+        .value-word:hover::after {
+          opacity: 1;
+          transform: translateX(-50%) translateY(-8px);
+        }
+
+        .value-word:hover::after {
+          transform: translateX(-50%) translateY(-4px);
+        }
+
+        /* Prevent tooltip overflow */
+        [contenteditable] {
+          position: relative;
+        }
+      `}</style>
+
       {/* Floating Toolbar */}
       <FloatingToolbar
         onCopy={handleCopy}
@@ -346,7 +721,12 @@ export const PromptCanvas = ({
         copied={copied}
         showExportMenu={showExportMenu}
         onToggleExportMenu={setShowExportMenu}
+        showLegend={showLegend}
+        onToggleLegend={setShowLegend}
       />
+
+      {/* Category Legend */}
+      <CategoryLegend show={showLegend} onClose={() => setShowLegend(false)} />
 
       {/* Main Content Container */}
       <div className="flex-1 flex overflow-hidden">
@@ -382,6 +762,7 @@ export const PromptCanvas = ({
               <div
                 ref={editorRef}
                 onMouseUp={handleTextSelection}
+                onClick={handleHighlightClick}
                 onCopy={handleCopyEvent}
                 onInput={handleInput}
                 contentEditable
