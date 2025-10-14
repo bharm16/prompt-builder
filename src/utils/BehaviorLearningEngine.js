@@ -19,11 +19,17 @@ export class BehaviorLearningEngine {
     // Time-based decay for relevance
     this.lastInteraction = Date.now();
 
-    // Learning rate (how quickly to adapt)
+    // Learning rate (how quickly to adapt) - decreases over time
     this.learningRate = 0.1;
 
     // Exploration vs exploitation balance
     this.explorationRate = 0.15; // 15% chance to show uncertain patterns
+
+    // UCB (Upper Confidence Bound) parameter
+    this.ucbConfidenceLevel = 2.0; // Higher = more exploration
+
+    // Total interactions across all phrases (for UCB calculation)
+    this.totalInteractions = 0;
 
     this.load();
   }
@@ -58,6 +64,9 @@ export class BehaviorLearningEngine {
 
     categoryData.shown++;
     this.categoryEngagement.set(category, categoryData);
+
+    // Track total interactions for UCB
+    this.totalInteractions++;
 
     this.lastInteraction = Date.now();
   }
@@ -110,7 +119,9 @@ export class BehaviorLearningEngine {
   }
 
   /**
-   * Get learned score for a phrase (0-1, where 1 is highly engaging)
+   * Get learned score for a phrase using UCB (Upper Confidence Bound)
+   * UCB = exploitation (CTR) + exploration bonus (confidence interval)
+   * Returns 0-1, where 1 is highly engaging
    */
   getPhraseScore(phrase) {
     const phraseKey = phrase.toLowerCase();
@@ -120,17 +131,26 @@ export class BehaviorLearningEngine {
       return 0.5; // Neutral for unknown phrases
     }
 
-    // Calculate click-through rate
-    const ctr = data.shown > 0 ? data.clicked / data.shown : 0;
+    // Exploitation: empirical click-through rate
+    const exploitScore = data.shown > 0 ? data.clicked / data.shown : 0.5;
 
-    // Combine learned score with empirical CTR
-    const combinedScore = (data.score * 0.7) + (ctr * 0.3);
+    // Exploration: confidence interval (UCB formula)
+    // exploreBonus increases when phrase has fewer samples
+    const exploreBonus = this.totalInteractions > 0 && data.shown > 0
+      ? Math.sqrt((this.ucbConfidenceLevel * Math.log(this.totalInteractions)) / data.shown)
+      : 1.0; // High bonus for unseen phrases
+
+    // UCB score = exploit + explore
+    const ucbScore = Math.min(1.0, exploitScore + (this.explorationRate * exploreBonus));
 
     // Apply time decay (older patterns matter less)
     const daysSinceLastSeen = (Date.now() - data.lastSeen) / (1000 * 60 * 60 * 24);
     const decayFactor = Math.exp(-daysSinceLastSeen / 30); // 30-day half-life
 
-    return combinedScore * decayFactor;
+    // Also factor in sample size confidence
+    const sampleConfidence = Math.min(1.0, data.shown / 10); // Full confidence after 10+ samples
+
+    return ucbScore * decayFactor * (0.5 + 0.5 * sampleConfidence);
   }
 
   /**
@@ -321,6 +341,8 @@ export class BehaviorLearningEngine {
         categoryEngagement: Array.from(this.categoryEngagement.entries()),
         learningRate: this.learningRate,
         explorationRate: this.explorationRate,
+        ucbConfidenceLevel: this.ucbConfidenceLevel,
+        totalInteractions: this.totalInteractions,
         lastInteraction: this.lastInteraction
       };
       localStorage.setItem('behaviorLearningEngine', JSON.stringify(data));
@@ -341,6 +363,8 @@ export class BehaviorLearningEngine {
         this.categoryEngagement = new Map(data.categoryEngagement || []);
         this.learningRate = data.learningRate || 0.1;
         this.explorationRate = data.explorationRate || 0.15;
+        this.ucbConfidenceLevel = data.ucbConfidenceLevel || 2.0;
+        this.totalInteractions = data.totalInteractions || 0;
         this.lastInteraction = data.lastInteraction || Date.now();
       }
     } catch (e) {
@@ -356,6 +380,8 @@ export class BehaviorLearningEngine {
     this.categoryEngagement.clear();
     this.learningRate = 0.1;
     this.explorationRate = 0.15;
+    this.ucbConfidenceLevel = 2.0;
+    this.totalInteractions = 0;
     this.lastInteraction = Date.now();
     localStorage.removeItem('behaviorLearningEngine');
   }

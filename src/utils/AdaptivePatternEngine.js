@@ -22,6 +22,10 @@ export class AdaptivePatternEngine {
     // Performance tracking
     this.processingTimes = [];
 
+    // Buffer for statistics updates (prevents data leakage)
+    this.pendingStatisticsUpdates = [];
+    this.statisticsUpdateInterval = 5; // Update every 5 documents
+
     // Initialize sub-systems
     this.extractor = intelligentExtractor;
     this.categorizer = semanticCategorizer;
@@ -30,6 +34,19 @@ export class AdaptivePatternEngine {
 
     // Load previous learning
     this.extractor.load();
+  }
+
+  /**
+   * Flush pending statistics updates in batch
+   */
+  flushStatistics() {
+    if (this.pendingStatisticsUpdates.length > 0) {
+      this.pendingStatisticsUpdates.forEach(text => {
+        this.extractor.updateStatistics(text);
+      });
+      this.pendingStatisticsUpdates = [];
+      this.extractor.save();
+    }
   }
 
   /**
@@ -103,8 +120,13 @@ export class AdaptivePatternEngine {
       this.processingTimes.shift();
     }
 
-    // Update statistics
-    this.extractor.updateStatistics(correctedText);
+    // Buffer statistics update (prevents data leakage)
+    this.pendingStatisticsUpdates.push(correctedText);
+
+    // Flush statistics periodically
+    if (this.pendingStatisticsUpdates.length >= this.statisticsUpdateInterval) {
+      this.flushStatistics();
+    }
 
     return {
       matches: finalMatches,

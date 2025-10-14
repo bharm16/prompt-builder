@@ -17,6 +17,9 @@ export class IntelligentPhraseExtractor {
     // N-gram statistics
     this.ngramFrequency = new Map();
 
+    // Regex cache for performance (compiled regexes)
+    this.regexCache = new Map();
+
     // Stopwords to filter out
     this.stopwords = new Set([
       'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
@@ -36,42 +39,100 @@ export class IntelligentPhraseExtractor {
   }
 
   /**
-   * Tokenize text into words
+   * Get or create cached regex for a phrase
    */
-  tokenize(text) {
-    return text
+  getCachedRegex(phrase, flags = 'gi') {
+    const cacheKey = `${phrase}::${flags}`;
+
+    if (!this.regexCache.has(cacheKey)) {
+      const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedPhrase}\\b`, flags);
+      this.regexCache.set(cacheKey, regex);
+
+      // Limit cache size to prevent memory leaks
+      if (this.regexCache.size > 500) {
+        const firstKey = this.regexCache.keys().next().value;
+        this.regexCache.delete(firstKey);
+      }
+    }
+
+    return this.regexCache.get(cacheKey);
+  }
+
+  /**
+   * Simple stemmer for common word variations
+   */
+  stem(word) {
+    // Common suffixes removal (basic Porter stemmer approach)
+    const suffixes = [
+      { pattern: /ing$/, replacement: '' },
+      { pattern: /ed$/, replacement: '' },
+      { pattern: /s$/, replacement: '' },
+      { pattern: /es$/, replacement: '' },
+      { pattern: /ies$/, replacement: 'y' },
+      { pattern: /er$/, replacement: '' },
+      { pattern: /est$/, replacement: '' },
+      { pattern: /ly$/, replacement: '' },
+    ];
+
+    let stemmed = word.toLowerCase();
+
+    // Only stem if word is long enough
+    if (stemmed.length > 4) {
+      for (const { pattern, replacement } of suffixes) {
+        if (pattern.test(stemmed)) {
+          stemmed = stemmed.replace(pattern, replacement);
+          break;
+        }
+      }
+    }
+
+    return stemmed;
+  }
+
+  /**
+   * Tokenize text into words with optional stemming
+   */
+  tokenize(text, applyStemming = false) {
+    const tokens = text
       .toLowerCase()
       .replace(/[^\w\s'-]/g, ' ')
       .split(/\s+/)
       .filter(word => word.length > 0);
+
+    return applyStemming ? tokens.map(t => this.stem(t)) : tokens;
   }
 
   /**
-   * Extract n-grams (phrases) from tokens
+   * Extract n-grams (phrases) from tokens - OPTIMIZED O(n)
    */
   extractNgrams(tokens, n) {
     const ngrams = [];
-    for (let i = 0; i <= tokens.length - n; i++) {
-      const ngram = tokens.slice(i, i + n);
 
+    // Pre-filter: mark stopword positions
+    const isStopword = tokens.map(t => this.stopwords.has(t));
+
+    for (let i = 0; i <= tokens.length - n; i++) {
       // Skip if starts or ends with stopword (for n > 1)
-      if (n > 1) {
-        if (this.stopwords.has(ngram[0]) || this.stopwords.has(ngram[ngram.length - 1])) {
-          continue;
-        }
+      if (n > 1 && (isStopword[i] || isStopword[i + n - 1])) {
+        continue;
       }
 
-      ngrams.push(ngram.join(' '));
+      const ngram = tokens.slice(i, i + n).join(' ');
+      ngrams.push(ngram);
     }
     return ngrams;
   }
 
   /**
-   * Calculate term frequency in document
+   * Calculate term frequency in document - FIXED with caching
    */
   calculateTF(term, tokens) {
-    const termCount = tokens.filter(t => t === term || tokens.join(' ').includes(term)).length;
-    return termCount / tokens.length;
+    const text = tokens.join(' ');
+    const regex = this.getCachedRegex(term, 'g');
+    const matches = text.match(regex);
+    const termCount = matches ? matches.length : 0;
+    return termCount / Math.max(1, tokens.length);
   }
 
   /**
@@ -220,13 +281,15 @@ export class IntelligentPhraseExtractor {
   }
 
   /**
-   * Find all occurrences of phrases in text with positions
+   * Find all occurrences of phrases in text with positions - with caching
    */
   findPhraseOccurrences(text, phrases) {
     const matches = [];
 
     phrases.forEach(({ phrase, score, isTechnical }) => {
-      const regex = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      const regex = this.getCachedRegex(phrase, 'gi');
+      // Reset regex lastIndex to avoid issues with cached regexes
+      regex.lastIndex = 0;
       let match;
 
       while ((match = regex.exec(text)) !== null) {

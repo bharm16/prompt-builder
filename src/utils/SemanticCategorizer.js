@@ -69,27 +69,95 @@ export class SemanticCategorizer {
   }
 
   /**
-   * Calculate semantic similarity between phrase and category
-   * Uses Jaccard similarity with word overlap
+   * Calculate Levenshtein distance between two words
+   */
+  levenshteinDistance(word1, word2) {
+    const len1 = word1.length;
+    const len2 = word2.length;
+    const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+
+    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = word1[i - 1] === word2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,      // deletion
+          matrix[i][j - 1] + 1,      // insertion
+          matrix[i - 1][j - 1] + cost // substitution
+        );
+      }
+    }
+
+    return matrix[len1][len2];
+  }
+
+  /**
+   * Stem a word using simple suffix removal
+   */
+  stem(word) {
+    const suffixes = [
+      { pattern: /ing$/, replacement: '' },
+      { pattern: /ed$/, replacement: '' },
+      { pattern: /s$/, replacement: '' },
+      { pattern: /es$/, replacement: '' },
+      { pattern: /ly$/, replacement: '' },
+    ];
+
+    let stemmed = word;
+    if (stemmed.length > 4) {
+      for (const { pattern, replacement } of suffixes) {
+        if (pattern.test(stemmed)) {
+          return stemmed.replace(pattern, replacement);
+        }
+      }
+    }
+    return stemmed;
+  }
+
+  /**
+   * Calculate semantic similarity between phrase and category - IMPROVED
+   * Uses stemming, Levenshtein distance, and proper word matching
    */
   calculateSemanticSimilarity(phrase, categorySeeds) {
-    const phraseWords = new Set(phrase.toLowerCase().split(/\s+/));
-    const seedWords = new Set(categorySeeds.map(s => s.toLowerCase()));
+    const phraseWords = phrase.toLowerCase().split(/\s+/).map(w => this.stem(w));
+    const seedWords = categorySeeds.map(s => this.stem(s.toLowerCase()));
 
-    // Direct word overlap
     let overlap = 0;
+
     phraseWords.forEach(word => {
-      if (seedWords.has(word)) overlap += 2; // Direct match
-      // Check for partial matches (substring)
+      let bestMatch = 0;
+
       seedWords.forEach(seed => {
-        if (word.includes(seed) || seed.includes(word)) {
-          overlap += 0.5;
+        // Exact match (after stemming)
+        if (word === seed) {
+          bestMatch = Math.max(bestMatch, 2);
+        }
+        // Substring match (only if meaningful length)
+        else if (seed.length >= 4 && word.includes(seed)) {
+          bestMatch = Math.max(bestMatch, 1.5);
+        }
+        else if (word.length >= 4 && seed.includes(word)) {
+          bestMatch = Math.max(bestMatch, 1.5);
+        }
+        // Fuzzy match using Levenshtein distance
+        else if (word.length >= 4 && seed.length >= 4) {
+          const distance = this.levenshteinDistance(word, seed);
+          const maxAllowedDistance = Math.max(1, Math.floor(Math.min(word.length, seed.length) / 3));
+
+          if (distance <= maxAllowedDistance) {
+            const similarity = 1 - (distance / Math.max(word.length, seed.length));
+            bestMatch = Math.max(bestMatch, similarity);
+          }
         }
       });
+
+      overlap += bestMatch;
     });
 
     // Normalize by phrase length
-    return overlap / Math.max(phraseWords.size, 1);
+    return overlap / Math.max(phraseWords.length, 1);
   }
 
   /**
