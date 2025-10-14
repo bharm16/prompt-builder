@@ -18,7 +18,7 @@ import { adaptiveEngine } from '../../utils/AdaptivePatternEngine';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-const formatTextToHTML = (text) => {
+const formatTextToHTML = (text, enableMLHighlighting = false) => {
   if (!text) return '';
 
   const lines = text.split('\n');
@@ -54,6 +54,11 @@ const formatTextToHTML = (text) => {
    */
   const highlightValueWords = (text) => {
     if (!text) return '';
+
+    // Only apply ML highlighting if enabled (video mode only)
+    if (!enableMLHighlighting) {
+      return escapeHtml(text);
+    }
 
     // Check if this text is a structural element (header, label, descriptor)
     const isStructuralElement = (text) => {
@@ -421,8 +426,9 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const toast = useToast();
 
-  // Memoize formatted HTML
-  const formattedHTML = useMemo(() => formatTextToHTML(displayedPrompt), [displayedPrompt]);
+  // Memoize formatted HTML - only enable ML highlighting for video mode
+  const enableMLHighlighting = selectedMode === 'video';
+  const formattedHTML = useMemo(() => formatTextToHTML(displayedPrompt, enableMLHighlighting), [displayedPrompt, enableMLHighlighting]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayedPrompt);
@@ -465,6 +471,11 @@ export const PromptCanvas = ({
   };
 
   const handleTextSelection = () => {
+    // Only allow text selection suggestions in video mode
+    if (selectedMode !== 'video') {
+      return;
+    }
+
     const selection = window.getSelection();
     let text = selection.toString().trim();
 
@@ -478,6 +489,11 @@ export const PromptCanvas = ({
 
   // Handle clicks on highlighted words
   const handleHighlightClick = (e) => {
+    // Only handle highlight clicks in video mode
+    if (selectedMode !== 'video') {
+      return;
+    }
+
     // Check if clicked element or its parent is a highlighted word
     let targetElement = e.target;
 

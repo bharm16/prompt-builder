@@ -142,7 +142,9 @@ function PromptOptimizerContent() {
 
   // Handle optimization
   const handleOptimize = async (promptToOptimize = promptOptimizer.inputPrompt, context = promptOptimizer.improvementContext) => {
+    console.log('handleOptimize called with:', { promptToOptimize, context, selectedMode });
     const result = await promptOptimizer.optimize(promptToOptimize, context);
+    console.log('optimize result:', result);
     if (result) {
       promptHistory.saveToHistory(promptToOptimize, result.optimized, result.score, selectedMode);
       setShowResults(true);
@@ -213,6 +215,11 @@ function PromptOptimizerContent() {
     fullPrompt,
     selectionRange
   ) => {
+    // Only enable ML suggestions for video mode
+    if (selectedMode !== 'video') {
+      return;
+    }
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
