@@ -711,74 +711,77 @@ export default function CreativeBrainstormEnhanced({
         </div>
       </div>
 
-      {/* Right Side AI Suggestions Panel */}
-      {activeElement && (
-        <div className="w-96 bg-white border-l border-neutral-200 flex flex-col h-screen sticky top-0">
-          {/* Panel Header */}
-          <div className="flex-shrink-0 px-6 py-5 border-b border-neutral-200">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                AI Suggestions
-              </h3>
-              <button
-                onClick={() => {
-                  setActiveElement(null);
-                  setSuggestions([]);
-                }}
-                className="p-1.5 text-neutral-500 hover:text-neutral-900 rounded-md hover:bg-neutral-100 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-xs text-neutral-600">
-              For {elementConfig[activeElement].label}
+      {/* Right Side AI Suggestions Panel - Always Visible */}
+      <div className="w-80 bg-white border-l border-neutral-200 flex flex-col h-screen sticky top-0">
+        {/* Panel Header */}
+        <div className="flex-shrink-0 px-5 py-4 border-b border-neutral-200">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-neutral-400" />
+            <h3 className="text-xs font-semibold text-neutral-900 uppercase tracking-wide">
+              AI Suggestions
+            </h3>
+          </div>
+          {activeElement && (
+            <p className="mt-2 text-xs text-neutral-600">
+              For: {elementConfig[activeElement].label}
             </p>
-          </div>
-
-          {/* Panel Content */}
-          <div className="flex-1 overflow-y-auto">
-            {isLoadingSuggestions ? (
-              <div className="flex flex-col items-center justify-center h-full px-6">
-                <Loader2 className="h-6 w-6 animate-spin text-neutral-400 mb-3" />
-                <p className="text-sm text-neutral-600">Finding suggestions...</p>
-              </div>
-            ) : (
-              <div className="p-6 space-y-3">
-                {suggestions.map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full p-4 text-left bg-neutral-50 border border-neutral-200 rounded-lg hover:bg-neutral-100 hover:border-neutral-300 transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="text-sm font-medium text-neutral-900 flex-1">
-                        {suggestion.text}
-                      </div>
-                      {suggestion.compatibility && (
-                        <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded ${
-                          suggestion.compatibility >= 0.8
-                            ? 'bg-green-100 text-green-700'
-                            : suggestion.compatibility >= 0.6
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {Math.round(suggestion.compatibility * 100)}%
-                        </span>
-                      )}
-                    </div>
-                    {suggestion.explanation && (
-                      <div className="text-xs text-neutral-600 leading-relaxed">
-                        {suggestion.explanation}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      )}
+
+        {/* Panel Content */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoadingSuggestions ? (
+            <div className="flex flex-col items-center justify-center h-full px-6">
+              <Loader2 className="h-6 w-6 animate-spin text-neutral-400 mb-3" />
+              <p className="text-sm text-neutral-600">Finding suggestions...</p>
+            </div>
+          ) : activeElement && suggestions.length > 0 ? (
+            <div className="p-5 space-y-2">
+              {suggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="w-full p-3 text-left bg-neutral-50 border border-neutral-200 rounded-lg hover:bg-neutral-100 hover:border-neutral-300 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="text-sm font-medium text-neutral-900 flex-1">
+                      {suggestion.text}
+                    </div>
+                    {suggestion.compatibility && (
+                      <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded ${
+                        suggestion.compatibility >= 0.8
+                          ? 'bg-green-100 text-green-700'
+                          : suggestion.compatibility >= 0.6
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {Math.round(suggestion.compatibility * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  {suggestion.explanation && (
+                    <div className="text-xs text-neutral-600 leading-relaxed">
+                      {suggestion.explanation}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-6">
+              <div className="text-center">
+                <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" />
+                <p className="text-sm text-neutral-600 font-medium mb-2">
+                  Click an element to get suggestions
+                </p>
+                <p className="text-xs text-neutral-500 leading-relaxed">
+                  Focus on any input field to see AI-powered suggestions for that element
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
