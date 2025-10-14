@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
+import { adaptiveEngine } from '../../utils/AdaptivePatternEngine';
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -39,265 +40,86 @@ const formatTextToHTML = (text) => {
       .replace(/'/g, '&#039;');
   };
 
-  // Helper function to create flexible pattern variations
-  const createFlexiblePattern = (phrases) => {
-    // Add optional variations for common words
-    return phrases.map(phrase => {
-      // Make certain words optional or variable
-      return phrase
-        .replace(/\bslow\b/gi, '(?:slow|slowly)')
-        .replace(/\bfast\b/gi, '(?:fast|quickly)')
-        .replace(/\blight\b/gi, '(?:light|lighting)')
-        .replace(/\bheavy\b/gi, '(?:heavy|thick)')
-        .replace(/\bmist\b/gi, '(?:mist|fog|haze)')
-        .replace(/\b(a|an|the)\s+/gi, '(?:a|an|the)?\\s*') // Optional articles
-        .replace(/\s+/g, '\\s+'); // Normalize whitespace
-    }).join('|');
-  };
-
-  // Highlight value words and phrases (descriptive terms, actions, etc.)
+  /**
+   * Intelligent phrase highlighting system using ML-based pattern recognition
+   *
+   * NO HARDCODED PATTERNS - Everything is learned and adapted:
+   * 1. Automatic phrase extraction using TF-IDF and statistical analysis
+   * 2. Semantic categorization using word embeddings and context
+   * 3. User behavior learning - adapts based on what you click
+   * 4. Reinforcement learning - improves over time
+   * 5. Fuzzy matching - auto-corrects typos
+   * 6. Confidence scoring - only shows high-confidence highlights
+   * 7. Smart structure detection - skips headers and labels
+   */
   const highlightValueWords = (text) => {
     if (!text) return '';
 
-    // Enhanced categorized patterns for video/prompt generation
-    // PHRASES come first - they take priority over individual words
-    const patternCategories = {
-      // Multi-word phrases (must be checked FIRST to avoid breaking them up)
-      // Camera movement phrases (Purple/Violet)
-      cameraPhrases: {
-        pattern: /\b((?:slow|slowly)\s+zoom\s+(?:in|out)|(?:fast|quickly)\s+zoom\s+(?:in|out)|smooth\s+zoom|camera\s+zoom|camera\s+pan|camera\s+tilt|camera\s+tracking|dolly\s+shot|crane\s+shot|steadicam\s+shot|handheld\s+camera|aerial\s+shot|drone\s+shot|tracking\s+shot|following\s+shot|push\s+in\s+shot|pull\s+out\s+shot|rack\s+focus\s+transition|follow\s+focus\s+pull|whip\s+pan\s+transition|dutch\s+angle\s+shot|bird'?s\s+eye\s+view|worm'?s\s+eye\s+view|overhead\s+view|low\s+angle\s+shot|high\s+angle\s+shot|eye\s+level\s+shot|camera\s+movement|camera\s+motion)\b/gi,
-        color: { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)' }
-      },
+    // Check if this text is a structural element (header, label, descriptor)
+    const isStructuralElement = (text) => {
+      const trimmed = text.trim();
 
-      // Lighting phrases (Orange)
-      lightingPhrases: {
-        pattern: /\b(golden\s+hour\s+(?:lighting|light)|blue\s+hour\s+(?:lighting|light)|magic\s+hour\s+(?:lighting|light)|natural\s+light\s+streaming|artificial\s+light\s+sources?|ambient\s+light\s+glow|key\s+light\s+setup|rim\s+light\s+effect|back\s+light\s+silhouette|volumetric\s+light\s+rays?|god\s+rays?\s+streaming|lens\s+flare\s+effect|neon\s+(?:light|lights)\s+reflecting|neon\s+signs?\s+casting|(?:light|heavy)\s+(?:mist|fog)\s+hanging|soft\s+light\s+diffusing|hard\s+light\s+creating|diffused\s+light|direct\s+light|light\s+sources?|street\s+(?:light|lights)|traffic\s+lights?|colored\s+light|warm\s+light|cool\s+light|bright\s+light|dim\s+light|glowing\s+light)\b/gi,
-        color: { bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)' }
-      },
+      // Headers: ALL CAPS with 5+ characters
+      if (/^[A-Z\s\-&/]{5,}$/.test(trimmed)) return true;
 
-      // Architectural and setting phrases (Blue)
-      architecturalPhrases: {
-        pattern: /\b(art deco facades|art deco architecture|geometric patterns|geometric shapes|architectural details|architectural elements|towering buildings|urban landscape|street canyon|city street|narrow corridor|fire escapes creating|building facades|glass windows|neon signs|street level|urban environment|metropolitan setting|city setting|urban setting)\b/gi,
-        color: { bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)' }
-      },
-
-      // Environmental/atmospheric phrases (Cyan)
-      atmosphericPhrases: {
-        pattern: /\b((?:light|thin)\s+(?:mist|fog|haze)|(?:heavy|thick|dense)\s+(?:mist|fog|haze)|(?:morning|evening)\s+(?:mist|fog)|(?:mist|fog)\s+(?:hanging|diffusing)|(?:steam|smoke)\s+rising|rain\s+falling|wind\s+(?:stirring|blowing)|wet\s+(?:asphalt|pavement)\s+gleaming|wet\s+(?:asphalt|pavement)|reflective\s+surfaces?|puddles?\s+reflecting|shallow\s+puddles?|recent\s+rain|atmospheric\s+conditions?|weather\s+conditions?|environmental\s+conditions?)\b/gi,
-        color: { bg: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)' }
-      },
-
-      // Action phrases (Green)
-      actionPhrases: {
-        pattern: /\b(slowly walking|briskly walking|emerging from shadow|emerging from darkness|disappearing into darkness|disappearing into shadow|passing through|moving through|walking through|pools of light|pools of shadow|pools of streetlight|creating ripples|disturbing puddles|looking back|glancing back|turning around)\b/gi,
-        color: { bg: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.4)' }
-      },
-
-      // Technical cinematography phrases (Indigo)
-      technicalPhrases: {
-        pattern: /\b(shallow depth of field|deep depth of field|selective focus on|rack focus from|rack focus to|slow motion shot|time-lapse sequence|real-time capture|high frame rate|low frame rate|wide angle lens|telephoto lens|macro lens|fisheye lens|anamorphic lens|film grain texture|color grading applied|LUT applied|bokeh effect|motion blur|lens flare)\b/gi,
-        color: { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)' }
-      },
-
-      // Visual/descriptive phrases (Amber/Yellow)
-      descriptivePhrases: {
-        pattern: /\b(highly detailed|extremely detailed|meticulously detailed|vibrant colors|muted colors|warm colors|cool colors|dark shadows|deep shadows|bright highlights|soft highlights|harsh contrast|subtle contrast|organic textures|geometric patterns|symmetrical composition|balanced composition|dramatic lighting|cinematic lighting|moody atmosphere|ethereal atmosphere|dreamy quality|surreal quality)\b/gi,
-        color: { bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)' }
-      },
-
-      // Color phrases (Pink/Rose)
-      colorPhrases: {
-        pattern: /\b(neon red|neon blue|neon green|neon pink|deep red|bright red|dark blue|light blue|golden yellow|warm orange|cool blue|vibrant green|muted brown|charcoal gray|silver gray|colored light)\b/gi,
-        color: { bg: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)' }
-      },
-
-      // INDIVIDUAL WORDS (checked after phrases)
-      // Camera movements and technical operations (Purple/Violet)
-      camera: {
-        pattern: /\b(zooming|panning|tilting|tracking|dolly|crane|steadicam|handheld|aerial|drone|orbiting|circling)\b/gi,
-        color: { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)' }
-      },
-
-      // Visual descriptors and aesthetics (Amber/Yellow)
-      descriptive: {
-        pattern: /\b(dramatic|cinematic|beautiful|stunning|elegant|modern|vintage|retro|futuristic|professional|creative|dynamic|atmospheric|intimate|bold|subtle|vibrant|muted|warm|cool|cold|hot|dark|bright|dim|soft|harsh|smooth|rough|minimalist|maximalist|detailed|simple|complex|clean|messy|sleek|rugged|delicate|powerful|gentle|intense|calm|energetic|peaceful|chaotic|serene|moody|ethereal|dreamy|surreal|realistic|abstract|organic|geometric|symmetrical|asymmetrical|balanced|contrasted|saturated|desaturated|monochrome|colorful|pastel|metallic|glossy|matte|textured|grainy|crisp)\b/gi,
-        color: { bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)' }
-      },
-
-      // Subjects and composition elements (Blue)
-      subjects: {
-        pattern: /\b(person|people|figure|character|subject|protagonist|model|actor|silhouette|crowd|group|individual|face|portrait|product|object|item|camera|lens|scene|background|foreground|midground|environment|location|setting|landscape|cityscape|interior|exterior|studio|stage|set|composition|framing|frame|shot|angle|perspective|layout|arrangement|debris|litter|storefronts|windows|cars|buildings|facades|corridor|canyon)\b/gi,
-        color: { bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)' }
-      },
-
-      // Actions and movements (Green)
-      actions: {
-        pattern: /\b(walking|running|standing|sitting|lying|leaning|moving|floating|flying|falling|rising|ascending|descending|dancing|jumping|leaping|turning|spinning|rotating|twisting|swaying|drifting|gliding|sliding|emerging|disappearing|fading|appearing|revealing|concealing|approaching|receding|gesturing|reaching|pointing|looking|gazing|staring|stirring|creating|disturbing|casting|suggesting)\b/gi,
-        color: { bg: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.4)' }
-      },
-
-      // Lighting and time (Orange)
-      lighting: {
-        pattern: /\b(sunrise|sunset|dawn|dusk|twilight|morning|afternoon|evening|night|midnight|noon|daylight|moonlight|sunlight|starlight|candlelight|lamplight|shadows|highlights|lowlights|midtones|backlit|frontlit|sidelit|volumetric|glow|glowing|shimmering|sparkling|reflecting|reflections|gleaming)\b/gi,
-        color: { bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)' }
-      },
-
-      // Technical cinematography terms (Indigo)
-      technical: {
-        pattern: /\b(bokeh|focus|blur|blurred|sharp|sharpness|macro|fps|exposure|overexposed|underexposed|resolution|4K|8K|HDR|anamorphic|spherical|compression|grain|noise|vignette|LUT)\b/gi,
-        color: { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)' }
-      },
-
-      // Colors and materials (Pink/Rose)
-      colors: {
-        pattern: /\b(red|crimson|scarlet|maroon|orange|amber|yellow|gold|golden|green|emerald|teal|cyan|blue|navy|indigo|purple|violet|lavender|magenta|pink|rose|brown|beige|tan|white|ivory|cream|black|charcoal|gray|grey|silver|bronze|copper|sepia|turquoise|coral|sage|olive|burgundy|rust|peach|neon)\b/gi,
-        color: { bg: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)' }
-      },
-
-      // Weather and environmental conditions (Cyan)
-      environment: {
-        pattern: /\b(sunny|cloudy|overcast|rainy|stormy|foggy|misty|hazy|clear|windy|snowy|icy|humid|dry|wet|dusty|smoky|smoggy|thunder|lightning|rainbow|aurora|stars|starry|moonlit|mist|fog|rain|steam|smoke)\b/gi,
-        color: { bg: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)' }
-      },
-
-      // Emotions and mood (Emerald)
-      emotions: {
-        pattern: /\b(happy|joyful|sad|melancholic|angry|peaceful|tense|relaxed|excited|anxious|confident|mysterious|playful|serious|romantic|lonely|nostalgic|hopeful|ominous|threatening|welcoming|friendly|hostile|isolation|solitude|fatigue|injury|tension|deliberate|controlled|intimate|dwarfed|imposing|vertical|reflective|darkened|occasional|scattered|empty|late)\b/gi,
-        color: { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.4)' }
-      },
-
-      // Numbers and measurements (Slate)
-      measurements: {
-        pattern: /\b(\d+(?:\.\d+)?(?:mm|fps|k|hz|seconds?|mins?|minutes?|hours?|degrees?|percent|%|meters?|feet|inches?|f\/\d+\.?\d*))\b/gi,
-        color: { bg: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.4)' }
+      // Emoji headers (🎬, 🎥, ✨, etc.) - check first character
+      if (trimmed.length > 0) {
+        const firstChar = trimmed.charCodeAt(0);
+        // Emoji range: 0x1F300 to 0x1F9FF
+        if (firstChar >= 0xD83C || firstChar >= 0xD83D) return true;
       }
+
+      // Section labels ending with dash (WHO - SUBJECT/CHARACTER)
+      if (/^[A-Z\s]+\s+-\s+[A-Z\s/]+$/.test(trimmed)) return true;
+
+      // Category labels (bold text ending with colon or dash)
+      if (/^\*\*[^*]+\*\*[\s:-]*$/.test(trimmed)) return true;
+
+      // Standalone labels ending with colon
+      if (/^[A-Z][^:]{0,40}:$/.test(trimmed) && trimmed.length < 50) return true;
+
+      // Separator lines (━━━ or similar)
+      if (/^[━─═▬▭\-=_*]{3,}$/.test(trimmed)) return true;
+
+      return false;
     };
 
-    // Process text with all pattern categories
+    // Skip highlighting for structural elements
+    if (isStructuralElement(text)) {
+      return escapeHtml(text);
+    }
+
+    // Check if text starts with a label prefix (e.g., "Positioning: actual content here")
+    // We want to skip highlighting the label but highlight the content
+    const labelMatch = text.match(/^([A-Z][^:]{0,40}:)\s*(.+)$/);
+    if (labelMatch) {
+      const label = labelMatch[1];
+      const content = labelMatch[2];
+
+      // Don't highlight the label, only the content
+      return escapeHtml(label) + ' ' + highlightValueWords(content);
+    }
+
+    // Process text through adaptive engine
+    const { matches } = adaptiveEngine.processText(text);
+
+    // Build HTML with highlights
     let result = '';
     let lastIndex = 0;
-    const matches = [];
-
-    // Collect all matches from all categories
-    Object.entries(patternCategories).forEach(([category, { pattern, color }]) => {
-      const regex = new RegExp(pattern.source, pattern.flags);
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        matches.push({
-          text: match[0],
-          start: match.index,
-          end: match.index + match[0].length,
-          category,
-          color,
-          // Add priority: phrases (longer) have higher priority than individual words
-          length: match[0].length,
-          // Phrase categories get extra priority boost
-          isPhraseCategory: category.endsWith('Phrases')
-        });
-      }
-    });
-
-    // Sort matches by:
-    // 1. Start position (primary)
-    // 2. Length descending (longer matches first at same position)
-    // 3. Phrase category priority
-    matches.sort((a, b) => {
-      if (a.start !== b.start) return a.start - b.start;
-      if (a.length !== b.length) return b.length - a.length; // Longer first
-      if (a.isPhraseCategory !== b.isPhraseCategory) {
-        return a.isPhraseCategory ? -1 : 1; // Phrases first
-      }
-      return 0;
-    });
-
-    // Context-aware category priority for ambiguous words
-    // Some words appear in multiple categories - choose best based on surrounding context
-    const getContextualCategory = (match, allMatches) => {
-      // If it's a phrase category, it's already specific
-      if (match.isPhraseCategory) return match.category;
-
-      // Look at nearby matches within 50 characters
-      const nearbyMatches = allMatches.filter(m =>
-        m !== match &&
-        Math.abs(m.start - match.start) < 50
-      );
-
-      // Count category occurrences in nearby context
-      const categoryCounts = {};
-      nearbyMatches.forEach(m => {
-        const baseCategory = m.category.replace(/Phrases$/, '');
-        categoryCounts[baseCategory] = (categoryCounts[baseCategory] || 0) + 1;
-      });
-
-      // If nearby context has same category, boost priority
-      const baseCategory = match.category.replace(/Phrases$/, '');
-      if (categoryCounts[baseCategory] > 1) {
-        match.contextBoost = 10; // Boost matches in consistent context
-      }
-
-      return match.category;
-    };
-
-    // Apply contextual analysis
-    matches.forEach(match => {
-      match.category = getContextualCategory(match, matches);
-      match.contextBoost = match.contextBoost || 0;
-    });
-
-    // Intelligent overlap removal:
-    // - Prioritize longer, more specific matches
-    // - Consider contextual relevance
-    // - Prefer phrase categories over word categories
-    const filteredMatches = [];
 
     matches.forEach(match => {
-      // Check if this match overlaps with any already selected matches
-      const hasOverlap = filteredMatches.some(existing => {
-        // Matches overlap if one starts before the other ends
-        return !(match.end <= existing.start || match.start >= existing.end);
-      });
+      // Track that this highlight was shown
+      adaptiveEngine.recordShown(match.phrase, match.category, match.confidence);
 
-      // If no overlap, add it
-      if (!hasOverlap) {
-        filteredMatches.push(match);
-      } else {
-        // Check if this match is longer/better than overlapping match
-        const overlappingMatch = filteredMatches.find(existing =>
-          !(match.end <= existing.start || match.start >= existing.end)
-        );
-
-        // Calculate match quality score
-        const getMatchScore = (m) => {
-          let score = m.length; // Base score on length
-          if (m.isPhraseCategory) score += 20; // Phrase bonus
-          score += m.contextBoost || 0; // Context bonus
-          return score;
-        };
-
-        // Replace if this match is significantly better
-        if (overlappingMatch) {
-          const currentScore = getMatchScore(match);
-          const existingScore = getMatchScore(overlappingMatch);
-
-          if (currentScore > existingScore) {
-            const index = filteredMatches.indexOf(overlappingMatch);
-            filteredMatches.splice(index, 1);
-            filteredMatches.push(match);
-          }
-        }
-      }
-    });
-
-    // Re-sort filtered matches by start position for rendering
-    filteredMatches.sort((a, b) => a.start - b.start);
-
-    // Build result with highlighted matches
-    filteredMatches.forEach(match => {
       // Add text before match
       result += escapeHtml(text.slice(lastIndex, match.start));
 
-      // Add highlighted match with category-specific color
-      result += `<span class="value-word value-word-${match.category}" data-category="${match.category}" style="background-color: ${match.color.bg}; border-bottom: 1px solid ${match.color.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(match.text)}</span>`;
+      // Add visual indicator for confidence level
+      const confidenceClass = match.confidence >= 80 ? 'high-confidence' :
+                             match.confidence >= 65 ? 'medium-confidence' : 'low-confidence';
+
+      // Add highlighted match with category-specific color and confidence indicator
+      result += `<span class="value-word value-word-${match.category} ${confidenceClass}" data-category="${match.category}" data-confidence="${match.confidence}" data-phrase="${escapeHtml(match.text)}" style="background-color: ${match.color.bg}; border-bottom: 1px solid ${match.color.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(match.text)}</span>`;
 
       lastIndex = match.end;
     });
@@ -450,8 +272,19 @@ const CategoryLegend = memo(({ show, onClose }) => {
           ))}
         </div>
         <div className="mt-3 pt-3 border-t border-neutral-200">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            The system highlights both individual words and complete phrases. Click any highlight to get AI-powered alternative suggestions. Phrases like "art deco facades" or "light mist hanging" are recognized as complete units.
+          <p className="text-xs text-neutral-500 leading-relaxed mb-2">
+            <strong>Intelligent Learning System:</strong>
+          </p>
+          <ul className="text-xs text-neutral-500 space-y-1 ml-3">
+            <li>• NO hardcoded patterns - learns from your text</li>
+            <li>• Auto-extracts phrases using TF-IDF</li>
+            <li>• Semantic categorization with ML</li>
+            <li>• Learns from your clicks (reinforcement)</li>
+            <li>• Adapts confidence over time</li>
+            <li>• Auto-corrects typos with fuzzy matching</li>
+          </ul>
+          <p className="text-xs text-neutral-500 leading-relaxed mt-2">
+            Click highlights to teach the system what's important to you.
           </p>
         </div>
       </div>
@@ -654,8 +487,13 @@ export const PromptCanvas = ({
         // Prevent default text selection behavior
         e.preventDefault();
 
-        // Get the word text
+        // Get the word text and metadata
         const wordText = targetElement.textContent.trim();
+        const category = targetElement.getAttribute('data-category');
+        const phrase = targetElement.getAttribute('data-phrase');
+
+        // Track this click for behavior learning
+        adaptiveEngine.recordClick(phrase || wordText, category);
 
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
@@ -745,12 +583,27 @@ export const PromptCanvas = ({
           -ms-user-select: text;
         }
 
+        /* Confidence level indicators */
+        .high-confidence {
+          opacity: 1;
+        }
+
+        .medium-confidence {
+          opacity: 0.9;
+        }
+
+        .low-confidence {
+          opacity: 0.8;
+          border-style: dashed !important;
+        }
+
         /* Enhanced hover effects for all categories */
         .value-word:hover {
           filter: brightness(0.95);
           border-bottom-width: 2px !important;
           transform: translateY(-0.5px);
           cursor: pointer !important;
+          opacity: 1 !important;
         }
 
         .value-word:active {
