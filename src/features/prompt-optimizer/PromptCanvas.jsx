@@ -532,7 +532,19 @@ export const PromptCanvas = ({
   };
 
   const handleCopyEvent = (e) => {
-    // Always copy the original unformatted text
+    // Check if there's a text selection
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    // If there's selected text, copy only the selection
+    // Otherwise, copy the entire prompt (for backwards compatibility with copy button)
+    if (selectedText) {
+      // Let the browser handle copying the selected text
+      // No need to prevent default or set clipboard data
+      return;
+    }
+
+    // Only copy the full prompt if there's no selection
     e.clipboardData.setData('text/plain', displayedPrompt);
     e.preventDefault();
   };
