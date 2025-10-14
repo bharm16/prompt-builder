@@ -491,26 +491,6 @@ function PromptOptimizerContent() {
         </button>
       </div>
 
-      {/* Top Right Action Buttons */}
-      <div className="fixed right-6 top-6 z-fixed flex items-center gap-2">
-        <button
-          onClick={() => setShowShortcuts(true)}
-          className="btn-icon-secondary shadow-lg hover-scale ripple"
-          aria-label="Show keyboard shortcuts"
-          title="Keyboard shortcuts (⌘K)"
-        >
-          <Keyboard className="h-5 w-5" />
-        </button>
-        <button
-          onClick={() => setShowSettings(true)}
-          className="btn-icon-secondary shadow-lg hover-scale ripple"
-          aria-label="Open settings"
-          title="Settings (⌘,)"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </button>
-      </div>
-
       {/* History Sidebar */}
       <HistorySidebar
         showHistory={showHistory}
