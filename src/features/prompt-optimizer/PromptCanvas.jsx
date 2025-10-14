@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, memo } from 'react';
+import React, { useRef, useEffect, useState, memo, useMemo } from 'react';
 import {
   Copy,
   Download,
@@ -8,6 +8,129 @@ import {
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
+
+/**
+ * Text Formatting Layer - Applies 2025 Design Principles
+ *
+ * Transforms Claude's text output into a visually rich, typographically styled
+ * presentation WITHOUT modifying the source. Uses proper heading hierarchy,
+ * refined typography, and removes markdown symbols.
+ *
+ * Preserves original text for:
+ * - Copy operations (toolbar & selection)
+ * - Export operations (all formats)
+ * - Text editing (strips formatting back to plain text)
+ */
+const parseAndFormatText = (text) => {
+  if (!text) return [];
+
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  // Helper function to remove emojis
+  const removeEmojis = (str) => {
+    return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // Skip empty lines but preserve spacing
+    if (!trimmedLine) {
+      elements.push({ type: 'spacer', key: `spacer-${i}` });
+      i++;
+      continue;
+    }
+
+    // Headers surrounded by separator lines (=== or --- or *** or Unicode box drawing)
+    // Include Unicode box drawing characters: ━ ─ ═ ▬ ▭ etc.
+    if (trimmedLine.match(/^[=\-*_━─═▬▭]+$/)) {
+      // Check if this is the start of a surrounded header
+      if (i + 2 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        const afterLine = lines[i + 2].trim();
+
+        if (nextLine && nextLine.length > 0 && afterLine.match(/^[=\-*_━─═▬▭]+$/)) {
+          // This is a surrounded header - biggest size
+          const cleanText = removeEmojis(nextLine);
+          elements.push({ type: 'title', text: cleanText, key: `title-${i}` });
+          i += 3; // Skip the opening line, text, and closing line
+          continue;
+        }
+      }
+      // If not part of surrounded header, just skip the line itself
+      i++;
+      continue;
+    }
+
+    // Main headings (ALL CAPS or lines with ### or **) - second largest
+    if (trimmedLine.match(/^[A-Z\s]{5,}:?$/) ||
+        trimmedLine.match(/^#{1,3}\s+(.+)$/) ||
+        trimmedLine.match(/^\*\*(.+)\*\*:?$/)) {
+      const cleanText = removeEmojis(
+        trimmedLine
+          .replace(/^#+\s+/, '')
+          .replace(/^\*\*(.+)\*\*:?$/, '$1')
+          .replace(/:$/, '')
+      );
+      elements.push({ type: 'heading', text: cleanText, key: `heading-${i}` });
+      i++;
+      continue;
+    }
+
+    // Section headers (lines ending with colon) - third largest
+    if (trimmedLine.match(/^.+:$/)) {
+      const cleanText = removeEmojis(trimmedLine.replace(/:$/, ''));
+      elements.push({ type: 'subheading', text: cleanText, key: `subheading-${i}` });
+      i++;
+      continue;
+    }
+
+    // Bullet points
+    if (trimmedLine.match(/^[-•]\s+(.+)$/)) {
+      const cleanText = removeEmojis(trimmedLine.replace(/^[-•]\s+/, ''));
+      elements.push({ type: 'bullet', text: cleanText, key: `bullet-${i}` });
+      i++;
+      continue;
+    }
+
+    // Numbered lists
+    if (trimmedLine.match(/^\d+\.\s+(.+)$/)) {
+      const match = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+      elements.push({ type: 'numbered', number: match[1], text: removeEmojis(match[2]), key: `numbered-${i}` });
+      i++;
+      continue;
+    }
+
+    // Regular paragraph text
+    let paragraphLines = [trimmedLine];
+    i++;
+    // Collect consecutive non-empty lines that aren't special formats
+    while (i < lines.length &&
+           lines[i].trim() &&
+           !lines[i].trim().match(/^[-•]\s+/) &&
+           !lines[i].trim().match(/^\d+\.\s+/) &&
+           !lines[i].trim().match(/^[A-Z\s]{5,}:?$/) &&
+           !lines[i].trim().match(/^.+:$/) &&
+           !lines[i].trim().match(/^#{1,3}\s+/) &&
+           !lines[i].trim().match(/^\*\*(.+)\*\*:?$/) &&
+           !lines[i].trim().match(/^[=\-*_━─═▬▭]+$/)) {
+      paragraphLines.push(lines[i].trim());
+      i++;
+    }
+
+    const paragraphText = removeEmojis(paragraphLines.join(' ').replace(/\*\*/g, ''));
+    elements.push({
+      type: 'paragraph',
+      text: paragraphText,
+      key: `paragraph-${i}`
+    });
+  }
+
+  return elements;
+};
 
 // Minimal Floating Toolbar Component
 const FloatingToolbar = memo(({
@@ -120,12 +243,8 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const toast = useToast();
 
-  // Update contentEditable div when displayedPrompt changes
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.textContent !== displayedPrompt) {
-      editorRef.current.textContent = displayedPrompt;
-    }
-  }, [displayedPrompt]);
+  // Parse text into structured elements (memoized for performance)
+  const parsedElements = useMemo(() => parseAndFormatText(displayedPrompt), [displayedPrompt]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayedPrompt);
@@ -174,17 +293,15 @@ export const PromptCanvas = ({
     if (text.length > 0 && onFetchSuggestions) {
       const cleanedText = text.replace(/^-\s*/, '');
       const range = selection.getRangeAt(0).cloneRange();
+      // Use original displayedPrompt (without formatting) for suggestions context
       onFetchSuggestions(cleanedText, text, displayedPrompt, range);
     }
   };
 
   const handleCopyEvent = (e) => {
-    const selection = window.getSelection();
-    if (selection && selection.toString()) {
-      const selectedText = selection.toString();
-      e.clipboardData.setData('text/plain', selectedText);
-      e.preventDefault();
-    }
+    // Always copy the original unformatted text
+    e.clipboardData.setData('text/plain', displayedPrompt);
+    e.preventDefault();
   };
 
   return (
@@ -216,8 +333,8 @@ export const PromptCanvas = ({
                   lineHeight: '1.6',
                   wordBreak: 'break-word',
                   overflowWrap: 'break-word',
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system',
-                  letterSpacing: '-0.011em'
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+                  letterSpacing: '-0.01em'
                 }}
               >
                 {inputPrompt}
@@ -232,28 +349,84 @@ export const PromptCanvas = ({
             <div className="max-w-3xl mx-auto px-12 py-16">
               <div
                 ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(e) => {
-                  onDisplayedPromptChange(e.currentTarget.textContent);
-                  onSkipAnimation(true);
-                }}
                 onMouseUp={handleTextSelection}
                 onCopy={handleCopyEvent}
-                className="min-h-[calc(100vh-8rem)] text-[15px] text-neutral-900 outline-none focus:outline-none"
+                className="min-h-[calc(100vh-8rem)] outline-none focus:outline-none"
                 style={{
-                  lineHeight: '1.7',
-                  wordBreak: 'break-word',
-                  overflowWrap: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system',
-                  letterSpacing: '-0.011em'
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
                 }}
-                role="textbox"
-                aria-label="Optimized prompt (editable)"
-                aria-multiline="true"
-                data-placeholder="Your optimized prompt will appear here..."
-              />
+                role="article"
+                aria-label="Optimized prompt"
+              >
+                {parsedElements.length === 0 ? (
+                  <p className="text-neutral-400 text-sm">Your optimized prompt will appear here...</p>
+                ) : (
+                  parsedElements.map((element) => {
+                    switch (element.type) {
+                      case 'title':
+                        return (
+                          <h1
+                            key={element.key}
+                            className="text-2xl font-bold text-neutral-900 mb-6 mt-12 first:mt-0 tracking-tight"
+                          >
+                            {element.text}
+                          </h1>
+                        );
+                      case 'heading':
+                        return (
+                          <h2
+                            key={element.key}
+                            className="text-xl font-semibold text-neutral-900 mb-4 mt-8 tracking-tight"
+                          >
+                            {element.text}
+                          </h2>
+                        );
+                      case 'subheading':
+                        return (
+                          <h3
+                            key={element.key}
+                            className="text-base font-semibold text-neutral-800 mb-3 mt-6 tracking-tight"
+                          >
+                            {element.text}
+                          </h3>
+                        );
+                      case 'bullet':
+                        return (
+                          <div key={element.key} className="flex gap-3 mb-2">
+                            <span className="text-neutral-400 mt-1 flex-shrink-0">•</span>
+                            <p className="text-[15px] text-neutral-700 leading-relaxed flex-1">
+                              {element.text}
+                            </p>
+                          </div>
+                        );
+                      case 'numbered':
+                        return (
+                          <div key={element.key} className="flex gap-3 mb-2">
+                            <span className="text-neutral-500 font-medium mt-0.5 flex-shrink-0 text-sm">
+                              {element.number}.
+                            </span>
+                            <p className="text-[15px] text-neutral-700 leading-relaxed flex-1">
+                              {element.text}
+                            </p>
+                          </div>
+                        );
+                      case 'paragraph':
+                        return (
+                          <p
+                            key={element.key}
+                            className="text-[15px] text-neutral-700 leading-relaxed mb-4"
+                          >
+                            {element.text}
+                          </p>
+                        );
+                      case 'spacer':
+                        return <div key={element.key} className="h-2" />;
+                      default:
+                        return null;
+                    }
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>
