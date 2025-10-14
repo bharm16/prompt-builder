@@ -1,8 +1,8 @@
 import React from 'react';
-import ModernPromptOptimizer from './PromptOptimizerNew';
+import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
 
 function App() {
-  return <ModernPromptOptimizer />;
+  return <PromptOptimizerContainer />;
 }
 
 export default App;

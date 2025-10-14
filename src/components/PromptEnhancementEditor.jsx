@@ -333,11 +333,30 @@ export function SuggestionsPanel({ suggestionsData }) {
     if (categories.length > 0 && !activeCategory) {
       setActiveCategory(categories[0].category);
     }
+  }, [categories]);
+
+  // Reset active category if it doesn't exist in current categories
+  useEffect(() => {
+    if (categories.length > 0 && activeCategory) {
+      const categoryExists = categories.some(cat => cat.category === activeCategory);
+      if (!categoryExists) {
+        setActiveCategory(categories[0].category);
+      }
+    }
   }, [categories, activeCategory]);
 
   // Get current category's suggestions - MUST be called on every render
   const currentSuggestions = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+
+    // Try to find the active category
     const current = categories.find(cat => cat.category === activeCategory);
+
+    // Fallback to first category if active category not found
+    if (!current && categories.length > 0) {
+      return categories[0].suggestions || [];
+    }
+
     return current?.suggestions || [];
   }, [categories, activeCategory]);
 
