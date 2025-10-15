@@ -461,6 +461,38 @@ export default function CreativeBrainstormEnhanced({
     return params;
   };
 
+  // Keyboard shortcuts for suggestion selection
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Only handle number keys when suggestions are visible
+      if (!activeElement || suggestions.length === 0) return;
+
+      const key = parseInt(e.key);
+      if (key >= 1 && key <= Math.min(suggestions.length, 8)) {
+        e.preventDefault();
+        const suggestion = suggestions[key - 1];
+        if (suggestion) {
+          handleSuggestionClick(suggestion);
+        }
+      }
+
+      // Escape to close suggestions
+      if (e.key === 'Escape' && activeElement) {
+        setActiveElement(null);
+        setSuggestions([]);
+      }
+
+      // R to refresh suggestions
+      if (e.key === 'r' && activeElement && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        fetchSuggestionsForElement(activeElement);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [activeElement, suggestions, fetchSuggestionsForElement]);
+
   // Effects
   useEffect(() => {
     detectConflicts();
@@ -711,77 +743,237 @@ export default function CreativeBrainstormEnhanced({
         </div>
       </div>
 
-      {/* Right Side AI Suggestions Panel - Always Visible */}
-      <div className="w-80 bg-white border-l border-neutral-200 flex flex-col h-screen sticky top-0">
-        {/* Panel Header */}
-        <div className="flex-shrink-0 px-5 py-4 border-b border-neutral-200">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-neutral-400" />
-            <h3 className="text-xs font-semibold text-neutral-900 uppercase tracking-wide">
-              AI Suggestions
-            </h3>
-          </div>
-          {activeElement && (
-            <p className="mt-2 text-xs text-neutral-600">
-              For: {elementConfig[activeElement].label}
-            </p>
-          )}
-        </div>
+      {/* Right Side AI Suggestions Panel - 2025 Redesign */}
+      <div className="w-80 bg-white border-l border-neutral-200 flex flex-col h-screen sticky top-0 shadow-sm">
+        {/* Modern Panel Header with Glassmorphism Accent */}
+        <div className="flex-shrink-0 px-4 py-3.5 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="p-1.5 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg shadow-sm ring-1 ring-neutral-200/50">
+                <Sparkles className="h-3.5 w-3.5 text-neutral-700" />
+              </div>
+              <h3 className="text-[13px] font-semibold text-neutral-900 tracking-tight">
+                AI Suggestions
+              </h3>
+            </div>
 
-        {/* Panel Content */}
-        <div className="flex-1 overflow-y-auto">
-          {isLoadingSuggestions ? (
-            <div className="flex flex-col items-center justify-center h-full px-6">
-              <Loader2 className="h-6 w-6 animate-spin text-neutral-400 mb-3" />
-              <p className="text-sm text-neutral-600">Finding suggestions...</p>
-            </div>
-          ) : activeElement && suggestions.length > 0 ? (
-            <div className="p-5 space-y-2">
-              {suggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="w-full p-3 text-left bg-neutral-50 border border-neutral-200 rounded-lg hover:bg-neutral-100 hover:border-neutral-300 transition-all"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="text-sm font-medium text-neutral-900 flex-1">
-                      {suggestion.text}
-                    </div>
-                    {suggestion.compatibility && (
-                      <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded ${
-                        suggestion.compatibility >= 0.8
-                          ? 'bg-green-100 text-green-700'
-                          : suggestion.compatibility >= 0.6
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        {Math.round(suggestion.compatibility * 100)}%
-                      </span>
-                    )}
-                  </div>
-                  {suggestion.explanation && (
-                    <div className="text-xs text-neutral-600 leading-relaxed">
-                      {suggestion.explanation}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-1 items-center justify-center p-6">
-              <div className="text-center">
-                <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" />
-                <p className="text-sm text-neutral-600 font-medium mb-2">
-                  Click an element to get suggestions
-                </p>
-                <p className="text-xs text-neutral-500 leading-relaxed">
-                  Focus on any input field to see AI-powered suggestions for that element
-                </p>
+            {/* Header Actions */}
+            {activeElement && (
+              <button
+                onClick={() => fetchSuggestionsForElement(activeElement)}
+                className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-all duration-150 active:scale-95"
+                title="Refresh suggestions"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Active Element Indicator with Modern Badge */}
+          {activeElement && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                For:
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-900 text-white rounded-md shadow-sm">
+                {React.createElement(elementConfig[activeElement].icon, {
+                  className: "h-3 w-3"
+                })}
+                <span className="text-[12px] font-medium">
+                  {elementConfig[activeElement].label}
+                </span>
               </div>
             </div>
           )}
         </div>
+
+        {/* Panel Content with Modern Scrolling */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {isLoadingSuggestions ? (
+            /* Modern Skeleton Loader with Shimmer Effect */
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="relative overflow-hidden p-4 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
+                  style={{
+                    animationDelay: `${i * 75}ms`,
+                    animationDuration: '1.5s'
+                  }}
+                >
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+
+                  <div className="relative space-y-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="h-4 bg-neutral-200/70 rounded-md w-3/4" />
+                      <div className="h-5 bg-neutral-200/70 rounded-full w-12" />
+                    </div>
+                    <div className="h-3 bg-neutral-200/50 rounded-md w-full" />
+                    <div className="h-3 bg-neutral-200/50 rounded-md w-5/6" />
+                  </div>
+                </div>
+              ))}
+              <p className="text-center text-[13px] text-neutral-500 font-medium mt-6">
+                Finding perfect suggestions...
+              </p>
+            </div>
+          ) : activeElement && suggestions.length > 0 ? (
+            /* Modern Suggestion Cards with Stagger Animation */
+            <div className="p-4 space-y-3">
+              {suggestions.map((suggestion, idx) => (
+                <div
+                  key={idx}
+                  className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
+                  style={{
+                    animationDelay: `${idx * 50}ms`
+                  }}
+                >
+                  <button
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full p-3.5 text-left bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+                  >
+                    {/* Keyboard Shortcut Indicator */}
+                    {idx < 8 && (
+                      <kbd className="absolute top-2.5 right-2.5 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        {idx + 1}
+                      </kbd>
+                    )}
+
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="text-[14px] font-semibold text-neutral-900 leading-snug flex-1 pr-6">
+                        {suggestion.text}
+                      </div>
+
+                      {/* Modern Compatibility Score */}
+                      {suggestion.compatibility && (
+                        <div className="flex-shrink-0 flex items-center gap-1.5">
+                          <div className={`h-1.5 w-1.5 rounded-full shadow-sm ${
+                            suggestion.compatibility >= 0.8
+                              ? 'bg-emerald-500'
+                              : suggestion.compatibility >= 0.6
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                          }`} />
+                          <span className={`text-[11px] font-bold tracking-tight ${
+                            suggestion.compatibility >= 0.8
+                              ? 'text-emerald-700'
+                              : suggestion.compatibility >= 0.6
+                              ? 'text-amber-700'
+                              : 'text-rose-700'
+                          }`}>
+                            {Math.round(suggestion.compatibility * 100)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {suggestion.explanation && (
+                      <div className="text-[12px] text-neutral-600 leading-relaxed line-clamp-2">
+                        {suggestion.explanation}
+                      </div>
+                    )}
+
+                    {/* Hover Action Bar */}
+                    <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(suggestion.text);
+                        }}
+                        className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                      >
+                        Copy
+                      </button>
+                      <span className="text-neutral-300">•</span>
+                      <span className="text-[11px] text-neutral-500">
+                        Click to apply
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              ))}
+
+              {/* Bottom Helper Text */}
+              <div className="pt-2 pb-1 text-center">
+                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                  Use number keys 1-{Math.min(suggestions.length, 8)} for quick selection
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Modern Empty State with Progressive Onboarding */
+            <div className="flex flex-1 items-center justify-center p-6">
+              <div className="text-center max-w-[240px]">
+                <div className="relative inline-flex mb-4">
+                  <div className="absolute inset-0 bg-neutral-200/50 rounded-full blur-xl animate-pulse" />
+                  <div className="relative p-3 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-2xl shadow-sm ring-1 ring-neutral-200/50">
+                    <Sparkles className="h-8 w-8 text-neutral-400" />
+                  </div>
+                </div>
+
+                <h4 className="text-[14px] font-semibold text-neutral-900 mb-2">
+                  Ready to inspire
+                </h4>
+                <p className="text-[12px] text-neutral-600 leading-relaxed mb-4">
+                  Click any element card to get AI-powered suggestions tailored to your concept
+                </p>
+
+                {/* Quick Tips */}
+                <div className="space-y-2 text-left">
+                  <div className="flex items-start gap-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200/50">
+                    <Info className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-[11px] text-neutral-600 leading-relaxed">
+                      Suggestions adapt based on your filled elements
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200/50">
+                    <Zap className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-[11px] text-neutral-600 leading-relaxed">
+                      Use keyboard shortcuts for faster workflow
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modern Footer with Context Info */}
+        {activeElement && suggestions.length > 0 && (
+          <div className="flex-shrink-0 px-4 py-3 border-t border-neutral-200 bg-neutral-50/50">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-neutral-600 font-medium">
+                {suggestions.length} suggestions
+              </span>
+              <div className="flex items-center gap-1.5 text-neutral-500">
+                <CheckCircle className="h-3 w-3" />
+                <span>Context-aware</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Add Custom CSS for Animations */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes shimmer {
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </div>
   );
 }

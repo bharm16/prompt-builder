@@ -517,44 +517,52 @@ function PromptOptimizerContent() {
       {/* Main Content */}
       <main
         id="main-content"
-        className={`flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
+        className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
       >
         {/* Hero Section with Input */}
         {!showResults && (
-          <PromptInput
-            inputPrompt={promptOptimizer.inputPrompt}
-            onInputChange={promptOptimizer.setInputPrompt}
-            selectedMode={selectedMode}
-            onModeChange={setSelectedMode}
-            onOptimize={handleOptimize}
-            onImproveFirst={handleImproveFirst}
-            onShowBrainstorm={() => setShowBrainstorm(true)}
-            isProcessing={promptOptimizer.isProcessing}
-            modes={modes}
-            aiNames={aiNames}
-            currentAIIndex={currentAIIndex}
-          />
-        )}
+          <>
+            {promptOptimizer.isProcessing ? (
+              /* Modern Skeleton Loader with Shimmer Effect - matching AI suggestions */
+              <div className="w-full max-w-4xl mx-auto">
+                <div
+                  className="relative overflow-hidden p-8 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
+                  style={{
+                    animationDuration: '1.5s',
+                    minHeight: '400px'
+                  }}
+                >
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
-        {/* Processing State */}
-        {promptOptimizer.isProcessing && (
-          <div className="w-full max-w-6xl animate-fade-in">
-            <div className="card-elevated p-12">
-              <div className="flex flex-col items-center justify-center gap-4">
-                <div className="loading-dots">
-                  <div className="loading-dot bg-primary-400" style={{ animationDelay: '0ms' }} />
-                  <div className="loading-dot bg-primary-500" style={{ animationDelay: '150ms' }} />
-                  <div className="loading-dot bg-primary-600" style={{ animationDelay: '300ms' }} />
+                  <div className="relative space-y-6">
+                    <div className="h-6 bg-neutral-200/70 rounded-md w-1/3" />
+                    <div className="h-32 bg-neutral-200/70 rounded-md w-full" />
+                    <div className="h-4 bg-neutral-200/50 rounded-md w-1/4" />
+                    <div className="flex gap-3">
+                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
+                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
+                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-neutral-700 font-medium">
-                  Optimizing your prompt...
-                </p>
-                <p className="text-sm text-neutral-500">
-                  This usually takes a few seconds
-                </p>
               </div>
-            </div>
-          </div>
+            ) : (
+              <PromptInput
+                inputPrompt={promptOptimizer.inputPrompt}
+                onInputChange={promptOptimizer.setInputPrompt}
+                selectedMode={selectedMode}
+                onModeChange={setSelectedMode}
+                onOptimize={handleOptimize}
+                onImproveFirst={handleImproveFirst}
+                onShowBrainstorm={() => setShowBrainstorm(true)}
+                isProcessing={promptOptimizer.isProcessing}
+                modes={modes}
+                aiNames={aiNames}
+                currentAIIndex={currentAIIndex}
+              />
+            )}
+          </>
         )}
 
         {/* Results Section - Canvas Style */}
