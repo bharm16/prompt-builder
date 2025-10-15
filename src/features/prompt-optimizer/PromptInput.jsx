@@ -170,7 +170,6 @@ export const PromptInput = ({
       {/* Main Input Section - Clean Design */}
       <div className="relative mb-6 w-full">
         <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden transition-all duration-200 focus-within:border-neutral-400 focus-within:shadow-sm">
-          <div className="p-6">
             <label htmlFor="prompt-input" className="sr-only">
               Enter your prompt
             </label>
@@ -181,13 +180,12 @@ export const PromptInput = ({
               onKeyDown={handleKeyDown}
               placeholder="Describe what you want to create..."
               rows={4}
-              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed"
+              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed p-6"
               style={{
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
               }}
               aria-label="Prompt input"
             />
-          </div>
 
           {/* Action Bar */}
           <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-3 bg-neutral-50">
