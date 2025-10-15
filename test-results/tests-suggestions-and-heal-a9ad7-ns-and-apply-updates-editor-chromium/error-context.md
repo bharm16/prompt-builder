@@ -1,0 +1,59 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - generic [ref=e5]:
+      - button "Hide history sidebar" [expanded] [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Create new prompt" [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+    - complementary "Prompt history" [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - heading "History" [level=2] [ref=e14]
+          - paragraph [ref=e15]: Sign in to sync across devices
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - textbox "Search..." [ref=e20]
+        - navigation "Recent prompts list" [ref=e22]:
+          - list [ref=e23]:
+            - listitem [ref=e24]:
+              - 'button "Load prompt: Make a cinematic scene with golden hour lighting...." [ref=e25] [cursor=pointer]':
+                - generic [ref=e26]:
+                  - img [ref=e27]
+                  - generic [ref=e30]:
+                    - paragraph [ref=e31]: Make a cinematic scene with golden hour lighting.
+                    - time [ref=e33]: Oct 15
+        - button "Sign in with Google" [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+          - generic [ref=e39]: Sign in
+    - main [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - button "Copy prompt" [ref=e43] [cursor=pointer]:
+            - img [ref=e44]
+          - button "Toggle highlight legend" [ref=e47] [cursor=pointer]:
+            - img [ref=e48]
+          - button "Export" [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+          - button "New prompt" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - heading "Your Input" [level=2] [ref=e61]
+            - generic [ref=e64]: Make a cinematic scene with golden hour lighting.
+          - textbox "Optimized prompt" [ref=e68]:
+            - paragraph [ref=e69]: This is an lighting optimized video prompt with lighting golden hour lighting for lighting testing .
+        - complementary "AI Suggestions" [ref=e70]:
+          - generic [ref=e73]:
+            - img [ref=e75]
+            - heading "AI Suggestions" [level=3] [ref=e77]
+          - generic [ref=e80]:
+            - img [ref=e84]
+            - heading "Ready to enhance" [level=4] [ref=e86]
+            - paragraph [ref=e87]: Highlight any part of your prompt to see AI-powered suggestions for improvement
+  - region "Notifications"
+```

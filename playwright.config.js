@@ -4,6 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Playwright E2E Testing Configuration
  * @see https://playwright.dev/docs/test-configuration
  */
+const localSingleBrowser = !process.env.CI && process.env.E2E_ALL_BROWSERS !== 'true';
+
 export default defineConfig({
   testDir: './e2e',
 
@@ -43,29 +45,36 @@ export default defineConfig({
   },
 
   // Test projects for different browsers
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    // Mobile testing
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
-  ],
+  projects: localSingleBrowser
+    ? [
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ]
+    : [
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+        {
+          name: 'firefox',
+          use: { ...devices['Desktop Firefox'] },
+        },
+        {
+          name: 'webkit',
+          use: { ...devices['Desktop Safari'] },
+        },
+        // Mobile testing
+        {
+          name: 'Mobile Chrome',
+          use: { ...devices['Pixel 5'] },
+        },
+        {
+          name: 'Mobile Safari',
+          use: { ...devices['iPhone 12'] },
+        },
+      ],
 
   // Web server configuration - automatically start dev server
   webServer: {

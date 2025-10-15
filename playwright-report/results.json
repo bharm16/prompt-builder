@@ -11,7 +11,7 @@
     "grepInvert": null,
     "maxFailures": 0,
     "metadata": {
-      "actualWorkers": 2
+      "actualWorkers": 5
     },
     "preserveOutput": "always",
     "reporter": [
@@ -49,7 +49,7 @@
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 2
+          "actualWorkers": 5
         },
         "id": "chromium",
         "name": "chromium",
@@ -58,71 +58,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 60000
-      },
-      {
-        "outputDir": "/Users/bryceharmon/Desktop/prompt-builder/test-results",
-        "repeatEach": 1,
-        "retries": 0,
-        "metadata": {
-          "actualWorkers": 2
-        },
-        "id": "firefox",
-        "name": "firefox",
-        "testDir": "/Users/bryceharmon/Desktop/prompt-builder/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 60000
-      },
-      {
-        "outputDir": "/Users/bryceharmon/Desktop/prompt-builder/test-results",
-        "repeatEach": 1,
-        "retries": 0,
-        "metadata": {
-          "actualWorkers": 2
-        },
-        "id": "webkit",
-        "name": "webkit",
-        "testDir": "/Users/bryceharmon/Desktop/prompt-builder/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 60000
-      },
-      {
-        "outputDir": "/Users/bryceharmon/Desktop/prompt-builder/test-results",
-        "repeatEach": 1,
-        "retries": 0,
-        "metadata": {
-          "actualWorkers": 2
-        },
-        "id": "Mobile Chrome",
-        "name": "Mobile Chrome",
-        "testDir": "/Users/bryceharmon/Desktop/prompt-builder/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 60000
-      },
-      {
-        "outputDir": "/Users/bryceharmon/Desktop/prompt-builder/test-results",
-        "repeatEach": 1,
-        "retries": 0,
-        "metadata": {
-          "actualWorkers": 2
-        },
-        "id": "Mobile Safari",
-        "name": "Mobile Safari",
-        "testDir": "/Users/bryceharmon/Desktop/prompt-builder/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 60000
+        "timeout": 30000
       }
     ],
     "shard": null,
@@ -141,6 +77,507 @@
   },
   "suites": [
     {
+      "title": "tests/prompt-builder.spec.js",
+      "file": "tests/prompt-builder.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Prompt Builder E2E Tests",
+          "file": "tests/prompt-builder.spec.js",
+          "line": 11,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should load the application successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1915,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:48.822Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-4884f4be3c1ab6d633fb",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "should display the prompt input field",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1951,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:48.829Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-a84d5228a14095a64d81",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "should allow user to type in prompt input",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 1933,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:48.852Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-1e4335f0d5a77edcd944",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 39,
+              "column": 3
+            },
+            {
+              "title": "should have mode selector",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 1938,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:48.853Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-5c1d6c3c0ae63d85e549",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 50,
+              "column": 3
+            },
+            {
+              "title": "should validate empty prompt submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 12251,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:48.845Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-f1d9e8b86353426ad860",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 61,
+              "column": 3
+            },
+            {
+              "title": "should show loading state during prompt submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2707,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:51.106Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-e7202edfa37e304577d9",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 81,
+              "column": 3
+            },
+            {
+              "title": "should handle API errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2404,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:51.124Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-935cce4f535df125b543",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 118,
+              "column": 3
+            },
+            {
+              "title": "should persist prompt in local storage",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2485,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Local storage contains prompt: \u001b[33mfalse\u001b[39m\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:51.128Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-13fe3beb9a7112a59bae",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 155,
+              "column": 3
+            },
+            {
+              "title": "should be responsive on mobile devices",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1452,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:51.140Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-0324120384fbd2820abe",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 193,
+              "column": 3
+            },
+            {
+              "title": "should not expose sensitive data in console",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1431,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:52.599Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-162f905080402c288c3f",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 209,
+              "column": 3
+            },
+            {
+              "title": "should handle rapid consecutive submissions",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2064,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:53.535Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-0e4ff2c879928a5b0881",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 243,
+              "column": 3
+            },
+            {
+              "title": "should support keyboard navigation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 1394,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:53.621Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-e00059d0feaca82dfe2f",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 276,
+              "column": 3
+            },
+            {
+              "title": "should have accessible aria labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1476,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:53.831Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-1a3f847c65234e80228d",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 285,
+              "column": 3
+            },
+            {
+              "title": "should clear form when clear button is clicked",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1319,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "No clear button found - test skipped\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:54.040Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "710f799a549143f76b5e-87abd7bc248ea7bc201c",
+              "file": "tests/prompt-builder.spec.js",
+              "line": 312,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "tests/suggestions-and-health.spec.js",
       "file": "tests/suggestions-and-health.spec.js",
       "column": 0,
@@ -155,31 +592,71 @@
           "specs": [
             {
               "title": "video: selecting text surfaces suggestions and apply updates editor",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 60000,
+                  "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 13287,
-                      "errors": [],
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "failed",
+                      "duration": 16745,
+                      "error": {
+                        "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[role=\"listitem\"]').first() to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[role=\"listitem\"]').first() to be visible\u001b[22m\n\n    at /Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js:60:27",
+                        "location": {
+                          "file": "/Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js",
+                          "column": 27,
+                          "line": 60
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 58 |\u001b[39m     \u001b[90m// Wait for suggestions panel and click the first suggestion\u001b[39m\n \u001b[90m 59 |\u001b[39m     \u001b[36mconst\u001b[39m firstSuggestion \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[role=\"listitem\"]'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 60 |\u001b[39m     \u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39mwaitFor({ state\u001b[33m:\u001b[39m \u001b[32m'visible'\u001b[39m\u001b[33m,\u001b[39m timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 61 |\u001b[39m     \u001b[36mconst\u001b[39m suggestionText \u001b[33m=\u001b[39m (\u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39minnerText())\u001b[33m.\u001b[39mtrim()\u001b[33m;\u001b[39m\n \u001b[90m 62 |\u001b[39m     \u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 63 |\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js",
+                            "column": 27,
+                            "line": 60
+                          },
+                          "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[role=\"listitem\"]').first() to be visible\u001b[22m\n\n\n\u001b[0m \u001b[90m 58 |\u001b[39m     \u001b[90m// Wait for suggestions panel and click the first suggestion\u001b[39m\n \u001b[90m 59 |\u001b[39m     \u001b[36mconst\u001b[39m firstSuggestion \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[role=\"listitem\"]'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 60 |\u001b[39m     \u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39mwaitFor({ state\u001b[33m:\u001b[39m \u001b[32m'visible'\u001b[39m\u001b[33m,\u001b[39m timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 61 |\u001b[39m     \u001b[36mconst\u001b[39m suggestionText \u001b[33m=\u001b[39m (\u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39minnerText())\u001b[33m.\u001b[39mtrim()\u001b[33m;\u001b[39m\n \u001b[90m 62 |\u001b[39m     \u001b[36mawait\u001b[39m firstSuggestion\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 63 |\u001b[39m\u001b[0m\n\u001b[2m    at /Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js:60:27\u001b[22m"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-10-15T20:13:02.191Z",
+                      "startTime": "2025-10-15T21:49:55.032Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/bryceharmon/Desktop/prompt-builder/test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/bryceharmon/Desktop/prompt-builder/test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/bryceharmon/Desktop/prompt-builder/test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js",
+                        "column": 27,
+                        "line": 60
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "2d9e318677ad506b389a-6ed393ad8754aed8b094",
@@ -193,22 +670,22 @@
               "tags": [],
               "tests": [
                 {
-                  "timeout": 60000,
+                  "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 14173,
+                      "duration": 6067,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-10-15T20:13:02.190Z",
+                      "startTime": "2025-10-15T21:49:55.323Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -218,7 +695,580 @@
               ],
               "id": "2d9e318677ad506b389a-9b3b53f73c336dc5240f",
               "file": "tests/suggestions-and-health.spec.js",
-              "line": 86,
+              "line": 69,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "tests/workflow-complete.spec.js",
+      "file": "tests/workflow-complete.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Complete Prompt Building Workflow",
+          "file": "tests/workflow-complete.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should complete full prompt optimization workflow",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 3453,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:55.376Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-064cea5150a0c98819a7",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 9,
+              "column": 3
+            },
+            {
+              "title": "should handle multi-step prompt improvement",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2415,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:55.611Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-ecce74e2791226496797",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 44,
+              "column": 3
+            },
+            {
+              "title": "should preserve form state on error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2357,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:58.035Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-5d152f9645e24c97877e",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 78,
+              "column": 3
+            },
+            {
+              "title": "should support back-and-forth editing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1714,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:49:58.837Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-f8729566f2b744ee9641",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 103,
+              "column": 3
+            },
+            {
+              "title": "should handle very long prompts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 1350,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:00.398Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-bcaaf48bf97ec4ba5310",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 121,
+              "column": 3
+            },
+            {
+              "title": "should maintain focus during typing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1458,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:00.560Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-5d3b4136bfd957d6c37f",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 131,
+              "column": 3
+            },
+            {
+              "title": "should handle paste operations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1434,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:01.404Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-54aefc7c83fa384ec891",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 141,
+              "column": 3
+            },
+            {
+              "title": "should support undo/redo with keyboard shortcuts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 1493,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:01.447Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-6874941245e06d19b82b",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 160,
+              "column": 3
+            },
+            {
+              "title": "should validate form before submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 1294,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:01.754Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-343b74fdae7169322802",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 177,
+              "column": 3
+            },
+            {
+              "title": "should handle network connectivity issues",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2289,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:02.026Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-15c46bf6dd95fe9e8266",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 200,
+              "column": 3
+            },
+            {
+              "title": "should support progressive enhancement",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1304,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:02.843Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-66739eb54fb8b62ac415",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 220,
+              "column": 3
+            },
+            {
+              "title": "should be usable on slow connections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 4892,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:02.948Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-2bd43785704b5921df8b",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 238,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "User Experience Enhancements",
+          "file": "tests/workflow-complete.spec.js",
+          "line": 266,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should provide visual feedback on interaction",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 396,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:03.055Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-312ef4216ad33f5e7d98",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 271,
+              "column": 3
+            },
+            {
+              "title": "should show loading indicator during processing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 561,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:03.460Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-28ff330090b1d66ab2ef",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 283,
+              "column": 3
+            },
+            {
+              "title": "should support keyboard shortcuts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 268,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Keyboard shortcuts available: \u001b[33mfalse\u001b[39m\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:04.028Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-90065661f5618ee63812",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 314,
+              "column": 3
+            },
+            {
+              "title": "should maintain state across page interactions",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 278,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-15T21:50:04.155Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d438871f6e53853be6b-dc231cb2414bceefc2de",
+              "file": "tests/workflow-complete.spec.js",
+              "line": 324,
               "column": 3
             }
           ]
@@ -228,11 +1278,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-10-15T20:12:56.101Z",
-    "duration": 25099.103,
-    "expected": 2,
+    "startTime": "2025-10-15T21:49:47.389Z",
+    "duration": 24431.364,
+    "expected": 31,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 1,
     "flaky": 0
   }
 }

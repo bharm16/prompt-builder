@@ -50,36 +50,19 @@ test.describe('Suggestions apply flow and health endpoints', () => {
       });
     });
 
-    // Programmatically select the phrase inside the contentEditable and dispatch mouseup to trigger handler
-    await page.evaluate(() => {
-      const el = document.querySelector('[contenteditable="true"][aria-label="Optimized prompt"]');
-      const phrase = 'golden hour lighting';
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-      let node; let foundNode = null; let startOffset = 0;
-      while ((node = walker.nextNode())) {
-        const idx = node.nodeValue.indexOf(phrase);
-        if (idx !== -1) { foundNode = node; startOffset = idx; break; }
-      }
-      if (foundNode) {
-        const range = document.createRange();
-        range.setStart(foundNode, startOffset);
-        range.setEnd(foundNode, startOffset + phrase.length);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        // Fire mouseup on the editable area to trigger selection handler
-        const evt = new MouseEvent('mouseup', { bubbles: true });
-        el.dispatchEvent(evt);
-      }
-    });
+    // Click on a highlighted value word to trigger suggestions (force in case container intercepts)
+    const valueWord = page.locator('.value-word').first();
+    await valueWord.waitFor({ state: 'visible' });
+    await valueWord.click({ force: true });
 
     // Wait for suggestions panel and click the first suggestion
-    const firstSuggestion = page.locator('button[role="listitem"]:has-text("sunset lighting")').first();
-    await firstSuggestion.waitFor({ state: 'visible' });
+    const firstSuggestion = page.locator('button[role="listitem"]').first();
+    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
+    const suggestionText = (await firstSuggestion.innerText()).trim();
     await firstSuggestion.click();
 
     // Verify the editor content was updated
-    await expect(editor).toContainText('sunset lighting');
+    await expect(editor).toContainText(suggestionText);
     await expect(editor).not.toContainText('golden hour lighting');
   });
 

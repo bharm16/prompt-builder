@@ -1,8 +1,121 @@
-<testsuites id="" name="" tests="2" failures="0" skipped="0" errors="0" time="25.099103">
-<testsuite name="tests/suggestions-and-health.spec.js" timestamp="2025-10-15T20:13:00.881Z" hostname="chromium" tests="2" failures="0" skipped="0" time="27.46" errors="0">
-<testcase name="Suggestions apply flow and health endpoints › video: selecting text surfaces suggestions and apply updates editor" classname="tests/suggestions-and-health.spec.js" time="13.287">
+<testsuites id="" name="" tests="32" failures="1" skipped="0" errors="0" time="24.431364000000002">
+<testsuite name="tests/prompt-builder.spec.js" timestamp="2025-10-15T21:49:48.365Z" hostname="chromium" tests="14" failures="0" skipped="0" time="36.72" errors="0">
+<testcase name="Prompt Builder E2E Tests › should load the application successfully" classname="tests/prompt-builder.spec.js" time="1.915">
 </testcase>
-<testcase name="Suggestions apply flow and health endpoints › health endpoints return expected payloads and metrics content type" classname="tests/suggestions-and-health.spec.js" time="14.173">
+<testcase name="Prompt Builder E2E Tests › should display the prompt input field" classname="tests/prompt-builder.spec.js" time="1.951">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should allow user to type in prompt input" classname="tests/prompt-builder.spec.js" time="1.933">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should have mode selector" classname="tests/prompt-builder.spec.js" time="1.938">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should validate empty prompt submission" classname="tests/prompt-builder.spec.js" time="12.251">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should show loading state during prompt submission" classname="tests/prompt-builder.spec.js" time="2.707">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should handle API errors gracefully" classname="tests/prompt-builder.spec.js" time="2.404">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should persist prompt in local storage" classname="tests/prompt-builder.spec.js" time="2.485">
+<system-out>
+<![CDATA[Local storage contains prompt: [33mfalse[39m
+]]>
+</system-out>
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should be responsive on mobile devices" classname="tests/prompt-builder.spec.js" time="1.452">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should not expose sensitive data in console" classname="tests/prompt-builder.spec.js" time="1.431">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should handle rapid consecutive submissions" classname="tests/prompt-builder.spec.js" time="2.064">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should support keyboard navigation" classname="tests/prompt-builder.spec.js" time="1.394">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should have accessible aria labels" classname="tests/prompt-builder.spec.js" time="1.476">
+</testcase>
+<testcase name="Prompt Builder E2E Tests › should clear form when clear button is clicked" classname="tests/prompt-builder.spec.js" time="1.319">
+<system-out>
+<![CDATA[No clear button found - test skipped
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="tests/suggestions-and-health.spec.js" timestamp="2025-10-15T21:49:48.365Z" hostname="chromium" tests="2" failures="1" skipped="0" time="22.812" errors="0">
+<testcase name="Suggestions apply flow and health endpoints › video: selecting text surfaces suggestions and apply updates editor" classname="tests/suggestions-and-health.spec.js" time="16.745">
+<failure message="suggestions-and-health.spec.js:9:3 video: selecting text surfaces suggestions and apply updates editor" type="FAILURE">
+<![CDATA[  [chromium] › tests/suggestions-and-health.spec.js:9:3 › Suggestions apply flow and health endpoints › video: selecting text surfaces suggestions and apply updates editor 
+
+    TimeoutError: locator.waitFor: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('button[role="listitem"]').first() to be visible
+
+
+      58 |     // Wait for suggestions panel and click the first suggestion
+      59 |     const firstSuggestion = page.locator('button[role="listitem"]').first();
+    > 60 |     await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
+         |                           ^
+      61 |     const suggestionText = (await firstSuggestion.innerText()).trim();
+      62 |     await firstSuggestion.click();
+      63 |
+        at /Users/bryceharmon/Desktop/prompt-builder/e2e/tests/suggestions-and-health.spec.js:60:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/video.webm]]
+
+[[ATTACHMENT|../test-results/tests-suggestions-and-heal-a9ad7-ns-and-apply-updates-editor-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Suggestions apply flow and health endpoints › health endpoints return expected payloads and metrics content type" classname="tests/suggestions-and-health.spec.js" time="6.067">
+</testcase>
+</testsuite>
+<testsuite name="tests/workflow-complete.spec.js" timestamp="2025-10-15T21:49:48.365Z" hostname="chromium" tests="16" failures="0" skipped="0" time="26.956" errors="0">
+<testcase name="Complete Prompt Building Workflow › should complete full prompt optimization workflow" classname="tests/workflow-complete.spec.js" time="3.453">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should handle multi-step prompt improvement" classname="tests/workflow-complete.spec.js" time="2.415">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should preserve form state on error" classname="tests/workflow-complete.spec.js" time="2.357">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should support back-and-forth editing" classname="tests/workflow-complete.spec.js" time="1.714">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should handle very long prompts" classname="tests/workflow-complete.spec.js" time="1.35">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should maintain focus during typing" classname="tests/workflow-complete.spec.js" time="1.458">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should handle paste operations" classname="tests/workflow-complete.spec.js" time="1.434">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should support undo/redo with keyboard shortcuts" classname="tests/workflow-complete.spec.js" time="1.493">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should validate form before submission" classname="tests/workflow-complete.spec.js" time="1.294">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should handle network connectivity issues" classname="tests/workflow-complete.spec.js" time="2.289">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should support progressive enhancement" classname="tests/workflow-complete.spec.js" time="1.304">
+</testcase>
+<testcase name="Complete Prompt Building Workflow › should be usable on slow connections" classname="tests/workflow-complete.spec.js" time="4.892">
+</testcase>
+<testcase name="User Experience Enhancements › should provide visual feedback on interaction" classname="tests/workflow-complete.spec.js" time="0.396">
+</testcase>
+<testcase name="User Experience Enhancements › should show loading indicator during processing" classname="tests/workflow-complete.spec.js" time="0.561">
+</testcase>
+<testcase name="User Experience Enhancements › should support keyboard shortcuts" classname="tests/workflow-complete.spec.js" time="0.268">
+<system-out>
+<![CDATA[Keyboard shortcuts available: [33mfalse[39m
+]]>
+</system-out>
+</testcase>
+<testcase name="User Experience Enhancements › should maintain state across page interactions" classname="tests/workflow-complete.spec.js" time="0.278">
 </testcase>
 </testsuite>
 </testsuites>
