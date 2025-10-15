@@ -383,7 +383,7 @@ export default function CreativeBrainstorm({
           {needsRefresh && !isLoadingSuggestions && (
             <div className="mx-5 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-[13px] text-amber-800 leading-relaxed">
-                💡 Other elements have changed. Click "Refresh" to get updated suggestions.
+                💡 Other elements have changed. Click &quot;Refresh&quot; to get updated suggestions.
               </p>
             </div>
           )}
@@ -522,7 +522,7 @@ export default function CreativeBrainstorm({
       </div>
 
       {/* Add Custom CSS for Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             opacity: 0;

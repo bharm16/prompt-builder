@@ -27,6 +27,7 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
 
   // Helper function to remove emojis
   const removeEmojis = (str) => {
+    // eslint-disable-next-line security/detect-unsafe-regex
     return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
   };
 
@@ -289,7 +290,7 @@ const CategoryLegend = memo(({ show, onClose }) => {
             <li>• Auto-corrects typos with fuzzy matching</li>
           </ul>
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
-            Click highlights to teach the system what's important to you.
+            Click highlights to teach the system what&apos;s important to you.
           </p>
         </div>
       </div>

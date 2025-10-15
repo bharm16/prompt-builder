@@ -956,7 +956,7 @@ export default function CreativeBrainstormEnhanced({
       </div>
 
       {/* Add Custom CSS for Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             opacity: 0;

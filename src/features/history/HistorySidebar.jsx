@@ -210,7 +210,7 @@ export const HistorySidebar = ({
             ) : filteredHistory.length === 0 && searchQuery ? (
               <div className="p-4 text-center">
                 <p className="text-xs text-neutral-500">
-                  No results for "{searchQuery}"
+                  No results for &quot;{searchQuery}&quot;
                 </p>
               </div>
             ) : filteredHistory.length === 0 ? (
