@@ -52,3 +52,35 @@ global.localStorage = localStorageMock;
 
 // Mock fetch
 global.fetch = vi.fn();
+
+// Mock Firebase
+vi.mock('./src/firebase.js', () => ({
+  db: {
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({
+        set: vi.fn(),
+        get: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+      })),
+      add: vi.fn(),
+      where: vi.fn(),
+    })),
+  },
+  auth: {
+    currentUser: null,
+    signInWithEmailAndPassword: vi.fn(),
+    signOut: vi.fn(),
+  },
+}));
+
+// Mock Toast context for components
+vi.mock('./src/components/Toast.jsx', () => ({
+  useToast: vi.fn(() => ({
+    showToast: vi.fn(),
+    hideToast: vi.fn(),
+    toast: null,
+  })),
+  ToastProvider: ({ children }) => children,
+  default: () => null,
+}));

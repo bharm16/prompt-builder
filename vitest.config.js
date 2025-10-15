@@ -3,10 +3,21 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.js'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/e2e/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
@@ -21,14 +32,16 @@ export default defineConfig({
         'eslint.config.js',
         'postcss.config.js',
         'tailwind.config.js',
-        'src/**/*.jsx', // Exclude React components for now
         'src/main.jsx',
+        'e2e/**',
+        'scripts/**',
+        'playwright.config.js',
       ],
       thresholds: {
-        lines: 75,
-        functions: 50,
-        branches: 60,
-        statements: 75,
+        lines: 85,
+        functions: 80,
+        branches: 75,
+        statements: 85,
       },
     },
     testTimeout: 10000,
