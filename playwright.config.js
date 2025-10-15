@@ -27,7 +27,7 @@ export default defineConfig({
 
   use: {
     // Base URL for navigation
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
 
     // Collect trace on failure for debugging
     trace: 'on-first-retry',
@@ -70,7 +70,7 @@ export default defineConfig({
   // Web server configuration - automatically start dev server
   webServer: {
     command: 'npm run start',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
     stdout: 'pipe',

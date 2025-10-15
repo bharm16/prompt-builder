@@ -1,0 +1,8 @@
+<testsuites id="" name="" tests="2" failures="0" skipped="0" errors="0" time="25.099103">
+<testsuite name="tests/suggestions-and-health.spec.js" timestamp="2025-10-15T20:13:00.881Z" hostname="chromium" tests="2" failures="0" skipped="0" time="27.46" errors="0">
+<testcase name="Suggestions apply flow and health endpoints › video: selecting text surfaces suggestions and apply updates editor" classname="tests/suggestions-and-health.spec.js" time="13.287">
+</testcase>
+<testcase name="Suggestions apply flow and health endpoints › health endpoints return expected payloads and metrics content type" classname="tests/suggestions-and-health.spec.js" time="14.173">
+</testcase>
+</testsuite>
+</testsuites>

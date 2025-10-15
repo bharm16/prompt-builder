@@ -50,6 +50,10 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Behind Cloud Run/ALB/Ingress, trust the upstream proxy for correct client IPs
+// Ensures rate limiting, logging, and security middleware see real IPs
+app.set('trust proxy', 1);
+
 // In Vitest runs, ensure global.fetch is a fast stub unless already mocked by tests
 if ((process.env.VITEST || process.env.VITEST_WORKER_ID) && !(global.fetch && typeof global.fetch === 'function' && 'mock' in global.fetch)) {
   global.fetch = async () => ({
