@@ -331,7 +331,6 @@ Score:`;
 
     logger.info('Recorded user preference', {
       elementType,
-      chosen,
       rejectedCount: rejected.length,
     });
 

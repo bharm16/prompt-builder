@@ -153,6 +153,8 @@ if (!isTestEnv) {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP',
+    // Avoid rate limiting the metrics endpoint used by Prometheus
+    skip: (req) => req.path === '/metrics',
   });
 
   const apiLimiter = rateLimit({
@@ -161,7 +163,19 @@ if (!isTestEnv) {
     message: 'Too many API requests, please try again later',
   });
 
+  // Apply a general limiter across all routes
+  app.use(limiter);
+
+  // Apply API-specific limiter
   app.use('/api/', apiLimiter);
+
+  // Add a health-specific limiter to prevent abuse of health endpoints
+  const healthLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60, // allow up to 60 health checks per minute per IP
+    message: 'Too many health check requests, please slow down',
+  });
+  app.use(['/health', '/health/ready', '/health/live'], healthLimiter);
   logger.info('Rate limiting enabled');
 }
 

@@ -544,7 +544,7 @@ Return ONLY a JSON array:
    * Get alternative phrasings for an element
    */
   async getAlternativePhrasings({ elementType, value }) {
-    logger.info('Getting alternative phrasings', { elementType, value });
+    logger.info('Getting alternative phrasings', { elementType });
 
     const prompt = `Provide 5 alternative ways to phrase this ${elementType}.
 

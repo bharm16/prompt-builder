@@ -7,6 +7,20 @@ import {
   customSuggestionSchema,
   sceneChangeSchema,
   creativeSuggestionSchema,
+  generateQuestionsSchema,
+  compatibilitySchema,
+  completeSceneSchema,
+  variationsSchema,
+  parseConceptSchema,
+  refinementsSchema,
+  conflictsSchema,
+  technicalParamsSchema,
+  validatePromptSchema,
+  smartDefaultsSchema,
+  saveTemplateSchema,
+  templateRecommendationsSchema,
+  recordUserChoiceSchema,
+  alternativePhrasingsSchema,
 } from '../../utils/validation.js';
 
 /**
@@ -46,12 +60,9 @@ export function createAPIRoutes(services) {
   // POST /api/generate-questions - Generate context questions
   router.post(
     '/generate-questions',
+    validateRequest(generateQuestionsSchema),
     asyncHandler(async (req, res) => {
       const { prompt } = req.body;
-
-      if (!prompt) {
-        return res.status(400).json({ error: 'Prompt is required' });
-      }
 
       const questions = await questionGenerationService.generateQuestions(
         prompt
@@ -144,6 +155,7 @@ export function createAPIRoutes(services) {
   // POST /api/check-compatibility - Check element compatibility
   router.post(
     '/check-compatibility',
+    validateRequest(compatibilitySchema),
     asyncHandler(async (req, res) => {
       const { elementType, value, existingElements } = req.body;
 
@@ -160,6 +172,7 @@ export function createAPIRoutes(services) {
   // POST /api/complete-scene - Complete scene with AI suggestions
   router.post(
     '/complete-scene',
+    validateRequest(completeSceneSchema),
     asyncHandler(async (req, res) => {
       const { existingElements, concept } = req.body;
 
@@ -175,6 +188,7 @@ export function createAPIRoutes(services) {
   // POST /api/generate-variations - Generate scene variations
   router.post(
     '/generate-variations',
+    validateRequest(variationsSchema),
     asyncHandler(async (req, res) => {
       const { elements, concept } = req.body;
 
@@ -190,6 +204,7 @@ export function createAPIRoutes(services) {
   // POST /api/parse-concept - Parse concept into elements
   router.post(
     '/parse-concept',
+    validateRequest(parseConceptSchema),
     asyncHandler(async (req, res) => {
       const { concept } = req.body;
 
@@ -204,6 +219,7 @@ export function createAPIRoutes(services) {
   // POST /api/get-refinements - Get refinement suggestions
   router.post(
     '/get-refinements',
+    validateRequest(refinementsSchema),
     asyncHandler(async (req, res) => {
       const { elements } = req.body;
 
@@ -218,6 +234,7 @@ export function createAPIRoutes(services) {
   // POST /api/detect-conflicts - Detect element conflicts
   router.post(
     '/detect-conflicts',
+    validateRequest(conflictsSchema),
     asyncHandler(async (req, res) => {
       const { elements } = req.body;
 
@@ -232,6 +249,7 @@ export function createAPIRoutes(services) {
   // POST /api/generate-technical-params - Generate technical parameters
   router.post(
     '/generate-technical-params',
+    validateRequest(technicalParamsSchema),
     asyncHandler(async (req, res) => {
       const { elements } = req.body;
 
@@ -246,6 +264,7 @@ export function createAPIRoutes(services) {
   // POST /api/validate-prompt - Validate prompt quality
   router.post(
     '/validate-prompt',
+    validateRequest(validatePromptSchema),
     asyncHandler(async (req, res) => {
       const { elements, concept } = req.body;
 
@@ -261,6 +280,7 @@ export function createAPIRoutes(services) {
   // POST /api/get-smart-defaults - Get smart defaults for element
   router.post(
     '/get-smart-defaults',
+    validateRequest(smartDefaultsSchema),
     asyncHandler(async (req, res) => {
       const { elementType, existingElements } = req.body;
 
@@ -276,6 +296,7 @@ export function createAPIRoutes(services) {
   // POST /api/save-template - Save element template
   router.post(
     '/save-template',
+    validateRequest(saveTemplateSchema),
     asyncHandler(async (req, res) => {
       const { name, elements, concept, userId } = req.body;
 
@@ -293,6 +314,7 @@ export function createAPIRoutes(services) {
   // POST /api/get-template-recommendations - Get template recommendations
   router.post(
     '/get-template-recommendations',
+    validateRequest(templateRecommendationsSchema),
     asyncHandler(async (req, res) => {
       const { userId, currentElements } = req.body;
 
@@ -308,6 +330,7 @@ export function createAPIRoutes(services) {
   // POST /api/record-user-choice - Record user element choice
   router.post(
     '/record-user-choice',
+    validateRequest(recordUserChoiceSchema),
     asyncHandler(async (req, res) => {
       const { elementType, chosen, rejected, userId } = req.body;
 
@@ -325,6 +348,7 @@ export function createAPIRoutes(services) {
   // POST /api/get-alternative-phrasings - Get alternative phrasings
   router.post(
     '/get-alternative-phrasings',
+    validateRequest(alternativePhrasingsSchema),
     asyncHandler(async (req, res) => {
       const { elementType, value } = req.body;
 

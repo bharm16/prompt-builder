@@ -54,7 +54,7 @@ describe('apiAuthMiddleware', () => {
     expect(res.body.error).toBe('Invalid API key');
   });
 
-  it('accepts valid key from header and from query', () => {
+  it('accepts valid key from header and rejects query param', () => {
     process.env.ALLOWED_API_KEYS = 'valid1,valid2';
     const res = makeRes();
     const next = vi.fn();
@@ -64,6 +64,7 @@ describe('apiAuthMiddleware', () => {
     const res2 = makeRes();
     const next2 = vi.fn();
     apiAuthMiddleware({ headers: {}, query: { apiKey: 'valid2' }, id: 'r5', ip: '::1', path: '/api/x', method: 'GET' }, res2, next2);
-    expect(next2).toHaveBeenCalled();
+    expect(res2.statusCode).toBe(401);
+    expect(next2).not.toHaveBeenCalled();
   });
 });

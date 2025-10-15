@@ -13,6 +13,9 @@ __tests__/
 .env.local
 .env.development
 .env.test
+.env
+.env.production
+.env.*
 
 # IDE
 .vscode/

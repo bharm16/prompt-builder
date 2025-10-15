@@ -12,7 +12,7 @@ import { logger } from '../infrastructure/Logger.js';
  */
 export function apiAuthMiddleware(req, res, next) {
   // Extract API key from header or query parameter
-  const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+  const apiKey = req.headers['x-api-key'];
 
   if (!apiKey) {
     logger.warn('API request without API key', {
@@ -24,7 +24,7 @@ export function apiAuthMiddleware(req, res, next) {
 
     return res.status(401).json({
       error: 'API key required',
-      message: 'Please provide an API key via X-API-Key header or apiKey query parameter',
+      message: 'Please provide an API key via X-API-Key header',
       requestId: req.id,
     });
   }
@@ -50,7 +50,6 @@ export function apiAuthMiddleware(req, res, next) {
       path: req.path,
       method: req.method,
       requestId: req.id,
-      apiKeyPrefix: apiKey.substring(0, 8) + '...',
     });
 
     return res.status(403).json({
@@ -65,7 +64,6 @@ export function apiAuthMiddleware(req, res, next) {
     path: req.path,
     method: req.method,
     requestId: req.id,
-    apiKeyPrefix: apiKey.substring(0, 8) + '...',
   });
 
   req.apiKey = apiKey;

@@ -24,9 +24,17 @@ export function createHealthRoutes(dependencies) {
   router.get(
     '/health/ready',
     asyncHandler(async (req, res) => {
+      // Avoid external network calls on readiness to prevent abuse/DoS
+      // Use internal indicators only (cache health and circuit breaker state)
+      const cacheHealth = cacheService.isHealthy();
+      const claudeStats = claudeClient.getStats();
+
       const checks = {
-        cache: cacheService.isHealthy(),
-        claudeAPI: await claudeClient.healthCheck(),
+        cache: cacheHealth,
+        claudeAPI: {
+          healthy: claudeStats.state === 'CLOSED',
+          circuitBreakerState: claudeStats.state,
+        },
       };
 
       const allHealthy = Object.values(checks).every(

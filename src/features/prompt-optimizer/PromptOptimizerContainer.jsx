@@ -233,14 +233,10 @@ function PromptOptimizerContent() {
       return;
     }
 
-    debounceTimerRef.current = setTimeout(async () => {
-      const currentSelection = window.getSelection().toString().trim();
-      const cleanedCurrentSelection = currentSelection.replace(/^-\s*/, '');
-      if (cleanedCurrentSelection !== highlightedText) {
-        return;
-      }
-
-      lastRequestRef.current = highlightedText;
+    const performFetch = async () => {
+      // Track a unique request id so we ignore stale responses.
+      const requestId = Symbol('suggestions');
+      lastRequestRef.current = requestId;
 
       const highlightIndex = fullPrompt.indexOf(highlightedText);
       const contextBefore = fullPrompt
@@ -318,6 +314,11 @@ function PromptOptimizerContent() {
 
         const data = await response.json();
 
+        // Ignore if a newer request has started
+        if (lastRequestRef.current !== requestId) {
+          return;
+        }
+
         setSuggestionsData({
           show: true,
           selectedText: highlightedText,
@@ -355,10 +356,20 @@ function PromptOptimizerContent() {
         });
       } catch (error) {
         console.error('Error fetching suggestions:', error);
-        toast.error('Failed to load suggestions');
-        setSuggestionsData(null);
+        // Only surface the error if this is still the latest request
+        if (lastRequestRef.current === requestId) {
+          toast.error('Failed to load suggestions');
+          setSuggestionsData(null);
+        }
       }
-    }, 300);
+    };
+
+    // Immediate fetch for click on a highlighted word; debounce for text selection drags.
+    if (selectionRange) {
+      performFetch();
+    } else {
+      debounceTimerRef.current = setTimeout(performFetch, 300);
+    }
   };
 
   const currentMode = modes.find((m) => m.id === selectedMode) || modes[0];

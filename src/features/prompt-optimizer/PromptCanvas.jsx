@@ -488,26 +488,26 @@ export const PromptCanvas = ({
     }
   };
 
-  // Handle clicks on highlighted words
-  const handleHighlightClick = (e) => {
+  // Shared helper to trigger suggestions from a DOM target
+  const triggerSuggestionsFromTarget = (targetElement, e) => {
     // Only handle highlight clicks in video mode
     if (selectedMode !== 'video') {
       return;
     }
 
     // Check if clicked element or its parent is a highlighted word
-    let targetElement = e.target;
+    let node = targetElement;
 
     // Traverse up to find a value-word span (in case user clicks on text inside the span)
-    while (targetElement && targetElement !== editorRef.current) {
-      if (targetElement.classList && targetElement.classList.contains('value-word')) {
+    while (node && node !== editorRef.current) {
+      if (node.classList && node.classList.contains('value-word')) {
         // Prevent default text selection behavior
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
 
         // Get the word text and metadata
-        const wordText = targetElement.textContent.trim();
-        const category = targetElement.getAttribute('data-category');
-        const phrase = targetElement.getAttribute('data-phrase');
+        const wordText = node.textContent.trim();
+        const category = node.getAttribute('data-category');
+        const phrase = node.getAttribute('data-phrase');
 
         // Track this click for behavior learning
         adaptiveEngine.recordClick(phrase || wordText, category);
@@ -515,7 +515,7 @@ export const PromptCanvas = ({
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
           const range = document.createRange();
-          range.selectNodeContents(targetElement);
+          range.selectNodeContents(node);
 
           // Clear any existing selection
           const selection = window.getSelection();
@@ -528,8 +528,19 @@ export const PromptCanvas = ({
 
         return;
       }
-      targetElement = targetElement.parentElement;
+      node = node.parentElement;
     }
+  };
+
+  // Handle clicks on highlighted words
+  const handleHighlightClick = (e) => {
+    triggerSuggestionsFromTarget(e.target, e);
+  };
+
+  // Some headless environments can swallow click on contentEditable.
+  // Also listen on mousedown to reliably capture interactions.
+  const handleHighlightMouseDown = (e) => {
+    triggerSuggestionsFromTarget(e.target, e);
   };
 
   const handleCopyEvent = (e) => {
@@ -792,6 +803,7 @@ export const PromptCanvas = ({
                 ref={editorRef}
                 onMouseUp={handleTextSelection}
                 onClick={handleHighlightClick}
+                onMouseDown={handleHighlightMouseDown}
                 onCopy={handleCopyEvent}
                 onInput={handleInput}
                 contentEditable

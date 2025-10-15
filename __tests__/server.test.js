@@ -219,7 +219,8 @@ describe('API Server Tests', () => {
         .send({})
         .expect(400);
 
-      expect(response.body.error).toBe('Prompt is required');
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.details).toContain('Prompt is required');
     });
 
     it('should return 400 for empty prompt', async () => {
@@ -229,7 +230,8 @@ describe('API Server Tests', () => {
         .send({ prompt: '' })
         .expect(400);
 
-      expect(response.body.error).toBe('Prompt is required');
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.details).toContain('Prompt is required');
     });
 
     it('should generate questions for valid prompt', async () => {

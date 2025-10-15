@@ -167,11 +167,9 @@ Please try again, ensuring you return ONLY valid ${isArray ? 'JSON array startin
     isArray,
     claudeOptions
   ) {
-    // Use prefill technique by making assistant start with { or [
-    const prefillChar = isArray ? '[' : '{';
-
-    // Make the request through Claude client's internal method
-    const response = await claudeClient._makeRequest(systemPrompt, {
+    // Route through the circuit breaker by using the public client method
+    // Keep userMessage to guide the model output format
+    const response = await claudeClient.complete(systemPrompt, {
       ...claudeOptions,
       userMessage: 'Please provide the output as specified.',
     });

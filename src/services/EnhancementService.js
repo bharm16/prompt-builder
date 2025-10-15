@@ -103,10 +103,8 @@ export class EnhancementService {
     // Log raw suggestions from Claude
     logger.info('Raw suggestions from Claude', {
       isPlaceholder,
-      suggestionsCount: suggestions?.length,
-      firstSuggestion: suggestions?.[0],
+      suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
       hasCategory: suggestions?.[0]?.category !== undefined,
-      allCategories: suggestions?.map(s => s.category).filter(Boolean)
     });
 
     // Ensure diversity in suggestions
@@ -116,8 +114,7 @@ export class EnhancementService {
     logger.info('Processing suggestions for categorization', {
       isPlaceholder,
       hasCategoryField: diverseSuggestions[0]?.category !== undefined,
-      firstSuggestion: diverseSuggestions[0],
-      totalSuggestions: diverseSuggestions.length
+      totalSuggestions: diverseSuggestions.length,
     });
 
     // Group suggestions by category if they have categories
