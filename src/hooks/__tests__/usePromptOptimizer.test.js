@@ -54,4 +54,51 @@ describe('usePromptOptimizer', () => {
     expect(result.current.optimizedPrompt).toMatch(/Optimized:/);
     expect(result.current.qualityScore).toBeGreaterThan(0);
   });
+
+  it('handles API error and shows toast.error', async () => {
+    // mock error response
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'API request failed' }),
+    });
+
+    const { result } = renderHook(() => usePromptOptimizer('code'));
+    let out;
+    await act(async () => {
+      result.current.setInputPrompt('will-fail');
+      out = await result.current.optimize('will-fail');
+    });
+    expect(out).toBeNull();
+  });
+
+  it('calculateQualityScore reflects sections and length', () => {
+    const { result } = renderHook(() => usePromptOptimizer('code'));
+    const input = 'short prompt';
+    const low = result.current.calculateQualityScore(input, 'basic output');
+    const high = result.current.calculateQualityScore(
+      input,
+      '**Goal**\nSomething\n\n**Return Format**\nJSON\n\n**Context** extra details here that increase length and detail'
+    );
+    expect(high).toBeGreaterThan(low);
+  });
+
+  it('resetPrompt clears state', () => {
+    const { result } = renderHook(() => usePromptOptimizer('code'));
+    act(() => {
+      result.current.setInputPrompt('abc');
+      result.current.setOptimizedPrompt('xyz');
+      result.current.setDisplayedPrompt('xyz');
+      result.current.setSkipAnimation(true);
+      result.current.setImprovementContext({ foo: 'bar' });
+    });
+    act(() => {
+      result.current.resetPrompt();
+    });
+    expect(result.current.inputPrompt).toBe('');
+    expect(result.current.optimizedPrompt).toBe('');
+    expect(result.current.displayedPrompt).toBe('');
+    expect(result.current.qualityScore).toBe(null);
+    expect(result.current.skipAnimation).toBe(false);
+    expect(result.current.improvementContext).toBe(null);
+  });
 });
