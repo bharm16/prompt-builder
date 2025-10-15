@@ -1,47 +1,57 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { usePromptOptimizer } from '../usePromptOptimizer';
+
+// Use the global fetch mock from setup
+
+// Mock Toast to capture calls
+vi.mock('../../components/Toast.jsx', () => {
+  const warning = vi.fn();
+  const success = vi.fn();
+  const info = vi.fn();
+  const error = vi.fn();
+  return {
+    useToast: () => ({ warning, success, info, error }),
+    ToastProvider: ({ children }) => children,
+    __mocks: { warning, success, info, error },
+  };
+});
 
 describe('usePromptOptimizer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should initialize with default values', () => {
+  it('initializes with default values', () => {
     const { result } = renderHook(() => usePromptOptimizer());
-
-    expect(result.current).toBeDefined();
+    expect(result.current.inputPrompt).toBe('');
+    expect(result.current.isProcessing).toBe(false);
   });
 
-  it('should update state correctly', async () => {
-    const { result } = renderHook(() => usePromptOptimizer());
-
-    // Add state update tests
-    expect(true).toBe(true);
-  });
-
-  it('should handle async operations', async () => {
-    const { result } = renderHook(() => usePromptOptimizer());
-
-    await waitFor(() => {
-      // Add async operation tests
-      expect(true).toBe(true);
+  it('shows warning and returns null when optimizing empty prompt', async () => {
+    const { result } = renderHook(() => usePromptOptimizer('code'));
+    // ensure prompt empty
+    await act(async () => {
+      const res = await result.current.optimize('');
+      expect(res).toBeNull();
     });
   });
 
-  it('should clean up on unmount', () => {
-    const { unmount } = renderHook(() => usePromptOptimizer());
+  it('optimizes successfully and sets quality score', async () => {
+    // Mock fetch to return optimized prompt
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ optimizedPrompt: 'Optimized: Goal...\n\nContext...\nReturn Format...' }),
+    });
 
-    unmount();
+    const { result } = renderHook(() => usePromptOptimizer('code'));
+    await act(async () => {
+      result.current.setInputPrompt('short');
+      const out = await result.current.optimize('short');
+      expect(out).not.toBeNull();
+    });
 
-    // Verify cleanup
-    expect(true).toBe(true);
-  });
-
-  it('should handle errors gracefully', async () => {
-    const { result } = renderHook(() => usePromptOptimizer());
-
-    // Add error handling tests
-    expect(true).toBe(true);
+    expect(result.current.optimizedPrompt).toMatch(/Optimized:/);
+    expect(result.current.qualityScore).toBeGreaterThan(0);
   });
 });

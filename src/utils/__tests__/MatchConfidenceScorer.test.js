@@ -1,51 +1,42 @@
 import { describe, it, expect } from 'vitest';
+import { MatchConfidenceScorer } from '../MatchConfidenceScorer.js';
 
 describe('MatchConfidenceScorer', () => {
-  describe('Basic Operations', () => {
-    it('should perform basic operations correctly', () => {
-      expect(true).toBe(true);
-    });
+  const scorer = new MatchConfidenceScorer();
 
-    it('should handle valid inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should return expected outputs', () => {
-      expect(true).toBe(true);
-    });
+  it('calculates base score using length and word count', () => {
+    expect(scorer.calculateBaseScore({ length: 3, text: 'a' })).toBeGreaterThan(0);
+    expect(scorer.calculateBaseScore({ length: 12, text: 'two words' })).toBeGreaterThan(60);
   });
 
-  describe('Edge Cases', () => {
-    it('should handle empty inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle null/undefined', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle very large inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle invalid inputs', () => {
-      expect(true).toBe(true);
-    });
+  it('applies context boost based on category keywords', () => {
+    const match = { text: 'golden hour', start: 0, end: 11, length: 11, isPhraseCategory: true };
+    const surrounding = 'The lighting and light rays create a bright scene';
+    const boost = scorer.calculateContextBoost(match, surrounding, 'lightingPhrases');
+    expect(boost).toBeGreaterThan(0);
   });
 
-  describe('Performance', () => {
-    it('should execute efficiently', () => {
-      expect(true).toBe(true);
-    });
+  it('computes position score for sentence/paragraph starts', () => {
+    const match = { text: 'Start', start: 0, end: 5 };
+    expect(scorer.calculatePositionScore(match, 'Start of sentence')).toBeGreaterThan(0);
   });
 
-  describe('Error Handling', () => {
-    it('should throw appropriate errors', () => {
-      expect(true).toBe(true);
-    });
+  it('scores match end-to-end and filters by confidence', () => {
+    const fullText = 'Golden hour lighting. Beautiful shot.';
+    const matches = [
+      { text: 'golden hour', start: 0, end: 11, length: 11, category: 'lightingPhrases' },
+      { text: 'shot', start: 23, end: 27, length: 4, category: 'cameraPhrases' },
+    ];
+    const scored = scorer.filterByConfidence(matches, fullText, 50);
+    expect(scored.length).toBeGreaterThan(0);
+    expect(scored[0].confidence).toBeGreaterThanOrEqual(50);
+  });
 
-    it('should provide meaningful error messages', () => {
-      expect(true).toBe(true);
-    });
+  it('maps numeric score to qualitative level', () => {
+    expect(scorer.getConfidenceLevel(88)).toBe('very high');
+    expect(scorer.getConfidenceLevel(72)).toBe('high');
+    expect(scorer.getConfidenceLevel(57)).toBe('medium');
+    expect(scorer.getConfidenceLevel(42)).toBe('low');
+    expect(scorer.getConfidenceLevel(10)).toBe('very low');
   });
 });

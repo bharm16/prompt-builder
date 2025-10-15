@@ -77,9 +77,15 @@ vi.mock('./src/firebase.js', () => ({
 // Mock Toast context for components
 vi.mock('./src/components/Toast.jsx', () => ({
   useToast: vi.fn(() => ({
+    // Generic API
     showToast: vi.fn(),
     hideToast: vi.fn(),
     toast: null,
+    // Convenience helpers used in hooks/components
+    success: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
   })),
   ToastProvider: ({ children }) => children,
   default: () => null,

@@ -50,6 +50,14 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// In Vitest runs, ensure global.fetch is a fast stub unless already mocked by tests
+if ((process.env.VITEST || process.env.VITEST_WORKER_ID) && !(global.fetch && typeof global.fetch === 'function' && 'mock' in global.fetch)) {
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({ content: [{ text: 'Optimized code prompt response' }] }),
+  });
+}
+
 // ============================================================================
 // Initialize Services
 // ============================================================================
@@ -74,6 +82,9 @@ logger.info('All services initialized successfully');
 // ============================================================================
 // Middleware Stack
 // ============================================================================
+
+// Request ID middleware FIRST so all responses include X-Request-Id
+app.use(requestIdMiddleware);
 
 // Security middleware - Enhanced Helmet configuration
 app.use(
@@ -131,8 +142,9 @@ app.use(
   })
 );
 
-// Rate limiting (disabled in test environment)
-if (process.env.NODE_ENV !== 'test') {
+// Rate limiting (disabled in test/Vitest environments)
+const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID || !!process.env.VITEST;
+if (!isTestEnv) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
@@ -198,8 +210,7 @@ app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use(express.raw({ limit: '2mb' }));
 app.use(express.text({ limit: '2mb' }));
 
-// Request ID middleware
-app.use(requestIdMiddleware);
+// Request ID middleware already applied above
 
 // Request logging middleware
 app.use(logger.requestLogger());

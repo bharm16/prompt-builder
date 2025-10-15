@@ -1,51 +1,70 @@
 import { describe, it, expect } from 'vitest';
+import { FuzzyMatcher } from '../FuzzyMatcher.js';
 
 describe('FuzzyMatcher', () => {
-  describe('Basic Operations', () => {
-    it('should perform basic operations correctly', () => {
-      expect(true).toBe(true);
+  const matcher = new FuzzyMatcher();
+
+  describe('levenshteinDistance', () => {
+    it('computes zero for identical strings', () => {
+      expect(matcher.levenshteinDistance('camera', 'camera')).toBe(0);
     });
 
-    it('should handle valid inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should return expected outputs', () => {
-      expect(true).toBe(true);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle empty inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle null/undefined', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle very large inputs', () => {
-      expect(true).toBe(true);
-    });
-
-    it('should handle invalid inputs', () => {
-      expect(true).toBe(true);
+    it('computes expected distance for simple edits', () => {
+      expect(matcher.levenshteinDistance('kitten', 'sitting')).toBe(3);
+      expect(matcher.levenshteinDistance('bokeh', 'bokah')).toBe(1);
     });
   });
 
-  describe('Performance', () => {
-    it('should execute efficiently', () => {
-      expect(true).toBe(true);
+  describe('isFuzzyMatch', () => {
+    it('returns true for exact match', () => {
+      expect(matcher.isFuzzyMatch('Bokeh', 'bokeh')).toBe(true);
+    });
+
+    it('returns true for known common typos', () => {
+      expect(matcher.isFuzzyMatch('bokhe', 'bokeh')).toBe(true);
+      expect(matcher.isFuzzyMatch('anamophic', 'anamorphic')).toBe(true);
+    });
+
+    it('uses edit distance thresholds for longer words', () => {
+      expect(matcher.isFuzzyMatch('lighting', 'lighitng')).toBe(true);
+      expect(matcher.isFuzzyMatch('shadow', 'shaddow')).toBe(true);
+    });
+
+    it('requires exact match for very short words', () => {
+      expect(matcher.isFuzzyMatch('an', 'a')).toBe(false);
     });
   });
 
-  describe('Error Handling', () => {
-    it('should throw appropriate errors', () => {
-      expect(true).toBe(true);
+  describe('autoCorrect', () => {
+    it('replaces known typos within a sentence', () => {
+      const text = 'Beautiful bokhe with depth of feild and anamophic lens';
+      const corrected = matcher.autoCorrect(text);
+      expect(corrected).toContain('bokeh');
+      expect(corrected).toContain('depth of field');
+      expect(corrected).toContain('anamorphic');
     });
+  });
 
-    it('should provide meaningful error messages', () => {
-      expect(true).toBe(true);
+  describe('findBestMatch', () => {
+    it('finds closest candidate and confidence', () => {
+      const candidates = ['lighting', 'shadow', 'bokeh'];
+      const result = matcher.findBestMatch('bokah', candidates);
+      expect(result.match).toBe('bokeh');
+      expect(result.distance).toBeGreaterThanOrEqual(1);
+      expect(result.isGoodMatch).toBe(true);
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('suggestCorrections', () => {
+    it('returns suggestions for words with known typos', () => {
+      const out = matcher.suggestCorrections('Nice bokhe effect', []);
+      expect(out).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ original: 'bokhe', suggested: 'bokeh' })
+        ])
+      );
+      expect(out.length).toBeGreaterThan(0);
     });
   });
 });
