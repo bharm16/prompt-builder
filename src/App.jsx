@@ -1,8 +1,12 @@
-import React from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
 
 function App() {
-  return <PromptOptimizerContainer />;
+  return (
+    <ErrorBoundary>
+      <PromptOptimizerContainer />
+    </ErrorBoundary>
+  );
 }
 
 export default App;

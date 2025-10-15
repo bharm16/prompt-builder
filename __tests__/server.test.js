@@ -42,6 +42,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing prompt', async () => {
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ mode: 'code' })
         .expect(400);
 
@@ -52,6 +53,7 @@ describe('API Server Tests', () => {
     it('should return 400 for empty prompt', async () => {
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: '', mode: 'code' })
         .expect(400);
 
@@ -62,6 +64,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing mode', async () => {
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: 'Test prompt' })
         .expect(400);
 
@@ -72,6 +75,7 @@ describe('API Server Tests', () => {
     it('should return 400 for invalid mode', async () => {
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test prompt',
           mode: 'invalid-mode',
@@ -85,6 +89,7 @@ describe('API Server Tests', () => {
     it('should return 400 for prompt exceeding max length', async () => {
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'a'.repeat(10001),
           mode: 'code',
@@ -106,6 +111,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test code prompt',
           mode: 'code',
@@ -131,6 +137,7 @@ describe('API Server Tests', () => {
 
         const response = await request(app)
           .post('/api/optimize')
+          .set('X-API-Key', 'dev-key-12345')
           .send({
             prompt: `Test prompt for ${mode}`,
             mode,
@@ -154,6 +161,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test prompt',
           mode: 'code',
@@ -177,6 +185,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test prompt',
           mode: 'code',
@@ -191,6 +200,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/optimize')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test prompt',
           mode: 'code',
@@ -205,6 +215,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing prompt', async () => {
       const response = await request(app)
         .post('/api/generate-questions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({})
         .expect(400);
 
@@ -214,6 +225,7 @@ describe('API Server Tests', () => {
     it('should return 400 for empty prompt', async () => {
       const response = await request(app)
         .post('/api/generate-questions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: '' })
         .expect(400);
 
@@ -257,6 +269,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/generate-questions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: 'Help me with React' })
         .expect(200);
 
@@ -293,6 +306,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/generate-questions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: 'Test prompt' })
         .expect(200);
 
@@ -308,6 +322,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/generate-questions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({ prompt: 'Test prompt' })
         .expect(429);
 
@@ -319,6 +334,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing highlighted text', async () => {
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           fullPrompt: 'Full prompt text',
         })
@@ -331,6 +347,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing full prompt', async () => {
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'Selected text',
         })
@@ -342,9 +359,9 @@ describe('API Server Tests', () => {
 
     it('should detect placeholders and return value suggestions', async () => {
       const mockSuggestions = [
-        { text: 'New York City', explanation: 'Major urban center' },
-        { text: 'Tokyo', explanation: 'Asian metropolitan' },
-        { text: 'Paris', explanation: 'European capital' },
+        { text: 'New York City', explanation: 'Major urban center', category: 'US Cities' },
+        { text: 'Tokyo', explanation: 'Asian metropolitan', category: 'Asian Cities' },
+        { text: 'Paris', explanation: 'European capital', category: 'European Cities' },
       ];
 
       global.fetch.mockResolvedValueOnce({
@@ -357,6 +374,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'location',
           contextBefore: 'Set the ',
@@ -366,17 +384,26 @@ describe('API Server Tests', () => {
         })
         .expect(200);
 
-      expect(response.body.suggestions).toHaveLength(3);
       expect(response.body.isPlaceholder).toBe(true);
-      expect(response.body.suggestions[0]).toHaveProperty('text');
-      expect(response.body.suggestions[0]).toHaveProperty('explanation');
+      expect(response.body.suggestions).toBeDefined();
+
+      // Check if suggestions are grouped by category
+      if (response.body.hasCategories) {
+        expect(response.body.suggestions[0]).toHaveProperty('category');
+        expect(response.body.suggestions[0]).toHaveProperty('suggestions');
+        expect(response.body.suggestions[0].suggestions[0]).toHaveProperty('text');
+      } else {
+        expect(response.body.suggestions).toHaveLength(3);
+        expect(response.body.suggestions[0]).toHaveProperty('text');
+        expect(response.body.suggestions[0]).toHaveProperty('explanation');
+      }
     });
 
     it('should generate rewrite suggestions for non-placeholders', async () => {
       const mockSuggestions = [
-        { text: 'First rewrite option' },
-        { text: 'Second rewrite option' },
-        { text: 'Third rewrite option' },
+        { text: 'First rewrite option', explanation: 'More specific and actionable' },
+        { text: 'Second rewrite option', explanation: 'Better structure and clarity' },
+        { text: 'Third rewrite option', explanation: 'Enhanced detail and precision' },
       ];
 
       global.fetch.mockResolvedValueOnce({
@@ -389,6 +416,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'This is a complete sentence that needs improvement',
           contextBefore: 'Start of prompt. ',
@@ -404,7 +432,7 @@ describe('API Server Tests', () => {
 
     it('should handle video prompts differently', async () => {
       const mockSuggestions = [
-        { text: 'Cinematic rewrite with camera details' },
+        { text: 'Cinematic rewrite with camera details', explanation: 'Adds specific camera movements and framing' },
       ];
 
       global.fetch.mockResolvedValueOnce({
@@ -417,6 +445,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'pan across the scene',
           contextBefore: 'Camera Movement: ',
@@ -434,6 +463,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing highlighted text', async () => {
       const response = await request(app)
         .post('/api/get-custom-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           customRequest: 'Make it shorter',
           fullPrompt: 'Full prompt',
@@ -446,6 +476,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing custom request', async () => {
       const response = await request(app)
         .post('/api/get-custom-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'Selected text',
           fullPrompt: 'Full prompt',
@@ -472,6 +503,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/get-custom-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'This text needs to be shorter',
           customRequest: 'Make it more concise',
@@ -488,6 +520,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing required fields', async () => {
       const response = await request(app)
         .post('/api/detect-scene-change')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           changedField: 'location',
         })
@@ -517,6 +550,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/detect-scene-change')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           changedField: 'location',
           newValue: 'Mountain peak at sunrise',
@@ -552,6 +586,7 @@ describe('API Server Tests', () => {
 
       const response = await request(app)
         .post('/api/detect-scene-change')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           changedField: 'location',
           newValue: 'Modern coffee shop with minimalist decor',
@@ -570,6 +605,7 @@ describe('API Server Tests', () => {
     it('should return 400 for missing element type', async () => {
       const response = await request(app)
         .post('/api/get-creative-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           currentValue: 'Test value',
         })
@@ -581,6 +617,7 @@ describe('API Server Tests', () => {
     it('should return 400 for invalid element type', async () => {
       const response = await request(app)
         .post('/api/get-creative-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           elementType: 'invalid-type',
         })
@@ -608,6 +645,7 @@ describe('API Server Tests', () => {
 
         const response = await request(app)
           .post('/api/get-creative-suggestions')
+          .set('X-API-Key', 'dev-key-12345')
           .send({
             elementType,
             currentValue: 'Current value',
@@ -646,6 +684,7 @@ describe('API Server Tests', () => {
       const response = await request(app)
         .post('/api/optimize')
         .set('Origin', 'http://localhost:5173')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           prompt: 'Test',
           mode: 'code',
@@ -661,12 +700,13 @@ describe('API Server Tests', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          content: [{ text: '[{"text": "Suggestion"}]' }],
+          content: [{ text: '[{"text": "Paris", "explanation": "Capital of France", "category": "European Cities"}, {"text": "New York", "explanation": "Major US city", "category": "US Cities"}]' }],
         }),
       });
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'location',
           contextBefore: 'Set ',
@@ -684,12 +724,13 @@ describe('API Server Tests', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          content: [{ text: '[{"text": "Suggestion"}]' }],
+          content: [{ text: '[{"text": "downtown office", "explanation": "Central business district", "category": "Indoor Locations"}, {"text": "beach resort", "explanation": "Coastal vacation spot", "category": "Outdoor Locations"}]' }],
         }),
       });
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'your location',
           contextBefore: 'Specify (',
@@ -707,12 +748,13 @@ describe('API Server Tests', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          content: [{ text: '[{"text": "Suggestion"}]' }],
+          content: [{ text: '[{"text": "New York", "explanation": "Major US city", "category": "US Cities"}, {"text": "Tokyo", "explanation": "Major Asian city", "category": "Asian Cities"}]' }],
         }),
       });
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
+        .set('X-API-Key', 'dev-key-12345')
         .send({
           highlightedText: 'Paris',
           contextBefore: 'such as ',

@@ -153,9 +153,15 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
+      // Only allow requests with no origin in development (for testing tools like Postman)
+      if (!origin && process.env.NODE_ENV !== 'production') {
         return callback(null, true);
+      }
+
+      // In production, require origin header
+      if (!origin && process.env.NODE_ENV === 'production') {
+        logger.warn('CORS blocked request with no origin in production');
+        return callback(new Error('Origin header required'));
       }
 
       const allowedOrigins =
@@ -186,11 +192,11 @@ app.use(
   })
 );
 
-// Body parsers with size limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.raw({ limit: '10mb' }));
-app.use(express.text({ limit: '10mb' }));
+// Body parsers with size limits (2mb is sufficient for text prompts)
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+app.use(express.raw({ limit: '2mb' }));
+app.use(express.text({ limit: '2mb' }));
 
 // Request ID middleware
 app.use(requestIdMiddleware);

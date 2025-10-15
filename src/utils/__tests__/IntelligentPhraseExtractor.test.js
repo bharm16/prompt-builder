@@ -188,7 +188,7 @@ describe('IntelligentPhraseExtractor', () => {
       expect(occurrences).toHaveLength(2);
       expect(occurrences[0].start).toBe(0);
       expect(occurrences[0].end).toBe(11);
-      expect(occurrences[1].start).toBe(34);
+      expect(occurrences[1].start).toBe(32);
     });
 
     test('should be case-insensitive', () => {

@@ -113,8 +113,9 @@ export class IntelligentPhraseExtractor {
     const isStopword = tokens.map(t => this.stopwords.has(t));
 
     for (let i = 0; i <= tokens.length - n; i++) {
-      // Skip if starts or ends with stopword (for n > 1)
-      if (n > 1 && (isStopword[i] || isStopword[i + n - 1])) {
+      // Skip if starts with stopword (for n > 1)
+      // We allow ending with stopwords since phrases like "depth of field" are valid
+      if (n > 1 && isStopword[i]) {
         continue;
       }
 
