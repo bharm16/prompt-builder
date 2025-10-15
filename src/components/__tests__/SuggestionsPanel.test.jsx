@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { SuggestionsPanel } from '../PromptEnhancementEditor.jsx';
 
@@ -11,7 +11,7 @@ describe('SuggestionsPanel', () => {
     vi.useRealTimers();
   });
 
-  it('renders flat suggestions and handles click', () => {
+  it('renders flat suggestions and handles click', async () => {
     const onSuggestionClick = vi.fn();
     render(
       <SuggestionsPanel
@@ -27,7 +27,7 @@ describe('SuggestionsPanel', () => {
       />
     );
     const btn = screen.getByRole('listitem', { name: /Suggestion 1/i });
-    fireEvent.click(btn);
+    await act(async () => { fireEvent.click(btn); });
     expect(onSuggestionClick).toHaveBeenCalledWith('opt 1');
   });
 
@@ -47,10 +47,12 @@ describe('SuggestionsPanel', () => {
       />
     );
     const input = screen.getByPlaceholderText(/make it more cinematic/i);
-    fireEvent.change(input, { target: { value: 'shorter and clearer' } });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'shorter and clearer' } });
+    });
     const genBtn = screen.getByRole('button', { name: /generate custom suggestions/i });
-    fireEvent.click(genBtn);
-    await Promise.resolve();
+    await act(async () => { fireEvent.click(genBtn); });
+    await act(async () => Promise.resolve());
     expect(fetchMock).toHaveBeenCalled();
     fetchMock.mockRestore();
   });

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Run unit tests
+        env:
+          NODE_ENV: test
+          ALLOWED_API_KEYS: dev-key-12345
+          METRICS_TOKEN: dev-metrics-token-12345
+        run: npm run test:unit -- --run
+
+      - name: Coverage (if configured)
+        run: |
+          if npm run | grep -q "test:coverage"; then
+            npm run test:coverage;
+          else
+            echo "No coverage script configured";
+          fi
