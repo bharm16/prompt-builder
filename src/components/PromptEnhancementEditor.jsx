@@ -419,66 +419,81 @@ export function SuggestionsPanel({ suggestionsData }) {
       role="complementary"
       aria-labelledby="suggestions-title"
     >
-      {/* Header */}
-      <header className="flex-shrink-0 px-5 py-4 border-b border-neutral-200 bg-white">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-          <h3 id="suggestions-title" className="text-xs font-semibold text-neutral-900 uppercase tracking-wide">
-            AI Suggestions
-          </h3>
+      {/* Modern Header with Glassmorphism */}
+      <header className="flex-shrink-0 px-4 py-3.5 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-1.5 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg shadow-sm ring-1 ring-neutral-200/50">
+              <Sparkles className="h-3.5 w-3.5 text-neutral-700" aria-hidden="true" />
+            </div>
+            <h3 id="suggestions-title" className="text-[13px] font-semibold text-neutral-900 tracking-tight">
+              AI Suggestions
+            </h3>
+          </div>
         </div>
         {hasActiveSuggestions && selectedText && (
-          <p className="mt-2 text-xs text-neutral-600 line-clamp-2" aria-label={`Selected text: ${selectedText}`}>
-            For: &quot;{selectedText}&quot;
-          </p>
+          <div className="mt-3">
+            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">For:</span>
+            <p className="mt-1 text-[12px] text-neutral-900 line-clamp-2 font-medium" aria-label={`Selected text: ${selectedText}`}>
+              &quot;{selectedText}&quot;
+            </p>
+          </div>
         )}
       </header>
 
       {hasActiveSuggestions && (
         <>
-          {/* Context hint for placeholder mode */}
+          {/* Modern Context Hint for Placeholder Mode */}
           {isPlaceholder && !isLoading && suggestions.length > 0 && (
-            <div className="flex-shrink-0 flex items-start gap-2 bg-info-50 border-l-2 border-info-600 p-3 border-b border-neutral-200">
-              <Info className="h-4 w-4 flex-shrink-0 text-info-700 mt-0.5" aria-hidden="true" />
-              <p className="text-xs break-words text-info-900">
-                These are context-aware values that can replace your placeholder
+            <div className="flex-shrink-0 flex items-start gap-3 bg-blue-50 border-l-4 border-blue-500 p-4 border-b border-neutral-200">
+              <div className="p-1 bg-blue-100 rounded-lg">
+                <Info className="h-3.5 w-3.5 flex-shrink-0 text-blue-700" aria-hidden="true" />
+              </div>
+              <p className="text-[12px] leading-relaxed break-words text-blue-900 font-medium">
+                Context-aware values to replace your placeholder
               </p>
             </div>
           )}
 
-          {/* Category Tabs - Only show if we have multiple categories */}
+          {/* Modern Category Tabs - Only show if we have multiple categories */}
           {!isLoading && categories.length > 1 && (
-            <div className="flex-shrink-0 flex flex-wrap gap-1.5 p-3 border-b bg-neutral-50">
+            <div className="flex-shrink-0 flex flex-wrap gap-2 p-4 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white">
               {categories.map((cat) => (
                 <button
                   key={cat.category}
                   onClick={() => setActiveCategory(cat.category)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all duration-150 ${
                     activeCategory === cat.category
-                      ? 'bg-primary-700 text-white shadow-xs'
-                      : 'bg-white text-neutral-700 hover:bg-neutral-50 border border-neutral-300'
+                      ? 'bg-neutral-900 text-white shadow-sm'
+                      : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-300 hover:border-neutral-400'
                   }`}
                   aria-pressed={activeCategory === cat.category}
                   aria-label={`Category: ${cat.category} (${cat.suggestions.length} options)`}
                 >
-                  {cat.category}
-                  <span className="ml-1.5 opacity-75">({cat.suggestions.length})</span>
+                  <span>{cat.category}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    activeCategory === cat.category
+                      ? 'bg-white/20'
+                      : 'bg-neutral-200 text-neutral-600'
+                  }`}>
+                    {cat.suggestions.length}
+                  </span>
                 </button>
               ))}
             </div>
           )}
 
-          {/* Custom Request Input */}
-          <div className="flex-shrink-0 border-b border-neutral-200 bg-neutral-50 p-3">
-            <label htmlFor="custom-request" className="block mb-2 text-xs font-medium text-neutral-800">
-              Custom request:
+          {/* Modern Custom Request Input */}
+          <div className="flex-shrink-0 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white p-4">
+            <label htmlFor="custom-request" className="block mb-2 text-[11px] font-semibold text-neutral-700 uppercase tracking-wider">
+              Custom Request
             </label>
             <textarea
               id="custom-request"
               value={customRequest}
               onChange={(e) => setCustomRequest(e.target.value)}
               placeholder="e.g., Make it more cinematic, Add more emotion, Simplify the language..."
-              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white focus:border-primary-600 focus:ring-1 focus:ring-primary-600 transition-colors shadow-xs resize-none"
+              className="w-full px-3 py-2.5 text-[13px] border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 transition-all duration-150 resize-none placeholder:text-neutral-400"
               rows={2}
               aria-describedby="custom-request-hint"
             />
@@ -488,7 +503,7 @@ export function SuggestionsPanel({ suggestionsData }) {
             <button
               onClick={handleCustomRequest}
               disabled={!customRequest.trim() || isCustomLoading}
-              className="btn-primary w-full mt-2 btn-sm"
+              className="inline-flex items-center justify-center gap-2 w-full mt-3 px-4 py-2.5 text-[13px] font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm"
               aria-label="Generate custom suggestions based on your request"
             >
               {isCustomLoading ? (
@@ -499,7 +514,7 @@ export function SuggestionsPanel({ suggestionsData }) {
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  <span>Get Custom Suggestions</span>
+                  <span>Get Suggestions</span>
                 </>
               )}
             </button>
@@ -511,24 +526,38 @@ export function SuggestionsPanel({ suggestionsData }) {
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {hasActiveSuggestions ? (
           <>
-            {/* Loading State */}
+            {/* Modern Skeleton Loading State */}
             {isLoading && (
-              <div className="flex flex-1 items-center justify-center py-12" role="status" aria-live="polite">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary-700" aria-hidden="true" />
-                  <span className="text-sm text-neutral-600 font-medium">
-                    {isPlaceholder
-                      ? 'Finding relevant values...'
-                      : 'Analyzing context...'}
-                  </span>
-                </div>
+              <div className="p-4 space-y-3" role="status" aria-live="polite">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="relative overflow-hidden p-4 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
+                    style={{
+                      animationDelay: `${i * 75}ms`,
+                      animationDuration: '1.5s'
+                    }}
+                  >
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+
+                    <div className="relative space-y-2.5">
+                      <div className="h-4 bg-neutral-200/70 rounded-md w-3/4" />
+                      <div className="h-3 bg-neutral-200/50 rounded-md w-full" />
+                      <div className="h-3 bg-neutral-200/50 rounded-md w-5/6" />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-center text-[13px] text-neutral-500 font-medium mt-6">
+                  {isPlaceholder ? 'Finding relevant values...' : 'Analyzing context...'}
+                </p>
               </div>
             )}
 
-            {/* Suggestions List */}
+            {/* Modern Suggestions List with Stagger Animation */}
             {!isLoading && currentSuggestions.length > 0 && (
               <div
-                className="flex-1 min-h-0 space-y-2 overflow-y-auto p-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
+                className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
                 role="list"
                 aria-label="Suggestion options"
                 style={{
@@ -536,64 +565,125 @@ export function SuggestionsPanel({ suggestionsData }) {
                   scrollbarColor: '#d1d5db #f3f4f6'
                 }}>
               {currentSuggestions.map((suggestion, index) => (
-                <button
+                <div
                   key={index}
-                  onClick={() => onSuggestionClick(suggestion.text)}
-                  className="group w-full p-3 text-left rounded-lg border border-neutral-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm transition-all"
-                  role="listitem"
-                  aria-label={`Suggestion ${index + 1}: ${suggestion.text.substring(0, 50)}...`}
+                  className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
+                  style={{
+                    animationDelay: `${index * 50}ms`
+                  }}
                 >
-                  {isPlaceholder && suggestion.explanation ? (
-                    // Value suggestion with explanation
-                    <div className="space-y-1.5">
-                      <div className="text-sm font-medium text-neutral-900 break-words group-hover:text-primary-900">
+                  <button
+                    onClick={() => onSuggestionClick(suggestion.text)}
+                    className="w-full p-3.5 text-left rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+                    role="listitem"
+                    aria-label={`Suggestion ${index + 1}: ${suggestion.text.substring(0, 50)}...`}
+                  >
+                    {/* Keyboard Shortcut Indicator */}
+                    {index < 8 && (
+                      <kbd className="absolute top-3 right-3 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        {index + 1}
+                      </kbd>
+                    )}
+
+                    {isPlaceholder && suggestion.explanation ? (
+                      // Value suggestion with explanation
+                      <div className="space-y-2 pr-6">
+                        <div className="text-[14px] font-semibold text-neutral-900 break-words leading-snug">
+                          {suggestion.text}
+                        </div>
+                        <div className="text-[12px] leading-relaxed text-neutral-600 break-words">
+                          {suggestion.explanation}
+                        </div>
+                      </div>
+                    ) : (
+                      // Regular rewrite suggestion
+                      <div className="text-[14px] leading-relaxed text-neutral-900 break-words whitespace-pre-wrap pr-6">
                         {suggestion.text}
                       </div>
-                      <div className="text-xs leading-relaxed text-neutral-600 break-words">
-                        {suggestion.explanation}
-                      </div>
+                    )}
+
+                    {/* Hover Action Bar */}
+                    <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(suggestion.text);
+                        }}
+                        className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                      >
+                        Copy
+                      </button>
+                      <span className="text-neutral-300">•</span>
+                      <span className="text-[11px] text-neutral-500">
+                        Click to apply
+                      </span>
                     </div>
-                  ) : (
-                    // Regular rewrite suggestion
-                    <div className="text-sm leading-relaxed text-neutral-800 break-words whitespace-pre-wrap group-hover:text-neutral-900">
-                      {suggestion.text}
-                    </div>
-                  )}
-                </button>
+                  </button>
+                </div>
                 ))}
               </div>
             )}
 
-            {/* Empty State - No Suggestions Found */}
+            {/* Modern Empty State - No Suggestions Found */}
             {!isLoading && (!suggestions || suggestions.length === 0 || currentSuggestions.length === 0) && (
               <div className="flex flex-1 items-center justify-center py-12">
-                <div className="px-4 text-center">
-                  <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-400" aria-hidden="true" />
-                  <p className="text-sm text-neutral-700 font-medium mb-1">
+                <div className="px-4 text-center max-w-[240px]">
+                  <div className="relative inline-flex mb-4">
+                    <div className="absolute inset-0 bg-neutral-200/50 rounded-full blur-xl animate-pulse" />
+                    <div className="relative p-3 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-2xl shadow-sm ring-1 ring-neutral-200/50">
+                      <Sparkles className="h-8 w-8 text-neutral-400" aria-hidden="true" />
+                    </div>
+                  </div>
+                  <p className="text-[14px] text-neutral-900 font-semibold mb-2">
                     No suggestions available
                   </p>
-                  <p className="text-xs text-neutral-600">
-                    Try selecting a different section or use a custom request
+                  <p className="text-[12px] text-neutral-600 leading-relaxed">
+                    Try selecting a different section or use a custom request above
                   </p>
                 </div>
               </div>
             )}
           </>
         ) : (
-          /* Default Empty State - No Selection Made */
+          /* Modern Default Empty State - No Selection Made */
           <div className="flex flex-1 items-center justify-center p-6">
-            <div className="text-center">
-              <Sparkles className="h-12 w-12 mx-auto mb-3 text-neutral-300" aria-hidden="true" />
-              <p className="text-sm text-neutral-600 font-medium mb-2">
-                Select text to get suggestions
-              </p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Highlight any part of your optimized prompt to see AI-powered suggestions for improvement
+            <div className="text-center max-w-[240px]">
+              <div className="relative inline-flex mb-4">
+                <div className="absolute inset-0 bg-neutral-200/50 rounded-full blur-xl animate-pulse" />
+                <div className="relative p-3 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-2xl shadow-sm ring-1 ring-neutral-200/50">
+                  <Sparkles className="h-8 w-8 text-neutral-400" aria-hidden="true" />
+                </div>
+              </div>
+              <h4 className="text-[14px] font-semibold text-neutral-900 mb-2">
+                Ready to enhance
+              </h4>
+              <p className="text-[12px] text-neutral-600 leading-relaxed">
+                Highlight any part of your prompt to see AI-powered suggestions for improvement
               </p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Add Custom CSS for Animations */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes shimmer {
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </aside>
   );
 }

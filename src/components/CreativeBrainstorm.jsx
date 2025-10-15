@@ -197,6 +197,39 @@ export default function CreativeBrainstorm({
   const filledCount = Object.values(elements).filter((v) => v).length;
   const isReadyToGenerate = filledCount >= 3;
 
+  // Keyboard shortcuts for suggestion selection
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Only handle number keys when suggestions are visible
+      if (!activeElement || suggestions.length === 0) return;
+
+      const key = parseInt(e.key);
+      if (key >= 1 && key <= Math.min(suggestions.length, 8)) {
+        e.preventDefault();
+        const suggestion = suggestions[key - 1];
+        if (suggestion) {
+          handleSuggestionClick(suggestion);
+        }
+      }
+
+      // Escape to close suggestions
+      if (e.key === 'Escape' && activeElement) {
+        setActiveElement(null);
+        setSuggestions([]);
+        setNeedsRefresh(false);
+      }
+
+      // R to refresh suggestions
+      if (e.key === 'r' && activeElement && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        fetchSuggestionsForElement(activeElement);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [activeElement, suggestions]);
+
   return (
     <div className="mx-auto w-full max-w-4xl">
       <div className="mb-8 text-center">
@@ -301,72 +334,150 @@ export default function CreativeBrainstorm({
         })}
       </div>
 
+      {/* Modern AI Suggestions Panel - 2025 Redesign */}
       {activeElement && (
-        <div className="mb-8 rounded-xl border-2 border-blue-300 bg-white p-6 shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">
-              <Sparkles className="mr-2 inline h-5 w-5 text-blue-600" />
-              Suggestions for {elementConfig[activeElement].label}
-            </h3>
-            <div className="flex items-center gap-2">
-              {needsRefresh && !isLoadingSuggestions && (
+        <div className="mb-8 rounded-xl border border-neutral-200 bg-white shadow-lg overflow-hidden">
+          {/* Modern Panel Header with Glassmorphism */}
+          <div className="px-5 py-4 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg shadow-sm ring-1 ring-neutral-200/50">
+                  <Sparkles className="h-4 w-4 text-neutral-700" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold text-neutral-900 tracking-tight">
+                    AI Suggestions
+                  </h3>
+                  <p className="text-[12px] text-neutral-600">
+                    For: {elementConfig[activeElement].label}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {needsRefresh && !isLoadingSuggestions && (
+                  <button
+                    onClick={() => fetchSuggestionsForElement(activeElement)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-neutral-900 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-all duration-150 active:scale-95"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Refresh
+                  </button>
+                )}
                 <button
-                  onClick={() => fetchSuggestionsForElement(activeElement)}
-                  className="flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-200"
+                  onClick={() => {
+                    setActiveElement(null);
+                    setSuggestions([]);
+                    setNeedsRefresh(false);
+                  }}
+                  className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-all duration-150"
+                  title="Close suggestions"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
+                  <X className="h-4 w-4" />
                 </button>
-              )}
-              <button
-                onClick={() => {
-                  setActiveElement(null);
-                  setSuggestions([]);
-                  setNeedsRefresh(false);
-                }}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              </div>
             </div>
           </div>
 
+          {/* Context Change Alert */}
           {needsRefresh && !isLoadingSuggestions && (
-            <div className="mb-4 rounded-lg border-2 border-yellow-200 bg-yellow-50 p-3">
-              <p className="text-sm text-yellow-800">
-                💡 Other elements have changed. Click &quot;Refresh&quot; to get
-                updated suggestions based on your new context.
+            <div className="mx-5 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-[13px] text-amber-800 leading-relaxed">
+                💡 Other elements have changed. Click "Refresh" to get updated suggestions.
               </p>
             </div>
           )}
 
-          {isLoadingSuggestions ? (
-            <div className="py-8 text-center">
-              <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-600" />
-              <p className="text-sm text-gray-600">
-                Finding creative options...
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {suggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="rounded-lg border-2 border-gray-200 p-4 text-left transition-all hover:border-blue-400 hover:shadow-md"
-                >
-                  <div className="mb-1 font-semibold text-gray-900">
-                    {suggestion.text}
-                  </div>
-                  {suggestion.explanation && (
-                    <div className="text-xs text-gray-600">
-                      {suggestion.explanation}
+          {/* Panel Content */}
+          <div className="p-5">
+            {isLoadingSuggestions ? (
+              /* Modern Skeleton Loader with Shimmer Effect */
+              <div className="grid gap-3 md:grid-cols-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="relative overflow-hidden p-4 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
+                    style={{
+                      animationDelay: `${i * 75}ms`,
+                      animationDuration: '1.5s'
+                    }}
+                  >
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+
+                    <div className="relative space-y-2.5">
+                      <div className="h-4 bg-neutral-200/70 rounded-md w-3/4" />
+                      <div className="h-3 bg-neutral-200/50 rounded-md w-full" />
+                      <div className="h-3 bg-neutral-200/50 rounded-md w-5/6" />
                     </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Modern Suggestion Cards with Stagger Animation */
+              <div className="grid gap-3 md:grid-cols-2">
+                {suggestions.map((suggestion, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
+                    style={{
+                      animationDelay: `${idx * 50}ms`
+                    }}
+                  >
+                    <button
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full p-4 text-left bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+                    >
+                      {/* Keyboard Shortcut Indicator */}
+                      {idx < 8 && (
+                        <kbd className="absolute top-3 right-3 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                          {idx + 1}
+                        </kbd>
+                      )}
+
+                      <div className="mb-2 pr-6">
+                        <div className="text-[14px] font-semibold text-neutral-900 leading-snug">
+                          {suggestion.text}
+                        </div>
+                      </div>
+
+                      {suggestion.explanation && (
+                        <div className="text-[12px] text-neutral-600 leading-relaxed line-clamp-2">
+                          {suggestion.explanation}
+                        </div>
+                      )}
+
+                      {/* Hover Action Bar */}
+                      <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(suggestion.text);
+                          }}
+                          className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                        >
+                          Copy
+                        </button>
+                        <span className="text-neutral-300">•</span>
+                        <span className="text-[11px] text-neutral-500">
+                          Click to apply
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Bottom Helper Text */}
+            {!isLoadingSuggestions && suggestions.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-neutral-200 text-center">
+                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                  Use number keys 1-{Math.min(suggestions.length, 8)} • Press <kbd className="px-1.5 py-0.5 text-[10px] font-semibold bg-neutral-100 border border-neutral-200 rounded">Esc</kbd> to close • <kbd className="px-1.5 py-0.5 text-[10px] font-semibold bg-neutral-100 border border-neutral-200 rounded">R</kbd> to refresh
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -409,6 +520,26 @@ export default function CreativeBrainstorm({
           )}
         </button>
       </div>
+
+      {/* Add Custom CSS for Animations */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes shimmer {
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </div>
   );
 }
