@@ -2,6 +2,7 @@ import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
+import { generateVideoPrompt } from './VideoPromptTemplates.js';
 
 /**
  * Service for generating creative suggestions for video elements
@@ -1029,13 +1030,19 @@ Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
 Provide 8 diverse, creative subjects that would make compelling video content. Consider:
-- People (specific types, ages, professions, activities)
-- Products (tech, fashion, food, vehicles, etc.)
-- Animals (specific species with interesting behaviors)
-- Objects (with narrative potential)
-- Abstract concepts (visualized creatively)
+- People (with 2-3 distinctive visual details: "elderly street musician with weathered hands and silver harmonica")
+- Products (specific make/model with visual characteristics: "matte black DJI drone with amber LED lights")
+- Animals (species + behavior/appearance: "bengal cat with spotted coat stalking prey")
+- Objects (with texture/material details: "antique brass compass with worn patina")
+- Abstract concepts (visualized with specific metaphors: "time visualized as golden sand particles")
 
-Each suggestion should be SPECIFIC and VISUAL. Not "a person" but "elderly street musician" or "parkour athlete in motion".`,
+Apply VIDEO PROMPT PRINCIPLES:
+✓ SPECIFIC not generic: "weathered leather journal" not "old book"
+✓ 2-3 distinctive visual details
+✓ Describe what camera can SEE
+✓ Use professional terminology where appropriate
+
+Each suggestion should be SHORT (2-8 words) and visually evocative.`,
 
       action: `Generate creative suggestions for the ACTION/ACTIVITY in a video.
 
@@ -1044,13 +1051,20 @@ Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
 Provide 8 dynamic, visual actions that work well in video. Consider:
-- Physical movement (running, jumping, dancing, floating, falling)
-- Transformation (morphing, dissolving, assembling, exploding)
-- Interaction (holding, throwing, catching, touching)
-- Performance (playing instrument, cooking, creating art)
-- Natural phenomena (growing, flowing, burning, freezing)
+- Physical movement (with specific manner: "sprinting through rain-slicked alley")
+- Transformation (with visible process: "ink dissolving into clear water")
+- Interaction (with object details: "catching spinning basketball mid-air")
+- Performance (with technique: "playing cello with aggressive bow strokes")
+- Natural phenomena (with visual progression: "ice crystallizing across window pane")
 
-Each action should be SPECIFIC and CINEMATIC. Not "moving" but "leaping over obstacles in slow motion".`,
+CRITICAL - Apply ONE MAIN ACTION RULE:
+✓ ONE clear, specific action only (not "running, jumping, and spinning")
+✓ "leaping over concrete barriers" not "parkour routine with flips and spins"
+✓ Optimal for 4-8 second clips
+✓ Physically plausible and visually clear
+
+Use CINEMATIC terminology: "slow dolly in", "rack focus", "tracking shot".
+Each action should be SHORT (2-8 words) and immediately visualizable.`,
 
       location: `Generate creative suggestions for the LOCATION/SETTING of a video.
 
@@ -1103,14 +1117,19 @@ Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 distinct visual styles. Consider:
-- Film genres (cinematic blockbuster, documentary, film noir, etc.)
-- Animation styles (anime, claymation, CGI, rotoscope)
-- Art movements (impressionist, cubist, minimalist, maximalist)
-- Photographic styles (vintage film, digital clean, lomography)
-- Technical approaches (slow-motion, time-lapse, hyper-lapse, macro)
+Provide 8 distinct visual styles using SPECIFIC references (NOT generic):
+- Film stock/format: "shot on 35mm film", "Super 8 footage with light leaks", "16mm Kodak Vision3"
+- Genre aesthetics: "film noir with high-contrast shadows", "documentary verité style", "French New Wave aesthetic"
+- Director/cinematographer style: "in the style of Wes Anderson", "Roger Deakins naturalism", "Christopher Doyle neon-lit"
+- Art movements: "German Expressionist angles", "Italian Neorealism rawness"
+- Technical processes: "anamorphic lens flares", "tilt-shift miniature effect", "infrared color spectrum"
 
-Each style should be SPECIFIC with technical implications. Not "artistic" but "1970s Super 8 film with warm grain and light leaks".`,
+CRITICAL - Avoid generic terms:
+✗ "cinematic" → ✓ "shot on 35mm film with shallow depth of field"
+✗ "artistic" → ✓ "impressionist soft focus with pastel color palette"
+✗ "moody" → ✓ "film noir aesthetic with Rembrandt lighting"
+
+Each suggestion should include TECHNICAL implications (film stock, lens type, color grading, etc.).`,
 
       event: `Generate creative suggestions for the EVENT/CONTEXT of a video.
 
@@ -1131,14 +1150,55 @@ Each event should provide NARRATIVE PURPOSE. Not "something happening" but "prod
     const basePrompt =
       elementPrompts[elementType] || elementPrompts.subject;
 
+    // Extract key principles from video prompt template
+    const videoPromptPrinciples = `
+**VIDEO PROMPT TEMPLATE PRINCIPLES (Use these as your baseline):**
+These principles are from our production-ready video prompt template and should guide all suggestions:
+
+1. **Specificity Over Generic**: "a weathered oak desk" is superior to "a nice desk"
+   - Use concrete, visual details
+   - Include 2-3 distinctive characteristics
+   - Avoid vague adjectives
+
+2. **Cinematic Language**: Use professional film terminology
+   - Camera: dolly, crane, rack focus, shallow DOF, f/1.8
+   - Lighting: Rembrandt lighting, 3:1 contrast, soft window light
+   - Style: shot on 35mm film, film noir aesthetic, in the style of [director]
+
+3. **One Main Action Rule**: Multiple actions severely degrade quality
+   - Focus on ONE clear, specific, physically plausible action
+   - "leaping over obstacles in slow motion" not "running, jumping, and spinning"
+
+4. **Visual Precedence**: Describe only what the camera can SEE
+   - Translate emotions into visible actions/environmental details
+   - "elderly historian with trembling hands" not "a sad old person"
+
+5. **Element Order = Priority**: First elements get processed first by AI
+   - Most important visual element should come first
+   - Shot type establishes composition
+   - Subject defines focus
+   - Action creates movement
+
+6. **Duration Context**: Optimal clips are 4-8 seconds
+   - Keep actions simple and clear
+   - Avoid complex narratives (use multiple clips instead)
+
+7. **Style References**: Avoid generic terms like "cinematic"
+   - Use film stock: "shot on 35mm film", "Super 8 footage"
+   - Use genre: "film noir aesthetic", "documentary realism"
+   - Use director references: "in the style of Wes Anderson"
+`;
+
     return `You are a creative video consultant specializing in contextually-aware, visually compelling suggestions.
+
+${videoPromptPrinciples}
 
 ${analysisProcess}
 
 ${basePrompt}
 
 **Your Task:**
-Generate 8 creative, specific suggestions for this element.
+Generate 8 creative, specific suggestions for this element, following the VIDEO PROMPT TEMPLATE PRINCIPLES above.
 
 **Contextual Harmony Requirements:**
 ✓ If existing context provided, ensure suggestions COMPLEMENT those elements

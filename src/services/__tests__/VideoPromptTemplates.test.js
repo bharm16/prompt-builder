@@ -29,17 +29,17 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
 
     it('should include research-based structure guidance', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('SHOT TYPE');
-      expect(result).toContain('SUBJECT');
-      expect(result).toContain('ACTION');
-      expect(result).toContain('CAMERA');
-      expect(result).toContain('LIGHTING');
+      expect(result).toContain('Shot Type:');
+      expect(result).toContain('Subject:');
+      expect(result).toContain('Action:');
+      expect(result).toContain('Camera:');
+      expect(result).toContain('Lighting:');
     });
 
     it('should emphasize single action per clip', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('One main action');
-      expect(result).toContain('multiple actions reduce quality');
+      expect(result).toContain('ONE clear, specific');
+      expect(result).toContain('severely degrade quality');
     });
 
     it('should include film language guidance', () => {
@@ -59,33 +59,33 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
 
     it('should include alternative approaches section', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('**ALTERNATIVE APPROACHES**');
+      expect(result).toContain('ALTERNATIVE APPROACHES');
       expect(result).toContain('40-50 words');
     });
 
-    it('should recommend 5-8 second duration (research-based)', () => {
+    it('should recommend 4-8 second duration (research-based)', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('5-8s');
-      expect(result).toContain('recommended');
+      expect(result).toContain('4-8s');
+      expect(result).toContain('Optimal');
     });
 
     it('should warn against prompts over 150 words', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('over 150 words');
+      expect(result).toContain('longer than 150 words');
     });
   });
 
   describe('Research-Based Best Practices Validation', () => {
     it('should emphasize priority ordering (first element = most important)', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('order = priority');
+      expect(result).toContain('order of importance');
       expect(result).toContain('FIRST');
     });
 
     it('should discourage multiple simultaneous actions', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('Multiple simultaneous actions');
-      expect(result).toMatch(/avoid.*multiple.*actions|multiple.*actions.*reduce/i);
+      expect(result).toContain('multiple simultaneous actions');
+      expect(result).toMatch(/multiple.*actions.*degrade/i);
     });
 
     it('should include example showing proper structure', () => {
@@ -107,7 +107,7 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
       const result = generateVideoPrompt(testPrompt);
       expect(result).toContain('OUTPUT FORMAT');
       expect(result).toContain('Begin directly');
-      expect(result).toContain('No preamble');
+      expect(result).toContain('Do not include any preamble');
     });
   });
 
@@ -152,7 +152,7 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
     it('should include all required structural elements', () => {
       const result = generateVideoPrompt(testPrompt);
       const requiredElements = [
-        'REQUIRED ELEMENTS',
+        'GUIDING PRINCIPLES',
         'WRITING RULES',
         'AVOID',
         'EXAMPLE',
@@ -168,13 +168,13 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
 
     it('should provide 7 required elements in priority order', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('1. Shot type');
-      expect(result).toContain('2. Subject');
-      expect(result).toContain('3. Action');
-      expect(result).toContain('4. Setting');
-      expect(result).toContain('5. Camera');
-      expect(result).toContain('6. Lighting');
-      expect(result).toContain('7. Style');
+      expect(result).toContain('1.  **Shot Type:**');
+      expect(result).toContain('2.  **Subject:**');
+      expect(result).toContain('3.  **Action:**');
+      expect(result).toContain('4.  **Setting:**');
+      expect(result).toContain('5.  **Camera:**');
+      expect(result).toContain('6.  **Lighting:**');
+      expect(result).toContain('7.  **Style:**');
     });
 
     it('should provide at least 5 writing rules', () => {
@@ -184,18 +184,18 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
       expect(checkMarks.length).toBeGreaterThanOrEqual(5);
     });
 
-    it('should provide at least 5 avoid patterns', () => {
+    it('should provide at least 4 avoid patterns', () => {
       const result = generateVideoPrompt(testPrompt);
       const xMarks = result.match(/✗/g);
       expect(xMarks).toBeTruthy();
-      expect(xMarks.length).toBeGreaterThanOrEqual(5);
+      expect(xMarks.length).toBeGreaterThanOrEqual(4);
     });
   });
 
   describe('Quality Assurance', () => {
     it('should be instructional for Claude (not for end user)', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('Transform this');
+      expect(result).toContain('Transform the following');
       // Should be instructions TO Claude, not the final output itself
     });
 
@@ -208,9 +208,9 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
 
     it('should discourage verbose output', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('over 150 words');
-      expect(result).toContain('Complex narratives');
-      expect(result).toContain('use multiple clips instead');
+      expect(result).toContain('longer than 150 words');
+      expect(result).toContain('sequence of events');
+      expect(result).toContain('Use multiple clips');
     });
 
     it('should encourage specific visual language', () => {

@@ -1,67 +1,80 @@
 /**
- * Video prompt template for AI video generation
- * Targets: Sora, Veo3, RunwayML, Kling, Luma
- * Length: 100-150 words
+ * Generate an optimized, production-ready video prompt for AI video generation models.
+ * This template is designed for models like Sora, Veo, RunwayML, Kling, and Luma.
+ * It enforces a structured, cinematic approach to maximize prompt adherence and output quality.
+ *
+ * @param {string} userConcept - The user's core creative idea for the video clip.
+ * @returns {string} A formatted and optimized prompt ready for an AI video generation API.
  */
+export function generateUniversalVideoPrompt(userConcept) {
+  return `
+Transform the following user concept into a production-ready AI video prompt (100-150 words).
 
-/**
- * Generate optimized video prompt
- * @param {string} userPrompt - User's video concept
- * @returns {string} Formatted prompt template
- */
-export function generateVideoPrompt(userPrompt) {
-  return `Transform this into a production-ready AI video prompt (100-150 words).
+User's concept: "${userConcept}"
 
-User's concept: "${userPrompt}"
+---
 
-Write ONE paragraph following this structure:
+**PROMPT:**
 
-[SHOT TYPE] [SUBJECT doing ACTION] in/at [SETTING], [CAMERA BEHAVIOR], [LIGHTING], [STYLE/MOOD]
+Write ONE descriptive paragraph following this precise structure:
 
-REQUIRED ELEMENTS (in order of importance):
-1. Shot type: wide shot, medium shot, close-up, extreme close-up
-2. Subject: who/what with 2-3 distinctive visual details
-3. Action: one clear, specific action (avoid multiple actions)
-4. Setting: where this takes place, time of day if relevant
-5. Camera: movement (dolly, crane, handheld, static) and angle
-6. Lighting: source, direction, quality (e.g., "soft window light from left")
-7. Style: film reference or aesthetic (e.g., "cinematic, shot on 35mm")
+ of performing in/at,, under, in a.
 
-WRITING RULES:
-✓ Keep total output 100-150 words (AI models follow short prompts better)
-✓ Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8, etc.
-✓ One main action per clip (multiple actions reduce quality)
-✓ Put most important element FIRST (order = priority in AI processing)
-✓ Describe what camera sees, not emotions or feelings
-✓ Specific over generic: "weathered oak table" not "nice table"
-✓ For 4-8 second clips, keep action simple and clear
+---
 
-AVOID:
-✗ Prompts over 150 words
-✗ Multiple simultaneous actions
-✗ Emotional adjectives without visual grounding
-✗ Instructive language ("don't show", "avoid", "no")
-✗ Complex narratives (use multiple clips instead)
+**GUIDING PRINCIPLES (in order of importance):**
+1.  **Shot Type:** Start with the framing (e.g., wide shot, medium shot, close-up, extreme close-up). This establishes the entire scene's composition first.
+2.  **Subject:** Clearly define the main subject. Include 2-3 specific, visible details (e.g., "a woman in a red trench coat with blonde hair") to ensure consistency and avoid generic outputs.
+3.  **Action:** Describe ONE clear, specific, and physically plausible action. Multiple actions in one prompt severely degrade quality due to the architectural constraints of video models.
+4.  **Setting:** Ground the action in a specific location and time (e.g., "a neon-lit Tokyo alley at midnight," "a serene beach at golden hour").
+5.  **Camera:** Detail the camera's behavior. Specify both movement (e.g., static, slow dolly in, handheld tracking) and angle (e.g., low angle, high angle, eye-level).
+6.  **Lighting:** Describe the light to control the mood. Specify its source (e.g., "soft window light"), direction (e.g., "from the left"), and quality (e.g., "creating deep shadows").
+7.  **Style:** Provide a specific aesthetic reference. Avoid generic terms like "cinematic." Instead, use film stock ("shot on 35mm film"), genre ("film noir aesthetic"), or an artist/director reference ("in the style of Wes Anderson").
 
-EXAMPLE STRUCTURE:
-"Close-up of weathered hands turning pages of leather-bound book on oak desk, camera slowly dollies back to reveal Lincoln in candlelit study, soft amber glow from three candles on left creating 3:1 contrast, 50mm lens with shallow depth of field, cinematic style shot on 35mm, 1860s period details visible in background."
+---
 
-After the main prompt, add:
+**WRITING RULES:**
+✓ Total prompt length should be 100-150 words. Models follow concise, dense prompts more reliably.
+✓ Use professional cinematic and photographic language (e.g., dolly, crane, rack focus, shallow DOF, f/1.8, Rembrandt lighting).
+✓ The order of elements in the prompt paragraph dictates their priority in the AI's processing. Place the most important element FIRST.
+✓ Describe only what the camera can SEE. Translate emotions and concepts into visible actions and environmental details.
+✓ Be specific over generic: "a weathered oak desk" is superior to "a nice desk."
+
+**AVOID:**
+✗ Prompts longer than 150 words.
+✗ Describing multiple simultaneous actions or a sequence of events. (Use multiple clips for a narrative.)
+✗ Using ungrounded emotional adjectives (e.g., "a sad man").
+✗ Using negative or instructive language (e.g., "don't show," "avoid," "no people"). Describe what you *want* to see instead.
+
+---
+
+**EXAMPLE STRUCTURED PROMPT:**
+"Close-up of weathered, wrinkled hands slowly turning the pages of a large, leather-bound book on a dark oak desk. The camera slowly dollies back to reveal an elderly historian in a candlelit study. The scene is lit by a single, warm candle on the left, creating dramatic, low-key lighting with a high contrast ratio. The style is moody and atmospheric, shot on 35mm film with a shallow depth of field, f/1.8, creating significant bokeh in the background."
+
+---
+
+After the main prompt paragraph, add the following technical and creative specifications:
 
 **TECHNICAL SPECS**
-Duration: 5-8s (recommended for best instruction-following) | Aspect Ratio: 16:9 or 2.39:1 | Frame Rate: 24fps | Style: [one-word aesthetic reference]
+- **Duration:** 4-8s (Optimal for instruction-following and quality)
+- **Aspect Ratio:** 16:9 (Landscape), 9:16 (Vertical), or 2.39:1 (Cinematic)
+- **Frame Rate:** 24fps (Filmic) or 30fps (Standard Video)
+- **Audio:**
 
-**ALTERNATIVE APPROACHES** (2 variations, 40-50 words each)
-Provide two brief alternatives that explore:
-- Different camera angle or movement
-- Different lighting setup
-- Different moment in the same scene
+**ALTERNATIVE APPROACHES (2 variations, 40-50 words each)**
+Provide two brief, alternative prompts that explore different creative choices for the same core concept. This facilitates A/B testing and rapid iteration.
+- **Variation 1 (Different Camera):** Explore a different camera angle or movement (e.g., "High-angle shot looking down...").
+- **Variation 2 (Different Lighting/Mood):** Explore a different lighting setup or mood (e.g., "Bright, high-key lighting from a large window...").
 
-Keep alternatives concise and maintain the same technical precision as the main prompt.
+---
 
-OUTPUT FORMAT:
-Begin directly with the description paragraph. No preamble, no "Here is your prompt", no explanations.`;
+**OUTPUT FORMAT:**
+Begin directly with the main prompt paragraph. Do not include any preamble, explanations, or conversational text.
+`;
 }
 
 // Export default for backwards compatibility
-export default { generateVideoPrompt };
+export default { generateUniversalVideoPrompt };
+
+// Also export with old name for backwards compatibility
+export const generateVideoPrompt = generateUniversalVideoPrompt;
