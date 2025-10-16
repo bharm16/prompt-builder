@@ -7,6 +7,7 @@ import {
   Check,
   Info,
   X,
+  Share2,
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
@@ -305,7 +306,9 @@ const FloatingToolbar = memo(({
   onCopy,
   onExport,
   onCreateNew,
+  onShare,
   copied,
+  shared,
   showExportMenu,
   onToggleExportMenu,
   showLegend,
@@ -340,6 +343,20 @@ const FloatingToolbar = memo(({
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied && <span className="text-xs">Copied</span>}
+      </button>
+
+      <button
+        onClick={onShare}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          shared
+            ? 'text-green-700 bg-green-50'
+            : 'text-neutral-700 hover:bg-neutral-100'
+        }`}
+        aria-label={shared ? 'Link copied' : 'Share prompt'}
+        title="Share"
+      >
+        {shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+        {shared && <span className="text-xs">Shared!</span>}
       </button>
 
       <button
@@ -414,6 +431,7 @@ export const PromptCanvas = ({
   qualityScore,
   selectedMode,
   currentMode,
+  promptUuid,
   onDisplayedPromptChange,
   onSkipAnimation,
   suggestionsData,
@@ -421,6 +439,7 @@ export const PromptCanvas = ({
   onCreateNew
 }) => {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
 
@@ -436,6 +455,19 @@ export const PromptCanvas = ({
     setCopied(true);
     toast.success('Copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = () => {
+    if (!promptUuid) {
+      toast.error('Save the prompt first to generate a share link');
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/share/${promptUuid}`;
+    navigator.clipboard.writeText(shareUrl);
+    setShared(true);
+    toast.success('Share link copied to clipboard!');
+    setTimeout(() => setShared(false), 2000);
   };
 
   const handleExport = (format) => {
@@ -758,7 +790,9 @@ export const PromptCanvas = ({
         onCopy={handleCopy}
         onExport={handleExport}
         onCreateNew={onCreateNew}
+        onShare={handleShare}
         copied={copied}
+        shared={shared}
         showExportMenu={showExportMenu}
         onToggleExportMenu={setShowExportMenu}
         showLegend={showLegend}

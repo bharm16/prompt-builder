@@ -16,8 +16,11 @@ import {
   getDocs,
   serverTimestamp,
   deleteDoc,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
+import { v4 as uuidv4 } from 'uuid';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -68,12 +71,14 @@ export const signOutUser = async () => {
 // Firestore functions
 export const savePromptToFirestore = async (userId, promptData) => {
   try {
+    const uuid = uuidv4();
     const docRef = await addDoc(collection(db, 'prompts'), {
       userId,
+      uuid,
       ...promptData,
       timestamp: serverTimestamp(),
     });
-    return docRef.id;
+    return { id: docRef.id, uuid };
   } catch (error) {
     console.error('Error saving prompt:', error);
     throw error;
@@ -204,6 +209,42 @@ export const deleteAllUserPrompts = async (userId) => {
     return querySnapshot.size;
   } catch (error) {
     console.error('Error deleting prompts during migration:', error);
+    throw error;
+  }
+};
+
+// Get prompt by UUID
+export const getPromptByUuid = async (uuid) => {
+  try {
+    const q = query(
+      collection(db, 'prompts'),
+      where('uuid', '==', uuid),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const doc = querySnapshot.docs[0];
+    const data = doc.data();
+
+    // Convert Firestore timestamp to ISO string
+    let timestamp = data.timestamp;
+    if (timestamp && timestamp.toDate) {
+      timestamp = timestamp.toDate().toISOString();
+    } else if (!timestamp) {
+      timestamp = new Date().toISOString();
+    }
+
+    return {
+      id: doc.id,
+      ...data,
+      timestamp,
+    };
+  } catch (error) {
+    console.error('Error fetching prompt by UUID:', error);
     throw error;
   }
 };
