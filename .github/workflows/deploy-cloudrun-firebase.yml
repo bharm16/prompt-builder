@@ -1,0 +1,95 @@
+name: Deploy to Cloud Run and Firebase Hosting
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  REGION: ${{ secrets.GCP_REGION }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  AR_REPO: ${{ secrets.GCP_ARTIFACT_REPO || 'containers' }}
+  IMAGE: prompt-builder
+  SERVICE: ${{ secrets.CLOUD_RUN_SERVICE || 'prompt-builder-api' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Configure Docker authentication for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+
+      - name: Build and push image with Cloud Build
+        run: |
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE}:${{ github.sha }}"
+          echo "Building ${IMAGE_URI}"
+          gcloud builds submit --tag "${IMAGE_URI}" .
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE_URI}" \
+            --region "${REGION}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --concurrency 80 \
+            --memory 512Mi \
+            --min-instances 0 \
+            --max-instances 10 \
+            --port 3001 \
+            --set-env-vars NODE_ENV=production
+          # Tip: After creating Secret Manager secrets, use --set-secrets to wire them at deploy time
+          # e.g. --set-secrets ALLOWED_API_KEYS=projects/${PROJECT_ID}/secrets/ALLOWED_API_KEYS:latest
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools
+
+      - name: Deploy to Firebase Hosting (target)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          TARGET=${{ github.event.inputs.environment || 'staging' }}
+          if [ "$TARGET" = "production" ]; then
+            firebase deploy --only hosting:production --project ${PROJECT_ID}
+          else
+            firebase deploy --only hosting:staging --project ${PROJECT_ID}
+          fi
+

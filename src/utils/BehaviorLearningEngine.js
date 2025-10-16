@@ -141,16 +141,18 @@ export class BehaviorLearningEngine {
       : 1.0; // High bonus for unseen phrases
 
     // UCB score = exploit + explore
-    const ucbScore = Math.min(1.0, exploitScore + (this.explorationRate * exploreBonus));
+    // Scale exploration bonus - cap it but allow it to boost low-sample phrases
+    const ucbScore = Math.min(1.0, exploitScore + (this.explorationRate * Math.min(exploreBonus, 4.0)));
 
     // Apply time decay (older patterns matter less)
     const daysSinceLastSeen = (Date.now() - data.lastSeen) / (1000 * 60 * 60 * 24);
     const decayFactor = Math.exp(-daysSinceLastSeen / 30); // 30-day half-life
 
-    // Also factor in sample size confidence
-    const sampleConfidence = Math.min(1.0, data.shown / 10); // Full confidence after 10+ samples
+    // For phrases with very few samples, give higher base confidence to encourage exploration
+    // Phrases with < 5 samples get a 0.9 base, gradually reducing to 1.0 after 20+ samples
+    const sampleConfidence = data.shown < 5 ? 0.9 : Math.min(1.0, 0.85 + (data.shown / 50));
 
-    return ucbScore * decayFactor * (0.5 + 0.5 * sampleConfidence);
+    return ucbScore * decayFactor * sampleConfidence;
   }
 
   /**

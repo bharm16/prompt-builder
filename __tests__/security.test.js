@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
+// Ensure server does not listen while running tests
+process.env.NODE_ENV = 'test';
 import app from '../server.js';
 
 describe('Security Tests', () => {
@@ -305,13 +307,12 @@ describe('Security Tests', () => {
       expect(response.status).not.toBe(403);
     });
 
-    it('should accept API key from query parameter', async () => {
+    it('should reject API key in query parameter', async () => {
       const response = await request(app)
         .post('/api/optimize?apiKey=dev-key-12345')
         .send({ prompt: 'test', mode: 'code' });
 
-      expect(response.status).not.toBe(401);
-      expect(response.status).not.toBe(403);
+      expect(response.status).toBe(401);
     });
   });
 });

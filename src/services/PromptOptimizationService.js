@@ -36,6 +36,8 @@ export class PromptOptimizationService {
   async optimize({ prompt, mode, context, useConstitutionalAI = false, useIterativeRefinement = false }) {
     logger.info('Optimizing prompt', { mode, promptLength: prompt?.length });
 
+    // No test-specific short-circuit here; tests should mock fetch at app level
+
     // Auto-detect mode if not provided
     if (!mode) {
       mode = await this.detectOptimalMode(prompt);

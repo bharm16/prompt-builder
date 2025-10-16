@@ -59,9 +59,68 @@ export default [
   },
   // Server-side configuration
   {
-    files: ['server.js', 'utils/**/*.js'],
+    files: ['server.js', 'utils/**/*.js', 'src/**/*.js', 'migrate-*.js', 'verify-*.js'],
     languageOptions: {
-      globals: globals.node,
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  // Test files configuration
+  {
+    files: ['__tests__/**/*.js', '**/*.test.js', 'vitest.setup.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        vi: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        global: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off', // Allow console in tests
+    },
+  },
+  // Load test files (k6)
+  {
+    files: ['load-tests/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        __ENV: 'readonly',
+        __VU: 'readonly',
+        __ITER: 'readonly',
+        open: 'readonly',
+        http: 'readonly',
+        check: 'readonly',
+        sleep: 'readonly',
+        group: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off', // Allow console in load tests
+      'no-undef': 'off', // K6 has many globals
+    },
+  },
+  // Prompt template files - disable secrets detection for false positives
+  {
+    files: ['src/services/PromptOptimizationService.js', 'src/services/EnhancementService.js'],
+    rules: {
+      'no-secrets/no-secrets': 'off', // Templates contain high-entropy strings
+    },
+  },
+  // Migration and utility scripts - allow console
+  {
+    files: ['migrate-*.js', 'verify-*.js'],
+    rules: {
+      'no-console': 'off', // Scripts need console output
     },
   },
 ];

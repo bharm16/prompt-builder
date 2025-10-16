@@ -7,6 +7,7 @@ import {
   Check,
   Info,
   X,
+  Share2,
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
@@ -27,6 +28,7 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
 
   // Helper function to remove emojis
   const removeEmojis = (str) => {
+    // eslint-disable-next-line security/detect-unsafe-regex
     return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
   };
 
@@ -289,7 +291,7 @@ const CategoryLegend = memo(({ show, onClose }) => {
             <li>• Auto-corrects typos with fuzzy matching</li>
           </ul>
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
-            Click highlights to teach the system what's important to you.
+            Click highlights to teach the system what&apos;s important to you.
           </p>
         </div>
       </div>
@@ -304,7 +306,9 @@ const FloatingToolbar = memo(({
   onCopy,
   onExport,
   onCreateNew,
+  onShare,
   copied,
+  shared,
   showExportMenu,
   onToggleExportMenu,
   showLegend,
@@ -339,6 +343,20 @@ const FloatingToolbar = memo(({
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied && <span className="text-xs">Copied</span>}
+      </button>
+
+      <button
+        onClick={onShare}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          shared
+            ? 'text-green-700 bg-green-50'
+            : 'text-neutral-700 hover:bg-neutral-100'
+        }`}
+        aria-label={shared ? 'Link copied' : 'Share prompt'}
+        title="Share"
+      >
+        {shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+        {shared && <span className="text-xs">Shared!</span>}
       </button>
 
       <button
@@ -413,6 +431,7 @@ export const PromptCanvas = ({
   qualityScore,
   selectedMode,
   currentMode,
+  promptUuid,
   onDisplayedPromptChange,
   onSkipAnimation,
   suggestionsData,
@@ -420,6 +439,7 @@ export const PromptCanvas = ({
   onCreateNew
 }) => {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
 
@@ -435,6 +455,19 @@ export const PromptCanvas = ({
     setCopied(true);
     toast.success('Copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = () => {
+    if (!promptUuid) {
+      toast.error('Save the prompt first to generate a share link');
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/share/${promptUuid}`;
+    navigator.clipboard.writeText(shareUrl);
+    setShared(true);
+    toast.success('Share link copied to clipboard!');
+    setTimeout(() => setShared(false), 2000);
   };
 
   const handleExport = (format) => {
@@ -487,26 +520,26 @@ export const PromptCanvas = ({
     }
   };
 
-  // Handle clicks on highlighted words
-  const handleHighlightClick = (e) => {
+  // Shared helper to trigger suggestions from a DOM target
+  const triggerSuggestionsFromTarget = (targetElement, e) => {
     // Only handle highlight clicks in video mode
     if (selectedMode !== 'video') {
       return;
     }
 
     // Check if clicked element or its parent is a highlighted word
-    let targetElement = e.target;
+    let node = targetElement;
 
     // Traverse up to find a value-word span (in case user clicks on text inside the span)
-    while (targetElement && targetElement !== editorRef.current) {
-      if (targetElement.classList && targetElement.classList.contains('value-word')) {
+    while (node && node !== editorRef.current) {
+      if (node.classList && node.classList.contains('value-word')) {
         // Prevent default text selection behavior
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
 
         // Get the word text and metadata
-        const wordText = targetElement.textContent.trim();
-        const category = targetElement.getAttribute('data-category');
-        const phrase = targetElement.getAttribute('data-phrase');
+        const wordText = node.textContent.trim();
+        const category = node.getAttribute('data-category');
+        const phrase = node.getAttribute('data-phrase');
 
         // Track this click for behavior learning
         adaptiveEngine.recordClick(phrase || wordText, category);
@@ -514,7 +547,7 @@ export const PromptCanvas = ({
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
           const range = document.createRange();
-          range.selectNodeContents(targetElement);
+          range.selectNodeContents(node);
 
           // Clear any existing selection
           const selection = window.getSelection();
@@ -527,8 +560,19 @@ export const PromptCanvas = ({
 
         return;
       }
-      targetElement = targetElement.parentElement;
+      node = node.parentElement;
     }
+  };
+
+  // Handle clicks on highlighted words
+  const handleHighlightClick = (e) => {
+    triggerSuggestionsFromTarget(e.target, e);
+  };
+
+  // Some headless environments can swallow click on contentEditable.
+  // Also listen on mousedown to reliably capture interactions.
+  const handleHighlightMouseDown = (e) => {
+    triggerSuggestionsFromTarget(e.target, e);
   };
 
   const handleCopyEvent = (e) => {
@@ -746,7 +790,9 @@ export const PromptCanvas = ({
         onCopy={handleCopy}
         onExport={handleExport}
         onCreateNew={onCreateNew}
+        onShare={handleShare}
         copied={copied}
+        shared={shared}
         showExportMenu={showExportMenu}
         onToggleExportMenu={setShowExportMenu}
         showLegend={showLegend}
@@ -791,6 +837,7 @@ export const PromptCanvas = ({
                 ref={editorRef}
                 onMouseUp={handleTextSelection}
                 onClick={handleHighlightClick}
+                onMouseDown={handleHighlightMouseDown}
                 onCopy={handleCopyEvent}
                 onInput={handleInput}
                 contentEditable

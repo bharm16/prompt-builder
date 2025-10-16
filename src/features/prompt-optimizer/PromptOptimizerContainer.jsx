@@ -13,8 +13,9 @@ import {
   MessageSquare,
   X,
 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth, getPromptByUuid } from '../../firebase';
 import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
@@ -32,6 +33,8 @@ function PromptOptimizerContent() {
     document.documentElement.classList.remove('dark');
   }, []);
 
+  const navigate = useNavigate();
+  const { uuid } = useParams();
   const toast = useToast();
   const { settings, updateSetting, resetSettings } = useSettings();
 
@@ -87,6 +90,7 @@ function PromptOptimizerContent() {
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState(null);
   const [conceptElements, setConceptElements] = useState(null);
+  const [currentPromptUuid, setCurrentPromptUuid] = useState(null);
 
   // Refs
   const debounceTimerRef = useRef(null);
@@ -103,6 +107,35 @@ function PromptOptimizerContent() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Load prompt from URL parameter if present
+  useEffect(() => {
+    const loadPromptFromUrl = async () => {
+      if (uuid && !currentPromptUuid) {
+        try {
+          const promptData = await getPromptByUuid(uuid);
+          if (promptData) {
+            promptOptimizer.setSkipAnimation(true);
+            promptOptimizer.setInputPrompt(promptData.input);
+            promptOptimizer.setOptimizedPrompt(promptData.output);
+            promptOptimizer.setDisplayedPrompt(promptData.output);
+            setSelectedMode(promptData.mode || 'optimize');
+            setCurrentPromptUuid(promptData.uuid);
+            setShowResults(true);
+          } else {
+            toast.error('Prompt not found');
+            navigate('/', { replace: true });
+          }
+        } catch (error) {
+          console.error('Error loading prompt from URL:', error);
+          toast.error('Failed to load prompt');
+          navigate('/', { replace: true });
+        }
+      }
+    };
+
+    loadPromptFromUrl();
+  }, [uuid, currentPromptUuid, navigate, toast, promptOptimizer, setSelectedMode]);
 
   // Cycle through AI names
   useEffect(() => {
@@ -148,9 +181,13 @@ function PromptOptimizerContent() {
     const result = await promptOptimizer.optimize(prompt, ctx);
     console.log('optimize result:', result);
     if (result) {
-      promptHistory.saveToHistory(prompt, result.optimized, result.score, selectedMode);
+      const uuid = await promptHistory.saveToHistory(prompt, result.optimized, result.score, selectedMode);
+      setCurrentPromptUuid(uuid);
       setShowResults(true);
       setShowHistory(true);
+      if (uuid) {
+        navigate(`/prompt/${uuid}`, { replace: true });
+      }
     }
   };
 
@@ -179,10 +216,14 @@ function PromptOptimizerContent() {
     setTimeout(async () => {
       const result = await promptOptimizer.optimize(finalConcept);
       if (result) {
-        promptHistory.saveToHistory(finalConcept, result.optimized, result.score, selectedMode);
+        const uuid = await promptHistory.saveToHistory(finalConcept, result.optimized, result.score, selectedMode);
+        setCurrentPromptUuid(uuid);
         setShowResults(true);
         setShowHistory(true);
         toast.success('Video prompt generated successfully!');
+        if (uuid) {
+          navigate(`/prompt/${uuid}`, { replace: true });
+        }
       }
     }, 100);
   };
@@ -198,6 +239,8 @@ function PromptOptimizerContent() {
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
+    setCurrentPromptUuid(null);
+    navigate('/', { replace: true });
   };
 
   // Load from history
@@ -207,6 +250,7 @@ function PromptOptimizerContent() {
     promptOptimizer.setOptimizedPrompt(entry.output);
     promptOptimizer.setDisplayedPrompt(entry.output);
     setSelectedMode(entry.mode);
+    setCurrentPromptUuid(entry.uuid || null);
     setShowResults(true);
   };
 
@@ -233,14 +277,10 @@ function PromptOptimizerContent() {
       return;
     }
 
-    debounceTimerRef.current = setTimeout(async () => {
-      const currentSelection = window.getSelection().toString().trim();
-      const cleanedCurrentSelection = currentSelection.replace(/^-\s*/, '');
-      if (cleanedCurrentSelection !== highlightedText) {
-        return;
-      }
-
-      lastRequestRef.current = highlightedText;
+    const performFetch = async () => {
+      // Track a unique request id so we ignore stale responses.
+      const requestId = Symbol('suggestions');
+      lastRequestRef.current = requestId;
 
       const highlightIndex = fullPrompt.indexOf(highlightedText);
       const contextBefore = fullPrompt
@@ -318,6 +358,11 @@ function PromptOptimizerContent() {
 
         const data = await response.json();
 
+        // Ignore if a newer request has started
+        if (lastRequestRef.current !== requestId) {
+          return;
+        }
+
         setSuggestionsData({
           show: true,
           selectedText: highlightedText,
@@ -355,10 +400,20 @@ function PromptOptimizerContent() {
         });
       } catch (error) {
         console.error('Error fetching suggestions:', error);
-        toast.error('Failed to load suggestions');
-        setSuggestionsData(null);
+        // Only surface the error if this is still the latest request
+        if (lastRequestRef.current === requestId) {
+          toast.error('Failed to load suggestions');
+          setSuggestionsData(null);
+        }
       }
-    }, 300);
+    };
+
+    // Immediate fetch for click on a highlighted word; debounce for text selection drags.
+    if (selectionRange) {
+      performFetch();
+    } else {
+      debounceTimerRef.current = setTimeout(performFetch, 300);
+    }
   };
 
   const currentMode = modes.find((m) => m.id === selectedMode) || modes[0];
@@ -574,6 +629,7 @@ function PromptOptimizerContent() {
             qualityScore={promptOptimizer.qualityScore}
             selectedMode={selectedMode}
             currentMode={currentMode}
+            promptUuid={currentPromptUuid}
             onDisplayedPromptChange={promptOptimizer.setDisplayedPrompt}
             onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}
@@ -586,11 +642,7 @@ function PromptOptimizerContent() {
   );
 }
 
-// Main export with ToastProvider wrapper
+// Main export
 export default function PromptOptimizerContainer() {
-  return (
-    <ToastProvider>
-      <PromptOptimizerContent />
-    </ToastProvider>
-  );
+  return <PromptOptimizerContent />;
 }

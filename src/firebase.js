@@ -16,8 +16,11 @@ import {
   getDocs,
   serverTimestamp,
   deleteDoc,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
+import { v4 as uuidv4 } from 'uuid';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -34,7 +37,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const analytics = getAnalytics(app);
+
+// Initialize Analytics (optional - may fail in dev or if blocked)
+let analytics = null;
+try {
+  analytics = getAnalytics(app);
+} catch (error) {
+  console.warn('Firebase Analytics initialization failed (this is okay in development)', error);
+}
+
 const googleProvider = new GoogleAuthProvider();
 
 // Auth functions
@@ -60,12 +71,14 @@ export const signOutUser = async () => {
 // Firestore functions
 export const savePromptToFirestore = async (userId, promptData) => {
   try {
+    const uuid = uuidv4();
     const docRef = await addDoc(collection(db, 'prompts'), {
       userId,
+      uuid,
       ...promptData,
       timestamp: serverTimestamp(),
     });
-    return docRef.id;
+    return { id: docRef.id, uuid };
   } catch (error) {
     console.error('Error saving prompt:', error);
     throw error;
@@ -101,7 +114,7 @@ export const getUserPrompts = async (userId, limitCount = 10) => {
   } catch (error) {
     // Check for index error - silently return empty array
     if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-      console.log('Firestore index not yet created. History will be available once the index is built.');
+      console.info('Firestore index not yet created. History will be available once the index is built.');
       return [];
     }
 
@@ -119,14 +132,15 @@ export const checkUserPromptsRaw = async (userId) => {
       where('userId', '==', userId)
     );
     const querySnapshot = await getDocs(q);
-    console.log(`Total prompts for user: ${querySnapshot.size}`);
+    console.info('Total prompts for user:', { userId, count: querySnapshot.size });
     querySnapshot.docs.forEach((doc) => {
       const data = doc.data();
       let timestamp = data.timestamp;
       if (timestamp && timestamp.toDate) {
         timestamp = timestamp.toDate().toISOString();
       }
-      console.log('Prompt:', doc.id, {
+      console.debug('Prompt details:', {
+        id: doc.id,
         timestamp: timestamp,
         timestampType: typeof timestamp,
         input: data.input?.substring(0, 50)
@@ -160,14 +174,14 @@ export const deleteUserPromptsRaw = async (userId) => {
       where('userId', '==', userId)
     );
     const querySnapshot = await getDocs(q);
-    console.log(`Found ${querySnapshot.size} prompts to delete`);
+    console.info('Found prompts to delete:', { userId, count: querySnapshot.size });
 
     const deletePromises = querySnapshot.docs.map((doc) =>
       deleteDoc(doc.ref)
     );
 
     await Promise.all(deletePromises);
-    console.log('All prompts deleted successfully');
+    console.info('All prompts deleted successfully:', { userId, count: querySnapshot.size });
     return querySnapshot.size;
   } catch (error) {
     console.error('Error deleting prompts:', error);
@@ -184,17 +198,53 @@ export const deleteAllUserPrompts = async (userId) => {
     );
     const querySnapshot = await getDocs(q);
 
-    console.log(`Found ${querySnapshot.size} prompts to delete`);
+    console.info('Found prompts to delete for migration:', { userId, count: querySnapshot.size });
 
     const deletePromises = querySnapshot.docs.map((doc) =>
       deleteDoc(doc.ref)
     );
 
     await Promise.all(deletePromises);
-    console.log('All prompts deleted successfully');
+    console.info('All prompts deleted successfully (migration):', { userId, count: querySnapshot.size });
     return querySnapshot.size;
   } catch (error) {
-    console.error('Error deleting prompts:', error);
+    console.error('Error deleting prompts during migration:', error);
+    throw error;
+  }
+};
+
+// Get prompt by UUID
+export const getPromptByUuid = async (uuid) => {
+  try {
+    const q = query(
+      collection(db, 'prompts'),
+      where('uuid', '==', uuid),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const doc = querySnapshot.docs[0];
+    const data = doc.data();
+
+    // Convert Firestore timestamp to ISO string
+    let timestamp = data.timestamp;
+    if (timestamp && timestamp.toDate) {
+      timestamp = timestamp.toDate().toISOString();
+    } else if (!timestamp) {
+      timestamp = new Date().toISOString();
+    }
+
+    return {
+      id: doc.id,
+      ...data,
+      timestamp,
+    };
+  } catch (error) {
+    console.error('Error fetching prompt by UUID:', error);
     throw error;
   }
 };

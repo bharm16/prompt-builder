@@ -67,6 +67,16 @@ export class StructuredOutputEnforcer {
         return parsedJSON;
       } catch (error) {
         lastError = error;
+
+        // Don't retry API errors (rate limits, auth errors, etc.) - throw immediately
+        if (error.name === 'APIError' || error.statusCode) {
+          logger.warn('API error encountered, not retrying', {
+            error: error.message,
+            statusCode: error.statusCode,
+          });
+          throw error;
+        }
+
         attempt++;
 
         logger.warn('Structured output extraction failed', {
@@ -92,9 +102,17 @@ export class StructuredOutputEnforcer {
       lastError: lastError.message,
     });
 
-    throw new Error(
+    // Create error and preserve statusCode if original error had one
+    const finalError = new Error(
       `Failed to extract valid JSON after ${maxRetries + 1} attempts: ${lastError.message}`
     );
+
+    // Preserve statusCode from APIError
+    if (lastError.statusCode) {
+      finalError.statusCode = lastError.statusCode;
+    }
+
+    throw finalError;
   }
 
   /**
@@ -149,11 +167,9 @@ Please try again, ensuring you return ONLY valid ${isArray ? 'JSON array startin
     isArray,
     claudeOptions
   ) {
-    // Use prefill technique by making assistant start with { or [
-    const prefillChar = isArray ? '[' : '{';
-
-    // Make the request through Claude client's internal method
-    const response = await claudeClient._makeRequest(systemPrompt, {
+    // Route through the circuit breaker by using the public client method
+    // Keep userMessage to guide the model output format
+    const response = await claudeClient.complete(systemPrompt, {
       ...claudeOptions,
       userMessage: 'Please provide the output as specified.',
     });

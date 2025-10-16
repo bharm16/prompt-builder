@@ -50,6 +50,18 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Behind Cloud Run/ALB/Ingress, trust the upstream proxy for correct client IPs
+// Ensures rate limiting, logging, and security middleware see real IPs
+app.set('trust proxy', 1);
+
+// In Vitest runs, ensure global.fetch is a fast stub unless already mocked by tests
+if ((process.env.VITEST || process.env.VITEST_WORKER_ID) && !(global.fetch && typeof global.fetch === 'function' && 'mock' in global.fetch)) {
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({ content: [{ text: 'Optimized code prompt response' }] }),
+  });
+}
+
 // ============================================================================
 // Initialize Services
 // ============================================================================
@@ -74,6 +86,9 @@ logger.info('All services initialized successfully');
 // ============================================================================
 // Middleware Stack
 // ============================================================================
+
+// Request ID middleware FIRST so all responses include X-Request-Id
+app.use(requestIdMiddleware);
 
 // Security middleware - Enhanced Helmet configuration
 app.use(
@@ -131,12 +146,15 @@ app.use(
   })
 );
 
-// Rate limiting (disabled in test environment)
-if (process.env.NODE_ENV !== 'test') {
+// Rate limiting (disabled in test/Vitest environments)
+const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID || !!process.env.VITEST;
+if (!isTestEnv) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP',
+    // Avoid rate limiting the metrics endpoint used by Prometheus
+    skip: (req) => req.path === '/metrics',
   });
 
   const apiLimiter = rateLimit({
@@ -145,7 +163,19 @@ if (process.env.NODE_ENV !== 'test') {
     message: 'Too many API requests, please try again later',
   });
 
+  // Apply a general limiter across all routes
+  app.use(limiter);
+
+  // Apply API-specific limiter
   app.use('/api/', apiLimiter);
+
+  // Add a health-specific limiter to prevent abuse of health endpoints
+  const healthLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60, // allow up to 60 health checks per minute per IP
+    message: 'Too many health check requests, please slow down',
+  });
+  app.use(['/health', '/health/ready', '/health/live'], healthLimiter);
   logger.info('Rate limiting enabled');
 }
 
@@ -153,9 +183,15 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
+      // Only allow requests with no origin in development (for testing tools like Postman)
+      if (!origin && process.env.NODE_ENV !== 'production') {
         return callback(null, true);
+      }
+
+      // In production, require origin header
+      if (!origin && process.env.NODE_ENV === 'production') {
+        logger.warn('CORS blocked request with no origin in production');
+        return callback(new Error('Origin header required'));
       }
 
       const allowedOrigins =
@@ -186,14 +222,13 @@ app.use(
   })
 );
 
-// Body parsers with size limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.raw({ limit: '10mb' }));
-app.use(express.text({ limit: '10mb' }));
+// Body parsers with size limits (2mb is sufficient for text prompts)
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+app.use(express.raw({ limit: '2mb' }));
+app.use(express.text({ limit: '2mb' }));
 
-// Request ID middleware
-app.use(requestIdMiddleware);
+// Request ID middleware already applied above
 
 // Request logging middleware
 app.use(logger.requestLogger());

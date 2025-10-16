@@ -5,6 +5,7 @@ import {
   getUserPrompts,
 } from '../firebase';
 import { useToast } from '../components/Toast';
+import { v4 as uuidv4 } from 'uuid';
 
 export const usePromptHistory = (user) => {
   const [history, setHistory] = useState([]);
@@ -18,7 +19,7 @@ export const usePromptHistory = (user) => {
     console.log('Loading history from Firestore for user:', userId);
     setIsLoadingHistory(true);
     try {
-      const prompts = await getUserPrompts(userId, 10);
+      const prompts = await getUserPrompts(userId, 100);
       console.log('Successfully loaded prompts from Firestore:', prompts.length);
       setHistory(prompts);
 
@@ -90,32 +91,39 @@ export const usePromptHistory = (user) => {
 
     if (user) {
       try {
-        const docId = await savePromptToFirestore(user.uid, newEntry);
+        const result = await savePromptToFirestore(user.uid, newEntry);
         const entryWithId = {
-          id: docId,
+          id: result.id,
+          uuid: result.uuid,
           timestamp: new Date().toISOString(),
           ...newEntry,
         };
-        setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 10));
+        setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 100));
+        return result.uuid;
       } catch (error) {
         console.error('Error saving to Firestore:', error);
         toast.error('Failed to save to cloud');
+        return null;
       }
     } else {
       try {
+        const uuid = uuidv4();
         const entryWithLocalId = {
           id: Date.now(),
+          uuid,
           timestamp: new Date().toISOString(),
           ...newEntry,
         };
         setHistory((prevHistory) => {
-          const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 10);
+          const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 100);
           localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
           return updatedHistory;
         });
+        return uuid;
       } catch (error) {
         console.error('Error saving to localStorage:', error);
         toast.error('Failed to save to history');
+        return null;
       }
     }
   }, [user, toast]);

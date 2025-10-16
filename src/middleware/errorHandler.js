@@ -6,12 +6,24 @@ import { logger } from '../infrastructure/Logger.js';
  */
 export function errorHandler(err, req, res, next) {
   // Log the error
-  logger.error('Request error', err, {
+  const meta = {
     requestId: req.id,
     method: req.method,
     path: req.path,
-    body: req.body,
-  });
+  };
+
+  // Redact request bodies to avoid sensitive data leakage in production
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      meta.bodyPreview = bodyStr?.substring(0, 300);
+      meta.bodyLength = bodyStr?.length;
+    } catch {
+      // ignore serialization errors
+    }
+  }
+
+  logger.error('Request error', err, meta);
 
   // Determine status code
   const statusCode = err.statusCode || err.status || 500;
