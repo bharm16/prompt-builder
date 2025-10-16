@@ -145,7 +145,7 @@ export default function CreativeBrainstorm({
         .join(', ');
 
       const response = await fetch(
-        'http://localhost:3001/api/get-creative-suggestions',
+        '/api/get-creative-suggestions',
         {
           method: 'POST',
           headers: {

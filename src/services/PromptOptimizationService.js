@@ -2,6 +2,7 @@ import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
+import { generateVideoPrompt } from './VideoPromptTemplates.js';
 
 /**
  * Service for optimizing prompts across different modes
@@ -782,160 +783,14 @@ OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
   }
 
   /**
-   * Get video mode prompt template (ultra-detailed)
+   * Get video prompt template
+   * Uses research-based template optimized for 100-150 word outputs
+   * @param {string} prompt - User's video concept
+   * @returns {string} Formatted video prompt template
    * @private
    */
   getVideoPrompt(prompt) {
-    // Note: This is the full video prompt template from server.js lines 214-367
-    // Truncated here for brevity, but keeping the full template
-    return `You are an expert cinematographer and creative director specializing in AI video generation (Sora, Veo3, RunwayML, Kling, Luma, etc.). Transform this video concept into an ultra-detailed, production-ready video generation prompt with ultimate creative control.
-
-User's video concept: "${prompt}"
-
-Create a comprehensive video prompt with the following structure:
-
-═══ CREATIVE FOUNDATION ══════════════════════════════════
-
-**WHO - SUBJECT/CHARACTER** [Define the focal point]
-- Physical Description: [Age, appearance, clothing, distinctive features]
-- Character State: [Emotion, energy level, physical condition]
-- Positioning: [Where in frame, relationship to camera]
-- Scale: [Close-up details vs full body vs environment dominance]
-- Identity/Role: [Professional, archetype, or narrative function]
-- Expression: [Facial expression, body language, mood indicators]
-- Interaction: [Engaging with environment, objects, or other subjects]
-
-**WHAT - ACTION/ACTIVITY** [Define the movement and narrative]
-- Primary Action: [Main activity happening in frame]
-- Motion Type: [Dynamic/static, fluid/jerky, fast/slow]
-- Action Arc: [Beginning state → transformation → end state]
-- Intensity: [Subtle gesture vs dramatic movement]
-- Rhythm: [Pacing, beats, moments of stillness vs activity]
-- Secondary Actions: [Background movement, environmental dynamics]
-- Cause & Effect: [Actions triggering reactions or changes]
-
-**WHERE - LOCATION/SETTING** [Define the environment]
-- Environment Type: [Interior/exterior, natural/built, real/abstract]
-- Architectural Details: [Structures, surfaces, spatial layout]
-- Environmental Scale: [Intimate space vs vast landscape]
-- Atmospheric Conditions: [Weather, air quality, particles, fog, haze]
-- Background Elements: [What fills negative space, depth layers]
-- Foreground Elements: [Objects between camera and subject]
-- Spatial Depth: [How far can we see, layers of depth]
-- Environmental Storytelling: [What the location reveals about context]
-
-**WHEN - TIME/PERIOD/LIGHTING** [Define temporal and light context]
-- Time of Day: [Dawn, morning, noon, golden hour, dusk, night, etc.]
-- Lighting Quality: [Hard/soft, warm/cool, natural/artificial]
-- Light Direction: [Front-lit, back-lit, side-lit, top-lit, under-lit]
-- Light Color: [Specific color temperatures, tints, color casts]
-- Shadow Character: [Long/short, sharp/diffused, presence/absence]
-- Temporal Period: [Historical era, futuristic, timeless, anachronistic]
-- Time Progression: [Static moment vs visible time passing]
-- Seasonal Markers: [Visual indicators of season if relevant]
-
-**WHY - EVENT/CONTEXT/PURPOSE** [Define narrative and intent]
-- Narrative Context: [What story moment is this]
-- Emotional Purpose: [What should viewer feel]
-- Visual Objective: [What should draw attention]
-- Conceptual Theme: [Abstract idea being expressed]
-- Commercial Intent: [If product/brand video - key message]
-- Audience Consideration: [Who is this for, what do they expect]
-- Symbolic Elements: [Metaphors, visual poetry, subtext]
-
-═══ CINEMATOGRAPHY & TECHNICAL EXECUTION ═════════════════
-
-**CAMERA - SETUP & PERSPECTIVE**
-- Lens Choice: [Wide/normal/telephoto, focal length implications]
-- Depth of Field: [Shallow/deep, what's in/out of focus]
-- Focal Point: [Exact point of sharpest focus]
-- Camera Height: [Ground level/eye level/high angle/overhead]
-- Camera Angle: [Straight-on/Dutch tilt/canted angle]
-- Perspective: [First-person POV/third-person/aerial/macro/etc.]
-- Frame Composition: [Rule of thirds, centered, off-balance, etc.]
-
-**CAMERA - MOVEMENT & DYNAMICS**
-- Movement Type: [Static/locked-off, handheld, Steadicam, drone]
-- Camera Motion: [Pan, tilt, dolly, track, crane, orbit, zoom]
-- Movement Speed: [Slow creep, steady glide, rapid whip]
-- Movement Motivation: [Motivated by action, reveal, or aesthetic]
-- Stabilization: [Smooth/fluid vs intentional shake/energy]
-- Complex Moves: [Combination movements, transitions mid-shot]
-- Movement Start/End: [How movement begins and concludes]
-
-**LIGHTING - DESIGN & MOOD**
-- Primary Light Source: [Sun, window, practical, artificial, etc.]
-- Fill Light: [Presence, intensity, direction, color]
-- Accent/Rim Lighting: [Edge definition, separation from background]
-- Practical Lights: [Visible light sources in scene]
-- Light Intensity: [Bright/exposed vs dark/moody vs balanced]
-- Light Contrast: [High contrast vs low contrast vs flat]
-- Shadows: [Quality, length, direction, storytelling role]
-- Light Behavior: [Static, flickering, moving, pulsing, changing]
-
-**COLOR - GRADING & PALETTE**
-- Overall Color Grade: [Warm/cool, saturated/desaturated, etc.]
-- Primary Color Palette: [2-3 dominant colors in frame]
-- Color Contrast: [Complementary, analogous, monochrome]
-- Color Temperature: [Specific Kelvin values or relative warmth]
-- Color Mood: [Emotional associations of color choices]
-- Color Symbolism: [Intentional color meaning]
-- Skin Tones: [Natural, stylized, specific rendering]
-- Color Transitions: [How colors shift through duration]
-
-**MOTION - DYNAMICS & TEMPORAL EFFECTS**
-- Subject Speed: [Real-time, slow-motion, time-lapse, speed ramping]
-- Frame Rate Intent: [Cinematic 24fps, smooth 60fps, etc.]
-- Motion Blur: [Natural, enhanced, frozen/sharp]
-- Temporal Effects: [Freeze frames, stutter effects, reverse]
-- Rhythm & Pacing: [Beat, tempo, breathing room vs intensity]
-- Action Choreography: [Specific blocking and movement patterns]
-- Momentum: [Building energy vs winding down vs constant]
-
-═══ SCENE SYNTHESIS ══════════════════════════════════════
-
-**PRIMARY PROMPT** [150-300 words]
-[Synthesize all above elements into ONE cohesive, vivid, flowing description that reads naturally while incorporating specific technical and creative details. This should feel like a cinematographer describing their vision, not a checklist. Prioritize the most important creative and technical aspects.]
-
-**TECHNICAL PARAMETERS**
-- Duration: [Recommended clip length, e.g., 5s, 10s, 15s]
-- Aspect Ratio: [16:9, 9:16, 1:1, 2.39:1, etc.]
-- Visual Style: [Cinematic, documentary, commercial, anime, etc.]
-- Reference Aesthetic: [Film stock, era, or visual movement if relevant]
-
-**ALTERNATIVE DIRECTIONS** [3 distinct creative variations]
-
-Version A - [One sentence describing creative pivot]
-[75-150 word alternative that changes key creative elements while maintaining concept]
-
-Version B - [One sentence describing creative pivot]
-[75-150 word alternative that explores different mood/style/approach]
-
-Version C - [One sentence describing creative pivot]
-[75-150 word alternative with bold creative departure]
-
-**PLATFORM OPTIMIZATION**
-- Best For: [Which AI video platforms suit this prompt - Sora/Veo3/RunwayML/etc.]
-- Platform-Specific Tips: [Any syntax, token limits, or optimization notes]
-- Compatibility Notes: [Elements that may need adjustment per platform]
-
-**REFINEMENT GUIDANCE** [What user might want to adjust]
-- Tone Adjustments: [Suggestions for shifting mood/atmosphere]
-- Technical Tweaks: [Camera, lighting, or movement refinements]
-- Narrative Variations: [Story/concept pivots to explore]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-**IMPORTANT CREATIVE PRINCIPLES:**
-1. Be hyper-specific about visual details while maintaining narrative flow
-2. Balance technical precision with creative emotion
-3. Consider how every element supports the central vision
-4. Provide enough detail for consistency without over-constraining AI creativity
-5. Ensure primary prompt feels cinematic and inspired, not mechanical
-6. Make alternatives meaningfully different, not just minor tweaks
-7. Think like a director AND a cinematographer
-
-Provide ONLY the video prompt package in this format. No preamble, no explanation, no meta-commentary. Go directly into the structured template.`;
+    return generateVideoPrompt(prompt);
   }
 
   /**

@@ -23,11 +23,12 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
         console.log('🔄 Fetching AI-generated questions for:', initialPrompt);
 
         const response = await fetch(
-          'http://localhost:3001/api/generate-questions',
+          '/api/generate-questions',
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'X-API-Key': 'dev-key-12345',
             },
             body: JSON.stringify({
               prompt: initialPrompt,

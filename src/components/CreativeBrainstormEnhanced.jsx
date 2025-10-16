@@ -182,7 +182,7 @@ export default function CreativeBrainstormEnhanced({
     if (!value) return 1;
 
     try {
-      const response = await fetch('http://localhost:3001/api/check-compatibility', {
+      const response = await fetch('/api/check-compatibility', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -204,6 +204,9 @@ export default function CreativeBrainstormEnhanced({
     }
     return 0.5;
   }, [elements]);
+
+  // Debounce timers for compatibility checks per element
+  const compatibilityTimersRef = useRef({});
 
   // Detect conflicts between elements
   const detectConflicts = useCallback(() => {
@@ -288,11 +291,28 @@ export default function CreativeBrainstormEnhanced({
       }
     }
 
-    const score = await checkCompatibility(key, value);
-    setCompatibilityScores(prev => ({ ...prev, [key]: score }));
+    // Debounce compatibility checks to avoid spamming the API while typing
+    if (compatibilityTimersRef.current[key]) {
+      clearTimeout(compatibilityTimersRef.current[key]);
+    }
+    compatibilityTimersRef.current[key] = setTimeout(async () => {
+      const score = await checkCompatibility(key, value);
+      setCompatibilityScores(prev => ({ ...prev, [key]: score }));
+    }, 500);
   }, [elements, checkCompatibility]);
 
-  // Fetch suggestions with context awareness
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(compatibilityTimersRef.current).forEach((t) => clearTimeout(t));
+    };
+  }, []);
+
+  // Abort controller + cooldown for suggestion fetches
+  const suggestionAbortRef = useRef(null);
+  const lastSuggestionRef = useRef({ ts: 0, key: '' });
+
+  // Fetch suggestions with context awareness (cooldown + cancel in-flight)
   const fetchSuggestionsForElement = async (elementType) => {
     setIsLoadingSuggestions(true);
     setActiveElement(elementType);
@@ -303,9 +323,25 @@ export default function CreativeBrainstormEnhanced({
         .filter(([key, value]) => value && key !== elementType)
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
+      const dedupeKey = `${elementType}|${elements[elementType] || ''}|${context}|${concept || ''}`;
+      const now = Date.now();
+      if (
+        lastSuggestionRef.current.key === dedupeKey &&
+        now - lastSuggestionRef.current.ts < 800
+      ) {
+        // Within cooldown and inputs unchanged; skip firing again
+        setIsLoadingSuggestions(false);
+        return;
+      }
+      lastSuggestionRef.current = { key: dedupeKey, ts: now };
+
+      if (suggestionAbortRef.current) {
+        suggestionAbortRef.current.abort();
+      }
+      suggestionAbortRef.current = new AbortController();
 
       const response = await fetch(
-        'http://localhost:3001/api/get-creative-suggestions',
+        '/api/get-creative-suggestions',
         {
           method: 'POST',
           headers: {
@@ -318,6 +354,7 @@ export default function CreativeBrainstormEnhanced({
             context,
             concept,
           }),
+          signal: suggestionAbortRef.current.signal,
         }
       );
 
@@ -333,6 +370,13 @@ export default function CreativeBrainstormEnhanced({
     }
   };
 
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (suggestionAbortRef.current) suggestionAbortRef.current.abort();
+    };
+  }, []);
+
   // Complete the scene
   const completeScene = async () => {
     const emptyElements = Object.entries(elements)
@@ -345,7 +389,7 @@ export default function CreativeBrainstormEnhanced({
 
     try {
       const response = await fetch(
-        'http://localhost:3001/api/complete-scene',
+        '/api/complete-scene',
         {
           method: 'POST',
           headers: {
@@ -378,7 +422,7 @@ export default function CreativeBrainstormEnhanced({
 
     try {
       const response = await fetch(
-        'http://localhost:3001/api/parse-concept',
+        '/api/parse-concept',
         {
           method: 'POST',
           headers: {
@@ -876,15 +920,15 @@ export default function CreativeBrainstormEnhanced({
 
                     {/* Hover Action Bar */}
                     <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                      <button
+                      <span
                         onClick={(e) => {
                           e.stopPropagation();
                           navigator.clipboard.writeText(suggestion.text);
                         }}
-                        className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                        className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150 cursor-pointer"
                       >
                         Copy
-                      </button>
+                      </span>
                       <span className="text-neutral-300">•</span>
                       <span className="text-[11px] text-neutral-500">
                         Click to apply

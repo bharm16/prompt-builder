@@ -32,7 +32,7 @@ export const usePromptOptimizer = (selectedMode) => {
 
   const analyzeAndOptimize = useCallback(async (prompt, context = null) => {
     try {
-      const response = await fetch('http://localhost:3001/api/optimize', {
+      const response = await fetch('/api/optimize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

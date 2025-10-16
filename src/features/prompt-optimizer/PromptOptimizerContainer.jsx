@@ -335,7 +335,7 @@ function PromptOptimizerContent() {
 
       try {
         const response = await fetch(
-          'http://localhost:3001/api/get-enhancement-suggestions',
+          '/api/get-enhancement-suggestions',
           {
             method: 'POST',
             headers: {

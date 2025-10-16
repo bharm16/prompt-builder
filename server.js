@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import compression from 'compression';
 import { validateEnv } from './utils/validateEnv.js';
 
@@ -129,9 +129,14 @@ app.use(
 // Additional security headers
 app.use((req, res, next) => {
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Allow cross-origin requests in development for CORS to work
+  // In production, these should be stricter based on deployment architecture
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  }
+  // Use 'cross-origin' instead of 'same-origin' to allow CORS
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 });
 
@@ -148,6 +153,7 @@ app.use(
 
 // Rate limiting (disabled in test/Vitest environments)
 const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID || !!process.env.VITEST;
+const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
 if (!isTestEnv) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -157,17 +163,55 @@ if (!isTestEnv) {
     skip: (req) => req.path === '/metrics',
   });
 
-  const apiLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 10, // max 10 Claude API calls per minute
-    message: 'Too many API requests, please try again later',
-  });
-
   // Apply a general limiter across all routes
   app.use(limiter);
 
-  // Apply API-specific limiter
-  app.use('/api/', apiLimiter);
+  // JSON handler for rate limit responses (prod-safe structure)
+  const rateLimitJSONHandler = (req, res, _next, options) => {
+    const retryAfter = res.getHeader('Retry-After');
+    res.status(options.statusCode).json({
+      error: 'Too Many Requests',
+      message: options.message,
+      retryAfter,
+      path: req.path,
+      requestId: req.id,
+    });
+  };
+
+  // Apply API-specific limiter (broad cap)
+  app.use('/api/', rateLimit({
+    windowMs: 60 * 1000,
+    max: 60, // broad per-minute cap for all API calls
+    message: 'Global rate limit exceeded',
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: rateLimitJSONHandler,
+  }));
+
+  // Route-specific burst limiters to smooth spikes (prod-ready)
+  const makeBurstLimiter = (windowMs, max, message) =>
+    rateLimit({
+      windowMs,
+      max,
+      message,
+      standardHeaders: true,
+      legacyHeaders: false,
+      handler: rateLimitJSONHandler,
+    });
+
+  // Compatibility: allow moderate typing but prevent bursts
+  app.use(
+    '/api/check-compatibility',
+    makeBurstLimiter(2 * 1000, 3, 'Too many compatibility checks in a short time'),
+    makeBurstLimiter(60 * 1000, 30, 'Too many compatibility checks per minute')
+  );
+
+  // Suggestions: heavier calls, slightly stricter
+  app.use(
+    '/api/get-creative-suggestions',
+    makeBurstLimiter(3 * 1000, 2, 'Too many suggestion requests in a short time'),
+    makeBurstLimiter(60 * 1000, 20, 'Too many suggestion requests per minute')
+  );
 
   // Add a health-specific limiter to prevent abuse of health endpoints
   const healthLimiter = rateLimit({
