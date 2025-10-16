@@ -10,6 +10,8 @@ import { logger } from '../infrastructure/Logger.js';
  * @param {Response} res - Express response object
  * @param {Function} next - Express next middleware function
  */
+const DEV_FALLBACK_KEY = 'dev-key-12345';
+
 export function apiAuthMiddleware(req, res, next) {
   // Extract API key from header or query parameter
   const apiKey = req.headers['x-api-key'];
@@ -30,7 +32,14 @@ export function apiAuthMiddleware(req, res, next) {
   }
 
   // Get allowed API keys from environment
-  const allowedKeys = process.env.ALLOWED_API_KEYS?.split(',').map((k) => k.trim()) || [];
+  const envKeys =
+    process.env.ALLOWED_API_KEYS?.split(',').map((k) => k.trim()).filter(Boolean) || [];
+  const allowedKeys =
+    envKeys.length > 0
+      ? envKeys
+      : process.env.NODE_ENV !== 'production'
+        ? [DEV_FALLBACK_KEY]
+        : [];
 
   if (allowedKeys.length === 0) {
     logger.error('ALLOWED_API_KEYS environment variable not configured', {

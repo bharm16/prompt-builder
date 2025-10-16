@@ -11,7 +11,7 @@ import { logger } from './src/infrastructure/Logger.js';
 import { metricsService } from './src/infrastructure/MetricsService.js';
 
 // Import clients
-import { ClaudeAPIClient } from './src/clients/ClaudeAPIClient.js';
+import { OpenAIAPIClient } from './src/clients/OpenAIAPIClient.js';
 
 // Import services
 import { cacheService } from './src/services/CacheService.js';
@@ -30,6 +30,7 @@ import { apiAuthMiddleware } from './src/middleware/apiAuth.js';
 // Import routes
 import { createAPIRoutes } from './src/routes/api.routes.js';
 import { createHealthRoutes } from './src/routes/health.routes.js';
+import { roleClassifyRoute } from './server/routes/roleClassifyRoute.js';
 
 // Load environment variables
 dotenv.config();
@@ -66,10 +67,11 @@ if ((process.env.VITEST || process.env.VITEST_WORKER_ID) && !(global.fetch && ty
 // Initialize Services
 // ============================================================================
 
-// Initialize Claude API client with circuit breaker
+// Initialize OpenAI API client with circuit breaker
 // Timeout set to 60s to accommodate large prompts (especially video mode)
-const claudeClient = new ClaudeAPIClient(process.env.VITE_ANTHROPIC_API_KEY, {
-  timeout: parseInt(process.env.CLAUDE_TIMEOUT_MS) || 60000,
+const claudeClient = new OpenAIAPIClient(process.env.OPENAI_API_KEY, {
+  timeout: parseInt(process.env.OPENAI_TIMEOUT_MS) || 60000,
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini', // Default to gpt-4o-mini, can be overridden
 });
 
 // Initialize business logic services
@@ -102,7 +104,7 @@ app.use(
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: [
           "'self'",
-          'https://api.anthropic.com',
+          'https://api.openai.com',
           'https://*.firebaseapp.com',
           'https://*.googleapis.com',
           'https://*.google.com',
@@ -159,8 +161,8 @@ if (!isTestEnv) {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP',
-    // Avoid rate limiting the metrics endpoint used by Prometheus
-    skip: (req) => req.path === '/metrics',
+    // Avoid rate limiting the metrics endpoint and role-classify endpoint
+    skip: (req) => req.path === '/metrics' || req.path === '/api/role-classify',
   });
 
   // Apply a general limiter across all routes
@@ -301,6 +303,8 @@ const apiRoutes = createAPIRoutes({
   creativeSuggestionService,
   creativeSuggestionEnhancedService, // Add enhanced service
 });
+
+app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
 app.use('/api', apiAuthMiddleware, apiRoutes);
 
 // 404 handler

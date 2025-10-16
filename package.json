@@ -57,6 +57,7 @@
     "dev": "vite",
     "server": "node server.js",
     "start": "node server.js & vite",
+    "restart": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true && lsof -ti :5173 | xargs kill -9 2>/dev/null || true && npm start",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

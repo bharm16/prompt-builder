@@ -1,6 +1,6 @@
 export function validateEnv() {
   const baseRequired = [
-    'VITE_ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
     'VITE_FIREBASE_API_KEY',
     'VITE_FIREBASE_PROJECT_ID',
   ];
@@ -42,13 +42,13 @@ export function validateEnv() {
     }
   }
 
-  // Validate Anthropic API key format (light check only)
+  // Validate OpenAI API key format (light check only)
   if (
-    process.env.VITE_ANTHROPIC_API_KEY &&
-    !process.env.VITE_ANTHROPIC_API_KEY.startsWith('sk-')
+    process.env.OPENAI_API_KEY &&
+    !process.env.OPENAI_API_KEY.startsWith('sk-')
   ) {
     console.warn(
-      '⚠️  VITE_ANTHROPIC_API_KEY may not be in the expected format'
+      '⚠️  OPENAI_API_KEY may not be in the expected format'
     );
   }
 

@@ -11,7 +11,11 @@ import {
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
-import { adaptiveEngine } from '../../utils/AdaptivePatternEngine';
+import { parsePrompt } from '../../utils/parsePrompt';
+import { fetchRoles } from '../../lib/api';
+
+const makeSpanKey = (span) => `${span.text}|${span.start}|${span.end}`;
+const TEMPLATE_VERSION = 'v1';
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -19,12 +23,15 @@ import { adaptiveEngine } from '../../utils/AdaptivePatternEngine';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-const formatTextToHTML = (text, enableMLHighlighting = false) => {
-  if (!text) return '';
+const formatTextToHTML = (text, enableMLHighlighting = false, options = {}) => {
+  if (!text) return { html: '', spans: [] };
 
+  const { roleLookup } = options;
   const lines = text.split('\n');
   let html = '';
   let i = 0;
+  const collectedSpans = [];
+  const seenKeys = new Set();
 
   // Helper function to remove emojis
   const removeEmojis = (str) => {
@@ -54,17 +61,17 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
    * 6. Confidence scoring - only shows high-confidence highlights
    * 7. Smart structure detection - skips headers and labels
    */
-  const highlightValueWords = (text) => {
-    if (!text) return '';
+  const highlightValueWords = (input) => {
+    if (!input) return '';
 
     // Only apply ML highlighting if enabled (video mode only)
     if (!enableMLHighlighting) {
-      return escapeHtml(text);
+      return escapeHtml(input);
     }
 
     // Check if this text is a structural element (header, label, descriptor)
-    const isStructuralElement = (text) => {
-      const trimmed = text.trim();
+    const isStructuralElement = (value) => {
+      const trimmed = value.trim();
 
       // Headers: ALL CAPS with 5+ characters
       if (/^[A-Z\s\-&/]{5,}$/.test(trimmed)) return true;
@@ -92,13 +99,13 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
     };
 
     // Skip highlighting for structural elements
-    if (isStructuralElement(text)) {
-      return escapeHtml(text);
+    if (isStructuralElement(input)) {
+      return escapeHtml(input);
     }
 
     // Check if text starts with a label prefix (e.g., "Positioning: actual content here")
     // We want to skip highlighting the label but highlight the content
-    const labelMatch = text.match(/^([A-Z][^:]{0,40}:)\s*(.+)$/);
+    const labelMatch = input.match(/^([A-Z][^:]{0,40}:)\s*(.+)$/);
     if (labelMatch) {
       const label = labelMatch[1];
       const content = labelMatch[2];
@@ -107,32 +114,78 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
       return escapeHtml(label) + ' ' + highlightValueWords(content);
     }
 
-    // Process text through adaptive engine
-    const { matches } = adaptiveEngine.processText(text);
+    // Process text through new linguistic parser
+    const spans = parsePrompt(input);
+
+    for (const span of spans) {
+      const key = makeSpanKey(span);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        collectedSpans.push({ ...span });
+      }
+    }
+
+    const labeledSpans = spans.map((span) => {
+      const key = makeSpanKey(span);
+      const override = roleLookup?.get?.(key);
+      if (override) {
+        const confidence =
+          typeof override.confidence === 'number'
+            ? Math.max(0, Math.min(1, override.confidence))
+            : typeof span.confidence === 'number'
+              ? span.confidence
+              : 0;
+        return { ...span, role: override.role, confidence };
+      }
+      return span;
+    });
+
+    // Define color mapping for roles
+    const roleColors = {
+      Wardrobe:     { bg: 'rgba(255,214,0,.25)',   border: 'rgba(255,214,0,.6)' },
+      Appearance:   { bg: 'rgba(255,105,180,.25)', border: 'rgba(255,105,180,.6)' },
+      Lighting:     { bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.4)' },
+      TimeOfDay:    { bg: 'rgba(135,206,235,.25)', border: 'rgba(135,206,235,.6)' },
+      CameraMove:   { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.4)' },
+      Framing:      { bg: 'rgba(186,85,211,.25)',  border: 'rgba(186,85,211,.6)' },
+      Environment:  { bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.4)' },
+      Color:        { bg: 'rgba(244,63,94,0.12)',  border: 'rgba(244,63,94,0.4)' },
+      Technical:    { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.4)' },
+      Descriptive:  { bg: 'rgba(250,204,21,0.15)', border: 'rgba(250,204,21,0.4)' },
+    };
 
     // Build HTML with highlights
     let result = '';
     let lastIndex = 0;
 
-    matches.forEach(match => {
-      // Track that this highlight was shown
-      adaptiveEngine.recordShown(match.phrase, match.category, match.confidence);
-
+    labeledSpans.forEach(span => {
       // Add text before match
-      result += escapeHtml(text.slice(lastIndex, match.start));
+      result += escapeHtml(input.slice(lastIndex, span.start));
+
+      // Get color for this role
+      const colors = roleColors[span.role] || roleColors.Descriptive;
 
       // Add visual indicator for confidence level
-      const confidenceClass = match.confidence >= 80 ? 'high-confidence' :
-                             match.confidence >= 65 ? 'medium-confidence' : 'low-confidence';
+      const confidenceValue =
+        typeof span.confidence === 'number'
+          ? Math.max(0, Math.min(1, span.confidence))
+          : 0;
+      const confidencePercent = Math.round(confidenceValue * 100);
+      const confidenceClass = confidencePercent >= 80 ? 'high-confidence' :
+                             confidencePercent >= 65 ? 'medium-confidence' : 'low-confidence';
+
+      // Extract the actual text from input at the span's position
+      // This ensures we get the exact text, not the modified span.text
+      const actualText = input.slice(span.start, span.end);
 
       // Add highlighted match with category-specific color and confidence indicator
-      result += `<span class="value-word value-word-${match.category} ${confidenceClass}" data-category="${match.category}" data-confidence="${match.confidence}" data-phrase="${escapeHtml(match.text)}" style="background-color: ${match.color.bg}; border-bottom: 1px solid ${match.color.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(match.text)}</span>`;
+      result += `<span class="value-word value-word-${span.role.toLowerCase()} ${confidenceClass}" data-category="${span.role}" data-confidence="${confidencePercent}" data-phrase="${escapeHtml(span.text)}" style="background-color: ${colors.bg}; border-bottom: 1px solid ${colors.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(actualText)}</span>`;
 
-      lastIndex = match.end;
+      lastIndex = span.end;
     });
 
     // Add remaining text
-    result += escapeHtml(text.slice(lastIndex));
+    result += escapeHtml(input.slice(lastIndex));
 
     return result;
   };
@@ -225,7 +278,7 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
     html += `<p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; margin-bottom: 1rem;">${paragraphText}</p>`;
   }
 
-  return html;
+  return { html, spans: enableMLHighlighting ? collectedSpans : [] };
 };
 
 // Category Legend Component
@@ -233,16 +286,16 @@ const CategoryLegend = memo(({ show, onClose }) => {
   if (!show) return null;
 
   const categories = [
-    { name: 'Camera', color: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)', example: 'slow zoom in, aerial shot, panning' },
-    { name: 'Descriptive', color: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)', example: 'dramatic lighting, vibrant colors' },
-    { name: 'Subjects', color: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)', example: 'art deco facades, urban landscape' },
-    { name: 'Actions', color: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.4)', example: 'emerging from shadow, walking through' },
-    { name: 'Lighting', color: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)', example: 'golden hour lighting, neon signs casting' },
-    { name: 'Technical', color: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)', example: 'shallow depth of field, bokeh effect' },
-    { name: 'Colors', color: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)', example: 'neon red, golden yellow, deep shadows' },
-    { name: 'Environment', color: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)', example: 'light mist hanging, wet asphalt gleaming' },
-    { name: 'Emotions', color: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.4)', example: 'peaceful, mysterious, late hour' },
-    { name: 'Measurements', color: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.4)', example: '24fps, 50mm, f/2.8' },
+    { name: 'Wardrobe', color: 'rgba(255,214,0,.25)', border: 'rgba(255,214,0,.6)', example: 'black frock coat, stovepipe hat' },
+    { name: 'Appearance', color: 'rgba(255,105,180,.25)', border: 'rgba(255,105,180,.6)', example: 'weathered face, grey beard' },
+    { name: 'Lighting', color: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)', example: 'soft shadows, dramatic rim light' },
+    { name: 'TimeOfDay', color: 'rgba(135,206,235,.25)', border: 'rgba(135,206,235,.6)', example: 'golden hour, twilight, blue hour' },
+    { name: 'CameraMove', color: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)', example: 'camera dollies forward, slow zoom' },
+    { name: 'Framing', color: 'rgba(186,85,211,.25)', border: 'rgba(186,85,211,.6)', example: 'wide shot, shallow depth of field' },
+    { name: 'Environment', color: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)', example: 'cemetery grounds, wooden podium' },
+    { name: 'Color', color: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)', example: 'desaturated palette, golden tones' },
+    { name: 'Technical', color: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)', example: '35mm, 24fps, 2.39:1, f/2.8' },
+    { name: 'Descriptive', color: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)', example: 'cinematic style, period-accurate' },
   ];
 
   return (
@@ -280,18 +333,18 @@ const CategoryLegend = memo(({ show, onClose }) => {
         </div>
         <div className="mt-3 pt-3 border-t border-neutral-200">
           <p className="text-xs text-neutral-500 leading-relaxed mb-2">
-            <strong>Intelligent Learning System:</strong>
+            <strong>Linguistic Parser:</strong>
           </p>
           <ul className="text-xs text-neutral-500 space-y-1 ml-3">
-            <li>• NO hardcoded patterns - learns from your text</li>
-            <li>• Auto-extracts phrases using TF-IDF</li>
-            <li>• Semantic categorization with ML</li>
-            <li>• Learns from your clicks (reinforcement)</li>
-            <li>• Adapts confidence over time</li>
-            <li>• Auto-corrects typos with fuzzy matching</li>
+            <li>• Grammatical chunking (Adj+Noun, PP phrases)</li>
+            <li>• Camera movement detection (verbs + direction)</li>
+            <li>• Technical spec extraction (35mm, 24fps, etc.)</li>
+            <li>• Semantic categorization with domain hints</li>
+            <li>• No brittle hardcoded patterns</li>
+            <li>• Deterministic and fast</li>
           </ul>
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
-            Click highlights to teach the system what&apos;s important to you.
+            Click highlights to get AI-powered alternatives.
           </p>
         </div>
       </div>
@@ -443,6 +496,9 @@ export const PromptCanvas = ({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const [roleOverrides, setRoleOverrides] = useState(new Map());
+  const fetchedPrompts = useRef(new Set());
+  const lastAnimationState = useRef(false);
 
   const editorRef = useRef(null);
   const toast = useToast();
@@ -451,6 +507,7 @@ export const PromptCanvas = ({
   useEffect(() => {
     if (displayedPrompt && optimizedPrompt && displayedPrompt === optimizedPrompt) {
       // Animation complete - trigger classification
+      console.log('[Animation] Complete! Displayed length:', displayedPrompt.length, 'Optimized length:', optimizedPrompt.length);
       setIsAnimationComplete(true);
     } else {
       setIsAnimationComplete(false);
@@ -460,7 +517,132 @@ export const PromptCanvas = ({
   // Memoize formatted HTML - ONLY enable ML highlighting AFTER animation completes
   // This prevents classification from running during typewriter animation
   const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
-  const formattedHTML = useMemo(() => formatTextToHTML(displayedPrompt, enableMLHighlighting), [displayedPrompt, enableMLHighlighting]);
+  const { html: formattedHTML, spans: tokenizerSpans } = useMemo(
+    () =>
+      formatTextToHTML(displayedPrompt, enableMLHighlighting, {
+        roleLookup: roleOverrides,
+      }),
+    [displayedPrompt, enableMLHighlighting, roleOverrides]
+  );
+
+  // Reset when prompt changes or mode changes
+  useEffect(() => {
+    setRoleOverrides(new Map());
+    fetchedPrompts.current.clear();
+    lastAnimationState.current = false;
+  }, [optimizedPrompt, selectedMode]);
+
+  // Only fetch classifications when animation completes (transition from incomplete to complete)
+  useEffect(() => {
+    // Check if animation just completed (transitioned from false to true)
+    const animationJustCompleted = isAnimationComplete && !lastAnimationState.current;
+
+    console.log('[RoleClassify] Check:', {
+      isAnimationComplete,
+      lastState: lastAnimationState.current,
+      animationJustCompleted,
+      enableMLHighlighting,
+      displayedLength: displayedPrompt?.length,
+      spansCount: tokenizerSpans?.length
+    });
+
+    lastAnimationState.current = isAnimationComplete;
+
+    if (!animationJustCompleted) {
+      return;
+    }
+
+    if (!enableMLHighlighting || !displayedPrompt) return;
+    if (!Array.isArray(tokenizerSpans) || tokenizerSpans.length === 0) return;
+
+    // Create a stable key for this prompt to prevent duplicate fetches
+    const promptKey = `${optimizedPrompt}_${tokenizerSpans.length}`;
+
+    // Skip if already fetched
+    if (fetchedPrompts.current.has(promptKey)) {
+      console.log('[RoleClassify] Already fetched for this prompt, skipping');
+      return;
+    }
+
+    // Mark as fetched immediately to prevent duplicates
+    fetchedPrompts.current.add(promptKey);
+
+    let cancelled = false;
+
+    const payload = tokenizerSpans.map(({ text, start, end }) => ({
+      text,
+      start,
+      end,
+    }));
+
+    console.log('[RoleClassify] Animation complete! Fetching roles for', payload.length, 'spans');
+
+    const buildFallbackMap = () => {
+      const fallbackMap = new Map();
+      tokenizerSpans.forEach((span) => {
+        fallbackMap.set(makeSpanKey(span), {
+          role: span.role,
+          confidence:
+            typeof span.confidence === 'number' ? span.confidence : 0,
+        });
+      });
+      return fallbackMap;
+    };
+
+    (async () => {
+      try {
+        const labeled = await fetchRoles(payload, TEMPLATE_VERSION);
+        if (cancelled) return;
+
+        console.log('[RoleClassify] Received', labeled.length, 'labeled spans');
+
+        const nextMap = new Map();
+
+        if (Array.isArray(labeled)) {
+          labeled.forEach((span) => {
+            console.log('[RoleClassify] Span:', span.text, '-> Role:', span.role);
+            nextMap.set(makeSpanKey(span), {
+              role: span.role,
+              confidence:
+                typeof span.confidence === 'number'
+                  ? Math.max(0, Math.min(1, span.confidence))
+                  : 0,
+            });
+          });
+        }
+
+        tokenizerSpans.forEach((span) => {
+          const key = makeSpanKey(span);
+          if (!nextMap.has(key)) {
+            nextMap.set(key, {
+              role: span.role,
+              confidence:
+                typeof span.confidence === 'number' ? span.confidence : 0,
+            });
+          }
+        });
+
+        console.log('[RoleClassify] Setting', nextMap.size, 'role overrides');
+        setRoleOverrides(nextMap);
+      } catch (err) {
+        console.error('[RoleClassify] Error fetching roles:', err);
+        if (cancelled) return;
+        // Remove from fetched set on error so we can retry
+        fetchedPrompts.current.delete(promptKey);
+        setRoleOverrides(buildFallbackMap());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isAnimationComplete,
+    enableMLHighlighting,
+    optimizedPrompt,
+    displayedPrompt,
+    tokenizerSpans,
+  ]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayedPrompt);
@@ -552,9 +734,6 @@ export const PromptCanvas = ({
         const wordText = node.textContent.trim();
         const category = node.getAttribute('data-category');
         const phrase = node.getAttribute('data-phrase');
-
-        // Track this click for behavior learning
-        adaptiveEngine.recordClick(phrase || wordText, category);
 
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
@@ -695,24 +874,14 @@ export const PromptCanvas = ({
         }
 
         /* Category-specific hover enhancements */
-        .value-word-camera:hover {
-          background-color: rgba(139, 92, 246, 0.2) !important;
-          border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+        .value-word-wardrobe:hover {
+          background-color: rgba(255,214,0,.35) !important;
+          border-bottom-color: rgba(255,214,0,.8) !important;
         }
 
-        .value-word-descriptive:hover {
-          background-color: rgba(250, 204, 21, 0.25) !important;
-          border-bottom-color: rgba(250, 204, 21, 0.6) !important;
-        }
-
-        .value-word-subjects:hover {
-          background-color: rgba(59, 130, 246, 0.2) !important;
-          border-bottom-color: rgba(59, 130, 246, 0.6) !important;
-        }
-
-        .value-word-actions:hover {
-          background-color: rgba(34, 197, 94, 0.2) !important;
-          border-bottom-color: rgba(34, 197, 94, 0.6) !important;
+        .value-word-appearance:hover {
+          background-color: rgba(255,105,180,.35) !important;
+          border-bottom-color: rgba(255,105,180,.8) !important;
         }
 
         .value-word-lighting:hover {
@@ -720,14 +889,19 @@ export const PromptCanvas = ({
           border-bottom-color: rgba(249, 115, 22, 0.6) !important;
         }
 
-        .value-word-technical:hover {
-          background-color: rgba(99, 102, 241, 0.2) !important;
-          border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+        .value-word-timeofday:hover {
+          background-color: rgba(135,206,235,.35) !important;
+          border-bottom-color: rgba(135,206,235,.8) !important;
         }
 
-        .value-word-colors:hover {
-          background-color: rgba(244, 63, 94, 0.2) !important;
-          border-bottom-color: rgba(244, 63, 94, 0.6) !important;
+        .value-word-cameramove:hover {
+          background-color: rgba(139, 92, 246, 0.2) !important;
+          border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+        }
+
+        .value-word-framing:hover {
+          background-color: rgba(186,85,211,.35) !important;
+          border-bottom-color: rgba(186,85,211,.8) !important;
         }
 
         .value-word-environment:hover {
@@ -735,14 +909,19 @@ export const PromptCanvas = ({
           border-bottom-color: rgba(6, 182, 212, 0.6) !important;
         }
 
-        .value-word-emotions:hover {
-          background-color: rgba(16, 185, 129, 0.2) !important;
-          border-bottom-color: rgba(16, 185, 129, 0.6) !important;
+        .value-word-color:hover {
+          background-color: rgba(244, 63, 94, 0.2) !important;
+          border-bottom-color: rgba(244, 63, 94, 0.6) !important;
         }
 
-        .value-word-measurements:hover {
-          background-color: rgba(100, 116, 139, 0.2) !important;
-          border-bottom-color: rgba(100, 116, 139, 0.6) !important;
+        .value-word-technical:hover {
+          background-color: rgba(99, 102, 241, 0.2) !important;
+          border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+        }
+
+        .value-word-descriptive:hover {
+          background-color: rgba(250, 204, 21, 0.25) !important;
+          border-bottom-color: rgba(250, 204, 21, 0.6) !important;
         }
 
         /* Tooltip on hover - shows category */
