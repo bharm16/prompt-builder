@@ -500,32 +500,13 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     isVideoPrompt,
   }) {
     if (isVideoPrompt) {
-      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML) with expertise in cinematic storytelling.
+      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).
 
-<analysis_process>
-Step 1: Understand the highlighted section
-- Content: "${highlightedText}"
-- What aspect of the video does this describe? (subject, action, camera, lighting, environment, etc.)
-- Current level of detail and specificity
-
-Step 2: Analyze context and constraints
-- How does this fit with surrounding elements?
-- What's the overall creative vision from: "${originalUserPrompt}"
-- What cinematic elements could be enhanced?
-
-Step 3: Identify enhancement opportunities
-- Camera work: Could we add specific angles, movements, or lens choices?
-- Lighting: Could we specify quality, direction, or color?
-- Motion: Could we detail speed, rhythm, or choreography?
-- Atmosphere: Could we add environmental or mood details?
-- Composition: Could we specify framing or visual hierarchy?
-
-Step 4: Generate diverse alternatives
-- Create 3-5 variations with different creative approaches
-- Each should be complete drop-in replacement
-- Vary the enhancement focus (some camera-heavy, some lighting-heavy, etc.)
-- Ensure compatibility with AI video generation models
-</analysis_process>
+**APPROACH:**
+- Keep enhancements concise (10-25 words per replacement)
+- Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8
+- Prioritize ONE specific element per variant
+- Avoid multiple simultaneous actions
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
@@ -534,38 +515,29 @@ Step 4: Generate diverse alternatives
 Before: "${contextBefore}"
 After: "${contextAfter}"
 
-**FULL PROMPT:**
-${fullPrompt}
-
-**ORIGINAL REQUEST:**
-"${originalUserPrompt}"
-
 **Your Task:**
-Generate 3-5 enhanced rewrites focusing on cinematic detail.
+Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement focusing on:
 
-**Enhancement Focus Areas:**
-- Camera angles/movements (crane, dolly, handheld, Dutch angle, POV)
-- Lighting specifics (golden hour, rim lighting, volumetric rays, shadows)
-- Motion details (slow-mo, speed ramping, choreography, pacing)
-- Color/mood (warm tones, desaturation, contrast, grading)
-- Composition (rule of thirds, depth layers, framing)
-- Environment (weather, atmosphere, particles, background)
+**Focus ONE per variant:**
+- Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle
+- Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")
+- Subject detail: 2-3 specific visual characteristics
+- Setting: precise location, time of day
+- Style: film reference (shot on 35mm, cinematic, documentary-style)
 
-**Quality Criteria:**
-✓ Complete drop-in replacement
-✓ Flows naturally with surrounding context
-✓ Adds meaningful cinematic detail
-✓ Each variant takes a different creative approach
-✓ Compatible with AI video generation platforms
+**Requirements:**
+✓ 10-25 words per replacement (proven optimal length)
+✓ Film terminology (not generic descriptions)
+✓ ONE clear action/focus per suggestion
+✓ Specific over generic ("weathered oak" not "nice table")
+✓ Flows with surrounding context
 
 Return ONLY a JSON array (no markdown, no code blocks):
 
 [
-  {"text": "enhanced rewrite with cinematic detail...", "explanation": "why this approach works"},
-  {"text": "alternative approach with different focus...", "explanation": "why this approach works"},
-  {"text": "third variation with unique perspective...", "explanation": "why this approach works"},
-  {"text": "fourth option with different mood...", "explanation": "why this approach works"},
-  {"text": "fifth creative take with distinctive style...", "explanation": "why this approach works"}
+  {"text": "enhanced version...", "explanation": "Adds camera specifics..."},
+  {"text": "alternative...", "explanation": "Different lighting approach..."},
+  {"text": "third option...", "explanation": "Focuses on subject detail..."}
 ]`;
     }
 

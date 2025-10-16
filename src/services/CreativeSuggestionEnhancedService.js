@@ -25,6 +25,21 @@ export class CreativeSuggestionEnhancedService {
       return { score: 1, feedback: 'No conflicts detected' };
     }
 
+    // Cache by normalized inputs to avoid repeated LLM calls (prod-safe)
+    const cacheKey = cacheService.generateKey('compatibility', {
+      elementType,
+      value: value.trim().toLowerCase(),
+      existingElements: Object.fromEntries(
+        Object.entries(existingElements)
+          .filter(([k, v]) => v && k !== elementType)
+          .sort(([a], [b]) => a.localeCompare(b))
+      ),
+    });
+    const cached = await cacheService.get(cacheKey, 'compatibility');
+    if (cached) {
+      return cached;
+    }
+
     const prompt = `Analyze the compatibility of this element with existing elements.
 
 New Element: ${elementType} = "${value}"
@@ -55,7 +70,10 @@ Respond with ONLY a JSON object:
         temperature: 0.3,
       });
 
-      return JSON.parse(response.content[0].text);
+      const result = JSON.parse(response.content[0].text);
+      // Short TTL because inputs can change quickly during typing, but enough to smooth bursts
+      await cacheService.set(cacheKey, result, { ttl: 30 });
+      return result;
     } catch (error) {
       logger.error('Failed to check compatibility', { error });
       return { score: 0.5, feedback: 'Unable to determine compatibility' };

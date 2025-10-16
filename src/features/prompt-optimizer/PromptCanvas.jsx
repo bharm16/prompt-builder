@@ -442,12 +442,24 @@ export const PromptCanvas = ({
   const [shared, setShared] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
   const editorRef = useRef(null);
   const toast = useToast();
 
-  // Memoize formatted HTML - only enable ML highlighting for video mode
-  const enableMLHighlighting = selectedMode === 'video';
+  // Check if animation is complete (displayed prompt equals optimized prompt)
+  useEffect(() => {
+    if (displayedPrompt && optimizedPrompt && displayedPrompt === optimizedPrompt) {
+      // Animation complete - trigger classification
+      setIsAnimationComplete(true);
+    } else {
+      setIsAnimationComplete(false);
+    }
+  }, [displayedPrompt, optimizedPrompt]);
+
+  // Memoize formatted HTML - ONLY enable ML highlighting AFTER animation completes
+  // This prevents classification from running during typewriter animation
+  const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
   const formattedHTML = useMemo(() => formatTextToHTML(displayedPrompt, enableMLHighlighting), [displayedPrompt, enableMLHighlighting]);
 
   const handleCopy = () => {

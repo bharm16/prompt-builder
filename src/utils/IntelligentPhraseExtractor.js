@@ -1,11 +1,16 @@
 /**
  * Intelligent Phrase Extraction System
  *
- * Uses statistical NLP techniques to automatically identify important phrases:
- * - TF-IDF for term importance
+ * Domain-agnostic phrase extraction using universal linguistic patterns:
+ * - TF-IDF for statistical term importance
  * - N-gram extraction for multi-word phrases
- * - Collocation detection for meaningful combinations
- * - Part-of-speech awareness for technical terms
+ * - PMI (Pointwise Mutual Information) for collocation strength
+ * - Hyphenation detection for technical compounds
+ * - Capitalization patterns for proper nouns and brand names
+ * - Phrase length optimization (2-3 words sweet spot)
+ *
+ * Works across any domain: cinematography, cooking, fashion, architecture, etc.
+ * Domain specialization happens via SemanticCategorizer and training data.
  */
 
 export class IntelligentPhraseExtractor {
@@ -27,14 +32,6 @@ export class IntelligentPhraseExtractor {
       'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
       'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that',
       'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'
-    ]);
-
-    // Technical domain indicators (cinematography/creative)
-    this.technicalIndicators = new Set([
-      'shot', 'camera', 'lens', 'focus', 'light', 'lighting', 'shadow',
-      'frame', 'angle', 'motion', 'depth', 'field', 'exposure', 'fps',
-      'zoom', 'pan', 'tilt', 'dolly', 'crane', 'aerial', 'bokeh',
-      'color', 'grade', 'grading', 'lut', 'grain', 'contrast', 'saturation'
     ]);
   }
 
@@ -202,11 +199,20 @@ export class IntelligentPhraseExtractor {
   }
 
   /**
-   * Check if phrase is likely technical/domain-specific
+   * Check if phrase contains hyphenation (indicates technical compound)
+   * Universal signal: hyphenated phrases are often meaningful across all domains
+   * Examples: "wide-angle", "state-of-the-art", "high-quality", "deep-fried"
    */
-  isTechnicalPhrase(phrase) {
-    const words = phrase.toLowerCase().split(' ');
-    return words.some(word => this.technicalIndicators.has(word));
+  isHyphenatedPhrase(phrase) {
+    return /-/.test(phrase);
+  }
+
+  /**
+   * Check if phrase is in the "sweet spot" length (2-3 words)
+   * Universal pattern: most meaningful phrases are 2-3 words long
+   */
+  isOptimalLength(phraseLength) {
+    return phraseLength >= 2 && phraseLength <= 3;
   }
 
   /**
@@ -235,23 +241,29 @@ export class IntelligentPhraseExtractor {
       });
     });
 
-    // Score each candidate
+    // Score each candidate using domain-agnostic linguistic patterns
     candidates.forEach((meta, phrase) => {
       let score = 0;
 
-      // TF-IDF score
+      // TF-IDF score (statistical importance)
       const tfidf = this.calculateTFIDF(phrase, tokens);
       score += tfidf * 10;
 
-      // Length bonus (prefer meaningful phrases over single words)
+      // Base length bonus (prefer phrases over single words)
       score += meta.length * 2;
 
-      // Technical domain bonus
-      if (this.isTechnicalPhrase(phrase)) {
-        score += 5;
+      // Hyphenation bonus (technical compounds - universal pattern)
+      // Examples: "wide-angle", "high-quality", "state-of-the-art", "deep-fried"
+      if (this.isHyphenatedPhrase(phrase)) {
+        score += 3;
       }
 
-      // Collocation score for multi-word phrases
+      // Optimal length bonus (2-3 words is the sweet spot for meaningful phrases)
+      if (this.isOptimalLength(meta.length)) {
+        score += 2;
+      }
+
+      // Collocation score for multi-word phrases (PMI)
       if (meta.length > 1) {
         const pmi = this.calculatePMI(phrase);
         if (pmi > 0) {
@@ -259,7 +271,7 @@ export class IntelligentPhraseExtractor {
         }
       }
 
-      // Capitalization bonus (proper nouns/technical terms)
+      // Capitalization bonus (proper nouns, brand names - universal signal)
       const originalMatches = text.match(new RegExp(`\\b${phrase}\\b`, 'gi')) || [];
       const capitalizedMatches = originalMatches.filter(m => /[A-Z]/.test(m));
       if (capitalizedMatches.length > originalMatches.length * 0.3) {
@@ -271,8 +283,7 @@ export class IntelligentPhraseExtractor {
           phrase,
           score,
           length: meta.length,
-          frequency: this.documentFrequency.get(phrase) || 0,
-          isTechnical: this.isTechnicalPhrase(phrase)
+          frequency: this.documentFrequency.get(phrase) || 0
         });
       }
     });
@@ -287,7 +298,7 @@ export class IntelligentPhraseExtractor {
   findPhraseOccurrences(text, phrases) {
     const matches = [];
 
-    phrases.forEach(({ phrase, score, isTechnical }) => {
+    phrases.forEach(({ phrase, score }) => {
       const regex = this.getCachedRegex(phrase, 'gi');
       // Reset regex lastIndex to avoid issues with cached regexes
       regex.lastIndex = 0;
@@ -300,8 +311,7 @@ export class IntelligentPhraseExtractor {
           start: match.index,
           end: match.index + match[0].length,
           score: score,
-          length: phrase.split(' ').length,
-          isTechnical: isTechnical
+          length: phrase.split(' ').length
         });
       }
     });

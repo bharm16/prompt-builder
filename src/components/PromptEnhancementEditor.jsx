@@ -88,7 +88,7 @@ export default function PromptEnhancementEditor({
         .trim();
 
       const response = await fetch(
-        'http://localhost:3001/api/get-enhancement-suggestions',
+        '/api/get-enhancement-suggestions',
         {
           method: 'POST',
           headers: {
@@ -194,7 +194,7 @@ export default function PromptEnhancementEditor({
 
     try {
       const response = await fetch(
-        'http://localhost:3001/api/detect-scene-change',
+        '/api/detect-scene-change',
         {
           method: 'POST',
           headers: {
@@ -372,7 +372,7 @@ export function SuggestionsPanel({ suggestionsData }) {
 
     try {
       const response = await fetch(
-        'http://localhost:3001/api/get-custom-suggestions',
+        '/api/get-custom-suggestions',
         {
           method: 'POST',
           headers: {
