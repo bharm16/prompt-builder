@@ -1,10 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Prompts collection - users can only read/write their own prompts
+    // Prompts collection - users can read/write their own prompts, but prompts are publicly readable by UUID for sharing
     match /prompts/{promptId} {
-      // Allow users to read their own prompts
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Allow anyone to read a specific prompt (for sharing via UUID)
+      // Allow authenticated users to read their own prompts
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid
+                  || resource.data.uuid != null;
 
       // Allow users to create prompts with their own userId
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;

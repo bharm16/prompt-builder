@@ -16,7 +16,6 @@ export const SHORTCUTS = [
     category: 'Prompt Actions',
     items: [
       { keys: ['Cmd', 'Enter'], description: 'Optimize prompt', id: 'optimize' },
-      { keys: ['Cmd', 'I'], description: 'Improve prompt first', id: 'improve' },
       { keys: ['Shift', 'Enter'], description: 'New line in textarea', id: 'newline' },
     ],
   },
@@ -190,12 +189,6 @@ export const useKeyboardShortcuts = (callbacks) => {
       if (isMod && e.key === 'Enter') {
         e.preventDefault();
         callbacks.optimize?.();
-      }
-
-      // Cmd/Ctrl + I - Improve first
-      if (isMod && e.key === 'i') {
-        e.preventDefault();
-        callbacks.improveFirst?.();
       }
 
       // Cmd/Ctrl + C - Copy (only in results view and only when no text is selected)

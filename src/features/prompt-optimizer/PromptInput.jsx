@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import {
-  Zap,
   Lightbulb,
   Search,
   FileText,
@@ -33,7 +32,6 @@ export const PromptInput = ({
   selectedMode,
   onModeChange,
   onOptimize,
-  onImproveFirst,
   onShowBrainstorm,
   isProcessing,
   modes,
@@ -202,16 +200,6 @@ export const PromptInput = ({
                   <span>Build Concept</span>
                 </button>
               )}
-              <button
-                onClick={onImproveFirst}
-                disabled={!inputPrompt.trim() || isProcessing}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="Improve prompt first"
-                title="Improve first"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                <span>Improve</span>
-              </button>
             </div>
 
             <button

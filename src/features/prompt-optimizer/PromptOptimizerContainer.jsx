@@ -252,6 +252,11 @@ function PromptOptimizerContent() {
     setSelectedMode(entry.mode);
     setCurrentPromptUuid(entry.uuid || null);
     setShowResults(true);
+
+    // Update URL if there's a UUID
+    if (entry.uuid) {
+      navigate(`/prompt/${entry.uuid}`, { replace: true });
+    }
   };
 
   // Fetch enhancement suggestions
@@ -609,7 +614,6 @@ function PromptOptimizerContent() {
                 selectedMode={selectedMode}
                 onModeChange={setSelectedMode}
                 onOptimize={handleOptimize}
-                onImproveFirst={handleImproveFirst}
                 onShowBrainstorm={() => setShowBrainstorm(true)}
                 isProcessing={promptOptimizer.isProcessing}
                 modes={modes}
@@ -637,6 +641,16 @@ function PromptOptimizerContent() {
             onCreateNew={handleCreateNew}
           />
         )}
+
+        {/* Privacy Policy Footer */}
+        <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          <a
+            href="/privacy-policy"
+            className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+          >
+            Privacy Policy
+          </a>
+        </footer>
       </main>
     </div>
   );
