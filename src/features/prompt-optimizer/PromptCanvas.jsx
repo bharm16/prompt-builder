@@ -11,11 +11,7 @@ import {
 } from 'lucide-react';
 import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
 import { useToast } from '../../components/Toast';
-import { parsePrompt } from '../../utils/parsePrompt';
-import { fetchRoles } from '../../lib/api';
-
-const makeSpanKey = (span) => `${span.text}|${span.start}|${span.end}`;
-const TEMPLATE_VERSION = 'v1';
+import { extractVideoPromptPhrases } from './phraseExtractor';
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -23,15 +19,11 @@ const TEMPLATE_VERSION = 'v1';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-const formatTextToHTML = (text, enableMLHighlighting = false, options = {}) => {
-  if (!text) return { html: '', spans: [] };
-
-  const { roleLookup } = options;
+const formatTextToHTML = (text, enableMLHighlighting = false) => {
+  if (!text) return { html: '' };
   const lines = text.split('\n');
   let html = '';
   let i = 0;
-  const collectedSpans = [];
-  const seenKeys = new Set();
 
   // Helper function to remove emojis
   const removeEmojis = (str) => {
@@ -114,74 +106,27 @@ const formatTextToHTML = (text, enableMLHighlighting = false, options = {}) => {
       return escapeHtml(label) + ' ' + highlightValueWords(content);
     }
 
-    // Process text through new linguistic parser
-    const spans = parsePrompt(input);
+    // Extract phrases using compromise.js
+    const phrases = extractVideoPromptPhrases(input);
 
-    for (const span of spans) {
-      const key = makeSpanKey(span);
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        collectedSpans.push({ ...span });
-      }
-    }
-
-    const labeledSpans = spans.map((span) => {
-      const key = makeSpanKey(span);
-      const override = roleLookup?.get?.(key);
-      if (override) {
-        const confidence =
-          typeof override.confidence === 'number'
-            ? Math.max(0, Math.min(1, override.confidence))
-            : typeof span.confidence === 'number'
-              ? span.confidence
-              : 0;
-        return { ...span, role: override.role, confidence };
-      }
-      return span;
-    });
-
-    // Define color mapping for roles
-    const roleColors = {
-      Wardrobe:     { bg: 'rgba(255,214,0,.25)',   border: 'rgba(255,214,0,.6)' },
-      Appearance:   { bg: 'rgba(255,105,180,.25)', border: 'rgba(255,105,180,.6)' },
-      Lighting:     { bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.4)' },
-      TimeOfDay:    { bg: 'rgba(135,206,235,.25)', border: 'rgba(135,206,235,.6)' },
-      CameraMove:   { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.4)' },
-      Framing:      { bg: 'rgba(186,85,211,.25)',  border: 'rgba(186,85,211,.6)' },
-      Environment:  { bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.4)' },
-      Color:        { bg: 'rgba(244,63,94,0.12)',  border: 'rgba(244,63,94,0.4)' },
-      Technical:    { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.4)' },
-      Descriptive:  { bg: 'rgba(250,204,21,0.15)', border: 'rgba(250,204,21,0.4)' },
-    };
+    // Sort by position to build HTML correctly
+    phrases.sort((a, b) => input.indexOf(a.text) - input.indexOf(b.text));
 
     // Build HTML with highlights
     let result = '';
     let lastIndex = 0;
 
-    labeledSpans.forEach(span => {
-      // Add text before match
-      result += escapeHtml(input.slice(lastIndex, span.start));
+    phrases.forEach(phrase => {
+      const start = input.indexOf(phrase.text, lastIndex);
+      if (start === -1) return;
 
-      // Get color for this role
-      const colors = roleColors[span.role] || roleColors.Descriptive;
+      // Add text before phrase
+      result += escapeHtml(input.slice(lastIndex, start));
 
-      // Add visual indicator for confidence level
-      const confidenceValue =
-        typeof span.confidence === 'number'
-          ? Math.max(0, Math.min(1, span.confidence))
-          : 0;
-      const confidencePercent = Math.round(confidenceValue * 100);
-      const confidenceClass = confidencePercent >= 80 ? 'high-confidence' :
-                             confidencePercent >= 65 ? 'medium-confidence' : 'low-confidence';
+      // Add highlighted phrase
+      result += `<span class="value-word value-word-${phrase.category}" data-category="${phrase.category}" style="background-color: ${phrase.color.bg}; border-bottom: 2px solid ${phrase.color.border}; padding: 1px 3px; border-radius: 3px; cursor: pointer;">${escapeHtml(phrase.text)}</span>`;
 
-      // Extract the actual text from input at the span's position
-      // This ensures we get the exact text, not the modified span.text
-      const actualText = input.slice(span.start, span.end);
-
-      // Add highlighted match with category-specific color and confidence indicator
-      result += `<span class="value-word value-word-${span.role.toLowerCase()} ${confidenceClass}" data-category="${span.role}" data-confidence="${confidencePercent}" data-phrase="${escapeHtml(span.text)}" style="background-color: ${colors.bg}; border-bottom: 1px solid ${colors.border}; padding: 0 2px; border-radius: 2px; cursor: pointer; transition: all 0.15s ease;">${escapeHtml(actualText)}</span>`;
-
-      lastIndex = span.end;
+      lastIndex = start + phrase.text.length;
     });
 
     // Add remaining text
@@ -278,7 +223,7 @@ const formatTextToHTML = (text, enableMLHighlighting = false, options = {}) => {
     html += `<p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; margin-bottom: 1rem;">${paragraphText}</p>`;
   }
 
-  return { html, spans: enableMLHighlighting ? collectedSpans : [] };
+  return { html };
 };
 
 // Category Legend Component
@@ -333,15 +278,15 @@ const CategoryLegend = memo(({ show, onClose }) => {
         </div>
         <div className="mt-3 pt-3 border-t border-neutral-200">
           <p className="text-xs text-neutral-500 leading-relaxed mb-2">
-            <strong>Linguistic Parser:</strong>
+            <strong>Powered by compromise.js:</strong>
           </p>
           <ul className="text-xs text-neutral-500 space-y-1 ml-3">
-            <li>• Grammatical chunking (Adj+Noun, PP phrases)</li>
-            <li>• Camera movement detection (verbs + direction)</li>
+            <li>• Natural language phrase extraction</li>
+            <li>• Camera movement detection</li>
             <li>• Technical spec extraction (35mm, 24fps, etc.)</li>
-            <li>• Semantic categorization with domain hints</li>
-            <li>• No brittle hardcoded patterns</li>
-            <li>• Deterministic and fast</li>
+            <li>• Automatic categorization</li>
+            <li>• No training required - works immediately</li>
+            <li>• Fast and deterministic</li>
           </ul>
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
             Click highlights to get AI-powered alternatives.
@@ -496,9 +441,6 @@ export const PromptCanvas = ({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
-  const [roleOverrides, setRoleOverrides] = useState(new Map());
-  const fetchedPrompts = useRef(new Set());
-  const lastAnimationState = useRef(false);
 
   const editorRef = useRef(null);
   const toast = useToast();
@@ -517,132 +459,11 @@ export const PromptCanvas = ({
   // Memoize formatted HTML - ONLY enable ML highlighting AFTER animation completes
   // This prevents classification from running during typewriter animation
   const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
-  const { html: formattedHTML, spans: tokenizerSpans } = useMemo(
-    () =>
-      formatTextToHTML(displayedPrompt, enableMLHighlighting, {
-        roleLookup: roleOverrides,
-      }),
-    [displayedPrompt, enableMLHighlighting, roleOverrides]
+  const { html: formattedHTML } = useMemo(
+    () => formatTextToHTML(displayedPrompt, enableMLHighlighting),
+    [displayedPrompt, enableMLHighlighting]
   );
 
-  // Reset when prompt changes or mode changes
-  useEffect(() => {
-    setRoleOverrides(new Map());
-    fetchedPrompts.current.clear();
-    lastAnimationState.current = false;
-  }, [optimizedPrompt, selectedMode]);
-
-  // Only fetch classifications when animation completes (transition from incomplete to complete)
-  useEffect(() => {
-    // Check if animation just completed (transitioned from false to true)
-    const animationJustCompleted = isAnimationComplete && !lastAnimationState.current;
-
-    console.log('[RoleClassify] Check:', {
-      isAnimationComplete,
-      lastState: lastAnimationState.current,
-      animationJustCompleted,
-      enableMLHighlighting,
-      displayedLength: displayedPrompt?.length,
-      spansCount: tokenizerSpans?.length
-    });
-
-    lastAnimationState.current = isAnimationComplete;
-
-    if (!animationJustCompleted) {
-      return;
-    }
-
-    if (!enableMLHighlighting || !displayedPrompt) return;
-    if (!Array.isArray(tokenizerSpans) || tokenizerSpans.length === 0) return;
-
-    // Create a stable key for this prompt to prevent duplicate fetches
-    const promptKey = `${optimizedPrompt}_${tokenizerSpans.length}`;
-
-    // Skip if already fetched
-    if (fetchedPrompts.current.has(promptKey)) {
-      console.log('[RoleClassify] Already fetched for this prompt, skipping');
-      return;
-    }
-
-    // Mark as fetched immediately to prevent duplicates
-    fetchedPrompts.current.add(promptKey);
-
-    let cancelled = false;
-
-    const payload = tokenizerSpans.map(({ text, start, end }) => ({
-      text,
-      start,
-      end,
-    }));
-
-    console.log('[RoleClassify] Animation complete! Fetching roles for', payload.length, 'spans');
-
-    const buildFallbackMap = () => {
-      const fallbackMap = new Map();
-      tokenizerSpans.forEach((span) => {
-        fallbackMap.set(makeSpanKey(span), {
-          role: span.role,
-          confidence:
-            typeof span.confidence === 'number' ? span.confidence : 0,
-        });
-      });
-      return fallbackMap;
-    };
-
-    (async () => {
-      try {
-        const labeled = await fetchRoles(payload, TEMPLATE_VERSION);
-        if (cancelled) return;
-
-        console.log('[RoleClassify] Received', labeled.length, 'labeled spans');
-
-        const nextMap = new Map();
-
-        if (Array.isArray(labeled)) {
-          labeled.forEach((span) => {
-            console.log('[RoleClassify] Span:', span.text, '-> Role:', span.role);
-            nextMap.set(makeSpanKey(span), {
-              role: span.role,
-              confidence:
-                typeof span.confidence === 'number'
-                  ? Math.max(0, Math.min(1, span.confidence))
-                  : 0,
-            });
-          });
-        }
-
-        tokenizerSpans.forEach((span) => {
-          const key = makeSpanKey(span);
-          if (!nextMap.has(key)) {
-            nextMap.set(key, {
-              role: span.role,
-              confidence:
-                typeof span.confidence === 'number' ? span.confidence : 0,
-            });
-          }
-        });
-
-        console.log('[RoleClassify] Setting', nextMap.size, 'role overrides');
-        setRoleOverrides(nextMap);
-      } catch (err) {
-        console.error('[RoleClassify] Error fetching roles:', err);
-        if (cancelled) return;
-        // Remove from fetched set on error so we can retry
-        fetchedPrompts.current.delete(promptKey);
-        setRoleOverrides(buildFallbackMap());
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isAnimationComplete,
-    enableMLHighlighting,
-    optimizedPrompt,
-    displayedPrompt,
-    tokenizerSpans,
-  ]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayedPrompt);
