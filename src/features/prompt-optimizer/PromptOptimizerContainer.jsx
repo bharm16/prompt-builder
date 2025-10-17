@@ -583,27 +583,245 @@ function PromptOptimizerContent() {
         {!showResults && (
           <>
             {promptOptimizer.isProcessing ? (
-              /* Modern Skeleton Loader with Shimmer Effect - matching AI suggestions */
+              /* Adaptive Skeleton Loader - matches actual content structure */
               <div className="w-full max-w-4xl mx-auto">
                 <div
                   className="relative overflow-hidden p-8 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
                   style={{
                     animationDuration: '1.5s',
-                    minHeight: '400px'
                   }}
                 >
                   {/* Shimmer effect */}
                   <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
                   <div className="relative space-y-6">
-                    <div className="h-6 bg-neutral-200/70 rounded-md w-1/3" />
-                    <div className="h-32 bg-neutral-200/70 rounded-md w-full" />
-                    <div className="h-4 bg-neutral-200/50 rounded-md w-1/4" />
-                    <div className="flex gap-3">
-                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
-                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
-                      <div className="h-12 bg-neutral-200/70 rounded-md w-32" />
-                    </div>
+                    {/* Mode-specific skeleton structures matching actual output templates */}
+                    {selectedMode === 'video' ? (
+                      /* Video mode: Main paragraph + Technical Specs + Alternative Approaches */
+                      <>
+                        {/* Main descriptive paragraph (100-150 words) */}
+                        <div className="space-y-2">
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-11/12" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-10/12" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/70 rounded-md w-9/12" />
+                        </div>
+                        {/* TECHNICAL SPECS */}
+                        <div className="space-y-3 pt-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-40" />
+                          <div className="space-y-2 ml-2">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-48" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-52" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-44" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-36" />
+                          </div>
+                        </div>
+                        {/* ALTERNATIVE APPROACHES (2 variations) */}
+                        <div className="space-y-3 pt-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-56" />
+                          <div className="space-y-2 ml-2">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-44" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-5/6" />
+                          </div>
+                          <div className="space-y-2 ml-2">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-48" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-4/5" />
+                          </div>
+                        </div>
+                      </>
+                    ) : selectedMode === 'research' ? (
+                      /* Research mode: RESEARCH OBJECTIVE + 7 major sections */
+                      <>
+                        {/* RESEARCH OBJECTIVE */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-52" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                        </div>
+                        {/* CORE RESEARCH QUESTIONS (5-7 questions) */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-60" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(6)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${85 + (i % 3) * 5}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* METHODOLOGY */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-44" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-11/12" />
+                        </div>
+                        {/* INFORMATION SOURCES */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-56" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-4/5" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-3/4" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-5/6" />
+                          </div>
+                        </div>
+                        {/* SUCCESS METRICS + SYNTHESIS FRAMEWORK + DELIVERABLE FORMAT */}
+                        <div className="space-y-3">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-48" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                        </div>
+                      </>
+                    ) : selectedMode === 'socratic' ? (
+                      /* Socratic mode: 8 sections with question lists */
+                      <>
+                        {/* LEARNING OBJECTIVE */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-52" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                        </div>
+                        {/* PRIOR KNOWLEDGE CHECK (2-3 questions) */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-60" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(3)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${80 + i * 5}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* FOUNDATION QUESTIONS (3-4 questions) */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-56" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${85 + (i % 2) * 5}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* DEEPENING QUESTIONS (4-5 questions) */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-58" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(5)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                            ))}
+                          </div>
+                        </div>
+                        {/* APPLICATION & SYNTHESIS + METACOGNITIVE REFLECTION */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-60" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-11/12" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-10/12" />
+                          </div>
+                        </div>
+                      </>
+                    ) : selectedMode === 'reasoning' ? (
+                      /* Reasoning mode: OBJECTIVE + 6 major sections with nested structure */
+                      <>
+                        {/* OBJECTIVE */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-40" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                        </div>
+                        {/* PROBLEM STATEMENT */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-56" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-11/12" />
+                        </div>
+                        {/* GIVEN CONSTRAINTS */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-52" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-4/5" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-5/6" />
+                          </div>
+                        </div>
+                        {/* PROBLEM DECOMPOSITION */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-64" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${82 + i * 4}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* REASONING APPROACH (4 phases) */}
+                        <div className="space-y-3">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-60" />
+                          <div className="ml-2 space-y-2">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-56" />
+                            <div className="ml-3 space-y-1">
+                              <div className="h-2.5 bg-neutral-200/50 rounded-md w-full" />
+                              <div className="h-2.5 bg-neutral-200/50 rounded-md w-5/6" />
+                            </div>
+                          </div>
+                        </div>
+                        {/* VERIFICATION CRITERIA (4 levels) */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-58" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-48" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-52" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Standard mode: GOAL + 7 structured sections */
+                      <>
+                        {/* GOAL */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-32" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                        </div>
+                        {/* CONTEXT */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-36" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-full" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-11/12" />
+                        </div>
+                        {/* REQUIREMENTS */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-48" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${80 + i * 4}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* INSTRUCTIONS */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-48" />
+                          <div className="ml-2 space-y-1.5">
+                            {[...Array(5)].map((_, i) => (
+                              <div key={i} className="h-3 bg-neutral-200/60 rounded-md" style={{width: `${85 + (i % 3) * 3}%`}} />
+                            ))}
+                          </div>
+                        </div>
+                        {/* SUCCESS CRITERIA */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-52" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-5/6" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-4/5" />
+                          </div>
+                        </div>
+                        {/* OUTPUT FORMAT */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-48" />
+                          <div className="h-3 bg-neutral-200/60 rounded-md w-3/4" />
+                        </div>
+                        {/* AVOID */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-neutral-200/70 rounded-md w-32" />
+                          <div className="ml-2 space-y-1.5">
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-2/3" />
+                            <div className="h-3 bg-neutral-200/60 rounded-md w-3/4" />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -642,15 +860,17 @@ function PromptOptimizerContent() {
           />
         )}
 
-        {/* Privacy Policy Footer */}
-        <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-          <a
-            href="/privacy-policy"
-            className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-          >
-            Privacy Policy
-          </a>
-        </footer>
+        {/* Privacy Policy Footer - Only show on home page */}
+        {!showResults && (
+          <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <a
+              href="/privacy-policy"
+              className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </footer>
+        )}
       </main>
     </div>
   );

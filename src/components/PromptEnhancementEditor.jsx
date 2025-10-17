@@ -526,10 +526,27 @@ export function SuggestionsPanel({ suggestionsData }) {
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {hasActiveSuggestions ? (
           <>
-            {/* Modern Skeleton Loading State */}
+            {/* Adaptive Skeleton Loading State */}
             {isLoading && (
               <div className="p-4 space-y-3" role="status" aria-live="polite">
-                {[1, 2, 3, 4].map((i) => (
+                {Array.from({ length: (() => {
+                  // Adaptive count based on selection length and type
+                  const textLength = selectedText?.length || 0;
+
+                  if (isPlaceholder) {
+                    // Placeholders typically have 3-5 specific value options
+                    return 4;
+                  } else if (textLength < 20) {
+                    // Short selections (words/phrases) get more rewrite options
+                    return 6;
+                  } else if (textLength < 100) {
+                    // Medium selections (sentences) get moderate options
+                    return 5;
+                  } else {
+                    // Longer selections (paragraphs) get fewer but more thoughtful options
+                    return 4;
+                  }
+                })() }).map((_, i) => (
                   <div
                     key={i}
                     className="relative overflow-hidden p-4 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
@@ -542,9 +559,38 @@ export function SuggestionsPanel({ suggestionsData }) {
                     <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
                     <div className="relative space-y-2.5">
-                      <div className="h-4 bg-neutral-200/70 rounded-md w-3/4" />
-                      <div className="h-3 bg-neutral-200/50 rounded-md w-full" />
-                      <div className="h-3 bg-neutral-200/50 rounded-md w-5/6" />
+                      {/* Main suggestion text - vary widths naturally */}
+                      <div className={`h-4 bg-neutral-200/70 rounded-md ${
+                        i % 4 === 0 ? 'w-3/4' :
+                        i % 4 === 1 ? 'w-2/3' :
+                        i % 4 === 2 ? 'w-4/5' : 'w-5/6'
+                      }`} />
+
+                      {/* Explanation lines - adaptive based on type */}
+                      {isPlaceholder ? (
+                        // Placeholders have explanations
+                        <>
+                          <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                            i % 2 === 0 ? 'w-full' : 'w-11/12'
+                          }`} />
+                          <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                            i % 3 === 0 ? 'w-5/6' : 'w-4/5'
+                          }`} />
+                        </>
+                      ) : (
+                        // Rewrites vary in length
+                        <>
+                          <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                            i % 2 === 0 ? 'w-full' : 'w-11/12'
+                          }`} />
+                          {/* Some suggestions are longer */}
+                          {i % 3 !== 2 && (
+                            <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                              i % 2 === 0 ? 'w-5/6' : 'w-4/5'
+                            }`} />
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

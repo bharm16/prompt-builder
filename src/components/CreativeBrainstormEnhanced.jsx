@@ -43,37 +43,37 @@ const TEMPLATE_LIBRARY = {
   productDemo: {
     name: 'Product Demo',
     elements: {
-      subject: 'sleek tech product',
-      action: 'rotating slowly',
-      location: 'minimalist studio',
-      time: 'soft even lighting',
-      mood: 'professional and clean',
-      style: 'commercial photography',
-      event: 'product reveal',
+      subject: 'sleek smartphone with titanium frame and glowing display',
+      action: 'rotating slowly on turntable',
+      location: 'minimalist white studio with soft shadows',
+      time: 'soft even lighting from above',
+      mood: 'professional and pristine',
+      style: 'shot on RED camera with shallow depth of field',
+      event: 'product reveal moment',
     },
   },
   natureScene: {
     name: 'Nature Doc',
     elements: {
-      subject: 'wild animals',
-      action: 'hunting or foraging',
-      location: 'natural habitat',
-      time: 'golden hour',
-      mood: 'majestic and raw',
-      style: 'documentary realism',
-      event: 'wildlife behavior',
+      subject: 'snow leopard with thick spotted coat',
+      action: 'stalking prey through deep snow',
+      location: 'himalayan mountain ridge at dawn',
+      time: 'golden hour with warm backlight',
+      mood: 'majestic and tense',
+      style: 'documentary verité handheld with telephoto lens',
+      event: 'wildlife hunting behavior',
     },
   },
   urbanAction: {
     name: 'Urban Action',
     elements: {
-      subject: 'parkour athlete',
-      action: 'vaulting and running',
-      location: 'city rooftops',
-      time: 'blue hour dusk',
-      mood: 'energetic and intense',
-      style: 'cinematic action',
-      event: 'chase sequence',
+      subject: 'parkour athlete in black tactical gear',
+      action: 'vaulting over concrete barriers in slow motion',
+      location: 'rain-slicked city rooftops with neon signs',
+      time: 'blue hour dusk with deep shadows',
+      mood: 'energetic with high tension',
+      style: 'shot on 35mm film with dynamic camera movement',
+      event: 'rooftop chase sequence',
     },
   },
 };
@@ -106,6 +106,7 @@ export default function CreativeBrainstormEnhanced({
   const [validationScore, setValidationScore] = useState(null);
   const [elementHistory, setElementHistory] = useState([]);
   const [refinementSuggestions, setRefinementSuggestions] = useState({});
+  const [showGuidance, setShowGuidance] = useState(false);
 
   const previousElementsRef = useRef(elements);
 
@@ -113,57 +114,57 @@ export default function CreativeBrainstormEnhanced({
     subject: {
       icon: User,
       label: 'Subject',
-      placeholder: 'Who or what is the main focus?',
+      placeholder: 'Who/what with 2-3 visual details (e.g., "elderly historian with trembling hands")',
       color: 'slate',
-      examples: ['person', 'product', 'animal'],
+      examples: ['elderly street musician with weathered hands', 'matte black DJI drone with amber LEDs', 'bengal cat with spotted coat'],
       group: 'core',
     },
     action: {
       icon: Zap,
       label: 'Action',
-      placeholder: 'What is happening?',
+      placeholder: 'ONE specific action (e.g., "leaping over concrete barriers")',
       color: 'slate',
-      examples: ['walking', 'floating', 'exploding'],
+      examples: ['sprinting through rain-slicked alley', 'dissolving into clear water', 'catching spinning basketball'],
       group: 'core',
     },
     location: {
       icon: MapPin,
       label: 'Location',
-      placeholder: 'Where does this take place?',
+      placeholder: 'Specific place with atmosphere (e.g., "neon-lit Tokyo alley at midnight")',
       color: 'slate',
-      examples: ['urban street', 'mountain peak', 'underwater'],
+      examples: ['neon-lit Tokyo alley at midnight', 'weathered lighthouse on rocky coast', 'abandoned industrial warehouse with broken windows'],
       group: 'core',
     },
     time: {
       icon: Calendar,
       label: 'Time',
-      placeholder: 'When does this happen?',
+      placeholder: 'Lighting quality (e.g., "golden hour with warm shadows")',
       color: 'slate',
-      examples: ['golden hour', 'midnight', 'future'],
+      examples: ['golden hour with warm backlight', 'blue hour dusk with deep shadows', 'harsh midday sun with high contrast'],
       group: 'atmosphere',
     },
     mood: {
       icon: Palette,
       label: 'Mood',
-      placeholder: 'What feeling should it evoke?',
+      placeholder: 'Atmosphere with visual cues (e.g., "tense with low-key lighting")',
       color: 'slate',
-      examples: ['dramatic', 'peaceful', 'energetic'],
+      examples: ['dramatic with deep shadows', 'serene with soft diffused light', 'energetic with dynamic movement'],
       group: 'atmosphere',
     },
     style: {
       icon: Sparkles,
       label: 'Style',
-      placeholder: 'What artistic style?',
+      placeholder: 'Film stock or aesthetic (NOT "cinematic")',
       color: 'slate',
-      examples: ['cinematic', 'documentary', 'anime'],
+      examples: ['shot on 35mm film', 'film noir with high-contrast shadows', 'documentary verité handheld'],
       group: 'style',
     },
     event: {
       icon: Lightbulb,
       label: 'Context',
-      placeholder: "What's the occasion?",
+      placeholder: "Event or narrative moment (e.g., \"product reveal moment\")",
       color: 'slate',
-      examples: ['product launch', 'celebration', 'demonstration'],
+      examples: ['product reveal moment', 'celebration with confetti falling', 'demonstration of new technique'],
       group: 'context',
     },
   };
@@ -567,6 +568,27 @@ export default function CreativeBrainstormEnhanced({
               <p className="mt-1 text-sm text-neutral-600">
                 Build professional video prompts with AI-guided suggestions
               </p>
+              {/* Video Prompt Principles Banner - 2025 Design */}
+              <div className="mt-4 relative overflow-hidden rounded-xl border border-neutral-200/60 bg-gradient-to-br from-neutral-50 via-white to-neutral-50/50 shadow-sm">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/20 via-transparent to-transparent" />
+                <div className="relative px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div className="p-1.5 rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20">
+                        <Info className="h-3.5 w-3.5 text-violet-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-semibold text-neutral-900 tracking-tight mb-1">
+                        Video Prompt Best Practices
+                      </h4>
+                      <p className="text-xs leading-relaxed text-neutral-600">
+                        Be specific with 2-3 visual details • Use ONE clear action • Avoid generic terms like "cinematic" • Describe what the camera sees
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Action Bar */}
@@ -658,6 +680,141 @@ export default function CreativeBrainstormEnhanced({
           </div>
         )}
 
+        {/* Video Prompt Guidance Panel - 2025 Design */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowGuidance(!showGuidance)}
+            className="group w-full relative overflow-hidden rounded-xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-md transition-all duration-300 hover:border-neutral-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500/10 to-teal-500/10 ring-1 ring-emerald-500/20 group-hover:ring-emerald-500/30 transition-all">
+                  <Lightbulb className="h-3.5 w-3.5 text-emerald-700" />
+                </div>
+                <span className="text-sm font-semibold text-neutral-900 tracking-tight">
+                  Video Prompt Writing Guide
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-neutral-500">
+                  {showGuidance ? 'Hide' : 'Show examples'}
+                </span>
+                <div className={`transition-transform duration-300 ${showGuidance ? 'rotate-180' : ''}`}>
+                  <svg className="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {showGuidance && (
+            <div className="mt-2 rounded-xl border border-neutral-200/60 bg-white shadow-sm overflow-hidden animate-[slideDown_0.3s_ease-out]">
+              <div className="p-6 space-y-5">
+                {/* Subject Examples */}
+                <div className="group/section">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-violet-500 to-violet-300" />
+                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Subject</h4>
+                  </div>
+                  <div className="space-y-2.5 pl-3.5">
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                          <X className="h-2.5 w-2.5 text-red-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"a person" or "a nice car"</span>
+                    </div>
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"elderly street musician with weathered hands and silver harmonica"</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Examples */}
+                <div className="group/section pt-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-300" />
+                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Action</h4>
+                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">ONE ONLY</span>
+                  </div>
+                  <div className="space-y-2.5 pl-3.5">
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                          <X className="h-2.5 w-2.5 text-red-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"running, jumping, and spinning" <span className="text-neutral-500">(multiple actions degrade quality)</span></span>
+                    </div>
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"leaping over concrete barriers in slow motion"</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Style Examples */}
+                <div className="group/section pt-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-amber-500 to-amber-300" />
+                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Style</h4>
+                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">USE TECHNICAL TERMS</span>
+                  </div>
+                  <div className="space-y-2.5 pl-3.5">
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                          <X className="h-2.5 w-2.5 text-red-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"cinematic" or "artistic" or "moody"</span>
+                    </div>
+                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-neutral-700 leading-relaxed">"shot on 35mm film with shallow depth of field" or "film noir aesthetic with Rembrandt lighting"</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Principle - Modern Card */}
+                <div className="pt-2">
+                  <div className="relative overflow-hidden rounded-xl border border-neutral-200/60 bg-gradient-to-br from-neutral-50 via-white to-neutral-50/50">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent" />
+                    <div className="relative px-4 py-3.5">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="p-1.5 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                            <Sparkles className="h-3.5 w-3.5 text-blue-700" />
+                          </div>
+                        </div>
+                        <p className="text-xs leading-relaxed text-neutral-700">
+                          <span className="font-semibold text-neutral-900">Remember:</span> Describe only what the camera can SEE. Translate emotions into visible actions and environmental details.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Concept Mode */}
         {mode === 'concept' && (
           <div className="mb-8 mx-auto max-w-3xl">
@@ -734,6 +891,18 @@ export default function CreativeBrainstormEnhanced({
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-neutral-900">{config.label}</h3>
                     </div>
+                    {/* AI Button - Consistent Position */}
+                    <button
+                      onClick={() => fetchSuggestionsForElement(key)}
+                      className="group relative overflow-hidden px-2.5 py-1 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                      title="Get AI suggestions"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      <div className="relative flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3" />
+                        <span>AI</span>
+                      </div>
+                    </button>
                     {isFilled && compatibility !== undefined && (
                       <div className="flex items-center gap-1">
                         {compatibility >= 0.8 ? (
@@ -759,25 +928,19 @@ export default function CreativeBrainstormEnhanced({
                     className="w-full px-3 py-2 text-sm text-neutral-900 bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
                   />
 
-                  {/* Quick Examples */}
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  {/* Quick Examples - 2025 Design */}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
                     {config.examples.map((example, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleElementChange(key, example)}
-                        className="px-2.5 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
+                        className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:shadow-sm hover:bg-neutral-50 transition-all duration-200 active:scale-95"
                       >
                         {example}
                       </button>
                     ))}
-                    <button
-                      onClick={() => fetchSuggestionsForElement(key)}
-                      className="px-2.5 py-1 text-xs font-medium text-neutral-900 bg-neutral-200 rounded-md hover:bg-neutral-300 transition-colors inline-flex items-center gap-1"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      AI
-                    </button>
                   </div>
+
                 </div>
               );
             })}
@@ -834,9 +997,15 @@ export default function CreativeBrainstormEnhanced({
         {/* Panel Content with Modern Scrolling */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {isLoadingSuggestions ? (
-            /* Modern Skeleton Loader with Shimmer Effect */
+            /* Adaptive Skeleton Loader - matches suggestion count and type */
             <div className="p-4 space-y-3">
-              {[1, 2, 3, 4].map((i) => (
+              {Array.from({ length: activeElement ? (
+                // Adaptive count based on element type
+                ['subject', 'action'].includes(activeElement) ? 6 : // Core elements get more suggestions
+                ['location', 'time'].includes(activeElement) ? 5 :
+                ['mood', 'style'].includes(activeElement) ? 5 :
+                4 // event and other elements
+              ) : 4 }).map((_, i) => (
                 <div
                   key={i}
                   className="relative overflow-hidden p-4 bg-gradient-to-r from-neutral-100 via-neutral-50 to-neutral-100 border border-neutral-200 rounded-xl animate-pulse"
@@ -850,16 +1019,29 @@ export default function CreativeBrainstormEnhanced({
 
                   <div className="relative space-y-2.5">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="h-4 bg-neutral-200/70 rounded-md w-3/4" />
-                      <div className="h-5 bg-neutral-200/70 rounded-full w-12" />
+                      {/* Vary skeleton width for more natural look */}
+                      <div className={`h-4 bg-neutral-200/70 rounded-md ${
+                        i % 3 === 0 ? 'w-3/4' : i % 3 === 1 ? 'w-2/3' : 'w-4/5'
+                      }`} />
+                      {/* Show compatibility indicator skeleton */}
+                      {elements[activeElement] && (
+                        <div className="h-5 bg-neutral-200/70 rounded-full w-12" />
+                      )}
                     </div>
-                    <div className="h-3 bg-neutral-200/50 rounded-md w-full" />
-                    <div className="h-3 bg-neutral-200/50 rounded-md w-5/6" />
+                    {/* Vary explanation lines for natural appearance */}
+                    <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                      i % 2 === 0 ? 'w-full' : 'w-11/12'
+                    }`} />
+                    {i % 3 !== 2 && (
+                      <div className={`h-3 bg-neutral-200/50 rounded-md ${
+                        i % 2 === 0 ? 'w-5/6' : 'w-4/5'
+                      }`} />
+                    )}
                   </div>
                 </div>
               ))}
               <p className="text-center text-[13px] text-neutral-500 font-medium mt-6">
-                Finding perfect suggestions...
+                {activeElement ? `Finding ${elementConfig[activeElement]?.label.toLowerCase()} suggestions...` : 'Finding perfect suggestions...'}
               </p>
             </div>
           ) : activeElement && suggestions.length > 0 ? (
@@ -1012,10 +1194,33 @@ export default function CreativeBrainstormEnhanced({
           }
         }
 
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         @keyframes shimmer {
           100% {
             transform: translateX(100%);
           }
+        }
+
+        /* Smooth scrolling behavior */
+        * {
+          scroll-behavior: smooth;
+        }
+
+        /* Custom focus rings for 2025 design */
+        button:focus-visible,
+        input:focus-visible {
+          outline: 2px solid rgb(99 102 241);
+          outline-offset: 2px;
         }
       `}</style>
     </div>
