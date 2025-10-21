@@ -705,6 +705,73 @@ export const PromptCanvas = ({
     }
   };
 
+  const restoreSelectionFromOffsets = (element, startOffset, endOffset) => {
+    if (!element || startOffset == null || endOffset == null) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    const normalizedStart = Math.max(0, startOffset);
+    const normalizedEnd = Math.max(normalizedStart, endOffset);
+
+    const findPosition = (offset) => {
+      const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      let currentNode = walker.nextNode();
+      let accumulated = 0;
+      let lastNode = null;
+
+      while (currentNode) {
+        const textLength = currentNode.textContent.length;
+        if (offset <= accumulated + textLength) {
+          return {
+            node: currentNode,
+            offset: Math.min(textLength, Math.max(0, offset - accumulated)),
+          };
+        }
+
+        accumulated += textLength;
+        lastNode = currentNode;
+        currentNode = walker.nextNode();
+      }
+
+      if (lastNode) {
+        return { node: lastNode, offset: lastNode.textContent.length };
+      }
+
+      return { node: element, offset: element.childNodes.length };
+    };
+
+    const startPosition = findPosition(normalizedStart);
+    const endPosition = findPosition(normalizedEnd);
+
+    if (!startPosition?.node || !endPosition?.node) {
+      return;
+    }
+
+    const range = document.createRange();
+
+    try {
+      range.setStart(startPosition.node, startPosition.offset);
+      range.setEnd(endPosition.node, endPosition.offset);
+    } catch (error) {
+      console.error('Error restoring selection offsets:', error);
+      return;
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
   const handleTextSelection = () => {
     // Only allow text selection suggestions in video mode
     if (selectedMode !== 'video') {
@@ -815,15 +882,20 @@ export const PromptCanvas = ({
       if (currentText !== newText) {
         const selection = window.getSelection();
         const hadFocus = document.activeElement === editorRef.current;
-        let cursorPosition = 0;
+        let savedOffsets = null;
 
-        // Try to save cursor position
-        if (hadFocus && selection.rangeCount > 0) {
+        // Try to save cursor selection offsets when focus is within the editor
+        if (hadFocus && selection?.rangeCount > 0) {
           try {
             const range = selection.getRangeAt(0);
-            cursorPosition = range.startOffset;
+            if (
+              editorRef.current.contains(range.startContainer) &&
+              editorRef.current.contains(range.endContainer)
+            ) {
+              savedOffsets = getSelectionOffsets(range);
+            }
           } catch (e) {
-            // Ignore cursor position errors
+            savedOffsets = null;
           }
         }
 
@@ -834,6 +906,13 @@ export const PromptCanvas = ({
         if (hadFocus) {
           try {
             editorRef.current.focus();
+            if (savedOffsets) {
+              restoreSelectionFromOffsets(
+                editorRef.current,
+                savedOffsets.start,
+                savedOffsets.end
+              );
+            }
           } catch (e) {
             // Ignore focus errors
           }
