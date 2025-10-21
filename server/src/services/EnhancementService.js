@@ -115,23 +115,32 @@ export class EnhancementService {
 
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
-
-    // Debug logging
-    logger.info('Processing suggestions for categorization', {
+    const sanitizedSuggestions = this.sanitizeSuggestions(diverseSuggestions, {
+      highlightedText,
+      fullPrompt,
       isPlaceholder,
-      hasCategoryField: diverseSuggestions[0]?.category !== undefined,
-      totalSuggestions: diverseSuggestions.length,
     });
 
-    // Group suggestions by category if they have categories
-    const groupedSuggestions = isPlaceholder && diverseSuggestions[0]?.category
-      ? this.groupSuggestionsByCategory(diverseSuggestions)
-      : diverseSuggestions;
+    logger.info('Processing suggestions for categorization', {
+      isPlaceholder,
+      hasCategoryField: sanitizedSuggestions[0]?.category !== undefined,
+      totalSuggestions: sanitizedSuggestions.length,
+      removedDuringSanitization: Math.max(
+        0,
+        diverseSuggestions.length - sanitizedSuggestions.length
+      ),
+    });
+
+    const groupedSuggestions =
+      isPlaceholder && sanitizedSuggestions[0]?.category
+        ? this.groupSuggestionsByCategory(sanitizedSuggestions)
+        : sanitizedSuggestions;
 
     const result = {
       suggestions: groupedSuggestions,
       isPlaceholder,
-      hasCategories: isPlaceholder && diverseSuggestions[0]?.category ? true : false,
+      hasCategories:
+        isPlaceholder && sanitizedSuggestions[0]?.category ? true : false,
     };
 
     logger.info('Final result structure', {
@@ -240,8 +249,67 @@ export class EnhancementService {
    * Detect if highlighted text is a placeholder
    * @private
    */
-  detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt) {
-    const text = highlightedText.toLowerCase().trim();
+  detectPlaceholder(highlightedText, contextBefore = '', contextAfter = '', fullPrompt = '') {
+    if (!highlightedText) {
+      return false;
+    }
+
+    const originalText = highlightedText.trim();
+    if (!originalText) {
+      return false;
+    }
+
+    const text = originalText.toLowerCase();
+    const lowerContextBefore = contextBefore ? contextBefore.toLowerCase() : '';
+    const lowerContextAfter = contextAfter ? contextAfter.toLowerCase() : '';
+
+    // Detect proper nouns that represent subjects/characters in video prompts
+    if (this.isVideoPrompt(fullPrompt)) {
+      const words = originalText.split(/\s+/).filter(Boolean);
+      const hasValidWordCount = words.length > 0 && words.length <= 5;
+      const looksLikeProperNoun =
+        hasValidWordCount &&
+        words.every((word) => {
+          const cleaned = word.replace(/[^a-zA-Z'’\-]/g, '');
+          if (!cleaned) return false;
+          const firstChar = cleaned[0];
+          return /[A-Z]/.test(firstChar);
+        });
+
+      if (looksLikeProperNoun) {
+        const cameraTerms = new Set([
+          'medium',
+          'wide',
+          'close',
+          'closeup',
+          'close-up',
+          'extreme',
+          'pov',
+          'point',
+          'tracking',
+          'static',
+          'handheld',
+        ]);
+        const containsCameraTerm = words.some((word) =>
+          cameraTerms.has(word.toLowerCase())
+        );
+
+        if (!containsCameraTerm) {
+          const subjectContextPattern =
+            /(shot|close[-\s]?up|portrait|view|angle|framing|scene|profile|depicting|featuring|showing|starring|capturing|following|of|with)\s*$/i;
+          const afterSubjectPattern = /^(,|\s)*(a|an|the|his|her|their|who|which|that|in\b)/i;
+          const nearbyCharacterWords = /(subject|character|figure|leader|person|speaker|hero)/i;
+
+          if (
+            subjectContextPattern.test(lowerContextBefore) ||
+            afterSubjectPattern.test(contextAfter.trim().toLowerCase()) ||
+            nearbyCharacterWords.test(lowerContextAfter)
+          ) {
+            return true;
+          }
+        }
+      }
+    }
 
     // Enhanced Pattern 1: Material/substance detection
     const materialKeywords = [
@@ -322,7 +390,7 @@ export class EnhancementService {
     ];
     if (
       precedingPhrases.some((phrase) =>
-        contextBefore.toLowerCase().includes(phrase)
+        lowerContextBefore.includes(phrase)
       )
     ) {
       return true;
@@ -330,7 +398,7 @@ export class EnhancementService {
 
     // Pattern 6: In a list or comma-separated context
     if (
-      (contextBefore.includes(':') || contextBefore.includes('-')) &&
+      (lowerContextBefore.includes(':') || lowerContextBefore.includes('-')) &&
       text.split(/\s+/).length <= 3
     ) {
       return true;
@@ -650,6 +718,8 @@ Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement 
 ✓ ONE clear action/focus per suggestion
 ✓ Specific over generic ("weathered oak" not "nice table")
 ✓ Flows with surrounding context
+✓ Replace ONLY the highlighted span (no new headers or template sections)
+✓ Maintain existing punctuation and capitalization cues from surrounding text
 ${brainstormRequirementLine}Return ONLY a JSON array (no markdown, no code blocks):
 
 [
@@ -924,6 +994,125 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "fourth option with unique spin..."},
   {"text": "fifth creative implementation..."}
 ]`;
+  }
+
+  sanitizeSuggestions(rawSuggestions, { highlightedText, fullPrompt, isPlaceholder }) {
+    if (!Array.isArray(rawSuggestions) || rawSuggestions.length === 0) {
+      return [];
+    }
+
+    const isVideoPrompt = this.isVideoPrompt(fullPrompt || '');
+    const sanitized = rawSuggestions
+      .map((suggestion) =>
+        this.sanitizeSingleSuggestion(suggestion, {
+          isPlaceholder,
+          isVideoPrompt,
+          highlightedText,
+        })
+      )
+      .filter(Boolean);
+
+    if (sanitized.length === 0) {
+      return rawSuggestions
+        .map((suggestion) => this.normalizeSuggestionStructure(suggestion))
+        .filter(Boolean);
+    }
+
+    return sanitized;
+  }
+
+  sanitizeSingleSuggestion(rawSuggestion, { isPlaceholder, isVideoPrompt }) {
+    if (!rawSuggestion) {
+      return null;
+    }
+
+    const suggestion =
+      typeof rawSuggestion === 'string'
+        ? { text: rawSuggestion }
+        : { ...rawSuggestion };
+
+    if (!suggestion.text) {
+      return null;
+    }
+
+    let text = suggestion.text.toString().trim();
+    if (!text) {
+      return null;
+    }
+
+    text = text.replace(/\s+/g, ' ');
+    const lowerText = text.toLowerCase();
+
+    if (!isPlaceholder) {
+      const disallowedPhrases = [
+        '**main prompt:**',
+        '**technical specs:**',
+        '**alternative approaches:**',
+        'technical specs:',
+        'alternative approaches:',
+      ];
+
+      if (disallowedPhrases.some((phrase) => lowerText.includes(phrase))) {
+        return null;
+      }
+
+      if (isVideoPrompt) {
+        const sentenceCount = (text.match(/[.!?](?:\s|$)/g) || []).length;
+        if (sentenceCount > 2) {
+          return null;
+        }
+      }
+    }
+
+    suggestion.text = text;
+
+    if (suggestion.explanation) {
+      suggestion.explanation = suggestion.explanation
+        .toString()
+        .trim()
+        .replace(/\s+/g, ' ');
+    }
+
+    if (suggestion.category) {
+      suggestion.category = suggestion.category.toString().trim();
+    }
+
+    return suggestion;
+  }
+
+  normalizeSuggestionStructure(rawSuggestion) {
+    if (!rawSuggestion) {
+      return null;
+    }
+
+    if (typeof rawSuggestion === 'string') {
+      const text = rawSuggestion.toString().trim();
+      return text ? { text } : null;
+    }
+
+    if (typeof rawSuggestion === 'object') {
+      const normalized = { ...rawSuggestion };
+      if (!normalized.text) {
+        return null;
+      }
+
+      normalized.text = normalized.text.toString().trim();
+      if (!normalized.text) {
+        return null;
+      }
+
+      if (normalized.explanation) {
+        normalized.explanation = normalized.explanation.toString().trim();
+      }
+
+      if (normalized.category) {
+        normalized.category = normalized.category.toString().trim();
+      }
+
+      return normalized;
+    }
+
+    return null;
   }
 
   /**
