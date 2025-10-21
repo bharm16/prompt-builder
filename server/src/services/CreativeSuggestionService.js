@@ -3,6 +3,18 @@ import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { generateVideoPrompt } from './VideoPromptTemplates.js';
+import {
+  compatibilityOutputSchema,
+  completeSceneOutputSchema,
+  variationsOutputSchema,
+  parseConceptOutputSchema,
+  refinementsOutputSchema,
+  conflictsOutputSchema,
+  technicalParamsOutputSchema,
+  validatePromptOutputSchema,
+  smartDefaultsOutputSchema,
+  alternativePhrasingsOutputSchema,
+} from '../utils/validation.js';
 
 /**
  * Service for generating creative suggestions for video elements
@@ -373,12 +385,15 @@ Respond with ONLY a JSON object:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 256,
-        temperature: 0.3,
-      });
-
-      return JSON.parse(response.content[0].text);
+      return await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: compatibilityOutputSchema,
+          maxTokens: 256,
+          temperature: 0.3,
+        }
+      );
     } catch (error) {
       logger.error('Failed to check compatibility', { error });
       return { score: 0.5, feedback: 'Unable to determine compatibility' };
@@ -425,12 +440,15 @@ Return ONLY a JSON object with the missing elements:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.7,
-      });
-
-      const suggestions = JSON.parse(response.content[0].text);
+      const suggestions = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: completeSceneOutputSchema,
+          maxTokens: 512,
+          temperature: 0.7,
+        }
+      );
       return { suggestions: { ...existingElements, ...suggestions } };
     } catch (error) {
       logger.error('Failed to complete scene', { error });
@@ -475,12 +493,16 @@ Return ONLY a JSON array of 3 variations:
 ]`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 2048,
-        temperature: 0.8,
-      });
-
-      const variations = JSON.parse(response.content[0].text);
+      const variations = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: variationsOutputSchema,
+          isArray: true,
+          maxTokens: 2048,
+          temperature: 0.8,
+        }
+      );
       return { variations };
     } catch (error) {
       logger.error('Failed to generate variations', { error });
@@ -521,12 +543,15 @@ Return ONLY a JSON object with ALL elements:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.5,
-      });
-
-      const elements = JSON.parse(response.content[0].text);
+      const elements = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: parseConceptOutputSchema,
+          maxTokens: 512,
+          temperature: 0.5,
+        }
+      );
       return { elements };
     } catch (error) {
       logger.error('Failed to parse concept', { error });
@@ -573,12 +598,15 @@ Return ONLY a JSON object:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.6,
-      });
-
-      const refinements = JSON.parse(response.content[0].text);
+      const refinements = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: refinementsOutputSchema,
+          maxTokens: 512,
+          temperature: 0.6,
+        }
+      );
       return { refinements };
     } catch (error) {
       logger.error('Failed to get refinements', { error });
@@ -620,12 +648,16 @@ Return ONLY a JSON array of conflicts (empty array if none):
 ]`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.3,
-      });
-
-      const conflicts = JSON.parse(response.content[0].text);
+      const conflicts = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: conflictsOutputSchema,
+          isArray: true,
+          maxTokens: 512,
+          temperature: 0.3,
+        }
+      );
       return { conflicts };
     } catch (error) {
       logger.error('Failed to detect conflicts', { error });
@@ -687,12 +719,15 @@ Return ONLY a JSON object:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 768,
-        temperature: 0.5,
-      });
-
-      const params = JSON.parse(response.content[0].text);
+      const params = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: technicalParamsOutputSchema,
+          maxTokens: 768,
+          temperature: 0.5,
+        }
+      );
       return { technicalParams: params };
     } catch (error) {
       logger.error('Failed to generate technical params', { error });
@@ -736,12 +771,15 @@ Return ONLY a JSON object:
 }`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.3,
-      });
-
-      const validation = JSON.parse(response.content[0].text);
+      const validation = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: validatePromptOutputSchema,
+          maxTokens: 512,
+          temperature: 0.3,
+        }
+      );
       return validation;
     } catch (error) {
       logger.error('Failed to validate prompt', { error });
@@ -784,12 +822,16 @@ Return ONLY a JSON array:
 ["default 1", "default 2", "default 3"]`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 256,
-        temperature: 0.6,
-      });
-
-      const defaults = JSON.parse(response.content[0].text);
+      const defaults = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: smartDefaultsOutputSchema,
+          isArray: true,
+          maxTokens: 256,
+          temperature: 0.6,
+        }
+      );
       return { defaults };
     } catch (error) {
       logger.error('Failed to get smart defaults', { error });
@@ -867,12 +909,16 @@ Return ONLY a JSON array:
 ]`;
 
     try {
-      const response = await this.claudeClient.complete(prompt, {
-        maxTokens: 512,
-        temperature: 0.7,
-      });
-
-      const alternatives = JSON.parse(response.content[0].text);
+      const alternatives = await StructuredOutputEnforcer.enforceJSON(
+        this.claudeClient,
+        prompt,
+        {
+          schema: alternativePhrasingsOutputSchema,
+          isArray: true,
+          maxTokens: 512,
+          temperature: 0.7,
+        }
+      );
       return { alternatives };
     } catch (error) {
       logger.error('Failed to get alternatives', { error });

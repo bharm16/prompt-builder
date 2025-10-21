@@ -19,11 +19,40 @@ global.fetch = vi.fn();
 
 describe('API Server Tests', () => {
   let app;
+  let cacheService;
+  let metricsService;
+
+  const createLLMResponse = (payload) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      choices: [
+        {
+          message: {
+            content: typeof payload === 'string' ? payload : JSON.stringify(payload),
+          },
+        },
+      ],
+      // Include Claude-style content for legacy tests that read directly
+      content: [
+        {
+          text: typeof payload === 'string' ? payload : JSON.stringify(payload),
+        },
+      ],
+    }),
+  });
 
   beforeAll(async () => {
     // Dynamically import the server after env vars are set
     const serverModule = await import('../server.js');
     app = serverModule.default;
+
+    const cacheModule = await import('../src/services/CacheService.js');
+    cacheService = cacheModule.cacheService;
+
+    const metricsModule = await import('../src/infrastructure/MetricsService.js');
+    metricsService = metricsModule.metricsService;
+
     // Clear any existing mocks
     vi.clearAllMocks();
   });
@@ -33,7 +62,6 @@ describe('API Server Tests', () => {
     global.fetch.mockReset();
 
     // Clear cache between tests to avoid interference
-    const { cacheService } = await import('../src/services/CacheService.js');
     await cacheService.flush();
   });
 
@@ -101,13 +129,9 @@ describe('API Server Tests', () => {
 
     it('should accept valid request with code mode', async () => {
       // Mock successful Claude API response
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: 'Optimized code prompt response' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(
+        createLLMResponse('Optimized code prompt response')
+      );
 
       const response = await request(app)
         .post('/api/optimize')
@@ -127,13 +151,9 @@ describe('API Server Tests', () => {
       const modes = ['code', 'text', 'learning', 'video', 'reasoning', 'research', 'socratic', 'optimize'];
 
       for (const mode of modes) {
-        global.fetch.mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            content: [{ text: `Optimized ${mode} response` }],
-          }),
-        });
+        global.fetch.mockResolvedValueOnce(
+          createLLMResponse(`Optimized ${mode} response`)
+        );
 
         const response = await request(app)
           .post('/api/optimize')
@@ -151,13 +171,9 @@ describe('API Server Tests', () => {
     });
 
     it('should accept valid request with context', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: 'Optimized prompt with context' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(
+        createLLMResponse('Optimized prompt with context')
+      );
 
       const response = await request(app)
         .post('/api/optimize')
@@ -261,13 +277,7 @@ describe('API Server Tests', () => {
         ],
       };
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockQuestions) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockQuestions));
 
       const response = await request(app)
         .post('/api/generate-questions')
@@ -298,13 +308,7 @@ describe('API Server Tests', () => {
       // Simulate response with markdown code blocks
       const responseText = '```json\n' + JSON.stringify(mockQuestions) + '\n```';
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: responseText }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(responseText));
 
       const response = await request(app)
         .post('/api/generate-questions')
@@ -366,13 +370,7 @@ describe('API Server Tests', () => {
         { text: 'Paris', explanation: 'European capital', category: 'European Cities' },
       ];
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockSuggestions) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -408,13 +406,7 @@ describe('API Server Tests', () => {
         { text: 'Third rewrite option', explanation: 'Enhanced detail and precision' },
       ];
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockSuggestions) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -437,13 +429,7 @@ describe('API Server Tests', () => {
         { text: 'Cinematic rewrite with camera details', explanation: 'Adds specific camera movements and framing' },
       ];
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockSuggestions) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -495,13 +481,7 @@ describe('API Server Tests', () => {
         { text: 'Custom suggestion 3' },
       ];
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockSuggestions) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
       const response = await request(app)
         .post('/api/get-custom-suggestions')
@@ -542,13 +522,7 @@ describe('API Server Tests', () => {
         },
       };
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockResult) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockResult));
 
       const response = await request(app)
         .post('/api/detect-scene-change')
@@ -578,13 +552,7 @@ describe('API Server Tests', () => {
         suggestedUpdates: {},
       };
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: JSON.stringify(mockResult) }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse(mockResult));
 
       const response = await request(app)
         .post('/api/detect-scene-change')
@@ -637,13 +605,7 @@ describe('API Server Tests', () => {
           { text: 'Suggestion 2', explanation: 'Why it works' },
         ];
 
-        global.fetch.mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            content: [{ text: JSON.stringify(mockSuggestions) }],
-          }),
-        });
+        global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
         const response = await request(app)
           .post('/api/get-creative-suggestions')
@@ -675,13 +637,7 @@ describe('API Server Tests', () => {
 
   describe('CORS Configuration', () => {
     it('should allow requests from localhost:5173', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: 'Response' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(createLLMResponse('Response'));
 
       const response = await request(app)
         .post('/api/optimize')
@@ -698,13 +654,11 @@ describe('API Server Tests', () => {
 
   describe('Placeholder Detection', () => {
     it('should detect single-word placeholders', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: '[{"text": "Paris", "explanation": "Capital of France", "category": "European Cities"}, {"text": "New York", "explanation": "Major US city", "category": "US Cities"}]' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(
+        createLLMResponse(
+          '[{"text": "Paris", "explanation": "Capital of France", "category": "European Cities"}, {"text": "New York", "explanation": "Major US city", "category": "US Cities"}]'
+        )
+      );
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -722,13 +676,11 @@ describe('API Server Tests', () => {
     });
 
     it('should detect placeholders in parentheses', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: '[{"text": "downtown office", "explanation": "Central business district", "category": "Indoor Locations"}, {"text": "beach resort", "explanation": "Coastal vacation spot", "category": "Outdoor Locations"}]' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(
+        createLLMResponse(
+          '[{"text": "downtown office", "explanation": "Central business district", "category": "Indoor Locations"}, {"text": "beach resort", "explanation": "Coastal vacation spot", "category": "Outdoor Locations"}]'
+        )
+      );
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -746,13 +698,11 @@ describe('API Server Tests', () => {
     });
 
     it('should detect placeholders with preceding phrases', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: [{ text: '[{"text": "New York", "explanation": "Major US city", "category": "US Cities"}, {"text": "Tokyo", "explanation": "Major Asian city", "category": "Asian Cities"}]' }],
-        }),
-      });
+      global.fetch.mockResolvedValueOnce(
+        createLLMResponse(
+          '[{"text": "New York", "explanation": "Major US city", "category": "US Cities"}, {"text": "Tokyo", "explanation": "Major Asian city", "category": "Asian Cities"}]'
+        )
+      );
 
       const response = await request(app)
         .post('/api/get-enhancement-suggestions')
@@ -767,6 +717,435 @@ describe('API Server Tests', () => {
         .expect(200);
 
       expect(response.body.isPlaceholder).toBe(true);
+    });
+  });
+
+  describe('POST /api/check-compatibility', () => {
+    const payload = {
+      elementType: 'subject',
+      value: 'Robot detective',
+      existingElements: {
+        subject: 'Time-traveling journalist',
+        location: 'Rain-soaked metropolis',
+        mood: 'Noir mystery',
+      },
+    };
+
+    it('should analyze compatibility, cache the result, and update metrics', async () => {
+      const compatibilityResult = {
+        score: 0.82,
+        feedback: 'Character concept fits the noir tone.',
+        conflicts: [],
+        suggestions: ['Lean into the investigative angle for cohesion.'],
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(compatibilityResult));
+
+      const missSpy = vi.spyOn(metricsService, 'recordCacheMiss');
+      const hitSpy = vi.spyOn(metricsService, 'recordCacheHit');
+      const setSpy = vi.spyOn(cacheService, 'set');
+
+      const firstResponse = await request(app)
+        .post('/api/check-compatibility')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(firstResponse.body).toEqual(compatibilityResult);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(missSpy).toHaveBeenCalledTimes(1);
+      expect(hitSpy).not.toHaveBeenCalled();
+
+      const normalizedElements = Object.fromEntries(
+        Object.entries(payload.existingElements)
+          .filter(([key, value]) => value && key !== payload.elementType)
+          .sort(([a], [b]) => a.localeCompare(b))
+      );
+      const expectedCacheKey = cacheService.generateKey('compatibility', {
+        elementType: payload.elementType,
+        value: payload.value.trim().toLowerCase(),
+        existingElements: normalizedElements,
+      });
+
+      expect(setSpy).toHaveBeenCalledWith(expectedCacheKey, compatibilityResult, {
+        ttl: 30,
+      });
+
+      const ttlTimestamp = cacheService.cache.getTtl(expectedCacheKey);
+      expect(ttlTimestamp).toBeGreaterThan(Date.now());
+      const ttlMs = ttlTimestamp - Date.now();
+      expect(ttlMs).toBeGreaterThan(25000);
+      expect(ttlMs).toBeLessThanOrEqual(30000);
+
+      setSpy.mockClear();
+      missSpy.mockClear();
+      hitSpy.mockClear();
+      global.fetch.mockClear();
+
+      const secondResponse = await request(app)
+        .post('/api/check-compatibility')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(secondResponse.body).toEqual(compatibilityResult);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(hitSpy).toHaveBeenCalledTimes(1);
+      expect(missSpy).not.toHaveBeenCalled();
+      expect(setSpy).not.toHaveBeenCalled();
+
+      setSpy.mockRestore();
+      hitSpy.mockRestore();
+      missSpy.mockRestore();
+    });
+
+    it('should return a fallback when structured output enforcement fails', async () => {
+      global.fetch.mockImplementation(() =>
+        Promise.resolve(createLLMResponse('not valid json output'))
+      );
+
+      const response = await request(app)
+        .post('/api/check-compatibility')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.score).toBe(0.5);
+      expect(response.body.feedback).toContain('Unable to determine');
+      expect(global.fetch.mock.calls.length).toBeGreaterThan(1);
+    });
+  });
+
+  describe('POST /api/complete-scene', () => {
+    it('should merge suggestions for missing elements', async () => {
+      const payload = {
+        existingElements: {
+          subject: 'Robot detective',
+          location: '',
+          mood: 'Noir mystery',
+        },
+        concept: 'Futuristic noir investigation',
+      };
+
+      const llmResponse = {
+        location: 'A neon-drenched alleyway under constant rain',
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(llmResponse));
+
+      const response = await request(app)
+        .post('/api/complete-scene')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.suggestions.location).toBe(llmResponse.location);
+      expect(response.body.suggestions.subject).toBe(payload.existingElements.subject);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/generate-variations', () => {
+    it('should return structured variations', async () => {
+      const payload = {
+        elements: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+          mood: 'Noir mystery',
+        },
+        concept: 'Futuristic noir investigation',
+      };
+
+      const variations = [
+        {
+          name: 'Undercover Noir',
+          description: 'Focuses on stealth and espionage.',
+          elements: { subject: 'Robot detective', location: 'Neon city' },
+          changes: ['Introduce undercover assignment'],
+        },
+        {
+          name: 'High-Speed Pursuit',
+          description: 'Centers on a chase across the skyline.',
+          elements: { subject: 'Robot detective', location: 'Skyway' },
+          changes: ['Add aerial vehicles'],
+        },
+        {
+          name: 'Cybercrime Lab',
+          description: 'Spotlights forensic analysis.',
+          elements: { subject: 'Robot detective', location: 'Forensic lab' },
+          changes: ['Highlight tech-savvy tools'],
+        },
+      ];
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(variations));
+
+      const response = await request(app)
+        .post('/api/generate-variations')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.variations).toHaveLength(3);
+      expect(response.body.variations[0]).toHaveProperty('name');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/parse-concept', () => {
+    it('should clean markdown output when parsing concept', async () => {
+      const payload = { concept: 'A robot detective solving mysteries in a neon city.' };
+      const conceptBreakdown = {
+        subject: 'Robot detective',
+        action: 'Investigates crime scenes',
+        location: 'Neon city',
+        time: 'Rainy night',
+        mood: 'Noir suspense',
+        style: 'Cyberpunk thriller',
+        event: 'High-profile heist',
+      };
+
+      const markdownResponse = `\n\n\`\`\`json\n${JSON.stringify(conceptBreakdown)}\n\`\`\``;
+      global.fetch.mockResolvedValueOnce(createLLMResponse(markdownResponse));
+
+      const response = await request(app)
+        .post('/api/parse-concept')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.elements).toEqual(conceptBreakdown);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/get-refinements', () => {
+    it('should return refinement suggestions for filled elements', async () => {
+      const payload = {
+        elements: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+        },
+      };
+
+      const refinements = {
+        subject: ['Cybernetic sleuth', 'Investigative android'],
+        location: ['Rain-drenched skyline'],
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(refinements));
+
+      const response = await request(app)
+        .post('/api/get-refinements')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.refinements.subject).toContain('Cybernetic sleuth');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/detect-conflicts', () => {
+    it('should surface detected conflicts', async () => {
+      const payload = {
+        elements: {
+          subject: 'Robot detective',
+          location: 'Deep ocean base',
+        },
+      };
+
+      const conflicts = [
+        {
+          elements: ['subject', 'location'],
+          severity: 'medium',
+          message: 'Robots may corrode underwater without preparation.',
+          resolution: 'Add waterproofing or change location.',
+        },
+      ];
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(conflicts));
+
+      const response = await request(app)
+        .post('/api/detect-conflicts')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.conflicts).toHaveLength(1);
+      expect(response.body.conflicts[0].severity).toBe('medium');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/generate-technical-params', () => {
+    it('should return structured technical guidance', async () => {
+      const payload = {
+        elements: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+          mood: 'Noir mystery',
+        },
+      };
+
+      const technicalParams = {
+        camera: { angle: 'Low angle', movement: 'Slow dolly', lens: '35mm' },
+        lighting: { type: 'Practical neon', direction: 'Side', quality: 'Moody' },
+        color: { grading: 'Teal and orange', palette: 'High contrast' },
+        format: { frameRate: '24fps', aspectRatio: '2.39:1', resolution: '4K' },
+        audio: { style: 'Synthwave score', mood: 'Brooding' },
+        postProduction: { effects: ['Light rain composite'], transitions: 'Hard cuts' },
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(technicalParams));
+
+      const response = await request(app)
+        .post('/api/generate-technical-params')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.technicalParams.camera.angle).toBe('Low angle');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/validate-prompt', () => {
+    it('should return validation scoring', async () => {
+      const payload = {
+        elements: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+        },
+        concept: 'Futuristic noir investigation',
+      };
+
+      const validation = {
+        score: 78,
+        breakdown: {
+          completeness: 20,
+          specificity: 18,
+          coherence: 22,
+          visualPotential: 18,
+        },
+        feedback: ['Clarify the antagonist role.'],
+        strengths: ['Strong atmosphere'],
+        weaknesses: ['Need clearer stakes'],
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(validation));
+
+      const response = await request(app)
+        .post('/api/validate-prompt')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.score).toBe(78);
+      expect(response.body.breakdown.coherence).toBe(22);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/get-smart-defaults', () => {
+    it('should provide default suggestions for dependent element', async () => {
+      const payload = {
+        elementType: 'lighting',
+        existingElements: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+          mood: 'Noir mystery',
+        },
+      };
+
+      const defaults = [
+        'High-contrast neon signage',
+        'Backlit rain-soaked streets',
+        'Moody alley uplighting',
+      ];
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(defaults));
+
+      const response = await request(app)
+        .post('/api/get-smart-defaults')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.defaults).toEqual(defaults);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/save-template', () => {
+    it('should persist template metadata for reuse', async () => {
+      const payload = {
+        name: 'Noir Investigation',
+        elements: { subject: 'Robot detective' },
+        concept: 'Futuristic noir investigation',
+        userId: 'user-123',
+      };
+
+      const response = await request(app)
+        .post('/api/save-template')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.template).toMatchObject({ name: 'Noir Investigation' });
+    });
+  });
+
+  describe('POST /api/get-template-recommendations', () => {
+    it('should return an array of recommendations even without prior usage', async () => {
+      const response = await request(app)
+        .post('/api/get-template-recommendations')
+        .set('X-API-Key', 'dev-key-12345')
+        .send({ userId: 'user-123', currentElements: {} })
+        .expect(200);
+
+      expect(Array.isArray(response.body.recommendations)).toBe(true);
+    });
+  });
+
+  describe('POST /api/record-user-choice', () => {
+    it('should record the selected option successfully', async () => {
+      const payload = {
+        elementType: 'subject',
+        chosen: 'Robot detective',
+        rejected: ['Alien journalist'],
+        userId: 'user-123',
+      };
+
+      const response = await request(app)
+        .post('/api/record-user-choice')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('POST /api/get-alternative-phrasings', () => {
+    it('should return alternative phrasings with tone metadata', async () => {
+      const payload = { elementType: 'subject', value: 'Robot detective' };
+      const alternatives = [
+        { text: 'Cybernetic investigator', tone: 'technical' },
+        { text: 'Futuristic sleuth', tone: 'dramatic' },
+      ];
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(alternatives));
+
+      const response = await request(app)
+        .post('/api/get-alternative-phrasings')
+        .set('X-API-Key', 'dev-key-12345')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.alternatives).toHaveLength(2);
+      expect(response.body.alternatives[0]).toHaveProperty('tone');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 });
