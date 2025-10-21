@@ -4,8 +4,15 @@ import { detectAndApplySceneChange } from '../../../../client/src/utils/detectSc
 describe('detectAndApplySceneChange', () => {
   const basePrompt = `\n**WHERE - LOCATION/SETTING**\n- Environment Type: [Forest]\n- Architectural Details: [Wooden cabins]\n- Environmental Scale: [Intimate]\n- Atmospheric Conditions: [Misty]\n- Background Elements: [Tall pines]\n- Foreground Elements: [Mossy rocks]\n- Spatial Depth: [Layered]\n- Environmental Storytelling: [Tranquil retreat]\n\n**WHEN - TIME/ERA**\n- Time of Day: [Dawn]\n`;
 
-  it('returns updated prompt when WHERE section is missing', async () => {
-    const fetchMock = vi.fn();
+  it('sends fallback context when structured sections are missing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          isSceneChange: false,
+          confidence: 'low',
+        }),
+    });
     const confirmMock = vi.fn();
 
     const result = await detectAndApplySceneChange({
@@ -18,7 +25,11 @@ describe('detectAndApplySceneChange', () => {
     });
 
     expect(result).toBe('No structured data here');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, fetchOptions] = fetchMock.mock.calls[0];
+    const body = JSON.parse(fetchOptions.body);
+    expect(body.changedField).toBe('Unknown Field');
+    expect(body.affectedFields).toEqual({});
     expect(confirmMock).not.toHaveBeenCalled();
   });
 
@@ -56,15 +67,17 @@ describe('detectAndApplySceneChange', () => {
       changedField: 'Environment Type',
       oldValue: 'Forest',
       newValue: 'Desert',
-      affectedFields: {
-        'Architectural Details': 'Wooden cabins',
-        'Environmental Scale': 'Intimate',
-        'Atmospheric Conditions': 'Misty',
-        'Background Elements': 'Tall pines',
-        'Foreground Elements': 'Mossy rocks',
-        'Spatial Depth': 'Layered',
-        'Environmental Storytelling': 'Tranquil retreat',
-      },
+      sectionHeading: 'WHERE - LOCATION/SETTING',
+    });
+    expect(body.affectedFields).toMatchObject({
+      'Environment Type': 'Forest',
+      'Architectural Details': 'Wooden cabins',
+      'Environmental Scale': 'Intimate',
+      'Atmospheric Conditions': 'Misty',
+      'Background Elements': 'Tall pines',
+      'Foreground Elements': 'Mossy rocks',
+      'Spatial Depth': 'Layered',
+      'Environmental Storytelling': 'Tranquil retreat',
     });
   });
 
@@ -103,6 +116,10 @@ describe('detectAndApplySceneChange', () => {
     expect(result).toContain('- Architectural Details: [Adobe dwellings]');
     expect(result).toContain('- Atmospheric Conditions: [Dry heat]');
     expect(result).toContain('- Environment Type: [Desert Oasis]');
+    const [, fetchOptions] = fetchMock.mock.calls[0];
+    const body = JSON.parse(fetchOptions.body);
+    expect(body.sectionContext).toContain('Environment Type');
+    expect(body.affectedFields['Environment Type']).toBe('Forest');
   });
 
   it('does not update fields when confirmation is declined', async () => {

@@ -4,25 +4,57 @@ import { PromptContext } from '../../../utils/PromptContext';
 
 describe('extractVideoPromptPhrases', () => {
   describe('without context', () => {
-    it('should extract descriptive phrases', () => {
-      const text = 'A beautiful sunset with golden hour lighting';
+    it('should extract lighting cues', () => {
+      const text = 'A beautiful sunset with golden hour lighting and rim light tracing the silhouette';
       const phrases = extractVideoPromptPhrases(text);
 
-      expect(phrases).toBeDefined();
-      expect(phrases.length).toBeGreaterThan(0);
-
-      const descriptive = phrases.filter(p => p.category === 'descriptive');
-      expect(descriptive.length).toBeGreaterThan(0);
+      const lighting = phrases.filter(p => p.category === 'lighting');
+      expect(lighting.length).toBeGreaterThan(0);
+      expect(lighting.some(p => p.text.toLowerCase().includes('golden hour lighting'))).toBe(true);
     });
 
     it('should extract camera movements', () => {
-      const text = 'The camera pans across the scene';
+      const text = 'The camera dollies in before a whip pan left to reveal the skyline';
       const phrases = extractVideoPromptPhrases(text);
 
-      const camera = phrases.filter(p => p.category === 'camera');
-      // May or may not extract depending on NLP recognition
-      // This is expected behavior as NLP has limitations
-      expect(phrases.length).toBeGreaterThan(0);
+      const camera = phrases.filter(p => p.category === 'cameraMove');
+      expect(camera.length).toBeGreaterThan(0);
+      expect(camera.some(p => /dolly|pan/i.test(p.text))).toBe(true);
+    });
+
+    it('should extract shot framing phrases', () => {
+      const text = 'An extreme close-up shot transitions to a wide establishing shot';
+      const phrases = extractVideoPromptPhrases(text);
+
+      const framing = phrases.filter(p => p.category === 'framing');
+      expect(framing.length).toBeGreaterThan(0);
+      expect(framing.some(p => p.text.toLowerCase().includes('extreme close-up'))).toBe(true);
+    });
+
+    it('should extract color palettes', () => {
+      const text = 'Styled with a teal and orange color palette and vibrant blues throughout the frame';
+      const phrases = extractVideoPromptPhrases(text);
+
+      const color = phrases.filter(p => p.category === 'color');
+      expect(color.length).toBeGreaterThan(0);
+      expect(color.some(p => p.text.toLowerCase().includes('teal and orange'))).toBe(true);
+    });
+
+    it('should extract environment descriptors', () => {
+      const text = 'Set in a rain-soaked alley beside the abandoned warehouse district';
+      const phrases = extractVideoPromptPhrases(text);
+
+      const environment = phrases.filter(p => p.category === 'environment');
+      expect(environment.length).toBeGreaterThan(0);
+    });
+
+    it('should extract depth of field mentions', () => {
+      const text = 'Shot with shallow depth of field for dreamy creamy bokeh';
+      const phrases = extractVideoPromptPhrases(text);
+
+      const depth = phrases.filter(p => p.category === 'depthOfField');
+      expect(depth.length).toBeGreaterThan(0);
+      expect(depth.some(p => p.text.toLowerCase().includes('shallow depth of field'))).toBe(true);
     });
 
     it('should extract technical specs', () => {

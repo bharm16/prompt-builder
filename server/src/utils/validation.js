@@ -89,6 +89,8 @@ export const sceneChangeSchema = Joi.object({
   oldValue: Joi.string().allow('', null).max(10000),
   fullPrompt: Joi.string().required().max(50000),
   affectedFields: Joi.object().optional(),
+  sectionHeading: Joi.string().allow('', null).max(200).optional(),
+  sectionContext: Joi.string().allow('', null).max(5000).optional(),
 });
 
 export const creativeSuggestionSchema = Joi.object({

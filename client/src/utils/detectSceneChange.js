@@ -8,6 +8,81 @@ const defaultConfirm = (message) => {
   return true;
 };
 
+const extractSceneContext = (fullPrompt, targetValue) => {
+  if (!fullPrompt) {
+    return {
+      changedField: 'Unknown Field',
+      affectedFields: {},
+      sectionHeading: null,
+      sectionContext: null,
+    };
+  }
+
+  const normalizedTarget = typeof targetValue === 'string' ? targetValue.toLowerCase().trim() : '';
+  const sectionRegex = /\*\*(.+?)\*\*([\s\S]*?)(?=\*\*|$)/g;
+  let matchedFields = null;
+  let matchedHeading = null;
+  let matchedContext = null;
+  let fallbackFields = null;
+  let fallbackHeading = null;
+  let fallbackContext = null;
+
+  let sectionMatch;
+  while ((sectionMatch = sectionRegex.exec(fullPrompt))) {
+    const heading = sectionMatch[1].trim();
+    const body = sectionMatch[2] || '';
+    const fields = {};
+
+    const fieldRegex = /- ([^:]+): \[(.*?)\]/g;
+    let fieldMatch;
+    let foundInSection = false;
+    while ((fieldMatch = fieldRegex.exec(body))) {
+      const fieldName = fieldMatch[1].trim();
+      const fieldValue = fieldMatch[2].trim();
+      fields[fieldName] = fieldValue;
+
+      if (!foundInSection && normalizedTarget && fieldValue.toLowerCase().includes(normalizedTarget)) {
+        foundInSection = true;
+      }
+    }
+
+    if (foundInSection && !matchedFields) {
+      matchedFields = { ...fields };
+      matchedHeading = heading;
+      matchedContext = body.trim();
+    } else if (!matchedFields && Object.keys(fields).length > 0 && !fallbackFields) {
+      fallbackFields = { ...fields };
+      fallbackHeading = heading;
+      fallbackContext = body.trim();
+    }
+
+    if (matchedFields) {
+      break;
+    }
+  }
+
+  const selectedFields = matchedFields || fallbackFields || {};
+  const heading = matchedHeading || fallbackHeading || null;
+  const context = matchedContext || fallbackContext || null;
+
+  let changedField = 'Unknown Field';
+  if (normalizedTarget && Object.keys(selectedFields).length > 0) {
+    const match = Object.entries(selectedFields).find(([, value]) =>
+      value.toLowerCase().includes(normalizedTarget)
+    );
+    if (match) {
+      changedField = match[0];
+    }
+  }
+
+  return {
+    changedField,
+    affectedFields: selectedFields,
+    sectionHeading: heading,
+    sectionContext: context,
+  };
+};
+
 export async function detectAndApplySceneChange({
   originalPrompt,
   updatedPrompt,
@@ -28,52 +103,13 @@ export async function detectAndApplySceneChange({
     return baselinePrompt;
   }
 
-  const whereMatch = sourcePrompt.match(
-    /\*\*WHERE - LOCATION\/SETTING\*\*[\s\S]*?(?=\*\*WHEN|$)/
-  );
-
-  if (!whereMatch) {
-    return baselinePrompt;
-  }
-
-  const whereSection = whereMatch[0];
-  const envLabelIndex = whereSection.indexOf('- Environment Type:');
-  const selectionIndex = whereSection.indexOf(oldValue);
-
-  if (envLabelIndex === -1 || selectionIndex === -1) {
-    return baselinePrompt;
-  }
-
-  const envTypeMatch = whereSection.match(/- Environment Type: \[(.*?)\]/);
-  if (!envTypeMatch) {
-    return baselinePrompt;
-  }
-
-  const nextFieldIndex = whereSection.indexOf('- Architectural Details:');
-  const isEnvironmentType =
-    selectionIndex > envLabelIndex &&
-    (nextFieldIndex === -1 || selectionIndex < nextFieldIndex);
-
-  if (!isEnvironmentType) {
-    return baselinePrompt;
-  }
-
-  const affectedFieldsMap = {
-    'Architectural Details':
-      whereSection.match(/- Architectural Details: \[(.*?)\]/)?.[1] || '',
-    'Environmental Scale':
-      whereSection.match(/- Environmental Scale: \[(.*?)\]/)?.[1] || '',
-    'Atmospheric Conditions':
-      whereSection.match(/- Atmospheric Conditions: \[(.*?)\]/)?.[1] || '',
-    'Background Elements':
-      whereSection.match(/- Background Elements: \[(.*?)\]/)?.[1] || '',
-    'Foreground Elements':
-      whereSection.match(/- Foreground Elements: \[(.*?)\]/)?.[1] || '',
-    'Spatial Depth':
-      whereSection.match(/- Spatial Depth: \[(.*?)\]/)?.[1] || '',
-    'Environmental Storytelling':
-      whereSection.match(/- Environmental Storytelling: \[(.*?)\]/)?.[1] || '',
-  };
+  const {
+    changedField,
+    affectedFields,
+    sectionHeading,
+    sectionContext,
+  } = extractSceneContext(sourcePrompt, oldValue);
+  const normalizedAffectedFields = affectedFields || {};
 
   const fetchFn =
     fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
@@ -92,11 +128,13 @@ export async function detectAndApplySceneChange({
         'X-API-Key': 'dev-key-12345',
       },
       body: JSON.stringify({
-        changedField: 'Environment Type',
+        changedField: changedField || 'Unknown Field',
         oldValue,
         newValue,
         fullPrompt: baselinePrompt,
-        affectedFields: affectedFieldsMap,
+        affectedFields: normalizedAffectedFields,
+        sectionHeading,
+        sectionContext,
       }),
     });
 
@@ -125,7 +163,7 @@ export async function detectAndApplySceneChange({
     let finalPrompt = baselinePrompt;
 
     Object.entries(result.suggestedUpdates).forEach(([fieldName, newFieldValue]) => {
-      const oldFieldValue = affectedFieldsMap[fieldName];
+      const oldFieldValue = normalizedAffectedFields[fieldName];
 
       if (!oldFieldValue || !newFieldValue) {
         return;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { SuggestionsPanel } from '../PromptEnhancementEditor.jsx';
+import SuggestionsPanel from '../../../../client/src/components/SuggestionsPanel.jsx';
 
 describe('SuggestionsPanel', () => {
   beforeEach(() => {
@@ -28,11 +28,14 @@ describe('SuggestionsPanel', () => {
     );
     const btn = screen.getByRole('listitem', { name: /Suggestion 1/i });
     await act(async () => { fireEvent.click(btn); });
-    expect(onSuggestionClick).toHaveBeenCalledWith('opt 1');
+    expect(onSuggestionClick).toHaveBeenCalledWith({ text: 'opt 1' });
   });
 
   it('requests custom suggestions using fetch', async () => {
-    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ suggestions: [{ text: 'c1' }] }) });
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ ok: true, json: async () => ({ suggestions: [{ text: 'c1' }] }) });
+    const setSuggestions = vi.fn();
     render(
       <SuggestionsPanel
         suggestionsData={{
@@ -43,6 +46,7 @@ describe('SuggestionsPanel', () => {
           onSuggestionClick: vi.fn(),
           onClose: vi.fn(),
           fullPrompt: 'content',
+          setSuggestions,
         }}
       />
     );
@@ -50,10 +54,11 @@ describe('SuggestionsPanel', () => {
     await act(async () => {
       fireEvent.change(input, { target: { value: 'shorter and clearer' } });
     });
-    const genBtn = screen.getByRole('button', { name: /generate custom suggestions/i });
+    const genBtn = screen.getByRole('button', { name: /get suggestions/i });
     await act(async () => { fireEvent.click(genBtn); });
     await act(async () => Promise.resolve());
     expect(fetchMock).toHaveBeenCalled();
+    expect(setSuggestions).toHaveBeenCalledWith([{ text: 'c1' }], undefined);
     fetchMock.mockRestore();
   });
 });

@@ -117,46 +117,170 @@ function extractSemanticMatches(text, context) {
 function performNLPExtraction(text, context) {
   const doc = nlp(text)
   const phrases = []
+  const seen = new Set()
+
+  const pushMatches = (matches, category, confidence) => {
+    matches
+      .map(match => (typeof match === 'string' ? match : String(match)))
+      .map(match => match.trim())
+      .filter(Boolean)
+      .forEach(match => {
+        const key = `${category}|${match.toLowerCase()}`
+        if (seen.has(key)) return
+        seen.add(key)
+        phrases.push({
+          text: match,
+          category,
+          confidence,
+          source: 'nlp-extracted',
+          color: PromptContext.getCategoryColor(category)
+        })
+      })
+  }
+
+  const pushRegexMatches = (patterns, category, confidence) => {
+    patterns
+      .filter(Boolean)
+      .forEach(pattern => {
+        const regex =
+          pattern instanceof RegExp
+            ? new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`)
+            : new RegExp(pattern, 'gi')
+
+        const matches = Array.from(text.matchAll(regex)).map(match => match[0])
+        pushMatches(matches, category, confidence)
+      })
+  }
 
   // Multi-word descriptive phrases (golden hour lighting, soft shadows)
   const descriptive = doc.match('#Adjective+ #Noun+').out('array')
-  phrases.push(...descriptive.map(p => ({
-    text: p,
-    category: 'descriptive',
-    confidence: 0.6,
-    source: 'nlp-extracted',
-    color: PromptContext.getCategoryColor('descriptive')
-  })))
+  pushMatches(descriptive, 'descriptive', 0.6)
 
-  // Camera movements (slowly dollies, camera pans)
-  const cameraMovement = doc.match('camera #Adverb? #Verb').out('array')
-  phrases.push(...cameraMovement.map(p => ({
-    text: p,
-    category: 'camera',
-    confidence: 0.7,
-    source: 'nlp-extracted',
-    color: PromptContext.getCategoryColor('camera')
-  })))
+  // Lighting qualities (golden hour light, rim light, neon glow)
+  const lightingPatterns = [
+    /\b(?:soft|dramatic|golden(?: hour)?|magic(?: hour)?|blue hour|ambient|diffused|natural|studio|back|rim|neon|candlelit|moonlit|sunlit|warm|cool|harsh|dappled) (?:light|lighting|glow)\b/gi,
+    /\b(?:low-key|high-key|chiaroscuro) lighting\b/gi,
+    /\b(?:rim[- ]?light|back[- ]?light|backlit|silhouetted lighting|practical lights?)\b/gi
+  ]
+  pushRegexMatches(lightingPatterns, 'lighting', 0.75)
+
+  // Shot framing and angles (wide shot, low-angle shot, over-the-shoulder shot)
+  const framingPatterns = [
+    /\b(?:wide|medium|establishing|tight|extreme close[- ]?up|close[- ]?up|point[- ]?of[- ]?view|pov|over[- ]?the[- ]?shoulder|ots|low-angle|low angle|high-angle|high angle|birds[- ]?eye|bird's-eye|dutch) (?:shot|frame|angle)\b/gi,
+    /\b(?:locked[- ]?off|static|handheld) shot\b/gi
+  ]
+  pushRegexMatches(framingPatterns, 'framing', 0.7)
+
+  // Camera movements (camera pans, dolly in, tilt up)
+  const cameraPhraseMatches = doc.match('camera #Adverb? #Verb').out('array')
+  pushMatches(cameraPhraseMatches, 'cameraMove', 0.8)
+
+  const cameraPatterns = [
+    /\bdolly (?:in|out)\b/gi,
+    /\b(?:push|pull|truck) (?:in|out|forward|back)\b/gi,
+    /\b(?:pan|panning) (?:left|right|across)\b/gi,
+    /\b(?:tilt|tilting) (?:up|down)\b/gi,
+    /\btracking (?:shot|forward|back|around)\b/gi,
+    /\b(?:crane|jib|steadicam|gimbal) (?:shot|move|sweep)\b/gi,
+    /\b(?:whip|swish) pan\b/gi
+  ]
+  pushRegexMatches(cameraPatterns, 'cameraMove', 0.8)
+
+  // Color palettes and grading (neon color palette, teal and orange)
+  const colorPatterns = [
+    /\b(?:monochrome|desaturated|muted|pastel|vibrant|neon|earthy|warm|cool|cinematic|moody) (?:color )?(?:palette|tones|scheme|grading)\b/gi,
+    /\b(?:teal and orange|black and white|black-and-white|sepia tone|duotone|dual-tone|technicolor-inspired)\b/gi,
+    /\b(?:rich|deep|icy|warm|cool|saturated) (?:blues|oranges|reds|greens|purples|yellows)\b/gi
+  ]
+  pushRegexMatches(colorPatterns, 'color', 0.7)
+
+  // Environment descriptors (rain-soaked alley, frozen tundra)
+  const environmentKeywords = [
+    'forest',
+    'jungle',
+    'desert',
+    'cave',
+    'alley',
+    'street',
+    'market',
+    'rooftop',
+    'temple',
+    'ruins',
+    'swamp',
+    'tundra',
+    'ocean',
+    'reef',
+    'hangar',
+    'warehouse',
+    'factory',
+    'laboratory',
+    'facility',
+    'station',
+    'harbor',
+    'dockyard',
+    'subway',
+    'tunnel',
+    'bunker',
+    'canyon',
+    'oasis',
+    'beach',
+    'shoreline',
+    'cliff',
+    'mountain',
+    'glacier',
+    'volcano',
+    'cathedral',
+    'castle',
+    'plaza',
+    'bridge'
+  ]
+  const environmentPhrases = new Set()
+  const singlePattern = new RegExp(
+    `\\b(?:[\\w-]+\\s){0,2}(?:${environmentKeywords.map(escapeRegex).join('|')})\\b`,
+    'gi'
+  )
+  const singleMatches = text.match(singlePattern) || []
+  singleMatches.forEach(match => environmentPhrases.add(match.trim()))
+
+  const multiWordLocations = [
+    'space station',
+    'moon base',
+    'starship hangar',
+    'underground bunker',
+    'ice cave',
+    'rain-soaked alley',
+    'snow-covered forest',
+    'futuristic city',
+    'cyberpunk street',
+    'abandoned warehouse',
+    'ancient temple',
+    'storm-lashed coast',
+    'frozen tundra',
+    'neon-lit alley'
+  ]
+  multiWordLocations.forEach(location => {
+    const regex = new RegExp(`\\b(?:[\\w-]+\\s){0,2}${escapeRegex(location)}\\b`, 'gi')
+    const matches = text.match(regex) || []
+    matches.forEach(match => environmentPhrases.add(match.trim()))
+  })
+  pushMatches(Array.from(environmentPhrases), 'environment', 0.65)
+
+  // Depth of field and focus (shallow depth of field, creamy bokeh)
+  const depthPatterns = [
+    /\bshallow depth of field\b/gi,
+    /\bdeep focus\b/gi,
+    /\b(?:creamy|soft|dreamy) bokeh\b/gi,
+    /\bbokeh-heavy\b/gi
+  ]
+  pushRegexMatches(depthPatterns, 'depthOfField', 0.75)
 
   // Compound nouns (frock coat, battlefield cemetery)
   const compounds = doc.match('#Noun #Noun+').out('array')
-  phrases.push(...compounds.map(p => ({
-    text: p,
-    category: 'subject',
-    confidence: 0.6,
-    source: 'nlp-extracted',
-    color: PromptContext.getCategoryColor('subject')
-  })))
+  pushMatches(compounds, 'subject', 0.6)
 
   // Technical specs (35mm, 24fps)
   const technical = doc.match('/[0-9]+mm|[0-9]+fps|[0-9]+:[0-9]+/').out('array')
-  phrases.push(...technical.map(p => ({
-    text: p,
-    category: 'technical',
-    confidence: 1.0,
-    source: 'nlp-extracted',
-    color: PromptContext.getCategoryColor('technical')
-  })))
+  pushMatches(technical, 'technical', 1.0)
 
   return phrases
 }
@@ -212,6 +336,19 @@ function scorePhraseImportance(phrase, context) {
 
   // Technical specifications are important
   if (phrase.category === 'technical') score += 50
+
+  const categoryBoosts = {
+    cameraMove: 35,
+    lighting: 35,
+    environment: 30,
+    framing: 25,
+    depthOfField: 25,
+    color: 20,
+    descriptive: 15
+  }
+  if (categoryBoosts[phrase.category]) {
+    score += categoryBoosts[phrase.category]
+  }
 
   // Confidence boost
   score += phrase.confidence * 30
