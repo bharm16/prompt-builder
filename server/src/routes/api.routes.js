@@ -45,12 +45,13 @@ export function createAPIRoutes(services) {
     '/optimize',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
-      const { prompt, mode, context } = req.body;
+      const { prompt, mode, context, brainstormContext } = req.body;
 
       const optimizedPrompt = await promptOptimizationService.optimize({
         prompt,
         mode,
         context,
+        brainstormContext, // Pass brainstorm context to service
       });
 
       res.json({ optimizedPrompt });

@@ -26,6 +26,7 @@ import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
+import { PromptContext } from '../../utils/PromptContext';
 
 function PromptOptimizerContent() {
   // Force light mode immediately
@@ -90,6 +91,7 @@ function PromptOptimizerContent() {
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState(null);
   const [conceptElements, setConceptElements] = useState(null);
+  const [promptContext, setPromptContext] = useState(null); // NEW: Store PromptContext
   const [currentPromptUuid, setCurrentPromptUuid] = useState(null);
 
   // Refs
@@ -208,13 +210,25 @@ function PromptOptimizerContent() {
   };
 
   // Handle brainstorm flow
-  const handleConceptComplete = async (finalConcept, elements) => {
+  const handleConceptComplete = async (finalConcept, elements, metadata) => {
     setConceptElements(elements);
+
+    // Create PromptContext from brainstorm data
+    const context = new PromptContext(elements, metadata);
+    setPromptContext(context);
+
+    // Prepare brainstormContext for backend
+    const brainstormContextData = {
+      elements,
+      metadata
+    };
+
     promptOptimizer.setInputPrompt(finalConcept);
     setShowBrainstorm(false);
 
     setTimeout(async () => {
-      const result = await promptOptimizer.optimize(finalConcept);
+      // Pass brainstormContext to optimize function
+      const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
       if (result) {
         const uuid = await promptHistory.saveToHistory(finalConcept, result.optimized, result.score, selectedMode);
         setCurrentPromptUuid(uuid);
@@ -239,6 +253,7 @@ function PromptOptimizerContent() {
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
+    setPromptContext(null); // Clear context
     setCurrentPromptUuid(null);
     navigate('/', { replace: true });
   };
@@ -852,6 +867,7 @@ function PromptOptimizerContent() {
             selectedMode={selectedMode}
             currentMode={currentMode}
             promptUuid={currentPromptUuid}
+            promptContext={promptContext}
             onDisplayedPromptChange={promptOptimizer.setDisplayedPrompt}
             onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}

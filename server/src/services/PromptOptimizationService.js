@@ -30,11 +30,12 @@ export class PromptOptimizationService {
    * @param {string} params.prompt - Original prompt
    * @param {string} params.mode - Optimization mode (optional - will auto-detect if not provided)
    * @param {Object} params.context - Additional context
+   * @param {Object} params.brainstormContext - Context from Creative Brainstorm workflow
    * @param {boolean} params.useConstitutionalAI - Whether to apply Constitutional AI review (default: false)
    * @param {boolean} params.useIterativeRefinement - Whether to use iterative refinement (default: false)
    * @returns {Promise<string|Object>} Optimized prompt (or object with prompt and metadata if iterative)
    */
-  async optimize({ prompt, mode, context, useConstitutionalAI = false, useIterativeRefinement = false }) {
+  async optimize({ prompt, mode, context, brainstormContext, useConstitutionalAI = false, useIterativeRefinement = false }) {
     logger.info('Optimizing prompt', { mode, promptLength: prompt?.length });
 
     // No test-specific short-circuit here; tests should mock fetch at app level
@@ -62,13 +63,13 @@ export class PromptOptimizationService {
 
     // Use iterative refinement if requested
     if (useIterativeRefinement) {
-      const result = await this.optimizeIteratively(prompt, mode, context, useConstitutionalAI);
+      const result = await this.optimizeIteratively(prompt, mode, context, brainstormContext, useConstitutionalAI);
       await cacheService.set(cacheKey, result, { ttl: this.cacheConfig.ttl });
       return result;
     }
 
     // Build system prompt based on mode
-    const systemPrompt = this.buildSystemPrompt(prompt, mode, context);
+    const systemPrompt = this.buildSystemPrompt(prompt, mode, context, brainstormContext);
 
     // Determine timeout based on mode (video prompts are much larger and need more time)
     const timeout = mode === 'video' ? 90000 : 30000; // 90s for video, 30s for others
@@ -137,7 +138,7 @@ export class PromptOptimizationService {
    * Build system prompt based on mode
    * @private
    */
-  buildSystemPrompt(prompt, mode, context) {
+  buildSystemPrompt(prompt, mode, context, brainstormContext) {
     let systemPrompt = '';
 
     switch (mode) {
@@ -151,7 +152,7 @@ export class PromptOptimizationService {
         systemPrompt = this.getSocraticPrompt(prompt);
         break;
       case 'video':
-        systemPrompt = this.getVideoPrompt(prompt);
+        systemPrompt = this.getVideoPrompt(prompt, brainstormContext);
         break;
       default:
         systemPrompt = this.getDefaultPrompt(prompt);
@@ -160,6 +161,11 @@ export class PromptOptimizationService {
     // Add context enhancement if provided
     if (context && Object.keys(context).some((k) => context[k])) {
       systemPrompt += this.buildContextAddition(context);
+    }
+
+    // Add brainstorm context enhancement for video mode
+    if (brainstormContext?.elements && mode === 'video') {
+      systemPrompt += this.buildBrainstormContextAddition(brainstormContext);
     }
 
     return systemPrompt;
@@ -1326,6 +1332,60 @@ OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
   }
 
   /**
+   * Build brainstorm context addition for system prompt
+   * Incorporates user's Creative Brainstorm selections into optimization
+   * @private
+   */
+  buildBrainstormContextAddition(brainstormContext) {
+    const { elements } = brainstormContext;
+
+    let addition = '\n\n**CRITICAL - User has specified these exact elements from Creative Brainstorm:**\n';
+    addition += 'You MUST incorporate these specific elements into your optimized video prompt. ';
+    addition += 'Use the exact wording where possible, or integrate them naturally:\n\n';
+
+    if (elements.subject) {
+      addition += `**Subject/Character:** ${elements.subject}\n`;
+      addition += '→ This should be the central focus of your video description.\n\n';
+    }
+
+    if (elements.action) {
+      addition += `**Action/Movement:** ${elements.action}\n`;
+      addition += '→ Describe how the subject moves or what they are doing.\n\n';
+    }
+
+    if (elements.location) {
+      addition += `**Location/Setting:** ${elements.location}\n`;
+      addition += '→ Set the scene with this specific environment.\n\n';
+    }
+
+    if (elements.time) {
+      addition += `**Time/Lighting:** ${elements.time}\n`;
+      addition += '→ Incorporate this lighting quality and atmosphere.\n\n';
+    }
+
+    if (elements.mood) {
+      addition += `**Mood/Tone:** ${elements.mood}\n`;
+      addition += '→ Convey this emotional quality throughout.\n\n';
+    }
+
+    if (elements.style) {
+      addition += `**Visual Style:** ${elements.style}\n`;
+      addition += '→ Apply this aesthetic approach to the entire description.\n\n';
+    }
+
+    if (elements.event) {
+      addition += `**Key Event:** ${elements.event}\n`;
+      addition += '→ Include this specific narrative moment.\n\n';
+    }
+
+    addition += '**IMPORTANT:** These are the user\'s core creative choices. ';
+    addition += 'Prioritize incorporating them over generic descriptors. ';
+    addition += 'The optimized prompt should feel like a natural expansion of these elements.\n';
+
+    return addition;
+  }
+
+  /**
    * Validate Claude response for common issues
    * @private
    */
@@ -1448,10 +1508,11 @@ Respond with ONLY the mode name (one word):`;
    * @param {string} prompt - Original prompt
    * @param {string} mode - Optimization mode
    * @param {Object} context - Additional context
+   * @param {Object} brainstormContext - Context from Creative Brainstorm
    * @param {boolean} useConstitutionalAI - Whether to use Constitutional AI
    * @returns {Promise<Object>} Refined prompt with quality metrics
    */
-  async optimizeIteratively(prompt, mode, context, useConstitutionalAI) {
+  async optimizeIteratively(prompt, mode, context, brainstormContext, useConstitutionalAI) {
     let currentPrompt = prompt;
     let bestPrompt = prompt;
     let bestScore = 0;
@@ -1462,7 +1523,7 @@ Respond with ONLY the mode name (one word):`;
       logger.info('Iterative refinement', { iteration, mode });
 
       // Optimize the current prompt
-      const systemPrompt = this.buildSystemPrompt(currentPrompt, mode, context);
+      const systemPrompt = this.buildSystemPrompt(currentPrompt, mode, context, brainstormContext);
 
       // Include previous improvements in context
       const iterativeSystemPrompt = iteration > 0

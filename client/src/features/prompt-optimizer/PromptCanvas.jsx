@@ -19,7 +19,7 @@ import { extractVideoPromptPhrases } from './phraseExtractor';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-const formatTextToHTML = (text, enableMLHighlighting = false) => {
+const formatTextToHTML = (text, enableMLHighlighting = false, promptContext = null) => {
   if (!text) return { html: '' };
   const lines = text.split('\n');
   let html = '';
@@ -106,8 +106,8 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
       return escapeHtml(label) + ' ' + highlightValueWords(content);
     }
 
-    // Extract phrases using compromise.js
-    const phrases = extractVideoPromptPhrases(input);
+    // Extract phrases using compromise.js (with optional context awareness)
+    const phrases = extractVideoPromptPhrases(input, promptContext);
 
     // Sort by position to build HTML correctly
     phrases.sort((a, b) => input.indexOf(a.text) - input.indexOf(b.text));
@@ -227,36 +227,48 @@ const formatTextToHTML = (text, enableMLHighlighting = false) => {
 };
 
 // Category Legend Component
-const CategoryLegend = memo(({ show, onClose }) => {
+const CategoryLegend = memo(({ show, onClose, hasContext }) => {
   if (!show) return null;
 
   const categories = [
-    { name: 'Wardrobe', color: 'rgba(255,214,0,.25)', border: 'rgba(255,214,0,.6)', example: 'black frock coat, stovepipe hat' },
-    { name: 'Appearance', color: 'rgba(255,105,180,.25)', border: 'rgba(255,105,180,.6)', example: 'weathered face, grey beard' },
-    { name: 'Lighting', color: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.4)', example: 'soft shadows, dramatic rim light' },
-    { name: 'TimeOfDay', color: 'rgba(135,206,235,.25)', border: 'rgba(135,206,235,.6)', example: 'golden hour, twilight, blue hour' },
-    { name: 'CameraMove', color: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.4)', example: 'camera dollies forward, slow zoom' },
-    { name: 'Framing', color: 'rgba(186,85,211,.25)', border: 'rgba(186,85,211,.6)', example: 'wide shot, shallow depth of field' },
-    { name: 'Environment', color: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.4)', example: 'cemetery grounds, wooden podium' },
-    { name: 'Color', color: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.4)', example: 'desaturated palette, golden tones' },
-    { name: 'Technical', color: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)', example: '35mm, 24fps, 2.39:1, f/2.8' },
-    { name: 'Descriptive', color: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)', example: 'cinematic style, period-accurate' },
+    // Categories from Creative Brainstorm (when context is active)
+    { name: 'Subject', color: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.5)', example: 'lone astronaut, weathered soldier', source: 'brainstorm' },
+    { name: 'Action', color: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.5)', example: 'walking slowly, sprinting through rain', source: 'brainstorm' },
+    { name: 'Location', color: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.5)', example: 'abandoned station, foggy battlefield', source: 'brainstorm' },
+    { name: 'Time', color: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)', example: 'golden hour, twilight, blue hour', source: 'brainstorm' },
+    { name: 'Mood', color: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)', example: 'melancholic, tense, hopeful', source: 'brainstorm' },
+    { name: 'Style', color: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)', example: '35mm film, documentary, noir', source: 'brainstorm' },
+
+    // Categories from NLP extraction (always active)
+    { name: 'Camera Movement', color: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)', example: 'camera pans, slow dolly', source: 'nlp' },
+    { name: 'Descriptive Phrases', color: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)', example: 'soft shadows, dramatic lighting', source: 'nlp' },
+    { name: 'Technical Specs', color: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)', example: '35mm, 24fps, 2.39:1', source: 'nlp' },
   ];
 
   return (
     <div className="fixed top-20 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-        <div className="flex items-center gap-2">
-          <Info className="h-4 w-4 text-neutral-500" />
-          <h3 className="text-sm font-semibold text-neutral-900">Highlight Categories</h3>
+      <div className="flex flex-col gap-2 px-4 py-3 border-b border-neutral-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-neutral-500" />
+            <h3 className="text-sm font-semibold text-neutral-900">Highlight Categories</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-neutral-400 hover:text-neutral-600 transition-colors"
+            aria-label="Close legend"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="text-neutral-400 hover:text-neutral-600 transition-colors"
-          aria-label="Close legend"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {hasContext && (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md text-xs font-medium text-emerald-700 self-start" title="Using context from Creative Brainstorm for intelligent highlighting">
+            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <span>Brainstorm Context Active</span>
+          </div>
+        )}
       </div>
       <div className="p-3 max-h-96 overflow-y-auto">
         <div className="space-y-2">
@@ -277,17 +289,35 @@ const CategoryLegend = memo(({ show, onClose }) => {
           ))}
         </div>
         <div className="mt-3 pt-3 border-t border-neutral-200">
-          <p className="text-xs text-neutral-500 leading-relaxed mb-2">
-            <strong>Powered by compromise.js:</strong>
-          </p>
-          <ul className="text-xs text-neutral-500 space-y-1 ml-3">
-            <li>• Natural language phrase extraction</li>
-            <li>• Camera movement detection</li>
-            <li>• Technical spec extraction (35mm, 24fps, etc.)</li>
-            <li>• Automatic categorization</li>
-            <li>• No training required - works immediately</li>
-            <li>• Fast and deterministic</li>
-          </ul>
+          {hasContext ? (
+            <>
+              <p className="text-xs font-semibold text-emerald-700 mb-2">
+                Context-Aware Highlighting Active
+              </p>
+              <p className="text-xs text-neutral-500 leading-relaxed mb-2">
+                Your Creative Brainstorm selections are prioritized and highlighted first,
+                followed by additional details detected by NLP.
+              </p>
+              <ul className="text-xs text-neutral-500 space-y-1 ml-3">
+                <li>• Your input gets highest priority (100% confidence)</li>
+                <li>• Semantic matches detected (related terms)</li>
+                <li>• Additional NLP extraction for new details</li>
+                <li>• Smart deduplication prevents overlaps</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-neutral-500 leading-relaxed mb-2">
+                <strong>Powered by compromise.js:</strong>
+              </p>
+              <ul className="text-xs text-neutral-500 space-y-1 ml-3">
+                <li>• Natural language phrase extraction</li>
+                <li>• Camera movement detection</li>
+                <li>• Technical spec extraction</li>
+                <li>• Automatic categorization</li>
+              </ul>
+            </>
+          )}
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
             Click highlights to get AI-powered alternatives.
           </p>
@@ -430,6 +460,7 @@ export const PromptCanvas = ({
   selectedMode,
   currentMode,
   promptUuid,
+  promptContext, // NEW: Context from Creative Brainstorm
   onDisplayedPromptChange,
   onSkipAnimation,
   suggestionsData,
@@ -440,28 +471,16 @@ export const PromptCanvas = ({
   const [shared, setShared] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
-  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
   const editorRef = useRef(null);
   const toast = useToast();
 
-  // Check if animation is complete (displayed prompt equals optimized prompt)
-  useEffect(() => {
-    if (displayedPrompt && optimizedPrompt && displayedPrompt === optimizedPrompt) {
-      // Animation complete - trigger classification
-      console.log('[Animation] Complete! Displayed length:', displayedPrompt.length, 'Optimized length:', optimizedPrompt.length);
-      setIsAnimationComplete(true);
-    } else {
-      setIsAnimationComplete(false);
-    }
-  }, [displayedPrompt, optimizedPrompt]);
-
-  // Memoize formatted HTML - ONLY enable ML highlighting AFTER animation completes
-  // This prevents classification from running during typewriter animation
-  const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
+  // Memoize formatted HTML - Enable ML highlighting for video mode
+  // Highlights will appear dynamically as text is displayed
+  const enableMLHighlighting = selectedMode === 'video';
   const { html: formattedHTML } = useMemo(
-    () => formatTextToHTML(displayedPrompt, enableMLHighlighting),
-    [displayedPrompt, enableMLHighlighting]
+    () => formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext),
+    [displayedPrompt, enableMLHighlighting, promptContext]
   );
 
 
@@ -812,7 +831,11 @@ export const PromptCanvas = ({
       />
 
       {/* Category Legend */}
-      <CategoryLegend show={showLegend} onClose={() => setShowLegend(false)} />
+      <CategoryLegend
+        show={showLegend}
+        onClose={() => setShowLegend(false)}
+        hasContext={promptContext && promptContext.hasContext()}
+      />
 
       {/* Main Content Container */}
       <div className="flex-1 flex overflow-hidden">
