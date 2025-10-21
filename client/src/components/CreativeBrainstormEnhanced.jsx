@@ -78,6 +78,8 @@ const TEMPLATE_LIBRARY = {
   },
 };
 
+const TECHNICAL_SECTION_ORDER = ['camera', 'lighting', 'color', 'format', 'audio', 'postProduction'];
+
 export default function CreativeBrainstormEnhanced({
   onConceptComplete,
   initialConcept = '',
@@ -99,16 +101,21 @@ export default function CreativeBrainstormEnhanced({
   const [activeElement, setActiveElement] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [needsRefresh, setNeedsRefresh] = useState(false);
   const [compatibilityScores, setCompatibilityScores] = useState({});
   const [conflicts, setConflicts] = useState([]);
+  const [isLoadingConflicts, setIsLoadingConflicts] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [validationScore, setValidationScore] = useState(null);
   const [elementHistory, setElementHistory] = useState([]);
-  const [refinementSuggestions, setRefinementSuggestions] = useState({});
+  const [refinements, setRefinements] = useState({});
+  const [isLoadingRefinements, setIsLoadingRefinements] = useState(false);
+  const [technicalParams, setTechnicalParams] = useState(null);
+  const [isLoadingTechnicalParams, setIsLoadingTechnicalParams] = useState(false);
   const [showGuidance, setShowGuidance] = useState(false);
 
-  const previousElementsRef = useRef(elements);
+  const conflictRequestRef = useRef(0);
+  const refinementRequestRef = useRef(0);
+  const technicalParamsRequestRef = useRef(0);
 
   const elementConfig = {
     subject: {
@@ -210,42 +217,141 @@ export default function CreativeBrainstormEnhanced({
   const compatibilityTimersRef = useRef({});
 
   // Detect conflicts between elements
-  const detectConflicts = useCallback(() => {
-    const newConflicts = [];
+  const detectConflicts = useCallback(async (currentElements) => {
+    const filledCount = Object.values(currentElements).filter((value) => value).length;
 
-    if (elements.location === 'underwater' && elements.action === 'flying') {
-      newConflicts.push({
-        elements: ['location', 'action'],
-        message: 'Flying underwater is physically inconsistent',
-        suggestion: 'Consider "swimming" or "floating" instead',
-      });
+    if (filledCount < 2) {
+      setConflicts([]);
+      setIsLoadingConflicts(false);
+      return;
     }
 
-    if (elements.time === 'future' && elements.style === 'vintage') {
-      newConflicts.push({
-        elements: ['time', 'style'],
-        message: 'Future setting with vintage style creates tension',
-        suggestion: 'Try "retro-futurism" to blend both concepts',
-      });
-    }
+    const requestId = Date.now();
+    conflictRequestRef.current = requestId;
+    setIsLoadingConflicts(true);
 
-    setConflicts(newConflicts);
-  }, [elements]);
+    try {
+      const response = await fetch('/api/detect-conflicts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345'
+        },
+        body: JSON.stringify({ elements: currentElements }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to detect conflicts');
+      }
+
+      const data = await response.json();
+
+      if (conflictRequestRef.current === requestId) {
+        setConflicts(data.conflicts || []);
+      }
+    } catch (error) {
+      console.error('Error detecting conflicts:', error);
+      if (conflictRequestRef.current === requestId) {
+        setConflicts([]);
+      }
+    } finally {
+      if (conflictRequestRef.current === requestId) {
+        setIsLoadingConflicts(false);
+      }
+    }
+  }, []);
 
   // Progressive refinement suggestions
-  const generateRefinementSuggestions = useCallback(async () => {
-    const filledElements = Object.entries(elements).filter(([_, v]) => v);
+  const fetchRefinementSuggestions = useCallback(async (currentElements) => {
+    const filledElements = Object.values(currentElements).filter((value) => value);
 
-    if (filledElements.length >= 2) {
-      const suggestions = {};
-      filledElements.forEach(([key, value]) => {
-        if (key === 'action' && elements.location === 'underwater') {
-          suggestions[key] = ['swimming gracefully', 'floating weightlessly', 'diving deeper'];
-        }
-      });
-      setRefinementSuggestions(suggestions);
+    if (filledElements.length < 2) {
+      setRefinements({});
+      setIsLoadingRefinements(false);
+      return;
     }
-  }, [elements]);
+
+    const requestId = Date.now();
+    refinementRequestRef.current = requestId;
+    setIsLoadingRefinements(true);
+
+    try {
+      const response = await fetch('/api/get-refinements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345'
+        },
+        body: JSON.stringify({ elements: currentElements }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch refinements');
+      }
+
+      const data = await response.json();
+
+      if (refinementRequestRef.current === requestId) {
+        setRefinements(data.refinements || {});
+      }
+    } catch (error) {
+      console.error('Error fetching refinement suggestions:', error);
+      if (refinementRequestRef.current === requestId) {
+        setRefinements({});
+      }
+    } finally {
+      if (refinementRequestRef.current === requestId) {
+        setIsLoadingRefinements(false);
+      }
+    }
+  }, []);
+
+  const requestTechnicalParams = useCallback(async (currentElements) => {
+    const filledElements = Object.values(currentElements).filter((value) => value);
+
+    if (filledElements.length < 3) {
+      setTechnicalParams(null);
+      setIsLoadingTechnicalParams(false);
+      return null;
+    }
+
+    const requestId = Date.now();
+    technicalParamsRequestRef.current = requestId;
+    setIsLoadingTechnicalParams(true);
+
+    try {
+      const response = await fetch('/api/generate-technical-params', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345'
+        },
+        body: JSON.stringify({ elements: currentElements }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate technical parameters');
+      }
+
+      const data = await response.json();
+
+      if (technicalParamsRequestRef.current === requestId) {
+        setTechnicalParams(data.technicalParams || {});
+      }
+
+      return data.technicalParams || {};
+    } catch (error) {
+      console.error('Error generating technical parameters:', error);
+      if (technicalParamsRequestRef.current === requestId) {
+        setTechnicalParams({});
+      }
+      return {};
+    } finally {
+      if (technicalParamsRequestRef.current === requestId) {
+        setIsLoadingTechnicalParams(false);
+      }
+    }
+  }, []);
 
   // Validate prompt completeness and quality
   const validatePrompt = useCallback(() => {
@@ -317,8 +423,6 @@ export default function CreativeBrainstormEnhanced({
   const fetchSuggestionsForElement = async (elementType) => {
     setIsLoadingSuggestions(true);
     setActiveElement(elementType);
-    setNeedsRefresh(false);
-
     try {
       const context = Object.entries(elements)
         .filter(([key, value]) => value && key !== elementType)
@@ -471,39 +575,30 @@ export default function CreativeBrainstormEnhanced({
   };
 
   // Generate final template
-  const handleGenerateTemplate = (exportFormat = 'detailed') => {
+  const handleGenerateTemplate = async (exportFormat = 'detailed') => {
     const filledElements = Object.entries(elements)
       .filter(([_, value]) => value)
       .map(([key, value]) => `${key}: ${value}`)
       .join(', ');
 
     const finalConcept = concept || filledElements;
-    const technicalParams = generateTechnicalParams(elements);
+    let params = technicalParams;
+
+    if (!params || Object.keys(params).length === 0) {
+      const latest = await requestTechnicalParams(elements);
+      if (latest && Object.keys(latest).length > 0) {
+        params = latest;
+      } else {
+        params = {};
+      }
+    }
 
     onConceptComplete(finalConcept, elements, {
       format: exportFormat,
-      technicalParams,
+      technicalParams: params || {},
       validationScore: validationScore,
       history: elementHistory,
     });
-  };
-
-  // Generate technical parameters
-  const generateTechnicalParams = (elements) => {
-    const params = {};
-
-    if (elements.time === 'golden hour') {
-      params.colorGrading = 'warm tones, soft shadows';
-    }
-    if (elements.style === 'cinematic') {
-      params.aspectRatio = '2.39:1';
-      params.frameRate = '24fps';
-    }
-    if (elements.mood === 'energetic') {
-      params.cameraMovement = 'dynamic, handheld';
-    }
-
-    return params;
   };
 
   // Keyboard shortcuts for suggestion selection
@@ -540,7 +635,7 @@ export default function CreativeBrainstormEnhanced({
 
   // Effects
   useEffect(() => {
-    detectConflicts();
+    detectConflicts(elements);
   }, [elements, detectConflicts]);
 
   useEffect(() => {
@@ -548,8 +643,118 @@ export default function CreativeBrainstormEnhanced({
   }, [elements, validatePrompt]);
 
   useEffect(() => {
-    generateRefinementSuggestions();
-  }, [elements, generateRefinementSuggestions]);
+    fetchRefinementSuggestions(elements);
+  }, [elements, fetchRefinementSuggestions]);
+
+  useEffect(() => {
+    requestTechnicalParams(elements);
+  }, [elements, requestTechnicalParams]);
+
+  const formatLabel = useCallback((key) =>
+    key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^./, (str) => str.toUpperCase()),
+  []);
+
+  const hasRefinements = useMemo(
+    () =>
+      Object.entries(refinements || {}).some(
+        ([, list]) => Array.isArray(list) && list.length > 0
+      ),
+    [refinements]
+  );
+
+  const hasTechnicalParams = useMemo(
+    () => technicalParams && Object.keys(technicalParams).length > 0,
+    [technicalParams]
+  );
+
+  const describeNestedValue = useCallback((value) => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.entries(value)
+        .map(([nestedKey, nestedValue]) => {
+          if (Array.isArray(nestedValue)) {
+            return `${formatLabel(nestedKey)}: ${nestedValue.join(', ')}`;
+          }
+          if (nestedValue && typeof nestedValue === 'object') {
+            return `${formatLabel(nestedKey)}: ${describeNestedValue(nestedValue)}`;
+          }
+          return `${formatLabel(nestedKey)}: ${nestedValue}`;
+        })
+        .join('; ');
+    }
+
+    return value || '';
+  }, [formatLabel]);
+
+  const renderTechnicalValue = useCallback((value) => {
+    if (Array.isArray(value)) {
+      return (
+        <ul className="mt-2 space-y-1 text-xs text-neutral-600 leading-relaxed list-disc list-inside">
+          {value.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    if (value && typeof value === 'object') {
+      return (
+        <ul className="mt-2 space-y-1 text-xs text-neutral-600 leading-relaxed">
+          {Object.entries(value).map(([subKey, subValue]) => (
+            <li key={subKey}>
+              <span className="font-semibold text-neutral-700">{formatLabel(subKey)}:</span>{' '}
+              {describeNestedValue(subValue)}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    if (!value) {
+      return (
+        <p className="mt-2 text-xs text-neutral-500">No recommendation provided.</p>
+      );
+    }
+
+    return (
+      <p className="mt-2 text-xs text-neutral-600 leading-relaxed">{value}</p>
+    );
+  }, [describeNestedValue, formatLabel]);
+
+  const technicalSections = useMemo(() => {
+    if (!technicalParams || typeof technicalParams !== 'object') {
+      return [];
+    }
+
+    const keys = Object.keys(technicalParams);
+    const ordered = TECHNICAL_SECTION_ORDER.filter((key) => keys.includes(key));
+    const additional = keys.filter((key) => !TECHNICAL_SECTION_ORDER.includes(key));
+    const combined = [...ordered, ...additional];
+
+    return combined.filter((key) => {
+      const value = technicalParams[key];
+      if (!value) return false;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'object') {
+        return Object.values(value).some((nested) => {
+          if (Array.isArray(nested)) return nested.length > 0;
+          if (nested && typeof nested === 'object') {
+            return Object.values(nested).some(Boolean);
+          }
+          return Boolean(nested);
+        });
+      }
+      return Boolean(value);
+    });
+  }, [technicalParams]);
 
   const filledCount = Object.values(elements).filter((v) => v).length;
   const isReadyToGenerate = filledCount >= 3;
@@ -843,22 +1048,126 @@ export default function CreativeBrainstormEnhanced({
         )}
 
         {/* Conflicts Alert */}
-        {conflicts.length > 0 && (
+        {(isLoadingConflicts || conflicts.length > 0) && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-amber-900 mb-2">
-                  Potential Conflicts Detected
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-sm font-semibold text-amber-900">
+                    Potential Conflicts Detected
+                  </h3>
+                  {isLoadingConflicts && (
+                    <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                  )}
+                </div>
+                {isLoadingConflicts ? (
+                  <p className="text-sm text-amber-800">Analyzing element harmony...</p>
+                ) : (
+                  conflicts.map((conflict, idx) => {
+                    const resolution = conflict.resolution || conflict.suggestion;
+                    return (
+                      <div key={idx} className="text-sm text-amber-800 mt-2">
+                        <div>{conflict.message}</div>
+                        {resolution && (
+                          <div className="mt-1 text-xs text-amber-700">{resolution}</div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Refinement Suggestions */}
+        {(isLoadingRefinements || hasRefinements) && (
+          <div className="mb-6 p-5 bg-white border border-neutral-200 rounded-xl shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-emerald-600" />
+                <h3 className="text-sm font-semibold text-neutral-900">
+                  AI Refinement Suggestions
                 </h3>
-                {conflicts.map((conflict, idx) => (
-                  <div key={idx} className="text-sm text-amber-800 mt-2">
-                    <div>{conflict.message}</div>
-                    <div className="mt-1 text-xs text-amber-700">{conflict.suggestion}</div>
+              </div>
+              {isLoadingRefinements && (
+                <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />
+              )}
+            </div>
+
+            {hasRefinements ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {Object.entries(refinements)
+                  .filter(([, options]) => Array.isArray(options) && options.length > 0)
+                  .map(([key, options]) => (
+                    <div
+                      key={key}
+                      className="p-4 rounded-lg border border-neutral-200 bg-neutral-50"
+                    >
+                      <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                        {elementConfig[key]?.label || formatLabel(key)}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {options.map((option, idx) => (
+                          <button
+                            key={`${key}-${idx}`}
+                            onClick={() => handleElementChange(key, option)}
+                            className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-100 transition-all duration-150"
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              !isLoadingRefinements && (
+                <p className="mt-3 text-sm text-neutral-600">
+                  Add more detail to unlock tailored refinements.
+                </p>
+              )
+            )}
+          </div>
+        )}
+
+        {/* Technical Blueprint */}
+        {(isLoadingTechnicalParams || hasTechnicalParams) && (
+          <div className="mb-6 p-5 bg-white border border-neutral-200 rounded-xl shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4 text-indigo-600" />
+                <h3 className="text-sm font-semibold text-neutral-900">
+                  Technical Blueprint
+                </h3>
+              </div>
+              {isLoadingTechnicalParams && (
+                <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />
+              )}
+            </div>
+
+            {hasTechnicalParams && technicalSections.length > 0 ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {technicalSections.map((sectionKey) => (
+                  <div
+                    key={sectionKey}
+                    className="p-4 rounded-lg border border-neutral-200 bg-neutral-50"
+                  >
+                    <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                      {formatLabel(sectionKey)}
+                    </div>
+                    {renderTechnicalValue(technicalParams[sectionKey])}
                   </div>
                 ))}
               </div>
-            </div>
+            ) : (
+              !isLoadingTechnicalParams && (
+                <p className="mt-3 text-sm text-neutral-600">
+                  Add at least three detailed elements to unlock technical recommendations.
+                </p>
+              )
+            )}
           </div>
         )}
 
