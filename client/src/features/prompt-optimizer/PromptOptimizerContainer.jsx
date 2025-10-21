@@ -124,6 +124,22 @@ function PromptOptimizerContent() {
             setSelectedMode(promptData.mode || 'optimize');
             setCurrentPromptUuid(promptData.uuid);
             setShowResults(true);
+
+            if (promptData.brainstormContext) {
+              try {
+                const contextData =
+                  typeof promptData.brainstormContext === 'string'
+                    ? JSON.parse(promptData.brainstormContext)
+                    : promptData.brainstormContext;
+                const restoredContext = PromptContext.fromJSON(contextData);
+                setPromptContext(restoredContext);
+              } catch (contextError) {
+                console.error('Failed to restore prompt context from shared link:', contextError);
+                setPromptContext(null);
+              }
+            } else {
+              setPromptContext(null);
+            }
           } else {
             toast.error('Prompt not found');
             navigate('/', { replace: true });
@@ -183,7 +199,14 @@ function PromptOptimizerContent() {
     const result = await promptOptimizer.optimize(prompt, ctx);
     console.log('optimize result:', result);
     if (result) {
-      const uuid = await promptHistory.saveToHistory(prompt, result.optimized, result.score, selectedMode);
+      const serializedContext = promptContext ? promptContext.toJSON() : null;
+      const uuid = await promptHistory.saveToHistory(
+        prompt,
+        result.optimized,
+        result.score,
+        selectedMode,
+        serializedContext
+      );
       setCurrentPromptUuid(uuid);
       setShowResults(true);
       setShowHistory(true);
@@ -217,6 +240,8 @@ function PromptOptimizerContent() {
     const context = new PromptContext(elements, metadata);
     setPromptContext(context);
 
+    const serializedContext = context.toJSON();
+
     // Prepare brainstormContext for backend
     const brainstormContextData = {
       elements,
@@ -230,7 +255,13 @@ function PromptOptimizerContent() {
       // Pass brainstormContext to optimize function
       const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
       if (result) {
-        const uuid = await promptHistory.saveToHistory(finalConcept, result.optimized, result.score, selectedMode);
+        const uuid = await promptHistory.saveToHistory(
+          finalConcept,
+          result.optimized,
+          result.score,
+          selectedMode,
+          serializedContext
+        );
         setCurrentPromptUuid(uuid);
         setShowResults(true);
         setShowHistory(true);
@@ -267,6 +298,22 @@ function PromptOptimizerContent() {
     setSelectedMode(entry.mode);
     setCurrentPromptUuid(entry.uuid || null);
     setShowResults(true);
+
+    if (entry.brainstormContext) {
+      try {
+        const contextData =
+          typeof entry.brainstormContext === 'string'
+            ? JSON.parse(entry.brainstormContext)
+            : entry.brainstormContext;
+        const restoredContext = PromptContext.fromJSON(contextData);
+        setPromptContext(restoredContext);
+      } catch (contextError) {
+        console.error('Failed to restore prompt context from history entry:', contextError);
+        setPromptContext(null);
+      }
+    } else {
+      setPromptContext(null);
+    }
 
     // Update URL if there's a UUID
     if (entry.uuid) {

@@ -1,14 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPromptByUuid } from '../config/firebase';
 import { Home, Copy, Check } from 'lucide-react';
 import { useToast } from './Toast';
+import { PromptContext } from '../utils/PromptContext';
+import {
+  formatTextToHTML,
+  VALUE_WORD_STYLE_BLOCK,
+} from '../features/prompt-optimizer/PromptCanvas';
 
 const SharedPrompt = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const [prompt, setPrompt] = useState(null);
+  const [promptContext, setPromptContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -20,12 +26,29 @@ const SharedPrompt = () => {
         const promptData = await getPromptByUuid(uuid);
         if (promptData) {
           setPrompt(promptData);
+          if (promptData.brainstormContext) {
+            try {
+              const contextData =
+                typeof promptData.brainstormContext === 'string'
+                  ? JSON.parse(promptData.brainstormContext)
+                  : promptData.brainstormContext;
+              const restoredContext = PromptContext.fromJSON(contextData);
+              setPromptContext(restoredContext);
+            } catch (contextError) {
+              console.error('Failed to restore prompt context from shared prompt:', contextError);
+              setPromptContext(null);
+            }
+          } else {
+            setPromptContext(null);
+          }
         } else {
           setError('Prompt not found');
+          setPromptContext(null);
         }
       } catch (err) {
         console.error('Error fetching prompt:', err);
         setError('Failed to load prompt');
+        setPromptContext(null);
       } finally {
         setLoading(false);
       }
@@ -33,6 +56,15 @@ const SharedPrompt = () => {
 
     fetchPrompt();
   }, [uuid]);
+
+  const formattedOutput = useMemo(() => {
+    if (!prompt?.output) {
+      return { html: '' };
+    }
+
+    const enableHighlighting = prompt.mode === 'video';
+    return formatTextToHTML(prompt.output, enableHighlighting, promptContext);
+  }, [prompt, promptContext]);
 
   const handleCopy = async () => {
     try {
@@ -148,9 +180,11 @@ const SharedPrompt = () => {
             </button>
           </div>
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <p className="text-neutral-700 whitespace-pre-wrap font-medium">
-              {prompt.output}
-            </p>
+            {prompt?.mode === 'video' && <style>{VALUE_WORD_STYLE_BLOCK}</style>}
+            <div
+              className="text-neutral-700 font-medium"
+              dangerouslySetInnerHTML={{ __html: formattedOutput.html || '' }}
+            />
           </div>
         </div>
 

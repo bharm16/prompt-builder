@@ -19,7 +19,11 @@ import { extractVideoPromptPhrases } from './phraseExtractor';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-const formatTextToHTML = (text, enableMLHighlighting = false, promptContext = null) => {
+export const formatTextToHTML = (
+  text,
+  enableMLHighlighting = false,
+  promptContext = null
+) => {
   if (!text) return { html: '' };
   const lines = text.split('\n');
   let html = '';
@@ -225,6 +229,146 @@ const formatTextToHTML = (text, enableMLHighlighting = false, promptContext = nu
 
   return { html };
 };
+
+export const VALUE_WORD_STYLE_BLOCK = `
+        /* Base value word styles */
+        .value-word {
+          position: relative;
+          user-select: text;
+          -webkit-user-select: text;
+          -moz-user-select: text;
+          -ms-user-select: text;
+        }
+
+        /* Confidence level indicators */
+        .high-confidence {
+          opacity: 1;
+        }
+
+        .medium-confidence {
+          opacity: 0.9;
+        }
+
+        .low-confidence {
+          opacity: 0.8;
+          border-style: dashed !important;
+        }
+
+        /* Enhanced hover effects for all categories */
+        .value-word:hover {
+          filter: brightness(0.95);
+          border-bottom-width: 2px !important;
+          transform: translateY(-0.5px);
+          cursor: pointer !important;
+          opacity: 1 !important;
+        }
+
+        .value-word:active {
+          transform: translateY(0px);
+        }
+
+        /* Category-specific hover enhancements */
+        .value-word-wardrobe:hover {
+          background-color: rgba(255,214,0,.35) !important;
+          border-bottom-color: rgba(255,214,0,.8) !important;
+        }
+
+        .value-word-appearance:hover {
+          background-color: rgba(255,105,180,.35) !important;
+          border-bottom-color: rgba(255,105,180,.8) !important;
+        }
+
+        .value-word-lighting:hover {
+          background-color: rgba(249, 115, 22, 0.2) !important;
+          border-bottom-color: rgba(249, 115, 22, 0.6) !important;
+        }
+
+        .value-word-timeofday:hover {
+          background-color: rgba(135,206,235,.35) !important;
+          border-bottom-color: rgba(135,206,235,.8) !important;
+        }
+
+        .value-word-cameramove:hover {
+          background-color: rgba(139, 92, 246, 0.2) !important;
+          border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+        }
+
+        .value-word-framing:hover {
+          background-color: rgba(186,85,211,.35) !important;
+          border-bottom-color: rgba(186,85,211,.8) !important;
+        }
+
+        .value-word-environment:hover {
+          background-color: rgba(6, 182, 212, 0.2) !important;
+          border-bottom-color: rgba(6, 182, 212, 0.6) !important;
+        }
+
+        .value-word-color:hover {
+          background-color: rgba(244, 63, 94, 0.2) !important;
+          border-bottom-color: rgba(244, 63, 94, 0.6) !important;
+        }
+
+        .value-word-technical:hover {
+          background-color: rgba(99, 102, 241, 0.2) !important;
+          border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+        }
+
+        .value-word-descriptive:hover {
+          background-color: rgba(250, 204, 21, 0.25) !important;
+          border-bottom-color: rgba(250, 204, 21, 0.6) !important;
+        }
+
+        /* Tooltip on hover - shows category */
+        .value-word::before {
+          content: attr(data-category);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-4px);
+          background-color: rgba(23, 23, 23, 0.9);
+          color: white;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: 500;
+          text-transform: capitalize;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 1000;
+          letter-spacing: 0.5px;
+        }
+
+        .value-word::after {
+          content: '';
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-4px);
+          border: 4px solid transparent;
+          border-top-color: rgba(23, 23, 23, 0.9);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 1000;
+        }
+
+        .value-word:hover::before,
+        .value-word:hover::after {
+          opacity: 1;
+          transform: translateX(-50%) translateY(-8px);
+        }
+
+        .value-word:hover::after {
+          transform: translateX(-50%) translateY(-4px);
+        }
+
+        /* Prevent tooltip overflow */
+        [contenteditable] {
+          position: relative;
+        }
+`;
 
 // Category Legend Component
 const CategoryLegend = memo(({ show, onClose, hasContext }) => {
@@ -676,145 +820,7 @@ export const PromptCanvas = ({
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
       {/* Inject CSS for value word hover effects */}
-      <style>{`
-        /* Base value word styles */
-        .value-word {
-          position: relative;
-          user-select: text;
-          -webkit-user-select: text;
-          -moz-user-select: text;
-          -ms-user-select: text;
-        }
-
-        /* Confidence level indicators */
-        .high-confidence {
-          opacity: 1;
-        }
-
-        .medium-confidence {
-          opacity: 0.9;
-        }
-
-        .low-confidence {
-          opacity: 0.8;
-          border-style: dashed !important;
-        }
-
-        /* Enhanced hover effects for all categories */
-        .value-word:hover {
-          filter: brightness(0.95);
-          border-bottom-width: 2px !important;
-          transform: translateY(-0.5px);
-          cursor: pointer !important;
-          opacity: 1 !important;
-        }
-
-        .value-word:active {
-          transform: translateY(0px);
-        }
-
-        /* Category-specific hover enhancements */
-        .value-word-wardrobe:hover {
-          background-color: rgba(255,214,0,.35) !important;
-          border-bottom-color: rgba(255,214,0,.8) !important;
-        }
-
-        .value-word-appearance:hover {
-          background-color: rgba(255,105,180,.35) !important;
-          border-bottom-color: rgba(255,105,180,.8) !important;
-        }
-
-        .value-word-lighting:hover {
-          background-color: rgba(249, 115, 22, 0.2) !important;
-          border-bottom-color: rgba(249, 115, 22, 0.6) !important;
-        }
-
-        .value-word-timeofday:hover {
-          background-color: rgba(135,206,235,.35) !important;
-          border-bottom-color: rgba(135,206,235,.8) !important;
-        }
-
-        .value-word-cameramove:hover {
-          background-color: rgba(139, 92, 246, 0.2) !important;
-          border-bottom-color: rgba(139, 92, 246, 0.6) !important;
-        }
-
-        .value-word-framing:hover {
-          background-color: rgba(186,85,211,.35) !important;
-          border-bottom-color: rgba(186,85,211,.8) !important;
-        }
-
-        .value-word-environment:hover {
-          background-color: rgba(6, 182, 212, 0.2) !important;
-          border-bottom-color: rgba(6, 182, 212, 0.6) !important;
-        }
-
-        .value-word-color:hover {
-          background-color: rgba(244, 63, 94, 0.2) !important;
-          border-bottom-color: rgba(244, 63, 94, 0.6) !important;
-        }
-
-        .value-word-technical:hover {
-          background-color: rgba(99, 102, 241, 0.2) !important;
-          border-bottom-color: rgba(99, 102, 241, 0.6) !important;
-        }
-
-        .value-word-descriptive:hover {
-          background-color: rgba(250, 204, 21, 0.25) !important;
-          border-bottom-color: rgba(250, 204, 21, 0.6) !important;
-        }
-
-        /* Tooltip on hover - shows category */
-        .value-word::before {
-          content: attr(data-category);
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%) translateY(-4px);
-          background-color: rgba(23, 23, 23, 0.9);
-          color: white;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: 500;
-          text-transform: capitalize;
-          white-space: nowrap;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.2s ease, transform 0.2s ease;
-          z-index: 1000;
-          letter-spacing: 0.5px;
-        }
-
-        .value-word::after {
-          content: '';
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%) translateY(-4px);
-          border: 4px solid transparent;
-          border-top-color: rgba(23, 23, 23, 0.9);
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.2s ease, transform 0.2s ease;
-          z-index: 1000;
-        }
-
-        .value-word:hover::before,
-        .value-word:hover::after {
-          opacity: 1;
-          transform: translateX(-50%) translateY(-8px);
-        }
-
-        .value-word:hover::after {
-          transform: translateX(-50%) translateY(-4px);
-        }
-
-        /* Prevent tooltip overflow */
-        [contenteditable] {
-          position: relative;
-        }
-      `}</style>
+      <style>{VALUE_WORD_STYLE_BLOCK}</style>
 
       {/* Floating Toolbar */}
       <FloatingToolbar
