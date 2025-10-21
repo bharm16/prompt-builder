@@ -27,6 +27,7 @@ import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/Keyboa
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 import { PromptContext } from '../../utils/PromptContext';
+import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
 
 function PromptOptimizerContent() {
   // Force light mode immediately
@@ -326,7 +327,8 @@ function PromptOptimizerContent() {
     highlightedText,
     originalText,
     fullPrompt,
-    selectionRange
+    selectionRange,
+    selectionOffsets
   ) => {
     // Only enable ML suggestions for video mode
     if (selectedMode !== 'video') {
@@ -349,6 +351,136 @@ function PromptOptimizerContent() {
       const requestId = Symbol('suggestions');
       lastRequestRef.current = requestId;
 
+      const rangeSnapshot = selectionRange ? selectionRange.cloneRange() : null;
+      const hasValidOffsets =
+        selectionOffsets &&
+        typeof selectionOffsets.start === 'number' &&
+        typeof selectionOffsets.end === 'number';
+      const offsetsSnapshot = hasValidOffsets
+        ? {
+            start: selectionOffsets.start,
+            end: selectionOffsets.end,
+          }
+        : null;
+      const exactSelectionText =
+        offsetsSnapshot && fullPrompt
+          ? fullPrompt.slice(offsetsSnapshot.start, offsetsSnapshot.end)
+          : originalText;
+
+      const closeSuggestions = () => {
+        setSuggestionsData(null);
+        if (typeof window !== 'undefined' && window.getSelection) {
+          const selection = window.getSelection();
+          if (selection && selection.removeAllRanges) {
+            selection.removeAllRanges();
+          }
+        }
+      };
+
+      const applySuggestion = async (suggestionText) => {
+        try {
+          const latestPrompt = promptOptimizer.displayedPrompt;
+
+          if (!latestPrompt) {
+            toast.error('Unable to apply suggestion to an empty prompt');
+            return;
+          }
+
+          if (rangeSnapshot && typeof window !== 'undefined' && window.getSelection) {
+            try {
+              const selection = window.getSelection();
+              if (selection && selection.removeAllRanges && selection.addRange) {
+                selection.removeAllRanges();
+                const rangeToApply = rangeSnapshot.cloneRange
+                  ? rangeSnapshot.cloneRange()
+                  : rangeSnapshot;
+                selection.addRange(rangeToApply);
+              }
+            } catch (rangeError) {
+              console.warn('Unable to restore previous selection range:', rangeError);
+            }
+          }
+
+          let startIndex = offsetsSnapshot?.start ?? -1;
+          let endIndex = offsetsSnapshot?.end ?? -1;
+          let replacementSource = exactSelectionText || highlightedText || originalText || '';
+          let currentSlice =
+            startIndex >= 0 && endIndex >= 0
+              ? latestPrompt.slice(startIndex, endIndex)
+              : '';
+
+          const hasValidSlice =
+            startIndex >= 0 &&
+            endIndex >= 0 &&
+            startIndex <= endIndex &&
+            currentSlice &&
+            latestPrompt.length >= endIndex;
+
+          if (!hasValidSlice || currentSlice !== replacementSource) {
+            const fallbackText = replacementSource;
+            if (fallbackText) {
+              const fallbackStart = latestPrompt.indexOf(fallbackText);
+              if (fallbackStart !== -1) {
+                startIndex = fallbackStart;
+                endIndex = fallbackStart + fallbackText.length;
+                currentSlice = latestPrompt.slice(startIndex, endIndex);
+              }
+            }
+          }
+
+          let updatedPrompt = latestPrompt;
+          const finalStartValid =
+            startIndex >= 0 &&
+            endIndex >= 0 &&
+            startIndex <= endIndex &&
+            latestPrompt.length >= endIndex;
+
+          const replacedText =
+            finalStartValid && currentSlice
+              ? currentSlice
+              : replacementSource;
+
+          if (finalStartValid && currentSlice) {
+            updatedPrompt =
+              latestPrompt.slice(0, startIndex) +
+              suggestionText +
+              latestPrompt.slice(endIndex);
+          } else if (replacementSource) {
+            updatedPrompt = latestPrompt.replace(replacementSource, suggestionText);
+          }
+
+          try {
+            const finalPrompt = await detectAndApplySceneChange({
+              originalPrompt: latestPrompt,
+              updatedPrompt,
+              oldValue: replacedText || replacementSource,
+              newValue: suggestionText,
+            });
+
+            promptOptimizer.setOptimizedPrompt(finalPrompt);
+            promptOptimizer.setDisplayedPrompt(finalPrompt);
+            closeSuggestions();
+            toast.success('Suggestion applied');
+          } catch (error) {
+            console.error('Error detecting scene change:', error);
+            promptOptimizer.setOptimizedPrompt(updatedPrompt);
+            promptOptimizer.setDisplayedPrompt(updatedPrompt);
+            closeSuggestions();
+            toast.success('Suggestion applied');
+          }
+        } catch (error) {
+          console.error('Error applying suggestion:', error);
+          toast.error('Failed to apply suggestion');
+        } finally {
+          if (typeof window !== 'undefined' && window.getSelection) {
+            const selection = window.getSelection();
+            if (selection && selection.removeAllRanges) {
+              selection.removeAllRanges();
+            }
+          }
+        }
+      };
+
       const highlightIndex = fullPrompt.indexOf(highlightedText);
       const contextBefore = fullPrompt
         .substring(Math.max(0, highlightIndex - 300), highlightIndex)
@@ -367,37 +499,29 @@ function PromptOptimizerContent() {
       setSuggestionsData({
         show: true,
         selectedText: highlightedText,
-        originalText: originalText,
+        originalText: exactSelectionText,
         suggestions: [],
         isLoading: true,
         isPlaceholder: false,
         fullPrompt: fullPrompt,
+        selectionRange: rangeSnapshot,
+        selectionOffsets: offsetsSnapshot,
         setSuggestions: (newSuggestions, newIsPlaceholder) => {
-          setSuggestionsData((prev) => ({
-            ...prev,
-            suggestions: newSuggestions,
-            isPlaceholder:
-              newIsPlaceholder !== undefined
-                ? newIsPlaceholder
-                : prev.isPlaceholder,
-            isLoading: false,
-          }));
+          setSuggestionsData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              suggestions: newSuggestions,
+              isPlaceholder:
+                newIsPlaceholder !== undefined
+                  ? newIsPlaceholder
+                  : prev.isPlaceholder,
+              isLoading: false,
+            };
+          });
         },
-        onSuggestionClick: (suggestionText) => {
-          const updatedPrompt = promptOptimizer.displayedPrompt.replace(
-            originalText,
-            suggestionText
-          );
-          promptOptimizer.setOptimizedPrompt(updatedPrompt);
-          promptOptimizer.setDisplayedPrompt(updatedPrompt);
-          setSuggestionsData(null);
-          window.getSelection().removeAllRanges();
-          toast.success('Suggestion applied');
-        },
-        onClose: () => {
-          setSuggestionsData(null);
-          window.getSelection().removeAllRanges();
-        },
+        onSuggestionClick: applySuggestion,
+        onClose: closeSuggestions,
       });
 
       try {
@@ -430,47 +554,21 @@ function PromptOptimizerContent() {
           return;
         }
 
-        setSuggestionsData({
-          show: true,
-          selectedText: highlightedText,
-          originalText: originalText,
-          suggestions: data.suggestions || [],
-          isLoading: false,
-          isPlaceholder: data.isPlaceholder || false,
-          fullPrompt: fullPrompt,
-          setSuggestions: (newSuggestions, newIsPlaceholder) => {
-            setSuggestionsData((prev) => ({
-              ...prev,
-              suggestions: newSuggestions,
-              isPlaceholder:
-                newIsPlaceholder !== undefined
-                  ? newIsPlaceholder
-                  : prev.isPlaceholder,
-              isLoading: false,
-            }));
-          },
-          onSuggestionClick: (suggestionText) => {
-            const updatedPrompt = promptOptimizer.displayedPrompt.replace(
-              originalText,
-              suggestionText
-            );
-            promptOptimizer.setOptimizedPrompt(updatedPrompt);
-            promptOptimizer.setDisplayedPrompt(updatedPrompt);
-            setSuggestionsData(null);
-            window.getSelection().removeAllRanges();
-            toast.success('Suggestion applied');
-          },
-          onClose: () => {
-            setSuggestionsData(null);
-            window.getSelection().removeAllRanges();
-          },
+        setSuggestionsData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            suggestions: data.suggestions || [],
+            isLoading: false,
+            isPlaceholder: data.isPlaceholder || false,
+          };
         });
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         // Only surface the error if this is still the latest request
         if (lastRequestRef.current === requestId) {
           toast.error('Failed to load suggestions');
-          setSuggestionsData(null);
+          closeSuggestions();
         }
       }
     };
