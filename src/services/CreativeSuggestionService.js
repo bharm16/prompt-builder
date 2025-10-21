@@ -994,10 +994,15 @@ Return ONLY a JSON array:
       narrative: this.detectNarrativeStructure(concept),
     };
 
+    // Determine if we're completing an existing value or generating fresh suggestions
+    const isCompletion = currentValue && currentValue.trim().length > 0;
+    const completionMode = isCompletion ? 'COMPLETION' : 'GENERATION';
+
     const analysisProcess = `<analysis_process>
 Step 1: Understand the element type and creative requirements
 - Element: ${elementType}
 - Current value: ${currentValue || 'Not set - starting fresh'}
+- Mode: ${completionMode} ${isCompletion ? '(help complete this partial input)' : '(generate fresh suggestions)'}
 - What makes this element type visually compelling?
 
 Step 2: Analyze existing context at multiple levels
@@ -1013,28 +1018,46 @@ Step 3: Ensure contextual harmony
 - Is there thematic consistency with detected themes: ${contextAnalysis.thematic.themes.join(', ') || 'none'}?
 - Do suggestions match the tone: ${contextAnalysis.thematic.tone}?
 - Do suggestions avoid contradicting established context?
+${isCompletion ? `- CRITICAL: All suggestions must BUILD UPON the current value: "${currentValue}"` : ''}
 
-Step 4: Maximize creative diversity
-- Generate 8 distinct, specific options
+Step 4: ${isCompletion ? 'Complete the partial input' : 'Maximize creative diversity'}
+${isCompletion ? `- All 8 suggestions MUST start with or include: "${currentValue}"
+- Add 2-3 relevant visual details that complete the element
+- Maintain the user's intent while following video prompt guidelines
+- Each completion should offer a different way to finish the element` : `- Generate 8 distinct, specific options
 - Vary tone, style, intensity, and approach
 - Each should offer a meaningfully different creative direction
-- Ensure all are immediately usable and visually evocative
+- Ensure all are immediately usable and visually evocative`}
 - Consider narrative elements: ${contextAnalysis.narrative.hasNarrative ? 'narrative flow important' : 'standalone elements'}
 </analysis_process>`;
 
     const elementPrompts = {
-      subject: `Generate creative suggestions for the SUBJECT/CHARACTER of a video.
+      subject: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the SUBJECT/CHARACTER of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 diverse, creative subjects that would make compelling video content. Consider:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this subject by adding 2-3 relevant visual details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add 2-3 specific, relevant visual details that complete the description
+✓ Stay true to the subject the user has indicated
+✓ Follow video prompt principles (specific, visual, what camera can see)
+
+EXAMPLES (if user typed "abraham lincoln"):
+✓ "abraham lincoln with weathered face and tall stovepipe hat"
+✓ "abraham lincoln in period wool coat with weary eyes"
+✓ "abraham lincoln with distinctive beard holding leather document case"
+✗ "george washington" (different subject - NOT completing the input)
+✗ "thomas jefferson" (different subject - NOT completing the input)` : `Provide 8 diverse, creative subjects that would make compelling video content. Consider:
 - People (with 2-3 distinctive visual details: "elderly street musician with weathered hands and silver harmonica")
 - Products (specific make/model with visual characteristics: "matte black DJI drone with amber LED lights")
 - Animals (species + behavior/appearance: "bengal cat with spotted coat stalking prey")
 - Objects (with texture/material details: "antique brass compass with worn patina")
-- Abstract concepts (visualized with specific metaphors: "time visualized as golden sand particles")
+- Abstract concepts (visualized with specific metaphors: "time visualized as golden sand particles")`}
 
 Apply VIDEO PROMPT PRINCIPLES:
 ✓ SPECIFIC not generic: "weathered leather journal" not "old book"
@@ -1044,18 +1067,33 @@ Apply VIDEO PROMPT PRINCIPLES:
 
 Each suggestion should be SHORT (2-8 words) and visually evocative.`,
 
-      action: `Generate creative suggestions for the ACTION/ACTIVITY in a video.
+      action: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the ACTION/ACTIVITY in a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 dynamic, visual actions that work well in video. Consider:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this action with specific, visual details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add specific details about HOW the action is performed
+✓ Include manner, intensity, or visual characteristics
+✓ Follow ONE MAIN ACTION rule (don't add multiple actions)
+✓ Stay true to the action the user has indicated
+
+EXAMPLES (if user typed "jumping"):
+✓ "jumping over concrete barriers in slow motion"
+✓ "jumping through ring of fire with dramatic backlight"
+✓ "jumping between rooftops with rain-slicked surfaces"
+✗ "running and diving" (changed the action - NOT completing the input)
+✗ "dancing energetically" (different action - NOT completing the input)` : `Provide 8 dynamic, visual actions that work well in video. Consider:
 - Physical movement (with specific manner: "sprinting through rain-slicked alley")
 - Transformation (with visible process: "ink dissolving into clear water")
 - Interaction (with object details: "catching spinning basketball mid-air")
 - Performance (with technique: "playing cello with aggressive bow strokes")
-- Natural phenomena (with visual progression: "ice crystallizing across window pane")
+- Natural phenomena (with visual progression: "ice crystallizing across window pane")`}
 
 CRITICAL - Apply ONE MAIN ACTION RULE:
 ✓ ONE clear, specific action only (not "running, jumping, and spinning")
@@ -1066,63 +1104,120 @@ CRITICAL - Apply ONE MAIN ACTION RULE:
 Use CINEMATIC terminology: "slow dolly in", "rack focus", "tracking shot".
 Each action should be SHORT (2-8 words) and immediately visualizable.`,
 
-      location: `Generate creative suggestions for the LOCATION/SETTING of a video.
+      location: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the LOCATION/SETTING of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 visually interesting locations. Consider:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this location with atmospheric details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add specific environmental details, lighting, or atmosphere
+✓ Include architectural features, weather, or distinctive characteristics
+✓ Stay true to the location type the user has indicated
+
+EXAMPLES (if user typed "tokyo street"):
+✓ "tokyo street at night with neon signs reflecting on wet pavement"
+✓ "tokyo street during rush hour with crowds and bright billboards"
+✓ "tokyo street in shibuya with massive digital displays overhead"
+✗ "new york alley" (different location - NOT completing the input)
+✗ "paris boulevard" (different location - NOT completing the input)` : `Provide 8 visually interesting locations. Consider:
 - Urban environments (specific types of streets, buildings, infrastructure)
 - Natural settings (specific landscapes, weather conditions, times of day)
 - Interior spaces (architectural styles, purposes, atmospheres)
 - Unusual/creative settings (underwater, in space, abstract void, miniature world)
-- Cultural/historical settings (specific eras, cultures, styles)
+- Cultural/historical settings (specific eras, cultures, styles)`}
 
 Each location should be SPECIFIC and EVOCATIVE. Not "a building" but "abandoned Victorian warehouse with shattered skylights".`,
 
-      time: `Generate creative suggestions for the TIME/PERIOD of a video.
+      time: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the TIME/PERIOD of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 specific time/lighting conditions that create visual interest:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this time/period with lighting and atmospheric details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add lighting quality, atmospheric conditions, or visual characteristics
+✓ Include specific details about light direction, color, or intensity
+✓ Stay true to the time/period the user has indicated
+
+EXAMPLES (if user typed "golden hour"):
+✓ "golden hour with warm backlight and long shadows"
+✓ "golden hour at sunset with orange sky and soft diffused light"
+✓ "golden hour in late afternoon with amber glow filtering through trees"
+✗ "blue hour dusk" (different time - NOT completing the input)
+✗ "midday sun" (different time - NOT completing the input)` : `Provide 8 specific time/lighting conditions that create visual interest:
 - Time of day (golden hour, blue hour, high noon, midnight, dawn, dusk)
 - Historical period (specific eras with visual characteristics)
 - Season (spring bloom, autumn colors, winter frost, summer haze)
 - Weather timing (during storm, after rain, before sunset)
-- Future/past (specific sci-fi or period aesthetics)
+- Future/past (specific sci-fi or period aesthetics)`}
 
 Each suggestion should specify LIGHTING and MOOD implications. Not just "morning" but "early morning mist with low golden sun".`,
 
-      mood: `Generate creative suggestions for the MOOD/ATMOSPHERE of a video.
+      mood: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the MOOD/ATMOSPHERE of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 distinct moods/atmospheres. Consider:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this mood with specific visual and atmospheric details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add visual qualities, color implications, or lighting characteristics
+✓ Include specific details about energy, texture, or sensory qualities
+✓ Stay true to the mood the user has indicated
+
+EXAMPLES (if user typed "tense"):
+✓ "tense with high-contrast shadows and sharp angles"
+✓ "tense atmosphere with cold blue lighting and tight framing"
+✓ "tense with low-key lighting and ominous undertones"
+✗ "peaceful and calm" (opposite mood - NOT completing the input)
+✗ "joyful energy" (different mood - NOT completing the input)` : `Provide 8 distinct moods/atmospheres. Consider:
 - Emotional tones (melancholic, joyful, tense, peaceful, mysterious)
 - Energy levels (frenetic, languid, pulsing, static, building)
 - Sensory qualities (warm, cold, harsh, soft, textured)
 - Narrative feelings (nostalgic, foreboding, hopeful, triumphant)
-- Abstract atmospheres (dreamlike, surreal, hyperreal, gritty)
+- Abstract atmospheres (dreamlike, surreal, hyperreal, gritty)`}
 
 Each mood should be SPECIFIC and suggest visual/color implications. Not "happy" but "warm, golden nostalgia like a faded photograph".`,
 
-      style: `Generate creative suggestions for the VISUAL STYLE of a video.
+      style: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the VISUAL STYLE of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 distinct visual styles using SPECIFIC references (NOT generic):
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this visual style with specific technical details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add technical specifications like lens, film stock, lighting, or color grading
+✓ Include specific visual characteristics or aesthetic references
+✓ Stay true to the style the user has indicated
+✓ Avoid generic terms - be technically specific
+
+EXAMPLES (if user typed "film noir"):
+✓ "film noir with high-contrast shadows and Rembrandt lighting"
+✓ "film noir aesthetic shot on 35mm with deep blacks and venetian blind shadows"
+✓ "film noir style with low-key lighting and Dutch angles"
+✗ "bright colorful animation" (opposite style - NOT completing the input)
+✗ "documentary realism" (different style - NOT completing the input)` : `Provide 8 distinct visual styles using SPECIFIC references (NOT generic):
 - Film stock/format: "shot on 35mm film", "Super 8 footage with light leaks", "16mm Kodak Vision3"
 - Genre aesthetics: "film noir with high-contrast shadows", "documentary verité style", "French New Wave aesthetic"
 - Director/cinematographer style: "in the style of Wes Anderson", "Roger Deakins naturalism", "Christopher Doyle neon-lit"
 - Art movements: "German Expressionist angles", "Italian Neorealism rawness"
-- Technical processes: "anamorphic lens flares", "tilt-shift miniature effect", "infrared color spectrum"
+- Technical processes: "anamorphic lens flares", "tilt-shift miniature effect", "infrared color spectrum"`}
 
 CRITICAL - Avoid generic terms:
 ✗ "cinematic" → ✓ "shot on 35mm film with shallow depth of field"
@@ -1131,18 +1226,32 @@ CRITICAL - Avoid generic terms:
 
 Each suggestion should include TECHNICAL implications (film stock, lens type, color grading, etc.).`,
 
-      event: `Generate creative suggestions for the EVENT/CONTEXT of a video.
+      event: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the EVENT/CONTEXT of a video.
 
 Context: ${context || 'No other elements defined yet'}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
-Provide 8 specific events or contexts. Consider:
+${isCompletion ? `COMPLETION MODE: The user has started typing "${currentValue}".
+Your task is to provide 8 ways to COMPLETE this event/context with narrative details.
+
+CRITICAL RULES FOR COMPLETION:
+✓ ALL 8 suggestions MUST start with or include "${currentValue}"
+✓ Add narrative purpose, dramatic structure, or contextual details
+✓ Include specific details about the moment, progression, or payoff
+✓ Stay true to the event type the user has indicated
+
+EXAMPLES (if user typed "product reveal"):
+✓ "product reveal with dramatic build-up and lighting change"
+✓ "product reveal moment with slow rotation and spotlight effect"
+✓ "product reveal featuring close-up details and technical specifications"
+✗ "chase sequence" (different event - NOT completing the input)
+✗ "celebration party" (different event - NOT completing the input)` : `Provide 8 specific events or contexts. Consider:
 - Commercial contexts (product launch, demonstration, unboxing, reveal)
 - Narrative events (discovery, transformation, conflict, resolution)
 - Celebrations (specific types of parties, ceremonies, milestones)
 - Processes (creation, destruction, assembly, metamorphosis)
-- Abstract contexts (dream sequence, memory, vision, imagination)
+- Abstract contexts (dream sequence, memory, vision, imagination)`}
 
 Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`,
     };
@@ -1198,13 +1307,42 @@ ${analysisProcess}
 ${basePrompt}
 
 **Your Task:**
-Generate 8 creative, specific suggestions for this element, following the VIDEO PROMPT TEMPLATE PRINCIPLES above.
+${isCompletion ?
+`🎯 COMPLETION MODE ACTIVE 🎯
+
+The user has already started typing "${currentValue}".
+Your ONLY job is to help them COMPLETE this element by adding relevant details.
+
+**CRITICAL COMPLETION RULES:**
+✓ ALL 8 suggestions MUST include "${currentValue}"
+✓ Build upon what the user typed - don't change the subject/action/location/etc.
+✓ Add 2-3 specific, relevant visual details following video prompt guidelines
+✓ Each completion should offer a different way to finish the element
+✓ Follow all VIDEO PROMPT TEMPLATE PRINCIPLES (specificity, visual details, technical language)
+
+**WRONG (changing the user's input):**
+User typed: "abraham lincoln"
+❌ "george washington in colonial attire" - WRONG! Different subject!
+❌ "thomas jefferson with quill pen" - WRONG! Different subject!
+❌ "historical figure from 1800s" - WRONG! Too generic and loses the specific subject!
+
+**RIGHT (completing the user's input):**
+User typed: "abraham lincoln"
+✓ "abraham lincoln with weathered face and tall stovepipe hat"
+✓ "abraham lincoln in period wool coat with weary expression"
+✓ "abraham lincoln with distinctive beard holding leather document case"
+✓ "abraham lincoln in dimly-lit study with candlelight"
+
+Generate 8 completions following the element-specific guidelines above.`
+:
+`Generate 8 creative, specific suggestions for this element, following the VIDEO PROMPT TEMPLATE PRINCIPLES above.`}
 
 **Contextual Harmony Requirements:**
 ✓ If existing context provided, ensure suggestions COMPLEMENT those elements
 ✓ Maintain thematic consistency across all suggestions
 ✓ Avoid contradictions (e.g., "underwater" location → don't suggest "race car" subject)
 ✓ Consider implied tone and style from existing elements
+${isCompletion ? `✓ MOST IMPORTANT: Build upon "${currentValue}" - don't suggest completely different options` : ''}
 
 **Examples of Good Contextual Fit:**
 - Subject "athlete" → Actions like "parkour vaulting" not "sleeping"
@@ -1214,21 +1352,22 @@ Generate 8 creative, specific suggestions for this element, following the VIDEO 
 **Quality Criteria:**
 ✓ Each suggestion is SHORT and SPECIFIC (2-8 words)
 ✓ All 8 suggestions are meaningfully different
-✓ Explanations clearly show contextual reasoning
+✓ Explanations clearly show ${isCompletion ? 'how the completion enhances the original input' : 'contextual reasoning'}
 ✓ Visually evocative and immediately usable
+${isCompletion ? `✓ ALL suggestions include "${currentValue}" as the core element` : ''}
 
 **Output Format:**
 Return ONLY a JSON array (no markdown, no code blocks):
 
 [
-  {"text": "specific suggestion 1", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 2", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 3", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 4", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 5", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 6", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 7", "explanation": "why this works with the context"},
-  {"text": "specific suggestion 8", "explanation": "why this works with the context"}
+  {"text": "specific suggestion 1", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 2", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 3", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 4", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 5", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 6", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 7", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
+  {"text": "specific suggestion 8", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"}
 ]`;
   }
 }
