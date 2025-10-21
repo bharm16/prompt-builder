@@ -45,6 +45,13 @@ export const formatTextToHTML = (
       .replace(/'/g, '&#039;');
   };
 
+  const getConfidenceClass = (confidence) => {
+    if (typeof confidence !== 'number') return '';
+    if (confidence >= 0.85) return 'high-confidence';
+    if (confidence >= 0.7) return 'medium-confidence';
+    return 'low-confidence';
+  };
+
   /**
    * Intelligent phrase highlighting system using ML-based pattern recognition
    *
@@ -128,7 +135,12 @@ export const formatTextToHTML = (
       result += escapeHtml(input.slice(lastIndex, start));
 
       // Add highlighted phrase
-      result += `<span class="value-word value-word-${phrase.category}" data-category="${phrase.category}" style="background-color: ${phrase.color.bg}; border-bottom: 2px solid ${phrase.color.border}; padding: 1px 3px; border-radius: 3px; cursor: pointer;">${escapeHtml(phrase.text)}</span>`;
+      const confidenceClass = getConfidenceClass(phrase.confidence);
+      const className = `value-word value-word-${phrase.category}${confidenceClass ? ` ${confidenceClass}` : ''}`;
+      const confidenceAttr =
+        typeof phrase.confidence === 'number' ? ` data-confidence="${phrase.confidence}"` : '';
+
+      result += `<span class="${className}" data-category="${phrase.category}"${confidenceAttr} style="background-color: ${phrase.color.bg}; border-bottom: 2px solid ${phrase.color.border}; padding: 1px 3px; border-radius: 3px; cursor: pointer;">${escapeHtml(phrase.text)}</span>`;
 
       lastIndex = start + phrase.text.length;
     });
