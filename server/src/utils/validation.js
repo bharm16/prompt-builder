@@ -46,6 +46,29 @@ export const suggestionSchema = Joi.object({
     'any.required': 'Full prompt is required',
   }),
   originalUserPrompt: Joi.string().allow('').max(10000),
+  brainstormContext: Joi.object({
+    version: Joi.string().optional(),
+    createdAt: Joi.number().optional(),
+    elements: Joi.object({
+      subject: Joi.string().allow('', null),
+      action: Joi.string().allow('', null),
+      location: Joi.string().allow('', null),
+      time: Joi.string().allow('', null),
+      mood: Joi.string().allow('', null),
+      style: Joi.string().allow('', null),
+      event: Joi.string().allow('', null),
+    }).optional(),
+    metadata: Joi.object({
+      format: Joi.string().allow('', null),
+      technicalParams: Joi.object().unknown(true).optional(),
+      validationScore: Joi.number().allow(null).optional(),
+      history: Joi.array().items(Joi.any()).optional(),
+    })
+      .optional()
+      .unknown(true),
+  })
+    .optional()
+    .allow(null),
 });
 
 export const customSuggestionSchema = Joi.object({
