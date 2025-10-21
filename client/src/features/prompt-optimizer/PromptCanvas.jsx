@@ -9,7 +9,7 @@ import {
   X,
   Share2,
 } from 'lucide-react';
-import { SuggestionsPanel } from '../../components/PromptEnhancementEditor';
+import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
 import { extractVideoPromptPhrases } from './phraseExtractor';
 
@@ -396,9 +396,14 @@ const CategoryLegend = memo(({ show, onClose, hasContext }) => {
     { name: 'Style', color: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)', example: '35mm film, documentary, noir', source: 'brainstorm' },
 
     // Categories from NLP extraction (always active)
-    { name: 'Camera Movement', color: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)', example: 'camera pans, slow dolly', source: 'nlp' },
-    { name: 'Descriptive Phrases', color: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)', example: 'soft shadows, dramatic lighting', source: 'nlp' },
-    { name: 'Technical Specs', color: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)', example: '35mm, 24fps, 2.39:1', source: 'nlp' },
+    { name: 'Lighting', color: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)', example: 'golden hour lighting, neon glow', source: 'nlp' },
+    { name: 'Shot Framing', color: 'rgba(147, 197, 253, 0.18)', border: 'rgba(59, 130, 246, 0.45)', example: 'wide shot, low-angle shot', source: 'nlp' },
+    { name: 'Camera Movement', color: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)', example: 'dolly in, pan left', source: 'nlp' },
+    { name: 'Depth of Field', color: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.5)', example: 'shallow depth of field, creamy bokeh', source: 'nlp' },
+    { name: 'Color Palette', color: 'rgba(244, 114, 182, 0.2)', border: 'rgba(244, 114, 182, 0.55)', example: 'teal and orange, muted pastels', source: 'nlp' },
+    { name: 'Environment Details', color: 'rgba(34, 197, 94, 0.18)', border: 'rgba(34, 197, 94, 0.55)', example: 'rain-soaked alley, frozen tundra', source: 'nlp' },
+    { name: 'Technical Specs', color: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)', example: '35mm, 24fps, 2.39:1', source: 'nlp' },
+    { name: 'Descriptive Language', color: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)', example: 'soft shadows, weathered hands', source: 'nlp' },
   ];
 
   return (

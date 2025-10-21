@@ -122,7 +122,15 @@ export function createAPIRoutes(services) {
     '/detect-scene-change',
     validateRequest(sceneChangeSchema),
     asyncHandler(async (req, res) => {
-      const { changedField, newValue, oldValue, fullPrompt, affectedFields } =
+      const {
+        changedField,
+        newValue,
+        oldValue,
+        fullPrompt,
+        affectedFields,
+        sectionHeading,
+        sectionContext,
+      } =
         req.body;
 
       const result = await sceneDetectionService.detectSceneChange({
@@ -131,6 +139,8 @@ export function createAPIRoutes(services) {
         oldValue,
         fullPrompt,
         affectedFields,
+        sectionHeading,
+        sectionContext,
       });
 
       res.json(result);

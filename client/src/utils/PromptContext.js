@@ -237,8 +237,13 @@ export class PromptContext {
       style: { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)' }, // Indigo
       event: { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.5)' }, // Sky
       technical: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)' }, // Violet
-      descriptive: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)' }, // Amber
-      camera: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)' }, // Violet
+      descriptive: { bg: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
+      lighting: { bg: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)' }, // Yellow
+      cameraMove: { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)' }, // Sky blue
+      framing: { bg: 'rgba(147, 197, 253, 0.18)', border: 'rgba(59, 130, 246, 0.45)' }, // Light blue
+      environment: { bg: 'rgba(34, 197, 94, 0.18)', border: 'rgba(34, 197, 94, 0.55)' }, // Green
+      color: { bg: 'rgba(244, 114, 182, 0.2)', border: 'rgba(244, 114, 182, 0.55)' }, // Pink
+      depthOfField: { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.5)' }, // Orange
     };
 
     return colors[category] || { bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.5)' };

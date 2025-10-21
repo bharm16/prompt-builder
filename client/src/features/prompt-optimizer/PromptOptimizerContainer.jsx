@@ -399,8 +399,16 @@ function PromptOptimizerContent() {
         }
       };
 
-      const applySuggestion = async (suggestionText) => {
+      const applySuggestion = async (suggestion) => {
         try {
+          const suggestionText =
+            typeof suggestion === 'string' ? suggestion : suggestion?.text || '';
+
+          if (!suggestionText) {
+            toast.error('Suggestion is missing text to apply');
+            return;
+          }
+
           const latestPrompt = promptOptimizer.displayedPrompt;
 
           if (!latestPrompt) {
@@ -628,7 +636,7 @@ function PromptOptimizerContent() {
     },
     applySuggestion: (index) => {
       if (suggestionsData?.suggestions[index]) {
-        suggestionsData.onSuggestionClick(suggestionsData.suggestions[index].text);
+        suggestionsData.onSuggestionClick(suggestionsData.suggestions[index]);
       }
     },
     closeModal: () => {
