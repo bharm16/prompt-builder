@@ -539,6 +539,7 @@ function PromptOptimizerContent() {
               contextAfter,
               fullPrompt,
               originalUserPrompt: promptOptimizer.inputPrompt,
+              brainstormContext: promptContext ? promptContext.toJSON() : null,
             }),
           }
         );

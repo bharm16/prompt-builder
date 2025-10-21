@@ -84,6 +84,7 @@ export function createAPIRoutes(services) {
         contextAfter,
         fullPrompt,
         originalUserPrompt,
+        brainstormContext,
       } = req.body;
 
       const result = await enhancementService.getEnhancementSuggestions({
@@ -92,6 +93,7 @@ export function createAPIRoutes(services) {
         contextAfter,
         fullPrompt,
         originalUserPrompt,
+        brainstormContext,
       });
 
       res.json(result);

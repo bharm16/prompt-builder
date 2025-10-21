@@ -24,10 +24,14 @@ export class EnhancementService {
     contextAfter,
     fullPrompt,
     originalUserPrompt,
+    brainstormContext,
   }) {
     logger.info('Getting enhancement suggestions', {
       highlightedLength: highlightedText?.length,
     });
+
+    const isVideoPrompt = this.isVideoPrompt(fullPrompt);
+    const brainstormSignature = this.buildBrainstormSignature(brainstormContext);
 
     // Check cache first
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
@@ -35,6 +39,9 @@ export class EnhancementService {
       contextBefore,
       contextAfter,
       fullPrompt: fullPrompt.substring(0, 500), // Partial for cache key
+      originalUserPrompt: (originalUserPrompt || '').substring(0, 500),
+      isVideoPrompt,
+      brainstormSignature,
     });
 
     const cached = await cacheService.get(cacheKey, 'enhancement');
@@ -42,9 +49,6 @@ export class EnhancementService {
       logger.debug('Cache hit for enhancement suggestions');
       return cached;
     }
-
-    // Detect if this is a video prompt
-    const isVideoPrompt = this.isVideoPrompt(fullPrompt);
 
     // Check if highlighted text is a placeholder/parameter
     const isPlaceholder = this.detectPlaceholder(
@@ -63,6 +67,7 @@ export class EnhancementService {
           fullPrompt,
           originalUserPrompt,
           isVideoPrompt,
+          brainstormContext,
         })
       : this.buildRewritePrompt({
           highlightedText,
@@ -71,6 +76,7 @@ export class EnhancementService {
           fullPrompt,
           originalUserPrompt,
           isVideoPrompt,
+          brainstormContext,
         });
 
     // Define schema for validation
@@ -404,6 +410,92 @@ export class EnhancementService {
   }
 
   /**
+   * Build a compact signature of brainstorm context for caching
+   * @private
+   */
+  buildBrainstormSignature(brainstormContext) {
+    if (!brainstormContext || typeof brainstormContext !== 'object') {
+      return null;
+    }
+
+    const { elements = {}, metadata = {} } = brainstormContext;
+
+    const normalizedElements = Object.entries(elements).reduce((acc, [key, value]) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          acc[key] = trimmed;
+        }
+      }
+      return acc;
+    }, {});
+
+    const normalizedMetadata = {};
+    if (metadata && typeof metadata === 'object') {
+      if (typeof metadata.format === 'string' && metadata.format.trim()) {
+        normalizedMetadata.format = metadata.format.trim();
+      }
+
+      if (metadata.technicalParams && typeof metadata.technicalParams === 'object') {
+        const technicalEntries = Object.entries(metadata.technicalParams).reduce(
+          (acc, [key, value]) => {
+            if (value === undefined || value === null) {
+              return acc;
+            }
+
+            if (typeof value === 'string') {
+              const trimmedValue = value.trim();
+              if (trimmedValue) {
+                acc[key] = trimmedValue;
+              }
+              return acc;
+            }
+
+            if (Array.isArray(value)) {
+              if (value.length > 0) {
+                acc[key] = value;
+              }
+              return acc;
+            }
+
+            if (typeof value === 'object') {
+              if (Object.keys(value).length > 0) {
+                acc[key] = value;
+              }
+              return acc;
+            }
+
+            acc[key] = value;
+            return acc;
+          },
+          {}
+        );
+
+        if (Object.keys(technicalEntries).length) {
+          normalizedMetadata.technicalParams = technicalEntries;
+        }
+      }
+
+      if (
+        typeof metadata.validationScore === 'number' &&
+        Number.isFinite(metadata.validationScore)
+      ) {
+        normalizedMetadata.validationScore = metadata.validationScore;
+      }
+    }
+
+    const signature = {};
+    if (Object.keys(normalizedElements).length) {
+      signature.elements = normalizedElements;
+    }
+    if (Object.keys(normalizedMetadata).length) {
+      signature.metadata = normalizedMetadata;
+    }
+
+    return Object.keys(signature).length ? signature : null;
+  }
+
+  /**
    * Build prompt for placeholder value suggestions
    * @private
    */
@@ -414,11 +506,27 @@ export class EnhancementService {
     fullPrompt,
     originalUserPrompt,
     isVideoPrompt,
+    brainstormContext,
   }) {
     // Detect the semantic type of the placeholder
     const placeholderType = this.detectPlaceholderType(highlightedText, contextBefore, contextAfter);
+    const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
+      includeCategoryGuidance: true,
+      isVideoPrompt,
+    });
+    const contextIntegrationBullet = brainstormSection
+      ? '- Respect the Creative Brainstorm anchors above when proposing categories and example replacements.'
+      : '- Each category should still fit the overall context';
+    const brainstormRequirement = brainstormSection
+      ? '✓ Align categories and replacements with the Creative Brainstorm anchors above\n'
+      : '';
+    const modeRequirement = isVideoPrompt
+      ? '✓ For video: consider different visual/cinematic approaches'
+      : '✓ Different approaches to achieve the goal';
 
-    return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.
+    return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
+      brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+    }
 
 <analysis_process>
 Step 1: Identify the placeholder type and context
@@ -442,7 +550,7 @@ Step 3: Ensure categorical diversity
 
 Step 4: Consider context appropriateness
 - Original user's intent: "${originalUserPrompt}"
-- Each category should still fit the overall context
+${contextIntegrationBullet}
 </analysis_process>
 
 **Context Analysis:**
@@ -466,7 +574,7 @@ Generate 12-15 suggestions to replace "${highlightedText}" organized into 4-5 CA
 ✓ Include category label for ALL suggestions
 ✓ Direct drop-in replacements - no rewriting needed
 ✓ Contextually appropriate despite being diverse
-${isVideoPrompt ? '✓ For video: consider different visual/cinematic approaches' : '✓ Different approaches to achieve the goal'}
+${brainstormRequirement}${modeRequirement}
 
 **Output Format:**
 Return ONLY a JSON array with categorized suggestions (2-4 per category):
@@ -498,9 +606,20 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     fullPrompt,
     originalUserPrompt,
     isVideoPrompt,
+    brainstormContext,
   }) {
+    const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
+      isVideoPrompt,
+    });
+
     if (isVideoPrompt) {
-      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).
+      const brainstormRequirementLine = brainstormSection
+        ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
+        : '';
+
+      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
+        brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+      }
 
 **APPROACH:**
 - Keep enhancements concise (10-25 words per replacement)
@@ -531,8 +650,7 @@ Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement 
 ✓ ONE clear action/focus per suggestion
 ✓ Specific over generic ("weathered oak" not "nice table")
 ✓ Flows with surrounding context
-
-Return ONLY a JSON array (no markdown, no code blocks):
+${brainstormRequirementLine}Return ONLY a JSON array (no markdown, no code blocks):
 
 [
   {"text": "enhanced version...", "explanation": "Adds camera specifics..."},
@@ -541,7 +659,16 @@ Return ONLY a JSON array (no markdown, no code blocks):
 ]`;
     }
 
-    return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.
+    const brainstormContextReminder = brainstormSection
+      ? '- Reinforce the Creative Brainstorm anchors detailed above.'
+      : '';
+    const brainstormQualityRequirement = brainstormSection
+      ? '✓ Reinforces the Creative Brainstorm anchors above\n'
+      : '';
+
+    return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.${
+      brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+    }
 
 <analysis_process>
 Step 1: Analyze the highlighted section
@@ -559,6 +686,7 @@ Step 3: Consider context
 - Original intent: "${originalUserPrompt}"
 - How does this fit in the full prompt?
 - What constraints or requirements exist?
+${brainstormContextReminder}
 
 Step 4: Generate enhanced alternatives
 - Create 3-5 variants with different improvement focuses
@@ -596,7 +724,7 @@ Generate 3-5 improved rewrites focusing on clarity and effectiveness.
 ✓ Flows naturally with context
 ✓ More effective and specific than original
 ✓ Each variant takes different improvement approach
-✓ Maintains original intent and tone
+${brainstormQualityRequirement}✓ Maintains original intent and tone
 
 Return ONLY a JSON array (no markdown, no code blocks):
 
@@ -607,6 +735,131 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "fourth variation 4...", "explanation": "why this improvement works"},
   {"text": "fifth option 5...", "explanation": "why this improvement works"}
 ]`;
+  }
+
+  /**
+   * Construct a detailed brainstorm context section for prompts
+   * @private
+   */
+  buildBrainstormContextSection(
+    brainstormContext,
+    { includeCategoryGuidance = false, isVideoPrompt = false } = {}
+  ) {
+    if (!brainstormContext || typeof brainstormContext !== 'object') {
+      return '';
+    }
+
+    const elements = brainstormContext.elements || {};
+    const metadata = brainstormContext.metadata || {};
+
+    const definedElements = Object.entries(elements).filter(([, value]) => {
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+
+    const technicalParams =
+      metadata && typeof metadata.technicalParams === 'object'
+        ? Object.entries(metadata.technicalParams).filter(([, value]) => {
+            if (value === null || value === undefined) {
+              return false;
+            }
+            if (typeof value === 'string') {
+              return value.trim().length > 0;
+            }
+            if (Array.isArray(value)) {
+              return value.length > 0;
+            }
+            if (typeof value === 'object') {
+              return Object.keys(value).length > 0;
+            }
+            return true;
+          })
+        : [];
+
+    const formatPreference =
+      typeof metadata.format === 'string' && metadata.format.trim().length > 0
+        ? metadata.format.trim()
+        : null;
+
+    const validationScore =
+      typeof metadata.validationScore === 'number' &&
+      Number.isFinite(metadata.validationScore)
+        ? metadata.validationScore
+        : null;
+
+    if (!definedElements.length && !technicalParams.length && !formatPreference && validationScore === null) {
+      return '';
+    }
+
+    let section = '**Creative Brainstorm Structured Context:**\n';
+    section += 'These are user-confirmed anchors that suggestions must respect.\n';
+
+    if (definedElements.length) {
+      definedElements.forEach(([key, value]) => {
+        section += `- ${this.formatBrainstormKey(key)}: ${value.trim()}\n`;
+      });
+    }
+
+    if (formatPreference || technicalParams.length || validationScore !== null) {
+      section += '\n**Metadata & Technical Guidance:**\n';
+
+      if (formatPreference) {
+        section += `- Format Preference: ${formatPreference}\n`;
+      }
+
+      if (validationScore !== null) {
+        section += `- Validation Score: ${validationScore}\n`;
+      }
+
+      technicalParams.forEach(([key, value]) => {
+        section += `- ${this.formatBrainstormKey(key)}: ${this.formatBrainstormValue(value)}\n`;
+      });
+    }
+
+    if (includeCategoryGuidance) {
+      section += '\nUse these anchors to inspire category labels and keep suggestions aligned with the user\'s core concept.\n';
+    } else {
+      section += '\nEnsure every rewrite strengthens these anchors rather than contradicting them.\n';
+    }
+
+    if (isVideoPrompt) {
+      section += 'Translate these anchors into cinematic details whenever possible.\n';
+    }
+
+    return section;
+  }
+
+  /**
+   * Format brainstorm keys into human-readable labels
+   * @private
+   */
+  formatBrainstormKey(key) {
+    if (!key) {
+      return '';
+    }
+
+    return key
+      .toString()
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  /**
+   * Normalize brainstorm metadata values for prompt inclusion
+   * @private
+   */
+  formatBrainstormValue(value) {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return JSON.stringify(value);
+    }
+
+    return String(value);
   }
 
   /**
