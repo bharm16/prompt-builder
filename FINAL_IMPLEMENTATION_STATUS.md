@@ -121,36 +121,13 @@ Renders with smart highlighting (top 15 phrases, prioritized by user input)
 
 ## Remaining Future Enhancements
 
+**Update:** Context persistence is finished. Highlights:
+- `usePromptHistory.saveToHistory(...)` now stores the serialized `PromptContext` with each history record (Firestore + localStorage), so loading from history or a shared `/prompt/:uuid` URL instantly restores the user's brainstorm context.
+- The hook returns the generated `uuid` for every save, allowing the optimizer view to update the route and enabling the Share button to copy `/share/:uuid` links without re-saving the prompt.
+
 These are NOT critical, just nice-to-haves for future:
 
-### 1. Persist Context in History (Not Critical)
-Currently context is NOT saved with history. To add:
-
-```javascript
-// In usePromptHistory.js
-const saveToHistory = async (input, output, score, mode, brainstormContext) => {
-  const newEntry = {
-    input,
-    output,
-    score,
-    mode,
-    brainstormContext, // Add this
-  };
-  // Save to Firestore/localStorage
-};
-
-// When loading from history
-const loadFromHistory = (entry) => {
-  if (entry.brainstormContext) {
-    const context = PromptContext.fromJSON(entry.brainstormContext);
-    setPromptContext(context);
-  }
-};
-```
-
-**Impact**: Low - users can always re-run Creative Brainstorm
-
-### 2. Expanded NLP Patterns (Optional)
+### 1. Expanded NLP Patterns (Optional)
 Could add more category-specific patterns:
 
 ```javascript
@@ -166,7 +143,7 @@ Could add more category-specific patterns:
 
 **Impact**: Medium - would improve NLP extraction quality when NO context
 
-### 3. Unified Suggestion Panel (Code Quality)
+### 2. Unified Suggestion Panel (Code Quality)
 Refactor two different suggestion UIs into one component.
 
 **Impact**: Medium - code quality, not functionality
