@@ -116,22 +116,33 @@ export class EnhancementService {
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
+    // Enforce template guardrails (particularly for video prompts)
+    const sanitizedSuggestions = this.sanitizeSuggestions(diverseSuggestions, {
+      highlightedText,
+      isPlaceholder,
+      isVideoPrompt,
+    });
+
+    const suggestionsToUse =
+      sanitizedSuggestions.length > 0 ? sanitizedSuggestions : diverseSuggestions;
+
     // Debug logging
     logger.info('Processing suggestions for categorization', {
       isPlaceholder,
-      hasCategoryField: diverseSuggestions[0]?.category !== undefined,
-      totalSuggestions: diverseSuggestions.length,
+      hasCategoryField: suggestionsToUse[0]?.category !== undefined,
+      totalSuggestions: suggestionsToUse.length,
+      sanitizedCount: sanitizedSuggestions.length,
     });
 
     // Group suggestions by category if they have categories
-    const groupedSuggestions = isPlaceholder && diverseSuggestions[0]?.category
-      ? this.groupSuggestionsByCategory(diverseSuggestions)
-      : diverseSuggestions;
+    const groupedSuggestions = isPlaceholder && suggestionsToUse[0]?.category
+      ? this.groupSuggestionsByCategory(suggestionsToUse)
+      : suggestionsToUse;
 
     const result = {
       suggestions: groupedSuggestions,
       isPlaceholder,
-      hasCategories: isPlaceholder && diverseSuggestions[0]?.category ? true : false,
+      hasCategories: isPlaceholder && suggestionsToUse[0]?.category ? true : false,
     };
 
     logger.info('Final result structure', {
@@ -573,6 +584,7 @@ Generate 12-15 suggestions to replace "${highlightedText}" organized into 4-5 CA
 ✓ Each suggestion within a category should still be unique
 ✓ Include category label for ALL suggestions
 ✓ Direct drop-in replacements - no rewriting needed
+✓ Keep each suggestion concise noun/descriptor phrase (1-4 words)
 ✓ Contextually appropriate despite being diverse
 ${brainstormRequirement}${modeRequirement}
 
@@ -613,6 +625,14 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     });
 
     if (isVideoPrompt) {
+      const phraseRole = this.detectVideoPhraseRole(
+        highlightedText,
+        contextBefore,
+        contextAfter
+      );
+      const highlightWordCount = this.countWords(highlightedText);
+      const minWords = 10;
+      const maxWords = 25;
       const brainstormRequirementLine = brainstormSection
         ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
         : '';
@@ -629,6 +649,10 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
+
+**Phrase Role:** ${phraseRole} — replacements must serve the same grammatical role and slot cleanly into the existing sentence.
+**Original Length:** ${highlightWordCount} words.
+**Length Guardrail:** ${minWords}-${maxWords} words, single sentence, no bullet points.
 
 **CONTEXT:**
 Before: "${contextBefore}"
@@ -650,6 +674,9 @@ Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement 
 ✓ ONE clear action/focus per suggestion
 ✓ Specific over generic ("weathered oak" not "nice table")
 ✓ Flows with surrounding context
+✓ Do NOT mention or modify template section headings (Main Prompt, Technical Specs, Alternative Approaches)
+✓ Avoid meta instructions like "Consider" or "You could" — output only the replacement sentence
+✓ Respect the Video Prompt Template tone: cinematic, efficient, no filler language
 ${brainstormRequirementLine}Return ONLY a JSON array (no markdown, no code blocks):
 
 [
@@ -1258,6 +1285,160 @@ Provide a JSON object with the new suggestion:
     });
 
     return ranked.slice(0, 8); // Return top 8
+  }
+
+  /**
+   * Detect the likely role of a highlighted phrase within a video prompt
+   * @private
+   */
+  detectVideoPhraseRole(highlightedText, contextBefore, contextAfter) {
+    const text = highlightedText?.trim() || '';
+    if (!text) {
+      return 'general visual detail';
+    }
+
+    const combinedContext = `${contextBefore || ''} ${contextAfter || ''}`.toLowerCase();
+
+    if (/\b(camera|shot|angle|frame|lens|dolly|pan|tilt|tracking|handheld|static)\b/.test(combinedContext)) {
+      return 'camera or framing description';
+    }
+
+    if (/\b(light|lighting|illuminated|glow|shadow|contrast|exposure|flare)\b/.test(combinedContext)) {
+      return 'lighting description';
+    }
+
+    if (/\b(location|setting|background|environment|interior|exterior|room|space|chamber|landscape|street)\b/.test(combinedContext)) {
+      return 'location or environment detail';
+    }
+
+    if (/\bcharacter|figure|subject|person|leader|speaker|performer|actor|portrait\b/.test(combinedContext)) {
+      return 'subject or character detail';
+    }
+
+    if (/\bstyle|aesthetic|tone|mood|vibe|genre|inspired\b/.test(combinedContext)) {
+      return 'style or tone descriptor';
+    }
+
+    if (/\bscore|music|soundtrack|audio\b/.test(combinedContext)) {
+      return 'audio or score descriptor';
+    }
+
+    return 'general visual detail';
+  }
+
+  /**
+   * Count words in a string
+   * @private
+   */
+  countWords(text) {
+    if (!text || typeof text !== 'string') {
+      return 0;
+    }
+
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }
+
+  /**
+   * Sanitize suggestions to ensure they are valid drop-in replacements
+   * @private
+   */
+  sanitizeSuggestions(suggestions, { highlightedText, isPlaceholder, isVideoPrompt }) {
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      return [];
+    }
+
+    const sanitized = [];
+    const normalizedHighlight = highlightedText?.trim().toLowerCase();
+    const disallowedTemplatePatterns = [
+      /\bmain prompt\b/i,
+      /\btechnical specs?\b/i,
+      /\balternative approaches\b/i,
+    ];
+    const disallowedPrefixes = [
+      'consider',
+      'try',
+      'maybe',
+      'you could',
+      'focus on',
+      'rewrite',
+      'update',
+      'suggest',
+      'recommend',
+    ];
+
+    suggestions.forEach((suggestion) => {
+      if (!suggestion) {
+        return;
+      }
+
+      const suggestionObj =
+        typeof suggestion === 'string'
+          ? { text: suggestion, explanation: '' }
+          : { ...suggestion };
+
+      if (typeof suggestionObj.text !== 'string') {
+        return;
+      }
+
+      let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
+      text = text.replace(/\s+/g, ' ').trim();
+
+      if (!text) {
+        return;
+      }
+
+      if (normalizedHighlight && text.toLowerCase() === normalizedHighlight) {
+        return; // identical to highlight, no improvement
+      }
+
+      if (/\r|\n/.test(text)) {
+        return; // multi-line response is not a drop-in replacement
+      }
+
+      if (disallowedTemplatePatterns.some((pattern) => pattern.test(text))) {
+        return;
+      }
+
+      const lowerText = text.toLowerCase();
+      if (disallowedPrefixes.some((prefix) => lowerText.startsWith(prefix))) {
+        return;
+      }
+
+      const wordCount = this.countWords(text);
+
+      if (isPlaceholder) {
+        if (wordCount === 0 || wordCount > 4) {
+          return;
+        }
+
+        if (/[.!?]/.test(text)) {
+          return;
+        }
+      } else if (isVideoPrompt) {
+        if (wordCount < 10 || wordCount > 25) {
+          return;
+        }
+
+        const sentenceCount = (text.match(/[.!?]/g) || []).length;
+        if (sentenceCount > 1) {
+          return;
+        }
+
+        if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
+          return;
+        }
+      }
+
+      sanitized.push({
+        ...suggestionObj,
+        text,
+      });
+    });
+
+    return sanitized;
   }
 
   /**
