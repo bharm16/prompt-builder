@@ -196,11 +196,33 @@ function PromptOptimizerContent() {
   const handleOptimize = async (promptToOptimize, context) => {
     const prompt = promptToOptimize || promptOptimizer.inputPrompt;
     const ctx = context || promptOptimizer.improvementContext;
-    console.log('handleOptimize called with:', { prompt, ctx, selectedMode });
-    const result = await promptOptimizer.optimize(prompt, ctx);
+
+    const serializedContext = promptContext
+      ? typeof promptContext.toJSON === 'function'
+        ? promptContext.toJSON()
+        : {
+            elements: promptContext.elements,
+            metadata: promptContext.metadata,
+          }
+      : null;
+
+    const brainstormContextData = serializedContext
+      ? {
+          elements: serializedContext.elements,
+          metadata: serializedContext.metadata,
+        }
+      : null;
+
+    console.log('handleOptimize called with:', {
+      prompt,
+      ctx,
+      selectedMode,
+      hasBrainstormContext: Boolean(brainstormContextData),
+    });
+
+    const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
     console.log('optimize result:', result);
     if (result) {
-      const serializedContext = promptContext ? promptContext.toJSON() : null;
       const uuid = await promptHistory.saveToHistory(
         prompt,
         result.optimized,
