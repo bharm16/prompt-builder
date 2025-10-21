@@ -537,6 +537,30 @@ export const PromptCanvas = ({
     toast.success(`Exported as ${format.toUpperCase()}`);
   };
 
+  const getSelectionOffsets = (range) => {
+    if (!editorRef.current || !range) {
+      return null;
+    }
+
+    try {
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(editorRef.current);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+
+      const start = preSelectionRange.toString().length;
+      const end = start + range.toString().length;
+
+      if (Number.isNaN(start) || Number.isNaN(end)) {
+        return null;
+      }
+
+      return { start, end };
+    } catch (error) {
+      console.error('Error computing selection offsets:', error);
+      return null;
+    }
+  };
+
   const handleTextSelection = () => {
     // Only allow text selection suggestions in video mode
     if (selectedMode !== 'video') {
@@ -549,8 +573,9 @@ export const PromptCanvas = ({
     if (text.length > 0 && onFetchSuggestions) {
       const cleanedText = text.replace(/^-\s*/, '');
       const range = selection.getRangeAt(0).cloneRange();
+      const offsets = getSelectionOffsets(range);
       // Use original displayedPrompt (without formatting) for suggestions context
-      onFetchSuggestions(cleanedText, text, displayedPrompt, range);
+      onFetchSuggestions(cleanedText, text, displayedPrompt, range, offsets);
     }
   };
 
@@ -579,6 +604,8 @@ export const PromptCanvas = ({
           // Create a range for the clicked word
           const range = document.createRange();
           range.selectNodeContents(node);
+          const rangeClone = range.cloneRange();
+          const offsets = getSelectionOffsets(rangeClone);
 
           // Clear any existing selection
           const selection = window.getSelection();
@@ -586,7 +613,7 @@ export const PromptCanvas = ({
           selection.addRange(range);
 
           // Trigger suggestions for this word
-          onFetchSuggestions(wordText, wordText, displayedPrompt, range);
+          onFetchSuggestions(wordText, wordText, displayedPrompt, rangeClone, offsets);
         }
 
         return;
