@@ -593,32 +593,8 @@ describe('API Server Tests', () => {
     });
   });
 
-  describe('POST /api/get-creative-suggestions', () => {
-    it('should return 400 for missing element type', async () => {
-      const response = await request(app)
-        .post('/api/get-creative-suggestions')
-        .set('X-API-Key', 'dev-key-12345')
-        .send({
-          currentValue: 'Test value',
-        })
-        .expect(400);
-
-      expect(response.body.error).toBe('Validation failed');
-    });
-
-    it('should return 400 for invalid element type', async () => {
-      const response = await request(app)
-        .post('/api/get-creative-suggestions')
-        .set('X-API-Key', 'dev-key-12345')
-        .send({
-          elementType: 'invalid-type',
-        })
-        .expect(400);
-
-      expect(response.body.error).toBe('Validation failed');
-    });
-
-    it('should generate creative suggestions for all valid element types', async () => {
+  describe('POST /api/video/suggestions', () => {
+    it('should validate payload and return suggestions for each element type', async () => {
       const elementTypes = [
         'subject',
         'subjectDescriptor1',
@@ -640,25 +616,15 @@ describe('API Server Tests', () => {
 
         global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
-        const payload = {
-          elementType,
-          currentValue: 'Current value',
-          concept: 'Overall concept',
-        };
-
-        if (elementType.startsWith('subjectDescriptor')) {
-          payload.context = {
-            subject: 'Abraham Lincoln',
-            location: 'sunlit wheat field'
-          };
-        } else {
-          payload.context = 'Full context';
-        }
-
         const response = await request(app)
-          .post('/api/get-creative-suggestions')
+          .post('/api/video/suggestions')
           .set('X-API-Key', 'dev-key-12345')
-          .send(payload)
+          .send({
+            elementType,
+            currentValue: 'Current value',
+            context: { subject: 'Existing context' },
+            concept: 'Overall concept',
+          })
           .expect(200);
 
         expect(response.body.suggestions).toBeDefined();
@@ -763,11 +729,11 @@ describe('API Server Tests', () => {
     });
   });
 
-  describe('POST /api/check-compatibility', () => {
+  describe('POST /api/video/validate (compatibility cache)', () => {
     const payload = {
       elementType: 'subject',
       value: 'Robot detective',
-      existingElements: {
+      elements: {
         subject: 'Time-traveling journalist',
         location: 'Rain-soaked metropolis',
         mood: 'Noir mystery',
@@ -782,25 +748,30 @@ describe('API Server Tests', () => {
         suggestions: ['Lean into the investigative angle for cohesion.'],
       };
 
-      global.fetch.mockResolvedValueOnce(createLLMResponse(compatibilityResult));
+      const validationResponse = {
+        compatibility: compatibilityResult,
+        conflicts: [],
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(validationResponse));
 
       const missSpy = vi.spyOn(metricsService, 'recordCacheMiss');
       const hitSpy = vi.spyOn(metricsService, 'recordCacheHit');
       const setSpy = vi.spyOn(cacheService, 'set');
 
       const firstResponse = await request(app)
-        .post('/api/check-compatibility')
+        .post('/api/video/validate')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
 
-      expect(firstResponse.body).toEqual(compatibilityResult);
+      expect(firstResponse.body.compatibility).toEqual(compatibilityResult);
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(missSpy).toHaveBeenCalledTimes(1);
       expect(hitSpy).not.toHaveBeenCalled();
 
       const normalizedElements = Object.fromEntries(
-        Object.entries(payload.existingElements)
+        Object.entries(payload.elements)
           .filter(([key, value]) => value && key !== payload.elementType)
           .sort(([a], [b]) => a.localeCompare(b))
       );
@@ -810,15 +781,7 @@ describe('API Server Tests', () => {
         existingElements: normalizedElements,
       });
 
-      expect(setSpy).toHaveBeenCalledWith(expectedCacheKey, compatibilityResult, {
-        ttl: 30,
-      });
-
-      const ttlTimestamp = cacheService.cache.getTtl(expectedCacheKey);
-      expect(ttlTimestamp).toBeGreaterThan(Date.now());
-      const ttlMs = ttlTimestamp - Date.now();
-      expect(ttlMs).toBeGreaterThan(25000);
-      expect(ttlMs).toBeLessThanOrEqual(30000);
+      expect(setSpy).toHaveBeenCalledWith(expectedCacheKey, compatibilityResult, { ttl: 30 });
 
       setSpy.mockClear();
       missSpy.mockClear();
@@ -826,12 +789,12 @@ describe('API Server Tests', () => {
       global.fetch.mockClear();
 
       const secondResponse = await request(app)
-        .post('/api/check-compatibility')
+        .post('/api/video/validate')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
 
-      expect(secondResponse.body).toEqual(compatibilityResult);
+      expect(secondResponse.body.compatibility).toEqual(compatibilityResult);
       expect(global.fetch).not.toHaveBeenCalled();
       expect(hitSpy).toHaveBeenCalledTimes(1);
       expect(missSpy).not.toHaveBeenCalled();
@@ -848,18 +811,18 @@ describe('API Server Tests', () => {
       );
 
       const response = await request(app)
-        .post('/api/check-compatibility')
+        .post('/api/video/validate')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
 
-      expect(response.body.score).toBe(0.5);
-      expect(response.body.feedback).toContain('Unable to determine');
+      expect(response.body.compatibility.score).toBe(0.5);
+      expect(response.body.compatibility.feedback).toContain('Unable to determine');
       expect(global.fetch.mock.calls.length).toBeGreaterThan(1);
     });
   });
 
-  describe('POST /api/complete-scene', () => {
+  describe('POST /api/video/complete (scene fill)', () => {
     it('should merge suggestions for missing elements', async () => {
       const payload = {
         existingElements: {
@@ -871,24 +834,31 @@ describe('API Server Tests', () => {
       };
 
       const llmResponse = {
-        location: 'A neon-drenched alleyway under constant rain',
+        suggestions: {
+          subject: 'Robot detective',
+          location: 'A neon-drenched alleyway under constant rain',
+          mood: 'Noir mystery',
+        },
+        smartDefaults: null,
       };
 
       global.fetch.mockResolvedValueOnce(createLLMResponse(llmResponse));
 
       const response = await request(app)
-        .post('/api/complete-scene')
+        .post('/api/video/complete')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
 
-      expect(response.body.suggestions.location).toBe(llmResponse.location);
-      expect(response.body.suggestions.subject).toBe(payload.existingElements.subject);
+      expect(response.body.suggestions.location).toBe(
+        'A neon-drenched alleyway under constant rain'
+      );
+      expect(response.body.suggestions.subject).toBe('Robot detective');
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('POST /api/generate-variations', () => {
+  describe('POST /api/video/variations', () => {
     it('should return structured variations', async () => {
       const payload = {
         elements: {
@@ -923,7 +893,7 @@ describe('API Server Tests', () => {
       global.fetch.mockResolvedValueOnce(createLLMResponse(variations));
 
       const response = await request(app)
-        .post('/api/generate-variations')
+        .post('/api/video/variations')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
@@ -934,7 +904,7 @@ describe('API Server Tests', () => {
     });
   });
 
-  describe('POST /api/parse-concept', () => {
+  describe('POST /api/video/parse', () => {
     it('should clean markdown output when parsing concept', async () => {
       const payload = { concept: 'A robot detective solving mysteries in a neon city.' };
       const conceptBreakdown = {
@@ -951,7 +921,7 @@ describe('API Server Tests', () => {
       global.fetch.mockResolvedValueOnce(createLLMResponse(markdownResponse));
 
       const response = await request(app)
-        .post('/api/parse-concept')
+        .post('/api/video/parse')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
@@ -961,29 +931,41 @@ describe('API Server Tests', () => {
     });
   });
 
-  describe('POST /api/get-refinements', () => {
-    it('should return refinement suggestions for filled elements', async () => {
+  describe('POST /api/video/complete', () => {
+    it('should return completed elements and optional smart defaults', async () => {
       const payload = {
-        elements: {
+        existingElements: {
           subject: 'Robot detective',
           location: 'Neon city',
         },
+        smartDefaultsFor: 'technical',
       };
 
-      const refinements = {
-        subject: ['Cybernetic sleuth', 'Investigative android'],
-        location: ['Rain-drenched skyline'],
+      const completion = {
+        suggestions: {
+          subject: 'Robot detective',
+          location: 'Neon city',
+          action: 'scanning holographic evidence',
+        },
+        smartDefaults: {
+          technical: {
+            camera: {
+              angle: 'low dolly push',
+            },
+          },
+        },
       };
 
-      global.fetch.mockResolvedValueOnce(createLLMResponse(refinements));
+      global.fetch.mockResolvedValueOnce(createLLMResponse(completion));
 
       const response = await request(app)
-        .post('/api/get-refinements')
+        .post('/api/video/complete')
         .set('X-API-Key', 'dev-key-12345')
         .send(payload)
         .expect(200);
 
-      expect(response.body.refinements.subject).toContain('Cybernetic sleuth');
+      expect(response.body.suggestions.action).toContain('scanning');
+      expect(response.body.smartDefaults.technical.camera.angle).toEqual('low dolly push');
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });

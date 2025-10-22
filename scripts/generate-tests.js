@@ -145,7 +145,7 @@ const filesToTest = [
   // Services with low coverage
   { file: 'src/clients/ClaudeAPIClientV2.js', type: 'service', name: 'ClaudeAPIClientV2' },
   { file: 'src/services/CacheServiceV2.js', type: 'service', name: 'CacheServiceV2' },
-  { file: 'src/services/CreativeSuggestionService.js', type: 'service', name: 'CreativeSuggestionService' },
+  { file: 'src/services/VideoConceptService.js', type: 'service', name: 'VideoConceptService' },
   { file: 'src/services/PromptContextManager.js', type: 'service', name: 'PromptContextManager' },
   { file: 'src/services/QualityFeedbackSystem.js', type: 'service', name: 'QualityFeedbackSystem' },
   { file: 'src/services/SceneDetectionService.js', type: 'service', name: 'SceneDetectionService' },

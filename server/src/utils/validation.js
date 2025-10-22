@@ -131,18 +131,31 @@ export const creativeSuggestionSchema = Joi.object({
   concept: Joi.string().allow('').max(10000),
 });
 
+export const videoValidationSchema = Joi.object({
+  elementType: Joi.string()
+    .valid(
+      'subject',
+      'subjectDescriptor1',
+      'subjectDescriptor2',
+      'subjectDescriptor3',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event'
+    )
+    .optional(),
+  value: Joi.string().allow('').max(10000).optional(),
+  elements: Joi.object().required(),
+});
+
 // Additional schemas for routes that lacked validation
 export const generateQuestionsSchema = Joi.object({
   prompt: Joi.string().required().max(10000).messages({
     'string.empty': 'Prompt is required',
     'any.required': 'Prompt is required',
   }),
-});
-
-export const compatibilitySchema = Joi.object({
-  elementType: Joi.string().required(),
-  value: Joi.string().allow('').max(10000).required(),
-  existingElements: Joi.object().required(),
 });
 
 export const completeSceneSchema = Joi.object({
@@ -160,28 +173,6 @@ export const parseConceptSchema = Joi.object({
     'string.empty': 'Concept is required',
     'any.required': 'Concept is required',
   }),
-});
-
-export const refinementsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const conflictsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const technicalParamsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const validatePromptSchema = Joi.object({
-  elements: Joi.object().required(),
-  concept: Joi.string().allow('').max(10000),
-});
-
-export const smartDefaultsSchema = Joi.object({
-  elementType: Joi.string().required(),
-  existingElements: Joi.object().required(),
 });
 
 export const saveTemplateSchema = Joi.object({

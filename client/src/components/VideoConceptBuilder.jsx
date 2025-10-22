@@ -150,7 +150,7 @@ const TEMPLATE_LIBRARY = {
 
 const TECHNICAL_SECTION_ORDER = ['camera', 'lighting', 'color', 'format', 'audio', 'postProduction'];
 
-export default function CreativeBrainstormEnhanced({
+export default function VideoConceptBuilder({
   onConceptComplete,
   initialConcept = '',
 }) {
@@ -420,7 +420,7 @@ export default function CreativeBrainstormEnhanced({
         [elementType]: value,
       });
 
-      const response = await fetch('/api/check-compatibility', {
+      const response = await fetch('/api/video/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -429,13 +429,13 @@ export default function CreativeBrainstormEnhanced({
         body: JSON.stringify({
           elementType,
           value,
-          existingElements: updatedElements,
+          elements: updatedElements,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        return data.score || 0.5;
+        return data?.compatibility?.score || 0.5;
       }
     } catch (error) {
       console.error('Error checking compatibility:', error);
@@ -462,7 +462,7 @@ export default function CreativeBrainstormEnhanced({
     setIsLoadingConflicts(true);
 
     try {
-      const response = await fetch('/api/detect-conflicts', {
+      const response = await fetch('/api/video/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -508,13 +508,13 @@ export default function CreativeBrainstormEnhanced({
     setIsLoadingRefinements(true);
 
     try {
-      const response = await fetch('/api/get-refinements', {
+      const response = await fetch('/api/video/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': 'dev-key-12345'
         },
-        body: JSON.stringify({ elements: composedElements }),
+        body: JSON.stringify({ existingElements: composedElements }),
       });
 
       if (!response.ok) {
@@ -524,7 +524,7 @@ export default function CreativeBrainstormEnhanced({
       const data = await response.json();
 
       if (refinementRequestRef.current === requestId) {
-        setRefinements(data.refinements || {});
+        setRefinements(data.smartDefaults?.refinements || data.refinements || {});
       }
     } catch (error) {
       console.error('Error fetching refinement suggestions:', error);
@@ -553,13 +553,16 @@ export default function CreativeBrainstormEnhanced({
     setIsLoadingTechnicalParams(true);
 
     try {
-      const response = await fetch('/api/generate-technical-params', {
+      const response = await fetch('/api/video/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': 'dev-key-12345'
         },
-        body: JSON.stringify({ elements: composedElements }),
+        body: JSON.stringify({
+          existingElements: composedElements,
+          smartDefaultsFor: 'technical',
+        }),
       });
 
       if (!response.ok) {
@@ -567,12 +570,17 @@ export default function CreativeBrainstormEnhanced({
       }
 
       const data = await response.json();
+      const params =
+        data.smartDefaults?.technical ||
+        data.smartDefaults ||
+        data.technicalParams ||
+        {};
 
       if (technicalParamsRequestRef.current === requestId) {
-        setTechnicalParams(data.technicalParams || {});
+        setTechnicalParams(params);
       }
 
-      return data.technicalParams || {};
+      return params;
     } catch (error) {
       console.error('Error generating technical parameters:', error);
       if (technicalParamsRequestRef.current === requestId) {
@@ -704,7 +712,7 @@ export default function CreativeBrainstormEnhanced({
     activeElementRef.current = elementType;
     try {
       const response = await fetch(
-        '/api/get-creative-suggestions',
+        '/api/video/suggestions',
         {
           method: 'POST',
           headers: {
@@ -757,7 +765,7 @@ export default function CreativeBrainstormEnhanced({
 
     try {
       const response = await fetch(
-        '/api/complete-scene',
+        '/api/video/complete',
         {
           method: 'POST',
           headers: {
@@ -790,7 +798,7 @@ export default function CreativeBrainstormEnhanced({
 
     try {
       const response = await fetch(
-        '/api/parse-concept',
+        '/api/video/parse',
         {
           method: 'POST',
           headers: {

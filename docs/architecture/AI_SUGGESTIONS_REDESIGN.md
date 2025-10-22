@@ -314,7 +314,7 @@ Progressive disclosure principles:
 
 ## Files Modified
 
-### `/Users/bryceharmon/Desktop/prompt-builder/src/components/CreativeBrainstormEnhanced.jsx`
+### `/Users/bryceharmon/Desktop/prompt-builder/src/components/VideoConceptBuilder.jsx`
 
 **Lines 714-924**: Complete redesign of AI Suggestions Panel
 **Lines 464-494**: Added keyboard shortcut handlers

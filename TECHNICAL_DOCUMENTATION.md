@@ -75,7 +75,7 @@ The Prompt Builder follows a three-tier architecture pattern with clear separati
 │  │                                                       │   │
 │  │  Service Layer:                                       │   │
 │  │  ├─ PromptOptimizationService                       │   │
-│  │  ├─ CreativeSuggestionService                       │   │
+│  │  ├─ VideoConceptService                       │   │
 │  │  ├─ EnhancementService                              │   │
 │  │  ├─ SceneDetectionService                           │   │
 │  │  └─ QuestionGenerationService                       │   │
@@ -193,7 +193,7 @@ class BaseService {
    - Constitutional AI integration for output validation
    - Template version tracking for backward compatibility
 
-2. **CreativeSuggestionService**
+2. **VideoConceptService**
    - AI-powered suggestion generation
    - Context-aware recommendations
    - User preference learning
@@ -537,7 +537,7 @@ The backend implements a layered service architecture:
 │    (Domain logic & orchestration)       │
 │                                         │
 │  • PromptOptimizationService           │
-│  • CreativeSuggestionService           │
+│  • VideoConceptService           │
 │  • EnhancementService                  │
 │  • SceneDetectionService               │
 │  • QuestionGenerationService           │
@@ -821,7 +821,7 @@ App.jsx (Root)
 │        │     ├─ HistorySidebar
 │        │     ├─ Settings
 │        │     ├─ KeyboardShortcuts
-│        │     └─ CreativeBrainstormEnhanced (Video mode)
+│        │     └─ VideoConceptBuilder (Video mode)
 │        │
 │        ├─ Route: "/prompt/:uuid"
 │        │  └─ PromptOptimizerContainer (with loaded prompt)
@@ -863,7 +863,7 @@ function PromptOptimizerContainer() {
     switch (selectedMode) {
       case 'video':
         return showBrainstorm ?
-          <CreativeBrainstormEnhanced onComplete={handleBrainstormComplete} /> :
+          <VideoConceptBuilder onComplete={handleBrainstormComplete} /> :
           <VideoPromptInterface />;
 
       case 'socratic':
@@ -994,8 +994,8 @@ function PromptCanvas() {
 #### Code Splitting
 ```javascript
 // Lazy load heavy components
-const CreativeBrainstormEnhanced = React.lazy(() =>
-  import('./components/CreativeBrainstormEnhanced')
+const VideoConceptBuilder = React.lazy(() =>
+  import('./components/VideoConceptBuilder')
 );
 
 const Settings = React.lazy(() =>
@@ -1004,7 +1004,7 @@ const Settings = React.lazy(() =>
 
 // Usage with Suspense
 <Suspense fallback={<LoadingSpinner />}>
-  {showBrainstorm && <CreativeBrainstormEnhanced />}
+  {showBrainstorm && <VideoConceptBuilder />}
 </Suspense>
 ```
 
@@ -1132,7 +1132,7 @@ Response:
 #### Creative Suggestion Endpoints (Video Mode)
 
 ```typescript
-POST /api/get-creative-suggestions
+POST /api/video/suggestions
 Purpose: Get AI-powered creative suggestions for video elements
 Rate Limit: 20 requests/minute
 
@@ -1160,7 +1160,7 @@ Response:
 ```
 
 ```typescript
-POST /api/check-compatibility
+POST /api/video/validate
 Purpose: Check compatibility between video prompt elements
 Rate Limit: 30 requests/minute
 
@@ -1529,7 +1529,6 @@ const rateLimits = {
 app.use(rateLimits.global);
 app.use('/api/', rateLimits.api);
 app.use('/api/optimize', rateLimits.expensive);
-app.use('/api/get-creative-suggestions', rateLimits.burst.suggestions);
 ```
 
 ---
@@ -1715,7 +1714,7 @@ const routes = [
 
 // Component-level lazy loading
 const CreativeBrainstorm = lazy(() =>
-  import(/* webpackChunkName: "creative-brainstorm" */ './components/CreativeBrainstormEnhanced')
+  import(/* webpackChunkName: "creative-brainstorm" */ './components/VideoConceptBuilder')
 );
 
 // Image lazy loading
@@ -2835,8 +2834,8 @@ See `.env.example` for all configuration options with descriptions.
 |----------|------------|--------|
 | Global | 100 req | 15 min |
 | /api/optimize | 20 req | 1 min |
-| /api/get-creative-suggestions | 20 req | 1 min |
-| /api/check-compatibility | 30 req | 1 min |
+| /api/video/suggestions | 20 req | 1 min |
+| /api/video/validate | 30 req | 1 min |
 
 ### D. Error Codes
 

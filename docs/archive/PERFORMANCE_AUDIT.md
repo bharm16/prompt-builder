@@ -62,7 +62,7 @@ This comprehensive performance audit analyzes the Prompt Builder application, a 
   - `/api/get-enhancement-suggestions` - Text enhancement
   - `/api/get-custom-suggestions` - Custom user requests
   - `/api/detect-scene-change` - Video scene change detection
-  - `/api/get-creative-suggestions` - Creative element suggestions
+  - `/api/video/suggestions` - Creative element suggestions
 
 #### Performance Characteristics
 

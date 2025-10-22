@@ -11,10 +11,10 @@
 
 | File | Lines | Location |
 |------|-------|----------|
-| CreativeBrainstormEnhanced.jsx | 1,228 | client/src/components/ |
+| VideoConceptBuilder.jsx | 1,228 | client/src/components/ |
 | PromptOptimizationService.js | 1,881 | server/src/services/ |
 | ConstitutionalAI.js | 268 | server/src/utils/ |
-| CreativeSuggestionService.js | ~1,500 | server/src/services/ |
+| VideoConceptService.js | ~1,500 | server/src/services/ |
 
 ### What Was Moved (Not Deleted)
 

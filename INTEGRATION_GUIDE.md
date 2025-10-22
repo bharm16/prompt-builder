@@ -17,7 +17,7 @@ import DebugButton from '../../components/DebugButton';
 So the imports section looks like:
 
 ```javascript
-import CreativeBrainstormEnhanced from '../../components/CreativeBrainstormEnhanced';
+import VideoConceptBuilder from '../../components/VideoConceptBuilder';
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import DebugButton from '../../components/DebugButton';  // <-- Add this line

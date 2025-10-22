@@ -20,7 +20,7 @@ import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
 import PromptImprovementForm from '../../PromptImprovementForm';
-import CreativeBrainstormEnhanced from '../../components/CreativeBrainstormEnhanced';
+import VideoConceptBuilder from '../../components/VideoConceptBuilder';
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
@@ -758,7 +758,7 @@ function PromptOptimizerContent() {
                 <X className="h-6 w-6" />
               </button>
               <div className="p-6">
-                <CreativeBrainstormEnhanced
+                <VideoConceptBuilder
                   onConceptComplete={handleConceptComplete}
                   initialConcept={promptOptimizer.inputPrompt}
                 />

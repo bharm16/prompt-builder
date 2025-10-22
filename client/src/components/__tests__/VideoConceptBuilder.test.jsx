@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
-import CreativeBrainstormEnhanced from '../CreativeBrainstormEnhanced.jsx';
+import VideoConceptBuilder from '../VideoConceptBuilder.jsx';
 
 const subjectPlaceholder = /Who\/what/i;
 const actionPlaceholder = /ONE specific action/i;
@@ -13,24 +13,31 @@ const setupFetchMocks = ({
   refinements = {},
   technicalParams = {},
 } = {}) => {
-  global.fetch.mockImplementation((url) => {
-    if (url === '/api/check-compatibility') {
-      return Promise.resolve({ ok: true, json: async () => ({ score: 0.9 }) });
+  global.fetch.mockImplementation((url, options = {}) => {
+    if (url === '/api/video/validate') {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          compatibility: { score: 0.9, conflicts: [], suggestions: [] },
+          conflicts,
+        }),
+      });
     }
 
-    if (url === '/api/detect-conflicts') {
-      return Promise.resolve({ ok: true, json: async () => ({ conflicts }) });
+    if (url === '/api/video/complete') {
+      const body = options.body ? JSON.parse(options.body) : {};
+      const response = { suggestions: body.existingElements || {} };
+
+      if (body.smartDefaultsFor === 'technical') {
+        response.smartDefaults = { technical: technicalParams };
+      } else {
+        response.smartDefaults = { refinements };
+      }
+
+      return Promise.resolve({ ok: true, json: async () => response });
     }
 
-    if (url === '/api/get-refinements') {
-      return Promise.resolve({ ok: true, json: async () => ({ refinements }) });
-    }
-
-    if (url === '/api/generate-technical-params') {
-      return Promise.resolve({ ok: true, json: async () => ({ technicalParams }) });
-    }
-
-    if (url === '/api/get-creative-suggestions') {
+    if (url === '/api/video/suggestions') {
       return Promise.resolve({ ok: true, json: async () => ({ suggestions: [] }) });
     }
 
@@ -38,7 +45,7 @@ const setupFetchMocks = ({
   });
 };
 
-describe('CreativeBrainstormEnhanced', () => {
+describe('VideoConceptBuilder', () => {
   beforeEach(() => {
     global.fetch = vi.fn();
   });
@@ -74,7 +81,7 @@ describe('CreativeBrainstormEnhanced', () => {
       },
     });
 
-    render(<CreativeBrainstormEnhanced onConceptComplete={vi.fn()} />);
+    render(<VideoConceptBuilder onConceptComplete={vi.fn()} />);
 
     await populateCoreElements();
 
@@ -97,7 +104,7 @@ describe('CreativeBrainstormEnhanced', () => {
       technicalParams: {},
     });
 
-    render(<CreativeBrainstormEnhanced onConceptComplete={vi.fn()} />);
+    render(<VideoConceptBuilder onConceptComplete={vi.fn()} />);
 
     const { actionInput } = await populateCoreElements();
 
