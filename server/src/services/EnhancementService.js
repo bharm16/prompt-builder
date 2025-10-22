@@ -962,7 +962,8 @@ ${focusLines.map((line) => `- ${line}`).join('\n')}
 
 **Requirements:**
 ${requirementLines.join('\n')}
-${brainstormRequirementLine}Return ONLY a JSON array (no markdown, no code blocks):
+${brainstormRequirementLine}
+Return ONLY a JSON array (no markdown, no code blocks):
 
 [
   {"text": "enhanced version...", "explanation": "Adds camera specifics..."},
