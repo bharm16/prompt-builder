@@ -46,6 +46,13 @@ export const suggestionSchema = Joi.object({
     'any.required': 'Full prompt is required',
   }),
   originalUserPrompt: Joi.string().allow('').max(10000),
+  highlightedCategory: Joi.string().allow('', null).max(200).optional(),
+  highlightedCategoryConfidence: Joi.number()
+    .min(0)
+    .max(1)
+    .optional()
+    .allow(null),
+  highlightedPhrase: Joi.string().allow('', null).max(1000).optional(),
   brainstormContext: Joi.object({
     version: Joi.string().optional(),
     createdAt: Joi.number().optional(),

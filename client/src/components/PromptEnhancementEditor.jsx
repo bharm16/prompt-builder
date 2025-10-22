@@ -13,7 +13,50 @@ export default function PromptEnhancementEditor({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isPlaceholder, setIsPlaceholder] = useState(false); // NEW: Track suggestion type
+  const [highlightMetadata, setHighlightMetadata] = useState(null);
   const contentRef = useRef(null);
+
+  const extractMetadataFromSelection = (selection) => {
+    if (!selection) return null;
+
+    const nodesToInspect = [];
+    if (selection.anchorNode) nodesToInspect.push(selection.anchorNode);
+    if (selection.focusNode && selection.focusNode !== selection.anchorNode) {
+      nodesToInspect.push(selection.focusNode);
+    }
+
+    for (const node of nodesToInspect) {
+      if (!node) continue;
+
+      const element =
+        node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+      const highlightElement = element?.closest
+        ? element.closest('[data-category]')
+        : null;
+
+      if (highlightElement) {
+        const category = highlightElement.getAttribute('data-category');
+        const confidenceAttr = highlightElement.getAttribute('data-confidence');
+        const phrase = highlightElement.getAttribute('data-phrase');
+
+        const parsedConfidence =
+          confidenceAttr !== null && confidenceAttr !== undefined
+            ? Number.parseFloat(confidenceAttr)
+            : null;
+
+        return {
+          category: category || null,
+          phrase: phrase || null,
+          confidence:
+            Number.isFinite(parsedConfidence) && parsedConfidence >= 0 && parsedConfidence <= 1
+              ? parsedConfidence
+              : null,
+        };
+      }
+    }
+
+    return null;
+  };
 
   // Handle text selection
   const handleMouseUp = async () => {
@@ -24,6 +67,9 @@ export default function PromptEnhancementEditor({
       // Remove leading dash and whitespace from bullet points
       const cleanedText = text.replace(/^-\s*/, '');
 
+      const metadata = extractMetadataFromSelection(selection);
+      setHighlightMetadata(metadata);
+
       setSelectedText(cleanedText);
 
       // Save the range to restore selection later
@@ -31,7 +77,7 @@ export default function PromptEnhancementEditor({
       setSelectionRange(range);
 
       // Fetch AI suggestions with cleaned text
-      await fetchEnhancementSuggestions(cleanedText);
+      await fetchEnhancementSuggestions(cleanedText, metadata);
     }
   };
 
@@ -53,16 +99,24 @@ export default function PromptEnhancementEditor({
         suggestions,
         isLoading,
         isPlaceholder, // NEW: Pass placeholder flag
+        highlightMetadata,
         fullPrompt: promptContent,
         setSuggestions, // Allow panel to update suggestions
         onSuggestionClick: handleSuggestionClick,
         onClose: handleClose,
       });
     }
-  }, [showSuggestions, selectedText, suggestions, isLoading, isPlaceholder]);
+  }, [
+    showSuggestions,
+    selectedText,
+    suggestions,
+    isLoading,
+    isPlaceholder,
+    highlightMetadata,
+  ]);
 
   // Fetch enhancement suggestions from API
-  const fetchEnhancementSuggestions = async (highlightedText) => {
+  const fetchEnhancementSuggestions = async (highlightedText, metadata = null) => {
     setIsLoading(true);
     setShowSuggestions(true);
     setSuggestions([]);
@@ -87,6 +141,15 @@ export default function PromptEnhancementEditor({
         )
         .trim();
 
+      const highlightCategory =
+        metadata && typeof metadata.category === 'string' && metadata.category.trim().length > 0
+          ? metadata.category.trim()
+          : null;
+      const highlightCategoryConfidence =
+        metadata && Number.isFinite(metadata.confidence)
+          ? Math.min(1, Math.max(0, metadata.confidence))
+          : null;
+
       const response = await fetch(
         '/api/get-enhancement-suggestions',
         {
@@ -101,6 +164,9 @@ export default function PromptEnhancementEditor({
             contextAfter,
             fullPrompt: fullText,
             originalUserPrompt,
+            highlightedCategory: highlightCategory,
+            highlightedCategoryConfidence: highlightCategoryConfidence,
+            highlightedPhrase: metadata?.phrase || null,
           }),
         }
       );
@@ -158,6 +224,7 @@ export default function PromptEnhancementEditor({
     setSelectedText('');
     setSelectionRange(null);
     setIsPlaceholder(false);
+    setHighlightMetadata(null);
     window.getSelection().removeAllRanges();
   };
 

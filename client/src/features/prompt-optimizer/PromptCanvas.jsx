@@ -803,7 +803,7 @@ export const PromptCanvas = ({
       const range = selection.getRangeAt(0).cloneRange();
       const offsets = getSelectionOffsets(range);
       // Use original displayedPrompt (without formatting) for suggestions context
-      onFetchSuggestions(cleanedText, text, displayedPrompt, range, offsets);
+      onFetchSuggestions(cleanedText, text, displayedPrompt, range, offsets, null);
     }
   };
 
@@ -827,6 +827,21 @@ export const PromptCanvas = ({
         const wordText = node.textContent.trim();
         const category = node.getAttribute('data-category');
         const phrase = node.getAttribute('data-phrase');
+        const confidenceAttr = node.getAttribute('data-confidence');
+
+        const confidenceValue =
+          confidenceAttr !== null && confidenceAttr !== undefined
+            ? Number.parseFloat(confidenceAttr)
+            : null;
+
+        const metadata = {
+          category: category || null,
+          phrase: phrase || null,
+          confidence:
+            Number.isFinite(confidenceValue) && confidenceValue >= 0 && confidenceValue <= 1
+              ? confidenceValue
+              : null,
+        };
 
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
@@ -841,7 +856,7 @@ export const PromptCanvas = ({
           selection.addRange(range);
 
           // Trigger suggestions for this word
-          onFetchSuggestions(wordText, wordText, displayedPrompt, rangeClone, offsets);
+          onFetchSuggestions(wordText, wordText, displayedPrompt, rangeClone, offsets, metadata);
         }
 
         return;
