@@ -96,6 +96,16 @@ function PromptOptimizerContent() {
   const [promptContext, setPromptContext] = useState(null); // NEW: Store PromptContext
   const [currentPromptUuid, setCurrentPromptUuid] = useState(null);
 
+  // Debug: Track promptContext changes
+  useEffect(() => {
+    console.log('[DEBUG] PromptContext state updated:', {
+      exists: !!promptContext,
+      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
+      elements: promptContext?.elements,
+      timestamp: new Date().toISOString()
+    });
+  }, [promptContext]);
+
   // Refs
   const debounceTimerRef = useRef(null);
   const lastRequestRef = useRef(null);
@@ -260,9 +270,16 @@ function PromptOptimizerContent() {
   const handleConceptComplete = async (finalConcept, elements, metadata) => {
     setConceptElements(elements);
 
-    // Create PromptContext from brainstorm data
+    // Create PromptContext from brainstorm data and ensure it persists
     const context = new PromptContext(elements, metadata);
     setPromptContext(context);
+
+    console.log('[DEBUG] Context created in handleConceptComplete:', {
+      context: context.toJSON(),
+      elements,
+      metadata,
+      timestamp: new Date().toISOString()
+    });
 
     const serializedContext = context.toJSON();
 
@@ -354,6 +371,15 @@ function PromptOptimizerContent() {
     selectionOffsets,
     metadata = null
   ) => {
+    // Add debug logging at the start
+    console.log('[DEBUG] fetchEnhancementSuggestions called with:', {
+      highlightedText,
+      hasPromptContext: !!promptContext,
+      contextElements: promptContext?.elements,
+      metadata,
+      timestamp: new Date().toISOString()
+    });
+
     // Only enable ML suggestions for video mode
     if (selectedMode !== 'video') {
       return;
@@ -577,6 +603,19 @@ function PromptOptimizerContent() {
       });
 
       try {
+        // Ensure context is serialized and passed
+        const brainstormContextData = promptContext ? {
+          elements: promptContext.elements,
+          metadata: promptContext.metadata,
+          version: promptContext.version || '1.0'
+        } : null;
+
+        console.log('[DEBUG] Sending to API with brainstormContext:', {
+          brainstormContext: brainstormContextData,
+          hasContext: !!brainstormContextData,
+          timestamp: new Date().toISOString()
+        });
+
         const response = await fetch(
           '/api/get-enhancement-suggestions',
           {
@@ -591,7 +630,7 @@ function PromptOptimizerContent() {
               contextAfter,
               fullPrompt,
               originalUserPrompt: promptOptimizer.inputPrompt,
-              brainstormContext: promptContext ? promptContext.toJSON() : null,
+              brainstormContext: brainstormContextData, // Pass the properly formatted context
               highlightedCategory: highlightCategory,
               highlightedCategoryConfidence: highlightCategoryConfidence,
               highlightedPhrase: metadata?.phrase || null,

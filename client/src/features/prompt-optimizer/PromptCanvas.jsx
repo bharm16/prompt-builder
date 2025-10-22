@@ -636,6 +636,16 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const toast = useToast();
 
+  // Debug: Track promptContext received in PromptCanvas
+  useEffect(() => {
+    console.log('[DEBUG] PromptCanvas received promptContext:', {
+      exists: !!promptContext,
+      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
+      elements: promptContext?.elements,
+      timestamp: new Date().toISOString()
+    });
+  }, [promptContext]);
+
   // Memoize formatted HTML - Enable ML highlighting for video mode
   // Highlights will appear dynamically as text is displayed
   const enableMLHighlighting = selectedMode === 'video';
