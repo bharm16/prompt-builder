@@ -259,15 +259,29 @@ function extractKnownElements(text, context) {
     variations.forEach(variant => {
       // Use word boundaries to avoid partial matches
       const regex = new RegExp(`\\b${escapeRegex(variant)}\\b`, 'gi')
-      const matches = text.match(regex)
+      const matches = Array.from(text.matchAll(regex))
 
-      if (matches) {
+      if (matches.length > 0) {
         matches.forEach(match => {
-          const normalized = match.toLowerCase().trim()
-          if (!matchedPhrases.has(normalized) && match.trim().length > 0) {
+          if (!match || typeof match[0] !== 'string') return
+
+          const rawMatch = match[0]
+          const startIndex = match.index ?? lowerText.indexOf(rawMatch.toLowerCase())
+          if (startIndex === -1) return
+
+          let endIndex = startIndex + rawMatch.length
+          let phraseText = rawMatch
+
+          if (category === 'subject') {
+            phraseText = expandSubjectClause(text, startIndex, endIndex)
+            endIndex = startIndex + phraseText.length
+          }
+
+          const normalized = phraseText.toLowerCase().trim()
+          if (!matchedPhrases.has(normalized) && phraseText.trim().length > 0) {
             matchedPhrases.add(normalized)
             phrases.push({
-              text: match.trim(),
+              text: phraseText.trim(),
               category,
               confidence: 1.0,
               source: 'user-input',
@@ -759,6 +773,49 @@ function restoreProtectedSegments(value, placeholderMap) {
   })
 
   return restored
+}
+
+function expandSubjectClause(text, startIndex, endIndex) {
+  const originalSlice = text.slice(startIndex, endIndex)
+  const remainder = text.slice(endIndex, Math.min(text.length, endIndex + 240))
+  if (!remainder) {
+    return originalSlice
+  }
+
+  const trimmedRemainder = remainder.trimStart()
+  const continuationMatch = trimmedRemainder.match(
+    /^,?\s*(with|holding|carrying|playing|strumming|plucking|standing|sitting|leaning|gazing|looking|walking|running|dancing|singing|performing|wearing|who|that|which|while|as|and|\w+ing\b)/i
+  )
+
+  if (!continuationMatch) {
+    return originalSlice
+  }
+
+  const continuationIndex = remainder.indexOf(continuationMatch[0])
+  if (continuationIndex === -1) {
+    return originalSlice
+  }
+  const localRemainder = remainder.slice(continuationIndex)
+
+  const clauseEndOffset = findClauseEndOffset(localRemainder)
+  const totalOffset = continuationIndex + clauseEndOffset
+
+  const extended = text.slice(startIndex, endIndex + totalOffset).trim()
+  return extended
+}
+
+function findClauseEndOffset(remainder) {
+  const maxLength = Math.min(remainder.length, 240)
+  for (let i = 0; i < maxLength; i += 1) {
+    const char = remainder[i]
+    if (char === '\n') {
+      return i
+    }
+    if ('.!?'.includes(char)) {
+      return i + 1
+    }
+  }
+  return maxLength
 }
 
 function isCompletePhrase(phrase, fullText) {
