@@ -619,7 +619,18 @@ describe('API Server Tests', () => {
     });
 
     it('should generate creative suggestions for all valid element types', async () => {
-      const elementTypes = ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'];
+      const elementTypes = [
+        'subject',
+        'subjectDescriptor1',
+        'subjectDescriptor2',
+        'subjectDescriptor3',
+        'action',
+        'location',
+        'time',
+        'mood',
+        'style',
+        'event',
+      ];
 
       for (const elementType of elementTypes) {
         const mockSuggestions = [
@@ -629,15 +640,25 @@ describe('API Server Tests', () => {
 
         global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));
 
+        const payload = {
+          elementType,
+          currentValue: 'Current value',
+          concept: 'Overall concept',
+        };
+
+        if (elementType.startsWith('subjectDescriptor')) {
+          payload.context = {
+            subject: 'Abraham Lincoln',
+            location: 'sunlit wheat field'
+          };
+        } else {
+          payload.context = 'Full context';
+        }
+
         const response = await request(app)
           .post('/api/get-creative-suggestions')
           .set('X-API-Key', 'dev-key-12345')
-          .send({
-            elementType,
-            currentValue: 'Current value',
-            context: 'Full context',
-            concept: 'Overall concept',
-          })
+          .send(payload)
           .expect(200);
 
         expect(response.body.suggestions).toBeDefined();

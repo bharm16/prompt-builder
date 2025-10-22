@@ -16,12 +16,81 @@ import {
   Wand2,
   Brain,
   BookOpen,
+  Tag,
 } from 'lucide-react';
 import SuggestionsPanel from './SuggestionsPanel';
+
+const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
+const PRIMARY_ELEMENT_KEYS = ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'];
+const ELEMENT_CARD_ORDER = PRIMARY_ELEMENT_KEYS;
+const isSubjectDescriptorKey = (key) => SUBJECT_DESCRIPTOR_KEYS.includes(key);
+const SUBJECT_CONNECTOR_WORDS = [
+  'with',
+  'holding',
+  'carrying',
+  'wearing',
+  'using',
+  'playing',
+  'strumming',
+  'standing',
+  'sitting',
+  'leaning',
+  'bathed',
+  'surrounded',
+  'and',
+  'gazing',
+  'watching',
+  'dancing',
+  'singing',
+  'running',
+  'walking',
+  'cradling',
+  'clutching',
+  'embracing',
+  'guarding',
+  'lit',
+  'framed',
+  'draped',
+  'illuminated',
+  'tuning',
+  'polishing',
+  'shining'
+];
+
+const splitDescriptorSegments = (text) => {
+  if (!text) return [];
+
+  const words = text.trim().split(/\s+/);
+  const segments = [];
+  let current = '';
+
+  words.forEach((word) => {
+    const lower = word.toLowerCase();
+    if (SUBJECT_CONNECTOR_WORDS.includes(lower)) {
+      if (current.trim()) {
+        segments.push(current.trim());
+      }
+      current = word;
+    } else if (current) {
+      current = `${current} ${word}`;
+    } else {
+      current = word;
+    }
+  });
+
+  if (current.trim()) {
+    segments.push(current.trim());
+  }
+
+  return segments;
+};
 
 // Element dependency hierarchy
 const ELEMENT_HIERARCHY = {
   subject: { priority: 1, dependencies: [] },
+  subjectDescriptor1: { priority: 1.1, dependencies: ['subject'] },
+  subjectDescriptor2: { priority: 1.2, dependencies: ['subject'] },
+  subjectDescriptor3: { priority: 1.3, dependencies: ['subject'] },
   action: { priority: 2, dependencies: ['subject'] },
   location: { priority: 3, dependencies: ['subject', 'action'] },
   time: { priority: 4, dependencies: ['location'] },
@@ -33,6 +102,7 @@ const ELEMENT_HIERARCHY = {
 // Element groups for smart organization
 const ELEMENT_GROUPS = {
   core: ['subject', 'action', 'location'],
+  subjectDescriptors: SUBJECT_DESCRIPTOR_KEYS,
   atmosphere: ['mood', 'time'],
   style: ['style'],
   context: ['event'],
@@ -89,6 +159,9 @@ export default function CreativeBrainstormEnhanced({
   const [concept, setConcept] = useState(initialConcept);
   const [elements, setElements] = useState({
     subject: '',
+    subjectDescriptor1: '',
+    subjectDescriptor2: '',
+    subjectDescriptor3: '',
     action: '',
     location: '',
     time: '',
@@ -113,6 +186,130 @@ export default function CreativeBrainstormEnhanced({
   const [isLoadingTechnicalParams, setIsLoadingTechnicalParams] = useState(false);
   const [showGuidance, setShowGuidance] = useState(false);
 
+  const normalizeDescriptor = useCallback((value) => value?.replace(/^[,;:\-\s]+/, '').trim() || '', []);
+
+  const composeSubjectValue = useCallback((subjectValue, descriptorValues) => {
+    const base = subjectValue?.trim() || '';
+    const cleanedDescriptors = descriptorValues
+      .map(normalizeDescriptor)
+      .filter(Boolean);
+
+    if (!base && cleanedDescriptors.length === 0) {
+      return '';
+    }
+
+    if (!base) {
+      return cleanedDescriptors.join(', ');
+    }
+
+    let result = base;
+    cleanedDescriptors.forEach((descriptor, index) => {
+      if (!descriptor) return;
+      const firstWord = descriptor.split(/\s+/)[0]?.toLowerCase() || '';
+      const shouldAttachWithSpace =
+        index === 0 && SUBJECT_CONNECTOR_WORDS.includes(firstWord);
+      result = shouldAttachWithSpace ? `${result} ${descriptor}` : `${result}, ${descriptor}`;
+    });
+
+    return result;
+  }, [normalizeDescriptor]);
+
+  const decomposeSubjectValue = useCallback((subjectValue) => {
+    if (!subjectValue) {
+      return {
+        subject: '',
+        descriptors: ['', '', ''],
+      };
+    }
+
+    let working = subjectValue.trim();
+    const descriptors = [];
+
+    const connectorRegex = new RegExp(`\\b(${SUBJECT_CONNECTOR_WORDS.join('|')})\\b`, 'i');
+    const commaParts = working.split(',').map((part) => part.trim()).filter(Boolean);
+
+    if (commaParts.length > 1) {
+      working = commaParts[0];
+      descriptors.push(...commaParts.slice(1));
+    }
+
+    const connectorMatch = connectorRegex.exec(working);
+    if (connectorMatch) {
+      const connectorIndex = connectorMatch.index;
+      const remainder = working.slice(connectorIndex).trim();
+      if (remainder) {
+        descriptors.unshift(remainder);
+      }
+      working = working.slice(0, connectorIndex).trim();
+    }
+
+    const descriptorCandidates = descriptors.flatMap((descriptor) => {
+      const segments = splitDescriptorSegments(descriptor);
+      return segments.length > 0 ? segments : [descriptor];
+    });
+
+    const uniqueDescriptors = [];
+    descriptorCandidates.forEach((descriptor) => {
+      const normalized = normalizeDescriptor(descriptor);
+      if (normalized && !uniqueDescriptors.includes(normalized)) {
+        uniqueDescriptors.push(normalized);
+      }
+    });
+
+    while (uniqueDescriptors.length < SUBJECT_DESCRIPTOR_KEYS.length) {
+      uniqueDescriptors.push('');
+    }
+
+    return {
+      subject: working,
+      descriptors: uniqueDescriptors.slice(0, SUBJECT_DESCRIPTOR_KEYS.length),
+    };
+  }, [normalizeDescriptor]);
+
+  const buildComposedElements = useCallback((sourceElements) => {
+    const descriptorValues = SUBJECT_DESCRIPTOR_KEYS.map((key) => sourceElements[key] || '');
+    const subjectWithDescriptors = composeSubjectValue(sourceElements.subject, descriptorValues);
+
+    return {
+      ...sourceElements,
+      subject: subjectWithDescriptors,
+      subjectDescriptors: descriptorValues
+        .map(normalizeDescriptor)
+        .filter(Boolean),
+    };
+  }, [composeSubjectValue, normalizeDescriptor]);
+
+  const applyElements = useCallback((incomingElements) => {
+    if (!incomingElements) return;
+
+    setElements((prev) => {
+      const merged = { ...prev, ...incomingElements };
+      if (incomingElements.subject !== undefined) {
+        const { subject, descriptors } = decomposeSubjectValue(incomingElements.subject);
+        merged.subject = subject;
+        SUBJECT_DESCRIPTOR_KEYS.forEach((key, idx) => {
+          merged[key] = descriptors[idx] || '';
+        });
+      }
+      if (Array.isArray(incomingElements.subjectDescriptors)) {
+        SUBJECT_DESCRIPTOR_KEYS.forEach((key, idx) => {
+          merged[key] =
+            normalizeDescriptor(incomingElements.subjectDescriptors[idx]) || merged[key] || '';
+        });
+      }
+      SUBJECT_DESCRIPTOR_KEYS.forEach((key) => {
+        if (incomingElements[key] === undefined && merged[key] === undefined) {
+          merged[key] = '';
+        } else if (incomingElements[key] !== undefined) {
+          merged[key] = normalizeDescriptor(incomingElements[key]);
+        }
+      });
+      return merged;
+    });
+  }, [decomposeSubjectValue, normalizeDescriptor]);
+
+  const activeElementRef = useRef(null);
+  const suggestionsForRef = useRef(null);
   const conflictRequestRef = useRef(0);
   const refinementRequestRef = useRef(0);
   const technicalParamsRequestRef = useRef(0);
@@ -125,6 +322,34 @@ export default function CreativeBrainstormEnhanced({
       color: 'slate',
       examples: ['elderly street musician with weathered hands', 'matte black DJI drone with amber LEDs', 'bengal cat with spotted coat'],
       group: 'core',
+      optional: false,
+    },
+    subjectDescriptor1: {
+      icon: Tag,
+      label: 'Descriptor 1',
+      placeholder: 'Optional visual detail (e.g., "with weathered hands")',
+      color: 'slate',
+      examples: ['with weathered hands', 'wearing a sun-faded suit', 'holding a silver harmonica'],
+      group: 'subjectDescriptors',
+      optional: true,
+    },
+    subjectDescriptor2: {
+      icon: Tag,
+      label: 'Descriptor 2',
+      placeholder: 'Optional second detail (e.g., "strumming a guitar")',
+      color: 'slate',
+      examples: ['strumming a worn guitar', 'bathed in warm window light', 'surrounded by curious onlookers'],
+      group: 'subjectDescriptors',
+      optional: true,
+    },
+    subjectDescriptor3: {
+      icon: Tag,
+      label: 'Descriptor 3',
+      placeholder: 'Optional third detail (e.g., "strings vibrating with each note")',
+      color: 'slate',
+      examples: ['strings vibrating with each note', 'eyes closed in concentration', 'rain collecting on the brim of his hat'],
+      group: 'subjectDescriptors',
+      optional: true,
     },
     action: {
       icon: Zap,
@@ -190,6 +415,11 @@ export default function CreativeBrainstormEnhanced({
     if (!value) return 1;
 
     try {
+      const updatedElements = buildComposedElements({
+        ...elements,
+        [elementType]: value,
+      });
+
       const response = await fetch('/api/check-compatibility', {
         method: 'POST',
         headers: {
@@ -199,7 +429,7 @@ export default function CreativeBrainstormEnhanced({
         body: JSON.stringify({
           elementType,
           value,
-          existingElements: elements,
+          existingElements: updatedElements,
         }),
       });
 
@@ -211,14 +441,15 @@ export default function CreativeBrainstormEnhanced({
       console.error('Error checking compatibility:', error);
     }
     return 0.5;
-  }, [elements]);
+  }, [buildComposedElements, elements]);
 
   // Debounce timers for compatibility checks per element
   const compatibilityTimersRef = useRef({});
 
   // Detect conflicts between elements
   const detectConflicts = useCallback(async (currentElements) => {
-    const filledCount = Object.values(currentElements).filter((value) => value).length;
+    const enrichedElements = buildComposedElements(currentElements);
+    const filledCount = PRIMARY_ELEMENT_KEYS.filter((key) => enrichedElements[key]).length;
 
     if (filledCount < 2) {
       setConflicts([]);
@@ -237,7 +468,7 @@ export default function CreativeBrainstormEnhanced({
           'Content-Type': 'application/json',
           'X-API-Key': 'dev-key-12345'
         },
-        body: JSON.stringify({ elements: currentElements }),
+        body: JSON.stringify({ elements: enrichedElements }),
       });
 
       if (!response.ok) {
@@ -259,13 +490,14 @@ export default function CreativeBrainstormEnhanced({
         setIsLoadingConflicts(false);
       }
     }
-  }, []);
+  }, [buildComposedElements]);
 
   // Progressive refinement suggestions
   const fetchRefinementSuggestions = useCallback(async (currentElements) => {
-    const filledElements = Object.values(currentElements).filter((value) => value);
+    const composedElements = buildComposedElements(currentElements);
+    const filledCount = PRIMARY_ELEMENT_KEYS.filter((key) => composedElements[key]).length;
 
-    if (filledElements.length < 2) {
+    if (filledCount < 2) {
       setRefinements({});
       setIsLoadingRefinements(false);
       return;
@@ -282,7 +514,7 @@ export default function CreativeBrainstormEnhanced({
           'Content-Type': 'application/json',
           'X-API-Key': 'dev-key-12345'
         },
-        body: JSON.stringify({ elements: currentElements }),
+        body: JSON.stringify({ elements: composedElements }),
       });
 
       if (!response.ok) {
@@ -304,12 +536,13 @@ export default function CreativeBrainstormEnhanced({
         setIsLoadingRefinements(false);
       }
     }
-  }, []);
+  }, [buildComposedElements]);
 
   const requestTechnicalParams = useCallback(async (currentElements) => {
-    const filledElements = Object.values(currentElements).filter((value) => value);
+    const composedElements = buildComposedElements(currentElements);
+    const filledCount = PRIMARY_ELEMENT_KEYS.filter((key) => composedElements[key]).length;
 
-    if (filledElements.length < 3) {
+    if (filledCount < 3) {
       setTechnicalParams(null);
       setIsLoadingTechnicalParams(false);
       return null;
@@ -326,7 +559,7 @@ export default function CreativeBrainstormEnhanced({
           'Content-Type': 'application/json',
           'X-API-Key': 'dev-key-12345'
         },
-        body: JSON.stringify({ elements: currentElements }),
+        body: JSON.stringify({ elements: composedElements }),
       });
 
       if (!response.ok) {
@@ -351,15 +584,16 @@ export default function CreativeBrainstormEnhanced({
         setIsLoadingTechnicalParams(false);
       }
     }
-  }, []);
+  }, [buildComposedElements]);
 
   // Validate prompt completeness and quality
   const validatePrompt = useCallback(() => {
     let score = 0;
     let feedback = [];
 
-    const filledCount = Object.values(elements).filter(v => v).length;
-    score += (filledCount / 7) * 30;
+    const composed = buildComposedElements(elements);
+    const filledCount = PRIMARY_ELEMENT_KEYS.filter((key) => composed[key]).length;
+    score += (filledCount / PRIMARY_ELEMENT_KEYS.length) * 30;
 
     if (conflicts.length === 0) {
       score += 20;
@@ -367,8 +601,10 @@ export default function CreativeBrainstormEnhanced({
       feedback.push('Resolve conflicts for better coherence');
     }
 
-    const specificityScore = Object.values(elements).filter(v => v && v.length > 10).length;
-    score += (specificityScore / 7) * 20;
+    const specificityScore = PRIMARY_ELEMENT_KEYS.filter(
+      (key) => composed[key] && composed[key].length > 10
+    ).length;
+    score += (specificityScore / PRIMARY_ELEMENT_KEYS.length) * 20;
 
     if (filledByGroup.core === 3) {
       score += 20;
@@ -376,13 +612,13 @@ export default function CreativeBrainstormEnhanced({
       feedback.push(`Fill ${3 - filledByGroup.core} more core elements`);
     }
 
-    if (elements.style && elements.mood) {
+    if (composed.style && composed.mood) {
       score += 10;
       feedback.push('Good visual definition!');
     }
 
     setValidationScore({ score: Math.min(100, Math.round(score)), feedback });
-  }, [elements, conflicts, filledByGroup]);
+  }, [buildComposedElements, elements, conflicts, filledByGroup]);
 
   // Auto-suggest dependencies when an element is filled
   const handleElementChange = useCallback(async (key, value) => {
@@ -418,33 +654,55 @@ export default function CreativeBrainstormEnhanced({
   // Abort controller + cooldown for suggestion fetches
   const suggestionAbortRef = useRef(null);
   const lastSuggestionRef = useRef({ ts: 0, key: '' });
+  const isFetchingSuggestionsRef = useRef(false);
 
   // Fetch suggestions with context awareness (cooldown + cancel in-flight)
   const fetchSuggestionsForElement = async (elementType) => {
+    const composed = buildComposedElements(elements);
+    const contextObject = {
+      ...composed,
+      conflicts: (conflicts || []).map(conflict => ({
+        message: conflict.message,
+        resolution: conflict.resolution || conflict.suggestion || null,
+        severity: conflict.severity || null,
+      })),
+    };
+    const contextSummary = Object.entries(contextObject)
+      .filter(([key, value]) => {
+        if (!value || key === elementType || key === 'subjectDescriptors') return false;
+        if (key === 'conflicts') return value.length > 0;
+        return true;
+      })
+      .map(([key, value]) => {
+        if (key === 'conflicts') {
+          return `${value.length} conflict${value.length === 1 ? '' : 's'} present`;
+        }
+        const displayValue = Array.isArray(value) ? value.join('; ') : value;
+        return `${formatLabel(key)}: ${displayValue}`;
+      })
+      .join(', ');
+    const dedupeKey = `${elementType}|${composed[elementType] || ''}|${contextSummary}|${concept || ''}`;
+    const now = Date.now();
+    if (lastSuggestionRef.current.key === dedupeKey && now - lastSuggestionRef.current.ts < 800) {
+      return;
+    }
+
+    if (isFetchingSuggestionsRef.current && activeElementRef.current === elementType) {
+      return;
+    }
+
+    lastSuggestionRef.current = { key: dedupeKey, ts: now };
+
+    if (suggestionAbortRef.current) {
+      suggestionAbortRef.current.abort();
+    }
+    suggestionAbortRef.current = new AbortController();
+
+    isFetchingSuggestionsRef.current = true;
     setIsLoadingSuggestions(true);
     setActiveElement(elementType);
+    activeElementRef.current = elementType;
     try {
-      const context = Object.entries(elements)
-        .filter(([key, value]) => value && key !== elementType)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(', ');
-      const dedupeKey = `${elementType}|${elements[elementType] || ''}|${context}|${concept || ''}`;
-      const now = Date.now();
-      if (
-        lastSuggestionRef.current.key === dedupeKey &&
-        now - lastSuggestionRef.current.ts < 800
-      ) {
-        // Within cooldown and inputs unchanged; skip firing again
-        setIsLoadingSuggestions(false);
-        return;
-      }
-      lastSuggestionRef.current = { key: dedupeKey, ts: now };
-
-      if (suggestionAbortRef.current) {
-        suggestionAbortRef.current.abort();
-      }
-      suggestionAbortRef.current = new AbortController();
-
       const response = await fetch(
         '/api/get-creative-suggestions',
         {
@@ -455,8 +713,8 @@ export default function CreativeBrainstormEnhanced({
           },
           body: JSON.stringify({
             elementType,
-            currentValue: elements[elementType],
-            context,
+            currentValue: composed[elementType],
+            context: contextObject,
             concept,
           }),
           signal: suggestionAbortRef.current.signal,
@@ -467,11 +725,17 @@ export default function CreativeBrainstormEnhanced({
 
       const data = await response.json();
       setSuggestions(data.suggestions || []);
+      suggestionsForRef.current = elementType;
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
       console.error('Error fetching suggestions:', error);
       setSuggestions([]);
+      suggestionsForRef.current = null;
     } finally {
       setIsLoadingSuggestions(false);
+      isFetchingSuggestionsRef.current = false;
     }
   };
 
@@ -484,9 +748,8 @@ export default function CreativeBrainstormEnhanced({
 
   // Complete the scene
   const completeScene = async () => {
-    const emptyElements = Object.entries(elements)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
+    const composedElements = buildComposedElements(elements);
+    const emptyElements = ELEMENT_CARD_ORDER.filter((key) => !composedElements[key]);
 
     if (emptyElements.length === 0) return;
 
@@ -498,26 +761,26 @@ export default function CreativeBrainstormEnhanced({
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': 'dev-key-12345'
-          },
-          body: JSON.stringify({
-            existingElements: elements,
-            concept,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setElements(prev => ({ ...prev, ...data.suggestions }));
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-key-12345'
+        },
+        body: JSON.stringify({
+          existingElements: composedElements,
+          concept,
+        }),
       }
-    } catch (error) {
-      console.error('Error completing scene:', error);
-    } finally {
-      setIsLoadingSuggestions(false);
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      applyElements(data.suggestions);
     }
-  };
+  } catch (error) {
+    console.error('Error completing scene:', error);
+  } finally {
+    setIsLoadingSuggestions(false);
+  }
+};
 
   // Parse concept into elements
   const parseConceptToElements = async () => {
@@ -540,7 +803,7 @@ export default function CreativeBrainstormEnhanced({
 
       if (response.ok) {
         const data = await response.json();
-        setElements(data.elements);
+        applyElements(data.elements);
         setMode('element');
       }
     } catch (error) {
@@ -554,7 +817,7 @@ export default function CreativeBrainstormEnhanced({
   const loadTemplate = (templateKey) => {
     const template = TEMPLATE_LIBRARY[templateKey];
     if (template) {
-      setElements(template.elements);
+      applyElements(template.elements);
       setShowTemplates(false);
     }
   };
@@ -655,9 +918,15 @@ export default function CreativeBrainstormEnhanced({
 
   // Generate final template
   const handleGenerateTemplate = async (exportFormat = 'detailed') => {
-    const filledElements = Object.entries(elements)
-      .filter(([_, value]) => value)
-      .map(([key, value]) => `${key}: ${value}`)
+    const composedElements = buildComposedElements(elements);
+    const filledElements = Object.entries(composedElements)
+      .filter(
+        ([key, value]) =>
+          value &&
+          key !== 'subjectDescriptors' &&
+          !isSubjectDescriptorKey(key)
+      )
+      .map(([key, value]) => `${formatLabel(key)}: ${value}`)
       .join(', ');
 
     const finalConcept = concept || filledElements;
@@ -672,11 +941,12 @@ export default function CreativeBrainstormEnhanced({
       }
     }
 
-    onConceptComplete(finalConcept, elements, {
+    onConceptComplete(finalConcept, composedElements, {
       format: exportFormat,
       technicalParams: params || {},
       validationScore: validationScore,
       history: elementHistory,
+      subjectDescriptors: composedElements.subjectDescriptors || [],
     });
   };
 
@@ -1253,7 +1523,7 @@ export default function CreativeBrainstormEnhanced({
         {/* Bento Grid - Element Cards */}
         {mode === 'element' && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(elements).map(([key]) => {
+            {ELEMENT_CARD_ORDER.map((key) => {
               const config = elementConfig[key];
               const Icon = config.icon;
               const isActive = activeElement === key;
@@ -1308,7 +1578,12 @@ export default function CreativeBrainstormEnhanced({
                     value={elements[key]}
                     onChange={(e) => handleElementChange(key, e.target.value)}
                     onFocus={() => {
-                      if (suggestions.length === 0 || activeElement !== key) {
+                      if (
+                        (!isFetchingSuggestionsRef.current && suggestionsForRef.current !== key) ||
+                        (!isFetchingSuggestionsRef.current &&
+                          suggestionsForRef.current === key &&
+                          suggestions.length === 0)
+                      ) {
                         fetchSuggestionsForElement(key);
                       }
                     }}
@@ -1328,6 +1603,104 @@ export default function CreativeBrainstormEnhanced({
                       </button>
                     ))}
                   </div>
+
+                  {key === 'subject' && (
+                    <div className="mt-5 space-y-3 rounded-lg bg-neutral-50 border border-dashed border-neutral-200 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-neutral-800 uppercase tracking-wide">
+                            Optional Subject Descriptors
+                          </span>
+                          <span className="text-[11px] text-neutral-500">
+                            Add up to three visual anchors to keep AI suggestions precise.
+                          </span>
+                        </div>
+                        <div className="hidden sm:flex items-center gap-1 text-[11px] text-neutral-500">
+                          <Sparkles className="h-3 w-3" />
+                          <span>Use AI to fill any slot</span>
+                        </div>
+                      </div>
+
+                      {SUBJECT_DESCRIPTOR_KEYS.map((descriptorKey, idx) => {
+                        const descriptorConfig = elementConfig[descriptorKey];
+                        const descriptorValue = elements[descriptorKey] || '';
+                        const descriptorFilled = Boolean(descriptorValue);
+                        const descriptorCompatibility = compatibilityScores[descriptorKey];
+
+                        return (
+                          <div
+                            key={descriptorKey}
+                            className="rounded-lg border border-neutral-200 bg-white/80 p-3"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <Tag className="h-3.5 w-3.5 text-neutral-500" />
+                              <span className="text-xs font-semibold text-neutral-700">
+                                Descriptor {idx + 1}
+                              </span>
+                              <span className="text-[10px] text-neutral-400">Optional</span>
+                              {descriptorFilled && descriptorCompatibility !== undefined && (
+                                <span className="ml-auto flex items-center gap-1 text-[10px] text-neutral-500">
+                                  {descriptorCompatibility >= 0.8 ? (
+                                    <>
+                                      <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                      <span>Strong</span>
+                                    </>
+                                  ) : descriptorCompatibility < 0.6 ? (
+                                    <>
+                                      <AlertCircle className="h-3 w-3 text-amber-500" />
+                                      <span>Rework</span>
+                                    </>
+                                  ) : null}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={descriptorValue}
+                                onChange={(e) => handleElementChange(descriptorKey, e.target.value)}
+                                onFocus={() => {
+                                  if (
+                                    (!isFetchingSuggestionsRef.current &&
+                                      suggestionsForRef.current !== descriptorKey) ||
+                                    (!isFetchingSuggestionsRef.current &&
+                                      suggestionsForRef.current === descriptorKey &&
+                                      suggestions.length === 0)
+                                  ) {
+                                    fetchSuggestionsForElement(descriptorKey);
+                                  }
+                                }}
+                                placeholder={descriptorConfig.placeholder}
+                                className="flex-1 px-3 py-2 text-sm text-neutral-900 bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                              />
+                              <button
+                                onClick={() => fetchSuggestionsForElement(descriptorKey)}
+                                className="group relative overflow-hidden px-2 py-1.5 text-[11px] font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                title="Get AI descriptor ideas"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                <div className="relative flex items-center gap-1">
+                                  <Sparkles className="h-3 w-3" />
+                                  <span>AI Fill</span>
+                                </div>
+                              </button>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {descriptorConfig.examples.map((example, exampleIdx) => (
+                                <button
+                                  key={`${descriptorKey}-example-${exampleIdx}`}
+                                  onClick={() => handleElementChange(descriptorKey, example)}
+                                  className="px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-all duration-150 active:scale-95"
+                                >
+                                  {example}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                 </div>
               );

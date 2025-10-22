@@ -112,9 +112,22 @@ export const sceneChangeSchema = Joi.object({
 export const creativeSuggestionSchema = Joi.object({
   elementType: Joi.string()
     .required()
-    .valid('subject', 'action', 'location', 'time', 'mood', 'style', 'event'),
+    .valid(
+      'subject',
+      'subjectDescriptor1',
+      'subjectDescriptor2',
+      'subjectDescriptor3',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event'
+    ),
   currentValue: Joi.string().allow('').max(5000),
-  context: Joi.string().allow('').max(5000),
+  context: Joi.alternatives()
+    .try(Joi.string().allow('').max(5000), Joi.object().unknown(true))
+    .optional(),
   concept: Joi.string().allow('').max(10000),
 });
 

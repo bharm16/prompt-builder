@@ -16,6 +16,8 @@ import {
   alternativePhrasingsOutputSchema,
 } from '../utils/validation.js';
 
+const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
+
 /**
  * Service for generating creative suggestions for video elements
  * Provides context-aware suggestions with semantic compatibility and preference learning
@@ -40,11 +42,16 @@ export class CreativeSuggestionService {
     context,
     concept,
   }) {
-    logger.info('Generating creative suggestions', { elementType });
+    const normalizedElementType = SUBJECT_DESCRIPTOR_KEYS.includes(elementType)
+      ? 'subjectDescriptor'
+      : elementType;
+
+    logger.info('Generating creative suggestions', { elementType, normalizedElementType });
 
     // Check cache
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
       elementType,
+      normalizedElementType,
       currentValue,
       context,
       concept: concept?.substring(0, 200),
@@ -58,7 +65,7 @@ export class CreativeSuggestionService {
 
     // Build system prompt
     const systemPrompt = this.buildSystemPrompt({
-      elementType,
+      elementType: normalizedElementType,
       currentValue,
       context,
       concept,
@@ -96,14 +103,14 @@ export class CreativeSuggestionService {
     if (context && Object.keys(context).length > 0) {
       filteredSuggestions = await this.filterBySemanticCompatibility(
         suggestions,
-        { elementType, context, concept }
+        { elementType: normalizedElementType, context, concept }
       );
     }
 
     // Apply user preference ranking
     const rankedSuggestions = await this.rankByUserPreferences(
       filteredSuggestions,
-      elementType
+      normalizedElementType
     );
 
     const result = { suggestions: rankedSuggestions };
@@ -114,7 +121,7 @@ export class CreativeSuggestionService {
     });
 
     logger.info('Creative suggestions generated', {
-      elementType,
+      elementType: normalizedElementType,
       count: rankedSuggestions.length,
       filtered: suggestions.length - filteredSuggestions.length,
     });
@@ -1032,6 +1039,9 @@ Return ONLY a JSON array:
    * @private
    */
   buildSystemPrompt({ elementType, currentValue, context, concept }) {
+    const elementLabel =
+      elementType === 'subjectDescriptor' ? 'subject descriptor' : elementType;
+    const contextDisplay = context ? JSON.stringify(context, null, 2) : 'No other elements defined yet';
     // Perform multi-level context analysis
     const contextAnalysis = {
       immediate: this.analyzeImmediateContext(context),
@@ -1046,13 +1056,13 @@ Return ONLY a JSON array:
 
     const analysisProcess = `<analysis_process>
 Step 1: Understand the element type and creative requirements
-- Element: ${elementType}
+- Element: ${elementLabel}
 - Current value: ${currentValue || 'Not set - starting fresh'}
 - Mode: ${completionMode} ${isCompletion ? '(help complete this partial input)' : '(generate fresh suggestions)'}
 - What makes this element type visually compelling?
 
 Step 2: Analyze existing context at multiple levels
-- Context: ${context || 'No constraints - full creative freedom'}
+- Context: ${contextDisplay}
 - Concept: ${concept || 'Building from scratch'}
 - Immediate context: ${JSON.stringify(contextAnalysis.immediate)}
 - Thematic elements: ${JSON.stringify(contextAnalysis.thematic)}
@@ -1080,7 +1090,7 @@ ${isCompletion ? `- All 8 suggestions MUST start with or include: "${currentValu
     const elementPrompts = {
       subject: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the SUBJECT/CHARACTER of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1113,9 +1123,41 @@ Apply VIDEO PROMPT PRINCIPLES:
 
 Each suggestion should be SHORT (2-8 words) and visually evocative.`,
 
+      subjectDescriptor: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} a SUBJECT DESCRIPTOR that augments the main subject without repeating it.
+
+Context: ${contextDisplay}
+Full concept: ${concept || 'User is building from scratch'}
+Current descriptor: ${currentValue || 'Not set'}
+
+${isCompletion ? `COMPLETION MODE: The user started typing "${currentValue}".
+Provide 8 completions that KEEP this phrasing and add 2-4 more vivid details.
+
+CRITICAL RULES:
+✓ ALWAYS keep the subject implied (do NOT restate their name or pronouns)
+✓ Start with a connector like "with", "wearing", "holding", "bathed in", "surrounded by"
+✓ 4-12 words long, packed with visual detail the camera can see
+✓ No leading commas or trailing punctuation
+✓ Focus on tangible, cinematic cues (texture, motion, lighting, objects)` : `Provide 8 distinct descriptor phrases that can attach to a subject.
+
+CRITICAL RULES:
+✓ Start with connectors such as "with", "wearing", "holding", "bathed in", "surrounded by"
+✓ Never restate the subject itself – describe visual traits only
+✓ 4-12 words, cinematic, highly specific
+✓ Mix physical attributes, wardrobe, props, lighting, emotional cues
+✓ Each descriptor must stand alone and feel different from the others`}
+
+VIDEO PROMPT PRINCIPLES:
+✓ Describe only what the camera can SEE
+✓ Use tactile textures, motion, lighting, or objects
+✓ Keep language concise but rich
+✓ Avoid generic adjectives ("nice", "cool")
+✓ No pronouns ("they", "their"); keep impersonal
+
+Return 8 descriptors as short phrases ready to append to a subject.`,
+
       action: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the ACTION/ACTIVITY in a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1152,7 +1194,7 @@ Each action should be SHORT (2-8 words) and immediately visualizable.`,
 
       location: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the LOCATION/SETTING of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1181,7 +1223,7 @@ Each location should be SPECIFIC and EVOCATIVE. Not "a building" but "abandoned 
 
       time: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the TIME/PERIOD of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1210,7 +1252,7 @@ Each suggestion should specify LIGHTING and MOOD implications. Not just "morning
 
       mood: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the MOOD/ATMOSPHERE of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1239,7 +1281,7 @@ Each mood should be SPECIFIC and suggest visual/color implications. Not "happy" 
 
       style: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the VISUAL STYLE of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
@@ -1274,7 +1316,7 @@ Each suggestion should include TECHNICAL implications (film stock, lens type, co
 
       event: `${isCompletion ? 'COMPLETE' : 'Generate creative suggestions for'} the EVENT/CONTEXT of a video.
 
-Context: ${context || 'No other elements defined yet'}
+Context: ${contextDisplay}
 Full concept: ${concept || 'User is building from scratch'}
 Current value: ${currentValue || 'Not set'}
 
