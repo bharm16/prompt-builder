@@ -590,11 +590,42 @@ export class EnhancementService {
    * @private
    */
   isVideoPrompt(fullPrompt) {
-    return (
-      fullPrompt.includes('**Main Prompt:**') ||
-      fullPrompt.includes('**Technical Parameters:**') ||
-      fullPrompt.includes('Camera Movement:')
-    );
+    if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
+      return false;
+    }
+
+    const normalized = fullPrompt.toLowerCase();
+
+    const legacyMarkers = ['**main prompt:**', '**technical parameters:**', 'camera movement:'];
+    if (legacyMarkers.some((marker) => normalized.includes(marker))) {
+      return true;
+    }
+
+    const modernTemplateMarkers = [
+      '**prompt:**',
+      '**guiding principles',
+      '**writing rules',
+      '**technical specs',
+      '**alternative approaches',
+      'variation 1 (different camera)',
+      'variation 2 (different lighting/mood)',
+    ];
+
+    if (modernTemplateMarkers.some((marker) => normalized.includes(marker))) {
+      return true;
+    }
+
+    const technicalFields = ['duration:', 'aspect ratio:', 'frame rate:', 'audio:'];
+    const matchedTechFields = technicalFields.filter((field) => normalized.includes(field));
+    if (normalized.includes('technical specs') && matchedTechFields.length >= 2) {
+      return true;
+    }
+
+    if (matchedTechFields.length >= 3 && normalized.includes('alternative approaches')) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

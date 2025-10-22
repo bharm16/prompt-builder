@@ -11,6 +11,7 @@ process.env.VITE_FIREBASE_STORAGE_BUCKET = 'test.appspot.com';
 process.env.VITE_FIREBASE_MESSAGING_SENDER_ID = '123456789';
 process.env.VITE_FIREBASE_APP_ID = 'test-app-id';
 process.env.NODE_ENV = 'test';
+process.env.OPENAI_API_KEY = 'sk-test-openai';
 process.env.ALLOWED_API_KEYS = 'dev-key-12345,test-key-67890';
 process.env.METRICS_TOKEN = 'dev-metrics-token-12345';
 
@@ -21,6 +22,7 @@ describe('API Server Tests', () => {
   let app;
   let cacheService;
   let metricsService;
+  let EnhancementServiceClass;
 
   const createLLMResponse = (payload) => ({
     ok: true,
@@ -44,14 +46,17 @@ describe('API Server Tests', () => {
 
   beforeAll(async () => {
     // Dynamically import the server after env vars are set
-    const serverModule = await import('../server.js');
+    const serverModule = await import('../../../server/index.js');
     app = serverModule.default;
 
-    const cacheModule = await import('../src/services/CacheService.js');
+    const cacheModule = await import('../../../server/src/services/CacheService.js');
     cacheService = cacheModule.cacheService;
 
-    const metricsModule = await import('../src/infrastructure/MetricsService.js');
+    const metricsModule = await import('../../../server/src/infrastructure/MetricsService.js');
     metricsService = metricsModule.metricsService;
+
+    const enhancementModule = await import('../../../server/src/services/EnhancementService.js');
+    EnhancementServiceClass = enhancementModule.EnhancementService;
 
     // Clear any existing mocks
     vi.clearAllMocks();
@@ -63,6 +68,22 @@ describe('API Server Tests', () => {
 
     // Clear cache between tests to avoid interference
     await cacheService.flush();
+  });
+
+  describe('EnhancementService video prompt detection', () => {
+    const buildService = () => new EnhancementServiceClass({ complete: vi.fn() });
+
+    it('detects the modern universal video prompt template', () => {
+      const service = buildService();
+      const prompt = `Medium shot of a pianist playing under amber stage lights as the camera glides past the grand piano.\n\nTECHNICAL SPECS\n- Duration: 4-8s\n- Aspect Ratio: 16:9\n- Frame Rate: 24fps\n- Audio: gentle concert hall ambience\n\nALTERNATIVE APPROACHES\n- Variation 1 (Different Camera): Slow crane up revealing the audience balconies.\n- Variation 2 (Different Lighting/Mood): Cool moonlight spilling through the skylight.`;
+      expect(service.isVideoPrompt(prompt)).toBe(true);
+    });
+
+    it('does not misclassify non-video prompts', () => {
+      const service = buildService();
+      const prompt = 'Write a persuasive email encouraging colleagues to adopt the new code review checklist.';
+      expect(service.isVideoPrompt(prompt)).toBe(false);
+    });
   });
 
   describe('POST /api/optimize', () => {
@@ -435,10 +456,11 @@ describe('API Server Tests', () => {
         .post('/api/get-enhancement-suggestions')
         .set('X-API-Key', 'dev-key-12345')
         .send({
-          highlightedText: 'pan across the scene',
-          contextBefore: 'Camera Movement: ',
+          highlightedText: 'period-appropriate orchestral score',
+          contextBefore: '- **Audio:** ',
           contextAfter: '',
-          fullPrompt: '**Main Prompt:** Test video. **Technical Parameters:** Camera Movement: pan across the scene',
+          fullPrompt:
+            'Medium shot of a statesman addressing the chamber from a carved oak lectern while warm sidelighting grazes the columns. The camera maintains a slow dolly in as the crowd holds its breath, emphasizing the resolve in his stance. Shot on 35mm film with a shallow depth of field for cinematic focus.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** period-appropriate orchestral score\n\n**ALTERNATIVE APPROACHES (2 variations, 40-50 words each)**\n- **Variation 1 (Different Camera):** Crane shot revealing the senate ceiling fresco before settling on the speaker.\n- **Variation 2 (Different Lighting/Mood):** High-key skylight streaming in from clerestory windows to create an uplifting tone.',
           originalUserPrompt: 'Create a cinematic video',
         })
         .expect(200);
