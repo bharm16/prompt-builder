@@ -1,0 +1,928 @@
+{
+  "timestamp": "2025-10-22T13:56:41.564Z",
+  "captureId": "capture-1761141401564",
+  "originalPrompt": "subject: abraham lincoln standing beside a wooden lectern, action: placing a hand on the lectern, location: vintage Senate chamber with ornate decor",
+  "displayedPrompt": "Medium shot of Abraham Lincoln, a tall man in a black suit with a distinctive stovepipe hat, standing beside a polished wooden lectern in a vintage Senate chamber adorned with ornate gold detailing. He places a hand gently on the lectern, emphasizing his presence and authority. The camera slowly tracks in, capturing the intricate decor of the chamber, illuminated by soft, warm light streaming through tall windows, casting gentle shadows across the room. The style is reminiscent of classic period dramas, shot on 35mm film with a shallow depth of field, creating a nostalgic atmosphere.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Period-appropriate orchestral score\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1:** High-angle shot looking down at Abraham Lincoln, emphasizing the grandeur of the Senate chamber as he places his hand on the lectern, surrounded by the rich decor.\n- **Variation 2:** Bright, high-key lighting from a large window, illuminating Lincoln's figure and creating an uplifting mood as he confidently rests his hand on the lectern.",
+  "mode": "video",
+  "context": null,
+  "highlights": [
+    {
+      "index": 0,
+      "text": "24fps",
+      "category": "technical",
+      "confidence": 1,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(139, 92, 246, 0.15)",
+        "border": "rgba(139, 92, 246, 0.5)"
+      }
+    },
+    {
+      "index": 1,
+      "text": "35mm",
+      "category": "technical",
+      "confidence": 1,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(139, 92, 246, 0.15)",
+        "border": "rgba(139, 92, 246, 0.5)"
+      }
+    },
+    {
+      "index": 2,
+      "text": "16:9",
+      "category": "technical",
+      "confidence": 1,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(139, 92, 246, 0.15)",
+        "border": "rgba(139, 92, 246, 0.5)"
+      }
+    },
+    {
+      "index": 3,
+      "text": "camera slowly tracks",
+      "category": "cameraMove",
+      "confidence": 0.8,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(56, 189, 248, 0.18)",
+        "border": "rgba(56, 189, 248, 0.55)"
+      }
+    },
+    {
+      "index": 4,
+      "text": "shallow depth of field",
+      "category": "depthOfField",
+      "confidence": 0.75,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 146, 60, 0.18)",
+        "border": "rgba(251, 146, 60, 0.5)"
+      }
+    },
+    {
+      "index": 5,
+      "text": "high-key lighting",
+      "category": "lighting",
+      "confidence": 0.75,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(253, 224, 71, 0.2)",
+        "border": "rgba(253, 224, 71, 0.6)"
+      }
+    },
+    {
+      "index": 6,
+      "text": "warm light",
+      "category": "lighting",
+      "confidence": 0.75,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(253, 224, 71, 0.2)",
+        "border": "rgba(253, 224, 71, 0.6)"
+      }
+    },
+    {
+      "index": 7,
+      "text": "High-angle shot",
+      "category": "framing",
+      "confidence": 0.7,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(147, 197, 253, 0.18)",
+        "border": "rgba(59, 130, 246, 0.45)"
+      }
+    },
+    {
+      "index": 8,
+      "text": "Medium shot",
+      "category": "framing",
+      "confidence": 0.7,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(147, 197, 253, 0.18)",
+        "border": "rgba(59, 130, 246, 0.45)"
+      }
+    },
+    {
+      "index": 9,
+      "text": "Period-appropriate orchestral score",
+      "category": "descriptive",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 191, 36, 0.12)",
+        "border": "rgba(251, 191, 36, 0.4)"
+      }
+    },
+    {
+      "index": 10,
+      "text": "distinctive stovepipe hat,",
+      "category": "descriptive",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 191, 36, 0.12)",
+        "border": "rgba(251, 191, 36, 0.4)"
+      }
+    },
+    {
+      "index": 11,
+      "text": "polished wooden lectern",
+      "category": "descriptive",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 191, 36, 0.12)",
+        "border": "rgba(251, 191, 36, 0.4)"
+      }
+    },
+    {
+      "index": 12,
+      "text": "classic period dramas,",
+      "category": "descriptive",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 191, 36, 0.12)",
+        "border": "rgba(251, 191, 36, 0.4)"
+      }
+    },
+    {
+      "index": 13,
+      "text": "vintage Senate chamber",
+      "category": "subject",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(59, 130, 246, 0.15)",
+        "border": "rgba(59, 130, 246, 0.5)"
+      }
+    },
+    {
+      "index": 14,
+      "text": "nostalgic atmosphere.",
+      "category": "descriptive",
+      "confidence": 0.6,
+      "source": "nlp-extracted",
+      "color": {
+        "bg": "rgba(251, 191, 36, 0.12)",
+        "border": "rgba(251, 191, 36, 0.4)"
+      }
+    }
+  ],
+  "highlightSuggestions": [
+    {
+      "highlightIndex": 0,
+      "highlightText": "24fps",
+      "category": "technical",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "category": "Frame Rate",
+          "suggestions": [
+            {
+              "text": "30fps",
+              "category": "Frame Rate",
+              "explanation": "Standard frame rate for smooth motion"
+            },
+            {
+              "text": "60fps",
+              "category": "Frame Rate",
+              "explanation": "High frame rate for ultra-smooth visuals"
+            },
+            {
+              "text": "12fps",
+              "category": "Frame Rate",
+              "explanation": "Low frame rate for a stylistic effect"
+            },
+            {
+              "text": "24p",
+              "category": "Frame Rate",
+              "explanation": "Cinematic frame rate for film look"
+            }
+          ]
+        },
+        {
+          "category": "Visual Style",
+          "suggestions": [
+            {
+              "text": "vintage film grain",
+              "category": "Visual Style",
+              "explanation": "Adds texture and nostalgia"
+            },
+            {
+              "text": "black and white",
+              "category": "Visual Style",
+              "explanation": "Classic aesthetic for dramatic effect"
+            },
+            {
+              "text": "soft focus",
+              "category": "Visual Style",
+              "explanation": "Creates a dreamy, romantic look"
+            },
+            {
+              "text": "high contrast",
+              "category": "Visual Style",
+              "explanation": "Emphasizes light and shadow dramatically"
+            }
+          ]
+        },
+        {
+          "category": "Audio Design",
+          "suggestions": [
+            {
+              "text": "surround sound",
+              "category": "Audio Design",
+              "explanation": "Immersive audio experience"
+            },
+            {
+              "text": "mono audio",
+              "category": "Audio Design",
+              "explanation": "Single channel sound for period accuracy"
+            },
+            {
+              "text": "orchestral music",
+              "category": "Audio Design",
+              "explanation": "Rich soundscapes fitting vintage themes"
+            },
+            {
+              "text": "ambient sound",
+              "category": "Audio Design",
+              "explanation": "Natural background sound for realism"
+            }
+          ]
+        },
+        {
+          "category": "Post Production",
+          "suggestions": [
+            {
+              "text": "cinematic color grading",
+              "category": "Post Production",
+              "explanation": "Enhances mood through color adjustments"
+            },
+            {
+              "text": "vintage sepia tone",
+              "category": "Post Production",
+              "explanation": "Gives a historical feel to visuals"
+            },
+            {
+              "text": "high dynamic range",
+              "category": "Post Production",
+              "explanation": "Wider range of colors and brightness"
+            }
+          ]
+        },
+        {
+          "category": "Editing Techniques",
+          "suggestions": [
+            {
+              "text": "fade in/fade out",
+              "category": "Editing Techniques",
+              "explanation": "Smooth transitions for storytelling"
+            },
+            {
+              "text": "jump cuts",
+              "category": "Editing Techniques",
+              "explanation": "Creates a dynamic and engaging pacing"
+            }
+          ]
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:56:41.604Z"
+    },
+    {
+      "highlightIndex": 1,
+      "highlightText": "35mm",
+      "category": "technical",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "text": "35mm vintage lens",
+          "explanation": "Focuses on the lens type for a nostalgic effect"
+        },
+        {
+          "text": "35mm film grain",
+          "explanation": "Emphasizes the texture of the film for authenticity"
+        },
+        {
+          "text": "35mm shallow focus",
+          "explanation": "Highlights the depth of field for dramatic emphasis"
+        },
+        {
+          "text": "35mm warm tones",
+          "explanation": "Enhances the color palette for a classic look"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:56:42.116Z"
+    },
+    {
+      "highlightIndex": 2,
+      "highlightText": "16:9",
+      "category": "technical",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "category": "Aspect Ratio",
+          "suggestions": [
+            {
+              "text": "4:3",
+              "category": "Aspect Ratio",
+              "explanation": "Classic television format"
+            },
+            {
+              "text": "35:1",
+              "category": "Aspect Ratio",
+              "explanation": "Cinematic widescreen for epics"
+            },
+            {
+              "text": "1:1",
+              "category": "Aspect Ratio",
+              "explanation": "Square format for social media"
+            }
+          ]
+        },
+        {
+          "category": "Visual Style",
+          "suggestions": [
+            {
+              "text": "black and white",
+              "category": "Visual Style",
+              "explanation": "Classic vintage aesthetic"
+            },
+            {
+              "text": "sepia tone",
+              "category": "Visual Style",
+              "explanation": "Warm, nostalgic brownish tint"
+            },
+            {
+              "text": "high contrast",
+              "category": "Visual Style",
+              "explanation": "Dramatic light and shadow effects"
+            }
+          ]
+        },
+        {
+          "category": "Cinematic Technique",
+          "suggestions": [
+            {
+              "text": "slow motion",
+              "category": "Cinematic Technique",
+              "explanation": "Emphasizes moments dramatically"
+            },
+            {
+              "text": "time-lapse",
+              "category": "Cinematic Technique",
+              "explanation": "Compresses time for effect"
+            },
+            {
+              "text": "handheld camera",
+              "category": "Cinematic Technique",
+              "explanation": "Intimate, immersive feel"
+            }
+          ]
+        },
+        {
+          "category": "Lens Effect",
+          "suggestions": [
+            {
+              "text": "soft focus",
+              "category": "Lens Effect",
+              "explanation": "Gently blurs out details"
+            },
+            {
+              "text": "vignette",
+              "category": "Lens Effect",
+              "explanation": "Darkens corners for emphasis"
+            },
+            {
+              "text": "deep focus",
+              "category": "Lens Effect",
+              "explanation": "Sharp focus throughout the frame"
+            }
+          ]
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:56:50.978Z"
+    },
+    {
+      "highlightIndex": 3,
+      "highlightText": "camera slowly tracks",
+      "category": "cameraMove",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "dolly move across the chamber",
+          "explanation": "Emphasizes the depth of the chamber's decor."
+        },
+        {
+          "text": "crane shot from above",
+          "explanation": "Highlights the ornate ceiling details."
+        },
+        {
+          "text": "rack focus on Lincoln's hat",
+          "explanation": "Draws attention to the distinctive stovepipe hat."
+        },
+        {
+          "text": "slow pan revealing the lectern",
+          "explanation": "Showcases the polished wooden material."
+        },
+        {
+          "text": "close-up on Lincoln's hand",
+          "explanation": "Focuses on the authority gesture at the lectern."
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:56:51.494Z"
+    },
+    {
+      "highlightIndex": 4,
+      "highlightText": "shallow depth of field",
+      "category": "depthOfField",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "highlighting the subject with shallow depth of field.",
+          "explanation": "Emphasizes the subject through focus techniques."
+        },
+        {
+          "text": "bathed in warm, diffused light for intimacy.",
+          "explanation": "Enhances the lighting to create a cozy atmosphere."
+        },
+        {
+          "text": "the camera gently dolly in to reveal details.",
+          "explanation": "Focuses on the camera movement to create engagement."
+        },
+        {
+          "text": "showcasing ornate decor in soft, golden hues.",
+          "explanation": "Highlights the location's visual richness through lighting."
+        },
+        {
+          "text": "captured in cinematic 35mm film for nostalgia.",
+          "explanation": "Emphasizes the film choice to evoke a specific style."
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:56:56.299Z"
+    },
+    {
+      "highlightIndex": 5,
+      "highlightText": "high-key lighting",
+      "category": "lighting",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "category": "Lighting Style",
+          "suggestions": [
+            {
+              "text": "soft ambient lighting",
+              "category": "Lighting Style",
+              "explanation": "Gentle and even illumination"
+            },
+            {
+              "text": "dramatic chiaroscuro",
+              "category": "Lighting Style",
+              "explanation": "High contrast lighting to accentuate features"
+            },
+            {
+              "text": "golden hour glow",
+              "category": "Lighting Style",
+              "explanation": "Warm, diffused light typical at sunset"
+            },
+            {
+              "text": "overhead candlelight",
+              "category": "Lighting Style",
+              "explanation": "Warm, flickering light creating a nostalgic feel"
+            }
+          ]
+        },
+        {
+          "category": "Color Temperature",
+          "suggestions": [
+            {
+              "text": "cool blue tones",
+              "category": "Color Temperature",
+              "explanation": "Cool lighting creating a calm atmosphere"
+            },
+            {
+              "text": "warm amber tones",
+              "category": "Color Temperature",
+              "explanation": "Inviting warmth enhancing the historical context"
+            },
+            {
+              "text": "natural daylight",
+              "category": "Color Temperature",
+              "explanation": "Balanced and realistic illumination from windows"
+            }
+          ]
+        },
+        {
+          "category": "Cinematic Techniques",
+          "suggestions": [
+            {
+              "text": "spotlight effect",
+              "category": "Cinematic Techniques",
+              "explanation": "Focused light highlighting Lincoln's presence"
+            },
+            {
+              "text": "backlighting",
+              "category": "Cinematic Techniques",
+              "explanation": "Creates a silhouette effect enhancing drama"
+            },
+            {
+              "text": "silhouetted lighting",
+              "category": "Cinematic Techniques",
+              "explanation": "Emphasizes form and shapes around Lincoln"
+            }
+          ]
+        },
+        {
+          "category": "Visual Effects",
+          "suggestions": [
+            {
+              "text": "vintage film grain",
+              "category": "Visual Effects",
+              "explanation": "Adds nostalgic texture to the image"
+            },
+            {
+              "text": "lens flare",
+              "category": "Visual Effects",
+              "explanation": "Artistic light effects enhancing visual appeal"
+            },
+            {
+              "text": "blurred bokeh",
+              "category": "Visual Effects",
+              "explanation": "Soft, out-of-focus points of light creating atmosphere"
+            }
+          ]
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:03.877Z"
+    },
+    {
+      "highlightIndex": 6,
+      "highlightText": "warm light",
+      "category": "lighting",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "text": "golden sunlight filtering",
+          "explanation": "Enhances the warmth of the scene"
+        },
+        {
+          "text": "soft amber glow",
+          "explanation": "Creates an inviting atmosphere"
+        },
+        {
+          "text": "gentle afternoon light",
+          "explanation": "Sets a nostalgic tone"
+        },
+        {
+          "text": "warm candlelit ambiance",
+          "explanation": "Evokes intimacy and tradition"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:04.390Z"
+    },
+    {
+      "highlightIndex": 7,
+      "highlightText": "High-angle shot",
+      "category": "framing",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "category": "Camera Angles",
+          "suggestions": [
+            {
+              "text": "Low-angle shot",
+              "category": "Camera Angles",
+              "explanation": "Perspective that highlights Lincoln's stature"
+            },
+            {
+              "text": "Overhead shot",
+              "category": "Camera Angles",
+              "explanation": "Bird's eye view emphasizing the setting"
+            },
+            {
+              "text": "Close-up shot",
+              "category": "Camera Angles",
+              "explanation": "Intimate focus on Lincoln's expression"
+            }
+          ]
+        },
+        {
+          "category": "Camera Techniques",
+          "suggestions": [
+            {
+              "text": "Tracking shot",
+              "category": "Camera Techniques",
+              "explanation": "Camera movement following Lincoln's hand"
+            },
+            {
+              "text": "Static shot",
+              "category": "Camera Techniques",
+              "explanation": "Stable positioning to capture the moment"
+            },
+            {
+              "text": "Dolly shot",
+              "category": "Camera Techniques",
+              "explanation": "Smooth movement toward Lincoln and the lectern"
+            }
+          ]
+        },
+        {
+          "category": "Lighting Techniques",
+          "suggestions": [
+            {
+              "text": "Warm lighting",
+              "category": "Lighting Techniques",
+              "explanation": "Soft illumination enhancing the nostalgic feel"
+            },
+            {
+              "text": "Spotlight",
+              "category": "Lighting Techniques",
+              "explanation": "Focused light on Lincoln for dramatic effect"
+            },
+            {
+              "text": "Backlighting",
+              "category": "Lighting Techniques",
+              "explanation": "Creates silhouette effect around Lincoln"
+            }
+          ]
+        },
+        {
+          "category": "Audio Elements",
+          "suggestions": [
+            {
+              "text": "Period-appropriate score",
+              "category": "Audio Elements",
+              "explanation": "Music that enhances the historical context"
+            },
+            {
+              "text": "Ambient sounds",
+              "category": "Audio Elements",
+              "explanation": "Background noise reflecting the chamber atmosphere"
+            },
+            {
+              "text": "Narrative voice-over",
+              "category": "Audio Elements",
+              "explanation": "Supplementary commentary to enrich storytelling"
+            }
+          ]
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:11.249Z"
+    },
+    {
+      "highlightIndex": 8,
+      "highlightText": "Medium shot",
+      "category": "framing",
+      "suggestionsCount": 0,
+      "suggestions": [],
+      "fetchedAt": "2025-10-22T13:57:15.544Z"
+    },
+    {
+      "highlightIndex": 9,
+      "highlightText": "Period-appropriate orchestral score",
+      "category": "descriptive",
+      "suggestionsCount": 4,
+      "suggestions": [
+        {
+          "category": "Orchestral Styles",
+          "suggestions": [
+            {
+              "text": "Romantic orchestral suite",
+              "category": "Orchestral Styles",
+              "explanation": "Emotional and sweeping melodies"
+            },
+            {
+              "text": "Baroque chamber music",
+              "category": "Orchestral Styles",
+              "explanation": "Intricate harmonies and textures"
+            },
+            {
+              "text": "Neo-classical composition",
+              "category": "Orchestral Styles",
+              "explanation": "Modern take on classic orchestral forms"
+            },
+            {
+              "text": "Minimalist score",
+              "category": "Orchestral Styles",
+              "explanation": "Sparse and repetitive motifs"
+            }
+          ]
+        },
+        {
+          "category": "Cultural Influences",
+          "suggestions": [
+            {
+              "text": "Folk-inspired strings",
+              "category": "Cultural Influences",
+              "explanation": "Incorporates traditional folk elements"
+            },
+            {
+              "text": "Antique piano melodies",
+              "category": "Cultural Influences",
+              "explanation": "Solo piano pieces reminiscent of the time"
+            },
+            {
+              "text": "Vintage jazz ensemble",
+              "category": "Cultural Influences",
+              "explanation": "Swinging and melodic jazz elements"
+            }
+          ]
+        },
+        {
+          "category": "Atmospheric Sounds",
+          "suggestions": [
+            {
+              "text": "Ambient soundscape",
+              "category": "Atmospheric Sounds",
+              "explanation": "Creates a serene and immersive environment"
+            },
+            {
+              "text": "Nature-inspired score",
+              "category": "Atmospheric Sounds",
+              "explanation": "Incorporates natural and organic sounds"
+            },
+            {
+              "text": "Soft choral harmonies",
+              "category": "Atmospheric Sounds",
+              "explanation": "Ethereal voices adding depth and emotion"
+            },
+            {
+              "text": "Solemn liturgical music",
+              "category": "Atmospheric Sounds",
+              "explanation": "Reflects a reflective and respectful tone"
+            }
+          ]
+        },
+        {
+          "category": "Cinematic Approaches",
+          "suggestions": [
+            {
+              "text": "Dramatic cinematic score",
+              "category": "Cinematic Approaches",
+              "explanation": "Heightens tension and emotion in scenes"
+            },
+            {
+              "text": "Historical documentary style",
+              "category": "Cinematic Approaches",
+              "explanation": "Authentic sound that conveys historical significance"
+            },
+            {
+              "text": "Narrative-driven orchestration",
+              "category": "Cinematic Approaches",
+              "explanation": "Supports storytelling with thematic elements"
+            }
+          ]
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:26.302Z"
+    },
+    {
+      "highlightIndex": 10,
+      "highlightText": "distinctive stovepipe hat,",
+      "category": "descriptive",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "classic felt stovepipe hat",
+          "explanation": "Emphasizes the iconic material and style of the hat."
+        },
+        {
+          "text": "elegantly tailored stovepipe hat",
+          "explanation": "Highlights the craftsmanship and formality of the hat."
+        },
+        {
+          "text": "vintage black stovepipe hat",
+          "explanation": "Focuses on the historical color and era of the hat."
+        },
+        {
+          "text": "ornate silk stovepipe hat",
+          "explanation": "Showcases a luxurious fabric choice for the hat."
+        },
+        {
+          "text": "weathered leather stovepipe hat",
+          "explanation": "Draws attention to the texture and age of the hat."
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:30.495Z"
+    },
+    {
+      "highlightIndex": 11,
+      "highlightText": "polished wooden lectern",
+      "category": "descriptive",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "rich mahogany lectern",
+          "explanation": "Highlights the luxurious material of the lectern"
+        },
+        {
+          "text": "ornate brass lectern",
+          "explanation": "Emphasizes decorative elements and craftsmanship"
+        },
+        {
+          "text": "vintage oak lectern",
+          "explanation": "Focuses on the age and style of the wood"
+        },
+        {
+          "text": "gleaming cherry wood lectern",
+          "explanation": "Showcases the polished finish and color"
+        },
+        {
+          "text": "elaborate carved lectern",
+          "explanation": "Draws attention to detailed craftsmanship"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:34.362Z"
+    },
+    {
+      "highlightIndex": 12,
+      "highlightText": "classic period dramas,",
+      "category": "descriptive",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "golden hour sunlight",
+          "explanation": "Creates a warm, inviting atmosphere"
+        },
+        {
+          "text": "soft candlelit glow",
+          "explanation": "Enhances the romantic ambiance"
+        },
+        {
+          "text": "dappled natural light",
+          "explanation": "Adds a dynamic, organic quality"
+        },
+        {
+          "text": "rich velvet textures",
+          "explanation": "Focuses on tactile materiality"
+        },
+        {
+          "text": "subtle chiaroscuro effects",
+          "explanation": "Emphasizes depth and drama"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:34.871Z"
+    },
+    {
+      "highlightIndex": 13,
+      "highlightText": "vintage Senate chamber",
+      "category": "subject",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "opulent mahogany paneling",
+          "explanation": "Focuses on the luxurious wood details of the chamber"
+        },
+        {
+          "text": "vintage brass chandeliers",
+          "explanation": "Highlights the ornate lighting fixtures enhancing the ambiance"
+        },
+        {
+          "text": "hand-carved wooden lectern",
+          "explanation": "Emphasizes the craftsmanship of the lectern in the scene"
+        },
+        {
+          "text": "richly upholstered armchairs",
+          "explanation": "Draws attention to the plush seating reflecting the era's elegance"
+        },
+        {
+          "text": "intricate plaster moldings",
+          "explanation": "Showcases the elaborate architectural details surrounding the chamber"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:35.383Z"
+    },
+    {
+      "highlightIndex": 14,
+      "highlightText": "nostalgic atmosphere.",
+      "category": "descriptive",
+      "suggestionsCount": 5,
+      "suggestions": [
+        {
+          "text": "golden hour sunlight",
+          "explanation": "Warm, inviting light enhancing nostalgia"
+        },
+        {
+          "text": "soft candlelight glow",
+          "explanation": "Creates an intimate, historical ambiance"
+        },
+        {
+          "text": "faded sepia tones",
+          "explanation": "Adds a vintage feel to the scene"
+        },
+        {
+          "text": "gentle luminescent haze",
+          "explanation": "Imparts a dreamy quality to the atmosphere"
+        },
+        {
+          "text": "rich mahogany shadows",
+          "explanation": "Enhances depth and warmth in the lighting"
+        }
+      ],
+      "fetchedAt": "2025-10-22T13:57:38.487Z"
+    }
+  ]
+}
