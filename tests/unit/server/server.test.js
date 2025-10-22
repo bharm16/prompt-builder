@@ -447,7 +447,7 @@ describe('API Server Tests', () => {
 
     it('should handle video prompts differently', async () => {
       const mockSuggestions = [
-        { text: 'Cinematic rewrite with camera details', explanation: 'Adds specific camera movements and framing' },
+        { text: 'Cinematic rewrite with camera details', explanation: 'Adds specific camera movements and framing', category: 'Audio Style' },
       ];
 
       global.fetch.mockResolvedValueOnce(createLLMResponse(mockSuggestions));

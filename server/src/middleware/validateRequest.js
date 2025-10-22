@@ -7,7 +7,11 @@ import { logger } from '../infrastructure/Logger.js';
  */
 export function validateRequest(schema) {
   return (req, res, next) => {
-    const { error, value } = schema.validate(req.body);
+    const { error, value } = schema.validate(req.body, {
+      stripUnknown: false,
+      allowUnknown: false,
+      abortEarly: false
+    });
 
     if (error) {
       logger.warn('Request validation failed', {

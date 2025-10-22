@@ -487,17 +487,28 @@ export function SuggestionsPanel({ suggestionsData = {} }) {
 
                         {showCopyAction && suggestionText && (
                           <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                            <button
+                            <span
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (typeof navigator !== 'undefined' && navigator?.clipboard) {
                                   navigator.clipboard.writeText(suggestionText);
                                 }
                               }}
-                              className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+                              className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150 cursor-pointer"
+                              role="button"
+                              tabIndex="0"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  if (typeof navigator !== 'undefined' && navigator?.clipboard) {
+                                    navigator.clipboard.writeText(suggestionText);
+                                  }
+                                }
+                              }}
                             >
                               Copy
-                            </button>
+                            </span>
                             <span className="text-neutral-300">•</span>
                             <span className="text-[11px] text-neutral-500">Click to apply</span>
                           </div>

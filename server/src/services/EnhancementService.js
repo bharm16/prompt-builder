@@ -2,6 +2,7 @@ import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
+import { CATEGORY_CONSTRAINTS, detectSubcategory, validateAgainstVideoTemplate } from './CategoryConstraints.js';
 
 /**
  * Service for providing enhancement suggestions for highlighted text
@@ -100,6 +101,8 @@ export class EnhancementService {
           originalUserPrompt,
           isVideoPrompt,
           brainstormContext,
+          highlightedCategory,
+          highlightedCategoryConfidence,
         })
       : this.buildRewritePrompt({
           highlightedText,
@@ -156,8 +159,30 @@ export class EnhancementService {
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
+    // Apply category alignment with fallbacks if needed
+    let alignmentResult = { suggestions: diverseSuggestions, fallbackApplied: false, context: {} };
+
+    if (highlightedCategory) {
+      alignmentResult = this.enforceCategoryAlignment(
+        diverseSuggestions || [],
+        {
+          highlightedText,
+          highlightedCategory,
+          highlightedCategoryConfidence
+        }
+      );
+
+      if (alignmentResult.fallbackApplied) {
+        logger.info('Applied category fallbacks', {
+          highlightedText: highlightedText,
+          category: highlightedCategory,
+          reason: alignmentResult.context.reason
+        });
+      }
+    }
+
     // Enforce template guardrails (particularly for video prompts)
-    const sanitizedSuggestions = this.sanitizeSuggestions(diverseSuggestions, {
+    const sanitizedSuggestions = this.sanitizeSuggestions(alignmentResult.suggestions, {
       highlightedText,
       isPlaceholder,
       isVideoPrompt,
@@ -297,6 +322,7 @@ export class EnhancementService {
       hasCategories: isPlaceholder && suggestionsToUse[0]?.category ? true : false,
       phraseRole: phraseRole || null,
       appliedConstraintMode: activeConstraints?.mode || null,
+      fallbackApplied: alignmentResult.fallbackApplied || usedFallback,
     };
 
     if (activeConstraints) {
@@ -422,6 +448,126 @@ export class EnhancementService {
     });
 
     return result;
+  }
+
+  /**
+   * Enforce category alignment with fallbacks when needed
+   */
+  enforceCategoryAlignment(suggestions, params) {
+    const { highlightedText, highlightedCategory, highlightedCategoryConfidence } = params;
+
+    // Check if we need fallbacks
+    const needsFallback = this.shouldUseFallback(suggestions, highlightedText, highlightedCategory);
+
+    if (needsFallback) {
+      const fallbacks = this.getCategoryFallbacks(highlightedText, highlightedCategory);
+      return {
+        suggestions: fallbacks,
+        fallbackApplied: true,
+        context: {
+          baseCategory: highlightedCategory,
+          originalSuggestionsRejected: suggestions.length,
+          reason: 'Category mismatch or low confidence'
+        }
+      };
+    }
+
+    // Validate and filter suggestions
+    const validSuggestions = this.validateSuggestions(suggestions, highlightedText, highlightedCategory);
+
+    return {
+      suggestions: validSuggestions,
+      fallbackApplied: false,
+      context: { baseCategory: highlightedCategory }
+    };
+  }
+
+  /**
+   * Determine if fallback suggestions should be used
+   */
+  shouldUseFallback(suggestions, highlightedText, category) {
+    // Use fallback if no suggestions or very low count
+    if (!suggestions || suggestions.length < 2) return true;
+
+    // Check for category mismatches
+    if (category === 'technical') {
+      const subcategory = detectSubcategory(highlightedText, category);
+      if (subcategory) {
+        const constraint = CATEGORY_CONSTRAINTS.technical[subcategory];
+        const validCount = suggestions.filter(s =>
+          constraint.pattern.test(s.text)
+        ).length;
+        return validCount < suggestions.length * 0.5;
+      }
+    }
+
+    // Check for audio suggestions in non-audio categories
+    if (['technical', 'framing', 'descriptive'].includes(category)) {
+      const audioCount = suggestions.filter(s =>
+        /audio|sound|music|score/i.test(s.text) ||
+        (s.category && s.category.toLowerCase().includes('audio'))
+      ).length;
+      if (audioCount > 0) return true;
+    }
+
+    // Check for lighting suggestions in style descriptors
+    if (category === 'descriptive') {
+      const lightingCount = suggestions.filter(s =>
+        /light|shadow|glow|illuminat/i.test(s.text) ||
+        (s.category && s.category.toLowerCase().includes('light'))
+      ).length;
+      return lightingCount > suggestions.length * 0.5;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get fallback suggestions for a category
+   */
+  getCategoryFallbacks(highlightedText, category) {
+    const subcategory = detectSubcategory(highlightedText, category);
+
+    // Get specific fallbacks for technical subcategories
+    if (category === 'technical' && subcategory) {
+      return CATEGORY_CONSTRAINTS.technical[subcategory].fallbacks;
+    }
+
+    // Get fallbacks for other categories
+    if (CATEGORY_CONSTRAINTS[category]) {
+      return CATEGORY_CONSTRAINTS[category].fallbacks;
+    }
+
+    // Generic fallbacks as last resort
+    return [
+      { text: "alternative option 1", category, explanation: "Alternative suggestion" },
+      { text: "alternative option 2", category, explanation: "Different approach" },
+      { text: "alternative option 3", category, explanation: "Creative variation" }
+    ];
+  }
+
+  /**
+   * Validate suggestions match expected category
+   */
+  validateSuggestions(suggestions, highlightedText, category) {
+    if (!suggestions || !Array.isArray(suggestions)) return [];
+
+    const subcategory = detectSubcategory(highlightedText, category);
+
+    return suggestions.filter(suggestion => {
+      // Basic validation
+      if (!suggestion.text || typeof suggestion.text !== 'string') return false;
+
+      // Skip audio suggestions for non-audio categories
+      if (['technical', 'framing', 'lighting', 'descriptive'].includes(category)) {
+        if (/audio|sound|music|score|orchestra/i.test(suggestion.text)) {
+          return false;
+        }
+      }
+
+      // Validate against video template requirements
+      return validateAgainstVideoTemplate(suggestion, category, subcategory);
+    });
   }
 
   /**
@@ -726,7 +872,33 @@ export class EnhancementService {
     originalUserPrompt,
     isVideoPrompt,
     brainstormContext,
+    highlightedCategory,
+    highlightedCategoryConfidence,
   }) {
+    // Get specific constraints for this category if available
+    const subcategory = detectSubcategory(highlightedText, highlightedCategory);
+    let constraintInstruction = '';
+
+    if (highlightedCategory === 'technical' && subcategory) {
+      const constraint = CATEGORY_CONSTRAINTS.technical[subcategory];
+      if (constraint) {
+        constraintInstruction = `
+CRITICAL REQUIREMENTS:
+${constraint.instruction}
+${constraint.forbidden}
+
+Examples of valid suggestions: ${constraint.fallbacks.map(f => f.text).join(', ')}
+`;
+      }
+    } else if (highlightedCategory && CATEGORY_CONSTRAINTS[highlightedCategory]) {
+      const constraint = CATEGORY_CONSTRAINTS[highlightedCategory];
+      constraintInstruction = `
+CRITICAL REQUIREMENTS:
+${constraint.instruction}
+${constraint.forbidden || ''}
+`;
+    }
+
     // Detect the semantic type of the placeholder
     const placeholderType = this.detectPlaceholderType(highlightedText, contextBefore, contextAfter);
     const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
@@ -745,7 +917,7 @@ export class EnhancementService {
 
     return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }
+    }${constraintInstruction ? `\n${constraintInstruction}` : ''}
 
 <analysis_process>
 Step 1: Identify the placeholder type and context

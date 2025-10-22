@@ -54,7 +54,7 @@ export const usePromptOptimizer = (selectedMode) => {
       const data = await response.json();
       return data.optimizedPrompt;
     } catch (error) {
-      console.error('Error calling Claude API:', error);
+      console.error('Error calling optimization API:', error);
       throw error;
     }
   }, [selectedMode]);

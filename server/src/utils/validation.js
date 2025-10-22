@@ -30,6 +30,14 @@ export const promptSchema = Joi.object({
   })
     .optional()
     .allow(null),
+  brainstormContext: Joi.object({
+    elements: Joi.object().pattern(Joi.string(), Joi.any()).optional(),
+    metadata: Joi.object().optional(),
+    version: Joi.string().optional(),
+    createdAt: Joi.number().optional(),
+  })
+    .optional()
+    .allow(null),
 });
 
 export const suggestionSchema = Joi.object({
@@ -64,18 +72,19 @@ export const suggestionSchema = Joi.object({
       mood: Joi.string().allow('', null),
       style: Joi.string().allow('', null),
       event: Joi.string().allow('', null),
-    }).optional(),
+    }).optional().unknown(true),
     metadata: Joi.object({
       format: Joi.string().allow('', null),
       technicalParams: Joi.object().unknown(true).optional(),
-      validationScore: Joi.number().allow(null).optional(),
+      validationScore: Joi.any().optional(),
       history: Joi.array().items(Joi.any()).optional(),
     })
       .optional()
       .unknown(true),
   })
     .optional()
-    .allow(null),
+    .allow(null)
+    .unknown(true),
 });
 
 export const customSuggestionSchema = Joi.object({
