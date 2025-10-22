@@ -2,6 +2,13 @@
 import nlp from 'compromise'
 import { PromptContext } from '../../utils/PromptContext'
 
+const PROTECTED_PHRASES = [
+  'elderly street musician',
+  'ambient street sounds',
+  'soft guitar music',
+  'shallow depth of field'
+]
+
 /**
  * Extract video prompt phrases with optional context awareness
  *
@@ -115,30 +122,40 @@ function extractSemanticMatches(text, context) {
  * Perform NLP-based phrase extraction
  */
 function performNLPExtraction(text, context) {
+  const { text: protectedText, map: protectedMap } = protectPhrases(text)
   const doc = nlp(text)
   const phrases = []
   const seen = new Set()
 
-  const pushMatches = (matches, category, confidence) => {
+  const pushMatches = (matches, category, confidence, options = {}) => {
+    const { skipCompletenessCheck = false } = options
+
     matches
       .map(match => (typeof match === 'string' ? match : String(match)))
+      .map(match => restoreProtectedSegments(match.trim(), protectedMap))
       .map(match => match.trim())
       .filter(Boolean)
       .forEach(match => {
-        const key = `${category}|${match.toLowerCase()}`
+        if (!skipCompletenessCheck && !isCompletePhrase(match, text)) return
+
+        const resolvedCategory = categorizeWithContext(match, text, category, context)
+        const key = `${resolvedCategory}|${match.toLowerCase()}`
         if (seen.has(key)) return
         seen.add(key)
+
         phrases.push({
           text: match,
-          category,
+          category: resolvedCategory,
           confidence,
           source: 'nlp-extracted',
-          color: PromptContext.getCategoryColor(category)
+          color: PromptContext.getCategoryColor(resolvedCategory)
         })
       })
   }
 
-  const pushRegexMatches = (patterns, category, confidence) => {
+  const pushRegexMatches = (patterns, category, confidence, options = {}) => {
+    const targetText = options.useProtectedText ? protectedText : text
+
     patterns
       .filter(Boolean)
       .forEach(pattern => {
@@ -147,8 +164,8 @@ function performNLPExtraction(text, context) {
             ? new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`)
             : new RegExp(pattern, 'gi')
 
-        const matches = Array.from(text.matchAll(regex)).map(match => match[0])
-        pushMatches(matches, category, confidence)
+        const matches = Array.from(targetText.matchAll(regex)).map(match => match[0])
+        pushMatches(matches, category, confidence, options)
       })
   }
 
@@ -239,7 +256,7 @@ function performNLPExtraction(text, context) {
     `\\b(?:[\\w-]+\\s){0,2}(?:${environmentKeywords.map(escapeRegex).join('|')})\\b`,
     'gi'
   )
-  const singleMatches = text.match(singlePattern) || []
+  const singleMatches = Array.from(protectedText.matchAll(singlePattern)).map(match => match[0])
   singleMatches.forEach(match => environmentPhrases.add(match.trim()))
 
   const multiWordLocations = [
@@ -260,7 +277,7 @@ function performNLPExtraction(text, context) {
   ]
   multiWordLocations.forEach(location => {
     const regex = new RegExp(`\\b(?:[\\w-]+\\s){0,2}${escapeRegex(location)}\\b`, 'gi')
-    const matches = text.match(regex) || []
+    const matches = Array.from(protectedText.matchAll(regex)).map(match => match[0])
     matches.forEach(match => environmentPhrases.add(match.trim()))
   })
   pushMatches(Array.from(environmentPhrases), 'environment', 0.65)
@@ -278,9 +295,18 @@ function performNLPExtraction(text, context) {
   const compounds = doc.match('#Noun #Noun+').out('array')
   pushMatches(compounds, 'subject', 0.6)
 
-  // Technical specs (35mm, 24fps)
-  const technical = doc.match('/[0-9]+mm|[0-9]+fps|[0-9]+:[0-9]+/').out('array')
-  pushMatches(technical, 'technical', 1.0)
+  // Technical specs (35mm film, 24fps, ambient sound cues)
+  const technicalPatterns = [
+    /\b\d+mm\s+(?:film|lens)\b/gi,
+    /\bshallow depth of field\b/gi,
+    /\b(?:ambient|soft|loud)\s+(?:\w+\s+)?(?:sound|audio|music)\b/gi,
+    /\b\d+fps\b/gi,
+    /\b\d+:\d+\b/gi
+  ]
+  pushRegexMatches(technicalPatterns, 'technical', 1.0, { skipCompletenessCheck: true })
+
+  const technicalDocMatches = doc.match('/[0-9]+mm|[0-9]+fps|[0-9]+:[0-9]+/').out('array')
+  pushMatches(technicalDocMatches, 'technical', 1.0, { skipCompletenessCheck: true })
 
   return phrases
 }
@@ -370,6 +396,119 @@ function scorePhraseImportance(phrase, context) {
  */
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function categorizeWithContext(phrase, fullText, defaultCategory, context) {
+  const baseCategory = defaultCategory || 'descriptive'
+  if (!phrase) return baseCategory
+
+  const lowerPhrase = phrase.toLowerCase()
+
+  if (lowerPhrase.includes('depth of field')) {
+    return 'depthOfField'
+  }
+
+  const lowerText = fullText.toLowerCase()
+  const position = lowerText.indexOf(lowerPhrase)
+  const radius = 50
+  const contextStart = position === -1 ? 0 : Math.max(0, position - radius)
+  const contextEnd =
+    position === -1 ? Math.min(lowerText.length, lowerPhrase.length + radius) : Math.min(lowerText.length, position + lowerPhrase.length + radius)
+  const surrounding =
+    position === -1 ? lowerPhrase : lowerText.slice(contextStart, contextEnd)
+
+  const audioSignals = ['sound', 'sounds', 'audio', 'music', 'musician', 'melody', 'mix', 'score', 'guitar', 'piano', 'instrument']
+  if (
+    baseCategory !== 'technical' &&
+    (audioSignals.some(signal => lowerPhrase.includes(signal)) ||
+      audioSignals.some(signal => surrounding.includes(signal)))
+  ) {
+    return 'technical'
+  }
+
+  const subjectSignals = ['musician', 'character', 'person', 'woman', 'man', 'child', 'people', 'artist', 'performer', 'elderly', 'kid', 'boy', 'girl', 'crowd']
+  if (baseCategory !== 'subject' && subjectSignals.some(signal => surrounding.includes(signal))) {
+    return 'subject'
+  }
+
+  if (context && typeof context.findCategoryForPhrase === 'function') {
+    const contextMatch = context.findCategoryForPhrase(phrase)
+    if (contextMatch?.category) {
+      return contextMatch.category
+    }
+  }
+
+  return baseCategory
+}
+
+function protectPhrases(text) {
+  if (!text) {
+    return { text: '', map: new Map() }
+  }
+
+  let processed = text
+  const placeholderMap = new Map()
+  let counter = 0
+
+  PROTECTED_PHRASES.forEach(phrase => {
+    const regex = new RegExp(`\\b${escapeRegex(phrase)}\\b`, 'gi')
+    processed = processed.replace(regex, match => {
+      const placeholder = `__PROTECTED_${counter++}__`
+      placeholderMap.set(placeholder, match)
+      return placeholder
+    })
+  })
+
+  return { text: processed, map: placeholderMap }
+}
+
+function restoreProtectedSegments(value, placeholderMap) {
+  if (!value || !placeholderMap || placeholderMap.size === 0) {
+    return value
+  }
+
+  let restored = value
+  placeholderMap.forEach((original, placeholder) => {
+    const regex = new RegExp(escapeRegex(placeholder), 'g')
+    restored = restored.replace(regex, original)
+  })
+
+  return restored
+}
+
+function isCompletePhrase(phrase, fullText) {
+  const candidate = phrase.trim()
+  if (!candidate) return false
+
+  const incompletePatterns = [/^(an?|the)\s+\w+$/i, /^ambient\s+\w+$/i, /^soft\s+\w+$/i]
+  if (incompletePatterns.some(pattern => pattern.test(candidate))) {
+    return false
+  }
+
+  const lowerText = fullText.toLowerCase()
+  const lowerPhrase = candidate.toLowerCase()
+
+  let index = lowerText.indexOf(lowerPhrase)
+  if (index === -1) {
+    return true
+  }
+
+  while (index !== -1) {
+    const beforeChar = index > 0 ? lowerText[index - 1] : ''
+    const afterPos = index + lowerPhrase.length
+    const afterChar = afterPos < lowerText.length ? lowerText[afterPos] : ''
+
+    const beforeOk = !beforeChar || !/\w/.test(beforeChar)
+    const afterOk = !afterChar || !/\w/.test(afterChar)
+
+    if (beforeOk && afterOk) {
+      return true
+    }
+
+    index = lowerText.indexOf(lowerPhrase, index + 1)
+  }
+
+  return false
 }
 
 /**

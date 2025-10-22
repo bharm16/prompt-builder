@@ -182,9 +182,10 @@ export class PromptContext {
    */
   mapGroupToCategory(groupName) {
     const mappings = {
-      cameraMovements: 'action',
-      lightingQuality: 'time',
-      aesthetics: 'style'
+      cameraMovements: 'cameraMove',
+      lightingQuality: 'lighting',
+      aesthetics: 'style',
+      audioElements: 'technical'
     };
     return mappings[groupName] || null;
   }
