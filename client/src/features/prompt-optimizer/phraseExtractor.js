@@ -9,6 +9,206 @@ const PROTECTED_PHRASES = [
   'shallow depth of field'
 ]
 
+const LIGHTING_DESCRIPTOR_KEYWORDS = [
+  'warm',
+  'cool',
+  'soft',
+  'hard',
+  'dramatic',
+  'glowing',
+  'glow',
+  'ambient',
+  'flickering',
+  'neon',
+  'moody',
+  'dynamic',
+  'interplay',
+  'golden',
+  'streetlight',
+  'streetlights',
+  'shadow',
+  'shadows',
+  'backlit',
+  'rim',
+  'sunlit',
+  'moonlit',
+  'sunlight',
+  'moonlight',
+  'lantern',
+  'candlelit',
+  'candlelight',
+  'illumination'
+]
+
+const LIGHTING_TOKENS = [
+  'light',
+  'lighting',
+  'streetlight',
+  'streetlights',
+  'glow',
+  'illumination',
+  'backlit',
+  'sunlight',
+  'moonlight',
+  'headlight',
+  'headlights',
+  'lamplight',
+  'lantern',
+  'torch',
+  'spotlight',
+  'spotlights'
+]
+
+const MOOD_ANCHOR_TOKENS = [
+  'atmosphere',
+  'feel',
+  'feeling',
+  'tone',
+  'mood',
+  'vibe',
+  'ambience',
+  'ambiance',
+  'energy',
+  'aura',
+  'emotion',
+  'sensibility'
+]
+
+const FRAMING_TOKENS = ['shot', 'shots', 'angle', 'angles']
+
+const FRAMING_PHRASES = [
+  'point of view',
+  'point-of-view',
+  'pov',
+  'over the shoulder',
+  'over-the-shoulder',
+  'dutch angle',
+  'birds eye',
+  "bird's eye",
+  "bird’s eye",
+  'profile shot'
+]
+
+const ENVIRONMENT_TOKENS = [
+  'bench',
+  'wall',
+  'walls',
+  'street',
+  'streets',
+  'alley',
+  'alleyway',
+  'alleyways',
+  'park',
+  'overpass',
+  'bridge',
+  'rooftop',
+  'roof',
+  'ground',
+  'floor',
+  'ceiling',
+  'structure',
+  'structures',
+  'building',
+  'buildings',
+  'architecture',
+  'warehouse',
+  'factory',
+  'tunnel',
+  'corridor',
+  'hallway',
+  'staircase',
+  'stairs',
+  'stairway',
+  'stairwell',
+  'doorway',
+  'entrance',
+  'exit',
+  'path',
+  'walkway',
+  'interior',
+  'exterior',
+  'plaza',
+  'square',
+  'market',
+  'foyer',
+  'lobby',
+  'archway'
+]
+
+const ENVIRONMENT_MATERIAL_TOKENS = [
+  'metal',
+  'wood',
+  'brick',
+  'concrete',
+  'cobblestone',
+  'cobblestones',
+  'asphalt',
+  'steel',
+  'glass',
+  'stone',
+  'marble',
+  'granite',
+  'sand',
+  'snow',
+  'ice',
+  'dirt',
+  'mud'
+]
+
+const ENVIRONMENT_MATERIAL_DESCRIPTORS = [
+  'cold',
+  'warm',
+  'weathered',
+  'rusted',
+  'aged',
+  'rough',
+  'textured',
+  'smooth',
+  'wet',
+  'dry',
+  'cracked',
+  'broken',
+  'polished',
+  'gleaming',
+  'glossy',
+  'matte',
+  'worn',
+  'weather-beaten',
+  'weather beaten'
+]
+
+const TECHNICAL_TOKENS = [
+  'fps',
+  'mm',
+  'lut',
+  'codec',
+  'format',
+  'resolution',
+  'iso',
+  'shutter',
+  'aperture',
+  'exposure',
+  'bitrate'
+]
+
+const TECHNICAL_PHRASES = [
+  'aspect ratio',
+  'frame rate',
+  'frame-rate',
+  'frame rates',
+  'duration',
+  'run time',
+  'runtime',
+  'timecode',
+  'time code'
+]
+
+const TECHNICAL_DURATION_RANGE_REGEX =
+  /\b\d+(?:\.\d+)?\s*(?:-|to)\s*\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds|ms|milliseconds|mins?|minutes)\b/
+
+const TECHNICAL_DURATION_SINGLE_REGEX =
+  /\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds|ms|milliseconds|mins?|minutes)\b/
+
 /**
  * Extract video prompt phrases with optional context awareness
  *
@@ -177,7 +377,9 @@ function performNLPExtraction(text, context) {
   const lightingPatterns = [
     /\b(?:soft|dramatic|golden(?: hour)?|magic(?: hour)?|blue hour|ambient|diffused|natural|studio|back|rim|neon|candlelit|moonlit|sunlit|warm|cool|harsh|dappled) (?:light|lighting|glow)\b/gi,
     /\b(?:low-key|high-key|chiaroscuro) lighting\b/gi,
-    /\b(?:rim[- ]?light|back[- ]?light|backlit|silhouetted lighting|practical lights?)\b/gi
+    /\b(?:rim[- ]?light|back[- ]?light|backlit|silhouetted lighting|practical lights?)\b/gi,
+    /\b(?:flickering|glowing|neon|warm|cool|soft|harsh)\s+streetlights?\b/gi,
+    /\b(?:dynamic|dramatic|moody|subtle)\s+interplay of light and (?:dark|shadow|shadows)\b/gi
   ]
   pushRegexMatches(lightingPatterns, 'lighting', 0.75)
 
@@ -301,7 +503,9 @@ function performNLPExtraction(text, context) {
     /\bshallow depth of field\b/gi,
     /\b(?:ambient|soft|loud)\s+(?:\w+\s+)?(?:sound|audio|music)\b/gi,
     /\b\d+fps\b/gi,
-    /\b\d+:\d+\b/gi
+    /\b\d+:\d+\b/gi,
+    /\b\d+(?:\.\d+)?\s*(?:-|to)\s*\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds|ms|milliseconds|mins?|minutes)\b/gi,
+    /\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds|ms|milliseconds|mins?|minutes)\b/gi
   ]
   pushRegexMatches(technicalPatterns, 'technical', 1.0, { skipCompletenessCheck: true })
 
@@ -403,6 +607,11 @@ function categorizeWithContext(phrase, fullText, defaultCategory, context) {
   if (!phrase) return baseCategory
 
   const lowerPhrase = phrase.toLowerCase()
+  const normalized = lowerPhrase.replace(/[–—-]/g, ' ')
+  const tokens = normalized.split(/\s+/).filter(Boolean)
+  const tokenSet = new Set(tokens)
+  const includesAny = terms => terms.some(term => normalized.includes(term))
+  const hasToken = terms => terms.some(term => tokenSet.has(term))
 
   const depthSignals = ['depth of field', 'depth-of-field', 'deep focus', 'bokeh']
   if (depthSignals.some(signal => lowerPhrase.includes(signal))) {
@@ -418,18 +627,93 @@ function categorizeWithContext(phrase, fullText, defaultCategory, context) {
   const surrounding =
     position === -1 ? lowerPhrase : lowerText.slice(contextStart, contextEnd)
 
-  const audioSignals = ['sound', 'sounds', 'audio', 'music', 'musician', 'melody', 'mix', 'score', 'guitar', 'piano', 'instrument']
-  if (
-    baseCategory !== 'technical' &&
-    (audioSignals.some(signal => lowerPhrase.includes(signal)) ||
-      audioSignals.some(signal => surrounding.includes(signal)))
-  ) {
+  const audioSignals = [
+    'sound',
+    'sounds',
+    'audio',
+    'music',
+    'musician',
+    'melody',
+    'mix',
+    'score',
+    'guitar',
+    'piano',
+    'instrument',
+    'orchestra',
+    'orchestral'
+  ]
+  if (audioSignals.some(signal => tokenSet.has(signal) || surrounding.includes(signal))) {
     return 'technical'
   }
 
   const subjectSignals = ['musician', 'character', 'person', 'woman', 'man', 'child', 'people', 'artist', 'performer', 'elderly', 'kid', 'boy', 'girl', 'crowd']
-  if (baseCategory !== 'subject' && subjectSignals.some(signal => surrounding.includes(signal))) {
+  if (subjectSignals.some(signal => tokenSet.has(signal) || surrounding.includes(signal))) {
     return 'subject'
+  }
+
+  let category = baseCategory
+
+  const hasFramingSignal =
+    hasToken(FRAMING_TOKENS) || FRAMING_PHRASES.some(matchPhrase => normalized.includes(matchPhrase))
+  if (hasFramingSignal) {
+    category = 'framing'
+  }
+
+  const mentionsLightToken = hasToken(LIGHTING_TOKENS)
+  const mentionsLightingDescriptor =
+    LIGHTING_DESCRIPTOR_KEYWORDS.some(term => normalized.includes(term)) ||
+    tokenSet.has('shadow') ||
+    tokenSet.has('shadows') ||
+    normalized.includes('light and dark') ||
+    normalized.includes('light-and-dark') ||
+    normalized.includes('light & dark')
+
+  if (
+    mentionsLightToken &&
+    (mentionsLightingDescriptor || tokens.length <= 3 || normalized.includes('streetlight'))
+  ) {
+    category = 'lighting'
+  }
+
+  if (
+    normalized.includes('interplay of light and dark') ||
+    normalized.includes('play of light and shadow') ||
+    normalized.includes('play of light and dark')
+  ) {
+    category = 'lighting'
+  }
+
+  const hasMoodSignal = hasToken(MOOD_ANCHOR_TOKENS)
+  if (hasMoodSignal) {
+    category = 'mood'
+  }
+
+  const hasEnvironmentStructure = hasToken(ENVIRONMENT_TOKENS)
+  const hasEnvironmentMaterial = hasToken(ENVIRONMENT_MATERIAL_TOKENS)
+  const hasMaterialDescriptor =
+    hasEnvironmentMaterial &&
+    (tokens.some(token => ENVIRONMENT_MATERIAL_DESCRIPTORS.includes(token)) ||
+      includesAny(ENVIRONMENT_MATERIAL_DESCRIPTORS))
+
+  if (
+    (hasEnvironmentStructure || hasMaterialDescriptor) &&
+    category !== 'mood' &&
+    category !== 'lighting'
+  ) {
+    category = 'environment'
+  }
+
+  const technicalIndicator =
+    hasToken(TECHNICAL_TOKENS) ||
+    includesAny(TECHNICAL_PHRASES) ||
+    TECHNICAL_DURATION_RANGE_REGEX.test(normalized) ||
+    TECHNICAL_DURATION_SINGLE_REGEX.test(normalized)
+  if (technicalIndicator) {
+    category = 'technical'
+  }
+
+  if (category !== baseCategory) {
+    return category
   }
 
   if (context && typeof context.findCategoryForPhrase === 'function') {
