@@ -24,6 +24,7 @@ import CreativeBrainstormEnhanced from '../../components/CreativeBrainstormEnhan
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
+import DebugButton from '../../components/DebugButton';
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 import { PromptContext } from '../../utils/PromptContext';
@@ -1088,6 +1089,18 @@ function PromptOptimizerContent() {
           </footer>
         )}
       </main>
+
+      {/* Debug Button - Show in development or with ?debug=true */}
+      {(process.env.NODE_ENV === 'development' ||
+        new URLSearchParams(window.location.search).get('debug') === 'true') && (
+        <DebugButton
+          inputPrompt={promptOptimizer.inputPrompt}
+          displayedPrompt={promptOptimizer.displayedPrompt}
+          optimizedPrompt={promptOptimizer.optimizedPrompt}
+          selectedMode={selectedMode}
+          promptContext={promptContext}
+        />
+      )}
     </div>
   );
 }
