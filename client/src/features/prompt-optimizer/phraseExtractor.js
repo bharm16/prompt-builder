@@ -289,7 +289,7 @@ function performNLPExtraction(text, context) {
     /\b(?:creamy|soft|dreamy) bokeh\b/gi,
     /\bbokeh-heavy\b/gi
   ]
-  pushRegexMatches(depthPatterns, 'depthOfField', 0.75)
+  pushRegexMatches(depthPatterns, 'technical', 0.75, { skipCompletenessCheck: true })
 
   // Compound nouns (frock coat, battlefield cemetery)
   const compounds = doc.match('#Noun #Noun+').out('array')
@@ -404,8 +404,9 @@ function categorizeWithContext(phrase, fullText, defaultCategory, context) {
 
   const lowerPhrase = phrase.toLowerCase()
 
-  if (lowerPhrase.includes('depth of field')) {
-    return 'depthOfField'
+  const depthSignals = ['depth of field', 'depth-of-field', 'deep focus', 'bokeh']
+  if (depthSignals.some(signal => lowerPhrase.includes(signal))) {
+    return 'technical'
   }
 
   const lowerText = fullText.toLowerCase()
