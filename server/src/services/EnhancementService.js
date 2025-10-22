@@ -25,13 +25,41 @@ export class EnhancementService {
     fullPrompt,
     originalUserPrompt,
     brainstormContext,
+    highlightedCategory,
+    highlightedCategoryConfidence,
+    highlightedPhrase,
   }) {
     logger.info('Getting enhancement suggestions', {
       highlightedLength: highlightedText?.length,
+      highlightedCategory: highlightedCategory || null,
+      categoryConfidence: highlightedCategoryConfidence ?? null,
+      highlightedPhrasePreview: highlightedPhrase
+        ? String(highlightedPhrase).slice(0, 80)
+        : undefined,
     });
 
     const isVideoPrompt = this.isVideoPrompt(fullPrompt);
     const brainstormSignature = this.buildBrainstormSignature(brainstormContext);
+    const highlightWordCount = this.countWords(highlightedText);
+    const phraseRole = isVideoPrompt
+      ? this.detectVideoPhraseRole(
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          highlightedCategory
+        )
+      : null;
+    const videoConstraints = isVideoPrompt
+      ? this.getVideoReplacementConstraints(
+          {
+            highlightWordCount,
+            phraseRole,
+            highlightedText,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          }
+        )
+      : null;
 
     // Check cache first
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
@@ -42,6 +70,10 @@ export class EnhancementService {
       originalUserPrompt: (originalUserPrompt || '').substring(0, 500),
       isVideoPrompt,
       brainstormSignature,
+      highlightedCategory: highlightedCategory || null,
+      highlightWordCount,
+      phraseRole,
+      videoConstraintMode: videoConstraints?.mode || null,
     });
 
     const cached = await cacheService.get(cacheKey, 'enhancement');
@@ -77,6 +109,11 @@ export class EnhancementService {
           originalUserPrompt,
           isVideoPrompt,
           brainstormContext,
+          phraseRole,
+          highlightWordCount,
+          videoConstraints,
+          highlightedCategory,
+          highlightedCategoryConfidence,
         });
 
     // Define schema for validation
@@ -111,6 +148,9 @@ export class EnhancementService {
       isPlaceholder,
       suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
       hasCategory: suggestions?.[0]?.category !== undefined,
+      phraseRole,
+      videoConstraintMode: videoConstraints?.mode || null,
+      highlightWordCount,
     });
 
     // Ensure diversity in suggestions
@@ -121,10 +161,120 @@ export class EnhancementService {
       highlightedText,
       isPlaceholder,
       isVideoPrompt,
+      videoConstraints,
     });
 
-    const suggestionsToUse =
-      sanitizedSuggestions.length > 0 ? sanitizedSuggestions : diverseSuggestions;
+    let suggestionsToUse = sanitizedSuggestions;
+    let activeConstraints = videoConstraints;
+    let usedFallback = false;
+    let fallbackSourceCount = Array.isArray(suggestions) ? suggestions.length : 0;
+    const attemptedModes = new Set();
+    if (activeConstraints?.mode) {
+      attemptedModes.add(activeConstraints.mode);
+    }
+
+    const regenerationDetails = {
+      highlightWordCount,
+      phraseRole,
+      highlightedText,
+      highlightedCategory,
+      highlightedCategoryConfidence,
+    };
+
+    if (suggestionsToUse.length === 0 && isVideoPrompt && !isPlaceholder) {
+      logger.warn('All suggestions removed during sanitization', {
+        highlightWordCount,
+        phraseRole,
+        constraintMode: videoConstraints?.mode || null,
+      });
+
+      let currentConstraints = videoConstraints;
+      let fallbackConstraints = this.getVideoFallbackConstraints(
+        currentConstraints,
+        regenerationDetails,
+        attemptedModes
+      );
+
+      while (fallbackConstraints) {
+        try {
+          const fallbackPrompt = this.buildRewritePrompt({
+            highlightedText,
+            contextBefore,
+            contextAfter,
+            fullPrompt,
+            originalUserPrompt,
+            isVideoPrompt,
+            brainstormContext,
+            phraseRole,
+            highlightWordCount,
+            videoConstraints: fallbackConstraints,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          });
+
+          const fallbackSuggestions = await StructuredOutputEnforcer.enforceJSON(
+            this.claudeClient,
+            fallbackPrompt,
+            {
+              schema,
+              isArray: true,
+              maxTokens: 2048,
+              maxRetries: 1,
+              temperature,
+            }
+          );
+
+          const fallbackDiverse = await this.ensureDiverseSuggestions(
+            fallbackSuggestions
+          );
+          const fallbackSanitized = this.sanitizeSuggestions(fallbackDiverse, {
+            highlightedText,
+            isPlaceholder,
+            isVideoPrompt,
+            videoConstraints: fallbackConstraints,
+          });
+
+          if (fallbackSanitized.length > 0) {
+            suggestionsToUse = fallbackSanitized;
+            activeConstraints = fallbackConstraints;
+            usedFallback = true;
+            fallbackSourceCount = Array.isArray(fallbackSuggestions)
+              ? fallbackSuggestions.length
+              : 0;
+            break;
+          }
+
+          logger.warn('Fallback attempt yielded no compliant suggestions', {
+            modeTried: fallbackConstraints.mode,
+            generatedCount: Array.isArray(fallbackSuggestions)
+              ? fallbackSuggestions.length
+              : 0,
+            sanitizedCount: fallbackSanitized.length,
+          });
+        } catch (error) {
+          logger.warn('Fallback regeneration failed', {
+            mode: fallbackConstraints.mode,
+            error: error.message,
+          });
+        }
+
+        attemptedModes.add(fallbackConstraints.mode);
+        currentConstraints = fallbackConstraints;
+        fallbackConstraints = this.getVideoFallbackConstraints(
+          currentConstraints,
+          regenerationDetails,
+          attemptedModes
+        );
+      }
+    }
+
+    if (suggestionsToUse.length === 0) {
+      logger.info('No sanitized suggestions available after regeneration attempts', {
+        phraseRole,
+        highlightWordCount,
+        attemptedModes: Array.from(attemptedModes),
+      });
+    }
 
     // Debug logging
     logger.info('Processing suggestions for categorization', {
@@ -132,6 +282,8 @@ export class EnhancementService {
       hasCategoryField: suggestionsToUse[0]?.category !== undefined,
       totalSuggestions: suggestionsToUse.length,
       sanitizedCount: sanitizedSuggestions.length,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      usedFallback,
     });
 
     // Group suggestions by category if they have categories
@@ -143,12 +295,26 @@ export class EnhancementService {
       suggestions: groupedSuggestions,
       isPlaceholder,
       hasCategories: isPlaceholder && suggestionsToUse[0]?.category ? true : false,
+      phraseRole: phraseRole || null,
+      appliedConstraintMode: activeConstraints?.mode || null,
     };
 
+    if (activeConstraints) {
+      result.appliedVideoConstraints = activeConstraints;
+    }
+
+    if (suggestionsToUse.length === 0) {
+      result.noSuggestionsReason =
+        'No template-compliant drop-in replacements were generated for this highlight.';
+    }
+
     logger.info('Final result structure', {
-      isGrouped: Array.isArray(groupedSuggestions) && groupedSuggestions[0]?.suggestions !== undefined,
+      isGrouped:
+        Array.isArray(groupedSuggestions) &&
+        groupedSuggestions[0]?.suggestions !== undefined,
       categoriesCount: groupedSuggestions[0]?.suggestions ? groupedSuggestions.length : 0,
-      hasCategories: result.hasCategories
+      hasCategories: result.hasCategories,
+      appliedConstraintMode: result.appliedConstraintMode || null,
     });
 
     // Cache the result
@@ -156,10 +322,21 @@ export class EnhancementService {
       ttl: this.cacheConfig.ttl,
     });
 
+    let baseSuggestionCount;
+    if (usedFallback) {
+      baseSuggestionCount = fallbackSourceCount;
+    } else if (Array.isArray(suggestions)) {
+      baseSuggestionCount = suggestions.length;
+    } else {
+      baseSuggestionCount = 0;
+    }
+
     logger.info('Enhancement suggestions generated', {
-      count: diverseSuggestions.length,
+      count: suggestionsToUse.length,
       type: isPlaceholder ? 'placeholder' : 'rewrite',
-      diversityEnforced: diverseSuggestions.length !== suggestions.length,
+      diversityEnforced: suggestionsToUse.length !== baseSuggestionCount,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      usedFallback,
     });
 
     return result;
@@ -619,42 +796,130 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     originalUserPrompt,
     isVideoPrompt,
     brainstormContext,
+    phraseRole,
+    highlightWordCount,
+    videoConstraints,
+    highlightedCategory,
+    highlightedCategoryConfidence,
   }) {
     const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
       isVideoPrompt,
     });
 
     if (isVideoPrompt) {
-      const phraseRole = this.detectVideoPhraseRole(
-        highlightedText,
-        contextBefore,
-        contextAfter
-      );
-      const highlightWordCount = this.countWords(highlightedText);
-      const minWords = 10;
-      const maxWords = 25;
+      const resolvedHighlightWordCount = Number.isFinite(highlightWordCount)
+        ? highlightWordCount
+        : this.countWords(highlightedText);
+      const resolvedPhraseRole =
+        phraseRole ||
+        this.detectVideoPhraseRole(
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          highlightedCategory
+        );
+      const resolvedVideoConstraints =
+        videoConstraints ||
+        this.getVideoReplacementConstraints(
+          {
+            highlightWordCount: resolvedHighlightWordCount,
+            phraseRole: resolvedPhraseRole,
+            highlightedText,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          }
+        );
+
+      const {
+        minWords,
+        maxWords,
+        maxSentences = 1,
+        disallowTerminalPunctuation,
+        formRequirement,
+        focusGuidance,
+        extraRequirements = [],
+        slotDescriptor,
+        mode,
+      } = resolvedVideoConstraints;
+
+      const sentenceRequirementLabel =
+        mode === 'micro'
+          ? 'Noun phrase only (no sentences)'
+          : maxSentences === 1
+          ? 'Single sentence (no multi-sentence rewrites)'
+          : `${maxSentences} sentences max`;
+
       const brainstormRequirementLine = brainstormSection
         ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
         : '';
+
+      const focusLines =
+        Array.isArray(focusGuidance) && focusGuidance.length > 0
+          ? focusGuidance
+          : [
+              'Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle',
+              'Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")',
+              'Subject detail: 2-3 specific visual characteristics',
+              'Setting: precise location, time of day',
+              'Style: film reference (shot on 35mm, cinematic, documentary-style)',
+            ];
+
+      const requirementLines = [
+        `✓ ${minWords}-${maxWords} words`,
+        `✓ ${sentenceRequirementLabel}`,
+        '✓ Film terminology (not generic descriptions)',
+        '✓ ONE clear action/focus per suggestion',
+        '✓ Specific over generic ("weathered oak" not "nice table")',
+        '✓ Flows with surrounding context',
+        '✓ Do NOT mention or modify template section headings (Main Prompt, Technical Specs, Alternative Approaches)',
+        '✓ Avoid meta instructions like "Consider" or "You could" — output only the replacement sentence',
+        '✓ Respect the Video Prompt Template tone: cinematic, efficient, no filler language',
+      ];
+
+      extraRequirements.forEach((req) => {
+        if (req && !requirementLines.includes(`✓ ${req}`)) {
+          requirementLines.push(`✓ ${req}`);
+        }
+      });
+
+      if (disallowTerminalPunctuation) {
+        requirementLines.push('✓ No ending punctuation (noun phrase only)');
+      }
+
+      const slotLine = slotDescriptor
+        ? `**Slot Role:** ${slotDescriptor}.`
+        : `**Phrase Role:** ${resolvedPhraseRole} — replacements must serve the same grammatical role and slot cleanly into the existing sentence.`;
+
+      const formLine = formRequirement ? `**Form Requirement:** ${formRequirement}.` : '';
+
+      const lengthGuardrailLine =
+        mode === 'micro'
+          ? `**Length Guardrail:** ${minWords}-${maxWords} words, noun phrase drop-in replacement.`
+          : `**Length Guardrail:** ${minWords}-${maxWords} words, ${
+              maxSentences === 1 ? 'single sentence' : `${maxSentences} sentences max`
+            }, drop-in replacement.`;
+
+      const approachLines = [
+        '- Keep enhancements scoped to the highlighted slot',
+        '- Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8',
+        '- Prioritize ONE specific element per variant',
+        '- Avoid multiple simultaneous actions',
+      ];
 
       return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
         brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
       }
 
 **APPROACH:**
-- Keep enhancements concise (10-25 words per replacement)
-- Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8
-- Prioritize ONE specific element per variant
-- Avoid multiple simultaneous actions
+${approachLines.join('\n')}
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
 
-**Phrase Role:** ${phraseRole} — replacements must serve the same grammatical role and slot cleanly into the existing sentence.
-**Original Length:** ${highlightWordCount} words.
-**Length Guardrail:** ${minWords}-${maxWords} words, single sentence, no bullet points.
-
-**CONTEXT:**
+${slotLine}
+**Original Length:** ${resolvedHighlightWordCount} words.
+${lengthGuardrailLine}
+${formLine ? `${formLine}\n` : ''}**CONTEXT:**
 Before: "${contextBefore}"
 After: "${contextAfter}"
 
@@ -662,21 +927,10 @@ After: "${contextAfter}"
 Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement focusing on:
 
 **Focus ONE per variant:**
-- Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle
-- Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")
-- Subject detail: 2-3 specific visual characteristics
-- Setting: precise location, time of day
-- Style: film reference (shot on 35mm, cinematic, documentary-style)
+${focusLines.map((line) => `- ${line}`).join('\n')}
 
 **Requirements:**
-✓ 10-25 words per replacement (proven optimal length)
-✓ Film terminology (not generic descriptions)
-✓ ONE clear action/focus per suggestion
-✓ Specific over generic ("weathered oak" not "nice table")
-✓ Flows with surrounding context
-✓ Do NOT mention or modify template section headings (Main Prompt, Technical Specs, Alternative Approaches)
-✓ Avoid meta instructions like "Consider" or "You could" — output only the replacement sentence
-✓ Respect the Video Prompt Template tone: cinematic, efficient, no filler language
+${requirementLines.join('\n')}
 ${brainstormRequirementLine}Return ONLY a JSON array (no markdown, no code blocks):
 
 [
@@ -1291,13 +1545,63 @@ Provide a JSON object with the new suggestion:
    * Detect the likely role of a highlighted phrase within a video prompt
    * @private
    */
-  detectVideoPhraseRole(highlightedText, contextBefore, contextAfter) {
+  detectVideoPhraseRole(highlightedText, contextBefore, contextAfter, explicitCategory) {
     const text = highlightedText?.trim() || '';
+    const normalizedCategory = explicitCategory
+      ? explicitCategory.toLowerCase()
+      : '';
+
+    const mapCategory = (category) => {
+      if (!category) {
+        return null;
+      }
+
+      if (/subject|character|figure|talent|person|performer/.test(category)) {
+        return 'subject or character detail';
+      }
+
+      if (/light|lighting|illumination|shadow/.test(category)) {
+        return 'lighting description';
+      }
+
+      if (/camera|framing|shot|lens/.test(category)) {
+        return 'camera or framing description';
+      }
+
+      if (/location|setting|environment|background|place/.test(category)) {
+        return 'location or environment detail';
+      }
+
+      if (/style|tone|aesthetic|mood|genre/.test(category)) {
+        return 'style or tone descriptor';
+      }
+
+      if (/audio|music|sound|score/.test(category)) {
+        return 'audio or score descriptor';
+      }
+
+      return null;
+    };
+
+    const categoryRole = mapCategory(normalizedCategory);
+    if (categoryRole) {
+      return categoryRole;
+    }
+
     if (!text) {
       return 'general visual detail';
     }
 
     const combinedContext = `${contextBefore || ''} ${contextAfter || ''}`.toLowerCase();
+
+    const contextRole = mapCategory(combinedContext);
+    if (contextRole) {
+      return contextRole;
+    }
+
+    if (/\b(location|setting|background|environment|interior|exterior|room|space|chamber|landscape|street)\b/.test(combinedContext)) {
+      return 'location or environment detail';
+    }
 
     if (/\b(camera|shot|angle|frame|lens|dolly|pan|tilt|tracking|handheld|static)\b/.test(combinedContext)) {
       return 'camera or framing description';
@@ -1305,10 +1609,6 @@ Provide a JSON object with the new suggestion:
 
     if (/\b(light|lighting|illuminated|glow|shadow|contrast|exposure|flare)\b/.test(combinedContext)) {
       return 'lighting description';
-    }
-
-    if (/\b(location|setting|background|environment|interior|exterior|room|space|chamber|landscape|street)\b/.test(combinedContext)) {
-      return 'location or environment detail';
     }
 
     if (/\bcharacter|figure|subject|person|leader|speaker|performer|actor|portrait\b/.test(combinedContext)) {
@@ -1342,10 +1642,273 @@ Provide a JSON object with the new suggestion:
   }
 
   /**
+   * Resolve video replacement constraints based on highlight context
+   * @private
+   */
+  getVideoReplacementConstraints(details = {}, options = {}) {
+    const {
+      highlightWordCount = 0,
+      phraseRole,
+      highlightedText,
+      highlightedCategory,
+      highlightedCategoryConfidence,
+    } = details;
+    const { forceMode } = options;
+
+    const trimmedText = (highlightedText || '').trim();
+    const normalizedRole = (phraseRole || '').toLowerCase();
+    const normalizedCategory = (highlightedCategory || '').toLowerCase();
+    const highlightWordCountSafe = Number.isFinite(highlightWordCount)
+      ? Math.max(0, Math.floor(highlightWordCount))
+      : 0;
+    const highlightIsSentence =
+      /[.!?]$/.test(trimmedText) || highlightWordCountSafe >= 12;
+
+    const categoryIsReliable =
+      highlightedCategoryConfidence === undefined ||
+      highlightedCategoryConfidence === null ||
+      !Number.isFinite(highlightedCategoryConfidence)
+        ? true
+        : highlightedCategoryConfidence >= 0.45;
+
+    const trustedCategory =
+      highlightedCategory && categoryIsReliable ? normalizedCategory : '';
+    const categorySource = trustedCategory || normalizedRole;
+
+    const slotDescriptor =
+      phraseRole ||
+      (highlightedCategory ? `${highlightedCategory} detail` : 'visual detail');
+
+    const ensureBounds = (min, max) => {
+      const lower = Math.max(1, Math.round(min));
+      const upper = Math.max(lower, Math.round(max));
+      return { min: lower, max: upper };
+    };
+
+    const buildConstraint = (config) => {
+      const bounds = ensureBounds(config.minWords, config.maxWords);
+      return {
+        ...config,
+        minWords: bounds.min,
+        maxWords: bounds.max,
+        maxSentences: config.maxSentences ?? 1,
+        slotDescriptor,
+      };
+    };
+
+    const micro = () =>
+      buildConstraint({
+        mode: 'micro',
+        minWords: Math.max(2, Math.min(3, highlightWordCountSafe + 1)),
+        maxWords: Math.min(6, Math.max(4, highlightWordCountSafe + 2)),
+        maxSentences: 1,
+        disallowTerminalPunctuation: true,
+        formRequirement: '2-6 word cinematic noun phrase describing the same subject',
+        focusGuidance: [
+          'Use precise visual modifiers (wardrobe, era, material)',
+          'Avoid verbs; keep the replacement as a noun phrase',
+        ],
+        extraRequirements: ['Keep it a noun phrase (no verbs)'],
+      });
+
+    const lighting = () =>
+      buildConstraint({
+        mode: 'lighting',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(14, Math.max(9, highlightWordCountSafe + 4)),
+        maxSentences: 1,
+        formRequirement:
+          'Single lighting clause covering source, direction, and color temperature',
+        focusGuidance: [
+          'Name the light source and direction',
+          'Include color temperature or mood language',
+        ],
+        extraRequirements: ['Mention light source + direction', 'Reference color temperature or mood'],
+      });
+
+    const camera = () =>
+      buildConstraint({
+        mode: 'camera',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(9, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement:
+          'Single movement clause combining camera move, lens, and framing',
+        focusGuidance: [
+          'Pair a camera move with a lens choice and framing detail',
+          'Stay in the same tense and perspective as the template',
+        ],
+        extraRequirements: ['Include a lens or focal length', 'Reference camera movement'],
+      });
+
+    const location = () =>
+      buildConstraint({
+        mode: 'location',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(14, Math.max(9, highlightWordCountSafe + 4)),
+        maxSentences: 1,
+        formRequirement: 'Concise location beat with time-of-day or atmosphere',
+        focusGuidance: [
+          'Anchor the setting with sensory specifics',
+          'Mention time of day or atmospheric detail',
+        ],
+        extraRequirements: ['Include a sensory or atmospheric hook'],
+      });
+
+    const style = () =>
+      buildConstraint({
+        mode: 'style',
+        minWords: Math.max(5, Math.min(7, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(8, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement: 'Compact stylistic phrase referencing medium, era, or tone',
+        focusGuidance: [
+          'Reference a medium, era, or artistic influence',
+          'Keep it tightly scoped to the highlighted span',
+        ],
+        extraRequirements: [],
+      });
+
+    const phrase = () =>
+      buildConstraint({
+        mode: 'phrase',
+        minWords: Math.max(5, Math.min(7, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(8, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement: 'Single cinematic clause focused on one production choice',
+        focusGuidance: [
+          'Emphasize one production detail (camera, lighting, subject, or location)',
+          'Avoid expanding beyond the surrounding sentence',
+        ],
+        extraRequirements: [],
+      });
+
+    const sentence = () =>
+      buildConstraint({
+        mode: 'sentence',
+        minWords: Math.max(10, Math.min(12, highlightWordCountSafe + 2)),
+        maxWords: Math.min(25, Math.max(14, highlightWordCountSafe + 6)),
+        maxSentences: 1,
+        formRequirement: 'Single cinematic sentence that flows with the template',
+        focusGuidance: [
+          'Lead with the most important cinematic detail',
+          'Keep it punchy—no compound sentences',
+        ],
+        extraRequirements: [],
+      });
+
+    if (forceMode === 'micro') {
+      return micro();
+    }
+    if (forceMode === 'phrase') {
+      return phrase();
+    }
+    if (forceMode === 'sentence') {
+      return sentence();
+    }
+    if (forceMode === 'lighting') {
+      return lighting();
+    }
+    if (forceMode === 'camera') {
+      return camera();
+    }
+    if (forceMode === 'location') {
+      return location();
+    }
+    if (forceMode === 'style') {
+      return style();
+    }
+
+    const isSubject =
+      categorySource.includes('subject') || categorySource.includes('character');
+    const isLighting = categorySource.includes('lighting');
+    const isCamera =
+      categorySource.includes('camera') ||
+      categorySource.includes('framing') ||
+      categorySource.includes('shot');
+    const isLocation =
+      categorySource.includes('location') ||
+      categorySource.includes('environment') ||
+      categorySource.includes('setting');
+    const isStyle =
+      categorySource.includes('style') ||
+      categorySource.includes('tone') ||
+      categorySource.includes('aesthetic');
+    const isAudio = categorySource.includes('audio') || categorySource.includes('score');
+    const highlightIsVeryShort = highlightWordCountSafe <= 3;
+
+    if (isSubject || highlightIsVeryShort) {
+      return micro();
+    }
+
+    if (isLighting) {
+      return lighting();
+    }
+
+    if (isCamera) {
+      return camera();
+    }
+
+    if (isLocation) {
+      return location();
+    }
+
+    if (isStyle || isAudio) {
+      return style();
+    }
+
+    if (!highlightIsSentence && highlightWordCountSafe <= 8) {
+      return phrase();
+    }
+
+    return sentence();
+  }
+
+  /**
+   * Determine the next fallback constraint mode to try
+   * @private
+   */
+  getVideoFallbackConstraints(
+    currentConstraints,
+    details = {},
+    attemptedModes = new Set()
+  ) {
+    const fallbackOrder = [];
+
+    if (!currentConstraints) {
+      fallbackOrder.push('phrase', 'micro');
+    } else if (currentConstraints.mode === 'sentence') {
+      fallbackOrder.push('phrase', 'micro');
+    } else if (currentConstraints.mode === 'phrase') {
+      fallbackOrder.push('micro');
+    } else if (
+      currentConstraints.mode === 'lighting' ||
+      currentConstraints.mode === 'camera' ||
+      currentConstraints.mode === 'location' ||
+      currentConstraints.mode === 'style'
+    ) {
+      fallbackOrder.push('micro');
+    }
+
+    for (const mode of fallbackOrder) {
+      if (attemptedModes.has(mode)) {
+        continue;
+      }
+
+      return this.getVideoReplacementConstraints(details, { forceMode: mode });
+    }
+
+    return null;
+  }
+
+  /**
    * Sanitize suggestions to ensure they are valid drop-in replacements
    * @private
    */
-  sanitizeSuggestions(suggestions, { highlightedText, isPlaceholder, isVideoPrompt }) {
+  sanitizeSuggestions(
+    suggestions,
+    { highlightedText, isPlaceholder, isVideoPrompt, videoConstraints }
+  ) {
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
       return [];
     }
@@ -1418,13 +1981,47 @@ Provide a JSON object with the new suggestion:
           return;
         }
       } else if (isVideoPrompt) {
-        if (wordCount < 10 || wordCount > 25) {
+        const constraints = videoConstraints || {
+          minWords: 10,
+          maxWords: 25,
+          maxSentences: 1,
+        };
+
+        const minWords = Number.isFinite(constraints.minWords)
+          ? constraints.minWords
+          : 10;
+        const maxWords = Number.isFinite(constraints.maxWords)
+          ? constraints.maxWords
+          : 25;
+        const maxSentences = Number.isFinite(constraints.maxSentences)
+          ? constraints.maxSentences
+          : 1;
+
+        if (wordCount < minWords || wordCount > maxWords) {
           return;
         }
 
         const sentenceCount = (text.match(/[.!?]/g) || []).length;
-        if (sentenceCount > 1) {
+        if (maxSentences > 0 && sentenceCount > maxSentences) {
           return;
+        }
+
+        if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
+          return;
+        }
+
+        if (constraints.mode === 'micro') {
+          if (/[.!?]/.test(text)) {
+            return;
+          }
+
+          if (/[,:;]/.test(text)) {
+            return;
+          }
+
+          if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
+            return;
+          }
         }
 
         if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {

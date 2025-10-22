@@ -350,7 +350,8 @@ function PromptOptimizerContent() {
     originalText,
     fullPrompt,
     selectionRange,
-    selectionOffsets
+    selectionOffsets,
+    metadata = null
   ) => {
     // Only enable ML suggestions for video mode
     if (selectedMode !== 'video') {
@@ -526,6 +527,24 @@ function PromptOptimizerContent() {
         .trim();
 
       // Set loading state
+      const formatCategoryLabel = (value) => {
+        if (!value || typeof value !== 'string') return null;
+        return value
+          .split(/[_-]+|\s+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      };
+
+      const highlightCategory =
+        metadata && typeof metadata.category === 'string' && metadata.category.trim().length > 0
+          ? metadata.category.trim()
+          : null;
+      const highlightCategoryConfidence =
+        metadata && Number.isFinite(metadata.confidence)
+          ? Math.min(1, Math.max(0, metadata.confidence))
+          : null;
+
       setSuggestionsData({
         show: true,
         selectedText: highlightedText,
@@ -536,6 +555,8 @@ function PromptOptimizerContent() {
         fullPrompt: fullPrompt,
         selectionRange: rangeSnapshot,
         selectionOffsets: offsetsSnapshot,
+        contextSecondaryValue: formatCategoryLabel(highlightCategory),
+        highlightMetadata: metadata,
         setSuggestions: (newSuggestions, newIsPlaceholder) => {
           setSuggestionsData((prev) => {
             if (!prev) return prev;
@@ -570,6 +591,9 @@ function PromptOptimizerContent() {
               fullPrompt,
               originalUserPrompt: promptOptimizer.inputPrompt,
               brainstormContext: promptContext ? promptContext.toJSON() : null,
+              highlightedCategory: highlightCategory,
+              highlightedCategoryConfidence: highlightCategoryConfidence,
+              highlightedPhrase: metadata?.phrase || null,
             }),
           }
         );
