@@ -705,9 +705,9 @@ export const PromptCanvas = ({
       try {
         const sourceResult = runExtractionPipeline(displayedPrompt, promptContext);
         const root = editorRef.current;
-        const displayString = (root?.innerText ?? root?.textContent ?? '').normalize('NFC');
-        const displayResult = displayString
-          ? runExtractionPipeline(displayString, promptContext)
+        const displayText = root?.textContent ?? '';
+        const displayResult = displayText
+          ? runExtractionPipeline(displayText, promptContext)
           : { spans: [], stats: { totalCandidates: 0, validated: 0, final: 0 } };
 
         const combinedSpans = combineDisplayAndSourceSpans({
@@ -724,7 +724,7 @@ export const PromptCanvas = ({
               ...sourceResult.stats,
               displaySpanCount: displayResult.spans.length,
             },
-            displayText: displayString,
+            displayText,
           });
         }
       } catch (error) {
@@ -1143,30 +1143,58 @@ export const PromptCanvas = ({
       return;
     }
 
-    const wrappers = [];
-    const sortedSpans = [...spans].filter((span) => {
-      const start = Number(span.displayStart ?? span.start);
-      const end = Number(span.displayEnd ?? span.end);
-      return Number.isFinite(start) && Number.isFinite(end) && end > start;
-    }).sort((a, b) => {
-      const aStart = Number(a.displayStart ?? a.start ?? 0);
-      const bStart = Number(b.displayStart ?? b.start ?? 0);
-      return aStart - bStart;
-    });
+    const displayText = parseResult?.displayText ?? root.textContent ?? '';
+    if (!displayText) {
+      return;
+    }
 
-    sortedSpans.forEach((span) => {
-      const displayStart = Number(span.displayStart ?? span.start);
-      const displayEnd = Number(span.displayEnd ?? span.end);
-      if (!Number.isFinite(displayStart) || !Number.isFinite(displayEnd) || displayEnd <= displayStart) {
+    const wrappers = [];
+    const coverage = [];
+
+    let nodeIndex = buildTextNodeIndex(root);
+
+    const sortedSpans = [...spans]
+      .filter((span) => {
+        const start = Number(span.displayStart ?? span.start);
+        const end = Number(span.displayEnd ?? span.end);
+        return Number.isFinite(start) && Number.isFinite(end) && end > start;
+      })
+      .map((span) => {
+        const start = Number(span.displayStart ?? span.start);
+        const end = Number(span.displayEnd ?? span.end);
+        const snapped = snapSpanToTokenBoundaries(displayText, start, end);
+        return snapped
+          ? {
+              span,
+              highlightStart: snapped.start,
+              highlightEnd: snapped.end,
+            }
+          : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.highlightStart - a.highlightStart);
+
+    sortedSpans.forEach(({ span, highlightStart, highlightEnd }) => {
+      if (rangeOverlaps(coverage, highlightStart, highlightEnd)) {
         return;
       }
 
-      const index = buildTextNodeIndex(root);
+      const expectedText = span.displayQuote ?? span.quote ?? '';
+      const actualSlice = displayText.slice(highlightStart, highlightEnd);
+      if (expectedText && actualSlice !== expectedText) {
+        console.warn('SPAN_MISMATCH', {
+          id: span.id,
+          expected: expectedText,
+          found: actualSlice,
+        });
+        return;
+      }
+
       const segmentWrappers = wrapRangeSegments({
         root,
-        start: displayStart,
-        end: displayEnd,
-        nodeIndex: index,
+        start: highlightStart,
+        end: highlightEnd,
+        nodeIndex,
         createWrapper: () => {
           const el = root.ownerDocument.createElement('span');
           el.className = `value-word value-word-${span.category}`;
@@ -1175,8 +1203,8 @@ export const PromptCanvas = ({
           el.dataset.spanId = span.id;
           el.dataset.start = String(span.start);
           el.dataset.end = String(span.end);
-          el.dataset.startDisplay = String(displayStart);
-          el.dataset.endDisplay = String(displayEnd);
+          el.dataset.startDisplay = String(highlightStart);
+          el.dataset.endDisplay = String(highlightEnd);
           el.dataset.startGrapheme = String(span.startGrapheme ?? '');
           el.dataset.endGrapheme = String(span.endGrapheme ?? '');
           el.dataset.validatorPass = span.validatorPass === false ? 'false' : 'true';
@@ -1192,6 +1220,10 @@ export const PromptCanvas = ({
         },
       });
 
+      if (!segmentWrappers.length) {
+        return;
+      }
+
       segmentWrappers.forEach((wrapper) => {
         wrapper.dataset.quote = span.quote ?? '';
         wrapper.dataset.leftCtx = span.leftCtx ?? '';
@@ -1205,6 +1237,9 @@ export const PromptCanvas = ({
         }
         wrappers.push(wrapper);
       });
+
+      coverage.push({ start: highlightStart, end: highlightEnd });
+      nodeIndex = buildTextNodeIndex(root);
     });
 
     highlightStateRef.current = { wrappers, nodeIndex: null };
@@ -1298,6 +1333,42 @@ export const PromptCanvas = ({
 };
 
 const CONTEXT_WINDOW_CHARS = 20;
+
+function isWordBoundary(text, index) {
+  if (index <= 0 || index >= text.length) {
+    return true;
+  }
+  const prev = text[index - 1];
+  const current = text[index];
+  return !(/\w/.test(prev) && /\w/.test(current));
+}
+
+function snapSpanToTokenBoundaries(text, start, end) {
+  if (!text || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return null;
+  }
+
+  let safeStart = Math.max(0, start);
+  let safeEnd = Math.min(text.length, end);
+
+  while (safeStart > 0 && !isWordBoundary(text, safeStart)) {
+    safeStart -= 1;
+  }
+
+  while (safeEnd < text.length && !isWordBoundary(text, safeEnd)) {
+    safeEnd += 1;
+  }
+
+  if (safeEnd <= safeStart) {
+    return null;
+  }
+
+  return { start: safeStart, end: safeEnd };
+}
+
+function rangeOverlaps(ranges, start, end) {
+  return ranges.some((range) => !(end <= range.start || start >= range.end));
+}
 
 const normalizeKeyComponent = (value = '') =>
   value
