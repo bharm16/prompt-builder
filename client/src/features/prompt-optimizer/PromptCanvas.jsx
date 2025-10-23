@@ -11,15 +11,9 @@ import {
 } from 'lucide-react';
 import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
-import {
-  runExtractionPipeline,
-  PARSER_VERSION,
-  LEXICON_VERSION,
-  EMOJI_POLICY_VERSION,
-} from './phraseExtractor';
+import { useSpanLabeling } from './hooks/useSpanLabeling.js';
 import { createCanonicalText } from '../../utils/canonicalText.js';
 import { buildTextNodeIndex, wrapRangeSegments } from '../../utils/anchorRanges.js';
-import { relocateQuote } from '../../utils/textQuoteRelocator.js';
 import { PromptContext } from '../../utils/PromptContext.js';
 
 const LLM_PARSER_VERSION = 'llm-v1';
@@ -621,39 +615,40 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const highlightStateRef = useRef({ wrappers: [], nodeIndex: null });
   const toast = useToast();
-  const parserVersionSignature = `${PARSER_VERSION}-${LEXICON_VERSION}-${EMOJI_POLICY_VERSION}-${LLM_PARSER_VERSION}`;
-  const semanticRequestCounterRef = useRef(0);
+
+  const enableMLHighlighting = selectedMode === 'video';
+
+  const labelingPolicy = useMemo(
+    () => ({
+      nonTechnicalWordLimit: 6,
+      allowOverlap: false,
+    }),
+    []
+  );
+
+  const {
+    spans: labeledSpans,
+    meta: labeledMeta,
+    status: labelingStatus,
+    error: labelingError,
+  } = useSpanLabeling({
+    text: enableMLHighlighting ? displayedPrompt : '',
+    enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
+    maxSpans: 20,
+    minConfidence: 0.5,
+    policy: labelingPolicy,
+    templateVersion: 'v1',
+    debounceMs: 500,
+  });
 
   const [parseResult, setParseResult] = useState(() => ({
     canonical: createCanonicalText(displayedPrompt ?? ''),
     spans: [],
-    stats: {
-      totalCandidates: 0,
-      validated: 0,
-      final: 0,
-      llmSpanCount: 0,
-      legacySpanCount: 0,
-    },
-    versions: {
-      parser: PARSER_VERSION,
-      lexicon: LEXICON_VERSION,
-      emojiPolicy: EMOJI_POLICY_VERSION,
-      llmParser: null,
-    },
-    displayText: '',
+    meta: null,
+    status: 'idle',
+    error: null,
+    displayText: displayedPrompt ?? '',
   }));
-
-  const contextMemoKey = useMemo(() => {
-    if (!promptContext) return 'none';
-    try {
-      return JSON.stringify(promptContext.toJSON());
-    } catch (error) {
-      console.warn('Failed to serialize promptContext for memo key', error);
-      return `context-${promptContext.version ?? 'v1'}`;
-    }
-  }, [promptContext]);
-
-  const enableMLHighlighting = selectedMode === 'video';
 
   // Debug: Track promptContext received in PromptCanvas
   useEffect(() => {
@@ -693,149 +688,41 @@ export const PromptCanvas = ({
 
   useEffect(() => {
     const canonical = createCanonicalText(displayedPrompt ?? '');
+    const currentText = displayedPrompt ?? '';
 
-    if (!enableMLHighlighting || !displayedPrompt) {
+    if (!enableMLHighlighting || !currentText.trim()) {
       setParseResult({
         canonical,
         spans: [],
-        stats: {
-          totalCandidates: 0,
-          validated: 0,
-          final: 0,
-          llmSpanCount: 0,
-          legacySpanCount: 0,
-        },
-        versions: {
-          parser: PARSER_VERSION,
-          lexicon: LEXICON_VERSION,
-          emojiPolicy: EMOJI_POLICY_VERSION,
-          llmParser: null,
-        },
-        displayText: '',
+        meta: labeledMeta,
+        status: labelingStatus,
+        error: labelingError,
+        displayText: currentText,
       });
       return;
     }
 
-    let isCancelled = false;
-    const requestId = semanticRequestCounterRef.current + 1;
-    semanticRequestCounterRef.current = requestId;
-    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const highlights = convertLabeledSpansToHighlights({
+      spans: labeledSpans,
+      text: currentText,
+      canonical,
+    });
 
-    const execute = async () => {
-      try {
-        const sourceResult = runExtractionPipeline(displayedPrompt, promptContext);
-
-        const root = editorRef.current;
-        const displayText = root?.textContent ?? displayedPrompt ?? '';
-        const displayResult = displayText
-          ? runExtractionPipeline(displayText, promptContext)
-          : { spans: [], stats: { totalCandidates: 0, validated: 0, final: 0 } };
-
-        const legacyCombined = combineDisplayAndSourceSpans({
-          sourceSpans: sourceResult.spans,
-          displaySpans: displayResult.spans,
-          canonical: sourceResult.canonical,
-        });
-
-        let llmSpans = [];
-        if (displayText.trim()) {
-          try {
-            const response = await fetch('/api/video/semantic-parse', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': 'dev-key-12345',
-              },
-              body: JSON.stringify({ text: displayText }),
-              signal: abortController?.signal,
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              llmSpans = convertSemanticSpansToClient(
-                Array.isArray(data.spans) ? data.spans : [],
-                displayText,
-                sourceResult.canonical
-              );
-            } else {
-              console.warn('Semantic parse request failed', {
-                status: response.status,
-                statusText: response.statusText,
-              });
-            }
-          } catch (error) {
-            if (error.name !== 'AbortError') {
-              console.error('Semantic parse request error:', error);
-            }
-          }
-        }
-
-        const mergedSpans = mergeSemanticAndLegacySpans({
-          llmSpans,
-          legacySpans: legacyCombined,
-        });
-
-        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
-          return;
-        }
-
-        setParseResult({
-          canonical: sourceResult.canonical,
-          spans: mergedSpans,
-          stats: {
-            ...sourceResult.stats,
-            displaySpanCount: displayResult.spans.length,
-            llmSpanCount: llmSpans.length,
-            legacySpanCount: legacyCombined.length,
-          },
-          versions: {
-            ...sourceResult.versions,
-            llmParser: llmSpans.length > 0 ? LLM_PARSER_VERSION : null,
-          },
-          displayText,
-        });
-      } catch (error) {
-        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
-          return;
-        }
-        console.error('Failed to run extraction pipeline with semantic parser:', error);
-        setParseResult({
-          canonical,
-          spans: [],
-          stats: {
-            totalCandidates: 0,
-            validated: 0,
-            final: 0,
-            llmSpanCount: 0,
-            legacySpanCount: 0,
-          },
-          versions: {
-            parser: PARSER_VERSION,
-            lexicon: LEXICON_VERSION,
-            emojiPolicy: EMOJI_POLICY_VERSION,
-            llmParser: null,
-          },
-          displayText: '',
-          error,
-        });
-      }
-    };
-
-    execute();
-
-    return () => {
-      isCancelled = true;
-      if (abortController) {
-        abortController.abort();
-      }
-    };
+    setParseResult({
+      canonical,
+      spans: highlights,
+      meta: labeledMeta,
+      status: labelingStatus,
+      error: labelingError,
+      displayText: currentText,
+    });
   }, [
-    displayedPrompt,
-    promptContext,
-    contextMemoKey,
+    labeledSpans,
+    labeledMeta,
+    labelingStatus,
+    labelingError,
     enableMLHighlighting,
-    parserVersionSignature,
-    formattedHTML,
+    displayedPrompt,
   ]);
 
 
@@ -1438,123 +1325,58 @@ function rangeOverlaps(ranges, start, end) {
   return ranges.some((range) => !(end <= range.start || start >= range.end));
 }
 
-const normalizeKeyComponent = (value = '') =>
-  value
-    .normalize('NFC')
-    .toLowerCase()
-    .replace(/\r?\n/g, ' ')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/`(.*?)`/g, '$1')
-    .replace(/~~(.*?)~~/g, '$1')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const createSpanKey = (span) =>
-  [span?.quote ?? '', span?.leftCtx ?? '', span?.rightCtx ?? '']
-    .map(normalizeKeyComponent)
-    .join('::');
-
-const createQuoteKey = (span) => normalizeKeyComponent(span?.quote ?? '');
-
-const buildSpanQueue = (spans, keyFn) => {
-  const map = new Map();
-  spans.forEach((span) => {
-    const key = keyFn(span);
-    if (!key) return;
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-    map.get(key).push(span);
-  });
-  return map;
+const ROLE_TO_CATEGORY = {
+  Wardrobe: 'wardrobe',
+  Appearance: 'appearance',
+  Lighting: 'lighting',
+  TimeOfDay: 'timeOfDay',
+  CameraMove: 'cameraMove',
+  Framing: 'framing',
+  Environment: 'environment',
+  Color: 'color',
+  Technical: 'technical',
+  Descriptive: 'descriptive',
 };
 
-const safelyRelocateDisplaySpan = (displaySpan, canonical) => {
-  if (!displaySpan?.quote || !canonical) {
-    return null;
-  }
-
-  const quote = displaySpan.quote.normalize('NFC');
-  const canonicalText = canonical.normalized ?? '';
-  if (!quote || !canonicalText) {
-    return null;
-  }
-
-  const primary = relocateQuote({
-    text: canonicalText,
-    quote,
-    leftCtx: displaySpan.leftCtx ?? '',
-    rightCtx: displaySpan.rightCtx ?? '',
-  });
-
-  let location = primary;
-  if (!location) {
-    const fallbackIndex = canonicalText.indexOf(quote);
-    if (fallbackIndex !== -1) {
-      location = { start: fallbackIndex, end: fallbackIndex + quote.length };
-    }
-  }
-
-  if (!location) {
-    return null;
-  }
-
-  const { start, end } = location;
-  const startGrapheme = canonical.graphemeIndexForCodeUnit(start);
-  const endGrapheme = canonical.graphemeIndexForCodeUnit(end);
-  const leftCtxStart = Math.max(0, startGrapheme - CONTEXT_WINDOW_CHARS);
-  const rightCtxEnd = Math.min(canonical.length, endGrapheme + CONTEXT_WINDOW_CHARS);
-
-  return {
-    ...displaySpan,
-    id: displaySpan.id ?? `display_${start}_${end}`,
-    start,
-    end,
-    startGrapheme,
-    endGrapheme,
-    quote: canonical.sliceGraphemes(startGrapheme, endGrapheme),
-    leftCtx: canonical.sliceGraphemes(leftCtxStart, startGrapheme),
-    rightCtx: canonical.sliceGraphemes(endGrapheme, rightCtxEnd),
-  };
-};
-
-const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
-  if (!Array.isArray(rawSpans) || !displayText) {
+const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
+  if (!Array.isArray(spans) || !text) {
     return [];
   }
 
-  return rawSpans
+  return spans
     .map((span, index) => {
-      if (!span || typeof span !== 'object') return null;
+      if (!span || typeof span !== 'object') {
+        return null;
+      }
 
-      const category = span.category;
-      if (typeof category !== 'string' || category.trim() === '') return null;
-
+      const role = typeof span.role === 'string' ? span.role : 'Descriptive';
+      const category = ROLE_TO_CATEGORY[role] || 'descriptive';
       const start = Number(span.start);
       const end = Number(span.end);
+
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
         return null;
       }
 
-      const clampedStart = Math.max(0, Math.min(displayText.length, start));
-      const clampedEnd = Math.max(0, Math.min(displayText.length, end));
-      if (clampedEnd <= clampedStart) return null;
+      const clampedStart = Math.max(0, Math.min(text.length, start));
+      const clampedEnd = Math.max(clampedStart, Math.min(text.length, end));
+      if (clampedEnd <= clampedStart) {
+        return null;
+      }
 
-      const slice = displayText.slice(clampedStart, clampedEnd);
-      if (!slice) return null;
+      const slice = text.slice(clampedStart, clampedEnd);
+      if (!slice) {
+        return null;
+      }
 
-      const leftCtx =
-        typeof span.leftContext === 'string'
-          ? span.leftContext
-          : displayText.slice(Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS), clampedStart);
-      const rightCtx =
-        typeof span.rightContext === 'string'
-          ? span.rightContext
-          : displayText.slice(clampedEnd, Math.min(displayText.length, clampedEnd + CONTEXT_WINDOW_CHARS));
+      const leftCtx = text.slice(
+        Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS),
+        clampedStart
+      );
+      const rightCtx = text.slice(
+        clampedEnd,
+        Math.min(text.length, clampedEnd + CONTEXT_WINDOW_CHARS)
+      );
 
       const startGrapheme = canonical?.graphemeIndexForCodeUnit
         ? canonical.graphemeIndexForCodeUnit(clampedStart)
@@ -1566,6 +1388,7 @@ const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
       return {
         id: span.id ?? `llm_${category}_${index}_${clampedStart}_${clampedEnd}`,
         category,
+        role,
         start: clampedStart,
         end: clampedEnd,
         displayStart: clampedStart,
@@ -1576,109 +1399,20 @@ const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
         rightCtx,
         displayLeftCtx: leftCtx,
         displayRightCtx: rightCtx,
-        source: span.source ?? 'llm',
-        confidence: typeof span.confidence === 'number' ? span.confidence : undefined,
+        source: 'llm',
+        confidence:
+          typeof span.confidence === 'number' ? span.confidence : undefined,
         validatorPass: true,
         startGrapheme,
         endGrapheme,
-        version: span.version ?? LLM_PARSER_VERSION,
+        version: LLM_PARSER_VERSION,
       };
     })
-    .filter(Boolean);
-};
-
-const mergeSemanticAndLegacySpans = ({ llmSpans, legacySpans }) => {
-  const semantic = Array.isArray(llmSpans) ? llmSpans : [];
-  const legacy = Array.isArray(legacySpans) ? legacySpans : [];
-
-  if (semantic.length === 0) {
-    return legacy;
-  }
-
-  const semanticCategories = new Set(semantic.map((span) => span.category));
-  const fallbackLegacy = legacy.filter((span) => !semanticCategories.has(span.category));
-
-  return [...semantic, ...fallbackLegacy].sort((a, b) => {
-    const aStart = Number(a.displayStart ?? a.start ?? 0);
-    const bStart = Number(b.displayStart ?? b.start ?? 0);
-    if (aStart !== bStart) return aStart - bStart;
-    const aLen = Number((a.displayEnd ?? a.end ?? 0) - (a.displayStart ?? a.start ?? 0));
-    const bLen = Number((b.displayEnd ?? b.end ?? 0) - (b.displayStart ?? b.start ?? 0));
-    return aLen - bLen;
-  });
-};
-
-const combineDisplayAndSourceSpans = ({
-  sourceSpans,
-  displaySpans,
-  canonical,
-}) => {
-  if (!Array.isArray(displaySpans) || !displaySpans.length) {
-    return Array.isArray(sourceSpans) ? [...sourceSpans] : [];
-  }
-
-  const combined = [];
-  const sourceByKey = buildSpanQueue(sourceSpans ?? [], createSpanKey);
-  const sourceByQuote = buildSpanQueue(sourceSpans ?? [], createQuoteKey);
-  const usedSourceIds = new Set();
-
-  const takeFromQueue = (map, key) => {
-    if (!key) return null;
-    const queue = map.get(key);
-    if (!queue || !queue.length) return null;
-    while (queue.length) {
-      const candidate = queue.shift();
-      if (candidate && !usedSourceIds.has(candidate.id)) {
-        return candidate;
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.start === b.start) {
+        return a.end - b.end;
       }
-    }
-    return null;
-  };
-
-  displaySpans.forEach((displaySpan) => {
-    let matched = takeFromQueue(sourceByKey, createSpanKey(displaySpan));
-
-    if (!matched) {
-      matched = takeFromQueue(sourceByQuote, createQuoteKey(displaySpan));
-    }
-
-    if (!matched) {
-      const relocated = safelyRelocateDisplaySpan(displaySpan, canonical);
-      if (relocated) {
-        combined.push({
-          ...relocated,
-          displayStart: displaySpan.start,
-          displayEnd: displaySpan.end,
-          displayQuote: displaySpan.quote,
-          displayLeftCtx: displaySpan.leftCtx,
-          displayRightCtx: displaySpan.rightCtx,
-        });
-      }
-      return;
-    }
-
-    usedSourceIds.add(matched.id);
-    combined.push({
-      ...matched,
-      displayStart: displaySpan.start,
-      displayEnd: displaySpan.end,
-      displayQuote: displaySpan.quote,
-      displayLeftCtx: displaySpan.leftCtx,
-      displayRightCtx: displaySpan.rightCtx,
+      return a.start - b.start;
     });
-  });
-
-  (sourceSpans ?? []).forEach((span) => {
-    if (usedSourceIds.has(span.id)) return;
-    combined.push({
-      ...span,
-      displayStart: span.start,
-      displayEnd: span.end,
-      displayQuote: span.quote,
-      displayLeftCtx: span.leftCtx,
-      displayRightCtx: span.rightCtx,
-    });
-  });
-
-  return combined;
 };

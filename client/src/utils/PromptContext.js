@@ -245,6 +245,9 @@ export class PromptContext {
       environment: { bg: 'rgba(34, 197, 94, 0.18)', border: 'rgba(34, 197, 94, 0.55)' }, // Green
       color: { bg: 'rgba(244, 114, 182, 0.2)', border: 'rgba(244, 114, 182, 0.55)' }, // Pink
       depthOfField: { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.5)' }, // Orange
+      wardrobe: { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.55)' }, // Emerald
+      appearance: { bg: 'rgba(244, 63, 94, 0.18)', border: 'rgba(244, 63, 94, 0.5)' }, // Rose
+      timeOfDay: { bg: 'rgba(234, 179, 8, 0.2)', border: 'rgba(234, 179, 8, 0.55)' }, // Amber
     };
 
     return colors[category] || { bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.5)' };

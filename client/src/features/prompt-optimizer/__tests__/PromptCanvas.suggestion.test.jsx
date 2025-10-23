@@ -12,14 +12,9 @@ beforeAll(() => {
 });
 
 
-vi.mock('../phraseExtractor.js', () => {
-  return {
-    runExtractionPipeline: vi.fn(),
-    PARSER_VERSION: 'test-parser',
-    LEXICON_VERSION: 'test-lexicon',
-    EMOJI_POLICY_VERSION: 'test-emoji',
-  };
-});
+vi.mock('../hooks/useSpanLabeling.js', () => ({
+  useSpanLabeling: vi.fn(),
+}));
 
 vi.mock('../../utils/anchorRanges.js', () => {
   return {
@@ -37,7 +32,7 @@ vi.mock('../../utils/anchorRanges.js', () => {
   };
 });
 
-const { runExtractionPipeline } = await import('../phraseExtractor.js');
+const { useSpanLabeling } = await import('../hooks/useSpanLabeling.js');
 const { PromptCanvas } = await import('../PromptCanvas.jsx');
 const { ToastProvider } = await import('../../../components/Toast.jsx');
 
@@ -60,37 +55,32 @@ const baseProps = {
 const samplePrompt = 'Paint the wall red. Paint the wall red again.';
 const targetPhrase = 'Paint the wall red';
 
-const createSpan = (id, start) => ({
-  id,
-  source: 'LEXICON',
-  category: 'style',
-  confidence: 1,
-  start,
-  end: start + targetPhrase.length,
-  startGrapheme: start,
-  endGrapheme: start + targetPhrase.length,
-  text: targetPhrase,
-  quote: targetPhrase,
-  leftCtx: samplePrompt.slice(Math.max(0, start - 10), start),
-  rightCtx: samplePrompt.slice(start + targetPhrase.length, start + targetPhrase.length + 10),
-  idempotencyKey: `${targetPhrase}::${start}`,
-  validatorPass: true,
-  droppedReason: null,
-  metadata: { matcher: 'test' },
-});
-
 beforeEach(() => {
   const firstStart = samplePrompt.indexOf(targetPhrase);
   const secondStart = samplePrompt.indexOf(targetPhrase, firstStart + 1);
-  runExtractionPipeline.mockReturnValue({
-    canonical: { normalized: samplePrompt, length: samplePrompt.length },
-    spans: [createSpan('span_1', firstStart), createSpan('span_2', secondStart)],
-    stats: { totalCandidates: 2, final: 2 },
-    versions: {
-      parser: 'test-parser',
-      lexicon: 'test-lexicon',
-      emojiPolicy: 'test-emoji',
-    },
+  useSpanLabeling.mockReturnValue({
+    spans: [
+      {
+        id: 'span_1',
+        text: targetPhrase,
+        start: firstStart,
+        end: firstStart + targetPhrase.length,
+        role: 'Descriptive',
+        confidence: 0.9,
+      },
+      {
+        id: 'span_2',
+        text: targetPhrase,
+        start: secondStart,
+        end: secondStart + targetPhrase.length,
+        role: 'Descriptive',
+        confidence: 0.9,
+      },
+    ],
+    meta: { version: 'test', notes: '' },
+    status: 'success',
+    error: null,
+    refresh: vi.fn(),
   });
 });
 
@@ -114,39 +104,8 @@ describe('PromptCanvas highlighting', () => {
       </ToastProvider>
     );
 
-    await waitFor(() => {
-      expect(runExtractionPipeline).toHaveBeenCalled();
-    });
-
     const editor = container.querySelector('[contenteditable]');
     expect(editor).toBeTruthy();
-
-    const secondStart =
-      samplePrompt.indexOf(targetPhrase, samplePrompt.indexOf(targetPhrase) + 1);
-
-    const syntheticHighlight = document.createElement('span');
-    syntheticHighlight.className = 'value-word';
-    syntheticHighlight.dataset.spanId = 'span_2';
-    syntheticHighlight.dataset.category = 'style';
-    syntheticHighlight.dataset.source = 'LEXICON';
-    syntheticHighlight.dataset.start = String(secondStart);
-    syntheticHighlight.dataset.end = String(secondStart + targetPhrase.length);
-    syntheticHighlight.dataset.startGrapheme = syntheticHighlight.dataset.start;
-    syntheticHighlight.dataset.endGrapheme = syntheticHighlight.dataset.end;
-    syntheticHighlight.dataset.validatorPass = 'true';
-    syntheticHighlight.dataset.quote = targetPhrase;
-    syntheticHighlight.dataset.leftCtx = samplePrompt.slice(
-      Math.max(0, secondStart - 10),
-      secondStart
-    );
-    syntheticHighlight.dataset.rightCtx = samplePrompt.slice(
-      secondStart + targetPhrase.length,
-      secondStart + targetPhrase.length + 10
-    );
-    syntheticHighlight.dataset.idempotencyKey = 'test-key';
-    syntheticHighlight.textContent = targetPhrase;
-
-    editor.appendChild(syntheticHighlight);
 
     const highlight = await waitFor(() => {
       const node = container.querySelector('[data-span-id="span_2"]');

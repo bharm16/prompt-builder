@@ -23,6 +23,10 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/llm': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       // Optional: expose health/metrics locally if you hit them from the UI
       '/health': {
         target: 'http://localhost:3001',

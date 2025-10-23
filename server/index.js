@@ -31,6 +31,7 @@ import { apiAuthMiddleware } from './src/middleware/apiAuth.js';
 import { createAPIRoutes } from './src/routes/api.routes.js';
 import { createHealthRoutes } from './src/routes/health.routes.js';
 import { roleClassifyRoute } from './src/routes/roleClassifyRoute.js';
+import { labelSpansRoute } from './src/routes/labelSpansRoute.js';
 
 // Load environment variables
 dotenv.config();
@@ -303,6 +304,7 @@ const apiRoutes = createAPIRoutes({
   textCategorizerService,
 });
 
+app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
 app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
 app.use('/api', apiAuthMiddleware, apiRoutes);
 
