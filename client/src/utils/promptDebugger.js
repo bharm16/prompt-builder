@@ -8,7 +8,7 @@
  * 4. Or access debugger.lastCapture to view in console
  */
 
-import { extractVideoPromptPhrases } from '../features/prompt-optimizer/phraseExtractor';
+import { runExtractionPipeline } from '../features/prompt-optimizer/phraseExtractor';
 
 class PromptDebugger {
   constructor() {
@@ -51,20 +51,23 @@ class PromptDebugger {
     // Extract all highlights from the displayed prompt
     if (capture.displayedPrompt) {
       try {
-        const phrases = extractVideoPromptPhrases(
+        const { spans, versions } = runExtractionPipeline(
           capture.displayedPrompt,
           state.promptContext
         );
 
-        capture.highlights = phrases.map((phrase, index) => ({
+        capture.highlights = spans.map((span, index) => ({
           index,
-          text: phrase.text,
-          category: phrase.category,
-          confidence: phrase.confidence,
-          source: phrase.source,
-          color: phrase.color,
-          originalValue: phrase.originalValue
+          text: span.text,
+          category: span.category,
+          source: span.source,
+          start: span.start,
+          end: span.end,
+          validatorPass: span.validatorPass,
+          droppedReason: span.droppedReason,
+          metadata: span.metadata,
         }));
+        capture.parserVersions = versions;
 
         console.log(`✅ Found ${capture.highlights.length} highlights`);
       } catch (error) {

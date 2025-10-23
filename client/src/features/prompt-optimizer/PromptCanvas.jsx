@@ -11,7 +11,15 @@ import {
 } from 'lucide-react';
 import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
-import { extractVideoPromptPhrases } from './phraseExtractor';
+import {
+  runExtractionPipeline,
+  PARSER_VERSION,
+  LEXICON_VERSION,
+  EMOJI_POLICY_VERSION,
+} from './phraseExtractor';
+import { createCanonicalText } from '../../utils/canonicalText.js';
+import { buildTextNodeIndex, surroundRange } from '../../utils/anchorRanges.js';
+import { PromptContext } from '../../utils/PromptContext.js';
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -19,230 +27,204 @@ import { extractVideoPromptPhrases } from './phraseExtractor';
  * Transforms Claude's text output into formatted HTML with inline styles
  * for a contentEditable experience. Users can edit while maintaining formatting.
  */
-export const formatTextToHTML = (
-  text,
-  enableMLHighlighting = false,
-  promptContext = null
-) => {
-  if (!text) return { html: '' };
-  const lines = text.split('\n');
-  let html = '';
-  let i = 0;
+export const formatTextToHTML = (text) => {
+  if (text == null) return { html: '' };
 
-  // Helper function to remove emojis
-  const removeEmojis = (str) => {
-    // eslint-disable-next-line security/detect-unsafe-regex
-    return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
-  };
-
-  // Escape HTML to prevent XSS
-  const escapeHtml = (str) => {
-    return str
+  const escapeHtmlLocal = (str = '') =>
+    String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+
+  const lines = String(text).split(/\r?\n/);
+  const result = [];
+
+  const pushGap = () => {
+    result.push('<div class="prompt-line prompt-line--gap" data-variant="gap"><br /></div>');
   };
 
-  const getConfidenceClass = (confidence) => {
-    if (typeof confidence !== 'number') return '';
-    if (confidence >= 0.85) return 'high-confidence';
-    if (confidence >= 0.7) return 'medium-confidence';
-    return 'low-confidence';
+  const pushSeparator = () => {
+    result.push('<div class="prompt-line prompt-line--separator" data-variant="separator">———</div>');
   };
 
-  /**
-   * Intelligent phrase highlighting system using ML-based pattern recognition
-   *
-   * NO HARDCODED PATTERNS - Everything is learned and adapted:
-   * 1. Automatic phrase extraction using TF-IDF and statistical analysis
-   * 2. Semantic categorization using word embeddings and context
-   * 3. User behavior learning - adapts based on what you click
-   * 4. Reinforcement learning - improves over time
-   * 5. Fuzzy matching - auto-corrects typos
-   * 6. Confidence scoring - only shows high-confidence highlights
-   * 7. Smart structure detection - skips headers and labels
-   */
-  const highlightValueWords = (input) => {
-    if (!input) return '';
+  const pushHeading = (raw) => {
+    const cleaned = raw.replace(/^#{1,6}\s+/, '').replace(/^\*\*(.+)\*\*:?$/, '$1').trim();
+    const className = 'prompt-line prompt-line--heading';
+    result.push(`<div class="${className}" data-variant="heading">${escapeHtmlLocal(cleaned)}</div>`);
+  };
 
-    // Only apply ML highlighting if enabled (video mode only)
-    if (!enableMLHighlighting) {
-      return escapeHtml(input);
-    }
+  const pushSection = (raw) => {
+    result.push(
+      `<div class="prompt-line prompt-line--section" data-variant="section">${escapeHtmlLocal(
+        raw.trim()
+      )}</div>`
+    );
+  };
 
-    // Check if this text is a structural element (header, label, descriptor)
-    const isStructuralElement = (value) => {
-      const trimmed = value.trim();
+  const pushParagraph = (raw) => {
+    result.push(
+      `<div class="prompt-line prompt-line--paragraph" data-variant="paragraph">${escapeHtmlLocal(
+        raw.trim()
+      )}</div>`
+    );
+  };
 
-      // Headers: ALL CAPS with 5+ characters
-      if (/^[A-Z\s\-&/]{5,}$/.test(trimmed)) return true;
-
-      // Emoji headers (🎬, 🎥, ✨, etc.) - check first character
-      if (trimmed.length > 0) {
-        const firstChar = trimmed.charCodeAt(0);
-        // Emoji range: 0x1F300 to 0x1F9FF
-        if (firstChar >= 0xD83C || firstChar >= 0xD83D) return true;
-      }
-
-      // Section labels ending with dash (WHO - SUBJECT/CHARACTER)
-      if (/^[A-Z\s]+\s+-\s+[A-Z\s/]+$/.test(trimmed)) return true;
-
-      // Category labels (bold text ending with colon or dash)
-      if (/^\*\*[^*]+\*\*[\s:-]*$/.test(trimmed)) return true;
-
-      // Standalone labels ending with colon
-      if (/^[A-Z][^:]{0,40}:$/.test(trimmed) && trimmed.length < 50) return true;
-
-      // Separator lines (━━━ or similar)
-      if (/^[━─═▬▭\-=_*]{3,}$/.test(trimmed)) return true;
-
-      return false;
-    };
-
-    // Skip highlighting for structural elements
-    if (isStructuralElement(input)) {
-      return escapeHtml(input);
-    }
-
-    // Check if text starts with a label prefix (e.g., "Positioning: actual content here")
-    // We want to skip highlighting the label but highlight the content
-    const labelMatch = input.match(/^([A-Z][^:]{0,40}:)\s*(.+)$/);
-    if (labelMatch) {
-      const label = labelMatch[1];
-      const content = labelMatch[2];
-
-      // Don't highlight the label, only the content
-      return escapeHtml(label) + ' ' + highlightValueWords(content);
-    }
-
-    // Extract phrases using compromise.js (with optional context awareness)
-    const phrases = extractVideoPromptPhrases(input, promptContext);
-
-    // Sort by position to build HTML correctly
-    phrases.sort((a, b) => input.indexOf(a.text) - input.indexOf(b.text));
-
-    // Build HTML with highlights
-    let result = '';
-    let lastIndex = 0;
-
-    phrases.forEach(phrase => {
-      const start = input.indexOf(phrase.text, lastIndex);
-      if (start === -1) return;
-
-      // Add text before phrase
-      result += escapeHtml(input.slice(lastIndex, start));
-
-      // Add highlighted phrase
-      const confidenceClass = getConfidenceClass(phrase.confidence);
-      const className = `value-word value-word-${phrase.category}${confidenceClass ? ` ${confidenceClass}` : ''}`;
-      const confidenceAttr =
-        typeof phrase.confidence === 'number' ? ` data-confidence="${phrase.confidence}"` : '';
-
-      result += `<span class="${className}" data-category="${phrase.category}"${confidenceAttr} style="background-color: ${phrase.color.bg}; border-bottom: 2px solid ${phrase.color.border}; padding: 1px 3px; border-radius: 3px; cursor: pointer;">${escapeHtml(phrase.text)}</span>`;
-
-      lastIndex = start + phrase.text.length;
+  const pushOrderedItems = (items) => {
+    items.forEach(({ label, text }) => {
+      result.push(
+        `<div class="prompt-line prompt-line--ordered" data-variant="ordered" data-variant-index="${escapeHtmlLocal(
+          label
+        )}"><span class="prompt-ordered-index">${escapeHtmlLocal(
+          label
+        )}</span><span class="prompt-ordered-text">${escapeHtmlLocal(text.trim())}</span></div>`
+      );
     });
-
-    // Add remaining text
-    result += escapeHtml(input.slice(lastIndex));
-
-    return result;
   };
 
-  while (i < lines.length) {
+  const pushBulletItems = (items) => {
+    items.forEach((text) => {
+      result.push(
+        `<div class="prompt-line prompt-line--bullet" data-variant="bullet"><span class="prompt-bullet-marker">•</span><span class="prompt-bullet-text">${escapeHtmlLocal(
+          text.trim()
+        )}</span></div>`
+      );
+    });
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    const trimmedLine = line.trim();
+    const trimmed = line.trim();
 
-    // Skip empty lines but preserve spacing
-    if (!trimmedLine) {
-      html += '<div style="height: 0.5rem;"></div>';
-      i++;
+    if (!trimmed) {
+      pushGap();
       continue;
     }
 
-    // Headers surrounded by separator lines
-    if (trimmedLine.match(/^[=\-*_━─═▬▭]+$/)) {
-      if (i + 2 < lines.length) {
-        const nextLine = lines[i + 1].trim();
-        const afterLine = lines[i + 2].trim();
+    if (/^[=\-*_━─═▬▭]{3,}$/.test(trimmed)) {
+      pushSeparator();
+      continue;
+    }
 
-        if (nextLine && nextLine.length > 0 && afterLine.match(/^[=\-*_━─═▬▭]+$/)) {
-          const cleanText = highlightValueWords(removeEmojis(nextLine));
-          html += `<h1 style="font-size: 1.5rem; font-weight: 700; color: rgb(23, 23, 23); margin-bottom: 1.5rem; margin-top: 3rem; line-height: 1.2; letter-spacing: -0.025em;">${cleanText}</h1>`;
-          i += 3;
-          continue;
+    if (/^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed) || /^[A-Z][A-Z\s]{3,}$/.test(trimmed)) {
+      pushHeading(trimmed);
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const orderedItems = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        const current = lines[i].trim();
+        const match = current.match(/^(\d+)\.\s+(.*)$/);
+        if (match) {
+          orderedItems.push({ label: `${match[1]}.`, text: match[2] });
         }
+        i += 1;
       }
-      i++;
+      i -= 1;
+      pushOrderedItems(orderedItems);
       continue;
     }
 
-    // Main headings (ALL CAPS or lines with ### or **)
-    if (trimmedLine.match(/^[A-Z\s]{5,}:?$/) ||
-        trimmedLine.match(/^#{1,3}\s+(.+)$/) ||
-        trimmedLine.match(/^\*\*(.+)\*\*:?$/)) {
-      const cleanText = highlightValueWords(removeEmojis(
-        trimmedLine
-          .replace(/^#+\s+/, '')
-          .replace(/^\*\*(.+)\*\*:?$/, '$1')
-          .replace(/:$/, '')
-      ));
-      html += `<h2 style="font-size: 1.25rem; font-weight: 600; color: rgb(23, 23, 23); margin-bottom: 1rem; margin-top: 2rem; line-height: 1.2; letter-spacing: -0.025em;">${cleanText}</h2>`;
-      i++;
+    if (/^[-*•]\s+/.test(trimmed)) {
+      const bulletItems = [];
+      while (i < lines.length && /^[-*•]\s+/.test(lines[i].trim())) {
+        const current = lines[i].trim().replace(/^[-*•]\s+/, '');
+        bulletItems.push(current);
+        i += 1;
+      }
+      i -= 1;
+      pushBulletItems(bulletItems);
       continue;
     }
 
-    // Section headers (lines ending with colon)
-    if (trimmedLine.match(/^.+:$/)) {
-      const cleanText = highlightValueWords(removeEmojis(trimmedLine.replace(/:$/, '')));
-      html += `<h3 style="font-size: 1rem; font-weight: 600; color: rgb(38, 38, 38); margin-bottom: 0.75rem; margin-top: 1.5rem; line-height: 1.2; letter-spacing: -0.025em;">${cleanText}</h3>`;
-      i++;
+    if (/^.+:$/.test(trimmed)) {
+      pushSection(trimmed);
       continue;
     }
 
-    // Bullet points
-    if (trimmedLine.match(/^[-•]\s+(.+)$/)) {
-      const cleanText = highlightValueWords(removeEmojis(trimmedLine.replace(/^[-•]\s+/, '')));
-      html += `<div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;"><span style="color: rgb(163, 163, 163); margin-top: 0.25rem; flex-shrink: 0;">•</span><p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; flex: 1; margin: 0;">${cleanText}</p></div>`;
-      i++;
+    if (/^>\s*/.test(trimmed)) {
+      pushParagraph(trimmed.replace(/^>\s*/, ''));
       continue;
     }
 
-    // Numbered lists
-    if (trimmedLine.match(/^\d+\.\s+(.+)$/)) {
-      const match = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
-      const cleanText = highlightValueWords(removeEmojis(match[2]));
-      html += `<div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;"><span style="color: rgb(115, 115, 115); font-weight: 500; margin-top: 0.125rem; flex-shrink: 0; font-size: 0.875rem;">${match[1]}.</span><p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; flex: 1; margin: 0;">${cleanText}</p></div>`;
-      i++;
-      continue;
-    }
-
-    // Regular paragraph text
-    let paragraphLines = [trimmedLine];
-    i++;
-    while (i < lines.length &&
-           lines[i].trim() &&
-           !lines[i].trim().match(/^[-•]\s+/) &&
-           !lines[i].trim().match(/^\d+\.\s+/) &&
-           !lines[i].trim().match(/^[A-Z\s]{5,}:?$/) &&
-           !lines[i].trim().match(/^.+:$/) &&
-           !lines[i].trim().match(/^#{1,3}\s+/) &&
-           !lines[i].trim().match(/^\*\*(.+)\*\*:?$/) &&
-           !lines[i].trim().match(/^[=\-*_━─═▬▭]+$/)) {
-      paragraphLines.push(lines[i].trim());
-      i++;
-    }
-
-    const paragraphText = highlightValueWords(removeEmojis(paragraphLines.join(' ').replace(/\*\*/g, '')));
-    html += `<p style="font-size: 15px; color: rgb(64, 64, 64); line-height: 1.625; margin-bottom: 1rem;">${paragraphText}</p>`;
+    pushParagraph(trimmed);
   }
 
-  return { html };
+  return { html: result.join('') };
 };
 
 export const VALUE_WORD_STYLE_BLOCK = `
+        .prompt-line {
+          font-size: 0.9375rem;
+          color: rgb(64, 64, 64);
+          line-height: 1.6;
+          margin-bottom: 0.75rem;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+
+        .prompt-line--heading {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: rgb(23, 23, 23);
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          letter-spacing: -0.02em;
+        }
+
+        .prompt-line--section {
+          font-size: 1rem;
+          font-weight: 600;
+          color: rgb(38, 38, 38);
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .prompt-line--bullet,
+        .prompt-line--ordered {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .prompt-bullet-marker,
+        .prompt-ordered-index {
+          flex-shrink: 0;
+          color: rgb(120, 120, 120);
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .prompt-ordered-text,
+        .prompt-bullet-text {
+          flex: 1;
+          display: block;
+        }
+
+        .prompt-line--gap {
+          height: 0.75rem;
+        }
+
+        .prompt-line--separator {
+          color: rgb(212, 212, 212);
+          font-size: 0.75rem;
+          letter-spacing: 0.4em;
+          text-transform: uppercase;
+        }
+
+        .prompt-line--code {
+          background: rgba(243, 244, 246, 0.6);
+          padding: 0.75rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+          overflow-x: auto;
+          white-space: pre-wrap;
+        }
+
         /* Base value word styles */
         .value-word {
           position: relative;
@@ -634,7 +616,32 @@ export const PromptCanvas = ({
   const [showLegend, setShowLegend] = useState(false);
 
   const editorRef = useRef(null);
+  const highlightStateRef = useRef({ wrappers: [], nodeIndex: null });
   const toast = useToast();
+  const parserVersionSignature = `${PARSER_VERSION}-${LEXICON_VERSION}-${EMOJI_POLICY_VERSION}`;
+
+  const [parseResult, setParseResult] = useState(() => ({
+    canonical: createCanonicalText(displayedPrompt ?? ''),
+    spans: [],
+    stats: { totalCandidates: 0, validated: 0, final: 0 },
+    versions: {
+      parser: PARSER_VERSION,
+      lexicon: LEXICON_VERSION,
+      emojiPolicy: EMOJI_POLICY_VERSION,
+    },
+  }));
+
+  const contextMemoKey = useMemo(() => {
+    if (!promptContext) return 'none';
+    try {
+      return JSON.stringify(promptContext.toJSON());
+    } catch (error) {
+      console.warn('Failed to serialize promptContext for memo key', error);
+      return `context-${promptContext.version ?? 'v1'}`;
+    }
+  }, [promptContext]);
+
+  const enableMLHighlighting = selectedMode === 'video';
 
   // Debug: Track promptContext received in PromptCanvas
   useEffect(() => {
@@ -646,9 +653,77 @@ export const PromptCanvas = ({
     });
   }, [promptContext]);
 
-  // Memoize formatted HTML - Enable ML highlighting for video mode
-  // Highlights will appear dynamically as text is displayed
-  const enableMLHighlighting = selectedMode === 'video';
+  useEffect(() => {
+    const baseCanonical = createCanonicalText(displayedPrompt ?? '');
+
+    if (!enableMLHighlighting || !displayedPrompt) {
+      setParseResult({
+        canonical: baseCanonical,
+        spans: [],
+        stats: { totalCandidates: 0, validated: 0, final: 0 },
+        versions: {
+          parser: PARSER_VERSION,
+          lexicon: LEXICON_VERSION,
+          emojiPolicy: EMOJI_POLICY_VERSION,
+        },
+      });
+      return;
+    }
+
+    let cancelled = false;
+    try {
+      const result = runExtractionPipeline(displayedPrompt, promptContext);
+      if (!cancelled) {
+        setParseResult(result);
+      }
+    } catch (error) {
+      console.error('Failed to run extraction pipeline:', error);
+      if (!cancelled) {
+        setParseResult({
+          canonical: baseCanonical,
+          spans: [],
+          stats: { totalCandidates: 0, validated: 0, final: 0 },
+          versions: {
+            parser: PARSER_VERSION,
+            lexicon: LEXICON_VERSION,
+            emojiPolicy: EMOJI_POLICY_VERSION,
+          },
+          error,
+        });
+      }
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    displayedPrompt,
+    promptContext,
+    contextMemoKey,
+    enableMLHighlighting,
+    parserVersionSignature,
+  ]);
+
+  const unwrapHighlight = (element) => {
+    if (!element || !element.parentNode) return;
+    const parent = element.parentNode;
+    while (element.firstChild) {
+      parent.insertBefore(element.firstChild, element);
+    }
+    parent.removeChild(element);
+  };
+
+  const clearHighlights = () => {
+    const { wrappers } = highlightStateRef.current;
+    if (wrappers?.length) {
+      wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+    }
+    highlightStateRef.current = { wrappers: [], nodeIndex: null };
+  };
+
+  useEffect(() => () => clearHighlights(), []);
+
+  // Memoize formatted HTML - highlights applied post-render
   const { html: formattedHTML } = useMemo(
     () => formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext),
     [displayedPrompt, enableMLHighlighting, promptContext]
@@ -800,20 +875,34 @@ export const PromptCanvas = ({
   };
 
   const handleTextSelection = () => {
-    // Only allow text selection suggestions in video mode
     if (selectedMode !== 'video') {
       return;
     }
 
     const selection = window.getSelection();
-    let text = selection.toString().trim();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
 
-    if (text.length > 0 && onFetchSuggestions) {
-      const cleanedText = text.replace(/^-\s*/, '');
+    const rawText = selection.toString();
+    const trimmed = rawText.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (onFetchSuggestions) {
+      const cleanedText = trimmed.replace(/^-\s*/, '') || trimmed;
       const range = selection.getRangeAt(0).cloneRange();
       const offsets = getSelectionOffsets(range);
-      // Use original displayedPrompt (without formatting) for suggestions context
-      onFetchSuggestions(cleanedText, text, displayedPrompt, range, offsets, null);
+      onFetchSuggestions({
+        highlightedText: cleanedText,
+        originalText: trimmed,
+        displayedPrompt,
+        range,
+        offsets,
+        metadata: null,
+        trigger: 'selection',
+      });
     }
   };
 
@@ -835,23 +924,48 @@ export const PromptCanvas = ({
 
         // Get the word text and metadata
         const wordText = node.textContent.trim();
-        const category = node.getAttribute('data-category');
-        const phrase = node.getAttribute('data-phrase');
-        const confidenceAttr = node.getAttribute('data-confidence');
 
-        const confidenceValue =
-          confidenceAttr !== null && confidenceAttr !== undefined
-            ? Number.parseFloat(confidenceAttr)
-            : null;
+        let metadata = null;
+        if (node.dataset) {
+          const {
+            category,
+            source,
+            spanId,
+            start,
+            end,
+            startGrapheme,
+            endGrapheme,
+            validatorPass,
+            confidence,
+            quote,
+            leftCtx,
+            rightCtx,
+            idempotencyKey,
+          } = node.dataset;
 
-        const metadata = {
-          category: category || null,
-          phrase: phrase || null,
-          confidence:
-            Number.isFinite(confidenceValue) && confidenceValue >= 0 && confidenceValue <= 1
-              ? confidenceValue
-              : null,
-        };
+          metadata = {
+            category: category || null,
+            source: source || null,
+            spanId: spanId || null,
+            start: start ? Number(start) : -1,
+            end: end ? Number(end) : -1,
+            startGrapheme: startGrapheme ? Number(startGrapheme) : -1,
+            endGrapheme: endGrapheme ? Number(endGrapheme) : -1,
+            validatorPass: validatorPass !== 'false',
+            confidence: confidence ? Number(confidence) : null,
+            quote: quote || wordText,
+            leftCtx: leftCtx || '',
+            rightCtx: rightCtx || '',
+            idempotencyKey: idempotencyKey || null,
+          };
+
+          if (metadata.spanId && Array.isArray(parseResult?.spans)) {
+            const spanDetail = parseResult.spans.find((span) => span.id === metadata.spanId);
+            if (spanDetail) {
+              metadata.span = { ...spanDetail };
+            }
+          }
+        }
 
         if (wordText && onFetchSuggestions) {
           // Create a range for the clicked word
@@ -866,7 +980,15 @@ export const PromptCanvas = ({
           selection.addRange(range);
 
           // Trigger suggestions for this word
-          onFetchSuggestions(wordText, wordText, displayedPrompt, rangeClone, offsets, metadata);
+          onFetchSuggestions({
+            highlightedText: wordText,
+            originalText: wordText,
+            displayedPrompt,
+            range: rangeClone,
+            offsets,
+            metadata,
+            trigger: 'highlight',
+          });
         }
 
         return;
@@ -941,6 +1063,9 @@ export const PromptCanvas = ({
           }
         }
 
+        // Clear existing highlights before rewriting the HTML content
+        clearHighlights();
+
         // Set the HTML content
         editorRef.current.innerHTML = newHTML;
 
@@ -961,9 +1086,67 @@ export const PromptCanvas = ({
         }
       }
     } else if (editorRef.current && !displayedPrompt) {
+      clearHighlights();
       editorRef.current.innerHTML = '<p style="color: rgb(163, 163, 163); font-size: 0.875rem;">Your optimized prompt will appear here...</p>';
     }
   }, [displayedPrompt, formattedHTML]);
+
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root) return;
+
+    clearHighlights();
+
+    if (!enableMLHighlighting || !parseResult.spans?.length) {
+      return;
+    }
+
+    const nodeIndex = buildTextNodeIndex(root);
+    const wrappers = [];
+
+    parseResult.spans.forEach((span) => {
+      const wrapper = surroundRange({
+        root,
+        start: span.start,
+        end: span.end,
+        nodeIndex,
+        createWrapper: () => {
+          const el = root.ownerDocument.createElement('span');
+          el.className = `value-word value-word-${span.category}`;
+          el.dataset.category = span.category;
+          el.dataset.source = span.source;
+          el.dataset.spanId = span.id;
+          el.dataset.start = String(span.start);
+          el.dataset.end = String(span.end);
+          el.dataset.startGrapheme = String(span.startGrapheme ?? '');
+          el.dataset.endGrapheme = String(span.endGrapheme ?? '');
+          el.dataset.validatorPass = span.validatorPass === false ? 'false' : 'true';
+          el.dataset.idempotencyKey = span.idempotencyKey ?? '';
+          const color = PromptContext.getCategoryColor?.(span.category);
+          if (color) {
+            el.style.backgroundColor = color.bg;
+            el.style.borderBottom = `2px solid ${color.border}`;
+            el.style.padding = '1px 3px';
+            el.style.borderRadius = '3px';
+          }
+          return el;
+        },
+      });
+
+      if (wrapper) {
+        wrapper.dataset.quote = span.quote ?? '';
+        wrapper.dataset.leftCtx = span.leftCtx ?? '';
+        wrapper.dataset.rightCtx = span.rightCtx ?? '';
+        wrapper.dataset.source = span.source ?? '';
+        if (typeof span.confidence === 'number') {
+          wrapper.dataset.confidence = String(span.confidence);
+        }
+        wrappers.push(wrapper);
+      }
+    });
+
+    highlightStateRef.current = { wrappers, nodeIndex };
+  }, [parseResult, enableMLHighlighting, formattedHTML]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>

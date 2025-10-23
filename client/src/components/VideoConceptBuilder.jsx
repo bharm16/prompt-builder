@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -149,6 +149,14 @@ const TEMPLATE_LIBRARY = {
 };
 
 const TECHNICAL_SECTION_ORDER = ['camera', 'lighting', 'color', 'format', 'audio', 'postProduction'];
+
+const formatLabel = (key) =>
+  key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (str) => str.toUpperCase());
 
 export default function VideoConceptBuilder({
   onConceptComplete,
@@ -401,6 +409,11 @@ export default function VideoConceptBuilder({
     },
   };
 
+  const composedElements = useMemo(
+    () => buildComposedElements(elements),
+    [elements, buildComposedElements],
+  );
+
   // Calculate filled count by group
   const filledByGroup = useMemo(() => {
     const result = {};
@@ -409,6 +422,36 @@ export default function VideoConceptBuilder({
     });
     return result;
   }, [elements]);
+
+  const groupProgress = useMemo(
+    () =>
+      Object.entries(ELEMENT_GROUPS).map(([groupName, groupElements]) => {
+        const filled = groupElements.filter((key) => elements[key]).length;
+        return {
+          key: groupName,
+          label: formatLabel(groupName),
+          filled,
+          total: groupElements.length,
+        };
+      }),
+    [elements],
+  );
+
+  const conceptPreviewText = useMemo(() => {
+    const orderedKeys = [
+      'subject',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event',
+    ];
+    const parts = orderedKeys
+      .map((key) => composedElements[key])
+      .filter(Boolean);
+    return parts.join(' • ');
+  }, [composedElements]);
 
   // Check for element compatibility
   const checkCompatibility = useCallback(async (elementType, value) => {
@@ -853,21 +896,21 @@ export default function VideoConceptBuilder({
       isLoading: isLoadingSuggestions,
       enableCustomRequest: false,
       panelClassName:
-        'w-80 bg-white border-l border-neutral-200 flex flex-col h-screen sticky top-0 shadow-sm',
+        'flex w-full flex-col gap-4 rounded-3xl border border-neutral-200/70 bg-white/90 px-4 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,0.45)] backdrop-blur-sm lg:w-[22rem] lg:flex-shrink-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-4rem)]',
       inactiveState: {
         icon: Sparkles,
-        title: 'Ready to inspire',
+        title: 'Adaptive suggestions',
         description:
-          'Click any element card to get AI-powered suggestions tailored to your concept',
+          'Select an element to see AI completions tuned to your in-progress concept.',
         tips: [
-          { icon: Info, text: 'Suggestions adapt based on your filled elements' },
-          { icon: Zap, text: 'Use keyboard shortcuts for faster workflow' },
+          { icon: Info, text: 'Context signals update live as you edit.' },
+          { icon: Zap, text: 'Press 1-8 to apply a suggestion instantly.' },
         ],
       },
       emptyState: {
         icon: Sparkles,
         title: 'No suggestions available',
-        description: 'Try refreshing suggestions or adjust your element details.',
+        description: 'Refresh or adjust nearby details to unlock new directions.',
       },
       showCopyAction: true,
     };
@@ -1007,15 +1050,6 @@ export default function VideoConceptBuilder({
     requestTechnicalParams(elements);
   }, [elements, requestTechnicalParams]);
 
-  const formatLabel = useCallback((key) =>
-    key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/[_-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/^./, (str) => str.toUpperCase()),
-  []);
-
   const hasRefinements = useMemo(
     () =>
       Object.entries(refinements || {}).some(
@@ -1114,55 +1148,110 @@ export default function VideoConceptBuilder({
   }, [technicalParams]);
 
   const filledCount = Object.values(elements).filter((v) => v).length;
+  const totalElementSlots = Object.keys(elements).length;
+  const completionPercent = Math.round((filledCount / Math.max(totalElementSlots, 1)) * 100);
   const isReadyToGenerate = filledCount >= 3;
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
+    <div className="flex w-full flex-col gap-6 lg:flex-row lg:items-start">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Professional Header */}
-        <div className="bg-white border-b border-neutral-200">
-          <div className="mx-auto max-w-7xl px-6 py-8">
-            <div>
-              <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">
-                Video Concept Builder
-              </h1>
-              <p className="mt-1 text-sm text-neutral-600">
-                Build professional video prompts with AI-guided suggestions
-              </p>
-              {/* Video Prompt Principles Banner - 2025 Design */}
-              <div className="mt-4 relative overflow-hidden rounded-xl border border-neutral-200/60 bg-gradient-to-br from-neutral-50 via-white to-neutral-50/50 shadow-sm">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/20 via-transparent to-transparent" />
-                <div className="relative px-4 py-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <div className="p-1.5 rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20">
-                        <Info className="h-3.5 w-3.5 text-violet-700" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-semibold text-neutral-900 tracking-tight mb-1">
-                        Video Prompt Best Practices
-                      </h4>
-                      <p className="text-xs leading-relaxed text-neutral-600">
-                        Be specific with 2-3 visual details • Use ONE clear action • Avoid generic terms like "cinematic" • Describe what the camera sees
-                      </p>
-                    </div>
-                  </div>
-                </div>
+        <div className="rounded-3xl border border-neutral-200/80 bg-white/90 px-6 py-6 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur-sm sm:px-8 sm:py-8">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-neutral-600">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
+                  <Sparkles className="h-3.5 w-3.5 text-neutral-500" />
+                  AI-guided workflow
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1">
+                  <Info className="h-3.5 w-3.5 text-neutral-500" />
+                  {completionPercent}% filled
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight sm:text-3xl">
+                  Video Concept Builder
+                </h1>
+                <p className="mt-1 text-sm text-neutral-600">
+                  Structure production-ready AI video prompts with contextual guardrails and live guidance.
+                </p>
               </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="mt-6 flex items-center gap-2">
-              {/* Mode Toggle - Segmented Control */}
-              <div className="inline-flex items-center bg-neutral-100 rounded-lg p-1">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 px-4 py-4 text-white shadow-lg">
+                <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.12em] text-neutral-200/80">
+                  <span>Completion</span>
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-300" />
+                </div>
+                <div className="mt-3 flex items-end justify-between">
+                  <span className="text-2xl font-semibold">{Math.min(100, completionPercent)}%</span>
+                  <span className="text-[11px] text-neutral-200">
+                    {filledCount}/{totalElementSlots} details
+                  </span>
+                </div>
+                <div className="mt-3 h-[6px] w-full overflow-hidden rounded-full bg-neutral-700/70">
+                  <div
+                    className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                    style={{ width: `${Math.min(100, completionPercent)}%` }}
+                  />
+                </div>
+              </div>
+              {groupProgress.map((group) => {
+                const progressPercent = Math.round(
+                  (group.filled / Math.max(group.total, 1)) * 100
+                );
+                return (
+                  <div
+                    key={group.key}
+                    className="rounded-2xl border border-neutral-200/80 bg-neutral-50/60 px-4 py-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                      <span>{group.label}</span>
+                      <span className="text-neutral-400">{progressPercent}%</span>
+                    </div>
+                    <div className="mt-3 flex items-end justify-between">
+                      <span className="text-lg font-semibold text-neutral-900">
+                        {group.filled}
+                        <span className="text-sm font-medium text-neutral-400">
+                          /{group.total}
+                        </span>
+                      </span>
+                      <div className="flex h-6 items-center rounded-full bg-white px-2 text-[11px] font-medium text-neutral-500">
+                        {progressPercent >= 80
+                          ? 'Dialed in'
+                          : progressPercent >= 40
+                            ? 'In progress'
+                            : 'Start here'}
+                      </div>
+                    </div>
+                    <div className="mt-3 h-[6px] w-full overflow-hidden rounded-full bg-white/70">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          progressPercent >= 75
+                            ? 'bg-emerald-400'
+                            : progressPercent >= 40
+                              ? 'bg-amber-300'
+                              : 'bg-neutral-300'
+                        }`}
+                        style={{ width: `${Math.min(100, progressPercent)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-100/80 p-1 text-sm font-medium text-neutral-600 shadow-inner">
                 <button
                   onClick={() => setMode('element')}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
                     mode === 'element'
                       ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-600 hover:text-neutral-900'
+                      : 'text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
                   <Sparkles className="h-4 w-4" />
@@ -1170,10 +1259,10 @@ export default function VideoConceptBuilder({
                 </button>
                 <button
                   onClick={() => setMode('concept')}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
                     mode === 'concept'
                       ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-600 hover:text-neutral-900'
+                      : 'text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
                   <Brain className="h-4 w-4" />
@@ -1181,56 +1270,68 @@ export default function VideoConceptBuilder({
                 </button>
               </div>
 
-              {/* Divider */}
-              <div className="w-px h-6 bg-neutral-200" />
-
-              {/* Secondary Actions - Ghost Buttons */}
-              <button
-                onClick={() => setShowTemplates(!showTemplates)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors"
-              >
-                <BookOpen className="h-4 w-4" />
-                Templates
-              </button>
-
-              <button
-                onClick={completeScene}
-                disabled={filledCount === 0}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Wand2 className="h-4 w-4" />
-                Auto-complete
-              </button>
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Primary Action */}
-              <button
-                onClick={() => handleGenerateTemplate('detailed')}
-                disabled={!isReadyToGenerate}
-                className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-                title={isReadyToGenerate ? 'Generate optimized prompt' : 'Fill at least 3 elements to continue'}
-              >
-                Generate Prompt
-                <ArrowRight className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="btn-ghost btn-sm border border-transparent text-neutral-700 hover:border-neutral-200 hover:bg-white"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Templates
+                </button>
+                <button
+                  onClick={completeScene}
+                  disabled={filledCount === 0}
+                  className="btn-ghost btn-sm border border-transparent text-neutral-700 hover:border-neutral-200 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Auto-complete
+                </button>
+                <button
+                  onClick={() => handleGenerateTemplate('detailed')}
+                  disabled={!isReadyToGenerate}
+                  className="btn-primary btn-sm shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                  title={
+                    isReadyToGenerate
+                      ? 'Generate optimized prompt'
+                      : 'Fill at least 3 elements to continue'
+                  }
+                >
+                  Generate Prompt
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Templates Panel */}
+      <div className="space-y-6">
+        {conceptPreviewText ? (
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-5 py-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                  Live concept preview
+                </div>
+                <p className="mt-2 text-sm text-neutral-700 leading-relaxed">
+                  {conceptPreviewText}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {showTemplates && (
-          <div className="mb-6 p-6 bg-white border border-neutral-200 rounded-xl">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-4">Quick Start Templates</h3>
-            <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-5 py-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-neutral-900">Quick Start Templates</h3>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Object.entries(TEMPLATE_LIBRARY).map(([key, template]) => (
                 <button
                   key={key}
                   onClick={() => loadTemplate(key)}
-                  className="p-4 text-left bg-neutral-50 border border-neutral-200 rounded-lg hover:bg-neutral-100 hover:border-neutral-300 transition-colors"
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 text-left transition-all duration-200 hover:border-neutral-300 hover:bg-white hover:shadow-sm"
                 >
                   <div className="text-sm font-medium text-neutral-900">{template.name}</div>
                   <div className="mt-1 text-xs text-neutral-600 line-clamp-1">
@@ -1243,113 +1344,126 @@ export default function VideoConceptBuilder({
         )}
 
         {/* Video Prompt Guidance Panel - 2025 Design */}
-        <div className="mb-6">
+        <div className="rounded-3xl border border-neutral-200/70 bg-white/90 shadow-sm">
           <button
             onClick={() => setShowGuidance(!showGuidance)}
-            className="group w-full relative overflow-hidden rounded-xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-md transition-all duration-300 hover:border-neutral-300"
+            className="group flex w-full items-center justify-between gap-4 rounded-3xl px-5 py-4 text-left transition-all duration-300 hover:bg-neutral-50"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500/10 to-teal-500/10 ring-1 ring-emerald-500/20 group-hover:ring-emerald-500/30 transition-all">
-                  <Lightbulb className="h-3.5 w-3.5 text-emerald-700" />
-                </div>
-                <span className="text-sm font-semibold text-neutral-900 tracking-tight">
-                  Video Prompt Writing Guide
-                </span>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-emerald-500/10 p-2 ring-1 ring-emerald-500/20 transition-all group-hover:ring-emerald-500/30">
+                <Lightbulb className="h-4 w-4 text-emerald-600" />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-neutral-500">
-                  {showGuidance ? 'Hide' : 'Show examples'}
-                </span>
-                <div className={`transition-transform duration-300 ${showGuidance ? 'rotate-180' : ''}`}>
-                  <svg className="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+              <div>
+                <div className="text-sm font-semibold text-neutral-900">Video Prompt Writing Guide</div>
+                <p className="text-xs text-neutral-500">
+                  Calibrate each element with examples inspired by top creative apps.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+              <span>{showGuidance ? 'Hide' : 'Show examples'}</span>
+              <div className={`transition-transform duration-300 ${showGuidance ? 'rotate-180' : ''}`}>
+                <svg className="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </div>
           </button>
 
           {showGuidance && (
-            <div className="mt-2 rounded-xl border border-neutral-200/60 bg-white shadow-sm overflow-hidden animate-[slideDown_0.3s_ease-out]">
-              <div className="p-6 space-y-5">
+            <div className="border-t border-neutral-100 px-6 py-6 animate-[slideDown_0.3s_ease-out]">
+              <div className="space-y-5">
                 {/* Subject Examples */}
                 <div className="group/section">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="mb-3 flex items-center gap-2">
                     <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-violet-500 to-violet-300" />
-                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Subject</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">Subject</h4>
                   </div>
                   <div className="space-y-2.5 pl-3.5">
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-red-100/50 bg-red-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100">
                           <X className="h-2.5 w-2.5 text-red-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"a person" or "a nice car"</span>
+                      <span className="text-xs leading-relaxed text-neutral-700">"a person" or "a nice car"</span>
                     </div>
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-emerald-100/50 bg-emerald-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100">
                           <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"elderly street musician with weathered hands and silver harmonica"</span>
+                      <span className="text-xs leading-relaxed text-neutral-700">
+                        "elderly street musician with weathered hands and silver harmonica"
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Examples */}
                 <div className="group/section pt-1">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="mb-3 flex items-center gap-2">
                     <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-300" />
-                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Action</h4>
-                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">ONE ONLY</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">Action</h4>
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                      ONE ONLY
+                    </span>
                   </div>
                   <div className="space-y-2.5 pl-3.5">
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-red-100/50 bg-red-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100">
                           <X className="h-2.5 w-2.5 text-red-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"running, jumping, and spinning" <span className="text-neutral-500">(multiple actions degrade quality)</span></span>
+                      <span className="text-xs leading-relaxed text-neutral-700">
+                        "running, jumping, and spinning"{' '}
+                        <span className="text-neutral-500">(multiple actions degrade quality)</span>
+                      </span>
                     </div>
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-emerald-100/50 bg-emerald-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100">
                           <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"leaping over concrete barriers in slow motion"</span>
+                      <span className="text-xs leading-relaxed text-neutral-700">
+                        "leaping over concrete barriers in slow motion"
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Style Examples */}
                 <div className="group/section pt-1">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="mb-3 flex items-center gap-2">
                     <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-amber-500 to-amber-300" />
-                    <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Style</h4>
-                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">USE TECHNICAL TERMS</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">Style</h4>
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
+                      USE TECHNICAL TERMS
+                    </span>
                   </div>
                   <div className="space-y-2.5 pl-3.5">
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-red-50/50 border border-red-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-red-100/50 bg-red-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100">
                           <X className="h-2.5 w-2.5 text-red-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"cinematic" or "artistic" or "moody"</span>
+                      <span className="text-xs leading-relaxed text-neutral-700">
+                        "cinematic" or "artistic" or "moody"
+                      </span>
                     </div>
-                    <div className="flex items-start gap-3 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100/50">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="h-4 w-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <div className="flex items-start gap-3 rounded-lg border border-emerald-100/50 bg-emerald-50/50 p-2.5">
+                      <div className="mt-0.5 flex-shrink-0">
+                        <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100">
                           <CheckCircle className="h-2.5 w-2.5 text-emerald-600" />
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-700 leading-relaxed">"shot on 35mm film with shallow depth of field" or "film noir aesthetic with Rembrandt lighting"</span>
+                      <span className="text-xs leading-relaxed text-neutral-700">
+                        "shot on 35mm film with shallow depth of field" or "film noir aesthetic with Rembrandt lighting"
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1360,8 +1474,8 @@ export default function VideoConceptBuilder({
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent" />
                     <div className="relative px-4 py-3.5">
                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div className="p-1.5 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                        <div className="mt-0.5 flex-shrink-0">
+                          <div className="rounded-lg bg-blue-500/10 p-1.5 ring-1 ring-blue-500/20">
                             <Sparkles className="h-3.5 w-3.5 text-blue-700" />
                           </div>
                         </div>
@@ -1379,43 +1493,41 @@ export default function VideoConceptBuilder({
 
         {/* Concept Mode */}
         {mode === 'concept' && (
-          <div className="mb-8 mx-auto max-w-3xl">
-            <div className="p-8 bg-white border border-neutral-200 rounded-xl">
-              <label className="block text-sm font-medium text-neutral-900 mb-3">
-                Describe your video concept
-              </label>
-              <textarea
-                value={concept}
-                onChange={(e) => setConcept(e.target.value)}
-                placeholder="Example: A sleek sports car drifting through a neon-lit Tokyo street at night, cinematic style with dramatic lighting..."
-                className="w-full h-32 px-4 py-3 text-sm text-neutral-900 bg-neutral-50 border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-              />
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={parseConceptToElements}
-                  disabled={!concept}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Brain className="h-4 w-4" />
-                  Parse into Elements
-                </button>
-              </div>
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
+            <label className="mb-3 block text-sm font-semibold text-neutral-900">
+              Describe your video concept
+            </label>
+            <textarea
+              value={concept}
+              onChange={(e) => setConcept(e.target.value)}
+              placeholder="Example: A sleek sports car drifting through a neon-lit Tokyo street at night, dramatic lighting, shot on anamorphic lenses..."
+              className="textarea min-h-[140px] rounded-2xl border-neutral-200 bg-neutral-50 text-sm"
+            />
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={parseConceptToElements}
+                disabled={!concept}
+                className="btn-primary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Brain className="h-4 w-4" />
+                Parse into elements
+              </button>
             </div>
           </div>
         )}
 
         {/* Conflicts Alert */}
         {(isLoadingConflicts || conflicts.length > 0) && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="rounded-3xl border border-amber-200/80 bg-amber-50/60 px-5 py-5 shadow-sm">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-amber-900">
-                    Potential Conflicts Detected
-                  </h3>
+                <div className="mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-amber-900">Potential conflicts detected</h3>
                   {isLoadingConflicts && (
-                    <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
                   )}
                 </div>
                 {isLoadingConflicts ? (
@@ -1424,7 +1536,7 @@ export default function VideoConceptBuilder({
                   conflicts.map((conflict, idx) => {
                     const resolution = conflict.resolution || conflict.suggestion;
                     return (
-                      <div key={idx} className="text-sm text-amber-800 mt-2">
+                      <div key={idx} className="mt-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3 text-sm text-amber-900 backdrop-blur-sm">
                         <div>{conflict.message}</div>
                         {resolution && (
                           <div className="mt-1 text-xs text-amber-700">{resolution}</div>
@@ -1440,7 +1552,7 @@ export default function VideoConceptBuilder({
 
         {/* Refinement Suggestions */}
         {(isLoadingRefinements || hasRefinements) && (
-          <div className="mb-6 p-5 bg-white border border-neutral-200 rounded-xl shadow-sm">
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-emerald-600" />
@@ -1491,7 +1603,7 @@ export default function VideoConceptBuilder({
 
         {/* Technical Blueprint */}
         {(isLoadingTechnicalParams || hasTechnicalParams) && (
-          <div className="mb-6 p-5 bg-white border border-neutral-200 rounded-xl shadow-sm">
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Wand2 className="h-4 w-4 text-indigo-600" />
@@ -1530,23 +1642,24 @@ export default function VideoConceptBuilder({
 
         {/* Bento Grid - Element Cards */}
         {mode === 'element' && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {ELEMENT_CARD_ORDER.map((key) => {
-              const config = elementConfig[key];
-              const Icon = config.icon;
-              const isActive = activeElement === key;
-              const isFilled = elements[key];
-              const compatibility = compatibilityScores[key];
+          <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-5 py-6 shadow-sm">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {ELEMENT_CARD_ORDER.map((key) => {
+                const config = elementConfig[key];
+                const Icon = config.icon;
+                const isActive = activeElement === key;
+                const isFilled = elements[key];
+                const compatibility = compatibilityScores[key];
 
-              return (
+                return (
                 <div
                   key={key}
-                  className={`p-5 bg-white border rounded-xl transition-all ${
+                  className={`group relative flex h-full flex-col rounded-2xl border p-5 transition-all duration-200 ${
                     isActive
-                      ? 'border-neutral-900 shadow-md'
+                      ? 'border-neutral-900 bg-white shadow-lg ring-1 ring-neutral-900/10'
                       : isFilled
-                        ? 'border-neutral-300'
-                        : 'border-neutral-200'
+                        ? 'border-neutral-200 bg-white/95 shadow-sm hover:border-neutral-300 hover:shadow-md'
+                        : 'border-neutral-200/70 bg-white/90 hover:border-neutral-300/80 hover:shadow'
                   }`}
                 >
                   {/* Card Header */}
@@ -1596,7 +1709,7 @@ export default function VideoConceptBuilder({
                       }
                     }}
                     placeholder={config.placeholder}
-                    className="w-full px-3 py-2 text-sm text-neutral-900 bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                    className="input text-sm transition-shadow focus:border-neutral-500 focus:ring-neutral-500/30"
                   />
 
                   {/* Quick Examples - 2025 Design */}
@@ -1605,7 +1718,7 @@ export default function VideoConceptBuilder({
                       <button
                         key={idx}
                         onClick={() => handleElementChange(key, example)}
-                        className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:shadow-sm hover:bg-neutral-50 transition-all duration-200 active:scale-95"
+                        className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm active:scale-95"
                       >
                         {example}
                       </button>
@@ -1638,7 +1751,7 @@ export default function VideoConceptBuilder({
                         return (
                           <div
                             key={descriptorKey}
-                            className="rounded-lg border border-neutral-200 bg-white/80 p-3"
+                            className="rounded-2xl border border-neutral-200 bg-white/80 p-3"
                           >
                             <div className="flex items-center gap-2 mb-2">
                               <Tag className="h-3.5 w-3.5 text-neutral-500" />
@@ -1679,18 +1792,15 @@ export default function VideoConceptBuilder({
                                   }
                                 }}
                                 placeholder={descriptorConfig.placeholder}
-                                className="flex-1 px-3 py-2 text-sm text-neutral-900 bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                                className="input text-sm focus:border-neutral-500 focus:ring-neutral-500/30"
                               />
                               <button
                                 onClick={() => fetchSuggestionsForElement(descriptorKey)}
-                                className="group relative overflow-hidden px-2 py-1.5 text-[11px] font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                className="btn-primary btn-sm px-3 py-1 text-[11px] font-semibold shadow-sm active:scale-95"
                                 title="Get AI descriptor ideas"
                               >
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                                <div className="relative flex items-center gap-1">
-                                  <Sparkles className="h-3 w-3" />
-                                  <span>AI Fill</span>
-                                </div>
+                                <Sparkles className="h-3 w-3" />
+                                AI fill
                               </button>
                             </div>
                             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1698,7 +1808,7 @@ export default function VideoConceptBuilder({
                                 <button
                                   key={`${descriptorKey}-example-${exampleIdx}`}
                                   onClick={() => handleElementChange(descriptorKey, example)}
-                                  className="px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-all duration-150 active:scale-95"
+                                  className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-medium text-neutral-700 transition-all duration-150 hover:border-neutral-300 hover:bg-neutral-50 active:scale-95"
                                 >
                                   {example}
                                 </button>
@@ -1713,6 +1823,7 @@ export default function VideoConceptBuilder({
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
