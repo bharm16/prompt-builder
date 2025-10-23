@@ -24,7 +24,7 @@ vi.mock('../phraseExtractor.js', () => {
 vi.mock('../../utils/anchorRanges.js', () => {
   return {
     buildTextNodeIndex: vi.fn(() => ({ nodes: [], length: 0 })),
-    surroundRange: ({ root, start, end, createWrapper }) => {
+    wrapRangeSegments: ({ root, start, end, createWrapper }) => {
       const wrapper = createWrapper();
       const text = root.textContent || '';
       const slice = text.slice(start, end);
@@ -32,7 +32,7 @@ vi.mock('../../utils/anchorRanges.js', () => {
         wrapper.textContent = slice;
       }
       root.appendChild(wrapper);
-      return wrapper;
+      return [wrapper];
     },
   };
 });

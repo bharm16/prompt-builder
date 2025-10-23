@@ -131,3 +131,91 @@ export const surroundRange = ({ root, start, end, createWrapper, nodeIndex }) =>
   }
 };
 
+const isTextNode = (node) => {
+  if (!node) return false;
+  if (typeof Node !== 'undefined' && Node.TEXT_NODE != null) {
+    return node.nodeType === Node.TEXT_NODE;
+  }
+  return node.nodeType === 3;
+};
+
+export const wrapRangeSegments = ({ root, start, end, createWrapper, nodeIndex }) => {
+  if (!root || typeof createWrapper !== 'function') {
+    return [];
+  }
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return [];
+  }
+
+  const index = nodeIndex ?? buildTextNodeIndex(root);
+  if (!index?.nodes?.length) {
+    return [];
+  }
+
+  const wrappers = [];
+  const doc = root.ownerDocument ?? (typeof document !== 'undefined' ? document : null);
+  if (!doc?.createRange) {
+    return wrappers;
+  }
+
+  for (let i = 0; i < index.nodes.length; i += 1) {
+    const entry = index.nodes[i];
+    if (!isTextNode(entry.node)) {
+      continue;
+    }
+
+    if (entry.end <= start) {
+      continue;
+    }
+
+    if (entry.start >= end) {
+      break;
+    }
+
+    const segmentStart = Math.max(start, entry.start);
+    const segmentEnd = Math.min(end, entry.end);
+    if (segmentEnd <= segmentStart) {
+      continue;
+    }
+
+    const localStart = segmentStart - entry.start;
+    const localEnd = segmentEnd - entry.start;
+    if (localEnd <= localStart) {
+      continue;
+    }
+
+    const range = doc.createRange();
+    try {
+      range.setStart(entry.node, localStart);
+      range.setEnd(entry.node, localEnd);
+    } catch (error) {
+      range.detach?.();
+      continue;
+    }
+
+    const wrapper = createWrapper({
+      node: entry.node,
+      globalStart: segmentStart,
+      globalEnd: segmentEnd,
+      localStart,
+      localEnd,
+    });
+
+    if (!wrapper) {
+      range.detach?.();
+      continue;
+    }
+
+    try {
+      range.surroundContents(wrapper);
+      wrappers.push(wrapper);
+    } catch (error) {
+      console.warn('[anchorRanges] Failed to wrap segment:', error);
+    } finally {
+      range.detach?.();
+    }
+  }
+
+  return wrappers;
+};

@@ -18,7 +18,8 @@ import {
   EMOJI_POLICY_VERSION,
 } from './phraseExtractor';
 import { createCanonicalText } from '../../utils/canonicalText.js';
-import { buildTextNodeIndex, surroundRange } from '../../utils/anchorRanges.js';
+import { buildTextNodeIndex, wrapRangeSegments } from '../../utils/anchorRanges.js';
+import { relocateQuote } from '../../utils/textQuoteRelocator.js';
 import { PromptContext } from '../../utils/PromptContext.js';
 
 /**
@@ -629,6 +630,7 @@ export const PromptCanvas = ({
       lexicon: LEXICON_VERSION,
       emojiPolicy: EMOJI_POLICY_VERSION,
     },
+    displayText: '',
   }));
 
   const contextMemoKey = useMemo(() => {
@@ -653,56 +655,6 @@ export const PromptCanvas = ({
     });
   }, [promptContext]);
 
-  useEffect(() => {
-    const baseCanonical = createCanonicalText(displayedPrompt ?? '');
-
-    if (!enableMLHighlighting || !displayedPrompt) {
-      setParseResult({
-        canonical: baseCanonical,
-        spans: [],
-        stats: { totalCandidates: 0, validated: 0, final: 0 },
-        versions: {
-          parser: PARSER_VERSION,
-          lexicon: LEXICON_VERSION,
-          emojiPolicy: EMOJI_POLICY_VERSION,
-        },
-      });
-      return;
-    }
-
-    let cancelled = false;
-    try {
-      const result = runExtractionPipeline(displayedPrompt, promptContext);
-      if (!cancelled) {
-        setParseResult(result);
-      }
-    } catch (error) {
-      console.error('Failed to run extraction pipeline:', error);
-      if (!cancelled) {
-        setParseResult({
-          canonical: baseCanonical,
-          spans: [],
-          stats: { totalCandidates: 0, validated: 0, final: 0 },
-          versions: {
-            parser: PARSER_VERSION,
-            lexicon: LEXICON_VERSION,
-            emojiPolicy: EMOJI_POLICY_VERSION,
-          },
-          error,
-        });
-      }
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    displayedPrompt,
-    promptContext,
-    contextMemoKey,
-    enableMLHighlighting,
-    parserVersionSignature,
-  ]);
 
   const unwrapHighlight = (element) => {
     if (!element || !element.parentNode) return;
@@ -728,6 +680,95 @@ export const PromptCanvas = ({
     () => formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext),
     [displayedPrompt, enableMLHighlighting, promptContext]
   );
+
+  useEffect(() => {
+    const canonical = createCanonicalText(displayedPrompt ?? '');
+
+    if (!enableMLHighlighting || !displayedPrompt) {
+      setParseResult({
+        canonical,
+        spans: [],
+        stats: { totalCandidates: 0, validated: 0, final: 0 },
+        versions: {
+          parser: PARSER_VERSION,
+          lexicon: LEXICON_VERSION,
+          emojiPolicy: EMOJI_POLICY_VERSION,
+        },
+        displayText: '',
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    const execute = () => {
+      try {
+        const sourceResult = runExtractionPipeline(displayedPrompt, promptContext);
+        const root = editorRef.current;
+        const displayString = (root?.innerText ?? root?.textContent ?? '').normalize('NFC');
+        const displayResult = displayString
+          ? runExtractionPipeline(displayString, promptContext)
+          : { spans: [], stats: { totalCandidates: 0, validated: 0, final: 0 } };
+
+        const combinedSpans = combineDisplayAndSourceSpans({
+          sourceSpans: sourceResult.spans,
+          displaySpans: displayResult.spans,
+          canonical: sourceResult.canonical,
+        });
+
+        if (!cancelled) {
+          setParseResult({
+            ...sourceResult,
+            spans: combinedSpans,
+            stats: {
+              ...sourceResult.stats,
+              displaySpanCount: displayResult.spans.length,
+            },
+            displayText: displayString,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to run extraction pipeline:', error);
+        if (!cancelled) {
+          setParseResult({
+            canonical,
+            spans: [],
+            stats: { totalCandidates: 0, validated: 0, final: 0 },
+            versions: {
+              parser: PARSER_VERSION,
+              lexicon: LEXICON_VERSION,
+              emojiPolicy: EMOJI_POLICY_VERSION,
+            },
+            displayText: '',
+            error,
+          });
+        }
+      }
+    };
+
+    let cleanup = null;
+
+    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+      const rafId = window.requestAnimationFrame(() => {
+        execute();
+      });
+      cleanup = () => window.cancelAnimationFrame(rafId);
+    } else {
+      execute();
+    }
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [
+    displayedPrompt,
+    promptContext,
+    contextMemoKey,
+    enableMLHighlighting,
+    parserVersionSignature,
+    formattedHTML,
+  ]);
 
 
   const handleCopy = () => {
@@ -1097,19 +1138,35 @@ export const PromptCanvas = ({
 
     clearHighlights();
 
-    if (!enableMLHighlighting || !parseResult.spans?.length) {
+    const spans = parseResult?.spans;
+    if (!enableMLHighlighting || !Array.isArray(spans) || !spans.length) {
       return;
     }
 
-    const nodeIndex = buildTextNodeIndex(root);
     const wrappers = [];
+    const sortedSpans = [...spans].filter((span) => {
+      const start = Number(span.displayStart ?? span.start);
+      const end = Number(span.displayEnd ?? span.end);
+      return Number.isFinite(start) && Number.isFinite(end) && end > start;
+    }).sort((a, b) => {
+      const aStart = Number(a.displayStart ?? a.start ?? 0);
+      const bStart = Number(b.displayStart ?? b.start ?? 0);
+      return aStart - bStart;
+    });
 
-    parseResult.spans.forEach((span) => {
-      const wrapper = surroundRange({
+    sortedSpans.forEach((span) => {
+      const displayStart = Number(span.displayStart ?? span.start);
+      const displayEnd = Number(span.displayEnd ?? span.end);
+      if (!Number.isFinite(displayStart) || !Number.isFinite(displayEnd) || displayEnd <= displayStart) {
+        return;
+      }
+
+      const index = buildTextNodeIndex(root);
+      const segmentWrappers = wrapRangeSegments({
         root,
-        start: span.start,
-        end: span.end,
-        nodeIndex,
+        start: displayStart,
+        end: displayEnd,
+        nodeIndex: index,
         createWrapper: () => {
           const el = root.ownerDocument.createElement('span');
           el.className = `value-word value-word-${span.category}`;
@@ -1118,6 +1175,8 @@ export const PromptCanvas = ({
           el.dataset.spanId = span.id;
           el.dataset.start = String(span.start);
           el.dataset.end = String(span.end);
+          el.dataset.startDisplay = String(displayStart);
+          el.dataset.endDisplay = String(displayEnd);
           el.dataset.startGrapheme = String(span.startGrapheme ?? '');
           el.dataset.endGrapheme = String(span.endGrapheme ?? '');
           el.dataset.validatorPass = span.validatorPass === false ? 'false' : 'true';
@@ -1133,19 +1192,22 @@ export const PromptCanvas = ({
         },
       });
 
-      if (wrapper) {
+      segmentWrappers.forEach((wrapper) => {
         wrapper.dataset.quote = span.quote ?? '';
         wrapper.dataset.leftCtx = span.leftCtx ?? '';
         wrapper.dataset.rightCtx = span.rightCtx ?? '';
+        wrapper.dataset.displayQuote = span.displayQuote ?? span.quote ?? '';
+        wrapper.dataset.displayLeftCtx = span.displayLeftCtx ?? '';
+        wrapper.dataset.displayRightCtx = span.displayRightCtx ?? '';
         wrapper.dataset.source = span.source ?? '';
         if (typeof span.confidence === 'number') {
           wrapper.dataset.confidence = String(span.confidence);
         }
         wrappers.push(wrapper);
-      }
+      });
     });
 
-    highlightStateRef.current = { wrappers, nodeIndex };
+    highlightStateRef.current = { wrappers, nodeIndex: null };
   }, [parseResult, enableMLHighlighting, formattedHTML]);
 
   return (
@@ -1233,4 +1295,165 @@ export const PromptCanvas = ({
       <SuggestionsPanel suggestionsData={suggestionsData || { show: false }} />
     </div>
   );
+};
+
+const CONTEXT_WINDOW_CHARS = 20;
+
+const normalizeKeyComponent = (value = '') =>
+  value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/\r?\n/g, ' ')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const createSpanKey = (span) =>
+  [span?.quote ?? '', span?.leftCtx ?? '', span?.rightCtx ?? '']
+    .map(normalizeKeyComponent)
+    .join('::');
+
+const createQuoteKey = (span) => normalizeKeyComponent(span?.quote ?? '');
+
+const buildSpanQueue = (spans, keyFn) => {
+  const map = new Map();
+  spans.forEach((span) => {
+    const key = keyFn(span);
+    if (!key) return;
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(span);
+  });
+  return map;
+};
+
+const safelyRelocateDisplaySpan = (displaySpan, canonical) => {
+  if (!displaySpan?.quote || !canonical) {
+    return null;
+  }
+
+  const quote = displaySpan.quote.normalize('NFC');
+  const canonicalText = canonical.normalized ?? '';
+  if (!quote || !canonicalText) {
+    return null;
+  }
+
+  const primary = relocateQuote({
+    text: canonicalText,
+    quote,
+    leftCtx: displaySpan.leftCtx ?? '',
+    rightCtx: displaySpan.rightCtx ?? '',
+  });
+
+  let location = primary;
+  if (!location) {
+    const fallbackIndex = canonicalText.indexOf(quote);
+    if (fallbackIndex !== -1) {
+      location = { start: fallbackIndex, end: fallbackIndex + quote.length };
+    }
+  }
+
+  if (!location) {
+    return null;
+  }
+
+  const { start, end } = location;
+  const startGrapheme = canonical.graphemeIndexForCodeUnit(start);
+  const endGrapheme = canonical.graphemeIndexForCodeUnit(end);
+  const leftCtxStart = Math.max(0, startGrapheme - CONTEXT_WINDOW_CHARS);
+  const rightCtxEnd = Math.min(canonical.length, endGrapheme + CONTEXT_WINDOW_CHARS);
+
+  return {
+    ...displaySpan,
+    id: displaySpan.id ?? `display_${start}_${end}`,
+    start,
+    end,
+    startGrapheme,
+    endGrapheme,
+    quote: canonical.sliceGraphemes(startGrapheme, endGrapheme),
+    leftCtx: canonical.sliceGraphemes(leftCtxStart, startGrapheme),
+    rightCtx: canonical.sliceGraphemes(endGrapheme, rightCtxEnd),
+  };
+};
+
+const combineDisplayAndSourceSpans = ({
+  sourceSpans,
+  displaySpans,
+  canonical,
+}) => {
+  if (!Array.isArray(displaySpans) || !displaySpans.length) {
+    return Array.isArray(sourceSpans) ? [...sourceSpans] : [];
+  }
+
+  const combined = [];
+  const sourceByKey = buildSpanQueue(sourceSpans ?? [], createSpanKey);
+  const sourceByQuote = buildSpanQueue(sourceSpans ?? [], createQuoteKey);
+  const usedSourceIds = new Set();
+
+  const takeFromQueue = (map, key) => {
+    if (!key) return null;
+    const queue = map.get(key);
+    if (!queue || !queue.length) return null;
+    while (queue.length) {
+      const candidate = queue.shift();
+      if (candidate && !usedSourceIds.has(candidate.id)) {
+        return candidate;
+      }
+    }
+    return null;
+  };
+
+  displaySpans.forEach((displaySpan) => {
+    let matched = takeFromQueue(sourceByKey, createSpanKey(displaySpan));
+
+    if (!matched) {
+      matched = takeFromQueue(sourceByQuote, createQuoteKey(displaySpan));
+    }
+
+    if (!matched) {
+      const relocated = safelyRelocateDisplaySpan(displaySpan, canonical);
+      if (relocated) {
+        combined.push({
+          ...relocated,
+          displayStart: displaySpan.start,
+          displayEnd: displaySpan.end,
+          displayQuote: displaySpan.quote,
+          displayLeftCtx: displaySpan.leftCtx,
+          displayRightCtx: displaySpan.rightCtx,
+        });
+      }
+      return;
+    }
+
+    usedSourceIds.add(matched.id);
+    combined.push({
+      ...matched,
+      displayStart: displaySpan.start,
+      displayEnd: displaySpan.end,
+      displayQuote: displaySpan.quote,
+      displayLeftCtx: displaySpan.leftCtx,
+      displayRightCtx: displaySpan.rightCtx,
+    });
+  });
+
+  (sourceSpans ?? []).forEach((span) => {
+    if (usedSourceIds.has(span.id)) return;
+    combined.push({
+      ...span,
+      displayStart: span.start,
+      displayEnd: span.end,
+      displayQuote: span.quote,
+      displayLeftCtx: span.leftCtx,
+      displayRightCtx: span.rightCtx,
+    });
+  });
+
+  return combined;
 };
