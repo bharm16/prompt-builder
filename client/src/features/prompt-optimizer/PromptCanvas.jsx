@@ -22,6 +22,8 @@ import { buildTextNodeIndex, wrapRangeSegments } from '../../utils/anchorRanges.
 import { relocateQuote } from '../../utils/textQuoteRelocator.js';
 import { PromptContext } from '../../utils/PromptContext.js';
 
+const LLM_PARSER_VERSION = 'llm-v1';
+
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
  *
@@ -619,16 +621,24 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const highlightStateRef = useRef({ wrappers: [], nodeIndex: null });
   const toast = useToast();
-  const parserVersionSignature = `${PARSER_VERSION}-${LEXICON_VERSION}-${EMOJI_POLICY_VERSION}`;
+  const parserVersionSignature = `${PARSER_VERSION}-${LEXICON_VERSION}-${EMOJI_POLICY_VERSION}-${LLM_PARSER_VERSION}`;
+  const semanticRequestCounterRef = useRef(0);
 
   const [parseResult, setParseResult] = useState(() => ({
     canonical: createCanonicalText(displayedPrompt ?? ''),
     spans: [],
-    stats: { totalCandidates: 0, validated: 0, final: 0 },
+    stats: {
+      totalCandidates: 0,
+      validated: 0,
+      final: 0,
+      llmSpanCount: 0,
+      legacySpanCount: 0,
+    },
     versions: {
       parser: PARSER_VERSION,
       lexicon: LEXICON_VERSION,
       emojiPolicy: EMOJI_POLICY_VERSION,
+      llmParser: null,
     },
     displayText: '',
   }));
@@ -688,78 +698,136 @@ export const PromptCanvas = ({
       setParseResult({
         canonical,
         spans: [],
-        stats: { totalCandidates: 0, validated: 0, final: 0 },
+        stats: {
+          totalCandidates: 0,
+          validated: 0,
+          final: 0,
+          llmSpanCount: 0,
+          legacySpanCount: 0,
+        },
         versions: {
           parser: PARSER_VERSION,
           lexicon: LEXICON_VERSION,
           emojiPolicy: EMOJI_POLICY_VERSION,
+          llmParser: null,
         },
         displayText: '',
       });
       return;
     }
 
-    let cancelled = false;
+    let isCancelled = false;
+    const requestId = semanticRequestCounterRef.current + 1;
+    semanticRequestCounterRef.current = requestId;
+    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
-    const execute = () => {
+    const execute = async () => {
       try {
         const sourceResult = runExtractionPipeline(displayedPrompt, promptContext);
+
         const root = editorRef.current;
-        const displayText = root?.textContent ?? '';
+        const displayText = root?.textContent ?? displayedPrompt ?? '';
         const displayResult = displayText
           ? runExtractionPipeline(displayText, promptContext)
           : { spans: [], stats: { totalCandidates: 0, validated: 0, final: 0 } };
 
-        const combinedSpans = combineDisplayAndSourceSpans({
+        const legacyCombined = combineDisplayAndSourceSpans({
           sourceSpans: sourceResult.spans,
           displaySpans: displayResult.spans,
           canonical: sourceResult.canonical,
         });
 
-        if (!cancelled) {
-          setParseResult({
-            ...sourceResult,
-            spans: combinedSpans,
-            stats: {
-              ...sourceResult.stats,
-              displaySpanCount: displayResult.spans.length,
-            },
-            displayText,
-          });
+        let llmSpans = [];
+        if (displayText.trim()) {
+          try {
+            const response = await fetch('/api/video/semantic-parse', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': 'dev-key-12345',
+              },
+              body: JSON.stringify({ text: displayText }),
+              signal: abortController?.signal,
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              llmSpans = convertSemanticSpansToClient(
+                Array.isArray(data.spans) ? data.spans : [],
+                displayText,
+                sourceResult.canonical
+              );
+            } else {
+              console.warn('Semantic parse request failed', {
+                status: response.status,
+                statusText: response.statusText,
+              });
+            }
+          } catch (error) {
+            if (error.name !== 'AbortError') {
+              console.error('Semantic parse request error:', error);
+            }
+          }
         }
+
+        const mergedSpans = mergeSemanticAndLegacySpans({
+          llmSpans,
+          legacySpans: legacyCombined,
+        });
+
+        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
+          return;
+        }
+
+        setParseResult({
+          canonical: sourceResult.canonical,
+          spans: mergedSpans,
+          stats: {
+            ...sourceResult.stats,
+            displaySpanCount: displayResult.spans.length,
+            llmSpanCount: llmSpans.length,
+            legacySpanCount: legacyCombined.length,
+          },
+          versions: {
+            ...sourceResult.versions,
+            llmParser: llmSpans.length > 0 ? LLM_PARSER_VERSION : null,
+          },
+          displayText,
+        });
       } catch (error) {
-        console.error('Failed to run extraction pipeline:', error);
-        if (!cancelled) {
-          setParseResult({
-            canonical,
-            spans: [],
-            stats: { totalCandidates: 0, validated: 0, final: 0 },
-            versions: {
-              parser: PARSER_VERSION,
-              lexicon: LEXICON_VERSION,
-              emojiPolicy: EMOJI_POLICY_VERSION,
-            },
-            displayText: '',
-            error,
-          });
+        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
+          return;
         }
+        console.error('Failed to run extraction pipeline with semantic parser:', error);
+        setParseResult({
+          canonical,
+          spans: [],
+          stats: {
+            totalCandidates: 0,
+            validated: 0,
+            final: 0,
+            llmSpanCount: 0,
+            legacySpanCount: 0,
+          },
+          versions: {
+            parser: PARSER_VERSION,
+            lexicon: LEXICON_VERSION,
+            emojiPolicy: EMOJI_POLICY_VERSION,
+            llmParser: null,
+          },
+          displayText: '',
+          error,
+        });
       }
     };
 
-    let cleanup = null;
-
-    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-      const rafId = window.requestAnimationFrame(() => {
-        execute();
-      });
-      cleanup = () => window.cancelAnimationFrame(rafId);
-    } else {
-      execute();
-    }
+    execute();
 
     return () => {
-      cancelled = true;
-      cleanup?.();
+      isCancelled = true;
+      if (abortController) {
+        abortController.abort();
+      }
     };
   }, [
     displayedPrompt,
@@ -1452,6 +1520,92 @@ const safelyRelocateDisplaySpan = (displaySpan, canonical) => {
     leftCtx: canonical.sliceGraphemes(leftCtxStart, startGrapheme),
     rightCtx: canonical.sliceGraphemes(endGrapheme, rightCtxEnd),
   };
+};
+
+const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
+  if (!Array.isArray(rawSpans) || !displayText) {
+    return [];
+  }
+
+  return rawSpans
+    .map((span, index) => {
+      if (!span || typeof span !== 'object') return null;
+
+      const category = span.category;
+      if (typeof category !== 'string' || category.trim() === '') return null;
+
+      const start = Number(span.start);
+      const end = Number(span.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        return null;
+      }
+
+      const clampedStart = Math.max(0, Math.min(displayText.length, start));
+      const clampedEnd = Math.max(0, Math.min(displayText.length, end));
+      if (clampedEnd <= clampedStart) return null;
+
+      const slice = displayText.slice(clampedStart, clampedEnd);
+      if (!slice) return null;
+
+      const leftCtx =
+        typeof span.leftContext === 'string'
+          ? span.leftContext
+          : displayText.slice(Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS), clampedStart);
+      const rightCtx =
+        typeof span.rightContext === 'string'
+          ? span.rightContext
+          : displayText.slice(clampedEnd, Math.min(displayText.length, clampedEnd + CONTEXT_WINDOW_CHARS));
+
+      const startGrapheme = canonical?.graphemeIndexForCodeUnit
+        ? canonical.graphemeIndexForCodeUnit(clampedStart)
+        : undefined;
+      const endGrapheme = canonical?.graphemeIndexForCodeUnit
+        ? canonical.graphemeIndexForCodeUnit(clampedEnd)
+        : undefined;
+
+      return {
+        id: span.id ?? `llm_${category}_${index}_${clampedStart}_${clampedEnd}`,
+        category,
+        start: clampedStart,
+        end: clampedEnd,
+        displayStart: clampedStart,
+        displayEnd: clampedEnd,
+        quote: slice,
+        displayQuote: slice,
+        leftCtx,
+        rightCtx,
+        displayLeftCtx: leftCtx,
+        displayRightCtx: rightCtx,
+        source: span.source ?? 'llm',
+        confidence: typeof span.confidence === 'number' ? span.confidence : undefined,
+        validatorPass: true,
+        startGrapheme,
+        endGrapheme,
+        version: span.version ?? LLM_PARSER_VERSION,
+      };
+    })
+    .filter(Boolean);
+};
+
+const mergeSemanticAndLegacySpans = ({ llmSpans, legacySpans }) => {
+  const semantic = Array.isArray(llmSpans) ? llmSpans : [];
+  const legacy = Array.isArray(legacySpans) ? legacySpans : [];
+
+  if (semantic.length === 0) {
+    return legacy;
+  }
+
+  const semanticCategories = new Set(semantic.map((span) => span.category));
+  const fallbackLegacy = legacy.filter((span) => !semanticCategories.has(span.category));
+
+  return [...semantic, ...fallbackLegacy].sort((a, b) => {
+    const aStart = Number(a.displayStart ?? a.start ?? 0);
+    const bStart = Number(b.displayStart ?? b.start ?? 0);
+    if (aStart !== bStart) return aStart - bStart;
+    const aLen = Number((a.displayEnd ?? a.end ?? 0) - (a.displayStart ?? a.start ?? 0));
+    const bLen = Number((b.displayEnd ?? b.end ?? 0) - (b.displayStart ?? b.start ?? 0));
+    return aLen - bLen;
+  });
 };
 
 const combineDisplayAndSourceSpans = ({

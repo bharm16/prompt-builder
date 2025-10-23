@@ -13,6 +13,7 @@ import {
   variationsSchema,
   parseConceptSchema,
   videoValidationSchema,
+  semanticParseSchema,
 } from '../utils/validation.js';
 
 /**
@@ -29,6 +30,7 @@ export function createAPIRoutes(services) {
     enhancementService,
     sceneDetectionService,
     videoConceptService,
+    textCategorizerService,
   } = services;
 
   // POST /api/optimize - Optimize prompt
@@ -152,6 +154,24 @@ export function createAPIRoutes(services) {
       const { concept } = req.body;
       const parsed = await videoConceptService.parseConcept({ concept });
       res.json(parsed);
+    })
+  );
+
+  router.post(
+    '/video/semantic-parse',
+    validateRequest(semanticParseSchema),
+    asyncHandler(async (req, res) => {
+      const { text } = req.body;
+      try {
+        const spans = await textCategorizerService.parseText({ text });
+        res.json({ spans });
+      } catch (error) {
+        logger.error('Semantic parse failed', { error: error.message });
+        res.status(error.statusCode || 500).json({
+          error: 'Categorization failed',
+          message: 'Unable to parse text into semantic spans',
+        });
+      }
     })
   );
 

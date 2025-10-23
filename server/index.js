@@ -20,6 +20,7 @@ import { QuestionGenerationService } from './src/services/QuestionGenerationServ
 import { EnhancementService } from './src/services/EnhancementService.js';
 import { SceneDetectionService } from './src/services/SceneDetectionService.js';
 import { VideoConceptService } from './src/services/VideoConceptService.js';
+import { TextCategorizerService } from './src/services/TextCategorizerService.js';
 
 // Import middleware
 import { requestIdMiddleware } from './src/middleware/requestId.js';
@@ -79,6 +80,7 @@ const questionGenerationService = new QuestionGenerationService(claudeClient);
 const enhancementService = new EnhancementService(claudeClient);
 const sceneDetectionService = new SceneDetectionService(claudeClient);
 const videoConceptService = new VideoConceptService(claudeClient);
+const textCategorizerService = new TextCategorizerService(claudeClient);
 
 logger.info('All services initialized successfully');
 
@@ -298,6 +300,7 @@ const apiRoutes = createAPIRoutes({
   enhancementService,
   sceneDetectionService,
   videoConceptService,
+  textCategorizerService,
 });
 
 app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);

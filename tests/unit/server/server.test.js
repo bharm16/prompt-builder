@@ -931,6 +931,50 @@ describe('API Server Tests', () => {
     });
   });
 
+  describe('POST /api/video/semantic-parse', () => {
+    it('should return semantic spans from LLM response', async () => {
+      const text =
+        'Medium shot of a robot detective pacing across a neon rooftop under rain.';
+      const llmPayload = {
+        tags: [
+          { key: 'subject', phrases: ['robot detective'] },
+          { key: 'location', phrases: ['neon rooftop'] },
+        ],
+      };
+
+      global.fetch.mockResolvedValueOnce(createLLMResponse(llmPayload));
+
+      const response = await request(app)
+        .post('/api/video/semantic-parse')
+        .set('X-API-Key', 'dev-key-12345')
+        .send({ text })
+        .expect(200);
+
+      expect(response.body.spans).toHaveLength(2);
+      expect(response.body.spans[0]).toMatchObject({
+        category: 'subject',
+        phrase: 'robot detective',
+        source: 'llm',
+      });
+      expect(response.body.spans[1]).toMatchObject({
+        category: 'location',
+        phrase: 'neon rooftop',
+      });
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should validate request body', async () => {
+      const response = await request(app)
+        .post('/api/video/semantic-parse')
+        .set('X-API-Key', 'dev-key-12345')
+        .send({})
+        .expect(400);
+
+      expect(response.body.error).toBe('Validation failed');
+      expect(response.body.details).toContain('Text is required');
+    });
+  });
+
   describe('POST /api/video/complete', () => {
     it('should return completed elements and optional smart defaults', async () => {
       const payload = {

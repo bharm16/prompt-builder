@@ -175,6 +175,14 @@ export const parseConceptSchema = Joi.object({
   }),
 });
 
+export const semanticParseSchema = Joi.object({
+  text: Joi.string().required().max(50000).messages({
+    'string.empty': 'Text is required for semantic parsing',
+    'any.required': 'Text is required for semantic parsing',
+    'string.max': 'Text must not exceed 50,000 characters',
+  }),
+});
+
 export const saveTemplateSchema = Joi.object({
   name: Joi.string().required().max(100).messages({
     'string.empty': 'Name is required',
