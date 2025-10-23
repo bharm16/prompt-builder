@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import PromptEnhancementEditor from '../PromptEnhancementEditor.jsx';
+import PromptEnhancementEditor from '../../../../client/src/components/PromptEnhancementEditor.jsx';
 
 describe('PromptEnhancementEditor selection → suggestion flow', () => {
   let origGetSelection;
@@ -60,7 +60,7 @@ describe('PromptEnhancementEditor selection → suggestion flow', () => {
     expect(typeof latest.onSuggestionClick).toBe('function');
 
     // Apply the suggestion
-    await latest.onSuggestionClick('cafe');
+    await latest.onSuggestionClick({ text: 'cafe' });
     expect(onUpdate).toHaveBeenCalledWith(
       'This is a cafe scene with cozy vibes.'
     );

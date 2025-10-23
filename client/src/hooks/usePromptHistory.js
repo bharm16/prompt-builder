@@ -21,12 +21,16 @@ export const usePromptHistory = (user) => {
     try {
       const prompts = await getUserPrompts(userId, 100);
       console.log('Successfully loaded prompts from Firestore:', prompts.length);
-      setHistory(prompts);
+      const normalizedPrompts = prompts.map((entry) => ({
+        ...entry,
+        brainstormContext: entry.brainstormContext ?? null,
+      }));
+      setHistory(normalizedPrompts);
 
       // Also update localStorage with the latest from Firestore
-      if (prompts.length > 0) {
+      if (normalizedPrompts.length > 0) {
         try {
-          localStorage.setItem('promptHistory', JSON.stringify(prompts));
+          localStorage.setItem('promptHistory', JSON.stringify(normalizedPrompts));
         } catch (e) {
           console.warn('Could not save to localStorage:', e);
         }
@@ -44,8 +48,12 @@ export const usePromptHistory = (user) => {
         const savedHistory = localStorage.getItem('promptHistory');
         if (savedHistory) {
           const parsedHistory = JSON.parse(savedHistory);
-          console.log('Loaded history from localStorage fallback:', parsedHistory.length);
-          setHistory(parsedHistory);
+          const normalizedHistory = parsedHistory.map((entry) => ({
+            ...entry,
+            brainstormContext: entry.brainstormContext ?? null,
+          }));
+          console.log('Loaded history from localStorage fallback:', normalizedHistory.length);
+          setHistory(normalizedHistory);
         }
       } catch (localError) {
         console.error('Error loading from localStorage fallback:', localError);
@@ -71,7 +79,11 @@ export const usePromptHistory = (user) => {
         const savedHistory = localStorage.getItem('promptHistory');
         if (savedHistory) {
           const parsedHistory = JSON.parse(savedHistory);
-          setHistory(parsedHistory);
+          const normalizedHistory = parsedHistory.map((entry) => ({
+            ...entry,
+            brainstormContext: entry.brainstormContext ?? null,
+          }));
+          setHistory(normalizedHistory);
         }
       } catch (error) {
         console.error('Error loading history from localStorage:', error);
@@ -81,12 +93,19 @@ export const usePromptHistory = (user) => {
   }, [user, loadHistoryFromFirestore]);
 
   // Save to history
-  const saveToHistory = useCallback(async (input, output, score, selectedMode) => {
+  const saveToHistory = useCallback(async (
+    input,
+    output,
+    score,
+    selectedMode,
+    brainstormContext = null
+  ) => {
     const newEntry = {
       input,
       output,
       score,
       mode: selectedMode,
+      brainstormContext: brainstormContext ?? null,
     };
 
     if (user) {

@@ -20,12 +20,16 @@ import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
 import PromptImprovementForm from '../../PromptImprovementForm';
-import CreativeBrainstormEnhanced from '../../components/CreativeBrainstormEnhanced';
+import VideoConceptBuilder from '../../components/VideoConceptBuilder';
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
+import DebugButton from '../../components/DebugButton';
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
+import { PromptContext } from '../../utils/PromptContext';
+import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
+import { applySuggestionToPrompt } from './utils/applySuggestion.js';
 
 function PromptOptimizerContent() {
   // Force light mode immediately
@@ -90,11 +94,23 @@ function PromptOptimizerContent() {
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState(null);
   const [conceptElements, setConceptElements] = useState(null);
+  const [promptContext, setPromptContext] = useState(null); // NEW: Store PromptContext
   const [currentPromptUuid, setCurrentPromptUuid] = useState(null);
+
+  // Debug: Track promptContext changes
+  useEffect(() => {
+    console.log('[DEBUG] PromptContext state updated:', {
+      exists: !!promptContext,
+      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
+      elements: promptContext?.elements,
+      timestamp: new Date().toISOString()
+    });
+  }, [promptContext]);
 
   // Refs
   const debounceTimerRef = useRef(null);
   const lastRequestRef = useRef(null);
+  const lastAppliedKeyRef = useRef(null);
 
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode);
@@ -122,6 +138,22 @@ function PromptOptimizerContent() {
             setSelectedMode(promptData.mode || 'optimize');
             setCurrentPromptUuid(promptData.uuid);
             setShowResults(true);
+
+            if (promptData.brainstormContext) {
+              try {
+                const contextData =
+                  typeof promptData.brainstormContext === 'string'
+                    ? JSON.parse(promptData.brainstormContext)
+                    : promptData.brainstormContext;
+                const restoredContext = PromptContext.fromJSON(contextData);
+                setPromptContext(restoredContext);
+              } catch (contextError) {
+                console.error('Failed to restore prompt context from shared link:', contextError);
+                setPromptContext(null);
+              }
+            } else {
+              setPromptContext(null);
+            }
           } else {
             toast.error('Prompt not found');
             navigate('/', { replace: true });
@@ -177,11 +209,40 @@ function PromptOptimizerContent() {
   const handleOptimize = async (promptToOptimize, context) => {
     const prompt = promptToOptimize || promptOptimizer.inputPrompt;
     const ctx = context || promptOptimizer.improvementContext;
-    console.log('handleOptimize called with:', { prompt, ctx, selectedMode });
-    const result = await promptOptimizer.optimize(prompt, ctx);
+
+    const serializedContext = promptContext
+      ? typeof promptContext.toJSON === 'function'
+        ? promptContext.toJSON()
+        : {
+            elements: promptContext.elements,
+            metadata: promptContext.metadata,
+          }
+      : null;
+
+    const brainstormContextData = serializedContext
+      ? {
+          elements: serializedContext.elements,
+          metadata: serializedContext.metadata,
+        }
+      : null;
+
+    console.log('handleOptimize called with:', {
+      prompt,
+      ctx,
+      selectedMode,
+      hasBrainstormContext: Boolean(brainstormContextData),
+    });
+
+    const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
     console.log('optimize result:', result);
     if (result) {
-      const uuid = await promptHistory.saveToHistory(prompt, result.optimized, result.score, selectedMode);
+      const uuid = await promptHistory.saveToHistory(
+        prompt,
+        result.optimized,
+        result.score,
+        selectedMode,
+        serializedContext
+      );
       setCurrentPromptUuid(uuid);
       setShowResults(true);
       setShowHistory(true);
@@ -208,15 +269,42 @@ function PromptOptimizerContent() {
   };
 
   // Handle brainstorm flow
-  const handleConceptComplete = async (finalConcept, elements) => {
+  const handleConceptComplete = async (finalConcept, elements, metadata) => {
     setConceptElements(elements);
+
+    // Create PromptContext from brainstorm data and ensure it persists
+    const context = new PromptContext(elements, metadata);
+    setPromptContext(context);
+
+    console.log('[DEBUG] Context created in handleConceptComplete:', {
+      context: context.toJSON(),
+      elements,
+      metadata,
+      timestamp: new Date().toISOString()
+    });
+
+    const serializedContext = context.toJSON();
+
+    // Prepare brainstormContext for backend
+    const brainstormContextData = {
+      elements,
+      metadata
+    };
+
     promptOptimizer.setInputPrompt(finalConcept);
     setShowBrainstorm(false);
 
     setTimeout(async () => {
-      const result = await promptOptimizer.optimize(finalConcept);
+      // Pass brainstormContext to optimize function
+      const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
       if (result) {
-        const uuid = await promptHistory.saveToHistory(finalConcept, result.optimized, result.score, selectedMode);
+        const uuid = await promptHistory.saveToHistory(
+          finalConcept,
+          result.optimized,
+          result.score,
+          selectedMode,
+          serializedContext
+        );
         setCurrentPromptUuid(uuid);
         setShowResults(true);
         setShowHistory(true);
@@ -239,6 +327,7 @@ function PromptOptimizerContent() {
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
+    setPromptContext(null); // Clear context
     setCurrentPromptUuid(null);
     navigate('/', { replace: true });
   };
@@ -253,6 +342,22 @@ function PromptOptimizerContent() {
     setCurrentPromptUuid(entry.uuid || null);
     setShowResults(true);
 
+    if (entry.brainstormContext) {
+      try {
+        const contextData =
+          typeof entry.brainstormContext === 'string'
+            ? JSON.parse(entry.brainstormContext)
+            : entry.brainstormContext;
+        const restoredContext = PromptContext.fromJSON(contextData);
+        setPromptContext(restoredContext);
+      } catch (contextError) {
+        console.error('Failed to restore prompt context from history entry:', contextError);
+        setPromptContext(null);
+      }
+    } else {
+      setPromptContext(null);
+    }
+
     // Update URL if there's a UUID
     if (entry.uuid) {
       navigate(`/prompt/${entry.uuid}`, { replace: true });
@@ -260,14 +365,37 @@ function PromptOptimizerContent() {
   };
 
   // Fetch enhancement suggestions
-  const fetchEnhancementSuggestions = async (
-    highlightedText,
-    originalText,
-    fullPrompt,
-    selectionRange
-  ) => {
-    // Only enable ML suggestions for video mode
-    if (selectedMode !== 'video') {
+  const fetchEnhancementSuggestions = async (payload = {}) => {
+    const {
+      highlightedText,
+      originalText,
+      displayedPrompt: payloadPrompt,
+      range,
+      offsets,
+      metadata: rawMetadata = null,
+      trigger = 'highlight',
+    } = payload;
+
+    const trimmedHighlight = (highlightedText || '').trim();
+    const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
+    const normalizedPrompt = rawPrompt.normalize('NFC');
+    const metadata = rawMetadata
+      ? {
+          ...rawMetadata,
+          span: rawMetadata.span ? { ...rawMetadata.span } : null,
+        }
+      : null;
+
+    console.log('[DEBUG] fetchEnhancementSuggestions called with:', {
+      highlightedText: trimmedHighlight,
+      hasPromptContext: !!promptContext,
+      contextElements: promptContext?.elements,
+      metadata,
+      trigger,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (selectedMode !== 'video' || !trimmedHighlight) {
       return;
     }
 
@@ -275,146 +403,249 @@ function PromptOptimizerContent() {
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (
-      suggestionsData?.selectedText === highlightedText &&
-      suggestionsData?.show
-    ) {
+    if (suggestionsData?.selectedText === trimmedHighlight && suggestionsData?.show) {
       return;
     }
 
     const performFetch = async () => {
-      // Track a unique request id so we ignore stale responses.
       const requestId = Symbol('suggestions');
       lastRequestRef.current = requestId;
 
-      const highlightIndex = fullPrompt.indexOf(highlightedText);
-      const contextBefore = fullPrompt
-        .substring(Math.max(0, highlightIndex - 300), highlightIndex)
-        .trim();
-      const contextAfter = fullPrompt
-        .substring(
-          highlightIndex + highlightedText.length,
-          Math.min(
-            fullPrompt.length,
-            highlightIndex + highlightedText.length + 300
-          )
-        )
-        .trim();
+      const rangeSnapshot = range?.cloneRange ? range.cloneRange() : range ?? null;
+      const offsetsSnapshot = offsets &&
+        typeof offsets.start === 'number' &&
+        typeof offsets.end === 'number'
+        ? { start: offsets.start, end: offsets.end }
+        : null;
 
-      // Set loading state
+      const exactSelectionText =
+        offsetsSnapshot
+          ? rawPrompt.slice(offsetsSnapshot.start, offsetsSnapshot.end)
+          : (originalText ?? trimmedHighlight);
+
+      const closeSuggestions = () => {
+        setSuggestionsData(null);
+        if (typeof window !== 'undefined' && window.getSelection) {
+          const selection = window.getSelection();
+          if (selection && selection.removeAllRanges) {
+            selection.removeAllRanges();
+          }
+        }
+        lastAppliedKeyRef.current = null;
+      };
+
+      const spanMeta = metadata?.span ?? null;
+      const idempotencyKey = spanMeta?.idempotencyKey || metadata?.idempotencyKey || null;
+
+      const applySuggestion = async (suggestion) => {
+        try {
+          const suggestionText =
+            typeof suggestion === 'string' ? suggestion : suggestion?.text || '';
+
+          if (!suggestionText) {
+            toast.error('Suggestion is missing text to apply');
+            return;
+          }
+
+          const latestPromptRaw = promptOptimizer.displayedPrompt ?? '';
+          if (!latestPromptRaw) {
+            toast.error('Unable to apply suggestion to an empty prompt');
+            return;
+          }
+
+          if (idempotencyKey && lastAppliedKeyRef.current === idempotencyKey) {
+            toast.info('Suggestion already applied');
+            return;
+          }
+
+          if (rangeSnapshot && typeof window !== 'undefined' && window.getSelection) {
+            try {
+              const selection = window.getSelection();
+              if (selection && selection.removeAllRanges && selection.addRange) {
+                selection.removeAllRanges();
+                const rangeToApply = rangeSnapshot.cloneRange
+                  ? rangeSnapshot.cloneRange()
+                  : rangeSnapshot;
+                selection.addRange(rangeToApply);
+              }
+            } catch (rangeError) {
+              console.warn('Unable to restore previous selection range:', rangeError);
+            }
+          }
+
+          const application = applySuggestionToPrompt({
+            prompt: latestPromptRaw,
+            suggestionText,
+            highlight: trimmedHighlight,
+            spanMeta,
+            metadata,
+            offsets: offsetsSnapshot,
+          });
+
+          if (!application.updatedPrompt) {
+            toast.info('No changes applied');
+            return;
+          }
+
+          const { updatedPrompt, replacementTarget, idempotencyKey: appliedKey } = application;
+
+          if (updatedPrompt === latestPromptRaw) {
+            toast.info('No changes applied');
+            return;
+          }
+
+          try {
+            const finalPrompt = await detectAndApplySceneChange({
+              originalPrompt: latestPromptRaw,
+              updatedPrompt,
+              oldValue: replacementTarget,
+              newValue: suggestionText,
+            });
+
+            promptOptimizer.setOptimizedPrompt(finalPrompt);
+            promptOptimizer.setDisplayedPrompt(finalPrompt);
+            lastAppliedKeyRef.current = appliedKey || idempotencyKey || null;
+            closeSuggestions();
+            toast.success('Suggestion applied');
+          } catch (error) {
+            console.error('Error detecting scene change:', error);
+            promptOptimizer.setOptimizedPrompt(updatedPrompt);
+            promptOptimizer.setDisplayedPrompt(updatedPrompt);
+            lastAppliedKeyRef.current = appliedKey || idempotencyKey || null;
+            closeSuggestions();
+            toast.success('Suggestion applied');
+          }
+        } catch (error) {
+          console.error('Error applying suggestion:', error);
+          toast.error('Failed to apply suggestion');
+        } finally {
+          if (typeof window !== 'undefined' && window.getSelection) {
+            const selection = window.getSelection();
+            if (selection && selection.removeAllRanges) {
+              selection.removeAllRanges();
+            }
+          }
+        }
+      };
+
+      const normalizedHighlight = trimmedHighlight.normalize('NFC');
+      const highlightIndex = typeof spanMeta?.start === 'number'
+        ? spanMeta.start
+        : normalizedPrompt.indexOf(normalizedHighlight);
+
+      const contextBefore = spanMeta?.leftCtx
+        ? spanMeta.leftCtx
+        : rawPrompt.substring(Math.max(0, highlightIndex - 300), Math.max(0, highlightIndex)).trim();
+      const contextAfter = spanMeta?.rightCtx
+        ? spanMeta.rightCtx
+        : rawPrompt.substring(
+            Math.max(0, highlightIndex + trimmedHighlight.length),
+            Math.min(rawPrompt.length, highlightIndex + trimmedHighlight.length + 300)
+          ).trim();
+
+      const formatCategoryLabel = (value) => {
+        if (!value || typeof value !== 'string') return null;
+        return value
+          .split(/[_-]+|\s+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      };
+
+      const highlightCategory =
+        metadata?.category && metadata.category.trim().length > 0
+          ? metadata.category.trim()
+          : null;
+      const highlightCategoryConfidence =
+        Number.isFinite(metadata?.confidence)
+          ? Math.min(1, Math.max(0, metadata.confidence))
+          : null;
+
       setSuggestionsData({
         show: true,
-        selectedText: highlightedText,
-        originalText: originalText,
+        selectedText: trimmedHighlight,
+        originalText: exactSelectionText,
         suggestions: [],
         isLoading: true,
         isPlaceholder: false,
-        fullPrompt: fullPrompt,
+        fullPrompt: rawPrompt,
+        selectionRange: rangeSnapshot,
+        selectionOffsets: offsetsSnapshot,
+        contextSecondaryValue: formatCategoryLabel(highlightCategory),
+        highlightMetadata: metadata,
         setSuggestions: (newSuggestions, newIsPlaceholder) => {
-          setSuggestionsData((prev) => ({
-            ...prev,
-            suggestions: newSuggestions,
-            isPlaceholder:
-              newIsPlaceholder !== undefined
-                ? newIsPlaceholder
-                : prev.isPlaceholder,
-            isLoading: false,
-          }));
+          setSuggestionsData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              suggestions: newSuggestions,
+              isPlaceholder:
+                newIsPlaceholder !== undefined ? newIsPlaceholder : prev.isPlaceholder,
+              isLoading: false,
+            };
+          });
         },
-        onSuggestionClick: (suggestionText) => {
-          const updatedPrompt = promptOptimizer.displayedPrompt.replace(
-            originalText,
-            suggestionText
-          );
-          promptOptimizer.setOptimizedPrompt(updatedPrompt);
-          promptOptimizer.setDisplayedPrompt(updatedPrompt);
-          setSuggestionsData(null);
-          window.getSelection().removeAllRanges();
-          toast.success('Suggestion applied');
-        },
-        onClose: () => {
-          setSuggestionsData(null);
-          window.getSelection().removeAllRanges();
-        },
+        onSuggestionClick: applySuggestion,
+        onClose: closeSuggestions,
       });
 
       try {
-        const response = await fetch(
-          '/api/get-enhancement-suggestions',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-API-Key': 'dev-key-12345',
-            },
-            body: JSON.stringify({
-              highlightedText,
-              contextBefore,
-              contextAfter,
-              fullPrompt,
-              originalUserPrompt: promptOptimizer.inputPrompt,
-            }),
-          }
-        );
+        const brainstormContextData = promptContext
+          ? {
+              elements: promptContext.elements,
+              metadata: promptContext.metadata,
+              version: promptContext.version || '1.0',
+            }
+          : null;
+
+        const response = await fetch('/api/get-enhancement-suggestions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': 'dev-key-12345',
+          },
+          body: JSON.stringify({
+            highlightedText: trimmedHighlight,
+            contextBefore,
+            contextAfter,
+            fullPrompt: rawPrompt,
+            originalUserPrompt: promptOptimizer.inputPrompt,
+            brainstormContext: brainstormContextData,
+            highlightedCategory: highlightCategory,
+            highlightedCategoryConfidence: highlightCategoryConfidence,
+            highlightedPhrase: metadata?.phrase || null,
+          }),
+        });
 
         if (!response.ok) {
           throw new Error('Failed to fetch suggestions');
         }
 
         const data = await response.json();
-
-        // Ignore if a newer request has started
         if (lastRequestRef.current !== requestId) {
           return;
         }
 
-        setSuggestionsData({
-          show: true,
-          selectedText: highlightedText,
-          originalText: originalText,
-          suggestions: data.suggestions || [],
-          isLoading: false,
-          isPlaceholder: data.isPlaceholder || false,
-          fullPrompt: fullPrompt,
-          setSuggestions: (newSuggestions, newIsPlaceholder) => {
-            setSuggestionsData((prev) => ({
-              ...prev,
-              suggestions: newSuggestions,
-              isPlaceholder:
-                newIsPlaceholder !== undefined
-                  ? newIsPlaceholder
-                  : prev.isPlaceholder,
-              isLoading: false,
-            }));
-          },
-          onSuggestionClick: (suggestionText) => {
-            const updatedPrompt = promptOptimizer.displayedPrompt.replace(
-              originalText,
-              suggestionText
-            );
-            promptOptimizer.setOptimizedPrompt(updatedPrompt);
-            promptOptimizer.setDisplayedPrompt(updatedPrompt);
-            setSuggestionsData(null);
-            window.getSelection().removeAllRanges();
-            toast.success('Suggestion applied');
-          },
-          onClose: () => {
-            setSuggestionsData(null);
-            window.getSelection().removeAllRanges();
-          },
+        setSuggestionsData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            suggestions: data.suggestions || [],
+            isLoading: false,
+            isPlaceholder: data.isPlaceholder || false,
+          };
         });
       } catch (error) {
         console.error('Error fetching suggestions:', error);
-        // Only surface the error if this is still the latest request
         if (lastRequestRef.current === requestId) {
           toast.error('Failed to load suggestions');
-          setSuggestionsData(null);
+          closeSuggestions();
         }
       }
     };
 
-    // Immediate fetch for click on a highlighted word; debounce for text selection drags.
-    if (selectionRange) {
+    const immediate = trigger === 'highlight';
+    if (immediate) {
       performFetch();
     } else {
       debounceTimerRef.current = setTimeout(performFetch, 300);
@@ -445,7 +676,7 @@ function PromptOptimizerContent() {
     },
     applySuggestion: (index) => {
       if (suggestionsData?.suggestions[index]) {
-        suggestionsData.onSuggestionClick(suggestionsData.suggestions[index].text);
+        suggestionsData.onSuggestionClick(suggestionsData.suggestions[index]);
       }
     },
     closeModal: () => {
@@ -503,7 +734,7 @@ function PromptOptimizerContent() {
                 <X className="h-6 w-6" />
               </button>
               <div className="p-6">
-                <CreativeBrainstormEnhanced
+                <VideoConceptBuilder
                   onConceptComplete={handleConceptComplete}
                   initialConcept={promptOptimizer.inputPrompt}
                 />
@@ -852,6 +1083,7 @@ function PromptOptimizerContent() {
             selectedMode={selectedMode}
             currentMode={currentMode}
             promptUuid={currentPromptUuid}
+            promptContext={promptContext}
             onDisplayedPromptChange={promptOptimizer.setDisplayedPrompt}
             onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}
@@ -872,6 +1104,18 @@ function PromptOptimizerContent() {
           </footer>
         )}
       </main>
+
+      {/* Debug Button - Show in development or with ?debug=true */}
+      {(process.env.NODE_ENV === 'development' ||
+        new URLSearchParams(window.location.search).get('debug') === 'true') && (
+        <DebugButton
+          inputPrompt={promptOptimizer.inputPrompt}
+          displayedPrompt={promptOptimizer.displayedPrompt}
+          optimizedPrompt={promptOptimizer.optimizedPrompt}
+          selectedMode={selectedMode}
+          promptContext={promptContext}
+        />
+      )}
     </div>
   );
 }

@@ -30,7 +30,7 @@ export const usePromptOptimizer = (selectedMode) => {
     return Math.min(score, 100);
   }, []);
 
-  const analyzeAndOptimize = useCallback(async (prompt, context = null) => {
+  const analyzeAndOptimize = useCallback(async (prompt, context = null, brainstormContext = null) => {
     try {
       const response = await fetch('/api/optimize', {
         method: 'POST',
@@ -42,6 +42,7 @@ export const usePromptOptimizer = (selectedMode) => {
           prompt: prompt,
           mode: selectedMode,
           context: context,
+          brainstormContext: brainstormContext, // Pass brainstorm context to backend
         }),
       });
 
@@ -53,12 +54,12 @@ export const usePromptOptimizer = (selectedMode) => {
       const data = await response.json();
       return data.optimizedPrompt;
     } catch (error) {
-      console.error('Error calling Claude API:', error);
+      console.error('Error calling optimization API:', error);
       throw error;
     }
   }, [selectedMode]);
 
-  const optimize = useCallback(async (promptToOptimize = inputPrompt, context = improvementContext) => {
+  const optimize = useCallback(async (promptToOptimize = inputPrompt, context = improvementContext, brainstormContext = null) => {
     if (!promptToOptimize.trim()) {
       toast.warning('Please enter a prompt');
       return null;
@@ -71,7 +72,7 @@ export const usePromptOptimizer = (selectedMode) => {
     setSkipAnimation(false);
 
     try {
-      const optimized = await analyzeAndOptimize(promptToOptimize, context);
+      const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
       const score = calculateQualityScore(promptToOptimize, optimized);
 
       setOptimizedPrompt(optimized);

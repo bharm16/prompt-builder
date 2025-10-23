@@ -24,6 +24,8 @@ export class SceneDetectionService {
     oldValue,
     fullPrompt,
     affectedFields,
+    sectionHeading,
+    sectionContext,
   }) {
     logger.info('Detecting scene change', {
       changedField,
@@ -37,6 +39,7 @@ export class SceneDetectionService {
       newValue,
       oldValue,
       fullPrompt: fullPrompt.substring(0, 500),
+      sectionHeading,
     });
 
     const cached = await cacheService.get(cacheKey, 'scene-detection');
@@ -52,6 +55,8 @@ export class SceneDetectionService {
       oldValue,
       fullPrompt,
       affectedFields,
+      sectionHeading,
+      sectionContext,
     });
 
     // Define schema for validation
@@ -102,6 +107,8 @@ export class SceneDetectionService {
     oldValue,
     fullPrompt,
     affectedFields,
+    sectionHeading,
+    sectionContext,
   }) {
     return `You are an expert video production assistant with deep understanding of scene coherence and environmental compatibility.
 
@@ -138,7 +145,12 @@ Step 5: Generate suggestions if needed
 **Old Value:** "${oldValue || 'Not set'}"
 **New Value:** "${newValue}"
 
-**Full Prompt Context:**
+**Section:** ${sectionHeading || 'Unknown section'}
+
+**Relevant Section Content:**
+${sectionContext ? sectionContext.substring(0, 1500) : 'Not provided'}
+
+**Full Prompt Context (truncated):**
 ${fullPrompt.substring(0, 1500)}
 
 **Potentially Affected Fields:**

@@ -104,7 +104,7 @@ export class OpenAIAPIClient {
 
       if (this.breaker.opened) {
         logger.error('OpenAI API circuit breaker is open', error);
-        throw new ServiceUnavailableError('OpenAI API is currently unavailable');
+        throw new ServiceUnavailableError('AI API is currently unavailable');
       }
 
       logger.error('OpenAI API call failed', error, { endpoint, duration });
@@ -147,7 +147,7 @@ export class OpenAIAPIClient {
       if (!response.ok) {
         const errorBody = await response.text();
         throw new APIError(
-          `OpenAI API error: ${response.status} - ${errorBody}`,
+          `AI API error: ${response.status} - ${errorBody}`,
           response.status
         );
       }
@@ -170,7 +170,7 @@ export class OpenAIAPIClient {
       clearTimeout(timeoutId);
 
       if (error.name === 'AbortError') {
-        throw new TimeoutError(`OpenAI API request timeout after ${timeout}ms`);
+        throw new TimeoutError(`AI API request timeout after ${timeout}ms`);
       }
 
       throw error;

@@ -153,7 +153,7 @@ prompt-builder/
 │   │   ├── PromptOptimizerContainer.jsx (663 lines)
 │   │   ├── PromptInput.jsx
 │   │   ├── PromptCanvas.jsx
-│   │   ├── CreativeBrainstormEnhanced.jsx
+│   │   ├── VideoConceptBuilder.jsx
 │   │   └── ...
 │   ├── features/           # Feature modules
 │   │   ├── auth/          # Firebase authentication
@@ -161,7 +161,7 @@ prompt-builder/
 │   │   └── prompt-optimizer/
 │   ├── services/          # Business logic (11 services)
 │   │   ├── PromptOptimizationService.js (1882 lines)
-│   │   ├── CreativeSuggestionService.js
+│   │   ├── VideoConceptService.js
 │   │   ├── EnhancementService.js
 │   │   ├── SceneDetectionService.js
 │   │   ├── QuestionGenerationService.js
@@ -539,15 +539,20 @@ Detect if prompt describes a new scene (video mode).
 }
 ```
 
-#### POST /api/get-creative-suggestions
+#### POST /api/video/suggestions
 
-Get creative suggestions for building video concepts.
+Get creative suggestions for the video concept builder.
 
 **Request:**
 ```json
 {
-  "category": "subjects|settings|actions|lighting|camera",
-  "context": "Current prompt context"
+  "elementType": "subject",
+  "currentValue": "elderly historian",
+  "context": {
+    "location": "sun-drenched wheat field",
+    "mood": "nostalgic warmth"
+  },
+  "concept": "Quiet character portrait"
 }
 ```
 
@@ -555,9 +560,150 @@ Get creative suggestions for building video concepts.
 ```json
 {
   "suggestions": [
-    { "text": "golden hour sunset", "category": "lighting" },
-    { "text": "slow dolly zoom", "category": "camera" }
+    {
+      "text": "elderly historian with weathered hands polishing a silver pocket watch",
+      "explanation": "Builds on the subject while reinforcing the nostalgic tone."
+    },
+    {
+      "text": "elderly historian shielding his notes beneath an ancient oak",
+      "explanation": "Keeps the subject consistent and resolves the lighting/location conflict."
+    }
   ]
+}
+```
+#### POST /api/video/validate
+
+Validate element compatibility and detect conflicts in a single call.
+
+**Request:**
+```json
+{
+  "elementType": "location",
+  "value": "sun-drenched wheat field",
+  "elements": {
+    "subject": "elderly historian beneath an ancient oak tree",
+    "mood": "nostalgic warmth"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "compatibility": {
+    "score": 0.42,
+    "feedback": "Subject is under an oak tree while location says wheat field.",
+    "conflicts": [
+      "subject vs. location"
+    ],
+    "suggestions": [
+      "Clarify if the historian is in the field or under the tree."
+    ]
+  },
+  "conflicts": [
+    {
+      "elements": ["subject", "location"],
+      "severity": "medium",
+      "message": "The location and subject describe different setups.",
+      "resolution": "Either move the subject into the wheat field or adjust the location."
+    }
+  ]
+}
+```
+
+#### POST /api/video/complete
+
+Auto-complete missing elements and optionally fetch smart defaults for a specific slot.
+
+**Request:**
+```json
+{
+  "existingElements": {
+    "subject": "elderly historian with weathered hands",
+    "location": "sun-drenched wheat field"
+  },
+  "concept": "Quiet character portrait",
+  "smartDefaultsFor": "camera"
+}
+```
+
+**Response:**
+```json
+{
+  "suggestions": {
+    "subject": "elderly historian with weathered hands",
+    "location": "sun-drenched wheat field",
+    "action": "gently polishing an heirloom pocket watch",
+    "mood": "nostalgic warmth",
+    "style": "shot on 35mm film with soft backlight"
+  },
+  "smartDefaults": {
+    "camera": {
+      "angle": "medium close-up from waist height",
+      "movement": "gentle dolly in",
+      "lens": "50mm at f/2"
+    }
+  }
+}
+```
+
+#### POST /api/video/variations
+
+Generate alternative takes on the current concept.
+
+**Request:**
+```json
+{
+  "elements": {
+    "subject": "elderly historian with weathered hands",
+    "location": "sun-drenched wheat field",
+    "action": "gently polishing an heirloom pocket watch"
+  },
+  "concept": "Quiet character portrait"
+}
+```
+
+**Response:**
+```json
+{
+  "variations": [
+    {
+      "name": "Dusty Archives",
+      "description": "Moves the historian indoors surrounded by parchment scrolls.",
+      "elements": { "...": "..." },
+      "changes": ["Relocates scene to archive", "Cool, desaturated palette"]
+    },
+    {
+      "name": "Golden Hour Memories",
+      "description": "Keeps the wheat field but introduces family photographs fluttering in the breeze.",
+      "elements": { "...": "..." },
+      "changes": ["Adds prop storytelling", "Warmer lighting emphasis"]
+    }
+  ]
+}
+```
+
+#### POST /api/video/parse
+
+Convert a free-form concept paragraph into structured elements.
+
+**Request:**
+```json
+{
+  "concept": "An aging jazz musician plays a final set under flickering club lights."
+}
+```
+
+**Response:**
+```json
+{
+  "elements": {
+    "subject": "aging jazz musician with weathered trumpet",
+    "action": "playing a heartfelt final set",
+    "location": "smoke-filled underground jazz club",
+    "mood": "melancholic and soulful",
+    "style": "shot on 16mm film with warm practical lighting"
+  }
 }
 ```
 
@@ -647,7 +793,7 @@ Results display with typewriter animation.
 }
 ```
 
-#### CreativeBrainstormEnhanced
+#### VideoConceptBuilder
 
 Interactive concept builder for video mode.
 
@@ -711,7 +857,7 @@ async applyConstitutionalAI(prompt)
 - Caching integration
 - Quality scoring
 
-#### CreativeSuggestionService
+#### VideoConceptService
 
 AI-powered creative suggestions for video prompts.
 

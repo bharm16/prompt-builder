@@ -30,6 +30,14 @@ export const promptSchema = Joi.object({
   })
     .optional()
     .allow(null),
+  brainstormContext: Joi.object({
+    elements: Joi.object().pattern(Joi.string(), Joi.any()).optional(),
+    metadata: Joi.object().optional(),
+    version: Joi.string().optional(),
+    createdAt: Joi.number().optional(),
+  })
+    .optional()
+    .allow(null),
 });
 
 export const suggestionSchema = Joi.object({
@@ -46,6 +54,37 @@ export const suggestionSchema = Joi.object({
     'any.required': 'Full prompt is required',
   }),
   originalUserPrompt: Joi.string().allow('').max(10000),
+  highlightedCategory: Joi.string().allow('', null).max(200).optional(),
+  highlightedCategoryConfidence: Joi.number()
+    .min(0)
+    .max(1)
+    .optional()
+    .allow(null),
+  highlightedPhrase: Joi.string().allow('', null).max(1000).optional(),
+  brainstormContext: Joi.object({
+    version: Joi.string().optional(),
+    createdAt: Joi.number().optional(),
+    elements: Joi.object({
+      subject: Joi.string().allow('', null),
+      action: Joi.string().allow('', null),
+      location: Joi.string().allow('', null),
+      time: Joi.string().allow('', null),
+      mood: Joi.string().allow('', null),
+      style: Joi.string().allow('', null),
+      event: Joi.string().allow('', null),
+    }).optional().unknown(true),
+    metadata: Joi.object({
+      format: Joi.string().allow('', null),
+      technicalParams: Joi.object().unknown(true).optional(),
+      validationScore: Joi.any().optional(),
+      history: Joi.array().items(Joi.any()).optional(),
+    })
+      .optional()
+      .unknown(true),
+  })
+    .optional()
+    .allow(null)
+    .unknown(true),
 });
 
 export const customSuggestionSchema = Joi.object({
@@ -66,15 +105,49 @@ export const sceneChangeSchema = Joi.object({
   oldValue: Joi.string().allow('', null).max(10000),
   fullPrompt: Joi.string().required().max(50000),
   affectedFields: Joi.object().optional(),
+  sectionHeading: Joi.string().allow('', null).max(200).optional(),
+  sectionContext: Joi.string().allow('', null).max(5000).optional(),
 });
 
 export const creativeSuggestionSchema = Joi.object({
   elementType: Joi.string()
     .required()
-    .valid('subject', 'action', 'location', 'time', 'mood', 'style', 'event'),
+    .valid(
+      'subject',
+      'subjectDescriptor1',
+      'subjectDescriptor2',
+      'subjectDescriptor3',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event'
+    ),
   currentValue: Joi.string().allow('').max(5000),
-  context: Joi.string().allow('').max(5000),
+  context: Joi.alternatives()
+    .try(Joi.string().allow('').max(5000), Joi.object().unknown(true))
+    .optional(),
   concept: Joi.string().allow('').max(10000),
+});
+
+export const videoValidationSchema = Joi.object({
+  elementType: Joi.string()
+    .valid(
+      'subject',
+      'subjectDescriptor1',
+      'subjectDescriptor2',
+      'subjectDescriptor3',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event'
+    )
+    .optional(),
+  value: Joi.string().allow('').max(10000).optional(),
+  elements: Joi.object().required(),
 });
 
 // Additional schemas for routes that lacked validation
@@ -83,12 +156,6 @@ export const generateQuestionsSchema = Joi.object({
     'string.empty': 'Prompt is required',
     'any.required': 'Prompt is required',
   }),
-});
-
-export const compatibilitySchema = Joi.object({
-  elementType: Joi.string().required(),
-  value: Joi.string().allow('').max(10000).required(),
-  existingElements: Joi.object().required(),
 });
 
 export const completeSceneSchema = Joi.object({
@@ -108,26 +175,12 @@ export const parseConceptSchema = Joi.object({
   }),
 });
 
-export const refinementsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const conflictsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const technicalParamsSchema = Joi.object({
-  elements: Joi.object().required(),
-});
-
-export const validatePromptSchema = Joi.object({
-  elements: Joi.object().required(),
-  concept: Joi.string().allow('').max(10000),
-});
-
-export const smartDefaultsSchema = Joi.object({
-  elementType: Joi.string().required(),
-  existingElements: Joi.object().required(),
+export const semanticParseSchema = Joi.object({
+  text: Joi.string().required().max(50000).messages({
+    'string.empty': 'Text is required for semantic parsing',
+    'any.required': 'Text is required for semantic parsing',
+    'string.max': 'Text must not exceed 50,000 characters',
+  }),
 });
 
 export const saveTemplateSchema = Joi.object({
@@ -156,3 +209,62 @@ export const alternativePhrasingsSchema = Joi.object({
   elementType: Joi.string().required(),
   value: Joi.string().required().max(5000),
 });
+
+/**
+ * LLM response schema expectations for creative workflow endpoints.
+ * These lightweight JSON Schema-inspired shapes are referenced by services
+ * when enforcing structured outputs and in unit tests to keep fixtures in sync
+ * with production payloads.
+ */
+export const compatibilityOutputSchema = {
+  type: 'object',
+  required: ['score', 'feedback'],
+};
+
+export const completeSceneOutputSchema = {
+  type: 'object',
+};
+
+export const variationsOutputSchema = {
+  type: 'array',
+  items: {
+    required: ['name', 'description', 'elements'],
+  },
+};
+
+export const parseConceptOutputSchema = {
+  type: 'object',
+  required: ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'],
+};
+
+export const refinementsOutputSchema = {
+  type: 'object',
+};
+
+export const conflictsOutputSchema = {
+  type: 'array',
+  items: {
+    required: ['elements', 'severity', 'message'],
+  },
+};
+
+export const technicalParamsOutputSchema = {
+  type: 'object',
+  required: ['camera', 'lighting', 'color', 'format', 'audio', 'postProduction'],
+};
+
+export const validatePromptOutputSchema = {
+  type: 'object',
+  required: ['score', 'breakdown', 'feedback', 'strengths', 'weaknesses'],
+};
+
+export const smartDefaultsOutputSchema = {
+  type: 'array',
+};
+
+export const alternativePhrasingsOutputSchema = {
+  type: 'array',
+  items: {
+    required: ['text', 'tone'],
+  },
+};

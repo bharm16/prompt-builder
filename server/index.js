@@ -19,8 +19,8 @@ import { PromptOptimizationService } from './src/services/PromptOptimizationServ
 import { QuestionGenerationService } from './src/services/QuestionGenerationService.js';
 import { EnhancementService } from './src/services/EnhancementService.js';
 import { SceneDetectionService } from './src/services/SceneDetectionService.js';
-import { CreativeSuggestionService } from './src/services/CreativeSuggestionService.js';
-import { CreativeSuggestionEnhancedService } from './src/services/CreativeSuggestionEnhancedService.js';
+import { VideoConceptService } from './src/services/VideoConceptService.js';
+import { TextCategorizerService } from './src/services/TextCategorizerService.js';
 
 // Import middleware
 import { requestIdMiddleware } from './src/middleware/requestId.js';
@@ -79,9 +79,8 @@ const promptOptimizationService = new PromptOptimizationService(claudeClient);
 const questionGenerationService = new QuestionGenerationService(claudeClient);
 const enhancementService = new EnhancementService(claudeClient);
 const sceneDetectionService = new SceneDetectionService(claudeClient);
-const creativeSuggestionService = new CreativeSuggestionService(claudeClient);
-// Initialize enhanced service for new features (keeping original for backward compatibility)
-const creativeSuggestionEnhancedService = new CreativeSuggestionEnhancedService(claudeClient);
+const videoConceptService = new VideoConceptService(claudeClient);
+const textCategorizerService = new TextCategorizerService(claudeClient);
 
 logger.info('All services initialized successfully');
 
@@ -203,14 +202,14 @@ if (!isTestEnv) {
 
   // Compatibility: allow moderate typing but prevent bursts
   app.use(
-    '/api/check-compatibility',
+    '/api/video/validate',
     makeBurstLimiter(2 * 1000, 3, 'Too many compatibility checks in a short time'),
     makeBurstLimiter(60 * 1000, 30, 'Too many compatibility checks per minute')
   );
 
   // Suggestions: heavier calls, slightly stricter
   app.use(
-    '/api/get-creative-suggestions',
+    '/api/video/suggestions',
     makeBurstLimiter(3 * 1000, 2, 'Too many suggestion requests in a short time'),
     makeBurstLimiter(60 * 1000, 20, 'Too many suggestion requests per minute')
   );
@@ -300,8 +299,8 @@ const apiRoutes = createAPIRoutes({
   questionGenerationService,
   enhancementService,
   sceneDetectionService,
-  creativeSuggestionService,
-  creativeSuggestionEnhancedService, // Add enhanced service
+  videoConceptService,
+  textCategorizerService,
 });
 
 app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);

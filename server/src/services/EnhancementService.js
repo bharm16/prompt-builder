@@ -2,6 +2,7 @@ import { logger } from '../infrastructure/Logger.js';
 import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
+import { CATEGORY_CONSTRAINTS, detectSubcategory, validateAgainstVideoTemplate } from './CategoryConstraints.js';
 
 /**
  * Service for providing enhancement suggestions for highlighted text
@@ -24,10 +25,42 @@ export class EnhancementService {
     contextAfter,
     fullPrompt,
     originalUserPrompt,
+    brainstormContext,
+    highlightedCategory,
+    highlightedCategoryConfidence,
+    highlightedPhrase,
   }) {
     logger.info('Getting enhancement suggestions', {
       highlightedLength: highlightedText?.length,
+      highlightedCategory: highlightedCategory || null,
+      categoryConfidence: highlightedCategoryConfidence ?? null,
+      highlightedPhrasePreview: highlightedPhrase
+        ? String(highlightedPhrase).slice(0, 80)
+        : undefined,
     });
+
+    const isVideoPrompt = this.isVideoPrompt(fullPrompt);
+    const brainstormSignature = this.buildBrainstormSignature(brainstormContext);
+    const highlightWordCount = this.countWords(highlightedText);
+    const phraseRole = isVideoPrompt
+      ? this.detectVideoPhraseRole(
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          highlightedCategory
+        )
+      : null;
+    const videoConstraints = isVideoPrompt
+      ? this.getVideoReplacementConstraints(
+          {
+            highlightWordCount,
+            phraseRole,
+            highlightedText,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          }
+        )
+      : null;
 
     // Check cache first
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
@@ -35,6 +68,13 @@ export class EnhancementService {
       contextBefore,
       contextAfter,
       fullPrompt: fullPrompt.substring(0, 500), // Partial for cache key
+      originalUserPrompt: (originalUserPrompt || '').substring(0, 500),
+      isVideoPrompt,
+      brainstormSignature,
+      highlightedCategory: highlightedCategory || null,
+      highlightWordCount,
+      phraseRole,
+      videoConstraintMode: videoConstraints?.mode || null,
     });
 
     const cached = await cacheService.get(cacheKey, 'enhancement');
@@ -42,9 +82,6 @@ export class EnhancementService {
       logger.debug('Cache hit for enhancement suggestions');
       return cached;
     }
-
-    // Detect if this is a video prompt
-    const isVideoPrompt = this.isVideoPrompt(fullPrompt);
 
     // Check if highlighted text is a placeholder/parameter
     const isPlaceholder = this.detectPlaceholder(
@@ -63,6 +100,9 @@ export class EnhancementService {
           fullPrompt,
           originalUserPrompt,
           isVideoPrompt,
+          brainstormContext,
+          highlightedCategory,
+          highlightedCategoryConfidence,
         })
       : this.buildRewritePrompt({
           highlightedText,
@@ -71,6 +111,12 @@ export class EnhancementService {
           fullPrompt,
           originalUserPrompt,
           isVideoPrompt,
+          brainstormContext,
+          phraseRole,
+          highlightWordCount,
+          videoConstraints,
+          highlightedCategory,
+          highlightedCategoryConfidence,
         });
 
     // Define schema for validation
@@ -105,33 +151,196 @@ export class EnhancementService {
       isPlaceholder,
       suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
       hasCategory: suggestions?.[0]?.category !== undefined,
+      phraseRole,
+      videoConstraintMode: videoConstraints?.mode || null,
+      highlightWordCount,
     });
 
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
+    // Apply category alignment with fallbacks if needed
+    let alignmentResult = { suggestions: diverseSuggestions, fallbackApplied: false, context: {} };
+
+    if (highlightedCategory) {
+      alignmentResult = this.enforceCategoryAlignment(
+        diverseSuggestions || [],
+        {
+          highlightedText,
+          highlightedCategory,
+          highlightedCategoryConfidence
+        }
+      );
+
+      if (alignmentResult.fallbackApplied) {
+        logger.info('Applied category fallbacks', {
+          highlightedText: highlightedText,
+          category: highlightedCategory,
+          reason: alignmentResult.context.reason
+        });
+      }
+    }
+
+    // Enforce template guardrails (particularly for video prompts)
+    const sanitizedSuggestions = this.sanitizeSuggestions(alignmentResult.suggestions, {
+      highlightedText,
+      isPlaceholder,
+      isVideoPrompt,
+      videoConstraints,
+    });
+
+    let suggestionsToUse = sanitizedSuggestions;
+    let activeConstraints = videoConstraints;
+    let usedFallback = false;
+    let fallbackSourceCount = Array.isArray(suggestions) ? suggestions.length : 0;
+    const attemptedModes = new Set();
+    if (activeConstraints?.mode) {
+      attemptedModes.add(activeConstraints.mode);
+    }
+
+    const regenerationDetails = {
+      highlightWordCount,
+      phraseRole,
+      highlightedText,
+      highlightedCategory,
+      highlightedCategoryConfidence,
+    };
+
+    if (suggestionsToUse.length === 0 && isVideoPrompt && !isPlaceholder) {
+      logger.warn('All suggestions removed during sanitization', {
+        highlightWordCount,
+        phraseRole,
+        constraintMode: videoConstraints?.mode || null,
+      });
+
+      let currentConstraints = videoConstraints;
+      let fallbackConstraints = this.getVideoFallbackConstraints(
+        currentConstraints,
+        regenerationDetails,
+        attemptedModes
+      );
+
+      while (fallbackConstraints) {
+        try {
+          const fallbackPrompt = this.buildRewritePrompt({
+            highlightedText,
+            contextBefore,
+            contextAfter,
+            fullPrompt,
+            originalUserPrompt,
+            isVideoPrompt,
+            brainstormContext,
+            phraseRole,
+            highlightWordCount,
+            videoConstraints: fallbackConstraints,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          });
+
+          const fallbackSuggestions = await StructuredOutputEnforcer.enforceJSON(
+            this.claudeClient,
+            fallbackPrompt,
+            {
+              schema,
+              isArray: true,
+              maxTokens: 2048,
+              maxRetries: 1,
+              temperature,
+            }
+          );
+
+          const fallbackDiverse = await this.ensureDiverseSuggestions(
+            fallbackSuggestions
+          );
+          const fallbackSanitized = this.sanitizeSuggestions(fallbackDiverse, {
+            highlightedText,
+            isPlaceholder,
+            isVideoPrompt,
+            videoConstraints: fallbackConstraints,
+          });
+
+          if (fallbackSanitized.length > 0) {
+            suggestionsToUse = fallbackSanitized;
+            activeConstraints = fallbackConstraints;
+            usedFallback = true;
+            fallbackSourceCount = Array.isArray(fallbackSuggestions)
+              ? fallbackSuggestions.length
+              : 0;
+            break;
+          }
+
+          logger.warn('Fallback attempt yielded no compliant suggestions', {
+            modeTried: fallbackConstraints.mode,
+            generatedCount: Array.isArray(fallbackSuggestions)
+              ? fallbackSuggestions.length
+              : 0,
+            sanitizedCount: fallbackSanitized.length,
+          });
+        } catch (error) {
+          logger.warn('Fallback regeneration failed', {
+            mode: fallbackConstraints.mode,
+            error: error.message,
+          });
+        }
+
+        attemptedModes.add(fallbackConstraints.mode);
+        currentConstraints = fallbackConstraints;
+        fallbackConstraints = this.getVideoFallbackConstraints(
+          currentConstraints,
+          regenerationDetails,
+          attemptedModes
+        );
+      }
+    }
+
+    if (suggestionsToUse.length === 0) {
+      logger.info('No sanitized suggestions available after regeneration attempts', {
+        phraseRole,
+        highlightWordCount,
+        attemptedModes: Array.from(attemptedModes),
+      });
+    }
+
     // Debug logging
     logger.info('Processing suggestions for categorization', {
       isPlaceholder,
-      hasCategoryField: diverseSuggestions[0]?.category !== undefined,
-      totalSuggestions: diverseSuggestions.length,
+      hasCategoryField: suggestionsToUse[0]?.category !== undefined,
+      totalSuggestions: suggestionsToUse.length,
+      sanitizedCount: sanitizedSuggestions.length,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      usedFallback,
     });
 
     // Group suggestions by category if they have categories
-    const groupedSuggestions = isPlaceholder && diverseSuggestions[0]?.category
-      ? this.groupSuggestionsByCategory(diverseSuggestions)
-      : diverseSuggestions;
+    const groupedSuggestions = isPlaceholder && suggestionsToUse[0]?.category
+      ? this.groupSuggestionsByCategory(suggestionsToUse)
+      : suggestionsToUse;
 
     const result = {
       suggestions: groupedSuggestions,
       isPlaceholder,
-      hasCategories: isPlaceholder && diverseSuggestions[0]?.category ? true : false,
+      hasCategories: isPlaceholder && suggestionsToUse[0]?.category ? true : false,
+      phraseRole: phraseRole || null,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      fallbackApplied: alignmentResult.fallbackApplied || usedFallback,
     };
 
+    if (activeConstraints) {
+      result.appliedVideoConstraints = activeConstraints;
+    }
+
+    if (suggestionsToUse.length === 0) {
+      result.noSuggestionsReason =
+        'No template-compliant drop-in replacements were generated for this highlight.';
+    }
+
     logger.info('Final result structure', {
-      isGrouped: Array.isArray(groupedSuggestions) && groupedSuggestions[0]?.suggestions !== undefined,
+      isGrouped:
+        Array.isArray(groupedSuggestions) &&
+        groupedSuggestions[0]?.suggestions !== undefined,
       categoriesCount: groupedSuggestions[0]?.suggestions ? groupedSuggestions.length : 0,
-      hasCategories: result.hasCategories
+      hasCategories: result.hasCategories,
+      appliedConstraintMode: result.appliedConstraintMode || null,
     });
 
     // Cache the result
@@ -139,10 +348,21 @@ export class EnhancementService {
       ttl: this.cacheConfig.ttl,
     });
 
+    let baseSuggestionCount;
+    if (usedFallback) {
+      baseSuggestionCount = fallbackSourceCount;
+    } else if (Array.isArray(suggestions)) {
+      baseSuggestionCount = suggestions.length;
+    } else {
+      baseSuggestionCount = 0;
+    }
+
     logger.info('Enhancement suggestions generated', {
-      count: diverseSuggestions.length,
+      count: suggestionsToUse.length,
       type: isPlaceholder ? 'placeholder' : 'rewrite',
-      diversityEnforced: diverseSuggestions.length !== suggestions.length,
+      diversityEnforced: suggestionsToUse.length !== baseSuggestionCount,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      usedFallback,
     });
 
     return result;
@@ -228,6 +448,126 @@ export class EnhancementService {
     });
 
     return result;
+  }
+
+  /**
+   * Enforce category alignment with fallbacks when needed
+   */
+  enforceCategoryAlignment(suggestions, params) {
+    const { highlightedText, highlightedCategory, highlightedCategoryConfidence } = params;
+
+    // Check if we need fallbacks
+    const needsFallback = this.shouldUseFallback(suggestions, highlightedText, highlightedCategory);
+
+    if (needsFallback) {
+      const fallbacks = this.getCategoryFallbacks(highlightedText, highlightedCategory);
+      return {
+        suggestions: fallbacks,
+        fallbackApplied: true,
+        context: {
+          baseCategory: highlightedCategory,
+          originalSuggestionsRejected: suggestions.length,
+          reason: 'Category mismatch or low confidence'
+        }
+      };
+    }
+
+    // Validate and filter suggestions
+    const validSuggestions = this.validateSuggestions(suggestions, highlightedText, highlightedCategory);
+
+    return {
+      suggestions: validSuggestions,
+      fallbackApplied: false,
+      context: { baseCategory: highlightedCategory }
+    };
+  }
+
+  /**
+   * Determine if fallback suggestions should be used
+   */
+  shouldUseFallback(suggestions, highlightedText, category) {
+    // Use fallback if no suggestions or very low count
+    if (!suggestions || suggestions.length < 2) return true;
+
+    // Check for category mismatches
+    if (category === 'technical') {
+      const subcategory = detectSubcategory(highlightedText, category);
+      if (subcategory) {
+        const constraint = CATEGORY_CONSTRAINTS.technical[subcategory];
+        const validCount = suggestions.filter(s =>
+          constraint.pattern.test(s.text)
+        ).length;
+        return validCount < suggestions.length * 0.5;
+      }
+    }
+
+    // Check for audio suggestions in non-audio categories
+    if (['technical', 'framing', 'descriptive'].includes(category)) {
+      const audioCount = suggestions.filter(s =>
+        /audio|sound|music|score/i.test(s.text) ||
+        (s.category && s.category.toLowerCase().includes('audio'))
+      ).length;
+      if (audioCount > 0) return true;
+    }
+
+    // Check for lighting suggestions in style descriptors
+    if (category === 'descriptive') {
+      const lightingCount = suggestions.filter(s =>
+        /light|shadow|glow|illuminat/i.test(s.text) ||
+        (s.category && s.category.toLowerCase().includes('light'))
+      ).length;
+      return lightingCount > suggestions.length * 0.5;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get fallback suggestions for a category
+   */
+  getCategoryFallbacks(highlightedText, category) {
+    const subcategory = detectSubcategory(highlightedText, category);
+
+    // Get specific fallbacks for technical subcategories
+    if (category === 'technical' && subcategory) {
+      return CATEGORY_CONSTRAINTS.technical[subcategory].fallbacks;
+    }
+
+    // Get fallbacks for other categories
+    if (CATEGORY_CONSTRAINTS[category]) {
+      return CATEGORY_CONSTRAINTS[category].fallbacks;
+    }
+
+    // Generic fallbacks as last resort
+    return [
+      { text: "alternative option 1", category, explanation: "Alternative suggestion" },
+      { text: "alternative option 2", category, explanation: "Different approach" },
+      { text: "alternative option 3", category, explanation: "Creative variation" }
+    ];
+  }
+
+  /**
+   * Validate suggestions match expected category
+   */
+  validateSuggestions(suggestions, highlightedText, category) {
+    if (!suggestions || !Array.isArray(suggestions)) return [];
+
+    const subcategory = detectSubcategory(highlightedText, category);
+
+    return suggestions.filter(suggestion => {
+      // Basic validation
+      if (!suggestion.text || typeof suggestion.text !== 'string') return false;
+
+      // Skip audio suggestions for non-audio categories
+      if (['technical', 'framing', 'lighting', 'descriptive'].includes(category)) {
+        if (/audio|sound|music|score|orchestra/i.test(suggestion.text)) {
+          return false;
+        }
+      }
+
+      // Validate against video template requirements
+      return validateAgainstVideoTemplate(suggestion, category, subcategory);
+    });
   }
 
   /**
@@ -396,11 +736,128 @@ export class EnhancementService {
    * @private
    */
   isVideoPrompt(fullPrompt) {
-    return (
-      fullPrompt.includes('**Main Prompt:**') ||
-      fullPrompt.includes('**Technical Parameters:**') ||
-      fullPrompt.includes('Camera Movement:')
-    );
+    if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
+      return false;
+    }
+
+    const normalized = fullPrompt.toLowerCase();
+
+    const legacyMarkers = ['**main prompt:**', '**technical parameters:**', 'camera movement:'];
+    if (legacyMarkers.some((marker) => normalized.includes(marker))) {
+      return true;
+    }
+
+    const modernTemplateMarkers = [
+      '**prompt:**',
+      '**guiding principles',
+      '**writing rules',
+      '**technical specs',
+      '**alternative approaches',
+      'variation 1 (different camera)',
+      'variation 2 (different lighting/mood)',
+    ];
+
+    if (modernTemplateMarkers.some((marker) => normalized.includes(marker))) {
+      return true;
+    }
+
+    const technicalFields = ['duration:', 'aspect ratio:', 'frame rate:', 'audio:'];
+    const matchedTechFields = technicalFields.filter((field) => normalized.includes(field));
+    if (normalized.includes('technical specs') && matchedTechFields.length >= 2) {
+      return true;
+    }
+
+    if (matchedTechFields.length >= 3 && normalized.includes('alternative approaches')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Build a compact signature of brainstorm context for caching
+   * @private
+   */
+  buildBrainstormSignature(brainstormContext) {
+    if (!brainstormContext || typeof brainstormContext !== 'object') {
+      return null;
+    }
+
+    const { elements = {}, metadata = {} } = brainstormContext;
+
+    const normalizedElements = Object.entries(elements).reduce((acc, [key, value]) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          acc[key] = trimmed;
+        }
+      }
+      return acc;
+    }, {});
+
+    const normalizedMetadata = {};
+    if (metadata && typeof metadata === 'object') {
+      if (typeof metadata.format === 'string' && metadata.format.trim()) {
+        normalizedMetadata.format = metadata.format.trim();
+      }
+
+      if (metadata.technicalParams && typeof metadata.technicalParams === 'object') {
+        const technicalEntries = Object.entries(metadata.technicalParams).reduce(
+          (acc, [key, value]) => {
+            if (value === undefined || value === null) {
+              return acc;
+            }
+
+            if (typeof value === 'string') {
+              const trimmedValue = value.trim();
+              if (trimmedValue) {
+                acc[key] = trimmedValue;
+              }
+              return acc;
+            }
+
+            if (Array.isArray(value)) {
+              if (value.length > 0) {
+                acc[key] = value;
+              }
+              return acc;
+            }
+
+            if (typeof value === 'object') {
+              if (Object.keys(value).length > 0) {
+                acc[key] = value;
+              }
+              return acc;
+            }
+
+            acc[key] = value;
+            return acc;
+          },
+          {}
+        );
+
+        if (Object.keys(technicalEntries).length) {
+          normalizedMetadata.technicalParams = technicalEntries;
+        }
+      }
+
+      if (
+        typeof metadata.validationScore === 'number' &&
+        Number.isFinite(metadata.validationScore)
+      ) {
+        normalizedMetadata.validationScore = metadata.validationScore;
+      }
+    }
+
+    const signature = {};
+    if (Object.keys(normalizedElements).length) {
+      signature.elements = normalizedElements;
+    }
+    if (Object.keys(normalizedMetadata).length) {
+      signature.metadata = normalizedMetadata;
+    }
+
+    return Object.keys(signature).length ? signature : null;
   }
 
   /**
@@ -414,11 +871,53 @@ export class EnhancementService {
     fullPrompt,
     originalUserPrompt,
     isVideoPrompt,
+    brainstormContext,
+    highlightedCategory,
+    highlightedCategoryConfidence,
   }) {
+    // Get specific constraints for this category if available
+    const subcategory = detectSubcategory(highlightedText, highlightedCategory);
+    let constraintInstruction = '';
+
+    if (highlightedCategory === 'technical' && subcategory) {
+      const constraint = CATEGORY_CONSTRAINTS.technical[subcategory];
+      if (constraint) {
+        constraintInstruction = `
+CRITICAL REQUIREMENTS:
+${constraint.instruction}
+${constraint.forbidden}
+
+Examples of valid suggestions: ${constraint.fallbacks.map(f => f.text).join(', ')}
+`;
+      }
+    } else if (highlightedCategory && CATEGORY_CONSTRAINTS[highlightedCategory]) {
+      const constraint = CATEGORY_CONSTRAINTS[highlightedCategory];
+      constraintInstruction = `
+CRITICAL REQUIREMENTS:
+${constraint.instruction}
+${constraint.forbidden || ''}
+`;
+    }
+
     // Detect the semantic type of the placeholder
     const placeholderType = this.detectPlaceholderType(highlightedText, contextBefore, contextAfter);
+    const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
+      includeCategoryGuidance: true,
+      isVideoPrompt,
+    });
+    const contextIntegrationBullet = brainstormSection
+      ? '- Respect the Creative Brainstorm anchors above when proposing categories and example replacements.'
+      : '- Each category should still fit the overall context';
+    const brainstormRequirement = brainstormSection
+      ? '✓ Align categories and replacements with the Creative Brainstorm anchors above\n'
+      : '';
+    const modeRequirement = isVideoPrompt
+      ? '✓ For video: consider different visual/cinematic approaches'
+      : '✓ Different approaches to achieve the goal';
 
-    return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.
+    return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
+      brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+    }${constraintInstruction ? `\n${constraintInstruction}` : ''}
 
 <analysis_process>
 Step 1: Identify the placeholder type and context
@@ -442,7 +941,7 @@ Step 3: Ensure categorical diversity
 
 Step 4: Consider context appropriateness
 - Original user's intent: "${originalUserPrompt}"
-- Each category should still fit the overall context
+${contextIntegrationBullet}
 </analysis_process>
 
 **Context Analysis:**
@@ -465,8 +964,9 @@ Generate 12-15 suggestions to replace "${highlightedText}" organized into 4-5 CA
 ✓ Each suggestion within a category should still be unique
 ✓ Include category label for ALL suggestions
 ✓ Direct drop-in replacements - no rewriting needed
+✓ Keep each suggestion concise noun/descriptor phrase (1-4 words)
 ✓ Contextually appropriate despite being diverse
-${isVideoPrompt ? '✓ For video: consider different visual/cinematic approaches' : '✓ Different approaches to achieve the goal'}
+${brainstormRequirement}${modeRequirement}
 
 **Output Format:**
 Return ONLY a JSON array with categorized suggestions (2-4 per category):
@@ -498,20 +998,131 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     fullPrompt,
     originalUserPrompt,
     isVideoPrompt,
+    brainstormContext,
+    phraseRole,
+    highlightWordCount,
+    videoConstraints,
+    highlightedCategory,
+    highlightedCategoryConfidence,
   }) {
+    const brainstormSection = this.buildBrainstormContextSection(brainstormContext, {
+      isVideoPrompt,
+    });
+
     if (isVideoPrompt) {
-      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).
+      const resolvedHighlightWordCount = Number.isFinite(highlightWordCount)
+        ? highlightWordCount
+        : this.countWords(highlightedText);
+      const resolvedPhraseRole =
+        phraseRole ||
+        this.detectVideoPhraseRole(
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          highlightedCategory
+        );
+      const resolvedVideoConstraints =
+        videoConstraints ||
+        this.getVideoReplacementConstraints(
+          {
+            highlightWordCount: resolvedHighlightWordCount,
+            phraseRole: resolvedPhraseRole,
+            highlightedText,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          }
+        );
+
+      const {
+        minWords,
+        maxWords,
+        maxSentences = 1,
+        disallowTerminalPunctuation,
+        formRequirement,
+        focusGuidance,
+        extraRequirements = [],
+        slotDescriptor,
+        mode,
+      } = resolvedVideoConstraints;
+
+      const sentenceRequirementLabel =
+        mode === 'micro'
+          ? 'Noun phrase only (no sentences)'
+          : maxSentences === 1
+          ? 'Single sentence (no multi-sentence rewrites)'
+          : `${maxSentences} sentences max`;
+
+      const brainstormRequirementLine = brainstormSection
+        ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
+        : '';
+
+      const focusLines =
+        Array.isArray(focusGuidance) && focusGuidance.length > 0
+          ? focusGuidance
+          : [
+              'Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle',
+              'Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")',
+              'Subject detail: 2-3 specific visual characteristics',
+              'Setting: precise location, time of day',
+              'Style: film reference (shot on 35mm, cinematic, documentary-style)',
+            ];
+
+      const requirementLines = [
+        `✓ ${minWords}-${maxWords} words`,
+        `✓ ${sentenceRequirementLabel}`,
+        '✓ Film terminology (not generic descriptions)',
+        '✓ ONE clear action/focus per suggestion',
+        '✓ Specific over generic ("weathered oak" not "nice table")',
+        '✓ Flows with surrounding context',
+        '✓ Do NOT mention or modify template section headings (Main Prompt, Technical Specs, Alternative Approaches)',
+        '✓ Avoid meta instructions like "Consider" or "You could" — output only the replacement sentence',
+        '✓ Respect the Video Prompt Template tone: cinematic, efficient, no filler language',
+      ];
+
+      extraRequirements.forEach((req) => {
+        if (req && !requirementLines.includes(`✓ ${req}`)) {
+          requirementLines.push(`✓ ${req}`);
+        }
+      });
+
+      if (disallowTerminalPunctuation) {
+        requirementLines.push('✓ No ending punctuation (noun phrase only)');
+      }
+
+      const slotLine = slotDescriptor
+        ? `**Slot Role:** ${slotDescriptor}.`
+        : `**Phrase Role:** ${resolvedPhraseRole} — replacements must serve the same grammatical role and slot cleanly into the existing sentence.`;
+
+      const formLine = formRequirement ? `**Form Requirement:** ${formRequirement}.` : '';
+
+      const lengthGuardrailLine =
+        mode === 'micro'
+          ? `**Length Guardrail:** ${minWords}-${maxWords} words, noun phrase drop-in replacement.`
+          : `**Length Guardrail:** ${minWords}-${maxWords} words, ${
+              maxSentences === 1 ? 'single sentence' : `${maxSentences} sentences max`
+            }, drop-in replacement.`;
+
+      const approachLines = [
+        '- Keep enhancements scoped to the highlighted slot',
+        '- Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8',
+        '- Prioritize ONE specific element per variant',
+        '- Avoid multiple simultaneous actions',
+      ];
+
+      return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
+        brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+      }
 
 **APPROACH:**
-- Keep enhancements concise (10-25 words per replacement)
-- Use film language: dolly, crane, rack focus, shallow DOF, 35mm, f/1.8
-- Prioritize ONE specific element per variant
-- Avoid multiple simultaneous actions
+${approachLines.join('\n')}
 
 **HIGHLIGHTED SECTION:**
 "${highlightedText}"
 
-**CONTEXT:**
+${slotLine}
+**Original Length:** ${resolvedHighlightWordCount} words.
+${lengthGuardrailLine}
+${formLine ? `${formLine}\n` : ''}**CONTEXT:**
 Before: "${contextBefore}"
 After: "${contextAfter}"
 
@@ -519,19 +1130,11 @@ After: "${contextAfter}"
 Generate 3-5 enhanced alternatives. Each must be a complete drop-in replacement focusing on:
 
 **Focus ONE per variant:**
-- Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle
-- Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")
-- Subject detail: 2-3 specific visual characteristics
-- Setting: precise location, time of day
-- Style: film reference (shot on 35mm, cinematic, documentary-style)
+${focusLines.map((line) => `- ${line}`).join('\n')}
 
 **Requirements:**
-✓ 10-25 words per replacement (proven optimal length)
-✓ Film terminology (not generic descriptions)
-✓ ONE clear action/focus per suggestion
-✓ Specific over generic ("weathered oak" not "nice table")
-✓ Flows with surrounding context
-
+${requirementLines.join('\n')}
+${brainstormRequirementLine}
 Return ONLY a JSON array (no markdown, no code blocks):
 
 [
@@ -541,7 +1144,16 @@ Return ONLY a JSON array (no markdown, no code blocks):
 ]`;
     }
 
-    return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.
+    const brainstormContextReminder = brainstormSection
+      ? '- Reinforce the Creative Brainstorm anchors detailed above.'
+      : '';
+    const brainstormQualityRequirement = brainstormSection
+      ? '✓ Reinforces the Creative Brainstorm anchors above\n'
+      : '';
+
+    return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.${
+      brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
+    }
 
 <analysis_process>
 Step 1: Analyze the highlighted section
@@ -559,6 +1171,7 @@ Step 3: Consider context
 - Original intent: "${originalUserPrompt}"
 - How does this fit in the full prompt?
 - What constraints or requirements exist?
+${brainstormContextReminder}
 
 Step 4: Generate enhanced alternatives
 - Create 3-5 variants with different improvement focuses
@@ -596,7 +1209,7 @@ Generate 3-5 improved rewrites focusing on clarity and effectiveness.
 ✓ Flows naturally with context
 ✓ More effective and specific than original
 ✓ Each variant takes different improvement approach
-✓ Maintains original intent and tone
+${brainstormQualityRequirement}✓ Maintains original intent and tone
 
 Return ONLY a JSON array (no markdown, no code blocks):
 
@@ -607,6 +1220,131 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "fourth variation 4...", "explanation": "why this improvement works"},
   {"text": "fifth option 5...", "explanation": "why this improvement works"}
 ]`;
+  }
+
+  /**
+   * Construct a detailed brainstorm context section for prompts
+   * @private
+   */
+  buildBrainstormContextSection(
+    brainstormContext,
+    { includeCategoryGuidance = false, isVideoPrompt = false } = {}
+  ) {
+    if (!brainstormContext || typeof brainstormContext !== 'object') {
+      return '';
+    }
+
+    const elements = brainstormContext.elements || {};
+    const metadata = brainstormContext.metadata || {};
+
+    const definedElements = Object.entries(elements).filter(([, value]) => {
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+
+    const technicalParams =
+      metadata && typeof metadata.technicalParams === 'object'
+        ? Object.entries(metadata.technicalParams).filter(([, value]) => {
+            if (value === null || value === undefined) {
+              return false;
+            }
+            if (typeof value === 'string') {
+              return value.trim().length > 0;
+            }
+            if (Array.isArray(value)) {
+              return value.length > 0;
+            }
+            if (typeof value === 'object') {
+              return Object.keys(value).length > 0;
+            }
+            return true;
+          })
+        : [];
+
+    const formatPreference =
+      typeof metadata.format === 'string' && metadata.format.trim().length > 0
+        ? metadata.format.trim()
+        : null;
+
+    const validationScore =
+      typeof metadata.validationScore === 'number' &&
+      Number.isFinite(metadata.validationScore)
+        ? metadata.validationScore
+        : null;
+
+    if (!definedElements.length && !technicalParams.length && !formatPreference && validationScore === null) {
+      return '';
+    }
+
+    let section = '**Creative Brainstorm Structured Context:**\n';
+    section += 'These are user-confirmed anchors that suggestions must respect.\n';
+
+    if (definedElements.length) {
+      definedElements.forEach(([key, value]) => {
+        section += `- ${this.formatBrainstormKey(key)}: ${value.trim()}\n`;
+      });
+    }
+
+    if (formatPreference || technicalParams.length || validationScore !== null) {
+      section += '\n**Metadata & Technical Guidance:**\n';
+
+      if (formatPreference) {
+        section += `- Format Preference: ${formatPreference}\n`;
+      }
+
+      if (validationScore !== null) {
+        section += `- Validation Score: ${validationScore}\n`;
+      }
+
+      technicalParams.forEach(([key, value]) => {
+        section += `- ${this.formatBrainstormKey(key)}: ${this.formatBrainstormValue(value)}\n`;
+      });
+    }
+
+    if (includeCategoryGuidance) {
+      section += '\nUse these anchors to inspire category labels and keep suggestions aligned with the user\'s core concept.\n';
+    } else {
+      section += '\nEnsure every rewrite strengthens these anchors rather than contradicting them.\n';
+    }
+
+    if (isVideoPrompt) {
+      section += 'Translate these anchors into cinematic details whenever possible.\n';
+    }
+
+    return section;
+  }
+
+  /**
+   * Format brainstorm keys into human-readable labels
+   * @private
+   */
+  formatBrainstormKey(key) {
+    if (!key) {
+      return '';
+    }
+
+    return key
+      .toString()
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  /**
+   * Normalize brainstorm metadata values for prompt inclusion
+   * @private
+   */
+  formatBrainstormValue(value) {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return JSON.stringify(value);
+    }
+
+    return String(value);
   }
 
   /**
@@ -1005,6 +1743,503 @@ Provide a JSON object with the new suggestion:
     });
 
     return ranked.slice(0, 8); // Return top 8
+  }
+
+  /**
+   * Detect the likely role of a highlighted phrase within a video prompt
+   * @private
+   */
+  detectVideoPhraseRole(highlightedText, contextBefore, contextAfter, explicitCategory) {
+    const text = highlightedText?.trim() || '';
+    const normalizedCategory = explicitCategory
+      ? explicitCategory.toLowerCase()
+      : '';
+
+    const mapCategory = (category) => {
+      if (!category) {
+        return null;
+      }
+
+      if (/subject|character|figure|talent|person|performer/.test(category)) {
+        return 'subject or character detail';
+      }
+
+      if (/light|lighting|illumination|shadow/.test(category)) {
+        return 'lighting description';
+      }
+
+      if (/camera|framing|shot|lens/.test(category)) {
+        return 'camera or framing description';
+      }
+
+      if (/location|setting|environment|background|place/.test(category)) {
+        return 'location or environment detail';
+      }
+
+      if (/style|tone|aesthetic|mood|genre/.test(category)) {
+        return 'style or tone descriptor';
+      }
+
+      if (/audio|music|sound|score/.test(category)) {
+        return 'audio or score descriptor';
+      }
+
+      return null;
+    };
+
+    const categoryRole = mapCategory(normalizedCategory);
+    if (categoryRole) {
+      return categoryRole;
+    }
+
+    if (!text) {
+      return 'general visual detail';
+    }
+
+    const combinedContext = `${contextBefore || ''} ${contextAfter || ''}`.toLowerCase();
+
+    const contextRole = mapCategory(combinedContext);
+    if (contextRole) {
+      return contextRole;
+    }
+
+    if (/\b(location|setting|background|environment|interior|exterior|room|space|chamber|landscape|street)\b/.test(combinedContext)) {
+      return 'location or environment detail';
+    }
+
+    if (/\b(camera|shot|angle|frame|lens|dolly|pan|tilt|tracking|handheld|static)\b/.test(combinedContext)) {
+      return 'camera or framing description';
+    }
+
+    if (/\b(light|lighting|illuminated|glow|shadow|contrast|exposure|flare)\b/.test(combinedContext)) {
+      return 'lighting description';
+    }
+
+    if (/\bcharacter|figure|subject|person|leader|speaker|performer|actor|portrait\b/.test(combinedContext)) {
+      return 'subject or character detail';
+    }
+
+    if (/\bstyle|aesthetic|tone|mood|vibe|genre|inspired\b/.test(combinedContext)) {
+      return 'style or tone descriptor';
+    }
+
+    if (/\bscore|music|soundtrack|audio\b/.test(combinedContext)) {
+      return 'audio or score descriptor';
+    }
+
+    return 'general visual detail';
+  }
+
+  /**
+   * Count words in a string
+   * @private
+   */
+  countWords(text) {
+    if (!text || typeof text !== 'string') {
+      return 0;
+    }
+
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }
+
+  /**
+   * Resolve video replacement constraints based on highlight context
+   * @private
+   */
+  getVideoReplacementConstraints(details = {}, options = {}) {
+    const {
+      highlightWordCount = 0,
+      phraseRole,
+      highlightedText,
+      highlightedCategory,
+      highlightedCategoryConfidence,
+    } = details;
+    const { forceMode } = options;
+
+    const trimmedText = (highlightedText || '').trim();
+    const normalizedRole = (phraseRole || '').toLowerCase();
+    const normalizedCategory = (highlightedCategory || '').toLowerCase();
+    const highlightWordCountSafe = Number.isFinite(highlightWordCount)
+      ? Math.max(0, Math.floor(highlightWordCount))
+      : 0;
+    const highlightIsSentence =
+      /[.!?]$/.test(trimmedText) || highlightWordCountSafe >= 12;
+
+    const categoryIsReliable =
+      highlightedCategoryConfidence === undefined ||
+      highlightedCategoryConfidence === null ||
+      !Number.isFinite(highlightedCategoryConfidence)
+        ? true
+        : highlightedCategoryConfidence >= 0.45;
+
+    const trustedCategory =
+      highlightedCategory && categoryIsReliable ? normalizedCategory : '';
+    const categorySource = trustedCategory || normalizedRole;
+
+    const slotDescriptor =
+      phraseRole ||
+      (highlightedCategory ? `${highlightedCategory} detail` : 'visual detail');
+
+    const ensureBounds = (min, max) => {
+      const lower = Math.max(1, Math.round(min));
+      const upper = Math.max(lower, Math.round(max));
+      return { min: lower, max: upper };
+    };
+
+    const buildConstraint = (config) => {
+      const bounds = ensureBounds(config.minWords, config.maxWords);
+      return {
+        ...config,
+        minWords: bounds.min,
+        maxWords: bounds.max,
+        maxSentences: config.maxSentences ?? 1,
+        slotDescriptor,
+      };
+    };
+
+    const micro = () =>
+      buildConstraint({
+        mode: 'micro',
+        minWords: Math.max(2, Math.min(3, highlightWordCountSafe + 1)),
+        maxWords: Math.min(6, Math.max(4, highlightWordCountSafe + 2)),
+        maxSentences: 1,
+        disallowTerminalPunctuation: true,
+        formRequirement: '2-6 word cinematic noun phrase describing the same subject',
+        focusGuidance: [
+          'Use precise visual modifiers (wardrobe, era, material)',
+          'Avoid verbs; keep the replacement as a noun phrase',
+        ],
+        extraRequirements: ['Keep it a noun phrase (no verbs)'],
+      });
+
+    const lighting = () =>
+      buildConstraint({
+        mode: 'lighting',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(14, Math.max(9, highlightWordCountSafe + 4)),
+        maxSentences: 1,
+        formRequirement:
+          'Single lighting clause covering source, direction, and color temperature',
+        focusGuidance: [
+          'Name the light source and direction',
+          'Include color temperature or mood language',
+        ],
+        extraRequirements: ['Mention light source + direction', 'Reference color temperature or mood'],
+      });
+
+    const camera = () =>
+      buildConstraint({
+        mode: 'camera',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(9, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement:
+          'Single movement clause combining camera move, lens, and framing',
+        focusGuidance: [
+          'Pair a camera move with a lens choice and framing detail',
+          'Stay in the same tense and perspective as the template',
+        ],
+        extraRequirements: ['Include a lens or focal length', 'Reference camera movement'],
+      });
+
+    const location = () =>
+      buildConstraint({
+        mode: 'location',
+        minWords: Math.max(6, Math.min(8, highlightWordCountSafe + 1)),
+        maxWords: Math.min(14, Math.max(9, highlightWordCountSafe + 4)),
+        maxSentences: 1,
+        formRequirement: 'Concise location beat with time-of-day or atmosphere',
+        focusGuidance: [
+          'Anchor the setting with sensory specifics',
+          'Mention time of day or atmospheric detail',
+        ],
+        extraRequirements: ['Include a sensory or atmospheric hook'],
+      });
+
+    const style = () =>
+      buildConstraint({
+        mode: 'style',
+        minWords: Math.max(5, Math.min(7, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(8, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement: 'Compact stylistic phrase referencing medium, era, or tone',
+        focusGuidance: [
+          'Reference a medium, era, or artistic influence',
+          'Keep it tightly scoped to the highlighted span',
+        ],
+        extraRequirements: [],
+      });
+
+    const phrase = () =>
+      buildConstraint({
+        mode: 'phrase',
+        minWords: Math.max(5, Math.min(7, highlightWordCountSafe + 1)),
+        maxWords: Math.min(12, Math.max(8, highlightWordCountSafe + 3)),
+        maxSentences: 1,
+        formRequirement: 'Single cinematic clause focused on one production choice',
+        focusGuidance: [
+          'Emphasize one production detail (camera, lighting, subject, or location)',
+          'Avoid expanding beyond the surrounding sentence',
+        ],
+        extraRequirements: [],
+      });
+
+    const sentence = () =>
+      buildConstraint({
+        mode: 'sentence',
+        minWords: Math.max(10, Math.min(12, highlightWordCountSafe + 2)),
+        maxWords: Math.min(25, Math.max(14, highlightWordCountSafe + 6)),
+        maxSentences: 1,
+        formRequirement: 'Single cinematic sentence that flows with the template',
+        focusGuidance: [
+          'Lead with the most important cinematic detail',
+          'Keep it punchy—no compound sentences',
+        ],
+        extraRequirements: [],
+      });
+
+    if (forceMode === 'micro') {
+      return micro();
+    }
+    if (forceMode === 'phrase') {
+      return phrase();
+    }
+    if (forceMode === 'sentence') {
+      return sentence();
+    }
+    if (forceMode === 'lighting') {
+      return lighting();
+    }
+    if (forceMode === 'camera') {
+      return camera();
+    }
+    if (forceMode === 'location') {
+      return location();
+    }
+    if (forceMode === 'style') {
+      return style();
+    }
+
+    const isSubject =
+      categorySource.includes('subject') || categorySource.includes('character');
+    const isLighting = categorySource.includes('lighting');
+    const isCamera =
+      categorySource.includes('camera') ||
+      categorySource.includes('framing') ||
+      categorySource.includes('shot');
+    const isLocation =
+      categorySource.includes('location') ||
+      categorySource.includes('environment') ||
+      categorySource.includes('setting');
+    const isStyle =
+      categorySource.includes('style') ||
+      categorySource.includes('tone') ||
+      categorySource.includes('aesthetic');
+    const isAudio = categorySource.includes('audio') || categorySource.includes('score');
+    const highlightIsVeryShort = highlightWordCountSafe <= 3;
+
+    if (isSubject || highlightIsVeryShort) {
+      return micro();
+    }
+
+    if (isLighting) {
+      return lighting();
+    }
+
+    if (isCamera) {
+      return camera();
+    }
+
+    if (isLocation) {
+      return location();
+    }
+
+    if (isStyle || isAudio) {
+      return style();
+    }
+
+    if (!highlightIsSentence && highlightWordCountSafe <= 8) {
+      return phrase();
+    }
+
+    return sentence();
+  }
+
+  /**
+   * Determine the next fallback constraint mode to try
+   * @private
+   */
+  getVideoFallbackConstraints(
+    currentConstraints,
+    details = {},
+    attemptedModes = new Set()
+  ) {
+    const fallbackOrder = [];
+
+    if (!currentConstraints) {
+      fallbackOrder.push('phrase', 'micro');
+    } else if (currentConstraints.mode === 'sentence') {
+      fallbackOrder.push('phrase', 'micro');
+    } else if (currentConstraints.mode === 'phrase') {
+      fallbackOrder.push('micro');
+    } else if (
+      currentConstraints.mode === 'lighting' ||
+      currentConstraints.mode === 'camera' ||
+      currentConstraints.mode === 'location' ||
+      currentConstraints.mode === 'style'
+    ) {
+      fallbackOrder.push('micro');
+    }
+
+    for (const mode of fallbackOrder) {
+      if (attemptedModes.has(mode)) {
+        continue;
+      }
+
+      return this.getVideoReplacementConstraints(details, { forceMode: mode });
+    }
+
+    return null;
+  }
+
+  /**
+   * Sanitize suggestions to ensure they are valid drop-in replacements
+   * @private
+   */
+  sanitizeSuggestions(
+    suggestions,
+    { highlightedText, isPlaceholder, isVideoPrompt, videoConstraints }
+  ) {
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      return [];
+    }
+
+    const sanitized = [];
+    const normalizedHighlight = highlightedText?.trim().toLowerCase();
+    const disallowedTemplatePatterns = [
+      /\bmain prompt\b/i,
+      /\btechnical specs?\b/i,
+      /\balternative approaches\b/i,
+    ];
+    const disallowedPrefixes = [
+      'consider',
+      'try',
+      'maybe',
+      'you could',
+      'focus on',
+      'rewrite',
+      'update',
+      'suggest',
+      'recommend',
+    ];
+
+    suggestions.forEach((suggestion) => {
+      if (!suggestion) {
+        return;
+      }
+
+      const suggestionObj =
+        typeof suggestion === 'string'
+          ? { text: suggestion, explanation: '' }
+          : { ...suggestion };
+
+      if (typeof suggestionObj.text !== 'string') {
+        return;
+      }
+
+      let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
+      text = text.replace(/\s+/g, ' ').trim();
+
+      if (!text) {
+        return;
+      }
+
+      if (normalizedHighlight && text.toLowerCase() === normalizedHighlight) {
+        return; // identical to highlight, no improvement
+      }
+
+      if (/\r|\n/.test(text)) {
+        return; // multi-line response is not a drop-in replacement
+      }
+
+      if (disallowedTemplatePatterns.some((pattern) => pattern.test(text))) {
+        return;
+      }
+
+      const lowerText = text.toLowerCase();
+      if (disallowedPrefixes.some((prefix) => lowerText.startsWith(prefix))) {
+        return;
+      }
+
+      const wordCount = this.countWords(text);
+
+      if (isPlaceholder) {
+        if (wordCount === 0 || wordCount > 4) {
+          return;
+        }
+
+        if (/[.!?]/.test(text)) {
+          return;
+        }
+      } else if (isVideoPrompt) {
+        const constraints = videoConstraints || {
+          minWords: 10,
+          maxWords: 25,
+          maxSentences: 1,
+        };
+
+        const minWords = Number.isFinite(constraints.minWords)
+          ? constraints.minWords
+          : 10;
+        const maxWords = Number.isFinite(constraints.maxWords)
+          ? constraints.maxWords
+          : 25;
+        const maxSentences = Number.isFinite(constraints.maxSentences)
+          ? constraints.maxSentences
+          : 1;
+
+        if (wordCount < minWords || wordCount > maxWords) {
+          return;
+        }
+
+        const sentenceCount = (text.match(/[.!?]/g) || []).length;
+        if (maxSentences > 0 && sentenceCount > maxSentences) {
+          return;
+        }
+
+        if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
+          return;
+        }
+
+        if (constraints.mode === 'micro') {
+          if (/[.!?]/.test(text)) {
+            return;
+          }
+
+          if (/[,:;]/.test(text)) {
+            return;
+          }
+
+          if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
+            return;
+          }
+        }
+
+        if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
+          return;
+        }
+      }
+
+      sanitized.push({
+        ...suggestionObj,
+        text,
+      });
+    });
+
+    return sanitized;
   }
 
   /**
