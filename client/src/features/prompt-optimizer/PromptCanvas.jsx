@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, memo, useMemo } from 'react';
+import React, { useRef, useEffect, useState, memo, useMemo, useCallback } from 'react';
 import {
   Copy,
   Download,
@@ -8,10 +8,12 @@ import {
   Info,
   X,
   Share2,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react';
 import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
-import { useSpanLabeling } from './hooks/useSpanLabeling.js';
+import { useSpanLabeling, createHighlightSignature } from './hooks/useSpanLabeling.js';
 import { createCanonicalText } from '../../utils/canonicalText.js';
 import { buildTextNodeIndex, wrapRangeSegments } from '../../utils/anchorRanges.js';
 import { PromptContext } from '../../utils/PromptContext.js';
@@ -504,7 +506,11 @@ const FloatingToolbar = memo(({
   showExportMenu,
   onToggleExportMenu,
   showLegend,
-  onToggleLegend
+  onToggleLegend,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) => {
   const exportMenuRef = useRef(null);
 
@@ -602,13 +608,35 @@ const FloatingToolbar = memo(({
 
       <div className="w-px h-6 bg-neutral-200 mx-1" />
 
-      <button
-        onClick={onCreateNew}
-        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-md hover:bg-neutral-800 transition-colors"
-        title="New prompt"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`inline-flex items-center justify-center p-1.5 rounded-md border border-neutral-200 transition ${
+              canUndo ? 'hover:bg-neutral-100 text-neutral-700' : 'text-neutral-300 cursor-not-allowed'
+            }`}
+            title="Undo"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`inline-flex items-center justify-center p-1.5 rounded-md border border-neutral-200 transition ${
+              canRedo ? 'hover:bg-neutral-100 text-neutral-700' : 'text-neutral-300 cursor-not-allowed'
+            }`}
+            title="Redo"
+          >
+            <RotateCw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onCreateNew}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-md hover:bg-neutral-800 transition-colors"
+            title="New prompt"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
     </div>
   );
 });
@@ -629,7 +657,14 @@ export const PromptCanvas = ({
   onSkipAnimation,
   suggestionsData,
   onFetchSuggestions,
-  onCreateNew
+  onCreateNew,
+  initialHighlights = null,
+  initialHighlightsVersion = 0,
+  onHighlightsPersist,
+  onUndo = () => {},
+  onRedo = () => {},
+  canUndo = false,
+  canRedo = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -650,6 +685,32 @@ export const PromptCanvas = ({
     []
   );
 
+  const memoizedInitialHighlights = useMemo(() => {
+    if (!enableMLHighlighting || !initialHighlights || !Array.isArray(initialHighlights.spans)) {
+      return null;
+    }
+    const resolvedSignature =
+      initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+    return {
+      spans: initialHighlights.spans,
+      meta: initialHighlights.meta ?? null,
+      signature: resolvedSignature,
+      cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+    };
+  }, [enableMLHighlighting, initialHighlights, initialHighlightsVersion, promptUuid, displayedPrompt]);
+
+  const handleLabelingResult = useCallback(
+    (result) => {
+      if (!enableMLHighlighting || !result) {
+        return;
+      }
+      if (onHighlightsPersist) {
+        onHighlightsPersist(result);
+      }
+    },
+    [enableMLHighlighting, onHighlightsPersist]
+  );
+
   const {
     spans: labeledSpans,
     meta: labeledMeta,
@@ -657,6 +718,8 @@ export const PromptCanvas = ({
     error: labelingError,
   } = useSpanLabeling({
     text: enableMLHighlighting ? displayedPrompt : '',
+    initialData: memoizedInitialHighlights,
+    initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
     maxSpans: 60,
@@ -664,6 +727,7 @@ export const PromptCanvas = ({
     policy: labelingPolicy,
     templateVersion: 'v1',
     debounceMs: 500,
+    onResult: handleLabelingResult,
   });
 
   const [parseResult, setParseResult] = useState(() => ({
@@ -1299,6 +1363,10 @@ export const PromptCanvas = ({
         onToggleExportMenu={setShowExportMenu}
         showLegend={showLegend}
         onToggleLegend={setShowLegend}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       {/* Category Legend */}

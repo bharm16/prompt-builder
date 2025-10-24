@@ -24,6 +24,8 @@ export const usePromptHistory = (user) => {
       const normalizedPrompts = prompts.map((entry) => ({
         ...entry,
         brainstormContext: entry.brainstormContext ?? null,
+        highlightCache: entry.highlightCache ?? null,
+        versions: entry.versions ?? [],
       }));
       setHistory(normalizedPrompts);
 
@@ -51,6 +53,8 @@ export const usePromptHistory = (user) => {
           const normalizedHistory = parsedHistory.map((entry) => ({
             ...entry,
             brainstormContext: entry.brainstormContext ?? null,
+            highlightCache: entry.highlightCache ?? null,
+            versions: entry.versions ?? [],
           }));
           console.log('Loaded history from localStorage fallback:', normalizedHistory.length);
           setHistory(normalizedHistory);
@@ -82,6 +86,8 @@ export const usePromptHistory = (user) => {
           const normalizedHistory = parsedHistory.map((entry) => ({
             ...entry,
             brainstormContext: entry.brainstormContext ?? null,
+            highlightCache: entry.highlightCache ?? null,
+            versions: entry.versions ?? [],
           }));
           setHistory(normalizedHistory);
         }
@@ -98,7 +104,8 @@ export const usePromptHistory = (user) => {
     output,
     score,
     selectedMode,
-    brainstormContext = null
+    brainstormContext = null,
+    highlightCache = null
   ) => {
     const newEntry = {
       input,
@@ -106,6 +113,7 @@ export const usePromptHistory = (user) => {
       score,
       mode: selectedMode,
       brainstormContext: brainstormContext ?? null,
+      highlightCache: highlightCache ?? null,
     };
 
     if (user) {
@@ -118,7 +126,7 @@ export const usePromptHistory = (user) => {
           ...newEntry,
         };
         setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 100));
-        return result.uuid;
+        return { uuid: result.uuid, id: result.id };
       } catch (error) {
         console.error('Error saving to Firestore:', error);
         toast.error('Failed to save to cloud');
@@ -138,7 +146,7 @@ export const usePromptHistory = (user) => {
           localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
           return updatedHistory;
         });
-        return uuid;
+        return { uuid, id: entryWithLocalId.id };
       } catch (error) {
         console.error('Error saving to localStorage:', error);
         toast.error('Failed to save to history');
@@ -146,6 +154,25 @@ export const usePromptHistory = (user) => {
       }
     }
   }, [user, toast]);
+
+  const updateEntryHighlight = useCallback((uuid, highlightCache) => {
+    setHistory((prevHistory) => {
+      const updated = prevHistory.map((entry) =>
+        entry.uuid === uuid
+          ? {
+              ...entry,
+              highlightCache: highlightCache ?? null,
+            }
+          : entry
+      );
+      try {
+        localStorage.setItem('promptHistory', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('Unable to persist updated highlights to localStorage:', error);
+      }
+      return updated;
+    });
+  }, []);
 
   // Clear all history
   const clearHistory = useCallback(() => {
@@ -172,6 +199,7 @@ export const usePromptHistory = (user) => {
     setSearchQuery,
     saveToHistory,
     clearHistory,
-    loadHistoryFromFirestore
+    loadHistoryFromFirestore,
+    updateEntryHighlight,
   };
 };

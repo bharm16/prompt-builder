@@ -3,13 +3,14 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePromptHistory } from '../usePromptHistory.js';
 
 // Mock firebase deps used by hook
-vi.mock('../../firebase', () => ({
+vi.mock('../../config/firebase', () => ({
   auth: { currentUser: null },
-  savePromptToFirestore: vi.fn(async () => 'doc-1'),
+  savePromptToFirestore: vi.fn(async () => ({ id: 'doc-1', uuid: 'uuid-1' })),
   getUserPrompts: vi.fn(async () => [
-    { id: '1', input: 'a', output: 'A', score: 50, mode: 'code' },
-    { id: '2', input: 'b', output: 'B', score: 60, mode: 'code' },
+    { id: '1', input: 'a', output: 'A', score: 50, mode: 'code', highlightCache: null, versions: [] },
+    { id: '2', input: 'b', output: 'B', score: 60, mode: 'code', highlightCache: null, versions: [] },
   ]),
+  updatePromptHighlightsInFirestore: vi.fn(),
 }));
 
 // Mock Toast
@@ -38,7 +39,8 @@ beforeEach(() => {
   it('saves to local history when no user', async () => {
     const { result } = renderHook(() => usePromptHistory(null));
     await act(async () => {
-      await result.current.saveToHistory('in', 'out', 70, 'code');
+      const saveResult = await result.current.saveToHistory('in', 'out', 70, 'code');
+      expect(saveResult).toHaveProperty('uuid');
     });
     expect(result.current.history.length).toBe(1);
     const stored = JSON.parse(localStorage.getItem('promptHistory'));
