@@ -16,9 +16,7 @@ User's concept: "${userConcept}"
 
 **PROMPT:**
 
-Write ONE descriptive paragraph following this precise structure:
-
- of performing in/at,, under, in a.
+Write ONE descriptive paragraph that introduces elements in this exact order: shot type → primary subject with 2-3 defining details → one specific action → precise setting and time → camera movement and angle → lighting source/direction/quality → aesthetic reference (film stock, genre, or artist).
 
 ---
 
@@ -59,12 +57,12 @@ After the main prompt paragraph, add the following technical and creative specif
 - **Duration:** 4-8s (Optimal for instruction-following and quality)
 - **Aspect Ratio:** 16:9 (Landscape), 9:16 (Vertical), or 2.39:1 (Cinematic)
 - **Frame Rate:** 24fps (Filmic) or 30fps (Standard Video)
-- **Audio:**
+- **Audio:** Declare the audio treatment (e.g., mute, natural ambience, or cinematic score) so the render engine does not guess.
 
 **ALTERNATIVE APPROACHES (2 variations, 40-50 words each)**
 Provide two brief, alternative prompts that explore different creative choices for the same core concept. This facilitates A/B testing and rapid iteration.
-- **Variation 1 (Different Camera):** Explore a different camera angle or movement (e.g., "High-angle shot looking down...").
-- **Variation 2 (Different Lighting/Mood):** Explore a different lighting setup or mood (e.g., "Bright, high-key lighting from a large window...").
+- **Variation 1 (Different Camera):** Explore a different camera angle or movement while restating the core subject identifiers. Keep it to one sentence, 40-50 words.
+- **Variation 2 (Different Lighting/Mood):** Explore a different lighting setup or mood while restating the core subject identifiers. Keep it to one sentence, 40-50 words.
 
 ---
 

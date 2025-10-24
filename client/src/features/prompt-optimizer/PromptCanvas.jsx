@@ -35,118 +35,142 @@ export const formatTextToHTML = (text) => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
 
-  const lines = String(text).split(/\r?\n/);
+  const rawText = String(text);
+  const lines = rawText.split(/\r?\n/);
   const result = [];
+  const endsWithNewline = /\r?\n$/.test(rawText);
 
-  const pushGap = () => {
-    result.push('<div class="prompt-line prompt-line--gap" data-variant="gap"><br /></div>');
+  const shouldAppendNewline = (index) => {
+    if (!Number.isInteger(index)) return false;
+    if (index < lines.length - 1) {
+      return true;
+    }
+    return index === lines.length - 1 && endsWithNewline;
   };
 
-  const pushSeparator = () => {
-    result.push('<div class="prompt-line prompt-line--separator" data-variant="separator">———</div>');
+  const appendBlock = (html, lineIndex) => {
+    result.push(html);
+    if (shouldAppendNewline(lineIndex)) {
+      result.push('\n');
+    }
   };
 
-  const pushHeading = (raw) => {
+  const pushGap = (lineIndex) => {
+    appendBlock('<div class="prompt-line prompt-line--gap" data-variant="gap"><br /></div>', lineIndex);
+  };
+
+  const pushSeparator = (lineIndex) => {
+    appendBlock('<div class="prompt-line prompt-line--separator" data-variant="separator">———</div>', lineIndex);
+  };
+
+  const pushHeading = (raw, lineIndex) => {
     const cleaned = raw.replace(/^#{1,6}\s+/, '').replace(/^\*\*(.+)\*\*:?$/, '$1').trim();
     const className = 'prompt-line prompt-line--heading';
-    result.push(`<div class="${className}" data-variant="heading">${escapeHtmlLocal(cleaned)}</div>`);
+    appendBlock(`<div class="${className}" data-variant="heading">${escapeHtmlLocal(cleaned)}</div>`, lineIndex);
   };
 
-  const pushSection = (raw) => {
-    result.push(
+  const pushSection = (raw, lineIndex) => {
+    appendBlock(
       `<div class="prompt-line prompt-line--section" data-variant="section">${escapeHtmlLocal(
         raw.trim()
-      )}</div>`
+      )}</div>`,
+      lineIndex
     );
   };
 
-  const pushParagraph = (raw) => {
-    result.push(
+  const pushParagraph = (raw, lineIndex) => {
+    appendBlock(
       `<div class="prompt-line prompt-line--paragraph" data-variant="paragraph">${escapeHtmlLocal(
         raw.trim()
-      )}</div>`
+      )}</div>`,
+      lineIndex
     );
   };
 
-  const pushOrderedItems = (items) => {
-    items.forEach(({ label, text }) => {
-      result.push(
-        `<div class="prompt-line prompt-line--ordered" data-variant="ordered" data-variant-index="${escapeHtmlLocal(
-          label
-        )}"><span class="prompt-ordered-index">${escapeHtmlLocal(
-          label
-        )}</span><span class="prompt-ordered-text">${escapeHtmlLocal(text.trim())}</span></div>`
-      );
-    });
+  const pushOrderedItem = (label, text, lineIndex, isLastInGroup) => {
+    appendBlock(
+      `<div class="prompt-line prompt-line--ordered" data-variant="ordered" data-variant-index="${escapeHtmlLocal(
+        label
+      )}"><span class="prompt-ordered-index">${escapeHtmlLocal(
+        label
+      )}</span><span class="prompt-ordered-text">${escapeHtmlLocal(text.trim())}</span></div>`,
+      lineIndex
+    );
+    if (isLastInGroup && shouldAppendNewline(lineIndex + 0.5)) {
+      result.push('\n');
+    }
   };
 
-  const pushBulletItems = (items) => {
-    items.forEach((text) => {
-      result.push(
-        `<div class="prompt-line prompt-line--bullet" data-variant="bullet"><span class="prompt-bullet-marker">•</span><span class="prompt-bullet-text">${escapeHtmlLocal(
-          text.trim()
-        )}</span></div>`
-      );
-    });
+  const pushBulletItem = (text, lineIndex, isLastInGroup) => {
+    appendBlock(
+      `<div class="prompt-line prompt-line--bullet" data-variant="bullet"><span class="prompt-bullet-marker">•</span><span class="prompt-bullet-text">${escapeHtmlLocal(
+        text.trim()
+      )}</span></div>`,
+      lineIndex
+    );
+    if (isLastInGroup && shouldAppendNewline(lineIndex + 0.5)) {
+      result.push('\n');
+    }
   };
 
   for (let i = 0; i < lines.length; i += 1) {
+    const lineIndex = i;
     const line = lines[i];
     const trimmed = line.trim();
 
     if (!trimmed) {
-      pushGap();
+      pushGap(lineIndex);
       continue;
     }
 
     if (/^[=\-*_━─═▬▭]{3,}$/.test(trimmed)) {
-      pushSeparator();
+      pushSeparator(lineIndex);
       continue;
     }
 
     if (/^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed) || /^[A-Z][A-Z\s]{3,}$/.test(trimmed)) {
-      pushHeading(trimmed);
+      pushHeading(trimmed, lineIndex);
       continue;
     }
 
     if (/^\d+\.\s+/.test(trimmed)) {
-      const orderedItems = [];
       while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
-        const current = lines[i].trim();
+        const currentIndex = i;
+        const current = lines[currentIndex].trim();
         const match = current.match(/^(\d+)\.\s+(.*)$/);
+        const nextBreaks = i + 1 >= lines.length || lines[i + 1].trim() === '' || !/^\d+\.\s+/.test(lines[i + 1].trim());
         if (match) {
-          orderedItems.push({ label: `${match[1]}.`, text: match[2] });
+          pushOrderedItem(`${match[1]}.`, match[2], currentIndex, nextBreaks);
         }
         i += 1;
       }
       i -= 1;
-      pushOrderedItems(orderedItems);
       continue;
     }
 
     if (/^[-*•]\s+/.test(trimmed)) {
-      const bulletItems = [];
       while (i < lines.length && /^[-*•]\s+/.test(lines[i].trim())) {
-        const current = lines[i].trim().replace(/^[-*•]\s+/, '');
-        bulletItems.push(current);
+        const currentIndex = i;
+        const current = lines[currentIndex].trim().replace(/^[-*•]\s+/, '');
+        const nextBreaks = i + 1 >= lines.length || lines[i + 1].trim() === '' || !/^[-*•]\s+/.test(lines[i + 1].trim());
+        pushBulletItem(current, currentIndex, nextBreaks);
         i += 1;
       }
       i -= 1;
-      pushBulletItems(bulletItems);
       continue;
     }
 
     if (/^.+:$/.test(trimmed)) {
-      pushSection(trimmed);
+      pushSection(trimmed, lineIndex);
       continue;
     }
 
     if (/^>\s*/.test(trimmed)) {
-      pushParagraph(trimmed.replace(/^>\s*/, ''));
+      pushParagraph(trimmed.replace(/^>\s*/, ''), lineIndex);
       continue;
     }
 
-    pushParagraph(trimmed);
+    pushParagraph(trimmed, lineIndex);
   }
 
   return { html: result.join('') };
@@ -634,7 +658,7 @@ export const PromptCanvas = ({
   } = useSpanLabeling({
     text: enableMLHighlighting ? displayedPrompt : '',
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
-    maxSpans: 20,
+    maxSpans: 60,
     minConfidence: 0.5,
     policy: labelingPolicy,
     templateVersion: 'v1',
@@ -680,9 +704,25 @@ export const PromptCanvas = ({
 
   useEffect(() => () => clearHighlights(), []);
 
-  // Memoize formatted HTML - highlights applied post-render
+  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
+  // We need to preserve the original text structure for span offsets to work
   const { html: formattedHTML } = useMemo(
-    () => formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext),
+    () => {
+      // If ML highlighting is enabled, don't apply formatting
+      // Highlighting needs the raw text to match span offsets
+      if (enableMLHighlighting) {
+        // Return plain text with preserved whitespace
+        // Escape HTML but preserve newlines and spaces
+        const escaped = (displayedPrompt || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem;">${escaped}</div>` };
+      }
+      return formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext);
+    },
     [displayedPrompt, enableMLHighlighting, promptContext]
   );
 
@@ -1103,6 +1143,21 @@ export const PromptCanvas = ({
       return;
     }
 
+    console.log('[HIGHLIGHT] Starting highlight application:', {
+      spanCount: spans.length,
+      displayTextLength: displayText.length,
+      displayTextPreview: displayText.substring(0, 200) + '...',
+      rootTextContent: root.textContent?.substring(0, 200) + '...',
+      textContentMatch: displayText === root.textContent
+    });
+
+    console.log('[HIGHLIGHT] Spans to apply:', spans.map(s => ({
+      text: s.text,
+      role: s.role,
+      start: s.start,
+      end: s.end
+    })));
+
     const wrappers = [];
     const coverage = [];
 
@@ -1137,13 +1192,25 @@ export const PromptCanvas = ({
       const expectedText = span.displayQuote ?? span.quote ?? '';
       const actualSlice = displayText.slice(highlightStart, highlightEnd);
       if (expectedText && actualSlice !== expectedText) {
-        console.warn('SPAN_MISMATCH', {
+        console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
           id: span.id,
+          role: span.role,
           expected: expectedText,
           found: actualSlice,
+          start: highlightStart,
+          end: highlightEnd,
+          displayTextLength: displayText.length,
+          context: displayText.slice(Math.max(0, highlightStart - 20), Math.min(displayText.length, highlightEnd + 20))
         });
         return;
       }
+
+      console.log('[HIGHLIGHT] Applying highlight:', {
+        text: expectedText,
+        role: span.role,
+        start: highlightStart,
+        end: highlightEnd
+      });
 
       const segmentWrappers = wrapRangeSegments({
         root,
@@ -1176,8 +1243,22 @@ export const PromptCanvas = ({
       });
 
       if (!segmentWrappers.length) {
+        console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
+          text: expectedText,
+          role: span.role,
+          start: highlightStart,
+          end: highlightEnd,
+          nodeIndexLength: nodeIndex.nodes?.length,
+          rootTextContentLength: root.textContent?.length
+        });
         return;
       }
+
+      console.log('[HIGHLIGHT] Successfully wrapped:', {
+        text: expectedText,
+        role: span.role,
+        wrapperCount: segmentWrappers.length
+      });
 
       segmentWrappers.forEach((wrapper) => {
         wrapper.dataset.quote = span.quote ?? '';

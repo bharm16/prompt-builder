@@ -14,9 +14,16 @@ const ROLE_SET = new Set([
   'Descriptive',
 ]);
 
-const BASE_SYSTEM_PROMPT = `You label short prompt spans for a video prompt editor.
+const BASE_SYSTEM_PROMPT = `You label prompt spans for a video prompt editor.
 
 Roles: Wardrobe, Appearance, Lighting, TimeOfDay, CameraMove, Framing, Environment, Color, Technical, Descriptive.
+
+CRITICAL INSTRUCTIONS:
+- You MUST analyze the ENTIRE text from start to finish.
+- DO NOT stop after the first paragraph or section.
+- If the text contains multiple sections (like "TECHNICAL SPECS" or "ALTERNATIVE APPROACHES"), you MUST label spans in ALL sections.
+- Treat every part of the text with equal importance.
+- Label camera terms, lighting, technical specs, framing, etc. wherever they appear in the text.
 
 Rules:
 - Propose and label salient spans directly from the provided text.
@@ -28,9 +35,16 @@ Rules:
 - Use "Descriptive" if unsure.
 - Prefer fewer, more meaningful spans over many trivial ones.
 - Confidence must be in the range [0, 1] (use 0.7 when unsure).
-- Output ONLY valid JSON matching:
+
+Example: If text contains "Wide shot of a person... TECHNICAL SPECS - **Duration:** 4-8s - **Frame Rate:** 24fps ALTERNATIVE APPROACHES - Close-up of the same person", you must label:
+- "Wide shot" (Framing) from first section
+- "4-8s" (Technical) from TECHNICAL SPECS section
+- "24fps" (Technical) from TECHNICAL SPECS section
+- "Close-up" (Framing) from ALTERNATIVE APPROACHES section
+
+Output ONLY valid JSON matching:
   {"spans":[{"text":string,"start":number,"end":number,"role":string,"confidence":number}], "meta":{"version":string,"notes":string}}
-- The response must start with "{" and be valid JSON (no markdown fences).`;
+The response must start with "{" and be valid JSON (no markdown fences).`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -82,7 +96,7 @@ const DEFAULT_POLICY = {
 };
 
 const DEFAULT_OPTIONS = {
-  maxSpans: 20,
+  maxSpans: 60,
   minConfidence: 0.5,
   templateVersion: 'v1',
 };
@@ -151,7 +165,7 @@ const sanitizeOptions = (options = {}) => {
 
   const maxSpans = Number(merged.maxSpans);
   merged.maxSpans =
-    Number.isInteger(maxSpans) && maxSpans > 0 ? Math.min(maxSpans, 50) : DEFAULT_OPTIONS.maxSpans;
+    Number.isInteger(maxSpans) && maxSpans > 0 ? Math.min(maxSpans, 80) : DEFAULT_OPTIONS.maxSpans;
 
   const minConfidence = Number(merged.minConfidence);
   merged.minConfidence =
@@ -394,11 +408,11 @@ const validateSpans = ({
   };
 };
 
-const callModel = async ({ systemPrompt, userPayload, callFn }) => {
+const callModel = async ({ systemPrompt, userPayload, callFn, maxTokens = 800 }) => {
   const raw = await callFn({
     system: systemPrompt,
     user: userPayload,
-    max_tokens: 800,
+    max_tokens: maxTokens,
     temperature: 0,
   });
   return raw;
@@ -429,6 +443,7 @@ export async function labelSpans(params, options = {}) {
   });
 
   const task = `Identify up to ${sanitizedOptions.maxSpans} spans and assign roles.`;
+  const estimatedMaxTokens = Math.min(4000, 400 + sanitizedOptions.maxSpans * 25);
   const basePayload = {
     task,
     policy,
@@ -442,6 +457,7 @@ export async function labelSpans(params, options = {}) {
     systemPrompt: BASE_SYSTEM_PROMPT,
     userPayload: buildUserPayload(basePayload),
     callFn,
+    maxTokens: estimatedMaxTokens,
   });
 
   const parsedPrimary = parseJson(primaryResponse);
@@ -487,6 +503,7 @@ export async function labelSpans(params, options = {}) {
 If validation feedback is provided, correct the issues without altering span text.`,
     userPayload: buildUserPayload(repairPayload),
     callFn,
+    maxTokens: estimatedMaxTokens,
   });
 
   const parsedRepair = parseJson(repairResponse);

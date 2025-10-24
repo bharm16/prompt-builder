@@ -21,8 +21,8 @@ labelSpansRoute.post('/', async (req, res) => {
   }
 
   const safeMaxSpans = sanitizeNumber(maxSpans);
-  if (safeMaxSpans !== undefined && (!Number.isInteger(safeMaxSpans) || safeMaxSpans <= 0 || safeMaxSpans > 50)) {
-    return res.status(400).json({ error: 'maxSpans must be an integer between 1 and 50' });
+  if (safeMaxSpans !== undefined && (!Number.isInteger(safeMaxSpans) || safeMaxSpans <= 0 || safeMaxSpans > 80)) {
+    return res.status(400).json({ error: 'maxSpans must be an integer between 1 and 80' });
   }
 
   const safeMinConfidence = sanitizeNumber(minConfidence);
@@ -57,4 +57,3 @@ labelSpansRoute.post('/', async (req, res) => {
     });
   }
 });
-

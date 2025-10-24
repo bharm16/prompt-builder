@@ -237,7 +237,7 @@ export class PromptContext {
       mood: { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)' }, // Pink
       style: { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)' }, // Indigo
       event: { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.5)' }, // Sky
-      technical: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)' }, // Violet
+      technical: { bg: 'rgba(139, 92, 246, 0.25)', border: 'rgba(139, 92, 246, 0.7)' }, // Violet - increased opacity for visibility
       descriptive: { bg: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
       lighting: { bg: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)' }, // Yellow
       cameraMove: { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)' }, // Sky blue

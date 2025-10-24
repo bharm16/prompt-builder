@@ -11,7 +11,7 @@ const DEFAULT_POLICY = {
 };
 
 const DEFAULT_OPTIONS = {
-  maxSpans: 20,
+  maxSpans: 60,
   minConfidence: 0.5,
   templateVersion: 'v1',
   debounceMs: 500,
@@ -236,4 +236,3 @@ export function useSpanLabeling({
     refresh,
   };
 }
-
