@@ -31,6 +31,16 @@ import { PromptContext } from '../../utils/PromptContext';
 import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
 import { applySuggestionToPrompt } from './utils/applySuggestion.js';
 
+const hashString = (input = '') => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    const chr = input.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0;
+  }
+  return hash.toString(36);
+};
+
 function PromptOptimizerContent() {
   // Force light mode immediately
   React.useEffect(() => {
@@ -1085,6 +1095,11 @@ function PromptOptimizerContent() {
         {/* Results Section - Canvas Style */}
         {showResults && promptOptimizer.displayedPrompt && !promptOptimizer.isProcessing && (
           <PromptCanvas
+            key={
+              currentPromptUuid
+                ? `prompt-${currentPromptUuid}`
+                : `prompt-${hashString(promptOptimizer.displayedPrompt ?? '')}`
+            }
             inputPrompt={promptOptimizer.inputPrompt}
             displayedPrompt={promptOptimizer.displayedPrompt}
             optimizedPrompt={promptOptimizer.optimizedPrompt}

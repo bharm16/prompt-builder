@@ -657,6 +657,7 @@ export const PromptCanvas = ({
     error: labelingError,
   } = useSpanLabeling({
     text: enableMLHighlighting ? displayedPrompt : '',
+    cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
     maxSpans: 60,
     minConfidence: 0.5,
