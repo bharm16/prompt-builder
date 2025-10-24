@@ -200,6 +200,7 @@ function PromptOptimizerContent() {
           versionId: `v-${Date.now()}`,
           signature: result.signature,
           spansCount: result.spans.length,
+          timestamp: new Date().toISOString(),
         },
       });
       persistedSignatureRef.current = result.signature;
@@ -540,6 +541,14 @@ function PromptOptimizerContent() {
 
   // Load from history
   const loadFromHistory = (entry) => {
+    console.log('[History] Loading entry:', {
+      id: entry.id,
+      mode: entry.mode,
+      hasHighlightCache: !!entry.highlightCache,
+      spansCount: entry.highlightCache?.spans?.length || 0,
+      hasSignature: !!entry.highlightCache?.signature,
+    });
+    
     promptOptimizer.setSkipAnimation(true);
     promptOptimizer.setInputPrompt(entry.input);
     promptOptimizer.setOptimizedPrompt(entry.output);
@@ -555,6 +564,16 @@ function PromptOptimizerContent() {
             entry.highlightCache.signature ?? createHighlightSignature(entry.output ?? ''),
         }
       : null;
+    
+    if (preloadedHighlight) {
+      console.log('[History] Applying highlights:', {
+        spansCount: preloadedHighlight.spans?.length,
+        signature: preloadedHighlight.signature?.slice(0, 8),
+      });
+    } else {
+      console.log('[History] No highlights to apply');
+    }
+    
     applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
     resetEditStacks();
 

@@ -686,11 +686,25 @@ export const PromptCanvas = ({
   );
 
   const memoizedInitialHighlights = useMemo(() => {
+    console.log('[PromptCanvas] Memoizing initial highlights:', {
+      enableMLHighlighting,
+      hasInitialHighlights: !!initialHighlights,
+      spansCount: initialHighlights?.spans?.length || 0,
+      version: initialHighlightsVersion,
+    });
+    
     if (!enableMLHighlighting || !initialHighlights || !Array.isArray(initialHighlights.spans)) {
+      console.log('[PromptCanvas] Not using initial highlights - returning null');
       return null;
     }
     const resolvedSignature =
       initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+    
+    console.log('[PromptCanvas] Using initial highlights:', {
+      spansCount: initialHighlights.spans.length,
+      signature: resolvedSignature?.slice(0, 8),
+    });
+    
     return {
       spans: initialHighlights.spans,
       meta: initialHighlights.meta ?? null,

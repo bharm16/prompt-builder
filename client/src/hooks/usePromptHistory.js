@@ -21,6 +21,11 @@ export const usePromptHistory = (user) => {
     try {
       const prompts = await getUserPrompts(userId, 100);
       console.log('Successfully loaded prompts from Firestore:', prompts.length);
+      
+      // Debug: Check how many have highlightCache
+      const withHighlights = prompts.filter(p => p.highlightCache?.spans?.length > 0).length;
+      console.log(`Prompts with highlights: ${withHighlights}/${prompts.length}`);
+      
       const normalizedPrompts = prompts.map((entry) => ({
         ...entry,
         brainstormContext: entry.brainstormContext ?? null,
@@ -28,6 +33,19 @@ export const usePromptHistory = (user) => {
         versions: entry.versions ?? [],
       }));
       setHistory(normalizedPrompts);
+      
+      // Debug: Log first video prompt with highlights
+      const firstVideoWithHighlights = normalizedPrompts.find(
+        p => p.mode === 'video' && p.highlightCache?.spans?.length > 0
+      );
+      if (firstVideoWithHighlights) {
+        console.log('Sample video prompt with highlights:', {
+          id: firstVideoWithHighlights.id,
+          mode: firstVideoWithHighlights.mode,
+          spansCount: firstVideoWithHighlights.highlightCache.spans.length,
+          hasSignature: !!firstVideoWithHighlights.highlightCache.signature,
+        });
+      }
 
       // Also update localStorage with the latest from Firestore
       if (normalizedPrompts.length > 0) {

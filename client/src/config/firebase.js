@@ -221,13 +221,13 @@ export const updatePromptHighlightsInFirestore = async (docId, { highlightCache,
     if (highlightCache) {
       updatePayload.highlightCache = {
         ...highlightCache,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       };
     }
     if (versionEntry) {
       updatePayload.versions = arrayUnion({
         ...versionEntry,
-        timestamp: serverTimestamp(),
+        timestamp: versionEntry.timestamp || new Date().toISOString(),
       });
     }
     if (Object.keys(updatePayload).length === 0) {

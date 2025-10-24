@@ -50,6 +50,9 @@ const stats = {
   skipped: 0,
   errors: 0,
   alreadyHasCache: 0,
+  failedDocs: [], // Track failed documents with details
+  startTime: null,
+  totalProcessingTime: 0,
 };
 
 /**
@@ -63,38 +66,30 @@ function hashString(str) {
 /**
  * Generate highlight cache for a prompt text
  */
-async function generateHighlightCache(text, retries = 3) {
-  try {
-    const result = await labelSpans({
-      text,
-      maxSpans: 60,
-      minConfidence: 0.5,
-      policy: { nonTechnicalWordLimit: 6, allowOverlap: false },
-      templateVersion: 'v1',
-    });
+async function generateHighlightCache(text) {
+  const result = await labelSpans({
+    text,
+    maxSpans: 60,
+    minConfidence: 0.5,
+    policy: { nonTechnicalWordLimit: 6, allowOverlap: false },
+    templateVersion: 'v1',
+  });
 
-    const signature = hashString(text);
+  const signature = hashString(text);
 
-    return {
-      spans: result.spans || [],
-      meta: result.meta || null,
-      signature,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    };
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`    ⚠️  Retry attempt ${4 - retries}/3...`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
-      return generateHighlightCache(text, retries - 1);
-    }
-    throw error;
-  }
+  return {
+    spans: result.spans || [],
+    meta: result.meta || null,
+    signature,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  };
 }
 
 /**
  * Process a single document
  */
 async function processDocument(doc, db) {
+  const startTime = Date.now();
   const docId = doc.id;
   const data = doc.data();
   
@@ -102,14 +97,26 @@ async function processDocument(doc, db) {
   if (data.highlightCache) {
     stats.alreadyHasCache++;
     stats.skipped++;
-    return { status: 'skipped', reason: 'already-has-cache' };
+    return { 
+      status: 'skipped', 
+      reason: 'already-has-cache',
+      mode: data.mode,
+      charCount: 0,
+      processingTime: 0,
+    };
   }
 
   // Skip if no output text
   const promptText = data.output || data.optimizedPrompt || data.prompt;
   if (!promptText || typeof promptText !== 'string' || !promptText.trim()) {
     stats.skipped++;
-    return { status: 'skipped', reason: 'no-prompt-text' };
+    return { 
+      status: 'skipped', 
+      reason: 'no-prompt-text',
+      mode: data.mode,
+      charCount: 0,
+      processingTime: 0,
+    };
   }
 
   try {
@@ -131,17 +138,34 @@ async function processDocument(doc, db) {
       });
     }
 
+    const processingTime = (Date.now() - startTime) / 1000;
     stats.updated++;
+    stats.totalProcessingTime += processingTime;
+    
     return {
       status: 'updated',
       spansCount: highlightCache.spans.length,
       signature: highlightCache.signature,
+      mode: data.mode,
+      charCount: promptText.length,
+      processingTime,
     };
   } catch (error) {
+    const processingTime = (Date.now() - startTime) / 1000;
     stats.errors++;
+    stats.failedDocs.push({
+      id: docId,
+      mode: data.mode,
+      error: error.message,
+      charCount: promptText.length,
+    });
+    
     return {
       status: 'error',
       error: error.message,
+      mode: data.mode,
+      charCount: promptText.length,
+      processingTime,
     };
   }
 }
@@ -205,24 +229,44 @@ async function runMigration() {
     // Process documents
     console.log('🔄 Processing documents...\n');
     const docs = snapshot.docs;
+    stats.startTime = Date.now();
     
     for (let i = 0; i < docs.length; i++) {
       const doc = docs[i];
       const data = doc.data();
       
+      const progress = Math.round(((i + 1) / stats.total) * 100);
       const result = await processDocument(doc, db);
       stats.processed++;
       
+      // Calculate statistics
+      const elapsedMinutes = (Date.now() - stats.startTime) / 1000 / 60;
+      const docsPerMinute = stats.processed / elapsedMinutes;
+      const remainingDocs = stats.total - stats.processed;
+      const estimatedMinutesRemaining = remainingDocs / docsPerMinute;
+      
       if (result.status === 'updated') {
-        console.log(`[${i + 1}/${stats.total}] ✓ ${doc.id.slice(0, 8)} - ${result.spansCount} spans`);
+        console.log(
+          `[${i + 1}/${stats.total}] (${progress}%) ${doc.id.slice(0, 8)} (${result.mode || 'unknown'}, ${result.charCount} chars)`
+        );
+        console.log(`  ✓ ${result.spansCount} spans in ${result.processingTime.toFixed(1)}s`);
+        if (i < docs.length - 1) {
+          console.log(`  Speed: ${docsPerMinute.toFixed(1)} docs/min | ETA: ${estimatedMinutesRemaining.toFixed(1)} min\n`);
+        }
       } else if (result.status === 'skipped') {
         // Silent skip
       } else if (result.status === 'error') {
-        console.log(`[${i + 1}/${stats.total}] ✗ ${doc.id.slice(0, 8)} - Error: ${result.error}`);
+        console.log(
+          `[${i + 1}/${stats.total}] (${progress}%) ${doc.id.slice(0, 8)} (${result.mode || 'unknown'}, ${result.charCount} chars)`
+        );
+        console.log(`  ✗ Failed: ${result.error}\n`);
       }
     }
 
     // Print summary
+    const totalTime = (Date.now() - stats.startTime) / 1000 / 60;
+    const avgTimePerDoc = stats.updated > 0 ? stats.totalProcessingTime / stats.updated : 0;
+    
     console.log('\n' + '='.repeat(60));
     console.log('📊 Migration Summary');
     console.log('='.repeat(60));
@@ -233,13 +277,25 @@ async function runMigration() {
     console.log(`  - Already had cache:        ${stats.alreadyHasCache}`);
     console.log(`  - No prompt text:           ${stats.skipped - stats.alreadyHasCache}`);
     console.log(`Errors:                       ${stats.errors} ${stats.errors > 0 ? '✗' : ''}`);
+    console.log('');
+    console.log(`Total time:                   ${totalTime.toFixed(1)} minutes`);
+    console.log(`Average time per document:    ${avgTimePerDoc.toFixed(1)}s`);
     console.log('='.repeat(60));
+
+    // Show failed documents if any
+    if (stats.failedDocs.length > 0) {
+      console.log('\n❌ Failed Documents:');
+      stats.failedDocs.forEach(doc => {
+        console.log(`  - ${doc.id.slice(0, 8)} (${doc.mode || 'unknown'}): ${doc.error}`);
+      });
+      console.log('');
+    }
 
     if (options.dryRun) {
       console.log('\n⚠️  DRY RUN MODE - No changes were made to Firestore');
       console.log('Run without --dry-run to apply changes.\n');
     } else {
-      console.log('\n✓ Migration completed successfully!\n');
+      console.log(`\n✓ Migration completed! ${stats.updated} documents updated, ${stats.errors} failed.\n`);
     }
 
   } catch (error) {
