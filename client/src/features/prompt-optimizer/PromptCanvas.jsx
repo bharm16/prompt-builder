@@ -1351,6 +1351,7 @@ const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
 
       const role = typeof span.role === 'string' ? span.role : 'Descriptive';
       const category = ROLE_TO_CATEGORY[role] || 'descriptive';
+      
       const start = Number(span.start);
       const end = Number(span.end);
 
