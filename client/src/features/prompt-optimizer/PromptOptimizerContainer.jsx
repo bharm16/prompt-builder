@@ -111,6 +111,7 @@ function PromptOptimizerContent() {
   const debounceTimerRef = useRef(null);
   const lastRequestRef = useRef(null);
   const lastAppliedKeyRef = useRef(null);
+  const skipLoadFromUrlRef = useRef(false);
 
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode);
@@ -127,42 +128,49 @@ function PromptOptimizerContent() {
   // Load prompt from URL parameter if present
   useEffect(() => {
     const loadPromptFromUrl = async () => {
-      if (uuid && !currentPromptUuid) {
-        try {
-          const promptData = await getPromptByUuid(uuid);
-          if (promptData) {
-            promptOptimizer.setSkipAnimation(true);
-            promptOptimizer.setInputPrompt(promptData.input);
-            promptOptimizer.setOptimizedPrompt(promptData.output);
-            promptOptimizer.setDisplayedPrompt(promptData.output);
-            setSelectedMode(promptData.mode || 'optimize');
-            setCurrentPromptUuid(promptData.uuid);
-            setShowResults(true);
+      if (!uuid) {
+        skipLoadFromUrlRef.current = false;
+        return;
+      }
 
-            if (promptData.brainstormContext) {
-              try {
-                const contextData =
-                  typeof promptData.brainstormContext === 'string'
-                    ? JSON.parse(promptData.brainstormContext)
-                    : promptData.brainstormContext;
-                const restoredContext = PromptContext.fromJSON(contextData);
-                setPromptContext(restoredContext);
-              } catch (contextError) {
-                console.error('Failed to restore prompt context from shared link:', contextError);
-                setPromptContext(null);
-              }
-            } else {
+      if (skipLoadFromUrlRef.current || currentPromptUuid) {
+        return;
+      }
+
+      try {
+        const promptData = await getPromptByUuid(uuid);
+        if (promptData) {
+          promptOptimizer.setSkipAnimation(true);
+          promptOptimizer.setInputPrompt(promptData.input);
+          promptOptimizer.setOptimizedPrompt(promptData.output);
+          promptOptimizer.setDisplayedPrompt(promptData.output);
+          setSelectedMode(promptData.mode || 'optimize');
+          setCurrentPromptUuid(promptData.uuid);
+          setShowResults(true);
+
+          if (promptData.brainstormContext) {
+            try {
+              const contextData =
+                typeof promptData.brainstormContext === 'string'
+                  ? JSON.parse(promptData.brainstormContext)
+                  : promptData.brainstormContext;
+              const restoredContext = PromptContext.fromJSON(contextData);
+              setPromptContext(restoredContext);
+            } catch (contextError) {
+              console.error('Failed to restore prompt context from shared link:', contextError);
               setPromptContext(null);
             }
           } else {
-            toast.error('Prompt not found');
-            navigate('/', { replace: true });
+            setPromptContext(null);
           }
-        } catch (error) {
-          console.error('Error loading prompt from URL:', error);
-          toast.error('Failed to load prompt');
+        } else {
+          toast.error('Prompt not found');
           navigate('/', { replace: true });
         }
+      } catch (error) {
+        console.error('Error loading prompt from URL:', error);
+        toast.error('Failed to load prompt');
+        navigate('/', { replace: true });
       }
     };
 
@@ -323,6 +331,7 @@ function PromptOptimizerContent() {
 
   // Handle create new
   const handleCreateNew = () => {
+    skipLoadFromUrlRef.current = true;
     promptOptimizer.resetPrompt();
     setShowResults(false);
     setSuggestionsData(null);
