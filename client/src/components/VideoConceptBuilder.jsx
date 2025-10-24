@@ -454,12 +454,12 @@ export default function VideoConceptBuilder({
   }, [composedElements]);
 
   // Check for element compatibility
-  const checkCompatibility = useCallback(async (elementType, value) => {
+  const checkCompatibility = useCallback(async (elementType, value, currentElements) => {
     if (!value) return 1;
 
     try {
       const updatedElements = buildComposedElements({
-        ...elements,
+        ...(currentElements || elements),
         [elementType]: value,
       });
 
@@ -673,27 +673,32 @@ export default function VideoConceptBuilder({
 
   // Auto-suggest dependencies when an element is filled
   const handleElementChange = useCallback(async (key, value) => {
-    setElements(prev => ({ ...prev, [key]: value }));
+    let updatedElements;
+    setElements(prev => {
+      updatedElements = { ...prev, [key]: value };
+      
+      if (value) {
+        const dependentElements = Object.entries(ELEMENT_HIERARCHY)
+          .filter(([el, info]) => info.dependencies.includes(key) && !updatedElements[el])
+          .map(([el]) => el);
 
-    if (value) {
-      const dependentElements = Object.entries(ELEMENT_HIERARCHY)
-        .filter(([el, info]) => info.dependencies.includes(key) && !elements[el])
-        .map(([el]) => el);
-
-      if (dependentElements.length > 0) {
-        console.log(`Consider filling: ${dependentElements.join(', ')}`);
+        if (dependentElements.length > 0) {
+          console.log(`Consider filling: ${dependentElements.join(', ')}`);
+        }
       }
-    }
+      
+      return updatedElements;
+    });
 
     // Debounce compatibility checks to avoid spamming the API while typing
     if (compatibilityTimersRef.current[key]) {
       clearTimeout(compatibilityTimersRef.current[key]);
     }
     compatibilityTimersRef.current[key] = setTimeout(async () => {
-      const score = await checkCompatibility(key, value);
+      const score = await checkCompatibility(key, value, updatedElements);
       setCompatibilityScores(prev => ({ ...prev, [key]: score }));
     }, 500);
-  }, [elements, checkCompatibility]);
+  }, [checkCompatibility]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -874,7 +879,7 @@ export default function VideoConceptBuilder({
   };
 
   // Handle suggestion click
-  const handleSuggestionClick = (suggestion) => {
+  const handleSuggestionClick = useCallback((suggestion) => {
     if (activeElement) {
       setElementHistory(prev => [...prev, {
         element: activeElement,
@@ -886,7 +891,7 @@ export default function VideoConceptBuilder({
       setActiveElement(null);
       setSuggestions([]);
     }
-  };
+  }, [activeElement, handleElementChange]);
 
   const activeElementConfig = activeElement ? elementConfig[activeElement] : null;
 
@@ -1031,24 +1036,19 @@ export default function VideoConceptBuilder({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [activeElement, suggestions, fetchSuggestionsForElement]);
+  }, [activeElement, suggestions, fetchSuggestionsForElement, handleSuggestionClick]);
 
-  // Effects
+  // Consolidated effect with debounce to avoid excessive API calls
   useEffect(() => {
-    detectConflicts(elements);
-  }, [elements, detectConflicts]);
-
-  useEffect(() => {
-    validatePrompt();
-  }, [elements, validatePrompt]);
-
-  useEffect(() => {
-    fetchRefinementSuggestions(elements);
-  }, [elements, fetchRefinementSuggestions]);
-
-  useEffect(() => {
-    requestTechnicalParams(elements);
-  }, [elements, requestTechnicalParams]);
+    const timer = setTimeout(() => {
+      detectConflicts(elements);
+      validatePrompt();
+      fetchRefinementSuggestions(elements);
+      requestTechnicalParams(elements);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [elements, detectConflicts, validatePrompt, fetchRefinementSuggestions, requestTechnicalParams]);
 
   const hasRefinements = useMemo(
     () =>

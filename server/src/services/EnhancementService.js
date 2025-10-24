@@ -1779,7 +1779,7 @@ Provide a JSON object with the new suggestion:
       return [
         'Movement: dolly in/out, crane up/down, pan left/right, tilt up/down, tracking shot',
         'Lens choice: 24mm wide, 35mm, 50mm normal, 85mm portrait, 200mm telephoto',
-        'Angle: eye-level, high angle, low angle, Dutch tilt, bird\\'s-eye view, worm\\'s-eye',
+        "Angle: eye-level, high angle, low angle, Dutch tilt, bird's-eye view, worm's-eye",
         'Shot size: extreme close-up (ECU), close-up (CU), medium (MS), wide (WS), extreme wide (EWS)',
         'Focus technique: shallow DOF f/1.4, deep focus f/16, rack focus transition, selective focus',
       ];
