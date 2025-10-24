@@ -161,6 +161,21 @@ export const generateQuestionsSchema = Joi.object({
 export const completeSceneSchema = Joi.object({
   existingElements: Joi.object().required(),
   concept: Joi.string().allow('').max(10000),
+  smartDefaultsFor: Joi.string()
+    .valid(
+      'subject',
+      'subjectDescriptor1',
+      'subjectDescriptor2',
+      'subjectDescriptor3',
+      'action',
+      'location',
+      'time',
+      'mood',
+      'style',
+      'event',
+      'technical'
+    )
+    .optional(),
 });
 
 export const variationsSchema = Joi.object({

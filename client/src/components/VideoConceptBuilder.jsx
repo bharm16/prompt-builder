@@ -19,6 +19,7 @@ import {
   Tag,
 } from 'lucide-react';
 import SuggestionsPanel from './SuggestionsPanel';
+import { detectDescriptorCategoryClient } from '../utils/descriptorCategories';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 const PRIMARY_ELEMENT_KEYS = ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'];
@@ -413,6 +414,21 @@ export default function VideoConceptBuilder({
     () => buildComposedElements(elements),
     [elements, buildComposedElements],
   );
+
+  // Detect categories for filled descriptors
+  const descriptorCategories = useMemo(() => {
+    const categories = {};
+    SUBJECT_DESCRIPTOR_KEYS.forEach(key => {
+      const value = elements[key];
+      if (value && value.trim()) {
+        const detection = detectDescriptorCategoryClient(value);
+        if (detection.confidence > 0.5) {
+          categories[key] = detection;
+        }
+      }
+    });
+    return categories;
+  }, [elements]);
 
   // Calculate filled count by group
   const filledByGroup = useMemo(() => {
@@ -1039,16 +1055,30 @@ export default function VideoConceptBuilder({
   }, [activeElement, suggestions, fetchSuggestionsForElement, handleSuggestionClick]);
 
   // Consolidated effect with debounce to avoid excessive API calls
+  // Using refs to avoid circular dependencies with useCallback functions
+  const detectConflictsRef = useRef(detectConflicts);
+  const validatePromptRef = useRef(validatePrompt);
+  const fetchRefinementSuggestionsRef = useRef(fetchRefinementSuggestions);
+  const requestTechnicalParamsRef = useRef(requestTechnicalParams);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    detectConflictsRef.current = detectConflicts;
+    validatePromptRef.current = validatePrompt;
+    fetchRefinementSuggestionsRef.current = fetchRefinementSuggestions;
+    requestTechnicalParamsRef.current = requestTechnicalParams;
+  }, [detectConflicts, validatePrompt, fetchRefinementSuggestions, requestTechnicalParams]);
+  
   useEffect(() => {
     const timer = setTimeout(() => {
-      detectConflicts(elements);
-      validatePrompt();
-      fetchRefinementSuggestions(elements);
-      requestTechnicalParams(elements);
+      detectConflictsRef.current(elements);
+      validatePromptRef.current();
+      fetchRefinementSuggestionsRef.current(elements);
+      requestTechnicalParamsRef.current(elements);
     }, 300);
     
     return () => clearTimeout(timer);
-  }, [elements, detectConflicts, validatePrompt, fetchRefinementSuggestions, requestTechnicalParams]);
+  }, [elements]); // Only depend on elements, use latest functions via refs
 
   const hasRefinements = useMemo(
     () =>
@@ -1747,18 +1777,32 @@ export default function VideoConceptBuilder({
                         const descriptorValue = elements[descriptorKey] || '';
                         const descriptorFilled = Boolean(descriptorValue);
                         const descriptorCompatibility = compatibilityScores[descriptorKey];
+                        const categoryDetection = descriptorCategories[descriptorKey];
 
                         return (
                           <div
                             key={descriptorKey}
-                            className="rounded-2xl border border-neutral-200 bg-white/80 p-3"
+                            className="rounded-2xl border border-neutral-200 bg-white/80 p-3 relative"
                           >
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <Tag className="h-3.5 w-3.5 text-neutral-500" />
                               <span className="text-xs font-semibold text-neutral-700">
                                 Descriptor {idx + 1}
                               </span>
                               <span className="text-[10px] text-neutral-400">Optional</span>
+                              {categoryDetection && (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                                  style={{
+                                    backgroundColor: categoryDetection.colors.bg,
+                                    color: categoryDetection.colors.text,
+                                    border: `1px solid ${categoryDetection.colors.border}20`
+                                  }}
+                                  title={`${categoryDetection.label} category (${Math.round(categoryDetection.confidence * 100)}% confidence)`}
+                                >
+                                  {categoryDetection.label}
+                                </span>
+                              )}
                               {descriptorFilled && descriptorCompatibility !== undefined && (
                                 <span className="ml-auto flex items-center gap-1 text-[10px] text-neutral-500">
                                   {descriptorCompatibility >= 0.8 ? (

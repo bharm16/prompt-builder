@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Sparkles,
   Search,
@@ -146,15 +146,21 @@ function PromptOptimizerContent() {
     }, 0);
   }, [promptOptimizer]);
 
-  // Debug: Track promptContext changes
-  useEffect(() => {
-    console.log('[DEBUG] PromptContext state updated:', {
-      exists: !!promptContext,
-      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
-      elements: promptContext?.elements,
-      timestamp: new Date().toISOString()
-    });
-  }, [promptContext]);
+  // Stabilize promptContext to prevent infinite loops - only change when actual data changes
+  const stablePromptContext = useMemo(() => {
+    if (!promptContext) return null;
+    return promptContext;
+  }, [
+    promptContext?.elements?.subject,
+    promptContext?.elements?.action,
+    promptContext?.elements?.location,
+    promptContext?.elements?.time,
+    promptContext?.elements?.mood,
+    promptContext?.elements?.style,
+    promptContext?.elements?.event,
+    promptContext?.metadata?.format,
+    promptContext?.version,
+  ]);
 
   const handleHighlightsPersist = useCallback(async (result) => {
     if (!result || !Array.isArray(result.spans) || !result.signature) {
@@ -295,7 +301,12 @@ function PromptOptimizerContent() {
         return;
       }
 
-      if (skipLoadFromUrlRef.current || currentPromptUuid) {
+      // Skip if we're already on this prompt or if we explicitly set the skip flag
+      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
+        // Reset the skip flag after successfully skipping to allow future loads
+        if (skipLoadFromUrlRef.current) {
+          skipLoadFromUrlRef.current = false;
+        }
         return;
       }
 
@@ -436,6 +447,7 @@ function PromptOptimizerContent() {
       );
 
       if (saveResult?.uuid) {
+        skipLoadFromUrlRef.current = true; // Prevent URL effect from re-loading
         setCurrentPromptUuid(saveResult.uuid);
         setCurrentPromptDocId(saveResult.id ?? null);
         setShowResults(true);
@@ -504,6 +516,11 @@ function PromptOptimizerContent() {
           serializedContext
         );
         if (saveResult?.uuid) {
+          // Skip animation and set displayed prompt immediately
+          promptOptimizer.setSkipAnimation(true);
+          setDisplayedPromptSilently(result.optimized);
+          
+          skipLoadFromUrlRef.current = true; // Prevent URL effect from re-loading
           setCurrentPromptUuid(saveResult.uuid);
           setCurrentPromptDocId(saveResult.id ?? null);
           setShowResults(true);
@@ -1339,7 +1356,7 @@ function PromptOptimizerContent() {
             selectedMode={selectedMode}
             currentMode={currentMode}
             promptUuid={currentPromptUuid}
-            promptContext={promptContext}
+            promptContext={stablePromptContext}
             onDisplayedPromptChange={handleDisplayedPromptChange}
             onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}
@@ -1376,7 +1393,7 @@ function PromptOptimizerContent() {
           displayedPrompt={promptOptimizer.displayedPrompt}
           optimizedPrompt={promptOptimizer.optimizedPrompt}
           selectedMode={selectedMode}
-          promptContext={promptContext}
+          promptContext={stablePromptContext}
         />
       )}
     </div>

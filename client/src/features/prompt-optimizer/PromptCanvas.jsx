@@ -686,24 +686,12 @@ export const PromptCanvas = ({
   );
 
   const memoizedInitialHighlights = useMemo(() => {
-    console.log('[PromptCanvas] Memoizing initial highlights:', {
-      enableMLHighlighting,
-      hasInitialHighlights: !!initialHighlights,
-      spansCount: initialHighlights?.spans?.length || 0,
-      version: initialHighlightsVersion,
-    });
-    
+    // Console logs removed to prevent spam during rapid recomputation
     if (!enableMLHighlighting || !initialHighlights || !Array.isArray(initialHighlights.spans)) {
-      console.log('[PromptCanvas] Not using initial highlights - returning null');
       return null;
     }
     const resolvedSignature =
       initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
-    
-    console.log('[PromptCanvas] Using initial highlights:', {
-      spansCount: initialHighlights.spans.length,
-      signature: resolvedSignature?.slice(0, 8),
-    });
     
     return {
       spans: initialHighlights.spans,
@@ -753,16 +741,7 @@ export const PromptCanvas = ({
     displayText: displayedPrompt ?? '',
   }));
 
-  // Debug: Track promptContext received in PromptCanvas
-  useEffect(() => {
-    console.log('[DEBUG] PromptCanvas received promptContext:', {
-      exists: !!promptContext,
-      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
-      elements: promptContext?.elements,
-      timestamp: new Date().toISOString()
-    });
-  }, [promptContext]);
-
+  // Debug logging removed - was causing infinite loop due to promptContext reference changes
 
   const unwrapHighlight = (element) => {
     if (!element || !element.parentNode) return;
@@ -802,7 +781,10 @@ export const PromptCanvas = ({
       }
       return formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext);
     },
-    [displayedPrompt, enableMLHighlighting, promptContext]
+    // Only depend on promptContext when NOT using ML highlighting (to prevent infinite loops)
+    enableMLHighlighting 
+      ? [displayedPrompt, enableMLHighlighting] 
+      : [displayedPrompt, enableMLHighlighting, promptContext]
   );
 
   useEffect(() => {
@@ -1358,7 +1340,7 @@ export const PromptCanvas = ({
     });
 
     highlightStateRef.current = { wrappers, nodeIndex: null };
-  }, [parseResult, enableMLHighlighting, formattedHTML]);
+  }, [parseResult, enableMLHighlighting]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>

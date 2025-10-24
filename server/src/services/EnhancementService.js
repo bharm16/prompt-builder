@@ -3,6 +3,7 @@ import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { CATEGORY_CONSTRAINTS, detectSubcategory, validateAgainstVideoTemplate } from './CategoryConstraints.js';
+import { detectDescriptorCategory, getCategoryFallbacks, getCategoryInstruction } from './DescriptorCategories.js';
 
 /**
  * Service for providing enhancement suggestions for highlighted text
@@ -159,6 +160,16 @@ export class EnhancementService {
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
+    // Detect if this is a descriptor-type phrase (for Video Concept Builder)
+    const descriptorDetection = detectDescriptorCategory(highlightedText);
+    const isDescriptorPhrase = descriptorDetection.confidence > 0.4;
+    
+    logger.debug('Descriptor detection', {
+      isDescriptorPhrase,
+      category: descriptorDetection.category,
+      confidence: descriptorDetection.confidence,
+    });
+
     // Apply category alignment with fallbacks if needed
     let alignmentResult = { suggestions: diverseSuggestions, fallbackApplied: false, context: {} };
 
@@ -299,6 +310,19 @@ export class EnhancementService {
         highlightWordCount,
         attemptedModes: Array.from(attemptedModes),
       });
+      
+      // Try descriptor fallbacks if this is a descriptor phrase
+      if (isDescriptorPhrase && descriptorDetection.category) {
+        const descriptorFallbacks = getCategoryFallbacks(descriptorDetection.category);
+        if (descriptorFallbacks.length > 0) {
+          logger.info('Using descriptor category fallbacks', {
+            category: descriptorDetection.category,
+            count: descriptorFallbacks.length,
+          });
+          suggestionsToUse = descriptorFallbacks;
+          usedFallback = true;
+        }
+      }
     }
 
     // Debug logging
@@ -309,6 +333,8 @@ export class EnhancementService {
       sanitizedCount: sanitizedSuggestions.length,
       appliedConstraintMode: activeConstraints?.mode || null,
       usedFallback,
+      isDescriptorPhrase,
+      descriptorCategory: isDescriptorPhrase ? descriptorDetection.category : null,
     });
 
     // Group suggestions by category if they have categories

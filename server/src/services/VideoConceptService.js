@@ -19,6 +19,12 @@ import {
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
 } from '../utils/validation.js';
+import {
+  detectDescriptorCategory,
+  getCategoryInstruction,
+  getCategoryForbidden,
+  getAllCategories,
+} from './DescriptorCategories.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 
@@ -637,16 +643,36 @@ Return ONLY a JSON object:
       return { conflicts: [] };
     }
 
+    // Detect descriptor categories for enhanced conflict detection
+    const descriptors = SUBJECT_DESCRIPTOR_KEYS
+      .map(key => ({ key, value: elements[key] }))
+      .filter(d => d.value);
+
+    const descriptorCategories = descriptors.map(desc => ({
+      ...desc,
+      detection: detectDescriptorCategory(desc.value)
+    }));
+
+    // Build enhanced element list with descriptor categories
+    const elementsList = filledElements.map(([k, v]) => {
+      const descriptorInfo = descriptorCategories.find(d => d.key === k);
+      if (descriptorInfo && descriptorInfo.detection.category) {
+        return `${k} (${descriptorInfo.detection.category} category): ${v}`;
+      }
+      return `${k}: ${v}`;
+    }).join('\n');
+
     const prompt = `Analyze these video elements for logical conflicts or inconsistencies.
 
 Elements:
-${filledElements.map(([k, v]) => `${k}: ${v}`).join('\n')}
+${elementsList}
 
 Identify any:
 1. Logical impossibilities (e.g., underwater + flying)
 2. Stylistic clashes (e.g., vintage style + futuristic setting)
 3. Thematic inconsistencies
 4. Physical contradictions
+5. Descriptor category conflicts (e.g., wardrobe + props that don't match era)
 
 Return ONLY a JSON array of conflicts (empty array if none):
 [
@@ -669,11 +695,70 @@ Return ONLY a JSON array of conflicts (empty array if none):
           temperature: 0.3,
         }
       );
-      return { conflicts };
+
+      // Check for descriptor-specific conflicts
+      const descriptorConflicts = this.checkDescriptorCategoryConflicts(descriptorCategories);
+      
+      // Combine all conflicts
+      const allConflicts = [...conflicts, ...descriptorConflicts];
+      
+      return { conflicts: allConflicts };
     } catch (error) {
       logger.error('Failed to detect conflicts', { error });
       return { conflicts: [] };
     }
+  }
+
+  /**
+   * Check for conflicts between descriptor categories
+   * @private
+   */
+  checkDescriptorCategoryConflicts(descriptorCategories) {
+    const conflicts = [];
+    
+    // Check for conflicting categories in descriptors
+    for (let i = 0; i < descriptorCategories.length; i++) {
+      for (let j = i + 1; j < descriptorCategories.length; j++) {
+        const desc1 = descriptorCategories[i];
+        const desc2 = descriptorCategories[j];
+        
+        if (!desc1.detection.category || !desc2.detection.category) continue;
+        
+        // Check for contradictions (e.g., "wearing formal tuxedo" + "barefoot")
+        const value1Lower = desc1.value.toLowerCase();
+        const value2Lower = desc2.value.toLowerCase();
+        
+        // Wardrobe conflicts
+        if (desc1.detection.category === 'wardrobe' && desc2.detection.category === 'wardrobe') {
+          if ((value1Lower.includes('formal') || value1Lower.includes('tuxedo') || value1Lower.includes('suit')) &&
+              (value2Lower.includes('casual') || value2Lower.includes('torn') || value2Lower.includes('ragged'))) {
+            conflicts.push({
+              elements: [desc1.key, desc2.key],
+              severity: 'medium',
+              message: `Wardrobe style mismatch: formal clothing with casual/worn elements`,
+              resolution: `Choose a consistent wardrobe style (all formal or all casual)`
+            });
+          }
+        }
+        
+        // Era conflicts
+        const hasModernTerms1 = value1Lower.includes('modern') || value1Lower.includes('contemporary') || value1Lower.includes('digital');
+        const hasModernTerms2 = value2Lower.includes('modern') || value2Lower.includes('contemporary') || value2Lower.includes('digital');
+        const hasVintageTerms1 = value1Lower.includes('vintage') || value1Lower.includes('antique') || value1Lower.includes('old-fashioned');
+        const hasVintageTerms2 = value2Lower.includes('vintage') || value2Lower.includes('antique') || value2Lower.includes('old-fashioned');
+        
+        if ((hasModernTerms1 && hasVintageTerms2) || (hasVintageTerms1 && hasModernTerms2)) {
+          conflicts.push({
+            elements: [desc1.key, desc2.key],
+            severity: 'low',
+            message: `Era mismatch: mixing modern and vintage elements`,
+            resolution: `Consider if the era mix is intentional (e.g., steampunk) or should be unified`
+          });
+        }
+      }
+    }
+    
+    return conflicts;
   }
 
   /**
@@ -1039,10 +1124,117 @@ Return ONLY a JSON array:
   }
 
   /**
+   * Build specialized prompt for subject descriptors with category awareness
+   * @private
+   */
+  buildDescriptorPrompt({ currentValue, context, concept }) {
+    const isCompletion = currentValue && currentValue.trim().length > 0;
+    
+    // Detect category from current value or context
+    const detection = currentValue ? detectDescriptorCategory(currentValue) : null;
+    const categoryHint = detection?.confidence > 0.5 ? detection.category : null;
+    
+    // Check if subject exists in context to provide better guidance
+    const hasSubject = context?.subject;
+    const subjectContext = context?.subject || 'the subject';
+    
+    // Build category-aware guidance
+    let categoryGuidance = '';
+    if (categoryHint) {
+      const instruction = getCategoryInstruction(categoryHint);
+      const forbidden = getCategoryForbidden(categoryHint);
+      categoryGuidance = `\n**🎯 Detected Category: ${categoryHint}** (confidence: ${Math.round(detection.confidence * 100)}%)
+${instruction}
+${forbidden ? `\n⚠️ ${forbidden}` : ''}
+\nFocus suggestions within this category for consistency.\n`;
+    } else if (hasSubject) {
+      const allCategories = getAllCategories();
+      categoryGuidance = `\n**Descriptor Categories Available:**
+${allCategories.map(cat => {
+  const instruction = getCategoryInstruction(cat);
+  return `• **${cat}**: ${instruction}`;
+}).join('\n')}
+
+💡 Choose ONE category focus per descriptor for maximum specificity and clarity.\n`;
+    }
+
+    return `You are a video prompt expert specializing in rich, specific subject descriptions for AI video generation.
+
+${VIDEO_PROMPT_PRINCIPLES}
+
+${categoryGuidance}
+
+**Context:**
+Subject: "${subjectContext}"
+${context?.action ? `Action: "${context.action}"` : ''}
+${context?.location ? `Location: "${context.location}"` : ''}
+${context?.mood ? `Mood: "${context.mood}"` : ''}
+${concept ? `\nOverall Concept: "${concept}"` : ''}
+
+**Current Descriptor Value:** ${currentValue ? `"${currentValue}"` : '(empty - fresh suggestions needed)'}
+
+**Your Task:**
+Generate 8 ${isCompletion ? 'completions' : 'suggestions'} for this subject descriptor${categoryHint ? ` (${categoryHint} category)` : ''}.
+
+**CRITICAL Requirements:**
+✓ 3-8 words per suggestion (concise yet specific)
+✓ Directly observable visual details ONLY (what the camera sees)
+✓ Each suggestion explores a DIFFERENT approach within ${categoryHint || 'descriptor categories'}
+✓ Complement the main subject without redundancy
+✓ Film-language specificity (avoid generic descriptions)
+✓ Descriptive phrases, not complete sentences
+${isCompletion ? `✓ ALL 8 suggestions MUST include "${currentValue}" as the base` : ''}
+${categoryHint === 'physical' ? '✓ Focus on observable traits: facial features, body type, distinctive marks' : ''}
+${categoryHint === 'wardrobe' ? '✓ Include garment type, material, condition, era markers' : ''}
+${categoryHint === 'props' ? '✓ Specify object, material, condition, what they\'re doing with it' : ''}
+${categoryHint === 'emotional' ? '✓ Show emotion through visible cues: expression, gaze, body language' : ''}
+${categoryHint === 'action' ? '✓ Describe pose, position, or ongoing physical action' : ''}
+${categoryHint === 'lighting' ? '✓ Describe light direction, quality, color on the subject specifically' : ''}
+
+**Quality Criteria:**
+✓ Specific over generic ("weathered oak walking stick" not "stick")
+✓ Visual storytelling (reveals character history through details)
+✓ Cinematic language (describes what camera captures)
+✓ Avoids redundancy with main subject or other context elements
+✓ Each suggestion offers meaningfully different direction
+${isCompletion ? `✓ Builds upon "${currentValue}" rather than replacing it` : ''}
+
+**Examples of Strong Descriptors by Category:**
+- Physical: "with weathered hands and sun-worn face", "athletic build with broad shoulders"
+- Wardrobe: "wearing sun-faded denim jacket", "dressed in vintage 1940s attire"
+- Props: "holding worn leather journal", "clutching silver harmonica"
+- Emotional: "with weary expression and distant gaze", "eyes reflecting quiet determination"
+- Action: "leaning against brick wall", "sitting cross-legged on floor"
+- Lighting: "bathed in warm golden light", "face half-shadowed in chiaroscuro"
+
+**Output Format:**
+Return ONLY a JSON array (no markdown, no code blocks):
+
+[
+  {"text": "descriptor 1", "explanation": "why this adds visual depth to the subject"},
+  {"text": "descriptor 2", "explanation": "what this reveals about character/story"},
+  {"text": "descriptor 3", "explanation": "how this enhances the scene visually"},
+  {"text": "descriptor 4", "explanation": "why this detail matters cinematically"},
+  {"text": "descriptor 5", "explanation": "what this contributes to the overall concept"},
+  {"text": "descriptor 6", "explanation": "how this complements existing elements"},
+  {"text": "descriptor 7", "explanation": "why this specific detail works"},
+  {"text": "descriptor 8", "explanation": "what makes this visually compelling"}
+]`;
+  }
+
+  /**
    * Build system prompt for creative suggestions with multi-level context analysis
    * @private
    */
   buildSystemPrompt({ elementType, currentValue, context, concept }) {
+    // Check if this is a subject descriptor
+    const isDescriptor = elementType === 'subjectDescriptor';
+    
+    // If it's a descriptor, use specialized descriptor prompt
+    if (isDescriptor) {
+      return this.buildDescriptorPrompt({ currentValue, context, concept });
+    }
+
     const elementLabel =
       elementType === 'subjectDescriptor' ? 'subject descriptor' : elementType;
     const contextDisplay = context ? JSON.stringify(context, null, 2) : 'No other elements defined yet';
