@@ -184,15 +184,15 @@ const StepTechnical = ({
           <div className="p-2 bg-blue-100 rounded-lg">
             <Camera className="w-6 h-6 text-blue-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Technical Parameters</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Want to get technical?</h2>
         </div>
         <p className="text-gray-600 text-lg">
-          Fine-tune camera, lighting, and effects. All parameters are optional.
+          These advanced settings are completely optional. Most people skip this step and still get amazing results!
         </p>
         {totalParams > 0 && (
           <p className="mt-2 text-sm text-green-600 flex items-center">
             <CheckCircle className="w-4 h-4 mr-1" />
-            {totalParams} parameter{totalParams !== 1 ? 's' : ''} configured
+            Nice! You&apos;ve configured {totalParams} parameter{totalParams !== 1 ? 's' : ''}.
           </p>
         )}
       </div>
@@ -288,7 +288,7 @@ const StepTechnical = ({
           onClick={onBack}
           className="px-6 py-3 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
         >
-          Back to Atmosphere
+          Back to Creative Brief
         </button>
 
         <div className="flex space-x-3">
@@ -313,8 +313,7 @@ const StepTechnical = ({
           <Lightbulb className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm text-amber-900">
-              <strong>Advanced users only:</strong> Technical parameters give you fine-grained control but are completely optional.
-              Most users can skip this step and still get great results!
+              <strong>Feeling confident?</strong> These technical controls let you fine-tune every detail. But don&apos;t worry—your creative brief is already powerful enough to create something amazing!
             </p>
           </div>
         </div>

@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
-import StepCoreConcept from './StepCoreConcept';
-import StepAtmosphere from './StepAtmosphere';
+import StepCreativeBrief from './StepCreativeBrief';
 import StepTechnical from './StepTechnical';
 import SummaryReview from './SummaryReview';
 import { aiWizardService } from '../../services/aiWizardService';
@@ -73,17 +72,17 @@ const WizardVideoBuilder = ({
 
   // Mobile field configuration
   const mobileFields = [
-    { name: 'subject', label: 'What is the subject?', description: 'The main focus of your video (person, object, animal, etc.)', placeholder: 'e.g., A professional athlete', required: true },
-    { name: 'action', label: 'What is happening?', description: 'The action or movement taking place', placeholder: 'e.g., running through', required: true },
-    { name: 'location', label: 'Where is it?', description: 'The setting or environment', placeholder: 'e.g., a sun-drenched beach', required: true },
-    { name: 'time', label: 'When is it?', description: 'Time of day, era, or season (optional)', placeholder: 'e.g., during golden hour', required: false },
-    { name: 'mood', label: 'What\'s the mood?', description: 'The emotional atmosphere (optional)', placeholder: 'e.g., energetic and joyful', required: false },
-    { name: 'style', label: 'What style?', description: 'Visual treatment (optional)', placeholder: 'e.g., cinematic', required: false },
-    { name: 'event', label: 'What\'s the context?', description: 'The occasion or event (optional)', placeholder: 'e.g., a celebration', required: false }
+    { name: 'subject', label: 'What\'s the main focus of your video?', description: 'This could be a person, object, animal, or anything else', placeholder: 'e.g., A professional athlete', required: true },
+    { name: 'action', label: 'What\'s the subject doing?', description: 'Describe the movement, activity, or transformation', placeholder: 'e.g., running through', required: true },
+    { name: 'location', label: 'Where is all this happening?', description: 'Describe the setting or environment', placeholder: 'e.g., a sun-drenched beach', required: true },
+    { name: 'time', label: 'When does this happen?', description: 'Time of day, era, or season (optional but recommended)', placeholder: 'e.g., during golden hour', required: false },
+    { name: 'mood', label: 'What\'s the emotional atmosphere?', description: 'The feeling you want to evoke (optional but recommended)', placeholder: 'e.g., energetic and joyful', required: false },
+    { name: 'style', label: 'What visual style are you going for?', description: 'The aesthetic treatment (optional but recommended)', placeholder: 'e.g., cinematic', required: false },
+    { name: 'event', label: 'Any specific context or occasion?', description: 'The broader story or event (optional)', placeholder: 'e.g., a celebration', required: false }
   ];
 
   // Desktop step labels
-  const stepLabels = ['Core Concept', 'Atmosphere', 'Technical', 'Review'];
+  const stepLabels = ['Creative Brief', 'Technical Specs', 'Review'];
 
   // Window resize handler
   useEffect(() => {
@@ -315,9 +314,9 @@ const WizardVideoBuilder = ({
   };
 
   const handleMobileComplete = () => {
-    // Navigate to summary (simulated as desktop step 3)
+    // Navigate to summary (simulated as desktop step 2)
     setIsMobile(false); // Force desktop view for summary
-    setCurrentStep(3);
+    setCurrentStep(2);
   };
 
   // Edit from summary
@@ -412,7 +411,7 @@ const WizardVideoBuilder = ({
   const canGoNext = !mobileFields[currentMobileFieldIndex].required || isCurrentMobileFieldValid;
 
   // Render mobile view
-  if (isMobile && currentStep < 3) {
+  if (isMobile && currentStep < 2) {
     const currentField = mobileFields[currentMobileFieldIndex];
     const currentValue = formData[currentField.name] || '';
 
@@ -454,7 +453,7 @@ const WizardVideoBuilder = ({
       {/* Step Content */}
       <div className="pb-8">
         {currentStep === 0 && (
-          <StepCoreConcept
+          <StepCreativeBrief
             formData={formData}
             onChange={handleFieldChange}
             onNext={handleNextStep}
@@ -466,18 +465,6 @@ const WizardVideoBuilder = ({
         )}
 
         {currentStep === 1 && (
-          <StepAtmosphere
-            formData={formData}
-            onChange={handleFieldChange}
-            onNext={handleNextStep}
-            onBack={handlePreviousStep}
-            suggestions={suggestions}
-            isLoadingSuggestions={isLoadingSuggestions}
-            onRequestSuggestions={handleRequestSuggestions}
-          />
-        )}
-
-        {currentStep === 2 && (
           <StepTechnical
             formData={formData}
             onChange={handleFieldChange}
@@ -486,7 +473,7 @@ const WizardVideoBuilder = ({
           />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <SummaryReview
             formData={formData}
             onEdit={handleEdit}

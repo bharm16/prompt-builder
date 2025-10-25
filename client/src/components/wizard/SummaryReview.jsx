@@ -59,30 +59,32 @@ const SummaryReview = ({
     URL.revokeObjectURL(url);
   };
 
+  // Get qualitative badge based on completion score
+  const getQualityBadge = (score) => {
+    if (score >= 80) return { text: 'Excellent Prompt!', color: 'green' };
+    if (score >= 60) return { text: 'Good Detail', color: 'blue' };
+    if (score >= 40) return { text: 'Solid Start', color: 'yellow' };
+    return { text: 'Needs More Detail', color: 'red' };
+  };
+
+  const qualityBadge = getQualityBadge(completionScore);
+
   // Field sections for review
   const sections = [
     {
-      title: 'Core Concept',
+      title: 'Creative Brief',
       icon: '🎬',
       color: 'indigo',
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
-        { key: 'location', label: 'Location', required: true }
-      ],
-      step: 0
-    },
-    {
-      title: 'Atmosphere & Style',
-      icon: '🎨',
-      color: 'purple',
-      fields: [
+        { key: 'location', label: 'Location', required: true },
         { key: 'time', label: 'Time', required: false },
         { key: 'mood', label: 'Mood', required: false },
         { key: 'style', label: 'Style', required: false },
         { key: 'event', label: 'Event', required: false }
       ],
-      step: 1
+      step: 0
     }
   ];
 
@@ -114,7 +116,17 @@ const SummaryReview = ({
       {/* Completion Score */}
       <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-gray-700">Completion Score</span>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-semibold text-gray-700">Completion Score</span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+              qualityBadge.color === 'green' ? 'bg-green-100 text-green-700' :
+              qualityBadge.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+              qualityBadge.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-red-100 text-red-700'
+            }`}>
+              {qualityBadge.text}
+            </span>
+          </div>
           <span className="text-2xl font-bold text-indigo-600">{completionScore}%</span>
         </div>
         <div className="w-full bg-white rounded-full h-3">
@@ -250,10 +262,10 @@ const SummaryReview = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <span className="text-xl">⚙️</span>
-                  <h3 className="font-semibold text-gray-900">Technical Parameters</h3>
+                  <h3 className="font-semibold text-gray-900">Technical Specs</h3>
                 </div>
                 <button
-                  onClick={() => onEdit(2)}
+                  onClick={() => onEdit(1)}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center"
                 >
                   <Edit2 className="w-4 h-4 mr-1" />
@@ -293,7 +305,7 @@ const SummaryReview = ({
           onClick={onBack}
           className="px-6 py-3 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
         >
-          Back to Technical
+          Back to Technical Specs
         </button>
 
         <button
