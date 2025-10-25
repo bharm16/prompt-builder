@@ -5,6 +5,7 @@ import MobileFieldView from './MobileFieldView';
 import StepCreativeBrief from './StepCreativeBrief';
 import StepTechnical from './StepTechnical';
 import SummaryReview from './SummaryReview';
+import WizardEntryPage from './WizardEntryPage';
 import { aiWizardService } from '../../services/aiWizardService';
 
 /**
@@ -32,6 +33,9 @@ const WizardVideoBuilder = ({
   // Responsive detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isTablet, setIsTablet] = useState(window.innerWidth >= 768 && window.innerWidth < 1024);
+
+  // Entry page state
+  const [showEntryPage, setShowEntryPage] = useState(true);
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
@@ -108,6 +112,7 @@ const WizardVideoBuilder = ({
         setFormData(restored.formData);
         setCurrentStep(restored.currentStep || 0);
         setCurrentMobileFieldIndex(restored.currentMobileFieldIndex || 0);
+        setShowEntryPage(false); // Skip entry page when restoring
       } else {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -286,6 +291,11 @@ const WizardVideoBuilder = ({
     }
   };
 
+  // Handle entry page "Get Started"
+  const handleGetStarted = () => {
+    setShowEntryPage(false);
+  };
+
   // Mobile field navigation
   const handleMobileNextField = () => {
     const currentField = mobileFields[currentMobileFieldIndex];
@@ -409,6 +419,11 @@ const WizardVideoBuilder = ({
 
   const isCurrentMobileFieldValid = validateCurrentMobileField();
   const canGoNext = !mobileFields[currentMobileFieldIndex].required || isCurrentMobileFieldValid;
+
+  // Render entry page
+  if (showEntryPage) {
+    return <WizardEntryPage onGetStarted={handleGetStarted} />;
+  }
 
   // Render mobile view
   if (isMobile && currentStep < 2) {

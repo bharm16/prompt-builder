@@ -14,147 +14,173 @@ export default {
   theme: {
     extend: {
       // ============================================
-      // COLOR SYSTEM - Airbnb DLS Inspired
-      // Professional, accessible, modern palette
+      // COLOR SYSTEM - Airbnb DLS Aligned
+      // Calm neutrals, confident accent, accessible contrast
       // ============================================
       colors: {
-        // PRIMARY SCALE (Slate Blue - Professional Foundation)
+        // PRIMARY NEUTRAL SCALE (Charcoal / Ink)
         primary: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569', // ⭐ MAIN - Body text
-          700: '#334155', // Headlines
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E6E6E6',
+          300: '#D4D4D4',
+          400: '#A8A8A8',
+          500: '#7A7A7A',
+          600: '#484848', // ⭐ MAIN - Headings / body text
+          700: '#363636',
+          800: '#222222', // Ink
+          900: '#161616',
+          950: '#0B0B0B',
         },
-        
-        // ACCENT SCALE (Indigo - Interactive Elements)
+
+        // ACCENT SCALE (Rausch)
         accent: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1', // ⭐ MAIN - Links, buttons
-          600: '#4f46e5', // Primary CTA
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#FFF5F7',
+          100: '#FFE3EA',
+          200: '#FFC0CC',
+          300: '#FF98AF',
+          400: '#FF6D8C',
+          500: '#FF385C', // ⭐ MAIN CTA
+          600: '#E03252',
+          700: '#C12745',
+          800: '#971E36',
+          900: '#711628',
+          950: '#4C0E1C',
         },
 
-        // NEUTRAL SCALE (Cool Gray - UI Foundation)
+        // SUPPORT SCALE (Teal)
+        secondary: {
+          50: '#E5FFFA',
+          100: '#C0FFF1',
+          200: '#8EFFE6',
+          300: '#5AF6D8',
+          400: '#2DE8C6',
+          500: '#00A699', // ⭐ Support / success
+          600: '#008C82',
+          700: '#00736A',
+          800: '#005953',
+          900: '#00433F',
+          950: '#012E2B',
+        },
+
+        // NEUTRAL BACKGROUND SCALE (Cloud to Charcoal)
         neutral: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
-          950: '#0a0a0a',
+          50: '#FFFFFF',
+          100: '#F7F7F7', // Cloud
+          200: '#EFEFEF',
+          300: '#E3E3E3',
+          400: '#CFCFCF',
+          500: '#B9B9B9',
+          600: '#989898',
+          700: '#787878',
+          800: '#575757',
+          900: '#373737',
+          950: '#1B1B1B',
         },
 
-        // SEMANTIC COLORS - Success (Emerald)
+        // SEMANTIC COLORS - Teal-based success
         success: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981', // ⭐ MAIN
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          950: '#022c22',
+          50: '#E8FFF8',
+          100: '#C5FCEB',
+          200: '#8FF8D7',
+          300: '#59EDC0',
+          400: '#2FDAAB',
+          500: '#00B88F',
+          600: '#009C79',
+          700: '#007D62',
+          800: '#005F4A',
+          900: '#004838',
+          950: '#002F25',
         },
 
-        // SEMANTIC COLORS - Warning (Amber)
+        // SEMANTIC COLORS - Warm amber warnings
         warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b', // ⭐ MAIN
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
+          50: '#FFF8EB',
+          100: '#FFECCA',
+          200: '#FFD79A',
+          300: '#FFC066',
+          400: '#FFAA3D',
+          500: '#F7931E',
+          600: '#D77C16',
+          700: '#B1650F',
+          800: '#8C4E0B',
+          900: '#6A3A08',
+          950: '#422206',
         },
 
-        // SEMANTIC COLORS - Error (Rose)
+        // SEMANTIC COLORS - Rosé error
         error: {
-          50: '#fff1f2',
-          100: '#ffe4e6',
-          200: '#fecaca',
-          300: '#fda4af',
-          400: '#fb7185',
-          500: '#f43f5e', // ⭐ MAIN
-          600: '#e11d48',
-          700: '#be123c',
-          800: '#9f1239',
-          900: '#881337',
-          950: '#4c0519',
+          50: '#FFF2F4',
+          100: '#FFE3E7',
+          200: '#FFBFC8',
+          300: '#FF92A3',
+          400: '#FF627C',
+          500: '#F44366',
+          600: '#DB2C53',
+          700: '#B71F3D',
+          800: '#901832',
+          900: '#6B1125',
+          950: '#420916',
         },
 
-        // SEMANTIC COLORS - Info (Sky)
+        // SEMANTIC COLORS - Calm info
         info: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9', // ⭐ MAIN
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-          950: '#082f49',
+          50: '#EDF7FF',
+          100: '#D6ECFF',
+          200: '#ADD6FF',
+          300: '#7AB8FF',
+          400: '#4F9FFF',
+          500: '#1F82FF',
+          600: '#1664D6',
+          700: '#114CAA',
+          800: '#0B347A',
+          900: '#072352',
+          950: '#041633',
         },
 
-        // Legacy aliases for backward compatibility
+        // Design token aliases for backwards compatibility
         'brand-primary': {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E6E6E6',
+          300: '#D4D4D4',
+          400: '#A8A8A8',
+          500: '#7A7A7A',
+          600: '#484848',
+          700: '#363636',
+          800: '#222222',
+          900: '#161616',
+          950: '#0B0B0B',
         },
         'brand-accent': {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#FFF5F7',
+          100: '#FFE3EA',
+          200: '#FFC0CC',
+          300: '#FF98AF',
+          400: '#FF6D8C',
+          500: '#FF385C',
+          600: '#E03252',
+          700: '#C12745',
+          800: '#971E36',
+          900: '#711628',
+          950: '#4C0E1C',
         },
-        'ui-background': '#fafafa',
-        'ui-surface': '#ffffff',
-        'text-primary': '#404040',
-        'text-secondary': '#737373',
-        'borders-lines': '#e5e5e5',
+        'surface-base': '#FFFFFF',
+        'surface-subtle': '#F7F7F7',
+        'surface-elevated': '#FFFFFF',
+        'surface-overlay': 'rgba(255, 255, 255, 0.85)',
+        'text-ink': '#222222',
+        'text-charcoal': '#484848',
+        'text-muted': '#6F6F6F',
+        'text-subtle': '#949494',
+        'border-default': '#E3E3E3',
+        'border-strong': '#CFCFCF',
+        'border-accent': '#FF385C',
+        'ui-background': '#F7F7F7',
+        'ui-surface': '#FFFFFF',
+        'text-primary': '#222222',
+        'text-secondary': '#484848',
+        'borders-lines': '#E3E3E3',
       },
 
       // ============================================
