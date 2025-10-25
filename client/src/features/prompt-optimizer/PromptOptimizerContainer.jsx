@@ -297,16 +297,14 @@ function PromptOptimizerContent() {
   useEffect(() => {
     const loadPromptFromUrl = async () => {
       if (!uuid) {
-        skipLoadFromUrlRef.current = false;
+        // Don't reset the flag here either - only reset it explicitly in loadFromHistory
         return;
       }
 
       // Skip if we're already on this prompt or if we explicitly set the skip flag
       if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
-        // Reset the skip flag after successfully skipping to allow future loads
-        if (skipLoadFromUrlRef.current) {
-          skipLoadFromUrlRef.current = false;
-        }
+        // Don't reset the flag here - let the timeout in loadFromHistory handle it
+        // Resetting it here causes the effect to run again after navigation completes
         return;
       }
 
@@ -566,13 +564,19 @@ function PromptOptimizerContent() {
       hasSignature: !!entry.highlightCache?.signature,
     });
     
+    // Set skip flag to prevent URL loader from interfering
+    skipLoadFromUrlRef.current = true;
+    
+    // Set UUID FIRST before any other updates to prevent race conditions
+    // This ensures currentPromptUuid matches the URL before navigation
+    setCurrentPromptUuid(entry.uuid || null);
+    setCurrentPromptDocId(entry.id || null);
+    
     promptOptimizer.setSkipAnimation(true);
     promptOptimizer.setInputPrompt(entry.input);
     promptOptimizer.setOptimizedPrompt(entry.output);
     setDisplayedPromptSilently(entry.output);
     setSelectedMode(entry.mode);
-    setCurrentPromptUuid(entry.uuid || null);
-    setCurrentPromptDocId(entry.id || null);
     setShowResults(true);
     const preloadedHighlight = entry.highlightCache
       ? {
@@ -610,10 +614,22 @@ function PromptOptimizerContent() {
       setPromptContext(null);
     }
 
-    // Update URL if there's a UUID
+    // Navigate to update URL - skipLoadFromUrlRef is already set above
+    // to prevent the URL change from triggering the loadPromptFromUrl effect
     if (entry.uuid) {
       navigate(`/prompt/${entry.uuid}`, { replace: true });
+    } else {
+      // Navigate to root to clear the URL when no UUID exists
+      navigate('/', { replace: true });
     }
+    
+    // Reset skip flag after navigation and render cycle completes
+    // Use requestAnimationFrame twice to ensure we're past all React updates
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        skipLoadFromUrlRef.current = false;
+      });
+    });
   };
 
   // Fetch enhancement suggestions

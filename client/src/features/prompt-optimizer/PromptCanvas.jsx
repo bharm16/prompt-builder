@@ -20,6 +20,14 @@ import { PromptContext } from '../../utils/PromptContext.js';
 
 const LLM_PARSER_VERSION = 'llm-v1';
 
+// ============================================================================
+// DEBUG FLAGS
+// ============================================================================
+// Set to true to enable detailed highlight logging in the console
+// Useful for debugging highlight application issues
+// To enable: change false to true and save the file
+const DEBUG_HIGHLIGHTS = false;
+
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
  *
@@ -1204,20 +1212,24 @@ export const PromptCanvas = ({
       return;
     }
 
-    console.log('[HIGHLIGHT] Starting highlight application:', {
-      spanCount: spans.length,
-      displayTextLength: displayText.length,
-      displayTextPreview: displayText.substring(0, 200) + '...',
-      rootTextContent: root.textContent?.substring(0, 200) + '...',
-      textContentMatch: displayText === root.textContent
-    });
+    if (DEBUG_HIGHLIGHTS) {
+      console.log('[HIGHLIGHT] Starting highlight application:', {
+        spanCount: spans.length,
+        displayTextLength: displayText.length,
+        displayTextPreview: displayText.substring(0, 200) + '...',
+        rootTextContent: root.textContent?.substring(0, 200) + '...',
+        textContentMatch: displayText === root.textContent
+      });
+    }
 
-    console.log('[HIGHLIGHT] Spans to apply:', spans.map(s => ({
-      text: s.text,
-      role: s.role,
-      start: s.start,
-      end: s.end
-    })));
+    if (DEBUG_HIGHLIGHTS) {
+      console.log('[HIGHLIGHT] Spans to apply:', spans.map(s => ({
+        text: s.text,
+        role: s.role,
+        start: s.start,
+        end: s.end
+      })));
+    }
 
     const wrappers = [];
     const coverage = [];
@@ -1253,25 +1265,29 @@ export const PromptCanvas = ({
       const expectedText = span.displayQuote ?? span.quote ?? '';
       const actualSlice = displayText.slice(highlightStart, highlightEnd);
       if (expectedText && actualSlice !== expectedText) {
-        console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
-          id: span.id,
-          role: span.role,
-          expected: expectedText,
-          found: actualSlice,
-          start: highlightStart,
-          end: highlightEnd,
-          displayTextLength: displayText.length,
-          context: displayText.slice(Math.max(0, highlightStart - 20), Math.min(displayText.length, highlightEnd + 20))
-        });
+        if (DEBUG_HIGHLIGHTS) {
+          console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
+            id: span.id,
+            role: span.role,
+            expected: expectedText,
+            found: actualSlice,
+            start: highlightStart,
+            end: highlightEnd,
+            displayTextLength: displayText.length,
+            context: displayText.slice(Math.max(0, highlightStart - 20), Math.min(displayText.length, highlightEnd + 20))
+          });
+        }
         return;
       }
 
-      console.log('[HIGHLIGHT] Applying highlight:', {
-        text: expectedText,
-        role: span.role,
-        start: highlightStart,
-        end: highlightEnd
-      });
+      if (DEBUG_HIGHLIGHTS) {
+        console.log('[HIGHLIGHT] Applying highlight:', {
+          text: expectedText,
+          role: span.role,
+          start: highlightStart,
+          end: highlightEnd
+        });
+      }
 
       const segmentWrappers = wrapRangeSegments({
         root,
@@ -1304,22 +1320,26 @@ export const PromptCanvas = ({
       });
 
       if (!segmentWrappers.length) {
-        console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
-          text: expectedText,
-          role: span.role,
-          start: highlightStart,
-          end: highlightEnd,
-          nodeIndexLength: nodeIndex.nodes?.length,
-          rootTextContentLength: root.textContent?.length
-        });
+        if (DEBUG_HIGHLIGHTS) {
+          console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
+            text: expectedText,
+            role: span.role,
+            start: highlightStart,
+            end: highlightEnd,
+            nodeIndexLength: nodeIndex.nodes?.length,
+            rootTextContentLength: root.textContent?.length
+          });
+        }
         return;
       }
 
-      console.log('[HIGHLIGHT] Successfully wrapped:', {
-        text: expectedText,
-        role: span.role,
-        wrapperCount: segmentWrappers.length
-      });
+      if (DEBUG_HIGHLIGHTS) {
+        console.log('[HIGHLIGHT] Successfully wrapped:', {
+          text: expectedText,
+          role: span.role,
+          wrapperCount: segmentWrappers.length
+        });
+      }
 
       segmentWrappers.forEach((wrapper) => {
         wrapper.dataset.quote = span.quote ?? '';
