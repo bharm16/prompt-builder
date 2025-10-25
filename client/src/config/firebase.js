@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 import { v4 as uuidv4 } from 'uuid';
+import { setSentryUser, addSentryBreadcrumb } from './sentry';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -54,6 +55,13 @@ const googleProvider = new GoogleAuthProvider();
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    
+    // Set Sentry user context
+    setSentryUser(result.user);
+    addSentryBreadcrumb('auth', 'User signed in with Google', {
+      userId: result.user.uid,
+    });
+    
     return result.user;
   } catch (error) {
     console.error('Error signing in with Google:', error);
@@ -64,6 +72,10 @@ export const signInWithGoogle = async () => {
 export const signOutUser = async () => {
   try {
     await signOut(auth);
+    
+    // Clear Sentry user context
+    setSentryUser(null);
+    addSentryBreadcrumb('auth', 'User signed out');
   } catch (error) {
     console.error('Error signing out:', error);
     throw error;

@@ -1,9 +1,10 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, eventId: null };
   }
 
   static getDerivedStateFromError(_error) {
@@ -16,11 +17,27 @@ class ErrorBoundary extends React.Component {
       console.error('Error caught by boundary:', error, errorInfo);
     }
 
+    // Capture error in Sentry with React component stack
+    const eventId = Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    });
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
+      eventId,
     });
   }
+
+  handleReportFeedback = () => {
+    if (this.state.eventId) {
+      Sentry.showReportDialog({ eventId: this.state.eventId });
+    }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -58,19 +75,30 @@ class ErrorBoundary extends React.Component {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => window.location.href = '/'}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
-              >
-                Go to Home
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors"
-              >
-                Reload Page
-              </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.location.href = '/'}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                >
+                  Go to Home
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+              
+              {this.state.eventId && (
+                <button
+                  onClick={this.handleReportFeedback}
+                  className="w-full bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded transition-colors"
+                >
+                  Report Feedback
+                </button>
+              )}
             </div>
           </div>
         </div>

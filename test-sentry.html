@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentry Test - Prompt Builder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        button {
+            background: #5468ff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 10px 0;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #4151db;
+        }
+        button.danger {
+            background: #e74c3c;
+        }
+        button.danger:hover {
+            background: #c0392b;
+        }
+        button.success {
+            background: #27ae60;
+        }
+        button.success:hover {
+            background: #229954;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        .log-success {
+            color: #4ec9b0;
+        }
+        .log-error {
+            color: #f48771;
+        }
+        .log-info {
+            color: #569cd6;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        .instructions {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .instructions strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Sentry Error Tracking Test</h1>
+        <p class="subtitle">Test error tracking for Prompt Builder (Frontend + Backend)</p>
+
+        <div class="instructions">
+            <strong>📋 Instructions:</strong><br>
+            1. Click the buttons below to trigger test errors<br>
+            2. Check your Sentry dashboard at <a href="https://sentry.io" target="_blank">sentry.io</a><br>
+            3. Errors should appear within 5-10 seconds
+        </div>
+
+        <!-- Frontend Tests -->
+        <div class="section">
+            <h2>🎨 Frontend (React) Tests <span class="status ready">Ready</span></h2>
+            
+            <button onclick="testFrontendError()">
+                Test Frontend Error
+            </button>
+            
+            <button onclick="testAsyncError()" class="danger">
+                Test Async Error
+            </button>
+            
+            <button onclick="testWarning()" class="success">
+                Test Warning Message
+            </button>
+
+            <button onclick="testPerformance()">
+                Test Performance Tracking
+            </button>
+        </div>
+
+        <!-- Backend Tests -->
+        <div class="section">
+            <h2>🖥️ Backend (Express) Tests <span class="status ready">Ready</span></h2>
+            
+            <button onclick="test404Error()">
+                Test 404 Error
+            </button>
+            
+            <button onclick="testAPIError()" class="danger">
+                Test API Error
+            </button>
+            
+            <button onclick="testServerError()" class="danger">
+                Test 500 Error
+            </button>
+        </div>
+
+        <!-- Log Output -->
+        <div class="section">
+            <h2>📊 Test Log</h2>
+            <div class="log" id="log">
+                <div class="log-entry log-info">Ready to test Sentry error tracking...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as Sentry from 'https://browser.sentry-cdn.com/8.0.0/index.min.js';
+
+        // Initialize Sentry with your DSN
+        Sentry.init({
+            dsn: "https://99382b54616f52bc920c8cfce9e5f564@o4506655473074176.ingest.us.sentry.io/4510247700004864",
+            environment: "test",
+            tracesSampleRate: 1.0,
+            replaysSessionSampleRate: 1.0,
+            replaysOnErrorSampleRate: 1.0,
+        });
+
+        // Set test user
+        Sentry.setUser({
+            id: 'test-user',
+            username: 'Test User',
+            email: 'test@promptbuilder.com'
+        });
+
+        // Logging function
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Frontend Tests
+        window.testFrontendError = function() {
+            log('Triggering frontend error...', 'info');
+            try {
+                // This will be caught and sent to Sentry
+                throw new Error('Test frontend error from Prompt Builder');
+            } catch (error) {
+                Sentry.captureException(error, {
+                    tags: {
+                        test_type: 'frontend',
+                        component: 'test-page'
+                    },
+                    contexts: {
+                        test: {
+                            description: 'Manual test from test page',
+                            timestamp: new Date().toISOString()
+                        }
+                    }
+                });
+                log('✅ Frontend error sent to Sentry!', 'success');
+                log('Error: ' + error.message, 'error');
+            }
+        };
+
+        window.testAsyncError = async function() {
+            log('Triggering async error...', 'info');
+            try {
+                await new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        reject(new Error('Async operation failed - Test error'));
+                    }, 100);
+                });
+            } catch (error) {
+                Sentry.captureException(error, {
+                    tags: {
+                        test_type: 'async',
+                        component: 'test-page'
+                    }
+                });
+                log('✅ Async error sent to Sentry!', 'success');
+                log('Error: ' + error.message, 'error');
+            }
+        };
+
+        window.testWarning = function() {
+            log('Sending warning message...', 'info');
+            Sentry.captureMessage('Test warning message from Prompt Builder', {
+                level: 'warning',
+                tags: {
+                    test_type: 'message',
+                    severity: 'warning'
+                }
+            });
+            log('✅ Warning message sent to Sentry!', 'success');
+        };
+
+        window.testPerformance = function() {
+            log('Testing performance tracking...', 'info');
+            const transaction = Sentry.startTransaction({
+                name: 'test-operation',
+                op: 'test'
+            });
+
+            setTimeout(() => {
+                transaction.finish();
+                log('✅ Performance data sent to Sentry!', 'success');
+            }, 500);
+        };
+
+        // Backend Tests
+        window.test404Error = async function() {
+            log('Testing backend 404 error...', 'info');
+            try {
+                const response = await fetch('http://localhost:3001/api/nonexistent-endpoint', {
+                    method: 'GET'
+                });
+                log(`Response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    log('✅ 404 error triggered (check Sentry dashboard)', 'success');
+                }
+            } catch (error) {
+                log('❌ Failed to connect to backend: ' + error.message, 'error');
+            }
+        };
+
+        window.testAPIError = async function() {
+            log('Testing backend API error...', 'info');
+            try {
+                const response = await fetch('http://localhost:3001/api/optimize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        // Invalid data to trigger error
+                        input: '',
+                        mode: 'invalid-mode'
+                    })
+                });
+                
+                const data = await response.json();
+                log(`Response: ${response.status}`, response.ok ? 'success' : 'error');
+                log('Data: ' + JSON.stringify(data), 'info');
+                
+                if (!response.ok) {
+                    log('✅ API error triggered (check Sentry dashboard)', 'success');
+                }
+            } catch (error) {
+                log('❌ Failed to connect to backend: ' + error.message, 'error');
+            }
+        };
+
+        window.testServerError = async function() {
+            log('Attempting to trigger 500 error...', 'info');
+            try {
+                // Try to trigger a server error
+                const response = await fetch('http://localhost:3001/api/test-sentry-backend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                log(`Response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (response.status === 404) {
+                    log('⚠️ Endpoint not found. Backend needs test endpoint.', 'error');
+                    log('Note: Real 500 errors from your app will still be tracked!', 'info');
+                } else if (response.status >= 500) {
+                    log('✅ Server error triggered (check Sentry dashboard)', 'success');
+                }
+            } catch (error) {
+                log('❌ Failed to connect to backend: ' + error.message, 'error');
+            }
+        };
+
+        // Initial log
+        log('Sentry initialized with test user', 'success');
+        log('Backend URL: http://localhost:3001', 'info');
+        log('Click buttons above to test error tracking', 'info');
+    </script>
+</body>
+</html>

@@ -16,6 +16,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, getPromptByUuid } from '../../config/firebase';
+import { setSentryUser } from '../../config/sentry';
 import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
@@ -25,6 +26,7 @@ import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
 import DebugButton from '../../components/DebugButton';
+import { captureException } from '../../config/sentry';
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 import { PromptContext } from '../../utils/PromptContext';
@@ -289,6 +291,9 @@ function PromptOptimizerContent() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      
+      // Update Sentry user context when auth state changes
+      setSentryUser(currentUser);
     });
     return () => unsubscribe();
   }, []);
@@ -368,6 +373,7 @@ function PromptOptimizerContent() {
     resetEditStacks,
     setCurrentPromptDocId,
   ]);
+
 
   // Cycle through AI names
   useEffect(() => {
@@ -1400,6 +1406,7 @@ function PromptOptimizerContent() {
           </footer>
         )}
       </main>
+
 
       {/* Debug Button - Show in development or with ?debug=true */}
       {(process.env.NODE_ENV === 'development' ||
