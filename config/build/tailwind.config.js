@@ -14,40 +14,117 @@ export default {
   theme: {
     extend: {
       // ============================================
-      // COLOR SYSTEM
-      // Comprehensive semantic color palette with full shade ranges
+      // COLOR SYSTEM - Airbnb DLS Inspired
+      // Professional, accessible, modern palette
       // ============================================
       colors: {
-        // Primary Brand Colors - Refined professional blue
+        // PRIMARY SCALE (Slate Blue - Professional Foundation)
         primary: {
           50: '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
           300: '#cbd5e1',
           400: '#94a3b8',
-          500: '#64748b', // Main primary - muted slate blue
-          600: '#475569',
-          700: '#334155',
+          500: '#64748b',
+          600: '#475569', // ⭐ MAIN - Body text
+          700: '#334155', // Headlines
           800: '#1e293b',
           900: '#0f172a',
           950: '#020617',
         },
-        // Secondary/Accent Colors - Subtle indigo for highlights
-        secondary: {
+        
+        // ACCENT SCALE (Indigo - Interactive Elements)
+        accent: {
           50: '#eef2ff',
           100: '#e0e7ff',
           200: '#c7d2fe',
           300: '#a5b4fc',
           400: '#818cf8',
-          500: '#6366f1', // Main secondary - refined indigo
-          600: '#4f46e5',
+          500: '#6366f1', // ⭐ MAIN - Links, buttons
+          600: '#4f46e5', // Primary CTA
           700: '#4338ca',
           800: '#3730a3',
           900: '#312e81',
           950: '#1e1b4b',
         },
-        // Neutral Slate (for backgrounds, text, borders) - Cooler, more sophisticated
+
+        // NEUTRAL SCALE (Cool Gray - UI Foundation)
         neutral: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0a0a0a',
+        },
+
+        // SEMANTIC COLORS - Success (Emerald)
+        success: {
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981', // ⭐ MAIN
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+          950: '#022c22',
+        },
+
+        // SEMANTIC COLORS - Warning (Amber)
+        warning: {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b', // ⭐ MAIN
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+          950: '#451a03',
+        },
+
+        // SEMANTIC COLORS - Error (Rose)
+        error: {
+          50: '#fff1f2',
+          100: '#ffe4e6',
+          200: '#fecaca',
+          300: '#fda4af',
+          400: '#fb7185',
+          500: '#f43f5e', // ⭐ MAIN
+          600: '#e11d48',
+          700: '#be123c',
+          800: '#9f1239',
+          900: '#881337',
+          950: '#4c0519',
+        },
+
+        // SEMANTIC COLORS - Info (Sky)
+        info: {
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9', // ⭐ MAIN
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+          950: '#082f49',
+        },
+
+        // Legacy aliases for backward compatibility
+        'brand-primary': {
           50: '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
@@ -60,62 +137,24 @@ export default {
           900: '#0f172a',
           950: '#020617',
         },
-        // Success States
-        success: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e', // Main success
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
+        'brand-accent': {
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
         },
-        // Warning States
-        warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b', // Main warning
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
-        },
-        // Error States
-        error: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444', // Main error
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
-          950: '#450a0a',
-        },
-        // Info States
-        info: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6', // Main info
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
-        },
+        'ui-background': '#fafafa',
+        'ui-surface': '#ffffff',
+        'text-primary': '#404040',
+        'text-secondary': '#737373',
+        'borders-lines': '#e5e5e5',
       },
 
       // ============================================
@@ -216,21 +255,28 @@ export default {
       },
 
       // ============================================
-      // SHADOW SYSTEM
-      // Elevation levels for depth hierarchy
+      // SHADOW SYSTEM - Airbnb DLS Inspired
+      // Sophisticated elevation with proper depth
       // ============================================
       boxShadow: {
-        'xs': '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
-        'sm': '0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
-        'DEFAULT': '0 2px 4px -1px rgba(15, 23, 42, 0.06), 0 4px 6px -1px rgba(15, 23, 42, 0.08)',
-        'md': '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06)',
-        'lg': '0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.06)',
-        'xl': '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.06)',
-        '2xl': '0 25px 50px -12px rgba(15, 23, 42, 0.12)',
-        'inner': 'inset 0 2px 4px 0 rgba(15, 23, 42, 0.05)',
-        'focus': '0 0 0 3px rgba(100, 116, 139, 0.12)', // Refined slate focus ring
-        'focus-error': '0 0 0 3px rgba(239, 68, 68, 0.12)', // Subtle error focus ring
         'none': 'none',
+        'xs': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'DEFAULT': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+        'inner': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+        // Focus shadows
+        'focus': '0 0 0 3px rgb(99 102 241 / 0.3)',
+        'focus-accent': '0 0 0 3px rgb(99 102 241 / 0.3)',
+        'focus-error': '0 0 0 3px rgb(244 63 94 / 0.3)',
+        'focus-success': '0 0 0 3px rgb(16 185 129 / 0.3)',
+        // Colored shadows for CTAs
+        'primary': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
+        'accent': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
+        'success': '0 10px 15px -3px rgb(16 185 129 / 0.3)',
       },
 
       // ============================================
@@ -255,11 +301,19 @@ export default {
         'ease-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       animation: {
-        'fade-in': 'fadeIn 200ms ease-smooth',
-        'slide-up': 'slideUp 300ms ease-smooth',
-        'slide-down': 'slideDown 300ms ease-smooth',
-        'scale-in': 'scaleIn 200ms ease-spring',
+        'fade-in': 'fadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'slide-up': 'slideUp 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'slide-down': 'slideDown 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'scale-in': 'scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        'shimmer': 'shimmer 2s infinite',
         'spin-slow': 'spin 3s linear infinite',
+        // Enhanced mockup animations
+        'pulse-subtle': 'pulseSubtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-slide-in': 'fadeSlideIn 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'scale-in-bounce': 'scaleInBounce 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'slide-from-right': 'slideFromRight 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'slide-from-bottom': 'slideFromBottom 350ms cubic-bezier(0.4, 0, 0.2, 1)',
       },
       keyframes: {
         fadeIn: {
@@ -267,16 +321,46 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(-20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         scaleIn: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        pulse: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+        // Enhanced mockup keyframes
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.95', transform: 'scale(1.03)' },
+        },
+        fadeSlideIn: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleInBounce: {
+          '0%': { opacity: '0', transform: 'scale(0.5)' },
+          '50%': { transform: 'scale(1.1)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        slideFromRight: {
+          '0%': { opacity: '0', transform: 'translateX(10px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideFromBottom: {
+          '0%': { opacity: '0', transform: 'translateY(15px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
 

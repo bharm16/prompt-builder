@@ -1,15 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Check } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 /**
- * WizardProgress Component
+ * WizardProgress Component - Enhanced Design
  *
  * Displays progress through the wizard with responsive behavior:
  * - Mobile: Simple linear progress bar with percentage
  * - Desktop: Full step indicator with icons and labels
  *
- * Always visible (sticky header) to help users track their position
+ * Features glassmorphism, animated progress bar, and enhanced accessibility
  */
 const WizardProgress = ({
   currentStep,
@@ -20,19 +21,24 @@ const WizardProgress = ({
   onStepClick
 }) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
+  
+  // Determine if a step can be clicked
+  const canNavigate = (stepIndex) => {
+    return completedSteps.includes(stepIndex) || stepIndex <= currentStep;
+  };
 
   if (isMobile) {
     return (
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-200/50 px-4 py-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-sm font-semibold text-neutral-800">
             Step {currentStep + 1} of {totalSteps}
           </span>
-          <span className="text-sm text-gray-500">{Math.round(progress)}%</span>
+          <span className="text-sm font-medium text-accent-600">{Math.round(progress)}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="relative w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
           <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
+            className="absolute left-0 top-0 h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
             role="progressbar"
             aria-valuenow={progress}
@@ -41,7 +47,7 @@ const WizardProgress = ({
           />
         </div>
         {stepLabels[currentStep] && (
-          <p className="mt-2 text-xs text-gray-600 text-center">
+          <p className="mt-2.5 text-xs font-medium text-neutral-700 text-center">
             {stepLabels[currentStep]}
           </p>
         )}
@@ -49,97 +55,116 @@ const WizardProgress = ({
     );
   }
 
-  // Desktop: Full step indicator
+  // Desktop: Enhanced Full step indicator with glassmorphism
   return (
-    <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-8 py-6">
-      <nav aria-label="Progress">
-        <ol className="flex items-center justify-between max-w-4xl mx-auto">
+    <div 
+      className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-neutral-200/50 shadow-sm"
+      role="navigation"
+      aria-label="Wizard progress"
+    >
+      <div className="max-w-5xl mx-auto px-8 py-6">
+        {/* Animated Progress Bar */}
+        <div 
+          className="relative h-1.5 bg-neutral-100 rounded-full overflow-hidden mb-6"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-label={`${Math.round(progress)}% complete`}
+        >
+          <div 
+            className="absolute left-0 top-0 h-full bg-gradient-to-r from-accent-500 to-accent-600 transition-all duration-500 ease-out rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        
+        {/* Percentage */}
+        <div className="text-center mb-4">
+          <span className="text-sm font-medium text-neutral-600">
+            {Math.round(progress)}% Complete
+          </span>
+        </div>
+        
+        {/* Step Indicators */}
+        <div className="flex items-start justify-between relative">
           {stepLabels.map((label, index) => {
             const isCompleted = completedSteps.includes(index);
             const isCurrent = index === currentStep;
-            const isClickable = index < currentStep && onStepClick;
-
+            const isUpcoming = index > currentStep;
+            const isClickable = canNavigate(index) && onStepClick;
+            
             return (
-              <li key={index} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  {/* Step Circle */}
-                  <button
-                    onClick={() => isClickable && onStepClick(index)}
-                    disabled={!isClickable}
-                    className={`
-                      flex items-center justify-center w-10 h-10 rounded-full border-2
-                      transition-all duration-200 relative group
-                      ${isCurrent
-                        ? 'border-indigo-600 bg-indigo-600 text-white'
-                        : isCompleted
-                        ? 'border-green-600 bg-green-600 text-white'
-                        : 'border-gray-300 bg-white text-gray-500'
-                      }
-                      ${isClickable
-                        ? 'cursor-pointer hover:scale-110 hover:shadow-lg'
-                        : 'cursor-default'
-                      }
-                    `}
-                    aria-current={isCurrent ? 'step' : undefined}
-                    aria-label={`${label}${isCompleted ? ' (completed)' : isCurrent ? ' (current)' : ''}`}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-5 h-5" />
-                    ) : (
-                      <span className="text-sm font-semibold">{index + 1}</span>
-                    )}
-
-                    {/* Tooltip on hover for clickable steps */}
-                    {isClickable && (
-                      <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2
-                                    opacity-0 group-hover:opacity-100 transition-opacity
-                                    bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                        Go to {label}
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Step Label */}
-                  <span
-                    className={`
-                      mt-2 text-xs font-medium text-center max-w-[100px]
-                      ${isCurrent
-                        ? 'text-indigo-600'
-                        : isCompleted
-                        ? 'text-green-600'
-                        : 'text-gray-500'
-                      }
-                    `}
-                  >
-                    {label}
-                  </span>
-                </div>
-
-                {/* Connector Line */}
-                {index < stepLabels.length - 1 && (
-                  <div className="flex-1 h-0.5 mx-2 mt-[-2rem]">
-                    <div
-                      className={`
-                        h-full transition-colors duration-300
-                        ${isCompleted
-                          ? 'bg-green-600'
-                          : 'bg-gray-300'
-                        }
-                      `}
+              <div 
+                key={index}
+                className="flex flex-col items-center flex-1 relative"
+              >
+                {/* Step Circle */}
+                <button
+                  onClick={() => isClickable && onStepClick(index)}
+                  disabled={!isClickable}
+                  className={cn(
+                    "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200",
+                    "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent-100",
+                    
+                    // Completed state
+                    isCompleted && !isCurrent && "bg-emerald-500 text-white scale-95 hover:scale-100 cursor-pointer",
+                    
+                    // Current state
+                    isCurrent && "bg-accent-600 text-white ring-4 ring-accent-100 scale-105 animate-pulse-subtle",
+                    
+                    // Upcoming state
+                    isUpcoming && "bg-neutral-200 text-neutral-500 cursor-not-allowed",
+                    
+                    // Hover effect for clickable
+                    isClickable && !isCurrent && "hover:shadow-md"
+                  )}
+                  aria-label={`${label}, ${
+                    isCompleted ? 'completed' : isCurrent ? 'current step' : 'upcoming'
+                  }`}
+                  aria-current={isCurrent ? 'step' : undefined}
+                >
+                  {isCompleted && !isCurrent ? (
+                    <Check 
+                      className="w-6 h-6 animate-scale-in-bounce" 
                     />
+                  ) : (
+                    <span className="text-base font-semibold">
+                      {index + 1}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Step Label */}
+                <div className="mt-3 text-center">
+                  <div className={cn(
+                    "text-sm font-medium transition-colors duration-200",
+                    isCurrent ? "text-neutral-900" : "text-neutral-600"
+                  )}>
+                    {label}
+                  </div>
+                </div>
+                
+                {/* Connecting Line (except for last step) */}
+                {index < stepLabels.length - 1 && (
+                  <div 
+                    className="absolute top-6 left-1/2 w-full h-0.5 -z-10"
+                    style={{ marginLeft: '24px', width: 'calc(100% - 48px)' }}
+                  >
+                    <div className={cn(
+                      "h-full transition-colors duration-300",
+                      index < currentStep ? "bg-emerald-500" : "bg-neutral-200"
+                    )} />
                   </div>
                 )}
-              </li>
+              </div>
             );
           })}
-        </ol>
-      </nav>
-
-      {/* Progress Percentage */}
-      <div className="mt-4 text-center">
-        <span className="text-sm text-gray-600">
-          Overall Progress: <span className="font-semibold text-indigo-600">{Math.round(progress)}%</span>
-        </span>
+        </div>
+        
+        {/* Screen Reader Announcement */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          Step {currentStep + 1} of {totalSteps}: {stepLabels[currentStep]}
+        </div>
       </div>
     </div>
   );
