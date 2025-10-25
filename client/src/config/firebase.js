@@ -18,9 +18,12 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  updateDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 import { v4 as uuidv4 } from 'uuid';
+import { setSentryUser, addSentryBreadcrumb } from './sentry';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -52,6 +55,13 @@ const googleProvider = new GoogleAuthProvider();
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    
+    // Set Sentry user context
+    setSentryUser(result.user);
+    addSentryBreadcrumb('auth', 'User signed in with Google', {
+      userId: result.user.uid,
+    });
+    
     return result.user;
   } catch (error) {
     console.error('Error signing in with Google:', error);
@@ -62,6 +72,10 @@ export const signInWithGoogle = async () => {
 export const signOutUser = async () => {
   try {
     await signOut(auth);
+    
+    // Clear Sentry user context
+    setSentryUser(null);
+    addSentryBreadcrumb('auth', 'User signed out');
   } catch (error) {
     console.error('Error signing out:', error);
     throw error;
@@ -72,10 +86,15 @@ export const signOutUser = async () => {
 export const savePromptToFirestore = async (userId, promptData) => {
   try {
     const uuid = uuidv4();
+    const payload = {
+      highlightCache: promptData.highlightCache ?? null,
+      versions: Array.isArray(promptData.versions) ? promptData.versions : [],
+      ...promptData,
+    };
     const docRef = await addDoc(collection(db, 'prompts'), {
       userId,
       uuid,
-      ...promptData,
+      ...payload,
       timestamp: serverTimestamp(),
     });
     return { id: docRef.id, uuid };
@@ -105,10 +124,28 @@ export const getUserPrompts = async (userId, limitCount = 10) => {
         // Fallback for missing timestamp
         timestamp = new Date().toISOString();
       }
+      let highlightCache = data.highlightCache ?? null;
+      if (highlightCache) {
+        const converted = { ...highlightCache };
+        if (converted.updatedAt?.toDate) {
+          converted.updatedAt = converted.updatedAt.toDate().toISOString();
+        }
+        highlightCache = converted;
+      }
+      let versions = Array.isArray(data.versions) ? data.versions : [];
+      versions = versions.map((entry) => {
+        const item = { ...entry };
+        if (item.timestamp?.toDate) {
+          item.timestamp = item.timestamp.toDate().toISOString();
+        }
+        return item;
+      });
       return {
         id: doc.id,
         ...data,
         timestamp, // Override with converted timestamp
+        highlightCache,
+        versions,
       };
     });
   } catch (error) {
@@ -189,6 +226,32 @@ export const deleteUserPromptsRaw = async (userId) => {
   }
 };
 
+export const updatePromptHighlightsInFirestore = async (docId, { highlightCache, versionEntry }) => {
+  try {
+    if (!docId) return;
+    const updatePayload = {};
+    if (highlightCache) {
+      updatePayload.highlightCache = {
+        ...highlightCache,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    if (versionEntry) {
+      updatePayload.versions = arrayUnion({
+        ...versionEntry,
+        timestamp: versionEntry.timestamp || new Date().toISOString(),
+      });
+    }
+    if (Object.keys(updatePayload).length === 0) {
+      return;
+    }
+    await updateDoc(doc(db, 'prompts', docId), updatePayload);
+  } catch (error) {
+    console.error('Error updating prompt highlights:', error);
+    throw error;
+  }
+};
+
 // Delete all user's prompts (for migration)
 export const deleteAllUserPrompts = async (userId) => {
   try {
@@ -238,10 +301,30 @@ export const getPromptByUuid = async (uuid) => {
       timestamp = new Date().toISOString();
     }
 
+    let highlightCache = data.highlightCache ?? null;
+    if (highlightCache) {
+      const converted = { ...highlightCache };
+      if (converted.updatedAt?.toDate) {
+        converted.updatedAt = converted.updatedAt.toDate().toISOString();
+      }
+      highlightCache = converted;
+    }
+
+    let versions = Array.isArray(data.versions) ? data.versions : [];
+    versions = versions.map((entry) => {
+      const item = { ...entry };
+      if (item.timestamp?.toDate) {
+        item.timestamp = item.timestamp.toDate().toISOString();
+      }
+      return item;
+    });
+
     return {
       id: doc.id,
       ...data,
       timestamp,
+      highlightCache,
+      versions,
     };
   } catch (error) {
     console.error('Error fetching prompt by UUID:', error);

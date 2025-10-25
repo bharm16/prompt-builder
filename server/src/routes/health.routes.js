@@ -83,5 +83,10 @@ export function createHealthRoutes(dependencies) {
     });
   });
 
+  // Test endpoint for Sentry error tracking
+  router.get('/debug-sentry', (req, res) => {
+    throw new Error('My first Sentry error!');
+  });
+
   return router;
 }

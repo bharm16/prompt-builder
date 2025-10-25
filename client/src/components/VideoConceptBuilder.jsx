@@ -19,6 +19,7 @@ import {
   Tag,
 } from 'lucide-react';
 import SuggestionsPanel from './SuggestionsPanel';
+import { detectDescriptorCategoryClient } from '../utils/descriptorCategories';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 const PRIMARY_ELEMENT_KEYS = ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'];
@@ -414,6 +415,21 @@ export default function VideoConceptBuilder({
     [elements, buildComposedElements],
   );
 
+  // Detect categories for filled descriptors
+  const descriptorCategories = useMemo(() => {
+    const categories = {};
+    SUBJECT_DESCRIPTOR_KEYS.forEach(key => {
+      const value = elements[key];
+      if (value && value.trim()) {
+        const detection = detectDescriptorCategoryClient(value);
+        if (detection.confidence > 0.5) {
+          categories[key] = detection;
+        }
+      }
+    });
+    return categories;
+  }, [elements]);
+
   // Calculate filled count by group
   const filledByGroup = useMemo(() => {
     const result = {};
@@ -454,12 +470,12 @@ export default function VideoConceptBuilder({
   }, [composedElements]);
 
   // Check for element compatibility
-  const checkCompatibility = useCallback(async (elementType, value) => {
+  const checkCompatibility = useCallback(async (elementType, value, currentElements) => {
     if (!value) return 1;
 
     try {
       const updatedElements = buildComposedElements({
-        ...elements,
+        ...(currentElements || elements),
         [elementType]: value,
       });
 
@@ -673,27 +689,32 @@ export default function VideoConceptBuilder({
 
   // Auto-suggest dependencies when an element is filled
   const handleElementChange = useCallback(async (key, value) => {
-    setElements(prev => ({ ...prev, [key]: value }));
+    let updatedElements;
+    setElements(prev => {
+      updatedElements = { ...prev, [key]: value };
+      
+      if (value) {
+        const dependentElements = Object.entries(ELEMENT_HIERARCHY)
+          .filter(([el, info]) => info.dependencies.includes(key) && !updatedElements[el])
+          .map(([el]) => el);
 
-    if (value) {
-      const dependentElements = Object.entries(ELEMENT_HIERARCHY)
-        .filter(([el, info]) => info.dependencies.includes(key) && !elements[el])
-        .map(([el]) => el);
-
-      if (dependentElements.length > 0) {
-        console.log(`Consider filling: ${dependentElements.join(', ')}`);
+        if (dependentElements.length > 0) {
+          console.log(`Consider filling: ${dependentElements.join(', ')}`);
+        }
       }
-    }
+      
+      return updatedElements;
+    });
 
     // Debounce compatibility checks to avoid spamming the API while typing
     if (compatibilityTimersRef.current[key]) {
       clearTimeout(compatibilityTimersRef.current[key]);
     }
     compatibilityTimersRef.current[key] = setTimeout(async () => {
-      const score = await checkCompatibility(key, value);
+      const score = await checkCompatibility(key, value, updatedElements);
       setCompatibilityScores(prev => ({ ...prev, [key]: score }));
     }, 500);
-  }, [elements, checkCompatibility]);
+  }, [checkCompatibility]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -874,7 +895,7 @@ export default function VideoConceptBuilder({
   };
 
   // Handle suggestion click
-  const handleSuggestionClick = (suggestion) => {
+  const handleSuggestionClick = useCallback((suggestion) => {
     if (activeElement) {
       setElementHistory(prev => [...prev, {
         element: activeElement,
@@ -886,7 +907,7 @@ export default function VideoConceptBuilder({
       setActiveElement(null);
       setSuggestions([]);
     }
-  };
+  }, [activeElement, handleElementChange]);
 
   const activeElementConfig = activeElement ? elementConfig[activeElement] : null;
 
@@ -1031,24 +1052,33 @@ export default function VideoConceptBuilder({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [activeElement, suggestions, fetchSuggestionsForElement]);
+  }, [activeElement, suggestions, fetchSuggestionsForElement, handleSuggestionClick]);
 
-  // Effects
+  // Consolidated effect with debounce to avoid excessive API calls
+  // Using refs to avoid circular dependencies with useCallback functions
+  const detectConflictsRef = useRef(detectConflicts);
+  const validatePromptRef = useRef(validatePrompt);
+  const fetchRefinementSuggestionsRef = useRef(fetchRefinementSuggestions);
+  const requestTechnicalParamsRef = useRef(requestTechnicalParams);
+  
+  // Update refs when functions change
   useEffect(() => {
-    detectConflicts(elements);
-  }, [elements, detectConflicts]);
-
+    detectConflictsRef.current = detectConflicts;
+    validatePromptRef.current = validatePrompt;
+    fetchRefinementSuggestionsRef.current = fetchRefinementSuggestions;
+    requestTechnicalParamsRef.current = requestTechnicalParams;
+  }, [detectConflicts, validatePrompt, fetchRefinementSuggestions, requestTechnicalParams]);
+  
   useEffect(() => {
-    validatePrompt();
-  }, [elements, validatePrompt]);
-
-  useEffect(() => {
-    fetchRefinementSuggestions(elements);
-  }, [elements, fetchRefinementSuggestions]);
-
-  useEffect(() => {
-    requestTechnicalParams(elements);
-  }, [elements, requestTechnicalParams]);
+    const timer = setTimeout(() => {
+      detectConflictsRef.current(elements);
+      validatePromptRef.current();
+      fetchRefinementSuggestionsRef.current(elements);
+      requestTechnicalParamsRef.current(elements);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [elements]); // Only depend on elements, use latest functions via refs
 
   const hasRefinements = useMemo(
     () =>
@@ -1747,18 +1777,32 @@ export default function VideoConceptBuilder({
                         const descriptorValue = elements[descriptorKey] || '';
                         const descriptorFilled = Boolean(descriptorValue);
                         const descriptorCompatibility = compatibilityScores[descriptorKey];
+                        const categoryDetection = descriptorCategories[descriptorKey];
 
                         return (
                           <div
                             key={descriptorKey}
-                            className="rounded-2xl border border-neutral-200 bg-white/80 p-3"
+                            className="rounded-2xl border border-neutral-200 bg-white/80 p-3 relative"
                           >
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <Tag className="h-3.5 w-3.5 text-neutral-500" />
                               <span className="text-xs font-semibold text-neutral-700">
                                 Descriptor {idx + 1}
                               </span>
                               <span className="text-[10px] text-neutral-400">Optional</span>
+                              {categoryDetection && (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                                  style={{
+                                    backgroundColor: categoryDetection.colors.bg,
+                                    color: categoryDetection.colors.text,
+                                    border: `1px solid ${categoryDetection.colors.border}20`
+                                  }}
+                                  title={`${categoryDetection.label} category (${Math.round(categoryDetection.confidence * 100)}% confidence)`}
+                                >
+                                  {categoryDetection.label}
+                                </span>
+                              )}
                               {descriptorFilled && descriptorCompatibility !== undefined && (
                                 <span className="ml-auto flex items-center gap-1 text-[10px] text-neutral-500">
                                   {descriptorCompatibility >= 0.8 ? (

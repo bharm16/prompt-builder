@@ -3,6 +3,7 @@ import { cacheService } from './CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { CATEGORY_CONSTRAINTS, detectSubcategory, validateAgainstVideoTemplate } from './CategoryConstraints.js';
+import { detectDescriptorCategory, getCategoryFallbacks, getCategoryInstruction } from './DescriptorCategories.js';
 
 /**
  * Service for providing enhancement suggestions for highlighted text
@@ -159,6 +160,16 @@ export class EnhancementService {
     // Ensure diversity in suggestions
     const diverseSuggestions = await this.ensureDiverseSuggestions(suggestions);
 
+    // Detect if this is a descriptor-type phrase (for Video Concept Builder)
+    const descriptorDetection = detectDescriptorCategory(highlightedText);
+    const isDescriptorPhrase = descriptorDetection.confidence > 0.4;
+    
+    logger.debug('Descriptor detection', {
+      isDescriptorPhrase,
+      category: descriptorDetection.category,
+      confidence: descriptorDetection.confidence,
+    });
+
     // Apply category alignment with fallbacks if needed
     let alignmentResult = { suggestions: diverseSuggestions, fallbackApplied: false, context: {} };
 
@@ -299,6 +310,19 @@ export class EnhancementService {
         highlightWordCount,
         attemptedModes: Array.from(attemptedModes),
       });
+      
+      // Try descriptor fallbacks if this is a descriptor phrase
+      if (isDescriptorPhrase && descriptorDetection.category) {
+        const descriptorFallbacks = getCategoryFallbacks(descriptorDetection.category);
+        if (descriptorFallbacks.length > 0) {
+          logger.info('Using descriptor category fallbacks', {
+            category: descriptorDetection.category,
+            count: descriptorFallbacks.length,
+          });
+          suggestionsToUse = descriptorFallbacks;
+          usedFallback = true;
+        }
+      }
     }
 
     // Debug logging
@@ -309,6 +333,8 @@ export class EnhancementService {
       sanitizedCount: sanitizedSuggestions.length,
       appliedConstraintMode: activeConstraints?.mode || null,
       usedFallback,
+      isDescriptorPhrase,
+      descriptorCategory: isDescriptorPhrase ? descriptorDetection.category : null,
     });
 
     // Group suggestions by category if they have categories
@@ -1056,10 +1082,13 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
         : '';
 
+      // Get category-specific focus guidance if available
+      const categorySpecificFocus = this.getCategoryFocusGuidance(resolvedPhraseRole, highlightedCategory);
+      
       const focusLines =
         Array.isArray(focusGuidance) && focusGuidance.length > 0
           ? focusGuidance
-          : [
+          : categorySpecificFocus || [
               'Camera: specific movement (dolly in/out, crane up/down, handheld, static) + lens (35mm, 50mm, 85mm) + angle',
               'Lighting: direction, quality, color temperature (e.g., "soft window light from left, 3:1 contrast ratio")',
               'Subject detail: 2-3 specific visual characteristics',
@@ -1109,9 +1138,14 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         '- Avoid multiple simultaneous actions',
       ];
 
+      // Add category emphasis if we have a clear category
+      const categoryEmphasis = highlightedCategory && resolvedPhraseRole
+        ? `\n\n🎯 **CRITICAL**: User clicked on ${highlightedCategory.toUpperCase()} text. ALL ${focusLines.length} suggestions MUST focus exclusively on ${resolvedPhraseRole}. Do NOT suggest alternatives for other categories.\n`
+        : '';
+
       return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
         brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-      }
+      }${categoryEmphasis}
 
 **APPROACH:**
 ${approachLines.join('\n')}
@@ -1746,6 +1780,107 @@ Provide a JSON object with the new suggestion:
   }
 
   /**
+   * Get category-specific focus guidance for video prompts
+   * @private
+   */
+  getCategoryFocusGuidance(phraseRole, categoryHint) {
+    if (!phraseRole) return null;
+    
+    const role = phraseRole.toLowerCase();
+    const hint = (categoryHint || '').toLowerCase();
+    
+    // Lighting-specific guidance
+    if (role.includes('lighting') || hint.includes('light') || hint.includes('timeofday')) {
+      return [
+        'Light direction: front light, side/Rembrandt, backlight/rim, overhead, under-lighting',
+        'Quality: hard shadows, soft diffused, directional beam, ambient fill',
+        'Color temperature: warm tungsten (3200K), daylight (5600K), cool blue (7000K)',
+        'Contrast ratio: high-key (2:1), low-key (8:1), film noir (16:1)',
+        'Practical sources: window light, neon signs, candlelight, LED panels, streetlamps',
+      ];
+    }
+    
+    // Camera/Framing-specific guidance
+    if (role.includes('camera') || role.includes('framing') || hint.includes('camera') || hint.includes('framing')) {
+      return [
+        'Movement: dolly in/out, crane up/down, pan left/right, tilt up/down, tracking shot',
+        'Lens choice: 24mm wide, 35mm, 50mm normal, 85mm portrait, 200mm telephoto',
+        "Angle: eye-level, high angle, low angle, Dutch tilt, bird's-eye view, worm's-eye",
+        'Shot size: extreme close-up (ECU), close-up (CU), medium (MS), wide (WS), extreme wide (EWS)',
+        'Focus technique: shallow DOF f/1.4, deep focus f/16, rack focus transition, selective focus',
+      ];
+    }
+    
+    // Subject/Character-specific guidance
+    if (role.includes('subject') || role.includes('character') || hint.includes('appearance') || hint.includes('subject')) {
+      return [
+        'Physical characteristics: 2-3 specific, observable traits (age markers, build, distinctive features)',
+        'Facial details: expression, eye contact, micro-expressions, emotional tells',
+        'Posture and gesture: specific body language, stance, hand positions',
+        'Movement quality: gait, rhythm, energy level, physical presence',
+        'Distinguishing marks: that make the character immediately recognizable',
+      ];
+    }
+    
+    // Wardrobe-specific guidance
+    if (role.includes('wardrobe') || hint.includes('wardrobe') || hint.includes('costume')) {
+      return [
+        'Garment specifics: cut, fit, silhouette, fabric texture (silk, denim, leather)',
+        'Condition: pristine/new, lived-in/worn, weathered/distressed, torn/damaged',
+        'Era markers: period-appropriate details, vintage vs contemporary',
+        'Color palette: specific hues, patterns (plaid, stripes), color relationships',
+        'Accessories: hat, jewelry, shoes, watch, bag - one focal accessory per variant',
+      ];
+    }
+    
+    // Environment/Location-specific guidance  
+    if (role.includes('location') || role.includes('environment') || hint.includes('environment') || hint.includes('location')) {
+      return [
+        'Architectural details: materials (brick, glass, wood), structural elements, scale',
+        'Atmospheric conditions: fog, rain, dust, haze, clarity',
+        'Spatial relationships: foreground/background elements, depth, proximity',
+        'Environmental lighting: natural vs artificial, ambient quality, shadows',
+        'Setting specificity: named location type, cultural markers, time period indicators',
+      ];
+    }
+    
+    // Color-specific guidance
+    if (role.includes('color') || hint.includes('color') || hint.includes('colour')) {
+      return [
+        'Color palette: specific hues (cerulean, burnt sienna), saturation level',
+        'Color relationships: complementary, analogous, monochromatic scheme',
+        'Color grading: teal and orange, bleach bypass, desaturated, vibrant',
+        'Dominant vs accent colors: 70-30 rule, color hierarchy',
+        'Emotional color coding: warm/inviting vs cool/distant, symbolic color use',
+      ];
+    }
+    
+    // Style/Aesthetic-specific guidance
+    if (role.includes('style') || role.includes('tone') || hint.includes('style') || hint.includes('aesthetic')) {
+      return [
+        'Film stock reference: 35mm, 16mm, 8mm, digital cinema camera',
+        'Genre aesthetic: film noir, neo-noir, western, sci-fi, documentary verité',
+        'Cinematographer reference: Roger Deakins, Emmanuel Lubezki, Hoyte van Hoytema',
+        'Post-processing: color grading approach, grain structure, sharpness',
+        'Movement style: handheld/Steadicam, locked-off tripod, gimbal smooth',
+      ];
+    }
+    
+    // Technical-specific guidance
+    if (role.includes('technical') || hint.includes('technical') || hint.includes('spec')) {
+      return [
+        'Duration: specific length (4s, 8s, 15s, 30s clip)',
+        'Frame rate: 24fps cinematic, 30fps standard, 60fps smooth, 120fps slow-motion',
+        'Resolution: 1080p, 4K, 8K, aspect ratio (16:9, 2.39:1 anamorphic)',
+        'Camera body: RED, ARRI, Sony Venice, Blackmagic',
+        'Technical effects: time-remapping, speed ramping, freeze frame',
+      ];
+    }
+    
+    return null;
+  }
+
+  /**
    * Detect the likely role of a highlighted phrase within a video prompt
    * @private
    */
@@ -1760,28 +1895,57 @@ Provide a JSON object with the new suggestion:
         return null;
       }
 
-      if (/subject|character|figure|talent|person|performer/.test(category)) {
+      // Normalize to lowercase for consistent matching
+      const norm = category.toLowerCase();
+
+      // Subject/Character (includes Appearance from span labeler)
+      if (/subject|character|figure|talent|person|performer|appearance/.test(norm)) {
         return 'subject or character detail';
       }
 
-      if (/light|lighting|illumination|shadow/.test(category)) {
+      // Lighting (includes TimeOfDay from span labeler)
+      if (/light|lighting|illumination|shadow|timeofday|timeday/.test(norm)) {
         return 'lighting description';
       }
 
-      if (/camera|framing|shot|lens/.test(category)) {
+      // Camera (includes CameraMove and Framing from span labeler)
+      if (/camera|framing|shot|lens|cameramove|angle|viewpoint/.test(norm)) {
         return 'camera or framing description';
       }
 
-      if (/location|setting|environment|background|place/.test(category)) {
+      // Environment/Location
+      if (/location|setting|environment|background|place/.test(norm)) {
         return 'location or environment detail';
       }
 
-      if (/style|tone|aesthetic|mood|genre/.test(category)) {
+      // Wardrobe/Costume (new from span labeler)
+      if (/wardrobe|clothing|costume|attire|outfit/.test(norm)) {
+        return 'wardrobe and costume detail';
+      }
+
+      // Color (from span labeler)
+      if (/color|colour|palette|hue|saturation/.test(norm)) {
+        return 'color and visual tone';
+      }
+
+      // Style/Aesthetic
+      if (/style|tone|aesthetic|mood|genre/.test(norm)) {
         return 'style or tone descriptor';
       }
 
-      if (/audio|music|sound|score/.test(category)) {
+      // Technical (from span labeler)
+      if (/technical|spec|duration|framerate|resolution/.test(norm)) {
+        return 'technical specification';
+      }
+
+      // Audio
+      if (/audio|music|sound|score/.test(norm)) {
         return 'audio or score descriptor';
+      }
+
+      // Descriptive (catch-all from span labeler)
+      if (/descriptive|general/.test(norm)) {
+        return 'general visual detail';
       }
 
       return null;
@@ -1789,6 +1953,10 @@ Provide a JSON object with the new suggestion:
 
     const categoryRole = mapCategory(normalizedCategory);
     if (categoryRole) {
+      logger.debug('Category mapped from explicit category', {
+        input: normalizedCategory,
+        output: categoryRole,
+      });
       return categoryRole;
     }
 

@@ -252,12 +252,12 @@ npm install
 
 3. **Configure environment variables**
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (see `.env.example`):
 
 ```env
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4-turbo-preview
+OPENAI_MODEL=gpt-4o-mini
 
 # Firebase Configuration
 VITE_FIREBASE_API_KEY=your_firebase_api_key
@@ -271,9 +271,20 @@ VITE_FIREBASE_APP_ID=your_app_id
 PORT=3001
 NODE_ENV=development
 
+# Sentry Error Tracking (Recommended)
+SENTRY_DSN=your_sentry_dsn_here
+VITE_SENTRY_DSN=your_sentry_dsn_here
+
 # Optional: Redis Configuration
 REDIS_URL=redis://localhost:6379
 ```
+
+**Setting up Sentry (Recommended):**
+
+1. Sign up for a free account at [sentry.io](https://sentry.io)
+2. Create a new project for your application
+3. Copy the DSN from your project settings
+4. Add it to your `.env` file as shown above
 
 4. **Start development servers**
 

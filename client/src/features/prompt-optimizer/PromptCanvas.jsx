@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, memo, useMemo } from 'react';
+import React, { useRef, useEffect, useState, memo, useMemo, useCallback } from 'react';
 import {
   Copy,
   Download,
@@ -8,21 +8,25 @@ import {
   Info,
   X,
   Share2,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react';
 import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
-import {
-  runExtractionPipeline,
-  PARSER_VERSION,
-  LEXICON_VERSION,
-  EMOJI_POLICY_VERSION,
-} from './phraseExtractor';
+import { useSpanLabeling, createHighlightSignature } from './hooks/useSpanLabeling.js';
 import { createCanonicalText } from '../../utils/canonicalText.js';
 import { buildTextNodeIndex, wrapRangeSegments } from '../../utils/anchorRanges.js';
-import { relocateQuote } from '../../utils/textQuoteRelocator.js';
 import { PromptContext } from '../../utils/PromptContext.js';
 
 const LLM_PARSER_VERSION = 'llm-v1';
+
+// ============================================================================
+// DEBUG FLAGS
+// ============================================================================
+// Set to true to enable detailed highlight logging in the console
+// Useful for debugging highlight application issues
+// To enable: change false to true and save the file
+const DEBUG_HIGHLIGHTS = false;
 
 /**
  * Text Formatting Layer - Applies 2025 Design Principles
@@ -41,118 +45,142 @@ export const formatTextToHTML = (text) => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
 
-  const lines = String(text).split(/\r?\n/);
+  const rawText = String(text);
+  const lines = rawText.split(/\r?\n/);
   const result = [];
+  const endsWithNewline = /\r?\n$/.test(rawText);
 
-  const pushGap = () => {
-    result.push('<div class="prompt-line prompt-line--gap" data-variant="gap"><br /></div>');
+  const shouldAppendNewline = (index) => {
+    if (!Number.isInteger(index)) return false;
+    if (index < lines.length - 1) {
+      return true;
+    }
+    return index === lines.length - 1 && endsWithNewline;
   };
 
-  const pushSeparator = () => {
-    result.push('<div class="prompt-line prompt-line--separator" data-variant="separator">———</div>');
+  const appendBlock = (html, lineIndex) => {
+    result.push(html);
+    if (shouldAppendNewline(lineIndex)) {
+      result.push('\n');
+    }
   };
 
-  const pushHeading = (raw) => {
+  const pushGap = (lineIndex) => {
+    appendBlock('<div class="prompt-line prompt-line--gap" data-variant="gap"><br /></div>', lineIndex);
+  };
+
+  const pushSeparator = (lineIndex) => {
+    appendBlock('<div class="prompt-line prompt-line--separator" data-variant="separator">———</div>', lineIndex);
+  };
+
+  const pushHeading = (raw, lineIndex) => {
     const cleaned = raw.replace(/^#{1,6}\s+/, '').replace(/^\*\*(.+)\*\*:?$/, '$1').trim();
     const className = 'prompt-line prompt-line--heading';
-    result.push(`<div class="${className}" data-variant="heading">${escapeHtmlLocal(cleaned)}</div>`);
+    appendBlock(`<div class="${className}" data-variant="heading">${escapeHtmlLocal(cleaned)}</div>`, lineIndex);
   };
 
-  const pushSection = (raw) => {
-    result.push(
+  const pushSection = (raw, lineIndex) => {
+    appendBlock(
       `<div class="prompt-line prompt-line--section" data-variant="section">${escapeHtmlLocal(
         raw.trim()
-      )}</div>`
+      )}</div>`,
+      lineIndex
     );
   };
 
-  const pushParagraph = (raw) => {
-    result.push(
+  const pushParagraph = (raw, lineIndex) => {
+    appendBlock(
       `<div class="prompt-line prompt-line--paragraph" data-variant="paragraph">${escapeHtmlLocal(
         raw.trim()
-      )}</div>`
+      )}</div>`,
+      lineIndex
     );
   };
 
-  const pushOrderedItems = (items) => {
-    items.forEach(({ label, text }) => {
-      result.push(
-        `<div class="prompt-line prompt-line--ordered" data-variant="ordered" data-variant-index="${escapeHtmlLocal(
-          label
-        )}"><span class="prompt-ordered-index">${escapeHtmlLocal(
-          label
-        )}</span><span class="prompt-ordered-text">${escapeHtmlLocal(text.trim())}</span></div>`
-      );
-    });
+  const pushOrderedItem = (label, text, lineIndex, isLastInGroup) => {
+    appendBlock(
+      `<div class="prompt-line prompt-line--ordered" data-variant="ordered" data-variant-index="${escapeHtmlLocal(
+        label
+      )}"><span class="prompt-ordered-index">${escapeHtmlLocal(
+        label
+      )}</span><span class="prompt-ordered-text">${escapeHtmlLocal(text.trim())}</span></div>`,
+      lineIndex
+    );
+    if (isLastInGroup && shouldAppendNewline(lineIndex + 0.5)) {
+      result.push('\n');
+    }
   };
 
-  const pushBulletItems = (items) => {
-    items.forEach((text) => {
-      result.push(
-        `<div class="prompt-line prompt-line--bullet" data-variant="bullet"><span class="prompt-bullet-marker">•</span><span class="prompt-bullet-text">${escapeHtmlLocal(
-          text.trim()
-        )}</span></div>`
-      );
-    });
+  const pushBulletItem = (text, lineIndex, isLastInGroup) => {
+    appendBlock(
+      `<div class="prompt-line prompt-line--bullet" data-variant="bullet"><span class="prompt-bullet-marker">•</span><span class="prompt-bullet-text">${escapeHtmlLocal(
+        text.trim()
+      )}</span></div>`,
+      lineIndex
+    );
+    if (isLastInGroup && shouldAppendNewline(lineIndex + 0.5)) {
+      result.push('\n');
+    }
   };
 
   for (let i = 0; i < lines.length; i += 1) {
+    const lineIndex = i;
     const line = lines[i];
     const trimmed = line.trim();
 
     if (!trimmed) {
-      pushGap();
+      pushGap(lineIndex);
       continue;
     }
 
     if (/^[=\-*_━─═▬▭]{3,}$/.test(trimmed)) {
-      pushSeparator();
+      pushSeparator(lineIndex);
       continue;
     }
 
     if (/^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed) || /^[A-Z][A-Z\s]{3,}$/.test(trimmed)) {
-      pushHeading(trimmed);
+      pushHeading(trimmed, lineIndex);
       continue;
     }
 
     if (/^\d+\.\s+/.test(trimmed)) {
-      const orderedItems = [];
       while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
-        const current = lines[i].trim();
+        const currentIndex = i;
+        const current = lines[currentIndex].trim();
         const match = current.match(/^(\d+)\.\s+(.*)$/);
+        const nextBreaks = i + 1 >= lines.length || lines[i + 1].trim() === '' || !/^\d+\.\s+/.test(lines[i + 1].trim());
         if (match) {
-          orderedItems.push({ label: `${match[1]}.`, text: match[2] });
+          pushOrderedItem(`${match[1]}.`, match[2], currentIndex, nextBreaks);
         }
         i += 1;
       }
       i -= 1;
-      pushOrderedItems(orderedItems);
       continue;
     }
 
     if (/^[-*•]\s+/.test(trimmed)) {
-      const bulletItems = [];
       while (i < lines.length && /^[-*•]\s+/.test(lines[i].trim())) {
-        const current = lines[i].trim().replace(/^[-*•]\s+/, '');
-        bulletItems.push(current);
+        const currentIndex = i;
+        const current = lines[currentIndex].trim().replace(/^[-*•]\s+/, '');
+        const nextBreaks = i + 1 >= lines.length || lines[i + 1].trim() === '' || !/^[-*•]\s+/.test(lines[i + 1].trim());
+        pushBulletItem(current, currentIndex, nextBreaks);
         i += 1;
       }
       i -= 1;
-      pushBulletItems(bulletItems);
       continue;
     }
 
     if (/^.+:$/.test(trimmed)) {
-      pushSection(trimmed);
+      pushSection(trimmed, lineIndex);
       continue;
     }
 
     if (/^>\s*/.test(trimmed)) {
-      pushParagraph(trimmed.replace(/^>\s*/, ''));
+      pushParagraph(trimmed.replace(/^>\s*/, ''), lineIndex);
       continue;
     }
 
-    pushParagraph(trimmed);
+    pushParagraph(trimmed, lineIndex);
   }
 
   return { html: result.join('') };
@@ -486,7 +514,11 @@ const FloatingToolbar = memo(({
   showExportMenu,
   onToggleExportMenu,
   showLegend,
-  onToggleLegend
+  onToggleLegend,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) => {
   const exportMenuRef = useRef(null);
 
@@ -584,13 +616,35 @@ const FloatingToolbar = memo(({
 
       <div className="w-px h-6 bg-neutral-200 mx-1" />
 
-      <button
-        onClick={onCreateNew}
-        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-md hover:bg-neutral-800 transition-colors"
-        title="New prompt"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`inline-flex items-center justify-center p-1.5 rounded-md border border-neutral-200 transition ${
+              canUndo ? 'hover:bg-neutral-100 text-neutral-700' : 'text-neutral-300 cursor-not-allowed'
+            }`}
+            title="Undo"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`inline-flex items-center justify-center p-1.5 rounded-md border border-neutral-200 transition ${
+              canRedo ? 'hover:bg-neutral-100 text-neutral-700' : 'text-neutral-300 cursor-not-allowed'
+            }`}
+            title="Redo"
+          >
+            <RotateCw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onCreateNew}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-neutral-900 rounded-md hover:bg-neutral-800 transition-colors"
+            title="New prompt"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
     </div>
   );
 });
@@ -611,7 +665,14 @@ export const PromptCanvas = ({
   onSkipAnimation,
   suggestionsData,
   onFetchSuggestions,
-  onCreateNew
+  onCreateNew,
+  initialHighlights = null,
+  initialHighlightsVersion = 0,
+  onHighlightsPersist,
+  onUndo = () => {},
+  onRedo = () => {},
+  canUndo = false,
+  canRedo = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -621,50 +682,74 @@ export const PromptCanvas = ({
   const editorRef = useRef(null);
   const highlightStateRef = useRef({ wrappers: [], nodeIndex: null });
   const toast = useToast();
-  const parserVersionSignature = `${PARSER_VERSION}-${LEXICON_VERSION}-${EMOJI_POLICY_VERSION}-${LLM_PARSER_VERSION}`;
-  const semanticRequestCounterRef = useRef(0);
+
+  const enableMLHighlighting = selectedMode === 'video';
+
+  const labelingPolicy = useMemo(
+    () => ({
+      nonTechnicalWordLimit: 6,
+      allowOverlap: false,
+    }),
+    []
+  );
+
+  const memoizedInitialHighlights = useMemo(() => {
+    // Console logs removed to prevent spam during rapid recomputation
+    if (!enableMLHighlighting || !initialHighlights || !Array.isArray(initialHighlights.spans)) {
+      return null;
+    }
+    const resolvedSignature =
+      initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+    
+    return {
+      spans: initialHighlights.spans,
+      meta: initialHighlights.meta ?? null,
+      signature: resolvedSignature,
+      cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+    };
+  }, [enableMLHighlighting, initialHighlights, initialHighlightsVersion, promptUuid, displayedPrompt]);
+
+  const handleLabelingResult = useCallback(
+    (result) => {
+      if (!enableMLHighlighting || !result) {
+        return;
+      }
+      if (onHighlightsPersist) {
+        onHighlightsPersist(result);
+      }
+    },
+    [enableMLHighlighting, onHighlightsPersist]
+  );
+
+  const {
+    spans: labeledSpans,
+    meta: labeledMeta,
+    status: labelingStatus,
+    error: labelingError,
+  } = useSpanLabeling({
+    text: enableMLHighlighting ? displayedPrompt : '',
+    initialData: memoizedInitialHighlights,
+    initialDataVersion: initialHighlightsVersion,
+    cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
+    enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
+    maxSpans: 60,
+    minConfidence: 0.5,
+    policy: labelingPolicy,
+    templateVersion: 'v1',
+    debounceMs: 500,
+    onResult: handleLabelingResult,
+  });
 
   const [parseResult, setParseResult] = useState(() => ({
     canonical: createCanonicalText(displayedPrompt ?? ''),
     spans: [],
-    stats: {
-      totalCandidates: 0,
-      validated: 0,
-      final: 0,
-      llmSpanCount: 0,
-      legacySpanCount: 0,
-    },
-    versions: {
-      parser: PARSER_VERSION,
-      lexicon: LEXICON_VERSION,
-      emojiPolicy: EMOJI_POLICY_VERSION,
-      llmParser: null,
-    },
-    displayText: '',
+    meta: null,
+    status: 'idle',
+    error: null,
+    displayText: displayedPrompt ?? '',
   }));
 
-  const contextMemoKey = useMemo(() => {
-    if (!promptContext) return 'none';
-    try {
-      return JSON.stringify(promptContext.toJSON());
-    } catch (error) {
-      console.warn('Failed to serialize promptContext for memo key', error);
-      return `context-${promptContext.version ?? 'v1'}`;
-    }
-  }, [promptContext]);
-
-  const enableMLHighlighting = selectedMode === 'video';
-
-  // Debug: Track promptContext received in PromptCanvas
-  useEffect(() => {
-    console.log('[DEBUG] PromptCanvas received promptContext:', {
-      exists: !!promptContext,
-      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
-      elements: promptContext?.elements,
-      timestamp: new Date().toISOString()
-    });
-  }, [promptContext]);
-
+  // Debug logging removed - was causing infinite loop due to promptContext reference changes
 
   const unwrapHighlight = (element) => {
     if (!element || !element.parentNode) return;
@@ -685,157 +770,68 @@ export const PromptCanvas = ({
 
   useEffect(() => () => clearHighlights(), []);
 
-  // Memoize formatted HTML - highlights applied post-render
+  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
+  // We need to preserve the original text structure for span offsets to work
   const { html: formattedHTML } = useMemo(
-    () => formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext),
-    [displayedPrompt, enableMLHighlighting, promptContext]
+    () => {
+      // If ML highlighting is enabled, don't apply formatting
+      // Highlighting needs the raw text to match span offsets
+      if (enableMLHighlighting) {
+        // Return plain text with preserved whitespace
+        // Escape HTML but preserve newlines and spaces
+        const escaped = (displayedPrompt || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem;">${escaped}</div>` };
+      }
+      return formatTextToHTML(displayedPrompt, enableMLHighlighting, promptContext);
+    },
+    // Only depend on promptContext when NOT using ML highlighting (to prevent infinite loops)
+    enableMLHighlighting 
+      ? [displayedPrompt, enableMLHighlighting] 
+      : [displayedPrompt, enableMLHighlighting, promptContext]
   );
 
   useEffect(() => {
     const canonical = createCanonicalText(displayedPrompt ?? '');
+    const currentText = displayedPrompt ?? '';
 
-    if (!enableMLHighlighting || !displayedPrompt) {
+    if (!enableMLHighlighting || !currentText.trim()) {
       setParseResult({
         canonical,
         spans: [],
-        stats: {
-          totalCandidates: 0,
-          validated: 0,
-          final: 0,
-          llmSpanCount: 0,
-          legacySpanCount: 0,
-        },
-        versions: {
-          parser: PARSER_VERSION,
-          lexicon: LEXICON_VERSION,
-          emojiPolicy: EMOJI_POLICY_VERSION,
-          llmParser: null,
-        },
-        displayText: '',
+        meta: labeledMeta,
+        status: labelingStatus,
+        error: labelingError,
+        displayText: currentText,
       });
       return;
     }
 
-    let isCancelled = false;
-    const requestId = semanticRequestCounterRef.current + 1;
-    semanticRequestCounterRef.current = requestId;
-    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const highlights = convertLabeledSpansToHighlights({
+      spans: labeledSpans,
+      text: currentText,
+      canonical,
+    });
 
-    const execute = async () => {
-      try {
-        const sourceResult = runExtractionPipeline(displayedPrompt, promptContext);
-
-        const root = editorRef.current;
-        const displayText = root?.textContent ?? displayedPrompt ?? '';
-        const displayResult = displayText
-          ? runExtractionPipeline(displayText, promptContext)
-          : { spans: [], stats: { totalCandidates: 0, validated: 0, final: 0 } };
-
-        const legacyCombined = combineDisplayAndSourceSpans({
-          sourceSpans: sourceResult.spans,
-          displaySpans: displayResult.spans,
-          canonical: sourceResult.canonical,
-        });
-
-        let llmSpans = [];
-        if (displayText.trim()) {
-          try {
-            const response = await fetch('/api/video/semantic-parse', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': 'dev-key-12345',
-              },
-              body: JSON.stringify({ text: displayText }),
-              signal: abortController?.signal,
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              llmSpans = convertSemanticSpansToClient(
-                Array.isArray(data.spans) ? data.spans : [],
-                displayText,
-                sourceResult.canonical
-              );
-            } else {
-              console.warn('Semantic parse request failed', {
-                status: response.status,
-                statusText: response.statusText,
-              });
-            }
-          } catch (error) {
-            if (error.name !== 'AbortError') {
-              console.error('Semantic parse request error:', error);
-            }
-          }
-        }
-
-        const mergedSpans = mergeSemanticAndLegacySpans({
-          llmSpans,
-          legacySpans: legacyCombined,
-        });
-
-        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
-          return;
-        }
-
-        setParseResult({
-          canonical: sourceResult.canonical,
-          spans: mergedSpans,
-          stats: {
-            ...sourceResult.stats,
-            displaySpanCount: displayResult.spans.length,
-            llmSpanCount: llmSpans.length,
-            legacySpanCount: legacyCombined.length,
-          },
-          versions: {
-            ...sourceResult.versions,
-            llmParser: llmSpans.length > 0 ? LLM_PARSER_VERSION : null,
-          },
-          displayText,
-        });
-      } catch (error) {
-        if (isCancelled || semanticRequestCounterRef.current !== requestId) {
-          return;
-        }
-        console.error('Failed to run extraction pipeline with semantic parser:', error);
-        setParseResult({
-          canonical,
-          spans: [],
-          stats: {
-            totalCandidates: 0,
-            validated: 0,
-            final: 0,
-            llmSpanCount: 0,
-            legacySpanCount: 0,
-          },
-          versions: {
-            parser: PARSER_VERSION,
-            lexicon: LEXICON_VERSION,
-            emojiPolicy: EMOJI_POLICY_VERSION,
-            llmParser: null,
-          },
-          displayText: '',
-          error,
-        });
-      }
-    };
-
-    execute();
-
-    return () => {
-      isCancelled = true;
-      if (abortController) {
-        abortController.abort();
-      }
-    };
+    setParseResult({
+      canonical,
+      spans: highlights,
+      meta: labeledMeta,
+      status: labelingStatus,
+      error: labelingError,
+      displayText: currentText,
+    });
   }, [
-    displayedPrompt,
-    promptContext,
-    contextMemoKey,
+    labeledSpans,
+    labeledMeta,
+    labelingStatus,
+    labelingError,
     enableMLHighlighting,
-    parserVersionSignature,
-    formattedHTML,
+    displayedPrompt,
   ]);
 
 
@@ -1216,6 +1212,25 @@ export const PromptCanvas = ({
       return;
     }
 
+    if (DEBUG_HIGHLIGHTS) {
+      console.log('[HIGHLIGHT] Starting highlight application:', {
+        spanCount: spans.length,
+        displayTextLength: displayText.length,
+        displayTextPreview: displayText.substring(0, 200) + '...',
+        rootTextContent: root.textContent?.substring(0, 200) + '...',
+        textContentMatch: displayText === root.textContent
+      });
+    }
+
+    if (DEBUG_HIGHLIGHTS) {
+      console.log('[HIGHLIGHT] Spans to apply:', spans.map(s => ({
+        text: s.text,
+        role: s.role,
+        start: s.start,
+        end: s.end
+      })));
+    }
+
     const wrappers = [];
     const coverage = [];
 
@@ -1250,12 +1265,28 @@ export const PromptCanvas = ({
       const expectedText = span.displayQuote ?? span.quote ?? '';
       const actualSlice = displayText.slice(highlightStart, highlightEnd);
       if (expectedText && actualSlice !== expectedText) {
-        console.warn('SPAN_MISMATCH', {
-          id: span.id,
-          expected: expectedText,
-          found: actualSlice,
-        });
+        if (DEBUG_HIGHLIGHTS) {
+          console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
+            id: span.id,
+            role: span.role,
+            expected: expectedText,
+            found: actualSlice,
+            start: highlightStart,
+            end: highlightEnd,
+            displayTextLength: displayText.length,
+            context: displayText.slice(Math.max(0, highlightStart - 20), Math.min(displayText.length, highlightEnd + 20))
+          });
+        }
         return;
+      }
+
+      if (DEBUG_HIGHLIGHTS) {
+        console.log('[HIGHLIGHT] Applying highlight:', {
+          text: expectedText,
+          role: span.role,
+          start: highlightStart,
+          end: highlightEnd
+        });
       }
 
       const segmentWrappers = wrapRangeSegments({
@@ -1289,7 +1320,25 @@ export const PromptCanvas = ({
       });
 
       if (!segmentWrappers.length) {
+        if (DEBUG_HIGHLIGHTS) {
+          console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
+            text: expectedText,
+            role: span.role,
+            start: highlightStart,
+            end: highlightEnd,
+            nodeIndexLength: nodeIndex.nodes?.length,
+            rootTextContentLength: root.textContent?.length
+          });
+        }
         return;
+      }
+
+      if (DEBUG_HIGHLIGHTS) {
+        console.log('[HIGHLIGHT] Successfully wrapped:', {
+          text: expectedText,
+          role: span.role,
+          wrapperCount: segmentWrappers.length
+        });
       }
 
       segmentWrappers.forEach((wrapper) => {
@@ -1311,7 +1360,7 @@ export const PromptCanvas = ({
     });
 
     highlightStateRef.current = { wrappers, nodeIndex: null };
-  }, [parseResult, enableMLHighlighting, formattedHTML]);
+  }, [parseResult, enableMLHighlighting]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
@@ -1330,6 +1379,10 @@ export const PromptCanvas = ({
         onToggleExportMenu={setShowExportMenu}
         showLegend={showLegend}
         onToggleLegend={setShowLegend}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       {/* Category Legend */}
@@ -1438,123 +1491,59 @@ function rangeOverlaps(ranges, start, end) {
   return ranges.some((range) => !(end <= range.start || start >= range.end));
 }
 
-const normalizeKeyComponent = (value = '') =>
-  value
-    .normalize('NFC')
-    .toLowerCase()
-    .replace(/\r?\n/g, ' ')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/`(.*?)`/g, '$1')
-    .replace(/~~(.*?)~~/g, '$1')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const createSpanKey = (span) =>
-  [span?.quote ?? '', span?.leftCtx ?? '', span?.rightCtx ?? '']
-    .map(normalizeKeyComponent)
-    .join('::');
-
-const createQuoteKey = (span) => normalizeKeyComponent(span?.quote ?? '');
-
-const buildSpanQueue = (spans, keyFn) => {
-  const map = new Map();
-  spans.forEach((span) => {
-    const key = keyFn(span);
-    if (!key) return;
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-    map.get(key).push(span);
-  });
-  return map;
+const ROLE_TO_CATEGORY = {
+  Wardrobe: 'wardrobe',
+  Appearance: 'appearance',
+  Lighting: 'lighting',
+  TimeOfDay: 'timeOfDay',
+  CameraMove: 'cameraMove',
+  Framing: 'framing',
+  Environment: 'environment',
+  Color: 'color',
+  Technical: 'technical',
+  Descriptive: 'descriptive',
 };
 
-const safelyRelocateDisplaySpan = (displaySpan, canonical) => {
-  if (!displaySpan?.quote || !canonical) {
-    return null;
-  }
-
-  const quote = displaySpan.quote.normalize('NFC');
-  const canonicalText = canonical.normalized ?? '';
-  if (!quote || !canonicalText) {
-    return null;
-  }
-
-  const primary = relocateQuote({
-    text: canonicalText,
-    quote,
-    leftCtx: displaySpan.leftCtx ?? '',
-    rightCtx: displaySpan.rightCtx ?? '',
-  });
-
-  let location = primary;
-  if (!location) {
-    const fallbackIndex = canonicalText.indexOf(quote);
-    if (fallbackIndex !== -1) {
-      location = { start: fallbackIndex, end: fallbackIndex + quote.length };
-    }
-  }
-
-  if (!location) {
-    return null;
-  }
-
-  const { start, end } = location;
-  const startGrapheme = canonical.graphemeIndexForCodeUnit(start);
-  const endGrapheme = canonical.graphemeIndexForCodeUnit(end);
-  const leftCtxStart = Math.max(0, startGrapheme - CONTEXT_WINDOW_CHARS);
-  const rightCtxEnd = Math.min(canonical.length, endGrapheme + CONTEXT_WINDOW_CHARS);
-
-  return {
-    ...displaySpan,
-    id: displaySpan.id ?? `display_${start}_${end}`,
-    start,
-    end,
-    startGrapheme,
-    endGrapheme,
-    quote: canonical.sliceGraphemes(startGrapheme, endGrapheme),
-    leftCtx: canonical.sliceGraphemes(leftCtxStart, startGrapheme),
-    rightCtx: canonical.sliceGraphemes(endGrapheme, rightCtxEnd),
-  };
-};
-
-const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
-  if (!Array.isArray(rawSpans) || !displayText) {
+const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
+  if (!Array.isArray(spans) || !text) {
     return [];
   }
 
-  return rawSpans
+  return spans
     .map((span, index) => {
-      if (!span || typeof span !== 'object') return null;
+      if (!span || typeof span !== 'object') {
+        return null;
+      }
 
-      const category = span.category;
-      if (typeof category !== 'string' || category.trim() === '') return null;
-
+      const role = typeof span.role === 'string' ? span.role : 'Descriptive';
+      const category = ROLE_TO_CATEGORY[role] || 'descriptive';
+      
       const start = Number(span.start);
       const end = Number(span.end);
+
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
         return null;
       }
 
-      const clampedStart = Math.max(0, Math.min(displayText.length, start));
-      const clampedEnd = Math.max(0, Math.min(displayText.length, end));
-      if (clampedEnd <= clampedStart) return null;
+      const clampedStart = Math.max(0, Math.min(text.length, start));
+      const clampedEnd = Math.max(clampedStart, Math.min(text.length, end));
+      if (clampedEnd <= clampedStart) {
+        return null;
+      }
 
-      const slice = displayText.slice(clampedStart, clampedEnd);
-      if (!slice) return null;
+      const slice = text.slice(clampedStart, clampedEnd);
+      if (!slice) {
+        return null;
+      }
 
-      const leftCtx =
-        typeof span.leftContext === 'string'
-          ? span.leftContext
-          : displayText.slice(Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS), clampedStart);
-      const rightCtx =
-        typeof span.rightContext === 'string'
-          ? span.rightContext
-          : displayText.slice(clampedEnd, Math.min(displayText.length, clampedEnd + CONTEXT_WINDOW_CHARS));
+      const leftCtx = text.slice(
+        Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS),
+        clampedStart
+      );
+      const rightCtx = text.slice(
+        clampedEnd,
+        Math.min(text.length, clampedEnd + CONTEXT_WINDOW_CHARS)
+      );
 
       const startGrapheme = canonical?.graphemeIndexForCodeUnit
         ? canonical.graphemeIndexForCodeUnit(clampedStart)
@@ -1566,6 +1555,7 @@ const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
       return {
         id: span.id ?? `llm_${category}_${index}_${clampedStart}_${clampedEnd}`,
         category,
+        role,
         start: clampedStart,
         end: clampedEnd,
         displayStart: clampedStart,
@@ -1576,109 +1566,20 @@ const convertSemanticSpansToClient = (rawSpans, displayText, canonical) => {
         rightCtx,
         displayLeftCtx: leftCtx,
         displayRightCtx: rightCtx,
-        source: span.source ?? 'llm',
-        confidence: typeof span.confidence === 'number' ? span.confidence : undefined,
+        source: 'llm',
+        confidence:
+          typeof span.confidence === 'number' ? span.confidence : undefined,
         validatorPass: true,
         startGrapheme,
         endGrapheme,
-        version: span.version ?? LLM_PARSER_VERSION,
+        version: LLM_PARSER_VERSION,
       };
     })
-    .filter(Boolean);
-};
-
-const mergeSemanticAndLegacySpans = ({ llmSpans, legacySpans }) => {
-  const semantic = Array.isArray(llmSpans) ? llmSpans : [];
-  const legacy = Array.isArray(legacySpans) ? legacySpans : [];
-
-  if (semantic.length === 0) {
-    return legacy;
-  }
-
-  const semanticCategories = new Set(semantic.map((span) => span.category));
-  const fallbackLegacy = legacy.filter((span) => !semanticCategories.has(span.category));
-
-  return [...semantic, ...fallbackLegacy].sort((a, b) => {
-    const aStart = Number(a.displayStart ?? a.start ?? 0);
-    const bStart = Number(b.displayStart ?? b.start ?? 0);
-    if (aStart !== bStart) return aStart - bStart;
-    const aLen = Number((a.displayEnd ?? a.end ?? 0) - (a.displayStart ?? a.start ?? 0));
-    const bLen = Number((b.displayEnd ?? b.end ?? 0) - (b.displayStart ?? b.start ?? 0));
-    return aLen - bLen;
-  });
-};
-
-const combineDisplayAndSourceSpans = ({
-  sourceSpans,
-  displaySpans,
-  canonical,
-}) => {
-  if (!Array.isArray(displaySpans) || !displaySpans.length) {
-    return Array.isArray(sourceSpans) ? [...sourceSpans] : [];
-  }
-
-  const combined = [];
-  const sourceByKey = buildSpanQueue(sourceSpans ?? [], createSpanKey);
-  const sourceByQuote = buildSpanQueue(sourceSpans ?? [], createQuoteKey);
-  const usedSourceIds = new Set();
-
-  const takeFromQueue = (map, key) => {
-    if (!key) return null;
-    const queue = map.get(key);
-    if (!queue || !queue.length) return null;
-    while (queue.length) {
-      const candidate = queue.shift();
-      if (candidate && !usedSourceIds.has(candidate.id)) {
-        return candidate;
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.start === b.start) {
+        return a.end - b.end;
       }
-    }
-    return null;
-  };
-
-  displaySpans.forEach((displaySpan) => {
-    let matched = takeFromQueue(sourceByKey, createSpanKey(displaySpan));
-
-    if (!matched) {
-      matched = takeFromQueue(sourceByQuote, createQuoteKey(displaySpan));
-    }
-
-    if (!matched) {
-      const relocated = safelyRelocateDisplaySpan(displaySpan, canonical);
-      if (relocated) {
-        combined.push({
-          ...relocated,
-          displayStart: displaySpan.start,
-          displayEnd: displaySpan.end,
-          displayQuote: displaySpan.quote,
-          displayLeftCtx: displaySpan.leftCtx,
-          displayRightCtx: displaySpan.rightCtx,
-        });
-      }
-      return;
-    }
-
-    usedSourceIds.add(matched.id);
-    combined.push({
-      ...matched,
-      displayStart: displaySpan.start,
-      displayEnd: displaySpan.end,
-      displayQuote: displaySpan.quote,
-      displayLeftCtx: displaySpan.leftCtx,
-      displayRightCtx: displaySpan.rightCtx,
+      return a.start - b.start;
     });
-  });
-
-  (sourceSpans ?? []).forEach((span) => {
-    if (usedSourceIds.has(span.id)) return;
-    combined.push({
-      ...span,
-      displayStart: span.start,
-      displayEnd: span.end,
-      displayQuote: span.quote,
-      displayLeftCtx: span.leftCtx,
-      displayRightCtx: span.rightCtx,
-    });
-  });
-
-  return combined;
 };

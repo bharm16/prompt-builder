@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Sparkles,
   Search,
@@ -16,20 +16,24 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, getPromptByUuid } from '../../config/firebase';
+import { setSentryUser } from '../../config/sentry';
 import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
 import PromptImprovementForm from '../../PromptImprovementForm';
-import VideoConceptBuilder from '../../components/VideoConceptBuilder';
+import WizardVideoBuilder from '../../components/wizard/WizardVideoBuilder';
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
 import DebugButton from '../../components/DebugButton';
+import { captureException } from '../../config/sentry';
 import { usePromptOptimizer } from '../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../hooks/usePromptHistory';
 import { PromptContext } from '../../utils/PromptContext';
 import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
 import { applySuggestionToPrompt } from './utils/applySuggestion.js';
+import { updatePromptHighlightsInFirestore } from '../../config/firebase';
+import { createHighlightSignature } from './hooks/useSpanLabeling.js';
 
 function PromptOptimizerContent() {
   // Force light mode immediately
@@ -96,30 +100,200 @@ function PromptOptimizerContent() {
   const [conceptElements, setConceptElements] = useState(null);
   const [promptContext, setPromptContext] = useState(null); // NEW: Store PromptContext
   const [currentPromptUuid, setCurrentPromptUuid] = useState(null);
+  const [currentPromptDocId, setCurrentPromptDocId] = useState(null);
+  const [initialHighlights, setInitialHighlights] = useState(null);
+  const [initialHighlightsVersion, setInitialHighlightsVersion] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
-  // Debug: Track promptContext changes
-  useEffect(() => {
-    console.log('[DEBUG] PromptContext state updated:', {
-      exists: !!promptContext,
-      hasContext: promptContext?.hasContext ? promptContext.hasContext() : false,
-      elements: promptContext?.elements,
-      timestamp: new Date().toISOString()
-    });
-  }, [promptContext]);
+  const latestHighlightRef = useRef(null);
+  const persistedSignatureRef = useRef(null);
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const isApplyingHistoryRef = useRef(false);
+
+  const applyInitialHighlightSnapshot = useCallback((snapshot, { bumpVersion = false, markPersisted = false } = {}) => {
+    setInitialHighlights(snapshot ?? null);
+    if (bumpVersion) {
+      setInitialHighlightsVersion((prev) => prev + 1);
+    }
+    latestHighlightRef.current = snapshot ?? null;
+    if (markPersisted) {
+      persistedSignatureRef.current = snapshot?.signature ?? null;
+    }
+  }, []);
+
+  const resetEditStacks = useCallback(() => {
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
+  }, []);
 
   // Refs
   const debounceTimerRef = useRef(null);
   const lastRequestRef = useRef(null);
   const lastAppliedKeyRef = useRef(null);
+  const skipLoadFromUrlRef = useRef(false);
 
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode);
   const promptHistory = usePromptHistory(user);
 
+  const setDisplayedPromptSilently = useCallback((text) => {
+    isApplyingHistoryRef.current = true;
+    promptOptimizer.setDisplayedPrompt(text);
+    setTimeout(() => {
+      isApplyingHistoryRef.current = false;
+    }, 0);
+  }, [promptOptimizer]);
+
+  // Stabilize promptContext to prevent infinite loops - only change when actual data changes
+  const stablePromptContext = useMemo(() => {
+    if (!promptContext) return null;
+    return promptContext;
+  }, [
+    promptContext?.elements?.subject,
+    promptContext?.elements?.action,
+    promptContext?.elements?.location,
+    promptContext?.elements?.time,
+    promptContext?.elements?.mood,
+    promptContext?.elements?.style,
+    promptContext?.elements?.event,
+    promptContext?.metadata?.format,
+    promptContext?.version,
+  ]);
+
+  const handleHighlightsPersist = useCallback(async (result) => {
+    if (!result || !Array.isArray(result.spans) || !result.signature) {
+      return;
+    }
+
+    const snapshot = {
+      spans: result.spans,
+      meta: result.meta ?? null,
+      signature: result.signature,
+      cacheId: result.cacheId ?? (currentPromptUuid ? String(currentPromptUuid) : null),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const activeCacheId = currentPromptUuid ? String(currentPromptUuid) : null;
+    if (activeCacheId && snapshot.cacheId && snapshot.cacheId !== activeCacheId) {
+      return;
+    }
+
+    latestHighlightRef.current = snapshot;
+    applyInitialHighlightSnapshot(snapshot, { bumpVersion: false, markPersisted: false });
+
+    if (!currentPromptUuid) {
+      return;
+    }
+
+    if (result.source === 'network' || result.source === 'cache-fallback') {
+      promptHistory.updateEntryHighlight(currentPromptUuid, snapshot);
+    }
+
+    if (!user || !currentPromptDocId || result.source !== 'network') {
+      return;
+    }
+
+    if (persistedSignatureRef.current === result.signature) {
+      return;
+    }
+
+    try {
+      await updatePromptHighlightsInFirestore(currentPromptDocId, {
+        highlightCache: snapshot,
+        versionEntry: {
+          versionId: `v-${Date.now()}`,
+          signature: result.signature,
+          spansCount: result.spans.length,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      persistedSignatureRef.current = result.signature;
+    } catch (error) {
+      console.error('Failed to persist highlight snapshot:', error);
+    }
+  }, [applyInitialHighlightSnapshot, currentPromptDocId, currentPromptUuid, promptHistory, user]);
+
+  const handleDisplayedPromptChange = useCallback(
+    (newText) => {
+      const currentText = promptOptimizer.displayedPrompt;
+      if (isApplyingHistoryRef.current) {
+        isApplyingHistoryRef.current = false;
+        promptOptimizer.setDisplayedPrompt(newText);
+        return;
+      }
+
+      if (currentText !== newText) {
+        undoStackRef.current = [...undoStackRef.current, {
+          text: currentText,
+          highlight: latestHighlightRef.current,
+        }].slice(-100);
+        redoStackRef.current = [];
+        setCanUndo(true);
+        setCanRedo(false);
+      }
+
+      promptOptimizer.setDisplayedPrompt(newText);
+    },
+    [promptOptimizer]
+  );
+
+  const handleUndo = useCallback(() => {
+    if (!undoStackRef.current.length) {
+      return;
+    }
+
+    const previous = undoStackRef.current.pop();
+    const currentSnapshot = {
+      text: promptOptimizer.displayedPrompt,
+      highlight: latestHighlightRef.current,
+    };
+    redoStackRef.current = [...redoStackRef.current, currentSnapshot].slice(-100);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+
+    isApplyingHistoryRef.current = true;
+    setDisplayedPromptSilently(previous.text);
+    promptOptimizer.setOptimizedPrompt(previous.text);
+    applyInitialHighlightSnapshot(previous.highlight ?? null, { bumpVersion: true, markPersisted: false });
+    setTimeout(() => {
+      isApplyingHistoryRef.current = false;
+    }, 0);
+  }, [applyInitialHighlightSnapshot, promptOptimizer, setDisplayedPromptSilently]);
+
+  const handleRedo = useCallback(() => {
+    if (!redoStackRef.current.length) {
+      return;
+    }
+
+    const next = redoStackRef.current.pop();
+    undoStackRef.current = [...undoStackRef.current, {
+      text: promptOptimizer.displayedPrompt,
+      highlight: latestHighlightRef.current,
+    }].slice(-100);
+
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+
+    isApplyingHistoryRef.current = true;
+    setDisplayedPromptSilently(next.text);
+    promptOptimizer.setOptimizedPrompt(next.text);
+    applyInitialHighlightSnapshot(next.highlight ?? null, { bumpVersion: true, markPersisted: false });
+    setTimeout(() => {
+      isApplyingHistoryRef.current = false;
+    }, 0);
+  }, [applyInitialHighlightSnapshot, promptOptimizer, setDisplayedPromptSilently]);
+
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      
+      // Update Sentry user context when auth state changes
+      setSentryUser(currentUser);
     });
     return () => unsubscribe();
   }, []);
@@ -127,47 +301,79 @@ function PromptOptimizerContent() {
   // Load prompt from URL parameter if present
   useEffect(() => {
     const loadPromptFromUrl = async () => {
-      if (uuid && !currentPromptUuid) {
-        try {
-          const promptData = await getPromptByUuid(uuid);
-          if (promptData) {
-            promptOptimizer.setSkipAnimation(true);
-            promptOptimizer.setInputPrompt(promptData.input);
-            promptOptimizer.setOptimizedPrompt(promptData.output);
-            promptOptimizer.setDisplayedPrompt(promptData.output);
-            setSelectedMode(promptData.mode || 'optimize');
-            setCurrentPromptUuid(promptData.uuid);
-            setShowResults(true);
+      if (!uuid) {
+        // Don't reset the flag here either - only reset it explicitly in loadFromHistory
+        return;
+      }
 
-            if (promptData.brainstormContext) {
-              try {
-                const contextData =
-                  typeof promptData.brainstormContext === 'string'
-                    ? JSON.parse(promptData.brainstormContext)
-                    : promptData.brainstormContext;
-                const restoredContext = PromptContext.fromJSON(contextData);
-                setPromptContext(restoredContext);
-              } catch (contextError) {
-                console.error('Failed to restore prompt context from shared link:', contextError);
-                setPromptContext(null);
+      // Skip if we're already on this prompt or if we explicitly set the skip flag
+      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
+        // Don't reset the flag here - let the timeout in loadFromHistory handle it
+        // Resetting it here causes the effect to run again after navigation completes
+        return;
+      }
+
+      try {
+        const promptData = await getPromptByUuid(uuid);
+        if (promptData) {
+          promptOptimizer.setSkipAnimation(true);
+          promptOptimizer.setInputPrompt(promptData.input);
+          promptOptimizer.setOptimizedPrompt(promptData.output);
+          setDisplayedPromptSilently(promptData.output);
+          setSelectedMode(promptData.mode || 'optimize');
+          setCurrentPromptUuid(promptData.uuid);
+          setCurrentPromptDocId(promptData.id || null);
+          setShowResults(true);
+          const preloadHighlight = promptData.highlightCache
+            ? {
+                ...promptData.highlightCache,
+                signature:
+                  promptData.highlightCache.signature ?? createHighlightSignature(promptData.output ?? ''),
               }
-            } else {
+            : null;
+          applyInitialHighlightSnapshot(preloadHighlight, { bumpVersion: true, markPersisted: true });
+          resetEditStacks();
+
+          if (promptData.brainstormContext) {
+            try {
+              const contextData =
+                typeof promptData.brainstormContext === 'string'
+                  ? JSON.parse(promptData.brainstormContext)
+                  : promptData.brainstormContext;
+              const restoredContext = PromptContext.fromJSON(contextData);
+              setPromptContext(restoredContext);
+            } catch (contextError) {
+              console.error('Failed to restore prompt context from shared link:', contextError);
               setPromptContext(null);
             }
           } else {
-            toast.error('Prompt not found');
-            navigate('/', { replace: true });
+            setPromptContext(null);
           }
-        } catch (error) {
-          console.error('Error loading prompt from URL:', error);
-          toast.error('Failed to load prompt');
+        } else {
+          toast.error('Prompt not found');
           navigate('/', { replace: true });
         }
+      } catch (error) {
+        console.error('Error loading prompt from URL:', error);
+        toast.error('Failed to load prompt');
+        navigate('/', { replace: true });
       }
     };
 
     loadPromptFromUrl();
-  }, [uuid, currentPromptUuid, navigate, toast, promptOptimizer, setSelectedMode]);
+  }, [
+    uuid,
+    currentPromptUuid,
+    navigate,
+    toast,
+    promptOptimizer,
+    setSelectedMode,
+    setDisplayedPromptSilently,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    setCurrentPromptDocId,
+  ]);
+
 
   // Cycle through AI names
   useEffect(() => {
@@ -180,22 +386,22 @@ function PromptOptimizerContent() {
   // Typewriter animation for results
   useEffect(() => {
     if (!promptOptimizer.optimizedPrompt || !showResults) {
-      promptOptimizer.setDisplayedPrompt('');
+      setDisplayedPromptSilently('');
       return;
     }
 
     if (promptOptimizer.skipAnimation) {
-      promptOptimizer.setDisplayedPrompt(promptOptimizer.optimizedPrompt);
+      setDisplayedPromptSilently(promptOptimizer.optimizedPrompt);
       return;
     }
 
-    promptOptimizer.setDisplayedPrompt('');
+    setDisplayedPromptSilently('');
     let currentIndex = 0;
 
     const intervalId = setInterval(() => {
       if (currentIndex <= promptOptimizer.optimizedPrompt.length) {
         const text = promptOptimizer.optimizedPrompt.slice(0, currentIndex);
-        promptOptimizer.setDisplayedPrompt(text);
+        setDisplayedPromptSilently(text);
         currentIndex += 3;
       } else {
         clearInterval(intervalId);
@@ -203,7 +409,7 @@ function PromptOptimizerContent() {
     }, 5);
 
     return () => clearInterval(intervalId);
-  }, [promptOptimizer.optimizedPrompt, showResults, promptOptimizer.skipAnimation]);
+  }, [promptOptimizer.optimizedPrompt, showResults, promptOptimizer.skipAnimation, setDisplayedPromptSilently]);
 
   // Handle optimization
   const handleOptimize = async (promptToOptimize, context) => {
@@ -236,18 +442,26 @@ function PromptOptimizerContent() {
     const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
     console.log('optimize result:', result);
     if (result) {
-      const uuid = await promptHistory.saveToHistory(
+      const saveResult = await promptHistory.saveToHistory(
         prompt,
         result.optimized,
         result.score,
         selectedMode,
         serializedContext
       );
-      setCurrentPromptUuid(uuid);
-      setShowResults(true);
-      setShowHistory(true);
-      if (uuid) {
-        navigate(`/prompt/${uuid}`, { replace: true });
+
+      if (saveResult?.uuid) {
+        skipLoadFromUrlRef.current = true; // Prevent URL effect from re-loading
+        setCurrentPromptUuid(saveResult.uuid);
+        setCurrentPromptDocId(saveResult.id ?? null);
+        setShowResults(true);
+        setShowHistory(true);
+        applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
+        resetEditStacks();
+        persistedSignatureRef.current = null;
+        if (saveResult.uuid) {
+          navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+        }
       }
     }
   };
@@ -298,19 +512,28 @@ function PromptOptimizerContent() {
       // Pass brainstormContext to optimize function
       const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
       if (result) {
-        const uuid = await promptHistory.saveToHistory(
+        const saveResult = await promptHistory.saveToHistory(
           finalConcept,
           result.optimized,
           result.score,
           selectedMode,
           serializedContext
         );
-        setCurrentPromptUuid(uuid);
-        setShowResults(true);
-        setShowHistory(true);
-        toast.success('Video prompt generated successfully!');
-        if (uuid) {
-          navigate(`/prompt/${uuid}`, { replace: true });
+        if (saveResult?.uuid) {
+          // Skip animation and set displayed prompt immediately
+          promptOptimizer.setSkipAnimation(true);
+          setDisplayedPromptSilently(result.optimized);
+          
+          skipLoadFromUrlRef.current = true; // Prevent URL effect from re-loading
+          setCurrentPromptUuid(saveResult.uuid);
+          setCurrentPromptDocId(saveResult.id ?? null);
+          setShowResults(true);
+          setShowHistory(true);
+          toast.success('Video prompt generated successfully!');
+          applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
+          resetEditStacks();
+          persistedSignatureRef.current = null;
+          navigate(`/prompt/${saveResult.uuid}`, { replace: true });
         }
       }
     }, 100);
@@ -323,24 +546,63 @@ function PromptOptimizerContent() {
 
   // Handle create new
   const handleCreateNew = () => {
+    skipLoadFromUrlRef.current = true;
     promptOptimizer.resetPrompt();
     setShowResults(false);
     setSuggestionsData(null);
     setConceptElements(null);
     setPromptContext(null); // Clear context
     setCurrentPromptUuid(null);
+    setCurrentPromptDocId(null);
+    applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
+    persistedSignatureRef.current = null;
+    resetEditStacks();
     navigate('/', { replace: true });
   };
 
   // Load from history
   const loadFromHistory = (entry) => {
+    console.log('[History] Loading entry:', {
+      id: entry.id,
+      mode: entry.mode,
+      hasHighlightCache: !!entry.highlightCache,
+      spansCount: entry.highlightCache?.spans?.length || 0,
+      hasSignature: !!entry.highlightCache?.signature,
+    });
+    
+    // Set skip flag to prevent URL loader from interfering
+    skipLoadFromUrlRef.current = true;
+    
+    // Set UUID FIRST before any other updates to prevent race conditions
+    // This ensures currentPromptUuid matches the URL before navigation
+    setCurrentPromptUuid(entry.uuid || null);
+    setCurrentPromptDocId(entry.id || null);
+    
     promptOptimizer.setSkipAnimation(true);
     promptOptimizer.setInputPrompt(entry.input);
     promptOptimizer.setOptimizedPrompt(entry.output);
-    promptOptimizer.setDisplayedPrompt(entry.output);
+    setDisplayedPromptSilently(entry.output);
     setSelectedMode(entry.mode);
-    setCurrentPromptUuid(entry.uuid || null);
     setShowResults(true);
+    const preloadedHighlight = entry.highlightCache
+      ? {
+          ...entry.highlightCache,
+          signature:
+            entry.highlightCache.signature ?? createHighlightSignature(entry.output ?? ''),
+        }
+      : null;
+    
+    if (preloadedHighlight) {
+      console.log('[History] Applying highlights:', {
+        spansCount: preloadedHighlight.spans?.length,
+        signature: preloadedHighlight.signature?.slice(0, 8),
+      });
+    } else {
+      console.log('[History] No highlights to apply');
+    }
+    
+    applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
+    resetEditStacks();
 
     if (entry.brainstormContext) {
       try {
@@ -358,10 +620,22 @@ function PromptOptimizerContent() {
       setPromptContext(null);
     }
 
-    // Update URL if there's a UUID
+    // Navigate to update URL - skipLoadFromUrlRef is already set above
+    // to prevent the URL change from triggering the loadPromptFromUrl effect
     if (entry.uuid) {
       navigate(`/prompt/${entry.uuid}`, { replace: true });
+    } else {
+      // Navigate to root to clear the URL when no UUID exists
+      navigate('/', { replace: true });
     }
+    
+    // Reset skip flag after navigation and render cycle completes
+    // Use requestAnimationFrame twice to ensure we're past all React updates
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        skipLoadFromUrlRef.current = false;
+      });
+    });
   };
 
   // Fetch enhancement suggestions
@@ -502,15 +776,31 @@ function PromptOptimizerContent() {
               newValue: suggestionText,
             });
 
+            undoStackRef.current = [...undoStackRef.current, {
+              text: promptOptimizer.displayedPrompt,
+              highlight: latestHighlightRef.current,
+            }].slice(-100);
+            redoStackRef.current = [];
+            setCanUndo(true);
+            setCanRedo(false);
+
             promptOptimizer.setOptimizedPrompt(finalPrompt);
-            promptOptimizer.setDisplayedPrompt(finalPrompt);
+            setDisplayedPromptSilently(finalPrompt);
             lastAppliedKeyRef.current = appliedKey || idempotencyKey || null;
             closeSuggestions();
             toast.success('Suggestion applied');
           } catch (error) {
             console.error('Error detecting scene change:', error);
+            undoStackRef.current = [...undoStackRef.current, {
+              text: promptOptimizer.displayedPrompt,
+              highlight: latestHighlightRef.current,
+            }].slice(-100);
+            redoStackRef.current = [];
+            setCanUndo(true);
+            setCanRedo(false);
+
             promptOptimizer.setOptimizedPrompt(updatedPrompt);
-            promptOptimizer.setDisplayedPrompt(updatedPrompt);
+            setDisplayedPromptSilently(updatedPrompt);
             lastAppliedKeyRef.current = appliedKey || idempotencyKey || null;
             closeSuggestions();
             toast.success('Suggestion applied');
@@ -714,7 +1004,7 @@ function PromptOptimizerContent() {
         onClose={() => setShowShortcuts(false)}
       />
 
-      {/* Creative Brainstorm Modal */}
+      {/* Creative Brainstorm Modal - Wizard UI */}
       {showBrainstorm && (
         <div className="modal-backdrop" onClick={handleSkipBrainstorm}>
           <div
@@ -722,23 +1012,21 @@ function PromptOptimizerContent() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="brainstorm-title"
+            aria-labelledby="wizard-title"
           >
             <div className="modal-content-xl max-h-[90vh] overflow-y-auto">
               <button
                 onClick={handleSkipBrainstorm}
                 className="absolute right-4 top-4 z-10 rounded-lg p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                aria-label="Close concept builder"
+                aria-label="Close wizard"
                 title="Close (Esc)"
               >
                 <X className="h-6 w-6" />
               </button>
-              <div className="p-6">
-                <VideoConceptBuilder
-                  onConceptComplete={handleConceptComplete}
-                  initialConcept={promptOptimizer.inputPrompt}
-                />
-              </div>
+              <WizardVideoBuilder
+                onConceptComplete={handleConceptComplete}
+                initialConcept={promptOptimizer.inputPrompt}
+              />
             </div>
           </div>
         </div>
@@ -1076,6 +1364,11 @@ function PromptOptimizerContent() {
         {/* Results Section - Canvas Style */}
         {showResults && promptOptimizer.displayedPrompt && !promptOptimizer.isProcessing && (
           <PromptCanvas
+            key={
+              currentPromptUuid
+                ? `prompt-${currentPromptUuid}`
+                : `prompt-${createHighlightSignature(promptOptimizer.displayedPrompt ?? '')}`
+            }
             inputPrompt={promptOptimizer.inputPrompt}
             displayedPrompt={promptOptimizer.displayedPrompt}
             optimizedPrompt={promptOptimizer.optimizedPrompt}
@@ -1083,12 +1376,19 @@ function PromptOptimizerContent() {
             selectedMode={selectedMode}
             currentMode={currentMode}
             promptUuid={currentPromptUuid}
-            promptContext={promptContext}
-            onDisplayedPromptChange={promptOptimizer.setDisplayedPrompt}
+            promptContext={stablePromptContext}
+            onDisplayedPromptChange={handleDisplayedPromptChange}
             onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}
             onFetchSuggestions={fetchEnhancementSuggestions}
             onCreateNew={handleCreateNew}
+            initialHighlights={initialHighlights}
+            initialHighlightsVersion={initialHighlightsVersion}
+            onHighlightsPersist={handleHighlightsPersist}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
         )}
 
@@ -1105,6 +1405,7 @@ function PromptOptimizerContent() {
         )}
       </main>
 
+
       {/* Debug Button - Show in development or with ?debug=true */}
       {(process.env.NODE_ENV === 'development' ||
         new URLSearchParams(window.location.search).get('debug') === 'true') && (
@@ -1113,7 +1414,7 @@ function PromptOptimizerContent() {
           displayedPrompt={promptOptimizer.displayedPrompt}
           optimizedPrompt={promptOptimizer.optimizedPrompt}
           selectedMode={selectedMode}
-          promptContext={promptContext}
+          promptContext={stablePromptContext}
         />
       )}
     </div>

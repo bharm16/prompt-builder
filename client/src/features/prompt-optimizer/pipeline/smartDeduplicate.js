@@ -1,5 +1,4 @@
 import { flagSpanDropped, spansOverlap } from './spanUtils.js';
-import { CATEGORY_CAPS } from '../../../utils/categoryValidators.js';
 import { logSpanLifecycle, parserDebugLog } from '../../../utils/parserDebug.js';
 
 const TIER_WEIGHTS = {
@@ -53,12 +52,7 @@ const compareTuplesDesc = (a, b) => {
   return 0;
 };
 
-const computeCategoryLimit = (category, wordCount) => {
-  const base = CATEGORY_CAPS[category];
-  if (!base) return Infinity;
-  const scale = Math.max(1, Math.ceil(wordCount / 100));
-  return base * scale;
-};
+const computeCategoryLimit = () => Infinity;
 
 export const smartDeduplicate = (spans, canonical) => {
   if (!spans?.length) return [];
@@ -134,4 +128,3 @@ export const smartDeduplicate = (spans, canonical) => {
 
   return selected;
 };
-

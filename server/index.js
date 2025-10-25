@@ -1,3 +1,6 @@
+// IMPORTANT: Import instrument.mjs FIRST, before any other imports
+import './instrument.mjs';
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -5,6 +8,10 @@ import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import compression from 'compression';
 import { validateEnv } from './src/utils/validateEnv.js';
+import * as Sentry from '@sentry/node';
+
+// Import Sentry config
+import { initSentry, sentryErrorHandler } from './src/config/sentry.js';
 
 // Import infrastructure
 import { logger } from './src/infrastructure/Logger.js';
@@ -31,6 +38,7 @@ import { apiAuthMiddleware } from './src/middleware/apiAuth.js';
 import { createAPIRoutes } from './src/routes/api.routes.js';
 import { createHealthRoutes } from './src/routes/health.routes.js';
 import { roleClassifyRoute } from './src/routes/roleClassifyRoute.js';
+import { labelSpansRoute } from './src/routes/labelSpansRoute.js';
 
 // Load environment variables
 dotenv.config();
@@ -87,6 +95,7 @@ logger.info('All services initialized successfully');
 // ============================================================================
 // Middleware Stack
 // ============================================================================
+// Note: Sentry is initialized in instrument.mjs (imported at the top)
 
 // Request ID middleware FIRST so all responses include X-Request-Id
 app.use(requestIdMiddleware);
@@ -303,6 +312,7 @@ const apiRoutes = createAPIRoutes({
   textCategorizerService,
 });
 
+app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
 app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
 app.use('/api', apiAuthMiddleware, apiRoutes);
 
@@ -313,6 +323,17 @@ app.use((req, res) => {
     path: req.path,
     requestId: req.id,
   });
+});
+
+// The error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+// Optional fallthrough error handler
+app.use(function onError(err, req, res, next) {
+  // The error id is attached to `res.sentry` to be returned
+  // and optionally displayed to the user for support.
+  res.statusCode = 500;
+  res.end(res.sentry + "\n");
 });
 
 // Error handling middleware (must be last)
