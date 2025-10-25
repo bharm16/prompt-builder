@@ -21,7 +21,7 @@ import { PromptInput } from './PromptInput';
 import { PromptCanvas } from './PromptCanvas';
 import { HistorySidebar } from '../history/HistorySidebar';
 import PromptImprovementForm from '../../PromptImprovementForm';
-import VideoConceptBuilder from '../../components/VideoConceptBuilder';
+import WizardVideoBuilder from '../../components/wizard/WizardVideoBuilder';
 import { ToastProvider, useToast } from '../../components/Toast';
 import Settings, { useSettings } from '../../components/Settings';
 import KeyboardShortcuts, { useKeyboardShortcuts } from '../../components/KeyboardShortcuts';
@@ -1004,7 +1004,7 @@ function PromptOptimizerContent() {
         onClose={() => setShowShortcuts(false)}
       />
 
-      {/* Creative Brainstorm Modal */}
+      {/* Creative Brainstorm Modal - Wizard UI */}
       {showBrainstorm && (
         <div className="modal-backdrop" onClick={handleSkipBrainstorm}>
           <div
@@ -1012,23 +1012,21 @@ function PromptOptimizerContent() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="brainstorm-title"
+            aria-labelledby="wizard-title"
           >
             <div className="modal-content-xl max-h-[90vh] overflow-y-auto">
               <button
                 onClick={handleSkipBrainstorm}
                 className="absolute right-4 top-4 z-10 rounded-lg p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                aria-label="Close concept builder"
+                aria-label="Close wizard"
                 title="Close (Esc)"
               >
                 <X className="h-6 w-6" />
               </button>
-              <div className="p-6">
-                <VideoConceptBuilder
-                  onConceptComplete={handleConceptComplete}
-                  initialConcept={promptOptimizer.inputPrompt}
-                />
-              </div>
+              <WizardVideoBuilder
+                onConceptComplete={handleConceptComplete}
+                initialConcept={promptOptimizer.inputPrompt}
+              />
             </div>
           </div>
         </div>
