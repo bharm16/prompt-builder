@@ -1004,31 +1004,26 @@ function PromptOptimizerContent() {
         onClose={() => setShowShortcuts(false)}
       />
 
-      {/* Creative Brainstorm Modal - Wizard UI */}
+      {/* Creative Brainstorm - Full Page Wizard UI */}
       {showBrainstorm && (
-        <div className="modal-backdrop" onClick={handleSkipBrainstorm}>
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="wizard-title"
+        <div
+          className="fixed inset-0 z-[100] bg-gray-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="wizard-title"
+        >
+          <button
+            onClick={handleSkipBrainstorm}
+            className="fixed right-6 top-6 z-[110] rounded-lg p-2 text-gray-500 hover:text-gray-700 hover:bg-white hover:shadow-md transition-all duration-200"
+            aria-label="Close wizard"
+            title="Close (Esc)"
           >
-            <div className="modal-content-xl max-h-[90vh] overflow-y-auto">
-              <button
-                onClick={handleSkipBrainstorm}
-                className="absolute right-4 top-4 z-10 rounded-lg p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                aria-label="Close wizard"
-                title="Close (Esc)"
-              >
-                <X className="h-6 w-6" />
-              </button>
-              <WizardVideoBuilder
-                onConceptComplete={handleConceptComplete}
-                initialConcept={promptOptimizer.inputPrompt}
-              />
-            </div>
-          </div>
+            <X className="h-6 w-6" />
+          </button>
+          <WizardVideoBuilder
+            onConceptComplete={handleConceptComplete}
+            initialConcept={promptOptimizer.inputPrompt}
+          />
         </div>
       )}
 
@@ -1060,45 +1055,50 @@ function PromptOptimizerContent() {
         </div>
       )}
 
-      {/* Top Action Buttons */}
-      <div className="fixed left-6 top-6 z-fixed flex items-center gap-2">
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="btn-icon-secondary shadow-lg hover-scale ripple"
-          aria-label={showHistory ? 'Hide history sidebar' : 'Show history sidebar'}
-          aria-expanded={showHistory}
-        >
-          <PanelLeft className="h-5 w-5" />
-        </button>
-        <button
-          onClick={handleCreateNew}
-          className="btn-icon-secondary shadow-lg hover-scale ripple"
-          aria-label="Create new prompt"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-      </div>
+      {/* Top Action Buttons - Hidden when wizard is open */}
+      {!showBrainstorm && (
+        <div className="fixed left-6 top-6 z-fixed flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="btn-icon-secondary shadow-lg hover-scale ripple"
+            aria-label={showHistory ? 'Hide history sidebar' : 'Show history sidebar'}
+            aria-expanded={showHistory}
+          >
+            <PanelLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={handleCreateNew}
+            className="btn-icon-secondary shadow-lg hover-scale ripple"
+            aria-label="Create new prompt"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+      )}
 
-      {/* History Sidebar */}
-      <HistorySidebar
-        showHistory={showHistory}
-        user={user}
-        history={promptHistory.history}
-        filteredHistory={promptHistory.filteredHistory}
-        isLoadingHistory={promptHistory.isLoadingHistory}
-        searchQuery={promptHistory.searchQuery}
-        onSearchChange={promptHistory.setSearchQuery}
-        onLoadFromHistory={loadFromHistory}
-        onCreateNew={handleCreateNew}
-        modes={modes}
-      />
+      {/* History Sidebar - Hidden when wizard is open */}
+      {!showBrainstorm && (
+        <HistorySidebar
+          showHistory={showHistory}
+          user={user}
+          history={promptHistory.history}
+          filteredHistory={promptHistory.filteredHistory}
+          isLoadingHistory={promptHistory.isLoadingHistory}
+          searchQuery={promptHistory.searchQuery}
+          onSearchChange={promptHistory.setSearchQuery}
+          onLoadFromHistory={loadFromHistory}
+          onCreateNew={handleCreateNew}
+          modes={modes}
+        />
+      )}
 
-      {/* Main Content */}
-      <main
-        id="main-content"
-        className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
-      >
-        {/* Hero Section with Input */}
+      {/* Main Content - Hidden when wizard is open */}
+      {!showBrainstorm && (
+        <main
+          id="main-content"
+          className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
+        >
+          {/* Hero Section with Input */}
         {!showResults && (
           <>
             {promptOptimizer.isProcessing ? (
@@ -1392,19 +1392,19 @@ function PromptOptimizerContent() {
           />
         )}
 
-        {/* Privacy Policy Footer - Only show on home page */}
-        {!showResults && (
-          <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-            <a
-              href="/privacy-policy"
-              className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-            >
-              Privacy Policy
-            </a>
-          </footer>
-        )}
-      </main>
-
+          {/* Privacy Policy Footer - Only show on home page */}
+          {!showResults && (
+            <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+              <a
+                href="/privacy-policy"
+                className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                Privacy Policy
+              </a>
+            </footer>
+          )}
+        </main>
+      )}
 
       {/* Debug Button - Show in development or with ?debug=true */}
       {(process.env.NODE_ENV === 'development' ||

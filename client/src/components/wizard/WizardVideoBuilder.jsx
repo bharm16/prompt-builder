@@ -439,7 +439,7 @@ const WizardVideoBuilder = ({
 
   // Render desktop view
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       {/* Progress Indicator */}
       <WizardProgress
         currentStep={currentStep}
@@ -451,7 +451,7 @@ const WizardVideoBuilder = ({
       />
 
       {/* Step Content */}
-      <div className="pb-8">
+      <div className="flex-1 overflow-y-auto pb-8">
         {currentStep === 0 && (
           <StepCreativeBrief
             formData={formData}

@@ -99,7 +99,7 @@ const SummaryReview = ({
   ];
 
   return (
-    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-4xl mx-auto px-8 py-8'}`}>
+    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-5xl mx-auto px-8 py-8'}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center space-x-3 mb-3">
