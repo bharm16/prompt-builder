@@ -35,3 +35,47 @@ firebase-service-account.json
 # Test artifacts
 playwright-report/
 test-results/
+coverage/
+.nyc_output/
+*.lcov
+
+# Build artifacts
+build/
+config/build/
+*.tsbuildinfo
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+tmp/
+
+# OS files
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Package manager
+*.tgz
+.yarn/
+.pnp.*
+.npm/
+
+# Debug
+.vscode-test/
+*.heapsnapshot
+*.cpuprofile
+
+# Misc
+.serverless/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
