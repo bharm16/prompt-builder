@@ -16,7 +16,7 @@ const WizardEntryPage = ({ onGetStarted }) => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 px-6 h-20 flex items-center justify-between">
+      <header className="absolute top-0 left-0 right-0 px-12 h-20 flex items-center justify-between gap-3">
         <div className="w-10 h-10 flex items-center justify-center">
           {/* Logo placeholder */}
           <svg className="w-8 h-8 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
@@ -29,21 +29,21 @@ const WizardEntryPage = ({ onGetStarted }) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-[1128px] mx-auto px-6 pt-32 pb-24">
-        <div className="grid grid-cols-12 gap-8">
+        <main className="flex-1 w-full max-w-[1920px] mx-auto p-10 flex items-center justify-center">
+          <div className="flex flex-row justify-center items-center gap-16">
 
-          {/* Left heading column (6/12) */}
-          <section className="col-span-12 md:col-span-6">
-            <h1 className="text-5xl md:text-6xl font-semibold text-[#222] leading-tight mb-6">
-              Creating a brilliant video prompt is easy.
-            </h1>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              We'll guide you through the process, from a simple idea to a detailed, ready-to-use prompt.
-            </p>
+          {/* Left heading column */}
+            <section className="flex-1 max-w-[568px]">
+              <h1 className="text-[56px] leading-[64px] tracking-[-0.02em] font-semibold text-[#222] mb-6">
+                Creating a brilliant video prompt is easy.
+              </h1>
+              <p className="text-[16px] leading-[24px] text-gray-600">
+                We'll guide you through the process, from a simple idea to a detailed, ready-to-use prompt.
+              </p>
           </section>
 
-          {/* Right steps column (6/12) */}
-          <section className="col-span-12 md:col-span-6 pt-5">
+          {/* Right steps column */}
+            <section className="flex-1 max-w-[568px]">
             <Step
               number={1}
               title="Define your Core Concept"
@@ -66,14 +66,14 @@ const WizardEntryPage = ({ onGetStarted }) => {
             />
           </section>
         </div>
-
-        {/* Reassurance text */}
-        <div className="mt-16 text-center">
-          <p className="text-sm text-gray-500 max-w-md mx-auto">
-            Don't worry, you can't get this wrong. We'll provide AI-powered suggestions to help you at every step.
-          </p>
-        </div>
       </main>
+
+      {/* Reassurance text */}
+      <div className="absolute bottom-24 left-0 right-0 text-center">
+        <p className="text-sm text-gray-500 max-w-md mx-auto">
+          Don't worry, you can't get this wrong. We'll provide AI-powered suggestions to help you at every step.
+        </p>
+      </div>
 
       {/* Bottom fixed bar */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
@@ -100,7 +100,7 @@ export default WizardEntryPage;
 // --- Helper Components ---
 
 function Divider() {
-  return <div className="my-6 h-px bg-gray-200" />;
+  return <div className="my-[24px] h-px bg-gray-200" />;
 }
 
 function Step({
@@ -110,7 +110,7 @@ function Step({
   illustrationVariant,
 }) {
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex items-start gap-[16px]">
       {/* Number */}
       <div className="w-6 text-base leading-6 font-medium text-[#222] pt-1">
         {number}
@@ -118,8 +118,8 @@ function Step({
 
       {/* Text */}
       <div className="flex-1 pr-3">
-        <div className="text-xl leading-6 font-semibold text-[#222]">{title}</div>
-        <p className="text-base leading-6 text-gray-600 mt-2 max-w-[520px]">{description}</p>
+        <div className="text-[16px] leading-[20px] font-semibold text-[#222]">{title}</div>
+        <p className="text-[14px] leading-[20px] text-gray-600 mt-[8px] max-w-[460px]">{description}</p>
       </div>
 
       {/* Illustration aligned to the right */}
@@ -144,14 +144,14 @@ function IllustrationScaffold({ variant = 'video', className = '' }) {
     <div
       aria-hidden
       className={[
-        'relative w-28 h-21 rounded-xl overflow-hidden',
+        'relative w-[112px] h-[84px] rounded-xl overflow-hidden',
         'border border-gray-200 bg-gradient-to-tr from-gray-50 to-gray-100',
         'shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
         className,
       ].join(' ')}
     >
       {/* Ground / shelf */}
-      <div className="absolute inset-x-2 bottom-2 h-3 bg-gray-200 rounded-md" />
+      <div className="absolute inset-x-2 bottom-2 h-[12px] bg-gray-200 rounded-md" />
 
       {variant === 'video' && (
         <>
