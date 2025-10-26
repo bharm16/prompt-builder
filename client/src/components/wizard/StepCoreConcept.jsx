@@ -326,10 +326,10 @@ function TextField({
         style={{
           display: "block",
           fontFamily: tokens.font.family.primary,
-          fontSize: "16px", // Changed from sm (14px) to base (16px) to match StepCreativeBrief
+          fontSize: "18px",
           fontWeight: tokens.font.weight.semibold,
           color: tokens.color.ink[900],
-          marginBottom: "10px", // mb-2.5 = 10px to match StepCreativeBrief
+          marginBottom: "8px",
           lineHeight: tokens.font.lineHeight.normal,
         }}
       >
@@ -373,25 +373,25 @@ function TextField({
           aria-invalid={hasError || undefined}
           style={{
             width: "100%",
-            minHeight: tokens.touchTarget.comfortable, // 48px
-            padding: "12px 20px", // py-3 px-5 to match StepCreativeBrief
-            paddingRight: showSuccess || hasError ? tokens.space.xxl : "20px",
+            minHeight: "48px",
+            padding: "16px",
+            paddingRight: showSuccess || hasError ? "48px" : "16px",
             fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.base,
-            lineHeight: tokens.font.lineHeight.normal,
+            fontSize: "16px",
+            lineHeight: "24px",
             color: tokens.color.ink[900],
             backgroundColor: tokens.color.white,
-            border: `2px solid ${
+            border: `1px solid ${
               hasError
                 ? tokens.color.error.base
                 : isFocused
-                ? tokens.color.brand[500]
-                : tokens.color.ink[300]
+                ? "#000000"
+                : "#B0B0B0"
             }`,
-            borderRadius: tokens.radius.lg,
+            borderRadius: "8px",
             outline: "none",
             transition: `all ${tokens.transition.base}`,
-            boxShadow: isFocused ? tokens.focus.ring : "none",
+            boxShadow: isFocused ? "0 0 0 2px #000000" : "none",
             ...(disabled && {
               backgroundColor: tokens.color.ink[100],
               color: tokens.color.ink[500],
@@ -884,8 +884,8 @@ export function CoreConceptAccordion({
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          gap: "48px",
-          maxWidth: "640px",
+          gap: "40px",
+          maxWidth: "600px",
           width: "100%",
         }}
       >
@@ -899,10 +899,10 @@ export function CoreConceptAccordion({
           <h1
             style={{
               margin: 0,
-              marginBottom: "16px",
+              marginBottom: "8px",
               fontFamily: tokens.font.family.primary,
-              fontSize: "48px",
-              lineHeight: "56px",
+              fontSize: "36px",
+              lineHeight: "44px",
               letterSpacing: "-0.02em",
               fontWeight: tokens.font.weight.bold,
               color: "#222",
@@ -916,7 +916,7 @@ export function CoreConceptAccordion({
               fontFamily: tokens.font.family.primary,
               fontSize: "18px",
               lineHeight: "28px",
-              color: "#6B7280",
+              color: "#717171",
             }}
           >
             Tell us about the core of your video. We'll guide you through it step by step.
@@ -935,14 +935,15 @@ export function CoreConceptAccordion({
               backgroundColor: "#FFFFFF",
               borderRadius: "12px",
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-              padding: "32px",
+              padding: "40px",
+              width: "100%",
             }}
           >
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "8px",
+                gap: "24px",
               }}
             >
             {/* Section 1: Subject */}
