@@ -18,7 +18,8 @@ const WizardProgress = ({
   stepLabels,
   completedSteps,
   isMobile,
-  onStepClick
+  onStepClick,
+  minimal = false
 }) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
   
@@ -26,6 +27,27 @@ const WizardProgress = ({
   const canNavigate = (stepIndex) => {
     return completedSteps.includes(stepIndex) || stepIndex <= currentStep;
   };
+
+  // Minimal mode - only show progress bar
+  if (minimal && !isMobile) {
+    return (
+      <div 
+        className="sticky top-0 z-10 bg-transparent"
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label={`${Math.round(progress)}% complete`}
+      >
+        <div className="w-full">
+          <div 
+            className="h-1 bg-gradient-to-r from-accent-500 to-accent-600 transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -176,13 +198,15 @@ WizardProgress.propTypes = {
   stepLabels: PropTypes.arrayOf(PropTypes.string).isRequired,
   completedSteps: PropTypes.arrayOf(PropTypes.number),
   isMobile: PropTypes.bool,
-  onStepClick: PropTypes.func
+  onStepClick: PropTypes.func,
+  minimal: PropTypes.bool
 };
 
 WizardProgress.defaultProps = {
   completedSteps: [],
   isMobile: false,
-  onStepClick: null
+  onStepClick: null,
+  minimal: false
 };
 
 export default WizardProgress;

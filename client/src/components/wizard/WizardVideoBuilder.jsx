@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
-import StepCreativeBrief from './StepCreativeBrief';
+import { CoreConceptAccordion } from './StepCoreConcept';
 import StepTechnical from './StepTechnical';
 import SummaryReview from './SummaryReview';
 import WizardEntryPage from './WizardEntryPage';
@@ -455,7 +455,7 @@ const WizardVideoBuilder = ({
   // Render desktop view
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-      {/* Progress Indicator */}
+      {/* Progress Indicator - Minimal mode for step 0 (CoreConcept) */}
       <WizardProgress
         currentStep={currentStep}
         totalSteps={stepLabels.length}
@@ -463,19 +463,19 @@ const WizardVideoBuilder = ({
         completedSteps={completedSteps}
         isMobile={isMobile}
         onStepClick={handleGoToStep}
+        minimal={currentStep === 0}
       />
 
       {/* Step Content */}
       <div className="flex-1 overflow-y-auto pb-8">
         {currentStep === 0 && (
-          <StepCreativeBrief
+          <CoreConceptAccordion
             formData={formData}
             onChange={handleFieldChange}
             onNext={handleNextStep}
             suggestions={suggestions}
             isLoadingSuggestions={isLoadingSuggestions}
             onRequestSuggestions={handleRequestSuggestions}
-            validationErrors={validationErrors}
           />
         )}
 
