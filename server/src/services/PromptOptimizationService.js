@@ -3,6 +3,7 @@ import { cacheService } from './CacheService.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
 import { generateVideoPrompt } from './VideoPromptTemplates.js';
+import UXUIDesignTemplates from './UXUIDesignTemplates.js';
 
 /**
  * Service for optimizing prompts across different modes
@@ -20,8 +21,12 @@ export class PromptOptimizationService {
       reasoning: '2.0.0',
       research: '2.0.0',
       socratic: '2.0.0',
-      video: '1.0.0'
+      video: '1.0.0',
+      uxui: '1.0.0'
     };
+
+    // Initialize UX/UI Design Templates
+    this.uxuiDesignTemplates = UXUIDesignTemplates;
   }
 
   /**
@@ -153,6 +158,9 @@ export class PromptOptimizationService {
         break;
       case 'video':
         systemPrompt = this.getVideoPrompt(prompt, brainstormContext);
+        break;
+      case 'uxui':
+        systemPrompt = this.getUXUIPrompt(prompt, context);
         break;
       default:
         systemPrompt = this.getDefaultPrompt(prompt);
@@ -800,6 +808,26 @@ OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
   }
 
   /**
+   * Get UX/UI Design prompt template
+   * Uses research-backed templates for design tasks with auto-detection
+   * @param {string} prompt - User's design request
+   * @param {Object} context - Additional context (platform, design system, etc.)
+   * @returns {string} Formatted UX/UI design prompt template
+   * @private
+   */
+  getUXUIPrompt(prompt, context = {}) {
+    // Detect the specific UX/UI task type
+    const taskType = this.uxuiDesignTemplates.detectTaskType(prompt);
+    
+    logger.info('Detected UX/UI task type', { taskType, promptLength: prompt.length });
+
+    // Build the task-specific template
+    const template = this.uxuiDesignTemplates.buildTemplate(prompt, taskType, context);
+
+    return template;
+  }
+
+  /**
    * Get default optimization prompt template
    * @private
    */
@@ -1426,6 +1454,10 @@ OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
         keywords: ['video', 'scene', 'camera', 'visual', 'cinematic', 'footage', 'animation', 'motion', 'shot', 'frame'],
         weight: 2.0, // Higher weight for video as it's very specific
       },
+      uxui: {
+        keywords: ['wireframe', 'persona', 'accessibility', 'component', 'design system', 'ux', 'ui', 'user interface', 'user experience', 'mockup', 'prototype', 'usability', 'wcag', 'a11y', 'microcopy', 'user journey', 'user research'],
+        weight: 1.8, // High weight for design-specific terms
+      },
     };
 
     // Calculate scores for each mode
@@ -1478,6 +1510,7 @@ Available modes:
 - research: For information gathering, investigation, exploration tasks
 - socratic: For educational, learning, teaching, understanding tasks
 - video: For video generation, visual content, cinematic descriptions
+- uxui: For UX/UI design tasks (wireframes, personas, accessibility audits, components, user research)
 - default: For general prompt optimization when no specific mode fits
 
 Consider the primary intent and expected output type.
@@ -1493,7 +1526,7 @@ Respond with ONLY the mode name (one word):`;
       const mode = response.content[0].text.trim().toLowerCase();
 
       // Validate the mode
-      if (['reasoning', 'research', 'socratic', 'video', 'default'].includes(mode)) {
+      if (['reasoning', 'research', 'socratic', 'video', 'uxui', 'default'].includes(mode)) {
         return mode;
       }
     } catch (error) {

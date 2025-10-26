@@ -1,6 +1,623 @@
-import React, { useState } from 'react';
+/**
+ * StepTechnical - 2025 Redesign
+ *
+ * Modern, minimalist technical parameters step with accordion categories.
+ *
+ * Design Principles Applied:
+ * - Neutral color palette (matching PromptCanvas & StepCoreConcept)
+ * - System font stack for native feel
+ * - Micro-interactions and smooth transitions
+ * - Accessibility-first (WCAG 2.1 AA)
+ * - Progressive disclosure through opacity
+ * - Minimal, clean interface
+ * - Lucide React icons for consistency
+ *
+ * @version 3.0.0
+ */
+
+import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { Camera, Lightbulb, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Camera, Lightbulb, ChevronDown, ChevronRight, Check } from 'lucide-react';
+
+// ============================================================================
+// DESIGN TOKENS - 2025 Minimalist System (matches PromptCanvas)
+// ============================================================================
+
+const tokens = {
+  // System font stack (matches PromptCanvas exactly)
+  font: {
+    family: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+    size: {
+      xs: '0.75rem',      // 12px
+      sm: '0.8125rem',    // 13px
+      base: '0.875rem',   // 14px
+      md: '0.9375rem',    // 15px
+      lg: '1rem',         // 16px
+      xl: '1.125rem',     // 18px
+      xxl: '1.25rem',     // 20px
+      xxxl: '1.5rem',     // 24px
+      display: '2rem',    // 32px
+      hero: '2.25rem',    // 36px
+    },
+    weight: {
+      normal: 400,
+      medium: 500,
+      semibold: 600,
+      bold: 700,
+    },
+    lineHeight: {
+      tight: 1.25,
+      snug: 1.375,
+      normal: 1.5,
+      relaxed: 1.6,
+      loose: 1.75,
+    },
+    letterSpacing: {
+      tight: '-0.02em',
+      normal: '-0.01em',
+      wide: '0.025em',
+    },
+  },
+
+  // Neutral color palette (matches PromptCanvas)
+  color: {
+    neutral: {
+      50: '#FAFAFA',
+      100: '#F5F5F5',
+      200: '#E5E5E5',
+      300: '#D4D4D4',
+      400: '#A3A3A3',
+      500: '#737373',
+      600: '#525252',
+      700: '#404040',
+      800: '#262626',
+      900: '#171717',
+    },
+    success: {
+      50: '#F0FDF4',
+      100: '#DCFCE7',
+      500: '#22C55E',
+      600: '#16A34A',
+      700: '#15803D',
+    },
+    white: '#FFFFFF',
+  },
+
+  // Spacing scale
+  space: {
+    1: '0.25rem',   // 4px
+    2: '0.5rem',    // 8px
+    3: '0.75rem',   // 12px
+    4: '1rem',      // 16px
+    5: '1.25rem',   // 20px
+    6: '1.5rem',    // 24px
+    8: '2rem',      // 32px
+    10: '2.5rem',   // 40px
+    12: '3rem',     // 48px
+    16: '4rem',     // 64px
+  },
+
+  // Border radius
+  radius: {
+    sm: '0.25rem',  // 4px
+    md: '0.375rem', // 6px
+    lg: '0.5rem',   // 8px
+    xl: '0.75rem',  // 12px
+  },
+
+  // Shadows (subtle, matching PromptCanvas)
+  shadow: {
+    sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+    base: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+  },
+
+  // Transitions (smooth, delightful micro-interactions)
+  transition: {
+    fast: '150ms cubic-bezier(0.4, 0, 0.2, 1)',
+    base: '200ms cubic-bezier(0.4, 0, 0.2, 1)',
+    slow: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+};
+
+// ============================================================================
+// CATEGORY ICON MAPPING (Using Lucide React)
+// ============================================================================
+
+const categoryIcons = {
+  camera: Camera,
+  lighting: Lightbulb,
+  composition: Camera,
+  motion: Camera,
+  effects: Camera,
+};
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+/**
+ * TextField - Modern minimalist input field
+ * Features: Clean borders, subtle focus states, micro-interactions
+ */
+function TextField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div>
+      {/* Label */}
+      <label
+        htmlFor={id}
+        style={{
+          display: 'block',
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.xl,
+          fontWeight: tokens.font.weight.semibold,
+          color: tokens.color.neutral[900],
+          marginBottom: tokens.space[2],
+          lineHeight: tokens.font.lineHeight.snug,
+          letterSpacing: tokens.font.letterSpacing.tight,
+          transition: `color ${tokens.transition.base}`,
+        }}
+      >
+        {label}
+      </label>
+
+      {/* Input */}
+      <input
+        id={id}
+        type="text"
+        value={value ?? ''}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          padding: tokens.space[4],
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.lg,
+          lineHeight: tokens.font.lineHeight.relaxed,
+          color: tokens.color.neutral[900],
+          backgroundColor: tokens.color.white,
+          border: `1px solid ${
+            isFocused
+              ? tokens.color.neutral[900]
+              : isHovered
+              ? tokens.color.neutral[400]
+              : tokens.color.neutral[300]
+          }`,
+          borderRadius: tokens.radius.lg,
+          outline: 'none',
+          transition: `all ${tokens.transition.base}`,
+          boxShadow: isFocused ? `0 0 0 2px ${tokens.color.neutral[900]}` : 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+TextField.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  placeholder: PropTypes.string,
+};
+
+/**
+ * PresetCard - Modern preset selection card
+ */
+function PresetCard({ preset, isSelected, onClick }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        padding: tokens.space[5],
+        backgroundColor: isSelected ? tokens.color.neutral[50] : tokens.color.white,
+        border: `1px solid ${
+          isSelected
+            ? tokens.color.neutral[900]
+            : isHovered
+            ? tokens.color.neutral[400]
+            : tokens.color.neutral[200]
+        }`,
+        borderRadius: tokens.radius.lg,
+        cursor: 'pointer',
+        transition: `all ${tokens.transition.base}`,
+        outline: 'none',
+        transform: isPressed ? 'scale(0.98)' : isHovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: isHovered ? tokens.shadow.md : tokens.shadow.sm,
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.outline = `2px solid ${tokens.color.neutral[400]}`;
+        e.currentTarget.style.outlineOffset = '2px';
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.outline = 'none';
+      }}
+    >
+      {/* Selection indicator */}
+      {isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            top: tokens.space[3],
+            right: tokens.space[3],
+            width: '20px',
+            height: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: tokens.color.neutral[900],
+            borderRadius: '50%',
+            color: tokens.color.white,
+          }}
+        >
+          <Check size={14} strokeWidth={3} />
+        </div>
+      )}
+
+      {/* Preset name */}
+      <h4
+        style={{
+          margin: 0,
+          marginBottom: tokens.space[1],
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.lg,
+          fontWeight: tokens.font.weight.semibold,
+          color: tokens.color.neutral[900],
+          lineHeight: tokens.font.lineHeight.snug,
+        }}
+      >
+        {preset.name}
+      </h4>
+
+      {/* Preset description */}
+      <p
+        style={{
+          margin: 0,
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.sm,
+          color: tokens.color.neutral[600],
+          lineHeight: tokens.font.lineHeight.relaxed,
+        }}
+      >
+        {preset.description}
+      </p>
+    </button>
+  );
+}
+
+PresetCard.propTypes = {
+  preset: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+  }).isRequired,
+  isSelected: PropTypes.bool,
+  onClick: PropTypes.func.isRequired,
+};
+
+/**
+ * CategoryAccordion - Collapsible category section
+ */
+function CategoryAccordion({ category, isExpanded, onToggle, filledCount, children }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const IconComponent = categoryIcons[category.id] || Camera;
+
+  return (
+    <div
+      style={{
+        backgroundColor: tokens.color.white,
+        border: `1px solid ${isExpanded ? tokens.color.neutral[300] : tokens.color.neutral[200]}`,
+        borderRadius: tokens.radius.lg,
+        overflow: 'hidden',
+        transition: `all ${tokens.transition.base}`,
+        boxShadow: isExpanded ? tokens.shadow.base : 'none',
+      }}
+    >
+      {/* Category Header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: `${tokens.space[5]} ${tokens.space[6]}`,
+          backgroundColor: isHovered ? tokens.color.neutral[50] : tokens.color.white,
+          border: 'none',
+          cursor: 'pointer',
+          transition: `background-color ${tokens.transition.base}`,
+          outline: 'none',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.outline = `2px solid ${tokens.color.neutral[400]}`;
+          e.currentTarget.style.outlineOffset = '-2px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.outline = 'none';
+        }}
+      >
+        {/* Left side: Icon and text */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.space[4],
+          }}
+        >
+          {/* Icon */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: tokens.color.neutral[100],
+              borderRadius: tokens.radius.lg,
+              color: tokens.color.neutral[700],
+              transition: `all ${tokens.transition.base}`,
+            }}
+          >
+            <IconComponent size={20} strokeWidth={2} />
+          </div>
+
+          {/* Text content */}
+          <div style={{ textAlign: 'left' }}>
+            <h3
+              style={{
+                margin: 0,
+                marginBottom: tokens.space[1],
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.xl,
+                fontWeight: tokens.font.weight.semibold,
+                color: tokens.color.neutral[900],
+                lineHeight: tokens.font.lineHeight.snug,
+              }}
+            >
+              {category.name}
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.sm,
+                color: tokens.color.neutral[600],
+                lineHeight: tokens.font.lineHeight.relaxed,
+              }}
+            >
+              {category.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Right side: Badge and chevron */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.space[3],
+          }}
+        >
+          {/* Filled count badge */}
+          {filledCount > 0 && (
+            <div
+              style={{
+                padding: `${tokens.space[1]} ${tokens.space[3]}`,
+                backgroundColor: tokens.color.neutral[100],
+                borderRadius: tokens.radius.xl,
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.xs,
+                fontWeight: tokens.font.weight.semibold,
+                color: tokens.color.neutral[700],
+                letterSpacing: tokens.font.letterSpacing.wide,
+              }}
+            >
+              {filledCount} SET
+            </div>
+          )}
+
+          {/* Chevron */}
+          <div
+            style={{
+              color: tokens.color.neutral[500],
+              transition: `transform ${tokens.transition.base}`,
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            }}
+          >
+            <ChevronRight size={20} strokeWidth={2} />
+          </div>
+        </div>
+      </button>
+
+      {/* Category Content */}
+      {isExpanded && (
+        <div
+          style={{
+            padding: `${tokens.space[6]} ${tokens.space[6]} ${tokens.space[8]}`,
+            backgroundColor: tokens.color.neutral[50],
+            borderTop: `1px solid ${tokens.color.neutral[200]}`,
+            animation: 'slideDown 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+CategoryAccordion.propTypes = {
+  category: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+  }).isRequired,
+  isExpanded: PropTypes.bool,
+  onToggle: PropTypes.func.isRequired,
+  filledCount: PropTypes.number,
+  children: PropTypes.node,
+};
+
+/**
+ * PrimaryButton - Modern CTA button
+ */
+function PrimaryButton({ children, onClick, variant = 'primary' }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  const isPrimary = variant === 'primary';
+  const isSecondary = variant === 'secondary';
+  const isGhost = variant === 'ghost';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      style={{
+        padding: `${tokens.space[4]} ${tokens.space[6]}`,
+        fontFamily: tokens.font.family,
+        fontSize: tokens.font.size.lg,
+        fontWeight: tokens.font.weight.semibold,
+        color: isPrimary
+          ? tokens.color.white
+          : isSecondary
+          ? tokens.color.neutral[900]
+          : tokens.color.neutral[700],
+        backgroundColor: isPrimary
+          ? isPressed
+            ? tokens.color.neutral[800]
+            : isHovered
+            ? tokens.color.neutral[800]
+            : tokens.color.neutral[900]
+          : isSecondary
+          ? isHovered
+            ? tokens.color.neutral[100]
+            : tokens.color.neutral[50]
+          : 'transparent',
+        border: isGhost ? 'none' : `1px solid ${isSecondary ? tokens.color.neutral[300] : 'transparent'}`,
+        borderRadius: tokens.radius.lg,
+        cursor: 'pointer',
+        transition: `all ${tokens.transition.base}`,
+        outline: 'none',
+        transform: isPressed ? 'translateY(0)' : isHovered && isPrimary ? 'translateY(-1px)' : 'translateY(0)',
+        boxShadow: isPrimary
+          ? isPressed
+            ? 'none'
+            : isHovered
+            ? tokens.shadow.md
+            : tokens.shadow.sm
+          : 'none',
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.outline = `2px solid ${tokens.color.neutral[400]}`;
+        e.currentTarget.style.outlineOffset = '2px';
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.outline = 'none';
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+PrimaryButton.propTypes = {
+  children: PropTypes.node.isRequired,
+  onClick: PropTypes.func.isRequired,
+  variant: PropTypes.oneOf(['primary', 'secondary', 'ghost']),
+};
+
+/**
+ * HelpBox - Modern help text component
+ */
+function HelpBox({ children }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: tokens.space[3],
+        padding: `${tokens.space[5]} ${tokens.space[6]}`,
+        backgroundColor: tokens.color.neutral[50],
+        border: `1px solid ${tokens.color.neutral[200]}`,
+        borderRadius: tokens.radius.lg,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          width: '20px',
+          height: '20px',
+          marginTop: '2px',
+          color: tokens.color.neutral[600],
+        }}
+      >
+        <Lightbulb size={18} strokeWidth={2} />
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.md,
+          color: tokens.color.neutral[700],
+          lineHeight: tokens.font.lineHeight.relaxed,
+        }}
+      >
+        {children}
+      </p>
+    </div>
+  );
+}
+
+HelpBox.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 /**
  * StepTechnical Component - Desktop Step 3
@@ -30,7 +647,6 @@ const StepTechnical = ({
     {
       id: 'camera',
       name: 'Camera Settings',
-      icon: '📷',
       description: 'Camera angles, movements, and lens choices',
       fields: [
         { name: 'angle', label: 'Camera Angle', placeholder: 'e.g., eye-level, low angle, bird\'s eye view' },
@@ -43,7 +659,6 @@ const StepTechnical = ({
     {
       id: 'lighting',
       name: 'Lighting',
-      icon: '💡',
       description: 'Light quality, direction, and color',
       fields: [
         { name: 'quality', label: 'Light Quality', placeholder: 'e.g., soft, hard, diffused' },
@@ -55,7 +670,6 @@ const StepTechnical = ({
     {
       id: 'composition',
       name: 'Composition',
-      icon: '🎬',
       description: 'Framing and visual structure',
       fields: [
         { name: 'framing', label: 'Framing', placeholder: 'e.g., rule of thirds, centered, symmetrical' },
@@ -65,7 +679,6 @@ const StepTechnical = ({
     {
       id: 'motion',
       name: 'Motion & Pace',
-      icon: '⚡',
       description: 'Speed and smoothness of movement',
       fields: [
         { name: 'speed', label: 'Motion Speed', placeholder: 'e.g., slow motion, normal speed, time-lapse' },
@@ -75,7 +688,6 @@ const StepTechnical = ({
     {
       id: 'effects',
       name: 'Effects & Style',
-      icon: '✨',
       description: 'Post-production and visual effects',
       fields: [
         { name: 'colorGrading', label: 'Color Grading', placeholder: 'e.g., vibrant, desaturated, vintage' },
@@ -129,15 +741,15 @@ const StepTechnical = ({
   ];
 
   // Toggle category expansion
-  const toggleCategory = (categoryId) => {
+  const toggleCategory = useCallback((categoryId) => {
     setExpandedCategories(prev => ({
       ...prev,
       [categoryId]: !prev[categoryId]
     }));
-  };
+  }, []);
 
   // Apply preset
-  const applyPreset = (preset) => {
+  const applyPreset = useCallback((preset) => {
     setSelectedPreset(preset.id);
     // Apply all preset values
     Object.entries(preset.values).forEach(([categoryId, fields]) => {
@@ -151,174 +763,241 @@ const StepTechnical = ({
       newExpanded[categoryId] = true;
     });
     setExpandedCategories(newExpanded);
-  };
+  }, [onChange]);
 
   // Handle field change
-  const handleFieldChange = (categoryId, fieldName, value) => {
+  const handleFieldChange = useCallback((categoryId, fieldName, value) => {
     onChange(`${categoryId}.${fieldName}`, value);
     setSelectedPreset(null); // Clear preset selection when manually changing
-  };
+  }, [onChange]);
 
   // Count filled fields in a category
-  const getFilledFieldsCount = (category) => {
+  const getFilledFieldsCount = useCallback((category) => {
     const categoryData = formData[category.id] || {};
     return category.fields.filter(field => categoryData[field.name]).length;
-  };
+  }, [formData]);
 
   // Calculate total filled technical parameters
-  const getTotalFilledParams = () => {
+  const getTotalFilledParams = useCallback(() => {
     let count = 0;
     categories.forEach(category => {
       count += getFilledFieldsCount(category);
     });
     return count;
-  };
+  }, [categories, getFilledFieldsCount]);
 
   const totalParams = getTotalFilledParams();
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8">
-      {/* Step Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Camera className="w-6 h-6 text-blue-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Want to get technical?</h2>
-        </div>
-        <p className="text-gray-600 text-lg">
-          These advanced settings are completely optional. Most people skip this step and still get amazing results!
-        </p>
-        {totalParams > 0 && (
-          <p className="mt-2 text-sm text-green-600 flex items-center">
-            <CheckCircle className="w-4 h-4 mr-1" />
-            Nice! You&apos;ve configured {totalParams} parameter{totalParams !== 1 ? 's' : ''}.
+    <>
+      {/* Keyframe animations */}
+      <style>
+        {`
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              transform: translateY(-8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
+
+      <div
+        style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          padding: `${tokens.space[10]} ${tokens.space[8]}`,
+        }}
+      >
+        {/* Step Header */}
+        <header
+          style={{
+            marginBottom: tokens.space[10],
+          }}
+        >
+          <h1
+            style={{
+              margin: 0,
+              marginBottom: tokens.space[2],
+              fontFamily: tokens.font.family,
+              fontSize: tokens.font.size.hero,
+              lineHeight: tokens.font.lineHeight.tight,
+              letterSpacing: tokens.font.letterSpacing.tight,
+              fontWeight: tokens.font.weight.bold,
+              color: tokens.color.neutral[900],
+            }}
+          >
+            Want to get technical?
+          </h1>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: tokens.font.family,
+              fontSize: tokens.font.size.xl,
+              lineHeight: tokens.font.lineHeight.relaxed,
+              color: tokens.color.neutral[600],
+              letterSpacing: tokens.font.letterSpacing.normal,
+            }}
+          >
+            These advanced settings are completely optional. Most people skip this step and still get amazing results!
           </p>
-        )}
-      </div>
-
-      {/* Preset Buttons */}
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Presets</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => applyPreset(preset)}
-              className={`
-                p-3 rounded-lg border-2 text-left transition-all duration-200
-                ${selectedPreset === preset.id
-                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow'
-                }
-              `}
-            >
-              <p className="font-semibold text-sm text-gray-900">{preset.name}</p>
-              <p className="text-xs text-gray-600 mt-1">{preset.description}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Technical Categories */}
-      <div className="space-y-4">
-        {categories.map((category) => {
-          const isExpanded = expandedCategories[category.id];
-          const filledCount = getFilledFieldsCount(category);
-          const categoryData = formData[category.id] || {};
-
-          return (
+          {totalParams > 0 && (
             <div
-              key={category.id}
-              className="border-2 border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:border-gray-300"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: tokens.space[2],
+                marginTop: tokens.space[4],
+              }}
             >
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category.id)}
-                className="w-full px-5 py-4 bg-white hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between"
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: tokens.color.success[600],
+                }}
               >
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{category.icon}</span>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-gray-900">{category.name}</h3>
-                    <p className="text-xs text-gray-600">{category.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  {filledCount > 0 && (
-                    <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                      {filledCount} set
-                    </span>
-                  )}
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-              </button>
+                <Check size={18} strokeWidth={2.5} />
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: tokens.font.family,
+                  fontSize: tokens.font.size.md,
+                  fontWeight: tokens.font.weight.medium,
+                  color: tokens.color.success[700],
+                  lineHeight: tokens.font.lineHeight.relaxed,
+                }}
+              >
+                Nice! You've configured {totalParams} parameter{totalParams !== 1 ? 's' : ''}.
+              </p>
+            </div>
+          )}
+        </header>
 
-              {/* Category Fields */}
-              {isExpanded && (
-                <div className="px-5 py-4 bg-gray-50 border-t border-gray-200 space-y-4">
+        {/* Preset Buttons */}
+        <section
+          style={{
+            marginBottom: tokens.space[10],
+          }}
+        >
+          <h2
+            style={{
+              margin: 0,
+              marginBottom: tokens.space[4],
+              fontFamily: tokens.font.family,
+              fontSize: tokens.font.size.base,
+              fontWeight: tokens.font.weight.semibold,
+              color: tokens.color.neutral[600],
+              textTransform: 'uppercase',
+              letterSpacing: tokens.font.letterSpacing.wide,
+            }}
+          >
+            Quick Presets
+          </h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: tokens.space[4],
+            }}
+          >
+            {presets.map((preset) => (
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                isSelected={selectedPreset === preset.id}
+                onClick={() => applyPreset(preset)}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Technical Categories */}
+        <section
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.space[6],
+            marginBottom: tokens.space[10],
+          }}
+        >
+          {categories.map((category) => {
+            const isExpanded = expandedCategories[category.id];
+            const filledCount = getFilledFieldsCount(category);
+            const categoryData = formData[category.id] || {};
+
+            return (
+              <CategoryAccordion
+                key={category.id}
+                category={category}
+                isExpanded={isExpanded}
+                onToggle={() => toggleCategory(category.id)}
+                filledCount={filledCount}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: tokens.space[6],
+                  }}
+                >
                   {category.fields.map((field) => (
-                    <div key={field.name}>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {field.label}
-                      </label>
-                      <input
-                        type="text"
-                        value={categoryData[field.name] || ''}
-                        onChange={(e) => handleFieldChange(category.id, field.name, e.target.value)}
-                        placeholder={field.placeholder}
-                        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all duration-200"
-                      />
-                    </div>
+                    <TextField
+                      key={field.name}
+                      id={`${category.id}-${field.name}`}
+                      label={field.label}
+                      value={categoryData[field.name] || ''}
+                      onChange={(e) => handleFieldChange(category.id, field.name, e.target.value)}
+                      placeholder={field.placeholder}
+                    />
                   ))}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </CategoryAccordion>
+            );
+          })}
+        </section>
 
-      {/* Action Buttons */}
-      <div className="mt-10 flex justify-between items-center">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
+        {/* Help Text */}
+        <HelpBox>
+          <strong>Feeling confident?</strong> These technical controls let you fine-tune every detail. But don't worry—your creative brief is already powerful enough to create something amazing!
+        </HelpBox>
+
+        {/* Action Buttons */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: tokens.space[10],
+            gap: tokens.space[4],
+          }}
         >
-          Back to Creative Brief
-        </button>
+          <PrimaryButton onClick={onBack} variant="ghost">
+            Back to Creative Brief
+          </PrimaryButton>
 
-        <div className="flex space-x-3">
-          <button
-            onClick={onNext}
-            className="px-6 py-3 rounded-lg font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all duration-200"
+          <div
+            style={{
+              display: 'flex',
+              gap: tokens.space[3],
+            }}
           >
-            Skip Technical
-          </button>
-          <button
-            onClick={onNext}
-            className="px-8 py-3 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg active:scale-95 transition-all duration-200"
-          >
-            Review & Generate
-          </button>
-        </div>
-      </div>
-
-      {/* Help Text */}
-      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-        <div className="flex items-start space-x-2">
-          <Lightbulb className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-amber-900">
-              <strong>Feeling confident?</strong> These technical controls let you fine-tune every detail. But don&apos;t worry—your creative brief is already powerful enough to create something amazing!
-            </p>
+            <PrimaryButton onClick={onNext} variant="secondary">
+              Skip Technical
+            </PrimaryButton>
+            <PrimaryButton onClick={onNext} variant="primary">
+              Review & Generate
+            </PrimaryButton>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -4,16 +4,16 @@ import { FileText, Edit2, Download, Copy, CheckCircle, AlertTriangle, Sparkles }
 import { aiWizardService } from '../../services/aiWizardService';
 
 /**
- * SummaryReview Component
+ * SummaryReview Component (2025 Design System)
  *
- * Final review screen before generating:
- * - Display all entered values grouped by step
- * - Show generated prompt preview
- * - Edit links next to each field
- * - Highlight missing required fields
- * - Word count indicator (target: 75-125 words)
- * - Download/copy options
- * - Big "Generate Video Prompt" CTA
+ * Final review screen with modern, clean aesthetics:
+ * - Neutral + emerald color palette only
+ * - Simplified cards without gradients
+ * - Consistent border styling (1px neutral-200)
+ * - Clean metric displays
+ * - Accessible contrast ratios
+ * - No custom animation classes (inline transitions)
+ * - System font stack throughout
  */
 const SummaryReview = ({
   formData,
@@ -59,22 +59,11 @@ const SummaryReview = ({
     URL.revokeObjectURL(url);
   };
 
-  // Get qualitative badge based on completion score
-  const getQualityBadge = (score) => {
-    if (score >= 80) return { text: 'Excellent Prompt!', color: 'green' };
-    if (score >= 60) return { text: 'Good Detail', color: 'blue' };
-    if (score >= 40) return { text: 'Solid Start', color: 'yellow' };
-    return { text: 'Needs More Detail', color: 'red' };
-  };
-
-  const qualityBadge = getQualityBadge(completionScore);
-
   // Field sections for review
   const sections = [
     {
       title: 'Creative Brief',
       icon: '🎬',
-      color: 'indigo',
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
@@ -99,10 +88,20 @@ const SummaryReview = ({
   ];
 
   return (
-    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-5xl mx-auto px-8 py-12'} animate-fade-slide-in`}>
-      {/* Celebration Header */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 mb-4 animate-scale-in">
+    <div
+      className={`${isMobile ? 'px-4 py-6' : 'max-w-5xl mx-auto px-8 py-12'}`}
+      style={{
+        animation: 'fadeIn 0.4s ease-out'
+      }}
+    >
+      {/* Clean Header */}
+      <div className="text-center mb-12">
+        <div
+          className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-50 mb-5"
+          style={{
+            animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}
+        >
           <Sparkles className="w-10 h-10 text-emerald-600" />
         </div>
         <h2 className="text-4xl font-bold text-neutral-900 mb-3 tracking-tight">
@@ -113,42 +112,54 @@ const SummaryReview = ({
         </p>
       </div>
 
-      {/* Completion Metrics */}
+      {/* Simplified Completion Metrics */}
       <div className="grid grid-cols-3 gap-4 mb-10">
-        <div className="text-center p-6 bg-gradient-to-br from-brand-primary-50 to-brand-primary-100/50 rounded-xl shadow-card">
-          <div className="text-4xl font-bold text-brand-primary-700">{completionScore}%</div>
-          <div className="text-sm text-brand-primary-700/80 mt-1.5 font-medium">Complete</div>
+        {/* Completion Score */}
+        <div className="text-center p-6 bg-neutral-50 rounded-xl border border-neutral-200 transition-all duration-200 hover:border-neutral-300 hover:shadow-sm">
+          <div className="text-4xl font-bold text-neutral-900">{completionScore}%</div>
+          <div className="text-sm text-neutral-600 mt-2 font-medium">Complete</div>
         </div>
-        <div className="text-center p-6 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl shadow-card">
-          <div className="text-4xl font-bold text-neutral-700">{wordCount}</div>
-          <div className="text-sm text-neutral-600 mt-1.5 font-medium">Words</div>
+
+        {/* Word Count */}
+        <div className="text-center p-6 bg-neutral-50 rounded-xl border border-neutral-200 transition-all duration-200 hover:border-neutral-300 hover:shadow-sm">
+          <div className="text-4xl font-bold text-neutral-900">{wordCount}</div>
+          <div className="text-sm text-neutral-600 mt-2 font-medium">Words</div>
         </div>
-        <div className="text-center p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl shadow-card">
+
+        {/* Fields Filled */}
+        <div className="text-center p-6 bg-emerald-50 rounded-xl border border-emerald-200 transition-all duration-200 hover:border-emerald-300 hover:shadow-sm">
           <div className="text-4xl font-bold text-emerald-700">
             {sections.reduce((acc, s) => acc + s.fields.filter(f => formData[f.key]).length, 0)}/{sections.reduce((acc, s) => acc + s.fields.length, 0)}
           </div>
-          <div className="text-sm text-emerald-700/80 mt-1.5 font-medium">Fields</div>
+          <div className="text-sm text-emerald-700 mt-2 font-medium">Fields</div>
         </div>
       </div>
 
-      {/* Generated Prompt Preview */}
-      <div className="mb-10 p-8 bg-white rounded-xl shadow-card-hover border border-neutral-200 hover-lift">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center space-x-2.5">
-            <Sparkles className="w-6 h-6 text-brand-primary-600" />
+      {/* Generated Prompt Preview - Clean Design */}
+      <div className="mb-10 p-8 bg-white rounded-xl border border-neutral-200 transition-all duration-200 hover:border-neutral-300 hover:shadow-md">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <Sparkles className="w-6 h-6 text-emerald-600" />
             <h3 className="text-xl font-bold text-neutral-900">Your Generated Prompt</h3>
           </div>
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2">
             <button
               onClick={handleCopy}
-              className="p-2.5 text-neutral-600 hover:text-brand-primary-600 hover:bg-brand-primary-50 rounded-xl transition-all hover-lift"
+              className="p-2.5 text-neutral-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200"
               title="Copy to clipboard"
             >
-              {copied ? <CheckCircle className="w-5 h-5 text-emerald-600 animate-scale-in" /> : <Copy className="w-5 h-5" />}
+              {copied ? (
+                <CheckCircle
+                  className="w-5 h-5 text-emerald-600"
+                  style={{ animation: 'scaleIn 0.3s ease-out' }}
+                />
+              ) : (
+                <Copy className="w-5 h-5" />
+              )}
             </button>
             <button
               onClick={handleDownload}
-              className="p-2.5 text-neutral-600 hover:text-brand-primary-600 hover:bg-brand-primary-50 rounded-xl transition-all hover-lift"
+              className="p-2.5 text-neutral-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200"
               title="Download as text"
             >
               <Download className="w-5 h-5" />
@@ -156,17 +167,21 @@ const SummaryReview = ({
           </div>
         </div>
 
-        <div className="p-5 bg-neutral-50 rounded-xl border border-neutral-200">
-          <p className="text-neutral-900 text-base leading-relaxed whitespace-pre-wrap">
+        {/* Prompt Display - Matches PromptCanvas styling */}
+        <div className="p-6 bg-neutral-50 rounded-lg border border-neutral-200">
+          <p className="text-neutral-900 text-base leading-relaxed whitespace-pre-wrap font-normal">
             {generatedPrompt || 'Fill in the core concept fields to see your prompt preview...'}
           </p>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <span className={`font-semibold ${
-            wordCount >= 75 && wordCount <= 125 ? 'text-emerald-600' :
-            wordCount > 125 ? 'text-warning-600' :
-            'text-neutral-600'
+        {/* Word Count Indicator */}
+        <div className="mt-5 flex items-center justify-between text-sm">
+          <span className={`font-semibold px-3 py-1.5 rounded-md ${
+            wordCount >= 75 && wordCount <= 125
+              ? 'bg-emerald-50 text-emerald-700'
+              : wordCount > 125
+              ? 'bg-amber-50 text-amber-700'
+              : 'bg-neutral-100 text-neutral-600'
           }`}>
             {wordCount} words
           </span>
@@ -176,26 +191,32 @@ const SummaryReview = ({
         </div>
       </div>
 
-      {/* Field Review Sections */}
+      {/* Field Review Sections - Simplified Design */}
       <div className="space-y-6 mb-10">
-        {sections.map((section) => {
+        {sections.map((section, idx) => {
           const filledFields = section.fields.filter(f => formData[f.key]);
           const missingRequired = section.fields.filter(f => f.required && !formData[f.key]);
 
           return (
-            <div key={section.title} className="bg-white rounded-xl shadow-card border border-neutral-200 overflow-hidden animate-slide-in-from-bottom hover-lift">
-              {/* Section Header */}
-              <div className="px-6 py-4 bg-gradient-to-r from-brand-primary-50 to-brand-primary-100/50 border-b border-brand-primary-200">
+            <div
+              key={section.title}
+              className="bg-white rounded-xl border border-neutral-200 overflow-hidden transition-all duration-200 hover:border-neutral-300 hover:shadow-md"
+              style={{
+                animation: `slideUp 0.4s ease-out ${idx * 0.1}s both`
+              }}
+            >
+              {/* Section Header - Clean Neutral Design */}
+              <div className="px-6 py-5 bg-neutral-50 border-b border-neutral-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-primary-100">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-100">
                       <span className="text-xl">{section.icon}</span>
                     </div>
                     <h3 className="text-lg font-bold text-neutral-900">{section.title}</h3>
                   </div>
                   <button
                     onClick={() => onEdit(section.step)}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-brand-primary-700 bg-brand-primary-50 hover:bg-brand-primary-100 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-neutral-700 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-lg transition-all duration-200"
                   >
                     <Edit2 className="w-4 h-4" />
                     <span>Edit</span>
@@ -204,37 +225,44 @@ const SummaryReview = ({
               </div>
 
               {/* Section Fields */}
-              <div className="px-6 py-5 space-y-4">
+              <div className="px-6 py-6 space-y-5">
                 {section.fields.map((field) => (
-                  <div key={field.key} className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-neutral-700 mb-1.5">
+                  <div key={field.key} className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-neutral-700 mb-2">
                         {field.label}
-                        {field.required && <span className="text-error-500 ml-1">*</span>}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
                       </p>
                       {formData[field.key] ? (
-                        <p className="text-base text-neutral-900 leading-relaxed">{formData[field.key]}</p>
+                        <p className="text-base text-neutral-900 leading-relaxed break-words">
+                          {formData[field.key]}
+                        </p>
                       ) : (
                         <p className="text-sm text-neutral-400 italic">
                           {field.required ? 'Required - not filled' : 'Not specified'}
                         </p>
                       )}
                     </div>
-                    {formData[field.key] && (
-                      <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0 ml-3" />
-                    )}
-                    {field.required && !formData[field.key] && (
-                      <AlertTriangle className="w-6 h-6 text-error-500 flex-shrink-0 ml-3" />
-                    )}
+                    <div className="flex-shrink-0 pt-0.5">
+                      {formData[field.key] && (
+                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                      )}
+                      {field.required && !formData[field.key] && (
+                        <AlertTriangle className="w-6 h-6 text-red-500" />
+                      )}
+                    </div>
                   </div>
                 ))}
 
+                {/* Missing Required Warning - Softer Design */}
                 {missingRequired.length > 0 && (
-                  <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-sm text-red-800">
-                      <AlertTriangle className="w-4 h-4 inline mr-1" />
-                      Missing required fields: {missingRequired.map(f => f.label).join(', ')}
-                    </p>
+                  <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-800 leading-relaxed">
+                        Missing required fields: <span className="font-semibold">{missingRequired.map(f => f.label).join(', ')}</span>
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -242,38 +270,45 @@ const SummaryReview = ({
           );
         })}
 
-        {/* Technical Parameters Section */}
+        {/* Technical Parameters Section - Modernized */}
         {hasTechnicalParams && (
-          <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-5 py-3 bg-blue-50 border-b border-blue-200">
+          <div
+            className="bg-white rounded-xl border border-neutral-200 overflow-hidden transition-all duration-200 hover:border-neutral-300 hover:shadow-md"
+            style={{
+              animation: 'slideUp 0.4s ease-out 0.1s both'
+            }}
+          >
+            <div className="px-6 py-5 bg-neutral-50 border-b border-neutral-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xl">⚙️</span>
-                  <h3 className="font-semibold text-gray-900">Technical Specs</h3>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-100">
+                    <span className="text-xl">⚙️</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-neutral-900">Technical Specs</h3>
                 </div>
                 <button
                   onClick={() => onEdit(1)}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center"
+                  className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-neutral-700 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-lg transition-all duration-200"
                 >
-                  <Edit2 className="w-4 h-4 mr-1" />
-                  Edit
+                  <Edit2 className="w-4 h-4" />
+                  <span>Edit</span>
                 </button>
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
+            <div className="px-6 py-6 space-y-5">
               {technicalCategories.map((category) => {
                 const categoryData = formData[category.key];
                 if (!categoryData || Object.keys(categoryData).length === 0) return null;
 
                 return (
                   <div key={category.key}>
-                    <p className="text-sm font-semibold text-gray-700 mb-2">{category.label}</p>
-                    <div className="pl-4 space-y-1">
+                    <p className="text-sm font-semibold text-neutral-700 mb-3">{category.label}</p>
+                    <div className="pl-4 space-y-2">
                       {Object.entries(categoryData).map(([key, value]) => (
                         value && (
-                          <p key={key} className="text-sm text-gray-600">
-                            <span className="font-medium capitalize">{key}:</span> {value}
+                          <p key={key} className="text-sm text-neutral-900 leading-relaxed">
+                            <span className="font-semibold capitalize text-neutral-700">{key}:</span> {value}
                           </p>
                         )
                       ))}
@@ -286,12 +321,12 @@ const SummaryReview = ({
         )}
       </div>
 
-      {/* Enhanced CTA Section */}
-      <div className="sticky bottom-0 -mx-8 -mb-12 p-8 bg-gradient-to-t from-neutral-50 via-neutral-50 to-transparent pt-20">
+      {/* CTA Section - Clean Gradient Design */}
+      <div className="sticky bottom-0 -mx-8 -mb-12 p-8 bg-gradient-to-t from-white via-white to-transparent pt-16 border-t border-neutral-100">
         <div className={`flex ${isMobile ? 'flex-col space-y-4' : 'justify-between items-center'}`}>
           <button
             onClick={onBack}
-            className="px-6 py-3 rounded-xl font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-all hover-lift"
+            className="px-6 py-3 rounded-xl font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 transition-all duration-200"
           >
             Back to Technical Specs
           </button>
@@ -301,11 +336,11 @@ const SummaryReview = ({
             disabled={!formData.subject || !formData.action || !formData.location}
             className={`
               ${isMobile ? 'w-full' : 'px-12'}
-              py-5 rounded-xl font-bold text-lg shadow-xl
+              py-5 rounded-xl font-bold text-lg shadow-lg
               transition-all duration-200 flex items-center justify-center space-x-3
               ${formData.subject && formData.action && formData.location
-                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]'
-                : 'bg-neutral-300 text-neutral-500 cursor-not-allowed shadow-none'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-neutral-200 text-neutral-500 cursor-not-allowed shadow-none border border-neutral-300'
               }
             `}
           >
@@ -314,21 +349,57 @@ const SummaryReview = ({
           </button>
         </div>
         {formData.subject && formData.action && formData.location && (
-          <p className="text-center text-sm text-neutral-600 mt-4">
+          <p className="text-center text-sm text-neutral-600 mt-5 font-medium">
             This will create a prompt optimized for all major AI video models
           </p>
         )}
       </div>
 
-      {/* Missing Requirements Warning */}
+      {/* Missing Requirements Warning - Softer Design */}
       {(!formData.subject || !formData.action || !formData.location) && (
-        <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
-          <p className="text-sm text-red-800">
-            <AlertTriangle className="w-4 h-4 inline mr-1" />
-            Please fill in all required fields (Subject, Action, Location) before generating.
-          </p>
+        <div className="mt-6 p-5 bg-amber-50 rounded-xl border border-amber-200">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-900 leading-relaxed">
+              Please fill in all required fields <span className="font-semibold">(Subject, Action, Location)</span> before generating your prompt.
+            </p>
+          </div>
         </div>
       )}
+
+      {/* Inline Keyframes */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };

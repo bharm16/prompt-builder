@@ -1,197 +1,128 @@
 /**
- * CoreConceptAccordion - Airbnb UX/UI Compliant Redesign
- * 
- * A gated, progressive disclosure accordion for video prompt creation.
- * Follows Airbnb's Design Language System principles with:
- * - Strict 8px grid spacing
- * - Design token-based styling
- * - Clear visual hierarchy
- * - Accessible interactions
- * - Progressive disclosure pattern
- * 
- * @version 2.0.0
+ * StepCoreConcept - 2025 Redesign
+ *
+ * Modern, minimalist progressive disclosure form matching PromptCanvas design patterns.
+ *
+ * Design Principles Applied:
+ * - Neutral color palette (matching PromptCanvas)
+ * - System font stack for native feel
+ * - Micro-interactions and smooth transitions
+ * - Accessibility-first (WCAG 2.1 AA)
+ * - Progressive disclosure through opacity
+ * - Minimal, clean interface
+ *
+ * @version 3.0.0
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import {
-  ChevronRight,
-  ChevronDown,
-  User,
-  Zap,
-  MapPin,
-  Lock,
-  Check,
-  AlertCircle,
-} from "lucide-react";
+import { Check } from "lucide-react";
 
 // ============================================================================
-// DESIGN TOKENS - Airbnb DLS Implementation
+// DESIGN TOKENS - 2025 Minimalist System (matches PromptCanvas)
 // ============================================================================
 
-/**
- * Complete design token system following Airbnb principles
- * All spacing on 8px grid, semantic color naming, systematic typography
- */
 const tokens = {
-  // Spacing (8px base unit system)
-  space: {
-    xxs: "4px",   // 0.5 × 8px
-    xs: "8px",    // 1 × 8px
-    sm: "12px",   // 1.5 × 8px
-    md: "16px",   // 2 × 8px
-    lg: "24px",   // 3 × 8px
-    xl: "32px",   // 4 × 8px
-    xxl: "48px",  // 6 × 8px
-    xxxl: "64px", // 8 × 8px
-  },
-
-  // Typography system
+  // System font stack (matches PromptCanvas exactly)
   font: {
-    family: {
-      primary: '"Circular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      mono: '"Roboto Mono", "SF Mono", monospace',
-    },
+    family: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
     size: {
-      xs: "12px",
-      sm: "14px",
-      base: "16px",
-      md: "18px",
-      lg: "20px",
-      xl: "24px",
-      xxl: "32px",
-      xxxl: "48px",
-      display: "56px",
+      xs: "0.75rem",      // 12px
+      sm: "0.8125rem",    // 13px
+      base: "0.875rem",   // 14px
+      md: "0.9375rem",    // 15px
+      lg: "1rem",         // 16px
+      xl: "1.125rem",     // 18px
+      xxl: "1.25rem",     // 20px
+      xxxl: "1.5rem",     // 24px
+      display: "2rem",    // 32px
     },
     weight: {
-      regular: 400,
+      normal: 400,
       medium: 500,
       semibold: 600,
       bold: 700,
     },
     lineHeight: {
-      tight: 1.2,
+      tight: 1.25,
       snug: 1.375,
       normal: 1.5,
-      relaxed: 1.625,
+      relaxed: 1.6,
       loose: 1.75,
     },
     letterSpacing: {
       tight: "-0.02em",
-      snug: "-0.01em",
-      normal: "0",
-      wide: "0.02em",
+      normal: "-0.01em",
+      wide: "0.025em",
     },
   },
 
-  // Color system (Airbnb palette)
+  // Neutral color palette (matches PromptCanvas)
   color: {
-    // Brand colors
-    brand: {
-      50: "#fef2f2",
-      100: "#fee2e2",
-      200: "#fecaca",
-      300: "#fca5a5",
-      400: "#f87171",
-      500: "#FF5A5F",  // Airbnb brand red
-      600: "#E14D52",  // Hover state
-      700: "#C13E43",
-      800: "#A13437",
-      900: "#7F2A2D",
-    },
-
-    // Ink (grayscale)
-    ink: {
-      50: "#FBFBFB",
-      100: "#F7F7F7",
-      200: "#EDEDED",
-      300: "#D6D6D6",
+    neutral: {
+      50: "#FAFAFA",
+      100: "#F5F5F5",
+      200: "#E5E5E5",
+      300: "#D4D4D4",
       400: "#A3A3A3",
-      500: "#888888",
-      600: "#6A6A6A",
-      700: "#484848",
-      800: "#333333",
-      900: "#222222",
+      500: "#737373",
+      600: "#525252",
+      700: "#404040",
+      800: "#262626",
+      900: "#171717",
     },
-
-    // Semantic colors
     success: {
-      base: "#008489",
-      light: "#E0F7F7",
-      dark: "#005C5F",
+      50: "#F0FDF4",
+      100: "#DCFCE7",
+      500: "#22C55E",
+      600: "#16A34A",
+      700: "#15803D",
     },
-    error: {
-      base: "#C13515",
-      light: "#FDEAE5",
-      dark: "#8A1F0F",
-    },
-    warning: {
-      base: "#FFB400",
-      light: "#FFF9E6",
-      dark: "#CC9000",
-    },
-    info: {
-      base: "#005C5F",
-      light: "#E6F6F7",
-      dark: "#003D40",
-    },
-
-    // White (for clarity)
     white: "#FFFFFF",
+  },
+
+  // Spacing scale
+  space: {
+    1: "0.25rem",   // 4px
+    2: "0.5rem",    // 8px
+    3: "0.75rem",   // 12px
+    4: "1rem",      // 16px
+    5: "1.25rem",   // 20px
+    6: "1.5rem",    // 24px
+    8: "2rem",      // 32px
+    10: "2.5rem",   // 40px
+    12: "3rem",     // 48px
+    16: "4rem",     // 64px
   },
 
   // Border radius
   radius: {
-    sm: "4px",
-    md: "8px",
-    lg: "12px",
-    xl: "16px",
-    pill: "9999px",
+    sm: "0.25rem",  // 4px
+    md: "0.375rem", // 6px
+    lg: "0.5rem",   // 8px
+    xl: "0.75rem",  // 12px
   },
 
-  // Elevation (shadows)
-  elevation: {
-    none: "none",
-    sm: "0 1px 3px 0 rgba(0, 0, 0, 0.08)",
-    md: "0 4px 12px 0 rgba(0, 0, 0, 0.08)",
-    lg: "0 8px 24px 0 rgba(0, 0, 0, 0.10)",
-    xl: "0 16px 32px 0 rgba(0, 0, 0, 0.12)",
-    card: "0 6px 16px rgba(0, 0, 0, 0.06)",
+  // Shadows (subtle, matching PromptCanvas)
+  shadow: {
+    sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+    base: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
+    md: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+    lg: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
   },
 
-  // Transitions
+  // Transitions (smooth, delightful micro-interactions)
   transition: {
     fast: "150ms cubic-bezier(0.4, 0, 0.2, 1)",
     base: "200ms cubic-bezier(0.4, 0, 0.2, 1)",
     slow: "300ms cubic-bezier(0.4, 0, 0.2, 1)",
   },
-
-  // Focus indicators
-  focus: {
-    outline: "2px solid #008489",
-    outlineOffset: "3px",
-    ring: "0 0 0 4px rgba(0, 133, 137, 0.12)",
-  },
-
-  // Touch targets (minimum 44px for accessibility)
-  touchTarget: {
-    min: "44px",
-    comfortable: "48px",
-  },
 };
 
 // ============================================================================
-// UTILITY FUNCTIONS
+// VALIDATION
 // ============================================================================
 
-/**
- * Convert number to px string
- */
-const px = (n) => (typeof n === "number" ? `${n}px` : n);
-
-/**
- * Validation helpers
- */
 const validators = {
   minLength: (value, min = 3) => {
     const trimmed = value?.trim() || "";
@@ -200,98 +131,12 @@ const validators = {
 };
 
 // ============================================================================
-// PRIMITIVE COMPONENTS (Atoms)
+// COMPONENTS
 // ============================================================================
 
 /**
- * PrimaryButton - Airbnb-style CTA button
- * Features: Brand color, pill shape, shadow, smooth interactions
- */
-function PrimaryButton({ children, onClick, disabled, ariaLabel, fullWidth = false }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-
-  const baseStyles = {
-    appearance: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: tokens.space.xs,
-    width: fullWidth ? "100%" : "auto",
-    minHeight: tokens.touchTarget.comfortable, // 48px for accessibility
-    padding: `${tokens.space.sm} ${tokens.space.lg}`,
-    fontFamily: tokens.font.family.primary,
-    fontSize: tokens.font.size.base,
-    fontWeight: tokens.font.weight.semibold,
-    border: "none",
-    borderRadius: tokens.radius.pill,
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: `all ${tokens.transition.base}`,
-    outline: "none",
-  };
-
-  const stateStyles = disabled
-    ? {
-        backgroundColor: tokens.color.ink[200],
-        color: tokens.color.ink[500],
-        boxShadow: "none",
-      }
-    : {
-        backgroundColor: isPressed
-          ? tokens.color.brand[700]
-          : isHovered
-          ? tokens.color.brand[600]
-          : tokens.color.brand[500],
-        color: tokens.color.white,
-        boxShadow: isPressed ? "none" : tokens.elevation.card,
-        transform: isPressed ? "scale(0.98)" : "scale(1)",
-      };
-
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={onClick}
-      disabled={disabled}
-      style={{ ...baseStyles, ...stateStyles }}
-      onMouseEnter={() => !disabled && setIsHovered(true)}
-      onMouseLeave={() => {
-        if (!disabled) {
-          setIsHovered(false);
-          setIsPressed(false);
-        }
-      }}
-      onMouseDown={() => !disabled && setIsPressed(true)}
-      onMouseUp={() => !disabled && setIsPressed(false)}
-      onFocus={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.outline = tokens.focus.outline;
-          e.currentTarget.style.outlineOffset = tokens.focus.outlineOffset;
-        }
-      }}
-      onBlur={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.outline = "none";
-        }
-      }}
-    >
-      {children}
-      <ChevronRight size={18} aria-hidden="true" />
-    </button>
-  );
-}
-
-PrimaryButton.propTypes = {
-  children: PropTypes.node.isRequired,
-  onClick: PropTypes.func,
-  disabled: PropTypes.bool,
-  ariaLabel: PropTypes.string,
-  fullWidth: PropTypes.bool,
-};
-
-/**
- * TextField - Accessible form input with validation states
- * Features: Labels, hints, errors, focus states, ARIA attributes
+ * TextField - Modern minimalist input field
+ * Features: Clean borders, subtle focus states, micro-interactions
  */
 function TextField({
   id,
@@ -299,59 +144,45 @@ function TextField({
   value,
   onChange,
   onFocus,
-  onBlur,
-  onKeyDown,
   placeholder,
   hint,
-  error,
-  required,
   disabled,
   autoFocus,
+  showSuccess,
 }) {
   const [isFocused, setIsFocused] = useState(false);
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const describedBy = [hint ? hintId : null, error ? errorId : null]
-    .filter(Boolean)
-    .join(" ");
-
-  const hasError = Boolean(error);
-  const showSuccess = !hasError && value && validators.minLength(value);
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div style={{ marginBottom: "32px" }}>
-      {/* Label - Changed from tokens.space.lg (24px) to 32px to match space-y-8 */}
+    <div
+      style={{
+        opacity: disabled ? 0.4 : 1,
+        pointerEvents: disabled ? "none" : "auto",
+        transition: `opacity ${tokens.transition.slow}`,
+      }}
+    >
+      {/* Label */}
       <label
         htmlFor={id}
         style={{
           display: "block",
-          fontFamily: tokens.font.family.primary,
-          fontSize: "18px",
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.xl,
           fontWeight: tokens.font.weight.semibold,
-          color: tokens.color.ink[900],
-          marginBottom: "8px",
-          lineHeight: tokens.font.lineHeight.normal,
+          color: tokens.color.neutral[900],
+          marginBottom: tokens.space[2],
+          lineHeight: tokens.font.lineHeight.snug,
+          letterSpacing: tokens.font.letterSpacing.tight,
+          transition: `color ${tokens.transition.base}`,
         }}
       >
         {label}
-        {required && (
-          <span
-            aria-label="required"
-            style={{
-              marginLeft: tokens.space.xxs,
-              color: tokens.color.error.base,
-            }}
-          >
-            *
-          </span>
-        )}
       </label>
 
-      {/* Input container (for icon positioning) */}
+      {/* Input */}
       <div style={{ position: "relative" }}>
         <input
           id={id}
-          name={id}
           type="text"
           value={value ?? ""}
           onChange={onChange}
@@ -359,44 +190,31 @@ function TextField({
             setIsFocused(true);
             onFocus?.(e);
           }}
-          onBlur={(e) => {
-            setIsFocused(false);
-            onBlur?.(e);
-          }}
-          onKeyDown={onKeyDown}
+          onBlur={() => setIsFocused(false)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           placeholder={placeholder}
           disabled={disabled}
           autoFocus={autoFocus}
-          required={required}
-          aria-required={required || undefined}
-          aria-describedby={describedBy || undefined}
-          aria-invalid={hasError || undefined}
           style={{
             width: "100%",
-            minHeight: "48px",
-            padding: "16px",
-            paddingRight: showSuccess || hasError ? "48px" : "16px",
-            fontFamily: tokens.font.family.primary,
-            fontSize: "16px",
-            lineHeight: "24px",
-            color: tokens.color.ink[900],
+            padding: tokens.space[4],
+            fontFamily: tokens.font.family,
+            fontSize: tokens.font.size.md,
+            lineHeight: tokens.font.lineHeight.relaxed,
+            color: tokens.color.neutral[900],
             backgroundColor: tokens.color.white,
             border: `1px solid ${
-              hasError
-                ? tokens.color.error.base
-                : isFocused
-                ? "#000000"
-                : "#B0B0B0"
+              isFocused
+                ? tokens.color.neutral[400]
+                : isHovered
+                ? tokens.color.neutral[300]
+                : tokens.color.neutral[200]
             }`,
-            borderRadius: "8px",
+            borderRadius: tokens.radius.lg,
             outline: "none",
             transition: `all ${tokens.transition.base}`,
-            boxShadow: isFocused ? "0 0 0 2px #000000" : "none",
-            ...(disabled && {
-              backgroundColor: tokens.color.ink[100],
-              color: tokens.color.ink[500],
-              cursor: "not-allowed",
-            }),
+            boxShadow: isFocused ? `0 0 0 3px ${tokens.color.neutral[100]}` : "none",
           }}
         />
 
@@ -405,76 +223,34 @@ function TextField({
           <div
             style={{
               position: "absolute",
-              right: tokens.space.md,
+              right: tokens.space[4],
               top: "50%",
               transform: "translateY(-50%)",
-              pointerEvents: "none",
+              color: tokens.color.success[600],
+              display: "flex",
+              alignItems: "center",
+              animation: "fadeInScale 300ms cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
-            <Check
-              size={20}
-              color={tokens.color.success.base}
-              aria-label="Valid input"
-            />
-          </div>
-        )}
-
-        {/* Error indicator */}
-        {hasError && (
-          <div
-            style={{
-              position: "absolute",
-              right: tokens.space.md,
-              top: "50%",
-              transform: "translateY(-50%)",
-              pointerEvents: "none",
-            }}
-          >
-            <AlertCircle
-              size={20}
-              color={tokens.color.error.base}
-              aria-label="Invalid input"
-            />
+            <Check size={18} strokeWidth={2.5} />
           </div>
         )}
       </div>
 
       {/* Hint text */}
-      {hint && !error && (
+      {hint && (
         <p
-          id={hintId}
           style={{
             margin: 0,
-            marginTop: "14px", // mb-3.5 = 14px to match StepCreativeBrief
-            fontFamily: tokens.font.family.primary,
+            marginTop: tokens.space[2],
+            fontFamily: tokens.font.family,
             fontSize: tokens.font.size.sm,
-            color: tokens.color.ink[600],
-            lineHeight: "1.625", // leading-relaxed
+            color: tokens.color.neutral[500],
+            lineHeight: tokens.font.lineHeight.relaxed,
+            letterSpacing: tokens.font.letterSpacing.normal,
           }}
         >
           {hint}
-        </p>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          style={{
-            margin: 0,
-            marginTop: "10px", // mt-2.5 = 10px to match StepCreativeBrief
-            display: "flex",
-            alignItems: "center",
-            gap: tokens.space.xs,
-            fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.sm,
-            color: tokens.color.error.base,
-            lineHeight: tokens.font.lineHeight.normal,
-          }}
-        >
-          <AlertCircle size={16} aria-hidden="true" />
-          {error}
         </p>
       )}
     </div>
@@ -487,115 +263,57 @@ TextField.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   onFocus: PropTypes.func,
-  onBlur: PropTypes.func,
-  onKeyDown: PropTypes.func,
   placeholder: PropTypes.string,
   hint: PropTypes.string,
-  error: PropTypes.string,
-  required: PropTypes.bool,
   disabled: PropTypes.bool,
   autoFocus: PropTypes.bool,
+  showSuccess: PropTypes.bool,
 };
 
 /**
- * InlineSuggestions - Chip-style suggestion buttons
- * Features: Loading state, hover effects, accessible buttons
- * Handles both string and object {text, explanation} formats
+ * SuggestionChip - Minimalist suggestion button
+ * Features: Subtle hover states, smooth transitions
  */
-function InlineSuggestions({ suggestions = [], isLoading, onSelect }) {
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          padding: `${tokens.space.sm} 0`,
-          fontFamily: tokens.font.family.primary,
-          fontSize: tokens.font.size.sm,
-          color: tokens.color.ink[600],
-        }}
-      >
-        Loading suggestions…
-      </div>
-    );
-  }
-
-  if (!suggestions.length) return null;
-
-  return (
-    <div
-      role="list"
-      aria-label="Suggestions"
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: tokens.space.xs,
-        marginTop: "14px", // mt-3.5 = 14px to match StepCreativeBrief
-      }}
-    >
-      {suggestions.map((suggestion, index) => {
-        // Handle both string and object formats
-        const text = typeof suggestion === 'string' ? suggestion : suggestion.text;
-        const explanation = typeof suggestion === 'object' ? suggestion.explanation : null;
-        
-        return (
-          <SuggestionChip
-            key={`${text}-${index}`}
-            text={text}
-            explanation={explanation}
-            onClick={() => onSelect?.(text)}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-InlineSuggestions.propTypes = {
-  suggestions: PropTypes.arrayOf(
-    PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.shape({
-        text: PropTypes.string.isRequired,
-        explanation: PropTypes.string,
-      })
-    ])
-  ),
-  isLoading: PropTypes.bool,
-  onSelect: PropTypes.func,
-};
-
-/**
- * SuggestionChip - Individual suggestion button
- * Features: Hover states, optional tooltip for explanation
- */
-function SuggestionChip({ text, explanation, onClick }) {
+function SuggestionChip({ text, onClick, disabled }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
   return (
     <button
       type="button"
-      role="listitem"
       onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      title={explanation || undefined}
+      disabled={disabled}
+      onMouseEnter={() => !disabled && setIsHovered(true)}
+      onMouseLeave={() => {
+        if (!disabled) {
+          setIsHovered(false);
+          setIsPressed(false);
+        }
+      }}
+      onMouseDown={() => !disabled && setIsPressed(true)}
+      onMouseUp={() => !disabled && setIsPressed(false)}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: `${tokens.space.xs} ${tokens.space.md}`,
-        fontFamily: tokens.font.family.primary,
+        padding: `${tokens.space[2]} ${tokens.space[4]}`,
+        fontFamily: tokens.font.family,
         fontSize: tokens.font.size.sm,
         fontWeight: tokens.font.weight.medium,
-        color: tokens.color.ink[700],
-        backgroundColor: isHovered ? tokens.color.ink[100] : tokens.color.white,
-        border: `1px solid ${tokens.color.ink[300]}`,
-        borderRadius: tokens.radius.pill,
-        cursor: "pointer",
+        color: isHovered ? tokens.color.neutral[900] : tokens.color.neutral[700],
+        backgroundColor: isHovered ? tokens.color.neutral[100] : tokens.color.neutral[50],
+        border: `1px solid ${isHovered ? tokens.color.neutral[300] : tokens.color.neutral[200]}`,
+        borderRadius: tokens.radius.xl,
+        cursor: disabled ? "not-allowed" : "pointer",
         transition: `all ${tokens.transition.fast}`,
         outline: "none",
+        transform: isPressed ? "scale(0.98)" : "scale(1)",
+        opacity: disabled ? 0.5 : 1,
       }}
       onFocus={(e) => {
-        e.currentTarget.style.outline = tokens.focus.outline;
-        e.currentTarget.style.outlineOffset = tokens.focus.outlineOffset;
+        if (!disabled) {
+          e.currentTarget.style.outline = `2px solid ${tokens.color.neutral[400]}`;
+          e.currentTarget.style.outlineOffset = "2px";
+        }
       }}
       onBlur={(e) => {
         e.currentTarget.style.outline = "none";
@@ -608,233 +326,214 @@ function SuggestionChip({ text, explanation, onClick }) {
 
 SuggestionChip.propTypes = {
   text: PropTypes.string.isRequired,
-  explanation: PropTypes.string,
   onClick: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
-// ============================================================================
-// ORGANISM COMPONENTS
-// ============================================================================
-
 /**
- * SectionCard - Collapsible accordion panel
- * Features: Lock states, smooth animations, accessible disclosure
+ * Suggestions - Suggestion chips container
  */
-function SectionCard({
-  icon,
-  title,
-  description,
-  open,
-  onToggle,
-  locked,
-  completed,
-  children,
-  cta,
-}) {
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  // Calculate content height for smooth animation
-  useEffect(() => {
-    if (open && contentRef.current) {
-      setHeight(contentRef.current.scrollHeight);
-    } else {
-      setHeight(0);
-    }
-  }, [open, children]);
-
-  const handleHeaderClick = () => {
-    if (!locked) {
-      onToggle?.();
-    }
-  };
-
-  const handleHeaderKeyDown = (e) => {
-    if (!locked && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      onToggle?.();
-    }
-  };
+function Suggestions({ suggestions = [], onSelect, disabled, label }) {
+  if (!suggestions.length) return null;
 
   return (
-    <div
-      style={{
-        backgroundColor: tokens.color.white,
-        borderRadius: tokens.radius.xl,
-        boxShadow: tokens.elevation.card,
-        overflow: "hidden",
-        transition: `box-shadow ${tokens.transition.base}`,
-        ...(open && {
-          boxShadow: tokens.elevation.md,
-        }),
-      }}
-    >
-      {/* Card Header */}
+    <div style={{ marginTop: tokens.space[4] }}>
+      {label && (
+        <p
+          style={{
+            margin: 0,
+            marginBottom: tokens.space[3],
+            fontFamily: tokens.font.family,
+            fontSize: tokens.font.size.xs,
+            fontWeight: tokens.font.weight.medium,
+            color: tokens.color.neutral[500],
+            textTransform: "uppercase",
+            letterSpacing: tokens.font.letterSpacing.wide,
+          }}
+        >
+          {label}
+        </p>
+      )}
       <div
-        role="button"
-        tabIndex={locked ? -1 : 0}
-        aria-expanded={open}
-        aria-disabled={locked}
-        onClick={handleHeaderClick}
-        onKeyDown={handleHeaderKeyDown}
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: tokens.space.md,
-          padding: "28px 32px",
-          cursor: locked ? "not-allowed" : "pointer",
-          backgroundColor: open ? tokens.color.ink[50] : tokens.color.white,
-          transition: `background-color ${tokens.transition.base}`,
-          outline: "none",
-        }}
-        onFocus={(e) => {
-          if (!locked) {
-            e.currentTarget.style.outline = tokens.focus.outline;
-            e.currentTarget.style.outlineOffset = `-${tokens.space.xxs}`;
-          }
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.outline = "none";
+          flexWrap: "wrap",
+          gap: tokens.space[2],
         }}
       >
-        {/* Icon container */}
-        <div
-          style={{
-            width: tokens.space.xxl, // 48px
-            height: tokens.space.xxl,
-            borderRadius: tokens.radius.pill,
-            backgroundColor: completed
-              ? tokens.color.success.light
-              : locked
-              ? tokens.color.ink[200]
-              : tokens.color.brand[50],
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          {completed ? (
-            <Check size={24} color={tokens.color.success.base} />
-          ) : locked ? (
-            <Lock size={20} color={tokens.color.ink[500]} />
-          ) : (
-            icon
-          )}
-        </div>
-
-        {/* Title */}
-        <h3
-          style={{
-            flex: 1,
-            margin: 0,
-            fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.lg,
-            fontWeight: tokens.font.weight.semibold,
-            color: locked ? tokens.color.ink[500] : tokens.color.ink[900],
-            lineHeight: tokens.font.lineHeight.snug,
-          }}
-        >
-          {title}
-        </h3>
-
-        {/* Expand/collapse indicator */}
-        {!locked && (
-          <div
-            style={{
-              transition: `transform ${tokens.transition.base}`,
-              transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            }}
-          >
-            <ChevronDown size={24} color={tokens.color.ink[700]} />
-          </div>
-        )}
-      </div>
-
-      {/* Card Content (animated) */}
-      <div
-        ref={contentRef}
-        style={{
-          height: px(height),
-          overflow: "hidden",
-          transition: `height ${tokens.transition.slow}`,
-        }}
-      >
-        <div style={{ padding: "32px" }}>
-          {/* Description - mb-3.5 */}
-          {description && (
-            <div style={{ marginBottom: "20px" }}>{description}</div>
-          )}
-
-          {/* Form fields and suggestions */}
-          {children}
-
-          {/* CTA button - mt-8 */}
-          {cta && <div style={{ marginTop: "40px" }}>{cta}</div>}
-        </div>
+        {suggestions.slice(0, 5).map((suggestion, index) => {
+          const text = typeof suggestion === "string" ? suggestion : suggestion.text;
+          return (
+            <SuggestionChip
+              key={`${text}-${index}`}
+              text={text}
+              onClick={() => onSelect?.(text)}
+              disabled={disabled}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-SectionCard.propTypes = {
-  icon: PropTypes.node,
-  title: PropTypes.string.isRequired,
-  description: PropTypes.node,
-  open: PropTypes.bool,
-  onToggle: PropTypes.func,
-  locked: PropTypes.bool,
-  completed: PropTypes.bool,
-  children: PropTypes.node,
-  cta: PropTypes.node,
+Suggestions.propTypes = {
+  suggestions: PropTypes.arrayOf(
+    PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape({
+        text: PropTypes.string.isRequired,
+        explanation: PropTypes.string,
+      }),
+    ])
+  ),
+  onSelect: PropTypes.func,
+  disabled: PropTypes.bool,
+  label: PropTypes.string,
+};
+
+/**
+ * SuccessMessage - Success state indicator
+ */
+function SuccessMessage({ message }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: tokens.space[3],
+        padding: `${tokens.space[4]} ${tokens.space[5]}`,
+        backgroundColor: tokens.color.success[50],
+        border: `1px solid ${tokens.color.success[100]}`,
+        borderRadius: tokens.radius.lg,
+        animation: "slideInUp 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "20px",
+          height: "20px",
+          color: tokens.color.success[600],
+        }}
+      >
+        <Check size={18} strokeWidth={2.5} />
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: tokens.font.family,
+          fontSize: tokens.font.size.md,
+          fontWeight: tokens.font.weight.medium,
+          color: tokens.color.success[700],
+          lineHeight: tokens.font.lineHeight.relaxed,
+        }}
+      >
+        {message}
+      </p>
+    </div>
+  );
+}
+
+SuccessMessage.propTypes = {
+  message: PropTypes.string.isRequired,
+};
+
+/**
+ * PrimaryButton - Modern CTA button (matches PromptCanvas)
+ */
+function PrimaryButton({ children, onClick, disabled }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => !disabled && setIsHovered(true)}
+      onMouseLeave={() => {
+        if (!disabled) {
+          setIsHovered(false);
+          setIsPressed(false);
+        }
+      }}
+      onMouseDown={() => !disabled && setIsPressed(true)}
+      onMouseUp={() => !disabled && setIsPressed(false)}
+      style={{
+        width: "100%",
+        padding: `${tokens.space[4]} ${tokens.space[6]}`,
+        fontFamily: tokens.font.family,
+        fontSize: tokens.font.size.lg,
+        fontWeight: tokens.font.weight.semibold,
+        color: tokens.color.white,
+        backgroundColor: disabled
+          ? tokens.color.neutral[300]
+          : isPressed
+          ? tokens.color.neutral[800]
+          : isHovered
+          ? tokens.color.neutral[800]
+          : tokens.color.neutral[900],
+        border: "none",
+        borderRadius: tokens.radius.lg,
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: `all ${tokens.transition.base}`,
+        outline: "none",
+        transform: isPressed ? "translateY(0)" : isHovered ? "translateY(-1px)" : "translateY(0)",
+        boxShadow: isPressed
+          ? "none"
+          : isHovered
+          ? tokens.shadow.md
+          : tokens.shadow.sm,
+      }}
+      onFocus={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.outline = `2px solid ${tokens.color.neutral[400]}`;
+          e.currentTarget.style.outlineOffset = "2px";
+        }
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.outline = "none";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+PrimaryButton.propTypes = {
+  children: PropTypes.node.isRequired,
+  onClick: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
 // ============================================================================
-// MAIN COMPONENT - CoreConceptAccordion
+// MAIN COMPONENT
 // ============================================================================
 
 /**
- * CoreConceptAccordion - Main gated accordion component
- * 
- * Progressive disclosure pattern with three gated sections:
- * 1. Subject (always accessible)
- * 2. Action (unlocks when subject is valid)
- * 3. Location (unlocks when action is valid)
- * 
- * Features:
- * - Auto-focus management
- * - Keyboard navigation
- * - Accessibility (ARIA, focus management)
- * - Responsive layout
+ * CoreConceptAccordion - 2025 Redesigned Component
+ *
+ * Progressive disclosure form with:
+ * - Clean minimalist design matching PromptCanvas
+ * - Micro-interactions and smooth animations
+ * - Accessibility-first approach
+ * - Opacity-based progressive disclosure
  */
 export function CoreConceptAccordion({
   formData,
   onChange,
   onNext,
   suggestions,
-  isLoadingSuggestions,
   onRequestSuggestions,
 }) {
   // Validation states
   const isSubjectValid = validators.minLength(formData.subject, 3);
   const isActionValid = validators.minLength(formData.action, 3);
   const isLocationValid = validators.minLength(formData.location, 3);
-
-  // Accordion open/closed state
-  const [openSections, setOpenSections] = useState({
-    subject: true,
-    action: false,
-    location: false,
-  });
-
-  // Toggle accordion section
-  const toggleSection = useCallback((section) => {
-    setOpenSections((prev) => ({
-      subject: section === "subject" ? !prev.subject : false,
-      action: section === "action" ? !prev.action : false,
-      location: section === "location" ? !prev.location : false,
-    }));
-  }, []);
+  const allFieldsValid = isSubjectValid && isActionValid && isLocationValid;
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -852,277 +551,205 @@ export function CoreConceptAccordion({
     [onChange]
   );
 
-  // Auto-advance to next section when field is valid
-  const handleSectionAdvance = useCallback(
-    (currentSection, nextSection) => {
-      setOpenSections((prev) => ({
-        ...prev,
-        [currentSection]: false,
-        [nextSection]: true,
-      }));
-    },
-    []
-  );
-
   return (
-    <main
-      style={{
-        flex: "1",
-        width: "100%",
-        maxWidth: "1920px",
-        margin: "0 auto",
-        padding: "40px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "calc(100vh - 4px)", // Full viewport height minus progress bar
-      }}
-    >
-      <div
+    <>
+      {/* Keyframe animations */}
+      <style>
+        {`
+          @keyframes fadeInScale {
+            from {
+              opacity: 0;
+              transform: translateY(-50%) scale(0.9);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(-50%) scale(1);
+            }
+          }
+
+          @keyframes slideInUp {
+            from {
+              opacity: 0;
+              transform: translateY(8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
+
+      <main
         style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "40px",
-          maxWidth: "600px",
+          flex: "1",
           width: "100%",
+          maxWidth: "1920px",
+          margin: "0 auto",
+          padding: tokens.space[10],
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "calc(100vh - 4px)",
         }}
       >
-        {/* Heading Section */}
-        <section
+        <div
           style={{
-            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: tokens.space[10],
+            maxWidth: "600px",
             width: "100%",
           }}
         >
-          <h1
+          {/* Header Section */}
+          <header
             style={{
-              margin: 0,
-              marginBottom: "8px",
-              fontFamily: tokens.font.family.primary,
-              fontSize: "36px",
-              lineHeight: "44px",
-              letterSpacing: "-0.02em",
-              fontWeight: tokens.font.weight.bold,
-              color: "#222",
+              textAlign: "center",
+              width: "100%",
             }}
           >
-            Let's start with the big idea
-          </h1>
-          <p
-            style={{
-              margin: 0,
-              fontFamily: tokens.font.family.primary,
-              fontSize: "18px",
-              lineHeight: "28px",
-              color: "#717171",
-            }}
-          >
-            Tell us about the core of your video. We'll guide you through it step by step.
-          </p>
-        </section>
+            <h1
+              style={{
+                margin: 0,
+                marginBottom: tokens.space[2],
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.display,
+                lineHeight: tokens.font.lineHeight.tight,
+                letterSpacing: tokens.font.letterSpacing.tight,
+                fontWeight: tokens.font.weight.bold,
+                color: tokens.color.neutral[900],
+              }}
+            >
+              Let's start with the big idea
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.xl,
+                lineHeight: tokens.font.lineHeight.relaxed,
+                color: tokens.color.neutral[600],
+                letterSpacing: tokens.font.letterSpacing.normal,
+              }}
+            >
+              Tell us about the core of your video. We'll guide you through it step by step.
+            </p>
+          </header>
 
-        {/* Accordion Section */}
-        <section
-          style={{
-            width: "100%",
-          }}
-        >
-          {/* Big card container */}
-          <div
+          {/* Form Card */}
+          <section
             style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-              padding: "40px",
               width: "100%",
             }}
           >
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "24px",
+                backgroundColor: tokens.color.white,
+                borderRadius: tokens.radius.xl,
+                border: `1px solid ${tokens.color.neutral[200]}`,
+                boxShadow: tokens.shadow.base,
+                padding: tokens.space[12],
+                width: "100%",
               }}
             >
-            {/* Section 1: Subject */}
-            <SectionCard
-              icon={<User size={22} color={tokens.color.brand[500]} />}
-              title="Subject"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  What is the main focus? (person, object, animal, etc.)
-                </p>
-              }
-              open={openSections.subject}
-              onToggle={() => toggleSection("subject")}
-              locked={false}
-              completed={isSubjectValid && !openSections.subject}
-            >
-              <TextField
-                id="subject-input"
-                label="Subject"
-                value={formData.subject}
-                onChange={(e) => handleFieldChange("subject", e.target.value)}
-                onFocus={() =>
-                  onRequestSuggestions?.("subject", formData.subject || "")
-                }
-                placeholder="e.g., a professional athlete, a vintage car, a golden retriever"
-                hint="Be specific for better results"
-                error={
-                  formData.subject && !isSubjectValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                autoFocus
-              />
-
-              <InlineSuggestions
-                suggestions={suggestions?.subject || []}
-                isLoading={Boolean(isLoadingSuggestions?.subject)}
-                onSelect={(text) => handleSuggestionSelect("subject", text)}
-              />
-
-              <PrimaryButton
-                disabled={!isSubjectValid}
-                onClick={() => handleSectionAdvance("subject", "action")}
-                ariaLabel="Continue to Action section"
-                fullWidth
+              {/* Form Fields */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: tokens.space[8],
+                }}
               >
-                Save & Continue
-              </PrimaryButton>
-            </SectionCard>
+                {/* Field 1: Subject */}
+                <div>
+                  <TextField
+                    id="subject-input"
+                    label="First, what's the main focus of your video?"
+                    value={formData.subject}
+                    onChange={(e) => handleFieldChange("subject", e.target.value)}
+                    onFocus={() => onRequestSuggestions?.("subject", formData.subject || "")}
+                    placeholder="e.g., an elderly violinist, a golden retriever, a vintage motorcycle"
+                    hint="Be specific for better results"
+                    autoFocus
+                    showSuccess={isSubjectValid}
+                  />
 
-            {/* Section 2: Action */}
-            <SectionCard
-              icon={<Zap size={22} color={tokens.color.brand[500]} />}
-              title="Action"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  What is happening? (movement, activity, transformation)
-                </p>
-              }
-              open={openSections.action}
-              onToggle={() => toggleSection("action")}
-              locked={!isSubjectValid}
-              completed={isActionValid && !openSections.action}
-            >
-              <TextField
-                id="action-input"
-                label="Action"
-                value={formData.action}
-                onChange={(e) => handleFieldChange("action", e.target.value)}
-                onFocus={() =>
-                  isSubjectValid &&
-                  onRequestSuggestions?.("action", formData.action || "")
-                }
-                placeholder="e.g., running through, transforming into, dancing with"
-                hint="Describe the movement or activity"
-                error={
-                  formData.action && !isActionValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                disabled={!isSubjectValid}
-              />
+                  {/* Suggestions */}
+                  <Suggestions
+                    suggestions={suggestions?.subject}
+                    onSelect={(text) => handleSuggestionSelect("subject", text)}
+                    label="Try one of these"
+                  />
+                </div>
 
-              <InlineSuggestions
-                suggestions={suggestions?.action || []}
-                isLoading={Boolean(isLoadingSuggestions?.action)}
-                onSelect={(text) => handleSuggestionSelect("action", text)}
-              />
+                {/* Field 2: Action */}
+                <div>
+                  <TextField
+                    id="action-input"
+                    label="Got it. What's the subject doing?"
+                    value={formData.action}
+                    onChange={(e) => handleFieldChange("action", e.target.value)}
+                    onFocus={() =>
+                      isSubjectValid && onRequestSuggestions?.("action", formData.action || "")
+                    }
+                    placeholder="e.g., running through, dancing with, transforming into"
+                    hint="Describe the movement or activity"
+                    disabled={!isSubjectValid}
+                    showSuccess={isActionValid}
+                  />
 
-              <PrimaryButton
-                disabled={!isActionValid}
-                onClick={() => handleSectionAdvance("action", "location")}
-                ariaLabel="Continue to Location section"
-                fullWidth
-              >
-                Save & Continue
-              </PrimaryButton>
-            </SectionCard>
+                  {/* Suggestions */}
+                  {isSubjectValid && (
+                    <Suggestions
+                      suggestions={suggestions?.action}
+                      onSelect={(text) => handleSuggestionSelect("action", text)}
+                      label="Try one of these"
+                    />
+                  )}
+                </div>
 
-            {/* Section 3: Location */}
-            <SectionCard
-              icon={<MapPin size={22} color={tokens.color.brand[500]} />}
-              title="Location"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  Where does it take place? (setting, environment)
-                </p>
-              }
-              open={openSections.location}
-              onToggle={() => toggleSection("location")}
-              locked={!isActionValid}
-              completed={isLocationValid && !openSections.location}
-            >
-              <TextField
-                id="location-input"
-                label="Location"
-                value={formData.location}
-                onChange={(e) => handleFieldChange("location", e.target.value)}
-                onFocus={() =>
-                  isActionValid &&
-                  onRequestSuggestions?.("location", formData.location || "")
-                }
-                placeholder="e.g., a sun-drenched beach, a futuristic city, an ancient forest"
-                hint="Describe the setting or environment"
-                error={
-                  formData.location && !isLocationValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                disabled={!isActionValid}
-              />
+                {/* Field 3: Location */}
+                <div>
+                  <TextField
+                    id="location-input"
+                    label="And where is all this happening?"
+                    value={formData.location}
+                    onChange={(e) => handleFieldChange("location", e.target.value)}
+                    onFocus={() =>
+                      isActionValid && onRequestSuggestions?.("location", formData.location || "")
+                    }
+                    placeholder="e.g., a sun-drenched beach, a futuristic city, an ancient forest"
+                    hint="Describe the setting or environment"
+                    disabled={!isActionValid}
+                    showSuccess={isLocationValid}
+                  />
 
-              <InlineSuggestions
-                suggestions={suggestions?.location || []}
-                isLoading={Boolean(isLoadingSuggestions?.location)}
-                onSelect={(text) => handleSuggestionSelect("location", text)}
-              />
+                  {/* Suggestions */}
+                  {isActionValid && (
+                    <Suggestions
+                      suggestions={suggestions?.location}
+                      onSelect={(text) => handleSuggestionSelect("location", text)}
+                      label="Try one of these"
+                    />
+                  )}
+                </div>
 
-              <PrimaryButton
-                disabled={!isLocationValid}
-                onClick={onNext}
-                ariaLabel="Continue to next step"
-                fullWidth
-              >
-                Continue to Atmosphere
-              </PrimaryButton>
-            </SectionCard>
+                {/* Success Message */}
+                {allFieldsValid && <SuccessMessage message="Great start! That's a solid foundation." />}
+
+                {/* Continue Button */}
+                <PrimaryButton onClick={onNext} disabled={!isLocationValid}>
+                  Continue
+                </PrimaryButton>
+              </div>
             </div>
-          </div>
-        </section>
-      </div>
-    </main>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }
 
@@ -1135,7 +762,6 @@ CoreConceptAccordion.propTypes = {
   onChange: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired,
   suggestions: PropTypes.object,
-  isLoadingSuggestions: PropTypes.object,
   onRequestSuggestions: PropTypes.func,
 };
 
@@ -1152,8 +778,6 @@ export default function Preview() {
     action: "",
     location: "",
   });
-
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState({});
 
   const [suggestions] = useState({
     subject: [
@@ -1183,11 +807,8 @@ export default function Preview() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleRequestSuggestions = useCallback((field) => {
-    setIsLoadingSuggestions((prev) => ({ ...prev, [field]: true }));
-    setTimeout(() => {
-      setIsLoadingSuggestions((prev) => ({ ...prev, [field]: false }));
-    }, 300);
+  const handleRequestSuggestions = useCallback(() => {
+    // Placeholder for suggestion loading
   }, []);
 
   const handleNext = useCallback(() => {
@@ -1200,7 +821,6 @@ export default function Preview() {
       onChange={handleChange}
       onNext={handleNext}
       suggestions={suggestions}
-      isLoadingSuggestions={isLoadingSuggestions}
       onRequestSuggestions={handleRequestSuggestions}
     />
   );

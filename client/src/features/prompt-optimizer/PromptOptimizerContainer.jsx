@@ -6,6 +6,7 @@ import {
   Lightbulb,
   GraduationCap,
   Video,
+  Layout,
   Plus,
   PanelLeft,
   Settings as SettingsIcon,
@@ -77,6 +78,12 @@ function PromptOptimizerContent() {
       name: 'Video Prompt',
       icon: Video,
       description: 'Generate AI video prompts',
+    },
+    {
+      id: 'uxui',
+      name: 'UX/UI Design',
+      icon: Layout,
+      description: 'Wireframes, components & audits',
     },
   ];
 
