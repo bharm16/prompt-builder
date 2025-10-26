@@ -55,7 +55,7 @@ const StepAtmosphere = ({
   const handleKeyDown = (e, fieldName) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const fields = ['time', 'mood', 'style', 'event'];
+      const fields = ['location', 'time', 'mood', 'style', 'event'];
       const currentIndex = fields.indexOf(fieldName);
       if (currentIndex < fields.length - 1) {
         document.getElementById(`${fields[currentIndex + 1]}-input`)?.focus();
@@ -94,6 +94,44 @@ const StepAtmosphere = ({
 
       {/* Fields Grid */}
       <div className="space-y-6">
+        {/* Location Field */}
+        <div>
+          <label htmlFor="location-input" className="block text-sm font-semibold text-gray-700 mb-2">
+            Location
+          </label>
+          <p className="text-sm text-gray-600 mb-3">
+            Where does it take place? (setting, environment)
+          </p>
+          <input
+            id="location-input"
+            type="text"
+            value={formData.location}
+            onChange={(e) => handleChange('location', e.target.value)}
+            onFocus={() => handleFocus('location')}
+            onKeyDown={(e) => handleKeyDown(e, 'location')}
+            placeholder="e.g., a sun-drenched beach, a futuristic city, an ancient forest"
+            className={`
+              w-full px-4 py-3 text-base border-2 rounded-lg
+              transition-all duration-200
+              ${activeField === 'location'
+                ? 'border-purple-500 bg-white focus:ring-4 focus:ring-purple-100'
+                : 'border-gray-300 bg-white focus:border-purple-500 focus:ring-4 focus:ring-purple-100'
+              }
+              focus:outline-none
+            `}
+          />
+
+          {/* Suggestions for Location */}
+          {activeField === 'location' && (
+            <InlineSuggestions
+              suggestions={suggestions.location || []}
+              isLoading={isLoadingSuggestions.location}
+              onSelect={handleSuggestionSelect}
+              fieldName="location"
+            />
+          )}
+        </div>
+
         {/* Time Field */}
         <div>
           <label htmlFor="time-input" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -288,6 +326,9 @@ StepAtmosphere.propTypes = {
   formData: PropTypes.shape({
     subject: PropTypes.string,
     action: PropTypes.string,
+    descriptor1: PropTypes.string,
+    descriptor2: PropTypes.string,
+    descriptor3: PropTypes.string,
     location: PropTypes.string,
     time: PropTypes.string,
     mood: PropTypes.string,

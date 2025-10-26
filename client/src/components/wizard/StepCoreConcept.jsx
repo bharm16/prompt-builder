@@ -818,21 +818,16 @@ export function CoreConceptAccordion({
   // Validation states
   const isSubjectValid = validators.minLength(formData.subject, 3);
   const isActionValid = validators.minLength(formData.action, 3);
-  const isLocationValid = validators.minLength(formData.location, 3);
 
   // Accordion open/closed state
   const [openSections, setOpenSections] = useState({
     subject: true,
-    action: false,
-    location: false,
   });
 
   // Toggle accordion section
   const toggleSection = useCallback((section) => {
     setOpenSections((prev) => ({
       subject: section === "subject" ? !prev.subject : false,
-      action: section === "action" ? !prev.action : false,
-      location: section === "location" ? !prev.location : false,
     }));
   }, []);
 
@@ -852,14 +847,10 @@ export function CoreConceptAccordion({
     [onChange]
   );
 
-  // Auto-advance to next section when field is valid
+  // Auto-advance to next section when field is valid (no longer needed with single section)
   const handleSectionAdvance = useCallback(
     (currentSection, nextSection) => {
-      setOpenSections((prev) => ({
-        ...prev,
-        [currentSection]: false,
-        [nextSection]: true,
-      }));
+      // Keep for backwards compatibility but not used
     },
     []
   );
@@ -946,10 +937,10 @@ export function CoreConceptAccordion({
                 gap: "24px",
               }}
             >
-            {/* Section 1: Subject */}
+            {/* Single Section: Subject with Descriptors */}
             <SectionCard
               icon={<User size={22} color={tokens.color.brand[500]} />}
-              title="Subject"
+              title="Core Concept"
               description={
                 <p
                   style={{
@@ -960,14 +951,15 @@ export function CoreConceptAccordion({
                     lineHeight: tokens.font.lineHeight.normal,
                   }}
                 >
-                  What is the main focus? (person, object, animal, etc.)
+                  Define your subject and describe it with three key details
                 </p>
               }
               open={openSections.subject}
               onToggle={() => toggleSection("subject")}
               locked={false}
-              completed={isSubjectValid && !openSections.subject}
+              completed={isSubjectValid && isActionValid && !openSections.subject}
             >
+              {/* Subject Field */}
               <TextField
                 id="subject-input"
                 label="Subject"
@@ -976,8 +968,8 @@ export function CoreConceptAccordion({
                 onFocus={() =>
                   onRequestSuggestions?.("subject", formData.subject || "")
                 }
-                placeholder="e.g., a professional athlete, a vintage car, a golden retriever"
-                hint="Be specific for better results"
+                placeholder="e.g., athlete, car, dog, dancer, bird"
+                hint="What or who is the main focus? (just the subject, no descriptors)"
                 error={
                   formData.subject && !isSubjectValid
                     ? "Please enter at least 3 characters"
@@ -993,38 +985,67 @@ export function CoreConceptAccordion({
                 onSelect={(text) => handleSuggestionSelect("subject", text)}
               />
 
-              <PrimaryButton
+              {/* Descriptor 1: Physical appearance */}
+              <TextField
+                id="descriptor1-input"
+                label="Descriptor 1"
+                value={formData.descriptor1}
+                onChange={(e) => handleFieldChange("descriptor1", e.target.value)}
+                onFocus={() =>
+                  onRequestSuggestions?.("descriptor1", formData.descriptor1 || "")
+                }
+                placeholder="e.g., muscular, chrome-plated, golden-furred"
+                hint="Physical appearance (size, color, texture, shape)"
                 disabled={!isSubjectValid}
-                onClick={() => handleSectionAdvance("subject", "action")}
-                ariaLabel="Continue to Action section"
-                fullWidth
-              >
-                Save & Continue
-              </PrimaryButton>
-            </SectionCard>
+              />
 
-            {/* Section 2: Action */}
-            <SectionCard
-              icon={<Zap size={22} color={tokens.color.brand[500]} />}
-              title="Action"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  What is happening? (movement, activity, transformation)
-                </p>
-              }
-              open={openSections.action}
-              onToggle={() => toggleSection("action")}
-              locked={!isSubjectValid}
-              completed={isActionValid && !openSections.action}
-            >
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor1 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
+                onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
+              />
+
+              {/* Descriptor 2: Visual details */}
+              <TextField
+                id="descriptor2-input"
+                label="Descriptor 2"
+                value={formData.descriptor2}
+                onChange={(e) => handleFieldChange("descriptor2", e.target.value)}
+                onFocus={() =>
+                  onRequestSuggestions?.("descriptor2", formData.descriptor2 || "")
+                }
+                placeholder="e.g., wearing a red jersey, with gleaming headlights, long-eared"
+                hint="Clothing, accessories, or distinctive features"
+                disabled={!isSubjectValid}
+              />
+
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor2 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
+                onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
+              />
+
+              {/* Descriptor 3: Physical state or condition */}
+              <TextField
+                id="descriptor3-input"
+                label="Descriptor 3"
+                value={formData.descriptor3}
+                onChange={(e) => handleFieldChange("descriptor3", e.target.value)}
+                onFocus={() =>
+                  onRequestSuggestions?.("descriptor3", formData.descriptor3 || "")
+                }
+                placeholder="e.g., in mid-stride, covered in dust, with wagging tail"
+                hint="Physical state, posture, or condition"
+                disabled={!isSubjectValid}
+              />
+
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor3 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
+                onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
+              />
+
+              {/* Action Field */}
               <TextField
                 id="action-input"
                 label="Action"
@@ -1035,7 +1056,7 @@ export function CoreConceptAccordion({
                   onRequestSuggestions?.("action", formData.action || "")
                 }
                 placeholder="e.g., running through, transforming into, dancing with"
-                hint="Describe the movement or activity"
+                hint="What is happening? (movement, activity, transformation)"
                 error={
                   formData.action && !isActionValid
                     ? "Please enter at least 3 characters"
@@ -1052,67 +1073,9 @@ export function CoreConceptAccordion({
               />
 
               <PrimaryButton
-                disabled={!isActionValid}
-                onClick={() => handleSectionAdvance("action", "location")}
-                ariaLabel="Continue to Location section"
-                fullWidth
-              >
-                Save & Continue
-              </PrimaryButton>
-            </SectionCard>
-
-            {/* Section 3: Location */}
-            <SectionCard
-              icon={<MapPin size={22} color={tokens.color.brand[500]} />}
-              title="Location"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  Where does it take place? (setting, environment)
-                </p>
-              }
-              open={openSections.location}
-              onToggle={() => toggleSection("location")}
-              locked={!isActionValid}
-              completed={isLocationValid && !openSections.location}
-            >
-              <TextField
-                id="location-input"
-                label="Location"
-                value={formData.location}
-                onChange={(e) => handleFieldChange("location", e.target.value)}
-                onFocus={() =>
-                  isActionValid &&
-                  onRequestSuggestions?.("location", formData.location || "")
-                }
-                placeholder="e.g., a sun-drenched beach, a futuristic city, an ancient forest"
-                hint="Describe the setting or environment"
-                error={
-                  formData.location && !isLocationValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                disabled={!isActionValid}
-              />
-
-              <InlineSuggestions
-                suggestions={suggestions?.location || []}
-                isLoading={Boolean(isLoadingSuggestions?.location)}
-                onSelect={(text) => handleSuggestionSelect("location", text)}
-              />
-
-              <PrimaryButton
-                disabled={!isLocationValid}
+                disabled={!isSubjectValid || !isActionValid}
                 onClick={onNext}
-                ariaLabel="Continue to next step"
+                ariaLabel="Continue to Atmosphere"
                 fullWidth
               >
                 Continue to Atmosphere
@@ -1129,8 +1092,10 @@ export function CoreConceptAccordion({
 CoreConceptAccordion.propTypes = {
   formData: PropTypes.shape({
     subject: PropTypes.string,
+    descriptor1: PropTypes.string,
+    descriptor2: PropTypes.string,
+    descriptor3: PropTypes.string,
     action: PropTypes.string,
-    location: PropTypes.string,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired,
@@ -1149,19 +1114,42 @@ CoreConceptAccordion.propTypes = {
 export default function Preview() {
   const [formData, setFormData] = useState({
     subject: "",
+    descriptor1: "",
+    descriptor2: "",
+    descriptor3: "",
     action: "",
-    location: "",
   });
 
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState({});
 
   const [suggestions] = useState({
     subject: [
-      "Golden retriever",
-      "Vintage roadster",
-      "Street photographer",
-      "Ballet dancer",
-      "Hummingbird",
+      "athlete",
+      "car",
+      "dog",
+      "dancer",
+      "bird",
+    ],
+    descriptor1: [
+      "muscular and toned",
+      "chrome-plated",
+      "golden-furred",
+      "wearing flowing white",
+      "iridescent green",
+    ],
+    descriptor2: [
+      "wearing a red jersey",
+      "with gleaming headlights",
+      "long-eared and alert",
+      "in a tutu and pointe shoes",
+      "with rapidly beating wings",
+    ],
+    descriptor3: [
+      "in mid-stride",
+      "covered in dust",
+      "with wagging tail",
+      "arms extended gracefully",
+      "hovering in flight",
     ],
     action: [
       "running through",
@@ -1169,13 +1157,6 @@ export default function Preview() {
       "transforming into",
       "leaping over",
       "gliding across",
-    ],
-    location: [
-      "futuristic city",
-      "ancient forest",
-      "sun-drenched beach",
-      "misty mountain peak",
-      "neon-lit alleyway",
     ],
   });
 
