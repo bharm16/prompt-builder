@@ -881,28 +881,30 @@ export function CoreConceptAccordion({
       <div
         style={{
           display: "flex",
-          flexDirection: "row",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          gap: "64px",
+          gap: "48px",
+          maxWidth: "640px",
+          width: "100%",
         }}
       >
-        {/* Left Column - Heading */}
+        {/* Heading Section */}
         <section
           style={{
-            flex: "1",
-            maxWidth: "568px",
+            textAlign: "center",
+            width: "100%",
           }}
         >
           <h1
             style={{
               margin: 0,
-              marginBottom: "24px",
+              marginBottom: "16px",
               fontFamily: tokens.font.family.primary,
-              fontSize: "56px",
-              lineHeight: "64px",
+              fontSize: "48px",
+              lineHeight: "56px",
               letterSpacing: "-0.02em",
-              fontWeight: tokens.font.weight.semibold,
+              fontWeight: tokens.font.weight.bold,
               color: "#222",
             }}
           >
@@ -912,8 +914,8 @@ export function CoreConceptAccordion({
             style={{
               margin: 0,
               fontFamily: tokens.font.family.primary,
-              fontSize: "16px",
-              lineHeight: "24px",
+              fontSize: "18px",
+              lineHeight: "28px",
               color: "#6B7280",
             }}
           >
@@ -921,11 +923,10 @@ export function CoreConceptAccordion({
           </p>
         </section>
 
-        {/* Right Column - Accordion sections */}
+        {/* Accordion Section */}
         <section
           style={{
-            flex: "1",
-            maxWidth: "568px",
+            width: "100%",
           }}
         >
           {/* Big card container */}
