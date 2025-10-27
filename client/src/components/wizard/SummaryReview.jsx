@@ -72,19 +72,30 @@ const SummaryReview = ({
   // Field sections for review
   const sections = [
     {
-      title: 'Creative Brief',
+      title: 'Core Concept',
       icon: '🎬',
       color: 'indigo',
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
-        { key: 'location', label: 'Location', required: true },
+        { key: 'descriptor1', label: 'Descriptor 1', required: false },
+        { key: 'descriptor2', label: 'Descriptor 2', required: false },
+        { key: 'descriptor3', label: 'Descriptor 3', required: false }
+      ],
+      step: 1 // Core Concept is now step 1
+    },
+    {
+      title: 'Atmosphere & Style',
+      icon: '✨',
+      color: 'purple',
+      fields: [
+        { key: 'location', label: 'Location', required: false },
         { key: 'time', label: 'Time', required: false },
         { key: 'mood', label: 'Mood', required: false },
         { key: 'style', label: 'Style', required: false },
         { key: 'event', label: 'Event', required: false }
       ],
-      step: 0
+      step: 2 // Atmosphere is now step 2
     }
   ];
 
