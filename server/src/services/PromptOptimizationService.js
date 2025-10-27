@@ -143,19 +143,19 @@ export class PromptOptimizationService {
 
     switch (mode) {
       case 'reasoning':
-        systemPrompt = this.getReasoningPrompt(prompt);
+        systemPrompt = this.getReasoningPrompt(prompt, brainstormContext);
         break;
       case 'research':
-        systemPrompt = this.getResearchPrompt(prompt);
+        systemPrompt = this.getResearchPrompt(prompt, brainstormContext);
         break;
       case 'socratic':
-        systemPrompt = this.getSocraticPrompt(prompt);
+        systemPrompt = this.getSocraticPrompt(prompt, brainstormContext);
         break;
       case 'video':
         systemPrompt = this.getVideoPrompt(prompt, brainstormContext);
         break;
       default:
-        systemPrompt = this.getDefaultPrompt(prompt);
+        systemPrompt = this.getDefaultPrompt(prompt, brainstormContext);
     }
 
     // Add context enhancement if provided
@@ -163,10 +163,8 @@ export class PromptOptimizationService {
       systemPrompt += this.buildContextAddition(context);
     }
 
-    // Add brainstorm context enhancement for video mode
-    if (brainstormContext?.elements && mode === 'video') {
-      systemPrompt += this.buildBrainstormContextAddition(brainstormContext);
-    }
+    // Note: brainstormContext is now injected directly into each mode's template
+    // via the transformation_process section, not appended afterward
 
     return systemPrompt;
   }
@@ -175,9 +173,36 @@ export class PromptOptimizationService {
    * IMPROVED REASONING TEMPLATE v3.0.0
    * Generates high-quality reasoning prompts by focusing on OUTPUT rather than PROCESS
    * Follows modern LLM prompting best practices
+   * @param {string} prompt - User's prompt to optimize
+   * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getReasoningPrompt(prompt) {
+  getReasoningPrompt(prompt, brainstormContext = null) {
+    // Build brainstorm context section if provided
+    const brainstormSection = brainstormContext?.elements 
+      ? this.buildBrainstormContextForTemplate(brainstormContext)
+      : '';
+
+    // Build transformation steps based on whether we have brainstorm context
+    const transformationSteps = brainstormSection
+      ? `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Integrate user-provided context** - The user specified these key elements:
+${brainstormSection}
+Ensure these elements are naturally woven into the optimized prompt's Goal, Context, and Warnings sections.
+3. **Determine specific deliverables** - What concrete outputs would best serve this goal?
+4. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
+5. **Identify essential context** - What background information shapes the solution space?
+6. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
+7. **Remove all meta-instructions** - Trust the model to reason well without process guidance`
+      : `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Determine specific deliverables** - What concrete outputs would best serve this goal?
+3. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
+4. **Identify essential context** - What background information shapes the solution space?
+5. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
+6. **Remove all meta-instructions** - Trust the model to reason well without process guidance`;
+
     return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3, Claude Sonnet). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and guide toward high-quality outputs through strategic constraints rather than process micromanagement.
 
 Transform the user's rough prompt into a structured reasoning prompt that will produce exceptional results.
@@ -286,13 +311,7 @@ The algorithm is used in a web application's data processing pipeline where sort
 
 <transformation_process>
 When transforming the user's prompt:
-
-1. **Extract the core objective** - What are they really trying to accomplish?
-2. **Determine specific deliverables** - What concrete outputs would best serve this goal?
-3. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
-4. **Identify essential context** - What background information shapes the solution space?
-5. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
-6. **Remove all meta-instructions** - Trust the model to reason well without process guidance
+${transformationSteps}
 
 Keep the final prompt focused, actionable, and sophisticated. Every word should serve the goal of producing excellent output.
 </transformation_process>
@@ -304,20 +323,40 @@ Output ONLY the optimized reasoning prompt in the structure shown above. Do not 
 
   /**
    * Get research mode prompt template
+   * @param {string} prompt - User's prompt to optimize
+   * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getResearchPrompt(prompt) {
-    return `You are a research methodology expert specializing in comprehensive, actionable research planning with rigorous source validation and bias mitigation.
+  getResearchPrompt(prompt, brainstormContext = null) {
+    // Build brainstorm context section if provided
+    const brainstormSection = brainstormContext?.elements 
+      ? this.buildBrainstormContextForTemplate(brainstormContext)
+      : '';
 
-<internal_instructions>
-CRITICAL: The sections below marked as <thinking_protocol>, <advanced_research_methodology>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+    // Build thinking protocol steps based on whether we have brainstorm context
+    const thinkingSteps = brainstormSection
+      ? `
+1. **Understand the research scope** (3-5 sentences)
+   - What's the core research question?
+   - What type of research is this (exploratory/explanatory/evaluative)?
+   - What depth and breadth are needed?
 
-Your output should ONLY contain the actual optimized research plan that starts with "**RESEARCH OBJECTIVE**" and follows the structure defined in the template.
-</internal_instructions>
+2. **Integrate user-provided context** - The user specified these key elements:
+${brainstormSection}
+Ensure these elements inform the research objective, scope, and methodology.
+   - How do these elements shape the research focus?
+   - What aspects need deeper investigation?
 
-<thinking_protocol>
-Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
+3. **Identify methodological requirements** (bullet list)
+   - What source types are essential?
+   - What quality standards apply?
+   - What biases need mitigation?
 
+4. **Design research structure** (prioritized list)
+   - What's the optimal question hierarchy?
+   - How to ensure source triangulation?
+   - What synthesis framework fits best?`
+      : `
 1. **Understand the research scope** (3-5 sentences)
    - What's the core research question?
    - What type of research is this (exploratory/explanatory/evaluative)?
@@ -331,7 +370,19 @@ Before outputting the optimized prompt, engage in internal step-by-step thinking
 3. **Design research structure** (prioritized list)
    - What's the optimal question hierarchy?
    - How to ensure source triangulation?
-   - What synthesis framework fits best?
+   - What synthesis framework fits best?`;
+
+    return `You are a research methodology expert specializing in comprehensive, actionable research planning with rigorous source validation and bias mitigation.
+
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <advanced_research_methodology>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized research plan that starts with "**RESEARCH OBJECTIVE**" and follows the structure defined in the template.
+</internal_instructions>
+
+<thinking_protocol>
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
+${thinkingSteps}
 
 This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
@@ -506,20 +557,40 @@ OUTPUT NOW: Begin immediately with "**RESEARCH OBJECTIVE**" and nothing else.
 
   /**
    * Get socratic mode prompt template
+   * @param {string} prompt - User's prompt to optimize
+   * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getSocraticPrompt(prompt) {
-    return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions, informed by evidence-based learning science.
+  getSocraticPrompt(prompt, brainstormContext = null) {
+    // Build brainstorm context section if provided
+    const brainstormSection = brainstormContext?.elements 
+      ? this.buildBrainstormContextForTemplate(brainstormContext)
+      : '';
 
-<internal_instructions>
-CRITICAL: The sections below marked as <thinking_protocol>, <advanced_socratic_pedagogy>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+    // Build thinking protocol steps based on whether we have brainstorm context
+    const thinkingSteps = brainstormSection
+      ? `
+1. **Understand the learning domain** (3-5 sentences)
+   - What are the core concepts to master?
+   - What prerequisite knowledge is essential?
+   - What are the common misconceptions?
 
-Your output should ONLY contain the actual optimized learning plan that starts with "**LEARNING OBJECTIVE**" and follows the structure defined in the template.
-</internal_instructions>
+2. **Integrate user-provided context** - The user specified these key elements:
+${brainstormSection}
+Ensure these elements shape the learning objectives, question design, and pedagogical approach.
+   - How do these elements inform the learning journey?
+   - What teaching approach best suits this context?
 
-<thinking_protocol>
-Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
+3. **Design learning progression** (bullet list)
+   - What's the optimal question sequence?
+   - Where should difficulty increase?
+   - What active learning techniques apply?
 
+4. **Plan assessment integration** (prioritized list)
+   - What formative assessment points are needed?
+   - How to adapt to different mastery levels?
+   - What metacognitive prompts strengthen learning?`
+      : `
 1. **Understand the learning domain** (3-5 sentences)
    - What are the core concepts to master?
    - What prerequisite knowledge is essential?
@@ -533,7 +604,19 @@ Before outputting the optimized prompt, engage in internal step-by-step thinking
 3. **Plan assessment integration** (prioritized list)
    - What formative assessment points are needed?
    - How to adapt to different mastery levels?
-   - What metacognitive prompts strengthen learning?
+   - What metacognitive prompts strengthen learning?`;
+
+    return `You are a Socratic learning guide specializing in inquiry-based education through strategic, insight-generating questions, informed by evidence-based learning science.
+
+<internal_instructions>
+CRITICAL: The sections below marked as <thinking_protocol>, <advanced_socratic_pedagogy>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+
+Your output should ONLY contain the actual optimized learning plan that starts with "**LEARNING OBJECTIVE**" and follows the structure defined in the template.
+</internal_instructions>
+
+<thinking_protocol>
+Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
+${thinkingSteps}
 
 This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
@@ -683,11 +766,39 @@ OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
 
   /**
    * Get default optimization prompt template
+   * @param {string} prompt - User's prompt to optimize
+   * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getDefaultPrompt(prompt) {
+  getDefaultPrompt(prompt, brainstormContext = null) {
     const domain = this.detectDomainFromPrompt(prompt);
     const wordCount = prompt.split(/\s+/).length;
+
+    // Build brainstorm context section if provided
+    const brainstormSection = brainstormContext?.elements 
+      ? this.buildBrainstormContextForTemplate(brainstormContext)
+      : '';
+
+    // Build transformation rules based on whether we have brainstorm context
+    const transformationRules = brainstormSection
+      ? `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Integrate user-provided context** - The user specified these key elements:
+${brainstormSection}
+Ensure these elements are naturally woven into the optimized prompt's GOAL, CONTEXT, and REQUIREMENTS sections.
+3. **Specificity Over Generality** - Replace every vague term with precise, measurable language
+4. **Structure for Scannability** - Use clear hierarchy and formatting
+5. **Constraints as Guardrails** - Define boundaries to focus creativity
+6. **Success Metrics** - Make quality measurable and objective
+7. **Anti-patterns** - Explicitly state what to avoid`
+      : `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Add sufficient background** - Provide context for standalone execution
+3. **Specificity Over Generality** - Replace every vague term with precise, measurable language
+4. **Structure for Scannability** - Use clear hierarchy and formatting
+5. **Constraints as Guardrails** - Define boundaries to focus creativity
+6. **Success Metrics** - Make quality measurable and objective
+7. **Anti-patterns** - Explicitly state what to avoid`;
 
     return `<role>
 You are an elite prompt engineering specialist with expertise in cognitive science, linguistics, and AI optimization. You understand precisely what makes AI systems perform at their peak potential.
@@ -949,13 +1060,10 @@ ${this.getDomainEnhancements(domain)}
 </domain_specific_enhancements>
 
 <transformation_rules>
-1. **Specificity Over Generality**: Replace every vague term with precise, measurable language
-2. **Context Injection**: Add sufficient background for standalone execution
-3. **Structure for Scannability**: Use clear hierarchy and formatting
-4. **Constraints as Guardrails**: Define boundaries to focus creativity
-5. **Examples as Clarifiers**: Include when complexity demands it
-6. **Success Metrics**: Make quality measurable and objective
-7. **Anti-patterns**: Explicitly state what to avoid
+When transforming the user's prompt:
+${transformationRules}
+
+Keep the final prompt focused, actionable, and production-ready. Every word should serve the goal of exceptional output.
 </transformation_rules>
 
 <original_prompt>
@@ -1214,57 +1322,122 @@ OUTPUT NOW: Begin immediately with "**GOAL**" and nothing else.
   }
 
   /**
-   * Build brainstorm context addition for system prompt
-   * Incorporates user's Creative Brainstorm selections into optimization
+   * Build brainstorm context for inline template injection
+   * Creates a compact representation for transformation_process sections
+   * @param {Object} brainstormContext - Context from Creative Brainstorm
+   * @returns {string} Formatted context string for template injection
    * @private
    */
-  buildBrainstormContextAddition(brainstormContext) {
+  buildBrainstormContextForTemplate(brainstormContext) {
     const { elements } = brainstormContext;
 
-    let addition = '\n\n**CRITICAL - User has specified these exact elements from Creative Brainstorm:**\n';
-    addition += 'You MUST incorporate these specific elements into your optimized video prompt. ';
+    const definedElements = Object.entries(elements).filter(([, value]) => {
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+
+    if (definedElements.length === 0) {
+      return '';
+    }
+
+    const lines = definedElements.map(([key, value]) => {
+      const label = this.formatBrainstormKey(key);
+      return `   - ${label}: "${value}"`;
+    });
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Build brainstorm context addition for system prompt (DEPRECATED - use buildBrainstormContextForTemplate)
+   * Incorporates user's Creative Brainstorm selections into optimization
+   * @param {Object} brainstormContext - Context from Creative Brainstorm
+   * @param {string} mode - Optimization mode (video, reasoning, research, etc.)
+   * @private
+   */
+  buildBrainstormContextAddition(brainstormContext, mode = 'default') {
+    const { elements } = brainstormContext;
+
+    // Check if there are any defined elements
+    const definedElements = Object.entries(elements).filter(([, value]) => {
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+
+    if (definedElements.length === 0) {
+      return '';
+    }
+
+    const isVideoMode = mode === 'video';
+
+    let addition = '\n\n**CRITICAL - User has provided these key elements from Creative Brainstorm:**\n';
+    addition += 'You MUST incorporate these specific elements into your optimized prompt. ';
     addition += 'Use the exact wording where possible, or integrate them naturally:\n\n';
 
-    if (elements.subject) {
-      addition += `**Subject/Character:** ${elements.subject}\n`;
-      addition += '→ This should be the central focus of your video description.\n\n';
-    }
+    // Map elements to generic labels for non-video modes
+    const elementLabels = {
+      subject: isVideoMode ? 'Subject/Character' : 'Main Subject/Focus',
+      action: isVideoMode ? 'Action/Movement' : 'Key Action/Process',
+      location: isVideoMode ? 'Location/Setting' : 'Context/Environment',
+      time: isVideoMode ? 'Time/Lighting' : 'Timeframe/Period',
+      mood: isVideoMode ? 'Mood/Tone' : 'Tone/Atmosphere',
+      style: isVideoMode ? 'Visual Style' : 'Style/Approach',
+      event: isVideoMode ? 'Key Event' : 'Key Event/Milestone'
+    };
 
-    if (elements.action) {
-      addition += `**Action/Movement:** ${elements.action}\n`;
-      addition += '→ Describe how the subject moves or what they are doing.\n\n';
-    }
+    const elementGuidance = {
+      subject: isVideoMode 
+        ? '→ This should be the central focus of your video description.' 
+        : '→ This should be the central focus of the prompt.',
+      action: isVideoMode 
+        ? '→ Describe how the subject moves or what they are doing.' 
+        : '→ Emphasize this action or process in the prompt.',
+      location: isVideoMode 
+        ? '→ Set the scene with this specific environment.' 
+        : '→ Establish this context or setting in the prompt.',
+      time: isVideoMode 
+        ? '→ Incorporate this lighting quality and atmosphere.' 
+        : '→ Consider this temporal aspect in the prompt.',
+      mood: isVideoMode 
+        ? '→ Convey this emotional quality throughout.' 
+        : '→ Maintain this tone throughout the prompt.',
+      style: isVideoMode 
+        ? '→ Apply this aesthetic approach to the entire description.' 
+        : '→ Apply this stylistic approach to the prompt.',
+      event: isVideoMode 
+        ? '→ Include this specific narrative moment.' 
+        : '→ Include this key point or milestone.'
+    };
 
-    if (elements.location) {
-      addition += `**Location/Setting:** ${elements.location}\n`;
-      addition += '→ Set the scene with this specific environment.\n\n';
-    }
-
-    if (elements.time) {
-      addition += `**Time/Lighting:** ${elements.time}\n`;
-      addition += '→ Incorporate this lighting quality and atmosphere.\n\n';
-    }
-
-    if (elements.mood) {
-      addition += `**Mood/Tone:** ${elements.mood}\n`;
-      addition += '→ Convey this emotional quality throughout.\n\n';
-    }
-
-    if (elements.style) {
-      addition += `**Visual Style:** ${elements.style}\n`;
-      addition += '→ Apply this aesthetic approach to the entire description.\n\n';
-    }
-
-    if (elements.event) {
-      addition += `**Key Event:** ${elements.event}\n`;
-      addition += '→ Include this specific narrative moment.\n\n';
-    }
+    definedElements.forEach(([key, value]) => {
+      const label = elementLabels[key] || this.formatBrainstormKey(key);
+      const guidance = elementGuidance[key] || `→ Incorporate this into the prompt.`;
+      
+      addition += `**${label}:** ${value}\n`;
+      addition += `${guidance}\n\n`;
+    });
 
     addition += '**IMPORTANT:** These are the user\'s core creative choices. ';
-    addition += 'Prioritize incorporating them over generic descriptors. ';
-    addition += 'The optimized prompt should feel like a natural expansion of these elements.\n';
+    addition += 'Prioritize incorporating them over generic elements. ';
+    addition += 'The optimized prompt should feel like a natural expansion of these user-defined elements.\n';
 
     return addition;
+  }
+
+  /**
+   * Format brainstorm keys into human-readable labels
+   * @private
+   */
+  formatBrainstormKey(key) {
+    if (!key) {
+      return '';
+    }
+
+    return key
+      .toString()
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
   /**
