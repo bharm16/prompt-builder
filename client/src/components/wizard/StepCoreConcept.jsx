@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Check,
   AlertCircle,
+  Lock,
+  HelpCircle,
 } from "lucide-react";
 
 // ============================================================================
@@ -56,6 +58,18 @@ if (typeof document !== "undefined") {
 
       [role="list"]::-webkit-scrollbar-thumb:hover {
         background: #CFCFCF;
+      }
+
+      /* Animations */
+      @keyframes fadeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
     `;
     document.head.appendChild(style);
@@ -281,6 +295,128 @@ const validators = {
 // ============================================================================
 
 /**
+ * ProgressIndicator - Shows completion status of required fields
+ */
+function ProgressIndicator({ completed, total }) {
+  const percentage = total > 0 ? (completed / total) * 100 : 0;
+
+  return (
+    <div
+      style={{
+        marginBottom: "16px",
+        padding: "10px 12px",
+        backgroundColor: tokens.color.gray[50],
+        border: `1px solid ${tokens.color.gray[200]}`,
+        borderRadius: tokens.radius.md,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "6px",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: tokens.font.family.primary,
+            fontSize: tokens.font.size.hint,
+            fontWeight: tokens.font.weight.semibold,
+            color: tokens.color.gray[700],
+          }}
+        >
+          Progress
+        </span>
+        <span
+          style={{
+            fontFamily: tokens.font.family.primary,
+            fontSize: tokens.font.size.hint,
+            fontWeight: tokens.font.weight.medium,
+            color: completed === total ? tokens.color.success.base : tokens.color.gray[600],
+          }}
+        >
+          {completed} of {total} required
+        </span>
+      </div>
+      
+      {/* Progress bar */}
+      <div
+        style={{
+          width: "100%",
+          height: "4px",
+          backgroundColor: tokens.color.gray[200],
+          borderRadius: "2px",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${percentage}%`,
+            height: "100%",
+            background: completed === total 
+              ? `linear-gradient(90deg, ${tokens.color.success.base} 0%, #00A87F 100%)`
+              : `linear-gradient(90deg, ${tokens.color.accent.base} 0%, ${tokens.color.accent.hover} 100%)`,
+            transition: "width 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+            borderRadius: "2px",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+ProgressIndicator.propTypes = {
+  completed: PropTypes.number.isRequired,
+  total: PropTypes.number.isRequired,
+};
+
+/**
+ * SuccessBanner - Encouraging message when core fields complete
+ */
+function SuccessBanner({ message }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "12px",
+        marginBottom: "16px",
+        backgroundColor: tokens.color.success.light,
+        border: `1px solid ${tokens.color.success.base}`,
+        borderRadius: tokens.radius.md,
+        animation: "fadeSlideIn 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+    >
+      <Check
+        size={18}
+        color={tokens.color.success.base}
+        style={{
+          flexShrink: 0,
+        }}
+        aria-hidden="true"
+      />
+      <span
+        style={{
+          fontFamily: tokens.font.family.primary,
+          fontSize: tokens.font.size.hint,
+          fontWeight: tokens.font.weight.medium,
+          color: tokens.color.gray[800],
+          lineHeight: 1.3,
+        }}
+      >
+        {message}
+      </span>
+    </div>
+  );
+}
+
+SuccessBanner.propTypes = {
+  message: PropTypes.string.isRequired,
+};
+
+/**
  * PrimaryButton - Airbnb-style CTA button
  * Features: Brand color, pill shape, shadow, smooth interactions
  */
@@ -390,8 +526,14 @@ function TextField({
   required,
   disabled,
   autoFocus,
+  description,
+  minLength,
+  maxLength,
+  showCharCount,
+  disabledMessage,
 }) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy = [hint ? hintId : null, error ? errorId : null]
@@ -399,40 +541,110 @@ function TextField({
     .join(" ");
 
   const hasError = Boolean(error);
-  const showSuccess = !hasError && value && validators.minLength(value);
+  const showSuccess = !hasError && value && validators.minLength(value, minLength || 3);
+  const charCount = value?.length || 0;
+  const meetsMinLength = minLength ? charCount >= minLength : true;
 
   return (
-    <div style={{ marginBottom: tokens.space.vertical.md }}> {/* 20px */}
-      {/* Label */}
-      <label
-        htmlFor={id}
-        style={{
-          display: "block",
-          fontFamily: tokens.font.family.primary,
-          fontSize: tokens.font.size.label,        // 15px
-          fontWeight: tokens.font.weight.semibold, // 600
-          letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
-          color: tokens.color.gray[700],            // #787878
-          marginBottom: "8px",
-          lineHeight: tokens.font.lineHeight.normal, // 1.4
-        }}
-      >
-        {label}
-        {required && (
+    <div style={{ marginBottom: "16px" }}> {/* 16px for tighter vertical spacing */}
+      {/* Label with optional badge */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+        <label
+          htmlFor={id}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontFamily: tokens.font.family.primary,
+            fontSize: tokens.font.size.label,        // 15px
+            fontWeight: tokens.font.weight.semibold, // 600
+            letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
+            color: disabled ? tokens.color.gray[400] : tokens.color.gray[700],
+            lineHeight: tokens.font.lineHeight.normal, // 1.4
+          }}
+        >
+          {disabled && (
+            <Lock size={14} color={tokens.color.gray[400]} aria-hidden="true" />
+          )}
+          {label}
+          {required && (
+            <span
+              aria-label="required"
+              style={{
+                marginLeft: "2px",
+                color: tokens.color.accent.base,      // Accent color for required
+              }}
+            >
+              *
+            </span>
+          )}
+        </label>
+        
+        {/* Character count */}
+        {showCharCount && !disabled && (
           <span
-            aria-label="required"
             style={{
-              marginLeft: tokens.space.xxs,
-              color: tokens.color.accent.base,      // Accent color for required
+              fontFamily: tokens.font.family.primary,
+              fontSize: tokens.font.size.caption,    // 13px
+              color: meetsMinLength ? tokens.color.gray[500] : tokens.color.accent.base,
+              fontWeight: tokens.font.weight.medium,
             }}
           >
-            *
+            {charCount}{minLength ? `/${minLength}` : ''}
           </span>
         )}
-      </label>
+      </div>
+
+      {/* Description text - Only show when focused */}
+      {description && isFocused && (
+        <p
+          style={{
+            margin: 0,
+            marginBottom: "6px",
+            fontFamily: tokens.font.family.primary,
+            fontSize: tokens.font.size.hint,         // 14px
+            color: disabled ? tokens.color.gray[400] : tokens.color.gray[500],
+            lineHeight: 1.3,
+          }}
+        >
+          {description}
+        </p>
+      )}
+
+      {/* Disabled message - Only show when hovered or focused */}
+      {disabled && disabledMessage && (isHovered || isFocused) && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 12px",
+            marginBottom: "6px",
+            backgroundColor: tokens.color.gray[50],
+            border: `1px solid ${tokens.color.gray[200]}`,
+            borderRadius: tokens.radius.md,
+          }}
+        >
+          <Lock size={14} color={tokens.color.gray[400]} aria-hidden="true" />
+          <span
+            style={{
+              fontFamily: tokens.font.family.primary,
+              fontSize: tokens.font.size.hint,
+              color: tokens.color.gray[600],
+              lineHeight: 1.3,
+            }}
+          >
+            {disabledMessage}
+          </span>
+        </div>
+      )}
 
       {/* Input container (for icon positioning) */}
-      <div style={{ position: "relative" }}>
+      <div 
+        style={{ position: "relative" }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <input
           id={id}
           name={id}
@@ -536,7 +748,7 @@ function TextField({
           id={hintId}
           style={{
             margin: 0,
-            marginTop: "6px",
+            marginTop: "8px",
             fontFamily: tokens.font.family.primary,
             fontSize: tokens.font.size.hint,         // 14px
             fontWeight: tokens.font.weight.regular,  // 400
@@ -555,7 +767,7 @@ function TextField({
           role="alert"
           style={{
             margin: 0,
-            marginTop: "6px",
+            marginTop: "8px",
             display: "flex",
             alignItems: "center",
             gap: tokens.space.xs,
@@ -587,6 +799,11 @@ TextField.propTypes = {
   required: PropTypes.bool,
   disabled: PropTypes.bool,
   autoFocus: PropTypes.bool,
+  description: PropTypes.string,
+  minLength: PropTypes.number,
+  maxLength: PropTypes.number,
+  showCharCount: PropTypes.bool,
+  disabledMessage: PropTypes.string,
 };
 
 /**
@@ -621,8 +838,8 @@ function InlineSuggestions({ suggestions = [], isLoading, onSelect }) {
         gap: "8px",
         overflowX: "auto",
         overflowY: "hidden",
-        marginTop: "12px",
-        paddingBottom: "8px",
+        marginTop: "16px",
+        paddingBottom: "12px",
         // Custom scrollbar styling
         scrollbarWidth: "thin",
         scrollbarColor: `${tokens.color.gray[300]} ${tokens.color.gray[100]}`,
@@ -748,9 +965,37 @@ export function CoreConceptAccordion({
   isLoadingSuggestions,
   onRequestSuggestions,
 }) {
+  // Responsive spacing state
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [isTablet, setIsTablet] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+      setIsTablet(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Validation states
   const isSubjectValid = validators.minLength(formData.subject, 3);
   const isActionValid = validators.minLength(formData.action, 3);
+
+  // Progress tracking
+  const requiredFieldsCompleted = [isSubjectValid, isActionValid].filter(Boolean).length;
+  const totalRequiredFields = 2;
+  const showSuccessBanner = isSubjectValid && isActionValid;
+
+  // Active field tracking for showing only relevant suggestions
+  const [activeField, setActiveField] = React.useState(null);
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -768,6 +1013,19 @@ export function CoreConceptAccordion({
     [onChange]
   );
 
+  // Responsive padding values
+  const containerPadding = isDesktop
+    ? "48px 40px"  // Desktop: 48px vertical, 40px horizontal
+    : isTablet
+    ? "40px 32px"  // Tablet: 40px vertical, 32px horizontal
+    : "32px 24px"; // Mobile: 32px vertical, 24px horizontal
+
+  const cardPadding = isDesktop
+    ? "32px"  // Desktop: comfortable padding
+    : isTablet
+    ? "28px"  // Tablet: moderate padding
+    : "24px"; // Mobile: efficient padding
+
   return (
     <main
       style={{
@@ -775,7 +1033,7 @@ export function CoreConceptAccordion({
         width: "100%",
         maxWidth: "1920px",
         margin: "0 auto",
-        padding: `${tokens.space.vertical.xxl} 40px`, // 40px top/bottom, 40px sides
+        padding: containerPadding,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -789,7 +1047,7 @@ export function CoreConceptAccordion({
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          gap: tokens.space.vertical.xxl,            // 40px between heading and card
+          gap: "32px",            // 32px between heading and card
           maxWidth: "600px",
           width: "100%",
         }}
@@ -804,7 +1062,7 @@ export function CoreConceptAccordion({
           <h1
             style={{
               margin: 0,
-              marginBottom: "12px",
+              marginBottom: "16px",
               fontFamily: tokens.font.family.primary,
               fontSize: tokens.font.size.heading,         // 42px
               fontWeight: tokens.font.weight.bold,        // 700
@@ -845,20 +1103,34 @@ export function CoreConceptAccordion({
               borderRadius: tokens.radius.xl,           // 16px for modern look
               border: `1px solid ${tokens.color.gray[200]}`,
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)",
-              padding: `${tokens.space.horizontal.xxl}`, // 48px all around
+              padding: cardPadding, // Responsive: 32px mobile, 36px tablet, 40px desktop
               width: "100%",
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
+            {/* Progress Indicator */}
+            <ProgressIndicator 
+              completed={requiredFieldsCompleted} 
+              total={totalRequiredFields} 
+            />
+
+            {/* Success Banner */}
+            {showSuccessBanner && (
+              <SuccessBanner message="Excellent! Your core concept is complete. Feel free to add descriptors for more detail." />
+            )}
+
             {/* Subject Field */}
             <TextField
               id="subject-input"
               label="Subject"
+              description="What's the main focus? (e.g., person, object, animal)"
               value={formData.subject}
               onChange={(e) => handleFieldChange("subject", e.target.value)}
-              onFocus={() =>
-                onRequestSuggestions?.("subject", formData.subject || "")
-              }
+              onFocus={() => {
+                setActiveField("subject");
+                onRequestSuggestions?.("subject", formData.subject || "");
+              }}
+              onBlur={() => setActiveField(null)}
               error={
                 formData.subject && !isSubjectValid
                   ? "Please enter at least 3 characters"
@@ -866,78 +1138,104 @@ export function CoreConceptAccordion({
               }
               required
               autoFocus
+              minLength={3}
+              showCharCount={true}
             />
 
-            <InlineSuggestions
-              suggestions={suggestions?.subject || []}
-              isLoading={Boolean(isLoadingSuggestions?.subject)}
-              onSelect={(text) => handleSuggestionSelect("subject", text)}
-            />
+            {activeField === "subject" && (
+              <InlineSuggestions
+                suggestions={suggestions?.subject || []}
+                isLoading={Boolean(isLoadingSuggestions?.subject)}
+                onSelect={(text) => handleSuggestionSelect("subject", text)}
+              />
+            )}
 
             {/* Descriptor 1: Physical appearance */}
             <TextField
               id="descriptor1-input"
               label="Descriptor 1"
+              description="Physical appearance (e.g., muscular, sleek, colorful)"
               value={formData.descriptor1}
               onChange={(e) => handleFieldChange("descriptor1", e.target.value)}
-              onFocus={() =>
-                onRequestSuggestions?.("descriptor1", formData.descriptor1 || "")
-              }
+              onFocus={() => {
+                setActiveField("descriptor1");
+                onRequestSuggestions?.("descriptor1", formData.descriptor1 || "");
+              }}
+              onBlur={() => setActiveField(null)}
               disabled={!isSubjectValid}
+              disabledMessage="Complete the Subject field to unlock"
             />
 
-            <InlineSuggestions
-              suggestions={suggestions?.descriptor1 || []}
-              isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
-              onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
-            />
+            {activeField === "descriptor1" && (
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor1 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
+                onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
+              />
+            )}
 
             {/* Descriptor 2: Visual details */}
             <TextField
               id="descriptor2-input"
               label="Descriptor 2"
+              description="Visual details (e.g., wearing a red jersey, with gleaming headlights)"
               value={formData.descriptor2}
               onChange={(e) => handleFieldChange("descriptor2", e.target.value)}
-              onFocus={() =>
-                onRequestSuggestions?.("descriptor2", formData.descriptor2 || "")
-              }
+              onFocus={() => {
+                setActiveField("descriptor2");
+                onRequestSuggestions?.("descriptor2", formData.descriptor2 || "");
+              }}
+              onBlur={() => setActiveField(null)}
               disabled={!isSubjectValid}
+              disabledMessage="Complete the Subject field to unlock"
             />
 
-            <InlineSuggestions
-              suggestions={suggestions?.descriptor2 || []}
-              isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
-              onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
-            />
+            {activeField === "descriptor2" && (
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor2 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
+                onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
+              />
+            )}
 
             {/* Descriptor 3: Physical state or condition */}
             <TextField
               id="descriptor3-input"
               label="Descriptor 3"
+              description="Physical state or condition (e.g., in mid-stride, covered in dust)"
               value={formData.descriptor3}
               onChange={(e) => handleFieldChange("descriptor3", e.target.value)}
-              onFocus={() =>
-                onRequestSuggestions?.("descriptor3", formData.descriptor3 || "")
-              }
+              onFocus={() => {
+                setActiveField("descriptor3");
+                onRequestSuggestions?.("descriptor3", formData.descriptor3 || "");
+              }}
+              onBlur={() => setActiveField(null)}
               disabled={!isSubjectValid}
+              disabledMessage="Complete the Subject field to unlock"
             />
 
-            <InlineSuggestions
-              suggestions={suggestions?.descriptor3 || []}
-              isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
-              onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
-            />
+            {activeField === "descriptor3" && (
+              <InlineSuggestions
+                suggestions={suggestions?.descriptor3 || []}
+                isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
+                onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
+              />
+            )}
 
             {/* Action Field */}
             <TextField
               id="action-input"
               label="Action"
+              description="What's happening? (e.g., running through, transforming into, leaping over)"
               value={formData.action}
               onChange={(e) => handleFieldChange("action", e.target.value)}
-              onFocus={() =>
-                isSubjectValid &&
-                onRequestSuggestions?.("action", formData.action || "")
-              }
+              onFocus={() => {
+                setActiveField("action");
+                if (isSubjectValid) {
+                  onRequestSuggestions?.("action", formData.action || "");
+                }
+              }}
+              onBlur={() => setActiveField(null)}
               error={
                 formData.action && !isActionValid
                   ? "Please enter at least 3 characters"
@@ -945,16 +1243,21 @@ export function CoreConceptAccordion({
               }
               required
               disabled={!isSubjectValid}
+              disabledMessage="Complete the Subject field to unlock"
+              minLength={3}
+              showCharCount={true}
             />
 
-            <InlineSuggestions
-              suggestions={suggestions?.action || []}
-              isLoading={Boolean(isLoadingSuggestions?.action)}
-              onSelect={(text) => handleSuggestionSelect("action", text)}
-            />
+            {activeField === "action" && (
+              <InlineSuggestions
+                suggestions={suggestions?.action || []}
+                isLoading={Boolean(isLoadingSuggestions?.action)}
+                onSelect={(text) => handleSuggestionSelect("action", text)}
+              />
+            )}
 
             {/* Button with top margin */}
-            <div style={{ marginTop: tokens.space.vertical.xl }}>
+            <div style={{ marginTop: "32px" }}>
               <PrimaryButton
                 disabled={!isSubjectValid || !isActionValid}
                 onClick={onNext}
