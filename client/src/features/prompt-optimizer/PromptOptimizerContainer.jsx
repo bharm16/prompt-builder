@@ -1057,7 +1057,14 @@ function PromptOptimizerContent() {
 
       {/* Top Action Buttons - Hidden when wizard is open */}
       {!showBrainstorm && (
-        <div className="fixed left-6 top-6 z-fixed flex items-center gap-2">
+        <div className="fixed left-6 top-6 z-fixed flex flex-col gap-2">
+          <button
+            onClick={handleCreateNew}
+            className="btn-icon-secondary shadow-lg hover-scale ripple"
+            aria-label="Create new prompt"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
             className="btn-icon-secondary shadow-lg hover-scale ripple"
@@ -1065,13 +1072,6 @@ function PromptOptimizerContent() {
             aria-expanded={showHistory}
           >
             <PanelLeft className="h-5 w-5" />
-          </button>
-          <button
-            onClick={handleCreateNew}
-            className="btn-icon-secondary shadow-lg hover-scale ripple"
-            aria-label="Create new prompt"
-          >
-            <Plus className="h-5 w-5" />
           </button>
         </div>
       )}
