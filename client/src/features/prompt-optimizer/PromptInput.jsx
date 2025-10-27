@@ -177,16 +177,19 @@ export const PromptInput = ({
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe what you want to create..."
-              rows={4}
-              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed p-6"
+              rows={2}
+              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed px-6 pt-6 pb-0"
               style={{
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+                border: 'none',
+                boxShadow: 'none',
+                outline: 'none',
               }}
               aria-label="Prompt input"
             />
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-3 bg-neutral-50">
+          <div className="flex items-center justify-between px-4 py-3 bg-white">
             <div className="flex items-center gap-2">
               {selectedMode === 'video' && (
                 <button
