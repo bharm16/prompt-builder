@@ -120,19 +120,22 @@ export const typography = {
 // COLOR TOKENS
 // ============================================================================
 
-// Primary Brand Color
+// Primary Brand Color (Rausch Pink - Airbnb inspired)
 export const primary = {
-  50: '#EEF2FF',
-  100: '#E0E7FF',
-  200: '#C7D2FE',
-  300: '#A5B4FC',
-  400: '#818CF8',
-  500: '#6366F1',
-  600: '#4F46E5',  // Main brand color
-  700: '#4338CA',
-  800: '#3730A3',
-  900: '#312E81',
+  50: '#FFF5F7',
+  100: '#FFE3EA',
+  200: '#FFC0CC',
+  300: '#FF98AF',
+  400: '#FF6D8C',
+  500: '#FF385C',  // Main Rausch pink
+  600: '#E03252',
+  700: '#C12745',
+  800: '#971E36',
+  900: '#711628',
 };
+
+// Accent alias for clarity in wizard context
+export const accent = primary;
 
 // Success States
 export const success = {
@@ -498,6 +501,206 @@ export const a11y = {
 };
 
 // ============================================================================
+// WIZARD-SPECIFIC TOKENS
+// ============================================================================
+
+export const wizard = {
+  // Field Spacing (optimized for viewport fit)
+  field: {
+    marginBottom: spacing.md,        // 16px between fields
+    labelGap: spacing.xs,            // 8px label to input
+    descriptionGap: '6px',           // 6px input to description (tighter)
+    hintGap: spacing.xs,             // 8px input to hint/error
+  },
+
+  // Progress Indicator
+  progress: {
+    padding: {
+      vertical: '10px',
+      horizontal: '12px',
+    },
+    barHeight: '4px',
+    gap: '6px',
+    marginBottom: spacing.md,        // 16px
+  },
+
+  // Success Banner
+  banner: {
+    padding: '12px',
+    gap: '10px',
+    iconSize: '18px',
+    marginBottom: spacing.md,        // 16px
+  },
+
+  // Card Padding (responsive)
+  card: {
+    paddingMobile: spacing.lg,       // 24px
+    paddingTablet: '28px',
+    paddingDesktop: spacing.xl,      // 32px
+  },
+
+  // Container Padding (responsive)
+  container: {
+    mobile: {
+      vertical: spacing.xl,          // 32px
+      horizontal: spacing.lg,        // 24px
+    },
+    tablet: {
+      vertical: spacing.xxl,         // 48px
+      horizontal: spacing.xl,        // 32px
+    },
+    desktop: {
+      vertical: spacing.xxl,         // 48px
+      horizontal: '40px',
+    },
+  },
+
+  // Input Field Specific
+  input: {
+    height: '52px',
+    padding: {
+      vertical: '14px',
+      horizontal: '20px',
+    },
+    minLength: 3,
+    showCharCount: true,
+  },
+
+  // Button Spacing
+  button: {
+    marginTop: spacing.xl,           // 32px
+    height: '52px',
+    padding: {
+      vertical: '14px',
+      horizontal: spacing.xl,        // 32px
+    },
+  },
+
+  // Suggestion Pills
+  pill: {
+    height: '32px',
+    padding: {
+      vertical: spacing.xs,          // 8px
+      horizontal: spacing.md,        // 16px
+    },
+    gap: spacing.xs,                 // 8px between pills
+    marginTop: spacing.md,           // 16px from input
+    paddingBottom: '12px',           // for scrollbar
+  },
+};
+
+// Wizard-specific typography
+export const wizardTypography = {
+  // Page Heading (42px)
+  heading: {
+    fontSize: '42px',
+    lineHeight: 1.1,
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+  },
+
+  // Subheading (18px)
+  subheading: {
+    fontSize: '18px',
+    lineHeight: 1.5,
+    fontWeight: 400,
+    letterSpacing: '0',
+  },
+
+  // Field Label (15px)
+  label: {
+    fontSize: '15px',
+    lineHeight: 1.4,
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+  },
+
+  // Input Text (17px)
+  input: {
+    fontSize: '17px',
+    lineHeight: 1.5,
+    fontWeight: 400,
+    letterSpacing: '-0.01em',
+  },
+
+  // Hint/Description (14px)
+  hint: {
+    fontSize: '14px',
+    lineHeight: 1.3,
+    fontWeight: 400,
+    letterSpacing: '0',
+  },
+
+  // Pill Text (14px)
+  pill: {
+    fontSize: '14px',
+    lineHeight: 1,
+    fontWeight: 500,
+    letterSpacing: '-0.01em',
+  },
+
+  // Button Text (17px)
+  button: {
+    fontSize: '17px',
+    lineHeight: 1.3,
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+  },
+
+  // Character Count (13px)
+  caption: {
+    fontSize: '13px',
+    lineHeight: 1,
+    fontWeight: 500,
+    letterSpacing: '0',
+  },
+};
+
+// Wizard color variations
+export const wizardColors = {
+  // Accent (Rausch pink)
+  accent: {
+    base: primary[500],              // #FF385C
+    hover: primary[600],             // #E03252
+    light: 'rgba(255, 56, 92, 0.1)',
+    lighter: 'rgba(255, 56, 92, 0.2)',
+    lightest: 'rgba(255, 56, 92, 0.3)',
+  },
+
+  // Neutral (updated for new gray scale)
+  neutral: {
+    50: '#FFFFFF',
+    100: '#F7F7F7',
+    200: '#EFEFEF',
+    300: '#E3E3E3',
+    400: '#CFCFCF',
+    500: '#B9B9B9',
+    600: '#989898',
+    700: '#787878',
+    800: '#575757',
+    900: '#373737',
+  },
+
+  // Success (teal-based)
+  success: {
+    base: '#00B88F',
+    light: '#E8FFF8',
+  },
+
+  // Error (rosé)
+  error: {
+    base: '#F44366',
+    light: '#FFF2F4',
+  },
+
+  // Page background
+  background: {
+    page: 'linear-gradient(to bottom right, #FAFAFA, #F7F7F7)',
+    card: '#FFFFFF',
+  },
+};
+
+// ============================================================================
 // EXPORT DEFAULT TOKENS OBJECT
 // ============================================================================
 
@@ -507,6 +710,7 @@ export default {
   typography,
   colors,
   primary,
+  accent,
   success,
   error,
   warning,
@@ -526,4 +730,7 @@ export default {
   layoutPreset,
   iconSizes,
   a11y,
+  wizard,
+  wizardTypography,
+  wizardColors,
 };

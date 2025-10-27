@@ -295,83 +295,6 @@ const validators = {
 // ============================================================================
 
 /**
- * ProgressIndicator - Shows completion status of required fields
- */
-function ProgressIndicator({ completed, total }) {
-  const percentage = total > 0 ? (completed / total) * 100 : 0;
-
-  return (
-    <div
-      style={{
-        marginBottom: "16px",
-        padding: "10px 12px",
-        backgroundColor: tokens.color.gray[50],
-        border: `1px solid ${tokens.color.gray[200]}`,
-        borderRadius: tokens.radius.md,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "6px",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.hint,
-            fontWeight: tokens.font.weight.semibold,
-            color: tokens.color.gray[700],
-          }}
-        >
-          Progress
-        </span>
-        <span
-          style={{
-            fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.hint,
-            fontWeight: tokens.font.weight.medium,
-            color: completed === total ? tokens.color.success.base : tokens.color.gray[600],
-          }}
-        >
-          {completed} of {total} required
-        </span>
-      </div>
-      
-      {/* Progress bar */}
-      <div
-        style={{
-          width: "100%",
-          height: "4px",
-          backgroundColor: tokens.color.gray[200],
-          borderRadius: "2px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${percentage}%`,
-            height: "100%",
-            background: completed === total 
-              ? `linear-gradient(90deg, ${tokens.color.success.base} 0%, #00A87F 100%)`
-              : `linear-gradient(90deg, ${tokens.color.accent.base} 0%, ${tokens.color.accent.hover} 100%)`,
-            transition: "width 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-            borderRadius: "2px",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-ProgressIndicator.propTypes = {
-  completed: PropTypes.number.isRequired,
-  total: PropTypes.number.isRequired,
-};
-
-/**
  * SuccessBanner - Encouraging message when core fields complete
  */
 function SuccessBanner({ message }) {
@@ -590,7 +513,7 @@ function TextField({
               fontWeight: tokens.font.weight.medium,
             }}
           >
-            {charCount}{minLength ? `/${minLength}` : ''}
+            {meetsMinLength ? `${charCount}` : `${charCount} (min ${minLength})`}
           </span>
         )}
       </div>
@@ -811,10 +734,11 @@ TextField.propTypes = {
  * Features: Loading state, hover effects, accessible buttons
  * Handles both string and object {text, explanation} formats
  */
-function InlineSuggestions({ suggestions = [], isLoading, onSelect }) {
+function InlineSuggestions({ suggestions = [], isLoading, onSelect, innerRef }) {
   if (isLoading) {
     return (
       <div
+        ref={innerRef}
         style={{
           padding: `${tokens.space.sm} 0`,
           fontFamily: tokens.font.family.primary,
@@ -831,6 +755,7 @@ function InlineSuggestions({ suggestions = [], isLoading, onSelect }) {
 
   return (
     <div
+      ref={innerRef}
       role="list"
       aria-label="Suggestions"
       style={{
@@ -876,6 +801,10 @@ InlineSuggestions.propTypes = {
   ),
   isLoading: PropTypes.bool,
   onSelect: PropTypes.func,
+  innerRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.any })
+  ]),
 };
 
 /**
@@ -989,13 +918,13 @@ export function CoreConceptAccordion({
   const isSubjectValid = validators.minLength(formData.subject, 3);
   const isActionValid = validators.minLength(formData.action, 3);
 
-  // Progress tracking
-  const requiredFieldsCompleted = [isSubjectValid, isActionValid].filter(Boolean).length;
-  const totalRequiredFields = 2;
   const showSuccessBanner = isSubjectValid && isActionValid;
 
   // Active field tracking for showing only relevant suggestions
   const [activeField, setActiveField] = React.useState(null);
+  
+  // Ref to track if we're clicking inside the suggestions area
+  const suggestionsRef = React.useRef(null);
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -1108,12 +1037,6 @@ export function CoreConceptAccordion({
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
-            {/* Progress Indicator */}
-            <ProgressIndicator 
-              completed={requiredFieldsCompleted} 
-              total={totalRequiredFields} 
-            />
-
             {/* Success Banner */}
             {showSuccessBanner && (
               <SuccessBanner message="Excellent! Your core concept is complete. Feel free to add descriptors for more detail." />
@@ -1130,7 +1053,13 @@ export function CoreConceptAccordion({
                 setActiveField("subject");
                 onRequestSuggestions?.("subject", formData.subject || "");
               }}
-              onBlur={() => setActiveField(null)}
+              onBlur={(e) => {
+                // Only hide suggestions if user is not clicking on a suggestion chip
+                // Check if the related target is outside the suggestions area
+                if (!suggestionsRef.current?.contains(e.relatedTarget)) {
+                  setActiveField(null);
+                }
+              }}
               error={
                 formData.subject && !isSubjectValid
                   ? "Please enter at least 3 characters"
@@ -1144,6 +1073,7 @@ export function CoreConceptAccordion({
 
             {activeField === "subject" && (
               <InlineSuggestions
+                innerRef={suggestionsRef}
                 suggestions={suggestions?.subject || []}
                 isLoading={Boolean(isLoadingSuggestions?.subject)}
                 onSelect={(text) => handleSuggestionSelect("subject", text)}
@@ -1161,13 +1091,18 @@ export function CoreConceptAccordion({
                 setActiveField("descriptor1");
                 onRequestSuggestions?.("descriptor1", formData.descriptor1 || "");
               }}
-              onBlur={() => setActiveField(null)}
+              onBlur={(e) => {
+                if (!suggestionsRef.current?.contains(e.relatedTarget)) {
+                  setActiveField(null);
+                }
+              }}
               disabled={!isSubjectValid}
               disabledMessage="Complete the Subject field to unlock"
             />
 
             {activeField === "descriptor1" && (
               <InlineSuggestions
+                innerRef={suggestionsRef}
                 suggestions={suggestions?.descriptor1 || []}
                 isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
                 onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
@@ -1185,13 +1120,18 @@ export function CoreConceptAccordion({
                 setActiveField("descriptor2");
                 onRequestSuggestions?.("descriptor2", formData.descriptor2 || "");
               }}
-              onBlur={() => setActiveField(null)}
+              onBlur={(e) => {
+                if (!suggestionsRef.current?.contains(e.relatedTarget)) {
+                  setActiveField(null);
+                }
+              }}
               disabled={!isSubjectValid}
               disabledMessage="Complete the Subject field to unlock"
             />
 
             {activeField === "descriptor2" && (
               <InlineSuggestions
+                innerRef={suggestionsRef}
                 suggestions={suggestions?.descriptor2 || []}
                 isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
                 onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
@@ -1209,13 +1149,18 @@ export function CoreConceptAccordion({
                 setActiveField("descriptor3");
                 onRequestSuggestions?.("descriptor3", formData.descriptor3 || "");
               }}
-              onBlur={() => setActiveField(null)}
+              onBlur={(e) => {
+                if (!suggestionsRef.current?.contains(e.relatedTarget)) {
+                  setActiveField(null);
+                }
+              }}
               disabled={!isSubjectValid}
               disabledMessage="Complete the Subject field to unlock"
             />
 
             {activeField === "descriptor3" && (
               <InlineSuggestions
+                innerRef={suggestionsRef}
                 suggestions={suggestions?.descriptor3 || []}
                 isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
                 onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
@@ -1235,7 +1180,11 @@ export function CoreConceptAccordion({
                   onRequestSuggestions?.("action", formData.action || "");
                 }
               }}
-              onBlur={() => setActiveField(null)}
+              onBlur={(e) => {
+                if (!suggestionsRef.current?.contains(e.relatedTarget)) {
+                  setActiveField(null);
+                }
+              }}
               error={
                 formData.action && !isActionValid
                   ? "Please enter at least 3 characters"
@@ -1250,6 +1199,7 @@ export function CoreConceptAccordion({
 
             {activeField === "action" && (
               <InlineSuggestions
+                innerRef={suggestionsRef}
                 suggestions={suggestions?.action || []}
                 isLoading={Boolean(isLoadingSuggestions?.action)}
                 onSelect={(text) => handleSuggestionSelect("action", text)}

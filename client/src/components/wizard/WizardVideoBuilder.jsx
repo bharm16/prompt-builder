@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
 import { CoreConceptAccordion } from './StepCoreConcept';
-import StepTechnical from './StepTechnical';
+import StepAtmosphere from './StepAtmosphere';
 import SummaryReview from './SummaryReview';
 import WizardEntryPage from './WizardEntryPage';
 import { aiWizardService } from '../../services/aiWizardService';
@@ -43,6 +43,9 @@ const WizardVideoBuilder = ({
   const [formData, setFormData] = useState({
     // Step 1: Core Concept (required)
     subject: '',
+    descriptor1: '',
+    descriptor2: '',
+    descriptor3: '',
     action: '',
     location: '',
     // Step 2: Atmosphere (optional)
@@ -86,7 +89,7 @@ const WizardVideoBuilder = ({
   ];
 
   // Desktop step labels
-  const stepLabels = ['Creative Brief', 'Technical Specs', 'Review'];
+  const stepLabels = ['Creative Brief', 'Atmosphere', 'Review'];
 
   // Window resize handler
   useEffect(() => {
@@ -260,9 +263,7 @@ const WizardVideoBuilder = ({
       if (!formData.action || formData.action.trim().length < 3) {
         errors.action = 'Action must be at least 3 characters';
       }
-      if (!formData.location || formData.location.trim().length < 3) {
-        errors.location = 'Location must be at least 3 characters';
-      }
+      // Note: descriptors are optional, so no validation needed
     }
 
     setValidationErrors(errors);
@@ -324,7 +325,7 @@ const WizardVideoBuilder = ({
   };
 
   const handleMobileComplete = () => {
-    // Navigate to summary (simulated as desktop step 2)
+    // Navigate to summary
     setIsMobile(false); // Force desktop view for summary
     setCurrentStep(2);
   };
@@ -455,7 +456,7 @@ const WizardVideoBuilder = ({
   // Render desktop view
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-      {/* Progress Indicator - Minimal mode for step 0 (CoreConcept) */}
+      {/* Progress Indicator - Minimal mode (gradient line only) */}
       <WizardProgress
         currentStep={currentStep}
         totalSteps={stepLabels.length}
@@ -463,7 +464,7 @@ const WizardVideoBuilder = ({
         completedSteps={completedSteps}
         isMobile={isMobile}
         onStepClick={handleGoToStep}
-        minimal={currentStep === 0}
+        minimal={true}
       />
 
       {/* Step Content */}
@@ -480,11 +481,14 @@ const WizardVideoBuilder = ({
         )}
 
         {currentStep === 1 && (
-          <StepTechnical
+          <StepAtmosphere
             formData={formData}
             onChange={handleFieldChange}
             onNext={handleNextStep}
             onBack={handlePreviousStep}
+            suggestions={suggestions}
+            isLoadingSuggestions={isLoadingSuggestions}
+            onRequestSuggestions={handleRequestSuggestions}
           />
         )}
 

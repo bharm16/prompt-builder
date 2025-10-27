@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Palette, ChevronRight } from 'lucide-react';
+import {
+  ChevronRight,
+} from 'lucide-react';
 import InlineSuggestions from './InlineSuggestions';
+import { wizardTheme } from '../../styles/wizardTheme';
 
 /**
  * StepAtmosphere Component - Desktop Step 2
@@ -26,6 +29,26 @@ const StepAtmosphere = ({
   onRequestSuggestions
 }) => {
   const [activeField, setActiveField] = useState(null);
+  
+  // Responsive spacing state
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [isTablet, setIsTablet] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+      setIsTablet(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Request suggestions when field gains focus
   const handleFocus = (fieldName) => {
@@ -48,9 +71,6 @@ const StepAtmosphere = ({
     onChange(activeField, suggestionText);
   };
 
-  // Check if any atmosphere field is filled
-  const hasAnyAtmosphereData = formData.time || formData.mood || formData.style || formData.event;
-
   // Handle Enter key to move to next field or submit
   const handleKeyDown = (e, fieldName) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -65,35 +85,133 @@ const StepAtmosphere = ({
     }
   };
 
+  // Check if any atmosphere field is filled
+  const hasAnyAtmosphereData = formData.time || formData.mood || formData.style || formData.event;
+
+  // Responsive padding values
+  const cardPadding = isDesktop
+    ? wizardTheme.getCardPadding('desktop')
+    : isTablet
+    ? wizardTheme.getCardPadding('tablet')
+    : wizardTheme.getCardPadding('mobile');
+
+  const containerPadding = wizardTheme.getContainerPadding(
+    isDesktop ? 'desktop' : isTablet ? 'tablet' : 'mobile'
+  );
+
   return (
-    <div className="max-w-4xl mx-auto px-8 py-8">
-      {/* Step Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Palette className="w-6 h-6 text-purple-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Atmosphere & Style</h2>
-        </div>
-        <p className="text-gray-600 text-lg">
-          Add depth to your scene with mood, timing, and style. All fields are optional.
-        </p>
-      </div>
+    <main
+      style={{
+        flex: "1",
+        width: "100%",
+        maxWidth: "1920px",
+        margin: "0 auto",
+        padding: containerPadding,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "calc(100vh - 4px)",
+        background: wizardTheme.colors.background.page,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "32px",
+          maxWidth: "600px",
+          width: "100%",
+        }}
+      >
+        {/* Heading Section */}
+        <section style={{ textAlign: "center", width: "100%" }}>
+          <h1
+            style={{
+              margin: 0,
+              marginBottom: "16px",
+              fontFamily: wizardTheme.fontFamily.primary,
+              fontSize: wizardTheme.typography.heading.fontSize,
+              fontWeight: wizardTheme.typography.heading.fontWeight,
+              lineHeight: wizardTheme.typography.heading.lineHeight,
+              letterSpacing: wizardTheme.typography.heading.letterSpacing,
+              background: `linear-gradient(135deg, ${wizardTheme.colors.neutral[800]} 0%, ${wizardTheme.colors.neutral[600]} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Atmosphere & Style
+          </h1>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: wizardTheme.fontFamily.primary,
+              fontSize: wizardTheme.typography.subheading.fontSize,
+              fontWeight: wizardTheme.typography.subheading.fontWeight,
+              lineHeight: wizardTheme.typography.subheading.lineHeight,
+              color: wizardTheme.colors.neutral[500],
+            }}
+          >
+            Add depth to your scene with mood, timing, and style. All fields are optional.
+          </p>
+        </section>
 
-      {/* Context Preview */}
-      <div className="mb-8 p-4 bg-indigo-50 rounded-lg border-2 border-indigo-200">
-        <p className="text-sm font-semibold text-indigo-900 mb-1">Creating:</p>
-        <p className="text-base text-indigo-800">
-          <span className="font-medium">{formData.subject || '...'}</span>
-          {' '}
-          <span className="text-indigo-600">{formData.action || '...'}</span>
-          {' at '}
-          <span className="font-medium">{formData.location || '...'}</span>
-        </p>
-      </div>
+        {/* Form Card */}
+        <section style={{ width: "100%" }}>
+          {/* UI Card container */}
+          <div
+            style={{
+              backgroundColor: wizardTheme.colors.background.card,
+              borderRadius: wizardTheme.borderRadius.xl,
+              border: `1px solid ${wizardTheme.colors.neutral[200]}`,
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)",
+              padding: cardPadding,
+              width: "100%",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            {/* Context Preview */}
+            <div
+              style={{
+                padding: "16px",
+                marginBottom: "24px",
+                backgroundColor: "rgba(255, 56, 92, 0.05)",
+                border: `2px solid ${wizardTheme.colors.accent.light}`,
+                borderRadius: wizardTheme.borderRadius.md,
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  marginBottom: "6px",
+                  fontFamily: wizardTheme.fontFamily.primary,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: wizardTheme.colors.neutral[700],
+                }}
+              >
+                Creating:
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: wizardTheme.fontFamily.primary,
+                  fontSize: "16px",
+                  color: wizardTheme.colors.neutral[700],
+                }}
+              >
+                <span style={{ fontWeight: 500 }}>{formData.subject || '...'}</span>
+                {' '}
+                <span style={{ color: wizardTheme.colors.accent.base }}>{formData.action || '...'}</span>
+                {' at '}
+                <span style={{ fontWeight: 500 }}>{formData.location || '...'}</span>
+              </p>
+            </div>
 
-      {/* Fields Grid */}
-      <div className="space-y-6">
+            {/* Fields */}
+            <div style={{ display: "flex", flexDirection: "column", gap: wizardTheme.spacing.field.marginBottom }}>
         {/* Location Field */}
         <div>
           <label htmlFor="location-input" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -282,43 +400,68 @@ const StepAtmosphere = ({
               fieldName="event"
             />
           )}
-        </div>
-      </div>
+            </div>
+            </div>
 
-      {/* Action Buttons */}
-      <div className="mt-10 flex justify-between items-center">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
-        >
-          Back to Core Concept
-        </button>
+            {/* Action Buttons */}
+            <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                onClick={onBack}
+                style={{
+                  padding: "12px 24px",
+                  fontFamily: wizardTheme.fontFamily.primary,
+                  fontSize: "15px",
+                  fontWeight: 500,
+                  color: wizardTheme.colors.neutral[700],
+                  backgroundColor: wizardTheme.colors.neutral[100],
+                  borderRadius: wizardTheme.borderRadius.md,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = wizardTheme.colors.neutral[200]; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = wizardTheme.colors.neutral[100]; }}
+              >
+                Back
+              </button>
 
-        <div className="flex space-x-3">
-          <button
-            onClick={onNext}
-            className="px-6 py-3 rounded-lg font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-all duration-200 flex items-center"
-          >
-            Skip Atmosphere
-            <ChevronRight className="w-5 h-5 ml-1" />
-          </button>
-          <button
-            onClick={onNext}
-            className="px-8 py-3 rounded-lg font-semibold text-white bg-purple-600 hover:bg-purple-700 hover:shadow-lg active:scale-95 transition-all duration-200 flex items-center"
-          >
-            Continue
-            <ChevronRight className="w-5 h-5 ml-1" />
-          </button>
-        </div>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={onNext}
+                  style={{
+                    padding: "14px 32px",
+                    fontFamily: wizardTheme.fontFamily.primary,
+                    fontSize: wizardTheme.typography.button.fontSize,
+                    fontWeight: wizardTheme.typography.button.fontWeight,
+                    color: "#FFFFFF",
+                    background: `linear-gradient(135deg, ${wizardTheme.colors.accent.base} 0%, ${wizardTheme.colors.accent.hover} 100%)`,
+                    borderRadius: wizardTheme.borderRadius.lg,
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(255, 56, 92, 0.3)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(255, 56, 92, 0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(255, 56, 92, 0.3)";
+                  }}
+                >
+                  Continue
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-
-      {/* Help Text */}
-      <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-        <p className="text-sm text-yellow-900">
-          <strong>Tip:</strong> Atmosphere fields are optional but highly recommended. They add emotional depth and visual richness to your video prompt.
-        </p>
-      </div>
-    </div>
+    </main>
   );
 };
 
