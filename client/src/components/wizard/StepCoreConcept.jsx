@@ -33,7 +33,7 @@ if (typeof document !== "undefined") {
     style.textContent = `
       /* Placeholder styling */
       input::placeholder {
-        color: #9CA3AF;
+        color: #B9B9B9;
         opacity: 1;
         font-size: 17px;
         font-weight: 400;
@@ -45,17 +45,17 @@ if (typeof document !== "undefined") {
       }
 
       [role="list"]::-webkit-scrollbar-track {
-        background: #F3F4F6;
+        background: #F7F7F7;
         border-radius: 3px;
       }
 
       [role="list"]::-webkit-scrollbar-thumb {
-        background: #D1D5DB;
+        background: #E3E3E3;
         border-radius: 3px;
       }
 
       [role="list"]::-webkit-scrollbar-thumb:hover {
-        background: #9CA3AF;
+        background: #CFCFCF;
       }
     `;
     document.head.appendChild(style);
@@ -102,10 +102,10 @@ const tokens = {
     xxxl: "64px",
   },
 
-  // Typography system - Exact sizes per specifications
+  // Typography system - Exact sizes per specifications (using Inter font)
   font: {
     family: {
-      primary: '"Circular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      primary: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       mono: '"Roboto Mono", "SF Mono", monospace',
     },
     size: {
@@ -151,43 +151,43 @@ const tokens = {
     },
   },
 
-  // Color system - Sophisticated grayscale + single accent (Indigo)
+  // Color system - Sophisticated grayscale + single accent (Rausch Pink)
   color: {
-    // PRIMARY ACCENT - Indigo (modern, sophisticated)
+    // PRIMARY ACCENT - Rausch Pink (Airbnb-inspired)
     accent: {
-      base: "#6366F1",         // Primary accent color
-      hover: "#5558E3",        // Slightly darker for hover
-      light: "rgba(99, 102, 241, 0.1)",   // 10% opacity for shadows/focus
-      lighter: "rgba(99, 102, 241, 0.2)", // 20% opacity
-      lightest: "rgba(99, 102, 241, 0.3)",// 30% opacity
+      base: "#FF385C",         // Primary accent color (Rausch)
+      hover: "#E03252",        // Slightly darker for hover
+      light: "rgba(255, 56, 92, 0.1)",   // 10% opacity for shadows/focus
+      lighter: "rgba(255, 56, 92, 0.2)", // 20% opacity
+      lightest: "rgba(255, 56, 92, 0.3)",// 30% opacity
     },
 
-    // GRAYSCALE BASE (Tailwind-inspired)
+    // GRAYSCALE BASE (Tailwind neutral scale)
     gray: {
-      50: "#F9FAFB",      // Suggestion pills default
-      100: "#F3F4F6",     // Hover background
-      200: "#E5E7EB",     // Borders default
-      300: "#D1D5DB",     // Borders hover
-      400: "#9CA3AF",     // Placeholder, hint text, icons
-      500: "#6B7280",     // Subheading, secondary text
-      600: "#4B5563",     //
-      700: "#374151",     // Labels, body text, pill text
-      800: "#1F2937",     //
-      900: "#111827",     // Heading, input text (almost black)
+      50: "#FFFFFF",      // White background
+      100: "#F7F7F7",     // Hover background
+      200: "#EFEFEF",    // Borders default
+      300: "#E3E3E3",    // Borders hover
+      400: "#CFCFCF",    // Placeholder, hint text, icons
+      500: "#B9B9B9",    // Subheading, secondary text
+      600: "#989898",    //
+      700: "#787878",    // Labels, body text, pill text
+      800: "#575757",    //
+      900: "#373737",    // Heading, input text (almost black)
     },
 
-    // SEMANTIC COLORS (minimal use)
+    // SEMANTIC COLORS (consistent with design system)
     success: {
-      base: "#10B981",    // Green for valid states
-      light: "#D1FAE5",
+      base: "#00B88F",    // Teal for valid states
+      light: "#E8FFF8",
     },
     error: {
-      base: "#EF4444",    // Red for errors
-      light: "#FEE2E2",
+      base: "#F44366",    // Rosé for errors
+      light: "#FFF2F4",
     },
 
     // BACKGROUNDS
-    page: "#FAFAFA",      // Soft gray page background (not harsh white)
+    page: "linear-gradient(to bottom right, #FAFAFA, #F7F7F7)", // Gradient background
     white: "#FFFFFF",     // Card/container background
 
     // LEGACY/COMPATIBILITY (Airbnb palette - keeping for other components)
@@ -316,18 +316,18 @@ function PrimaryButton({ children, onClick, disabled, ariaLabel, fullWidth = fal
         boxShadow: "none",
       }
     : {
-        backgroundColor: isPressed
-          ? tokens.color.accent.hover
+        background: isPressed
+          ? `linear-gradient(135deg, ${tokens.color.accent.hover} 0%, #C12745 100%)`
           : isHovered
-          ? tokens.color.accent.hover
-          : tokens.color.accent.base,
+          ? `linear-gradient(135deg, ${tokens.color.accent.hover} 0%, #C12745 100%)`
+          : `linear-gradient(135deg, ${tokens.color.accent.base} 0%, #C12745 100%)`,
         color: tokens.color.white,
         boxShadow: isPressed
-          ? `0 2px 8px ${tokens.color.accent.lighter}`
+          ? `0 2px 8px rgba(255, 56, 92, 0.3), 0 0 0 0 rgba(255, 56, 92, 0.1)`
           : isHovered
-          ? `0 4px 12px ${tokens.color.accent.lightest}`
-          : `0 2px 8px ${tokens.color.accent.lighter}`,
-        transform: isHovered && !isPressed ? "translateY(-1px)" : "translateY(0)",
+          ? `0 6px 20px rgba(255, 56, 92, 0.4), 0 0 0 0 rgba(255, 56, 92, 0.1)`
+          : `0 4px 12px rgba(255, 56, 92, 0.3), 0 0 0 0 rgba(255, 56, 92, 0.1)`,
+        transform: isHovered && !isPressed ? "translateY(-2px)" : "translateY(0)",
       };
 
   return (
@@ -412,7 +412,7 @@ function TextField({
           fontSize: tokens.font.size.label,        // 15px
           fontWeight: tokens.font.weight.semibold, // 600
           letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
-          color: tokens.color.gray[700],            // #374151
+          color: tokens.color.gray[700],            // #787878
           marginBottom: "8px",
           lineHeight: tokens.font.lineHeight.normal, // 1.4
         }}
@@ -465,7 +465,7 @@ function TextField({
             fontWeight: tokens.font.weight.regular, // 400
             letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
             lineHeight: tokens.font.lineHeight.relaxed, // 1.5
-            color: tokens.color.gray[900],          // #111827
+            color: tokens.color.gray[900],          // #373737
             backgroundColor: tokens.color.white,
             border: `2px solid ${
               hasError
@@ -477,11 +477,16 @@ function TextField({
             borderRadius: tokens.radius.md,        // 8px
             outline: "none",
             transition: `all ${tokens.transition.base}`,
-            boxShadow: isFocused ? `0 0 0 3px ${tokens.color.accent.light}` : "none",
+            boxShadow: isFocused && !hasError
+              ? `0 0 0 4px ${tokens.color.accent.light}, 0 2px 8px ${tokens.color.accent.lighter}`
+              : hasError
+              ? `0 0 0 4px rgba(244, 67, 102, 0.1), 0 2px 8px rgba(244, 67, 102, 0.1)`
+              : "none",
             ...(disabled && {
-              backgroundColor: tokens.color.gray[100],
-              color: tokens.color.gray[500],
+              backgroundColor: tokens.color.gray[50],
+              color: tokens.color.gray[400],
               cursor: "not-allowed",
+              opacity: 0.6,
             }),
           }}
         />
@@ -535,8 +540,8 @@ function TextField({
             fontFamily: tokens.font.family.primary,
             fontSize: tokens.font.size.hint,         // 14px
             fontWeight: tokens.font.weight.regular,  // 400
-            color: tokens.color.gray[500],           // #6B7280
-            lineHeight: tokens.font.lineHeight.normal, // 1.4
+          color: tokens.color.gray[500],           // #B9B9B9
+          lineHeight: tokens.font.lineHeight.normal, // 1.4
           }}
         >
           {hint}
@@ -684,14 +689,17 @@ function SuggestionChip({ text, explanation, onClick }) {
         fontWeight: tokens.font.weight.medium,          // 500
         letterSpacing: tokens.font.letterSpacing.snug,  // -0.01em
         lineHeight: 1,                                  // Tighter line height
-        color: tokens.color.gray[700],                  // #374151
-        backgroundColor: isHovered ? tokens.color.gray[100] : tokens.color.gray[50],
+        color: tokens.color.gray[700],                  // #787878
+        backgroundColor: isHovered ? tokens.color.accent.lightest : tokens.color.gray[50],
         border: `1.5px solid ${isHovered ? tokens.color.accent.base : tokens.color.gray[200]}`,
         borderRadius: "16px",                           // Pill shape (half of height)
         cursor: "pointer",
         transition: `all ${tokens.transition.fast}`,
         outline: "none",
-        boxShadow: isHovered ? `0 2px 8px ${tokens.color.accent.light}` : "none",
+        transform: isHovered ? "translateY(-1px)" : "translateY(0)",
+        boxShadow: isHovered
+          ? `0 2px 8px rgba(255, 56, 92, 0.2), 0 0 0 1px rgba(255, 56, 92, 0.1)`
+          : "0 1px 2px rgba(0, 0, 0, 0.05)",
       }}
       onFocus={(e) => {
         e.currentTarget.style.outline = `2px solid ${tokens.color.accent.base}`;
@@ -772,7 +780,7 @@ export function CoreConceptAccordion({
         alignItems: "center",
         justifyContent: "center",
         minHeight: "calc(100vh - 4px)", // Full viewport height minus progress bar
-        backgroundColor: tokens.color.page,          // #FAFAFA soft gray
+        background: "linear-gradient(to bottom right, #FAFAFA, #F7F7F7)",
       }}
     >
       <div
@@ -802,7 +810,10 @@ export function CoreConceptAccordion({
               fontWeight: tokens.font.weight.bold,        // 700
               lineHeight: tokens.font.lineHeight.tight,   // 1.1
               letterSpacing: tokens.font.letterSpacing.tight, // -0.02em
-              color: tokens.color.gray[900],              // #111827
+              background: `linear-gradient(135deg, ${tokens.color.gray[800]} 0%, ${tokens.color.gray[600]} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
             }}
           >
             Let's start with the big idea
@@ -814,7 +825,7 @@ export function CoreConceptAccordion({
               fontSize: tokens.font.size.subheading,      // 18px
               fontWeight: tokens.font.weight.regular,     // 400
               lineHeight: tokens.font.lineHeight.relaxed, // 1.5
-              color: tokens.color.gray[500],              // #6B7280
+              color: tokens.color.gray[500],              // #B9B9B9
             }}
           >
             Tell us about the core of your video. We'll guide you through it step by step.
@@ -831,11 +842,12 @@ export function CoreConceptAccordion({
           <div
             style={{
               backgroundColor: tokens.color.white,
-              borderRadius: tokens.radius.lg,           // 12px
+              borderRadius: tokens.radius.xl,           // 16px for modern look
               border: `1px solid ${tokens.color.gray[200]}`,
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)",
               padding: `${tokens.space.horizontal.xxl}`, // 48px all around
               width: "100%",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             {/* Subject Field */}
