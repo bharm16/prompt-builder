@@ -145,6 +145,13 @@ const InlineSuggestions = ({
           </button>
         ))}
       </div>
+
+      {/* Help text */}
+      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <p className="text-xs text-blue-800 leading-relaxed">
+          <strong className="font-semibold">💡 Pro Tip:</strong> Click any suggestion or press its number key (1-{Math.min(suggestions.length, 9)}) for instant selection
+        </p>
+      </div>
     </div>
   );
 };
