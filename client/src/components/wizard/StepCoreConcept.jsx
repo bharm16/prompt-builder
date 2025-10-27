@@ -12,18 +12,55 @@
  * @version 2.0.0
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   ChevronRight,
-  ChevronDown,
-  User,
-  Zap,
-  MapPin,
-  Lock,
   Check,
   AlertCircle,
 } from "lucide-react";
+
+// ============================================================================
+// GLOBAL STYLES (Placeholder styling)
+// ============================================================================
+
+// Inject global styles for placeholder and scrollbars
+if (typeof document !== "undefined") {
+  const styleId = "core-concept-global-styles";
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      /* Placeholder styling */
+      input::placeholder {
+        color: #9CA3AF;
+        opacity: 1;
+        font-size: 17px;
+        font-weight: 400;
+      }
+
+      /* Webkit scrollbar styling for suggestion pills */
+      [role="list"]::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      [role="list"]::-webkit-scrollbar-track {
+        background: #F3F4F6;
+        border-radius: 3px;
+      }
+
+      [role="list"]::-webkit-scrollbar-thumb {
+        background: #D1D5DB;
+        border-radius: 3px;
+      }
+
+      [role="list"]::-webkit-scrollbar-thumb:hover {
+        background: #9CA3AF;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 // ============================================================================
 // DESIGN TOKENS - Airbnb DLS Implementation
@@ -34,25 +71,55 @@ import {
  * All spacing on 8px grid, semantic color naming, systematic typography
  */
 const tokens = {
-  // Spacing (8px base unit system)
+  // Spacing - Generous horizontal, strategic vertical (viewport-aware)
   space: {
-    xxs: "4px",   // 0.5 × 8px
-    xs: "8px",    // 1 × 8px
-    sm: "12px",   // 1.5 × 8px
-    md: "16px",   // 2 × 8px
-    lg: "24px",   // 3 × 8px
-    xl: "32px",   // 4 × 8px
-    xxl: "48px",  // 6 × 8px
-    xxxl: "64px", // 8 × 8px
+    // Vertical spacing (affects scrolling - use strategically)
+    vertical: {
+      xxs: "6px",
+      xs: "8px",
+      sm: "12px",
+      md: "20px",    // Between input fields
+      lg: "24px",    // Between major sections
+      xl: "32px",    // Action → Button
+      xxl: "40px",   // Page top/bottom
+    },
+    // Horizontal spacing (generous - doesn't affect scrolling)
+    horizontal: {
+      sm: "16px",
+      md: "20px",    // Input field padding
+      lg: "28px",    // Pill padding
+      xl: "32px",
+      xxl: "48px",   // Container padding
+    },
+    // Legacy/compatibility
+    xxs: "4px",
+    xs: "8px",
+    sm: "12px",
+    md: "16px",
+    lg: "24px",
+    xl: "32px",
+    xxl: "48px",
+    xxxl: "64px",
   },
 
-  // Typography system
+  // Typography system - Exact sizes per specifications
   font: {
     family: {
       primary: '"Circular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       mono: '"Roboto Mono", "SF Mono", monospace',
     },
     size: {
+      // Specification-driven sizes
+      heading: "42px",        // Page heading
+      subheading: "18px",     // Page subheading
+      label: "15px",          // Field labels
+      input: "17px",          // Input field text
+      hint: "14px",           // Hint text
+      pill: "15px",           // Suggestion pills
+      button: "17px",         // Button text
+      caption: "13px",        // Character count, keyboard shortcuts
+      tiny: "12px",           // Keyboard badges
+      // Legacy/compatibility
       xs: "12px",
       sm: "14px",
       base: "16px",
@@ -70,37 +137,72 @@ const tokens = {
       bold: 700,
     },
     lineHeight: {
-      tight: 1.2,
-      snug: 1.375,
-      normal: 1.5,
-      relaxed: 1.625,
+      tight: 1.1,      // Heading
+      snug: 1.3,       // Pills, buttons
+      normal: 1.4,     // Labels, hints
+      relaxed: 1.5,    // Subheading, inputs
       loose: 1.75,
     },
     letterSpacing: {
-      tight: "-0.02em",
-      snug: "-0.01em",
+      tight: "-0.02em",   // Heading (42px)
+      snug: "-0.01em",    // Labels, inputs, pills (15px+)
       normal: "0",
       wide: "0.02em",
     },
   },
 
-  // Color system (Airbnb palette)
+  // Color system - Sophisticated grayscale + single accent (Indigo)
   color: {
-    // Brand colors
+    // PRIMARY ACCENT - Indigo (modern, sophisticated)
+    accent: {
+      base: "#6366F1",         // Primary accent color
+      hover: "#5558E3",        // Slightly darker for hover
+      light: "rgba(99, 102, 241, 0.1)",   // 10% opacity for shadows/focus
+      lighter: "rgba(99, 102, 241, 0.2)", // 20% opacity
+      lightest: "rgba(99, 102, 241, 0.3)",// 30% opacity
+    },
+
+    // GRAYSCALE BASE (Tailwind-inspired)
+    gray: {
+      50: "#F9FAFB",      // Suggestion pills default
+      100: "#F3F4F6",     // Hover background
+      200: "#E5E7EB",     // Borders default
+      300: "#D1D5DB",     // Borders hover
+      400: "#9CA3AF",     // Placeholder, hint text, icons
+      500: "#6B7280",     // Subheading, secondary text
+      600: "#4B5563",     //
+      700: "#374151",     // Labels, body text, pill text
+      800: "#1F2937",     //
+      900: "#111827",     // Heading, input text (almost black)
+    },
+
+    // SEMANTIC COLORS (minimal use)
+    success: {
+      base: "#10B981",    // Green for valid states
+      light: "#D1FAE5",
+    },
+    error: {
+      base: "#EF4444",    // Red for errors
+      light: "#FEE2E2",
+    },
+
+    // BACKGROUNDS
+    page: "#FAFAFA",      // Soft gray page background (not harsh white)
+    white: "#FFFFFF",     // Card/container background
+
+    // LEGACY/COMPATIBILITY (Airbnb palette - keeping for other components)
     brand: {
       50: "#fef2f2",
       100: "#fee2e2",
       200: "#fecaca",
       300: "#fca5a5",
       400: "#f87171",
-      500: "#FF5A5F",  // Airbnb brand red
-      600: "#E14D52",  // Hover state
+      500: "#FF5A5F",
+      600: "#E14D52",
       700: "#C13E43",
       800: "#A13437",
       900: "#7F2A2D",
     },
-
-    // Ink (grayscale)
     ink: {
       50: "#FBFBFB",
       100: "#F7F7F7",
@@ -113,31 +215,6 @@ const tokens = {
       800: "#333333",
       900: "#222222",
     },
-
-    // Semantic colors
-    success: {
-      base: "#008489",
-      light: "#E0F7F7",
-      dark: "#005C5F",
-    },
-    error: {
-      base: "#C13515",
-      light: "#FDEAE5",
-      dark: "#8A1F0F",
-    },
-    warning: {
-      base: "#FFB400",
-      light: "#FFF9E6",
-      dark: "#CC9000",
-    },
-    info: {
-      base: "#005C5F",
-      light: "#E6F6F7",
-      dark: "#003D40",
-    },
-
-    // White (for clarity)
-    white: "#FFFFFF",
   },
 
   // Border radius
@@ -218,13 +295,15 @@ function PrimaryButton({ children, onClick, disabled, ariaLabel, fullWidth = fal
     justifyContent: "center",
     gap: tokens.space.xs,
     width: fullWidth ? "100%" : "auto",
-    minHeight: tokens.touchTarget.comfortable, // 48px for accessibility
-    padding: `${tokens.space.sm} ${tokens.space.lg}`,
+    height: "52px",                              // Exact height
+    padding: `14px 32px`,                        // Exact padding
     fontFamily: tokens.font.family.primary,
-    fontSize: tokens.font.size.base,
-    fontWeight: tokens.font.weight.semibold,
+    fontSize: tokens.font.size.button,           // 17px
+    fontWeight: tokens.font.weight.semibold,     // 600
+    letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
+    lineHeight: tokens.font.lineHeight.snug,     // 1.3
     border: "none",
-    borderRadius: tokens.radius.pill,
+    borderRadius: tokens.radius.lg,              // 12px (not pill)
     cursor: disabled ? "not-allowed" : "pointer",
     transition: `all ${tokens.transition.base}`,
     outline: "none",
@@ -232,19 +311,23 @@ function PrimaryButton({ children, onClick, disabled, ariaLabel, fullWidth = fal
 
   const stateStyles = disabled
     ? {
-        backgroundColor: tokens.color.ink[200],
-        color: tokens.color.ink[500],
+        backgroundColor: tokens.color.gray[200],
+        color: tokens.color.gray[500],
         boxShadow: "none",
       }
     : {
         backgroundColor: isPressed
-          ? tokens.color.brand[700]
+          ? tokens.color.accent.hover
           : isHovered
-          ? tokens.color.brand[600]
-          : tokens.color.brand[500],
+          ? tokens.color.accent.hover
+          : tokens.color.accent.base,
         color: tokens.color.white,
-        boxShadow: isPressed ? "none" : tokens.elevation.card,
-        transform: isPressed ? "scale(0.98)" : "scale(1)",
+        boxShadow: isPressed
+          ? `0 2px 8px ${tokens.color.accent.lighter}`
+          : isHovered
+          ? `0 4px 12px ${tokens.color.accent.lightest}`
+          : `0 2px 8px ${tokens.color.accent.lighter}`,
+        transform: isHovered && !isPressed ? "translateY(-1px)" : "translateY(0)",
       };
 
   return (
@@ -319,18 +402,19 @@ function TextField({
   const showSuccess = !hasError && value && validators.minLength(value);
 
   return (
-    <div style={{ marginBottom: "32px" }}>
-      {/* Label - Changed from tokens.space.lg (24px) to 32px to match space-y-8 */}
+    <div style={{ marginBottom: tokens.space.vertical.md }}> {/* 20px */}
+      {/* Label */}
       <label
         htmlFor={id}
         style={{
           display: "block",
           fontFamily: tokens.font.family.primary,
-          fontSize: "18px",
-          fontWeight: tokens.font.weight.semibold,
-          color: tokens.color.ink[900],
+          fontSize: tokens.font.size.label,        // 15px
+          fontWeight: tokens.font.weight.semibold, // 600
+          letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
+          color: tokens.color.gray[700],            // #374151
           marginBottom: "8px",
-          lineHeight: tokens.font.lineHeight.normal,
+          lineHeight: tokens.font.lineHeight.normal, // 1.4
         }}
       >
         {label}
@@ -339,7 +423,7 @@ function TextField({
             aria-label="required"
             style={{
               marginLeft: tokens.space.xxs,
-              color: tokens.color.error.base,
+              color: tokens.color.accent.base,      // Accent color for required
             }}
           >
             *
@@ -373,28 +457,30 @@ function TextField({
           aria-invalid={hasError || undefined}
           style={{
             width: "100%",
-            minHeight: "48px",
-            padding: "16px",
-            paddingRight: showSuccess || hasError ? "48px" : "16px",
+            height: "52px",                         // Exact height
+            padding: `14px ${tokens.space.horizontal.md}`, // 14px 20px
+            paddingRight: showSuccess || hasError ? "48px" : tokens.space.horizontal.md,
             fontFamily: tokens.font.family.primary,
-            fontSize: "16px",
-            lineHeight: "24px",
-            color: tokens.color.ink[900],
+            fontSize: tokens.font.size.input,       // 17px
+            fontWeight: tokens.font.weight.regular, // 400
+            letterSpacing: tokens.font.letterSpacing.snug, // -0.01em
+            lineHeight: tokens.font.lineHeight.relaxed, // 1.5
+            color: tokens.color.gray[900],          // #111827
             backgroundColor: tokens.color.white,
-            border: `1px solid ${
+            border: `2px solid ${
               hasError
                 ? tokens.color.error.base
                 : isFocused
-                ? "#000000"
-                : "#B0B0B0"
+                ? tokens.color.accent.base
+                : tokens.color.gray[200]
             }`,
-            borderRadius: "8px",
+            borderRadius: tokens.radius.md,        // 8px
             outline: "none",
             transition: `all ${tokens.transition.base}`,
-            boxShadow: isFocused ? "0 0 0 2px #000000" : "none",
+            boxShadow: isFocused ? `0 0 0 3px ${tokens.color.accent.light}` : "none",
             ...(disabled && {
-              backgroundColor: tokens.color.ink[100],
-              color: tokens.color.ink[500],
+              backgroundColor: tokens.color.gray[100],
+              color: tokens.color.gray[500],
               cursor: "not-allowed",
             }),
           }}
@@ -445,11 +531,12 @@ function TextField({
           id={hintId}
           style={{
             margin: 0,
-            marginTop: "14px", // mb-3.5 = 14px to match StepCreativeBrief
+            marginTop: "6px",
             fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.sm,
-            color: tokens.color.ink[600],
-            lineHeight: "1.625", // leading-relaxed
+            fontSize: tokens.font.size.hint,         // 14px
+            fontWeight: tokens.font.weight.regular,  // 400
+            color: tokens.color.gray[500],           // #6B7280
+            lineHeight: tokens.font.lineHeight.normal, // 1.4
           }}
         >
           {hint}
@@ -463,12 +550,12 @@ function TextField({
           role="alert"
           style={{
             margin: 0,
-            marginTop: "10px", // mt-2.5 = 10px to match StepCreativeBrief
+            marginTop: "6px",
             display: "flex",
             alignItems: "center",
             gap: tokens.space.xs,
             fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.sm,
+            fontSize: tokens.font.size.hint,         // 14px
             color: tokens.color.error.base,
             lineHeight: tokens.font.lineHeight.normal,
           }}
@@ -526,16 +613,22 @@ function InlineSuggestions({ suggestions = [], isLoading, onSelect }) {
       aria-label="Suggestions"
       style={{
         display: "flex",
-        flexWrap: "wrap",
-        gap: tokens.space.xs,
-        marginTop: "14px", // mt-3.5 = 14px to match StepCreativeBrief
+        gap: "8px",
+        overflowX: "auto",
+        overflowY: "hidden",
+        marginTop: "12px",
+        paddingBottom: "8px",
+        // Custom scrollbar styling
+        scrollbarWidth: "thin",
+        scrollbarColor: `${tokens.color.gray[300]} ${tokens.color.gray[100]}`,
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {suggestions.map((suggestion, index) => {
         // Handle both string and object formats
         const text = typeof suggestion === 'string' ? suggestion : suggestion.text;
         const explanation = typeof suggestion === 'object' ? suggestion.explanation : null;
-        
+
         return (
           <SuggestionChip
             key={`${text}-${index}`}
@@ -581,21 +674,28 @@ function SuggestionChip({ text, explanation, onClick }) {
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: `${tokens.space.xs} ${tokens.space.md}`,
+        justifyContent: "center",
+        padding: "8px 16px",                            // Reduced from 16px 28px
+        height: "32px",                                 // Reduced from 48px
+        whiteSpace: "nowrap",                           // Prevent wrapping for horizontal scroll
+        flexShrink: 0,                                  // Don't shrink in flex container
         fontFamily: tokens.font.family.primary,
-        fontSize: tokens.font.size.sm,
-        fontWeight: tokens.font.weight.medium,
-        color: tokens.color.ink[700],
-        backgroundColor: isHovered ? tokens.color.ink[100] : tokens.color.white,
-        border: `1px solid ${tokens.color.ink[300]}`,
-        borderRadius: tokens.radius.pill,
+        fontSize: "14px",                               // Reduced from 15px
+        fontWeight: tokens.font.weight.medium,          // 500
+        letterSpacing: tokens.font.letterSpacing.snug,  // -0.01em
+        lineHeight: 1,                                  // Tighter line height
+        color: tokens.color.gray[700],                  // #374151
+        backgroundColor: isHovered ? tokens.color.gray[100] : tokens.color.gray[50],
+        border: `1.5px solid ${isHovered ? tokens.color.accent.base : tokens.color.gray[200]}`,
+        borderRadius: "16px",                           // Pill shape (half of height)
         cursor: "pointer",
         transition: `all ${tokens.transition.fast}`,
         outline: "none",
+        boxShadow: isHovered ? `0 2px 8px ${tokens.color.accent.light}` : "none",
       }}
       onFocus={(e) => {
-        e.currentTarget.style.outline = tokens.focus.outline;
-        e.currentTarget.style.outlineOffset = tokens.focus.outlineOffset;
+        e.currentTarget.style.outline = `2px solid ${tokens.color.accent.base}`;
+        e.currentTarget.style.outlineOffset = "2px";
       }}
       onBlur={(e) => {
         e.currentTarget.style.outline = "none";
@@ -613,199 +713,24 @@ SuggestionChip.propTypes = {
 };
 
 // ============================================================================
-// ORGANISM COMPONENTS
-// ============================================================================
-
-/**
- * SectionCard - Collapsible accordion panel
- * Features: Lock states, smooth animations, accessible disclosure
- */
-function SectionCard({
-  icon,
-  title,
-  description,
-  open,
-  onToggle,
-  locked,
-  completed,
-  children,
-  cta,
-}) {
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  // Calculate content height for smooth animation
-  useEffect(() => {
-    if (open && contentRef.current) {
-      setHeight(contentRef.current.scrollHeight);
-    } else {
-      setHeight(0);
-    }
-  }, [open, children]);
-
-  const handleHeaderClick = () => {
-    if (!locked) {
-      onToggle?.();
-    }
-  };
-
-  const handleHeaderKeyDown = (e) => {
-    if (!locked && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      onToggle?.();
-    }
-  };
-
-  return (
-    <div
-      style={{
-        backgroundColor: tokens.color.white,
-        borderRadius: tokens.radius.xl,
-        boxShadow: tokens.elevation.card,
-        overflow: "hidden",
-        transition: `box-shadow ${tokens.transition.base}`,
-        ...(open && {
-          boxShadow: tokens.elevation.md,
-        }),
-      }}
-    >
-      {/* Card Header */}
-      <div
-        role="button"
-        tabIndex={locked ? -1 : 0}
-        aria-expanded={open}
-        aria-disabled={locked}
-        onClick={handleHeaderClick}
-        onKeyDown={handleHeaderKeyDown}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: tokens.space.md,
-          padding: "28px 32px",
-          cursor: locked ? "not-allowed" : "pointer",
-          backgroundColor: open ? tokens.color.ink[50] : tokens.color.white,
-          transition: `background-color ${tokens.transition.base}`,
-          outline: "none",
-        }}
-        onFocus={(e) => {
-          if (!locked) {
-            e.currentTarget.style.outline = tokens.focus.outline;
-            e.currentTarget.style.outlineOffset = `-${tokens.space.xxs}`;
-          }
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.outline = "none";
-        }}
-      >
-        {/* Icon container */}
-        <div
-          style={{
-            width: tokens.space.xxl, // 48px
-            height: tokens.space.xxl,
-            borderRadius: tokens.radius.pill,
-            backgroundColor: completed
-              ? tokens.color.success.light
-              : locked
-              ? tokens.color.ink[200]
-              : tokens.color.brand[50],
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          {completed ? (
-            <Check size={24} color={tokens.color.success.base} />
-          ) : locked ? (
-            <Lock size={20} color={tokens.color.ink[500]} />
-          ) : (
-            icon
-          )}
-        </div>
-
-        {/* Title */}
-        <h3
-          style={{
-            flex: 1,
-            margin: 0,
-            fontFamily: tokens.font.family.primary,
-            fontSize: tokens.font.size.lg,
-            fontWeight: tokens.font.weight.semibold,
-            color: locked ? tokens.color.ink[500] : tokens.color.ink[900],
-            lineHeight: tokens.font.lineHeight.snug,
-          }}
-        >
-          {title}
-        </h3>
-
-        {/* Expand/collapse indicator */}
-        {!locked && (
-          <div
-            style={{
-              transition: `transform ${tokens.transition.base}`,
-              transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            }}
-          >
-            <ChevronDown size={24} color={tokens.color.ink[700]} />
-          </div>
-        )}
-      </div>
-
-      {/* Card Content (animated) */}
-      <div
-        ref={contentRef}
-        style={{
-          height: px(height),
-          overflow: "hidden",
-          transition: `height ${tokens.transition.slow}`,
-        }}
-      >
-        <div style={{ padding: "32px" }}>
-          {/* Description - mb-3.5 */}
-          {description && (
-            <div style={{ marginBottom: "20px" }}>{description}</div>
-          )}
-
-          {/* Form fields and suggestions */}
-          {children}
-
-          {/* CTA button - mt-8 */}
-          {cta && <div style={{ marginTop: "40px" }}>{cta}</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-SectionCard.propTypes = {
-  icon: PropTypes.node,
-  title: PropTypes.string.isRequired,
-  description: PropTypes.node,
-  open: PropTypes.bool,
-  onToggle: PropTypes.func,
-  locked: PropTypes.bool,
-  completed: PropTypes.bool,
-  children: PropTypes.node,
-  cta: PropTypes.node,
-};
-
-// ============================================================================
 // MAIN COMPONENT - CoreConceptAccordion
 // ============================================================================
 
 /**
- * CoreConceptAccordion - Main gated accordion component
- * 
- * Progressive disclosure pattern with three gated sections:
- * 1. Subject (always accessible)
- * 2. Action (unlocks when subject is valid)
- * 3. Location (unlocks when action is valid)
- * 
+ * CoreConceptAccordion - Core concept form with modern UI card
+ *
+ * Clean, flat form layout with field validation:
+ * - Subject (required, min 3 chars)
+ * - Descriptor 1-3 (optional, unlocked when subject valid)
+ * - Action (required, min 3 chars, unlocked when subject valid)
+ *
  * Features:
+ * - Modern card-based UI
+ * - AI-powered suggestion pills
+ * - Progressive field unlocking
  * - Auto-focus management
- * - Keyboard navigation
  * - Accessibility (ARIA, focus management)
- * - Responsive layout
+ * - Viewport-optimized (fits 1080p without scrolling)
  */
 export function CoreConceptAccordion({
   formData,
@@ -818,18 +743,6 @@ export function CoreConceptAccordion({
   // Validation states
   const isSubjectValid = validators.minLength(formData.subject, 3);
   const isActionValid = validators.minLength(formData.action, 3);
-
-  // Accordion open/closed state
-  const [openSections, setOpenSections] = useState({
-    subject: true,
-  });
-
-  // Toggle accordion section
-  const toggleSection = useCallback((section) => {
-    setOpenSections((prev) => ({
-      subject: section === "subject" ? !prev.subject : false,
-    }));
-  }, []);
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -847,14 +760,6 @@ export function CoreConceptAccordion({
     [onChange]
   );
 
-  // Auto-advance to next section when field is valid (no longer needed with single section)
-  const handleSectionAdvance = useCallback(
-    (currentSection, nextSection) => {
-      // Keep for backwards compatibility but not used
-    },
-    []
-  );
-
   return (
     <main
       style={{
@@ -862,11 +767,12 @@ export function CoreConceptAccordion({
         width: "100%",
         maxWidth: "1920px",
         margin: "0 auto",
-        padding: "40px",
+        padding: `${tokens.space.vertical.xxl} 40px`, // 40px top/bottom, 40px sides
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         minHeight: "calc(100vh - 4px)", // Full viewport height minus progress bar
+        backgroundColor: tokens.color.page,          // #FAFAFA soft gray
       }}
     >
       <div
@@ -875,7 +781,7 @@ export function CoreConceptAccordion({
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          gap: "40px",
+          gap: tokens.space.vertical.xxl,            // 40px between heading and card
           maxWidth: "600px",
           width: "100%",
         }}
@@ -890,13 +796,13 @@ export function CoreConceptAccordion({
           <h1
             style={{
               margin: 0,
-              marginBottom: "8px",
+              marginBottom: "12px",
               fontFamily: tokens.font.family.primary,
-              fontSize: "36px",
-              lineHeight: "44px",
-              letterSpacing: "-0.02em",
-              fontWeight: tokens.font.weight.bold,
-              color: "#222",
+              fontSize: tokens.font.size.heading,         // 42px
+              fontWeight: tokens.font.weight.bold,        // 700
+              lineHeight: tokens.font.lineHeight.tight,   // 1.1
+              letterSpacing: tokens.font.letterSpacing.tight, // -0.02em
+              color: tokens.color.gray[900],              // #111827
             }}
           >
             Let's start with the big idea
@@ -905,173 +811,138 @@ export function CoreConceptAccordion({
             style={{
               margin: 0,
               fontFamily: tokens.font.family.primary,
-              fontSize: "18px",
-              lineHeight: "28px",
-              color: "#717171",
+              fontSize: tokens.font.size.subheading,      // 18px
+              fontWeight: tokens.font.weight.regular,     // 400
+              lineHeight: tokens.font.lineHeight.relaxed, // 1.5
+              color: tokens.color.gray[500],              // #6B7280
             }}
           >
             Tell us about the core of your video. We'll guide you through it step by step.
           </p>
         </section>
 
-        {/* Accordion Section */}
+        {/* Form Card */}
         <section
           style={{
             width: "100%",
           }}
         >
-          {/* Big card container */}
+          {/* UI Card container */}
           <div
             style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
+              backgroundColor: tokens.color.white,
+              borderRadius: tokens.radius.lg,           // 12px
+              border: `1px solid ${tokens.color.gray[200]}`,
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-              padding: "40px",
+              padding: `${tokens.space.horizontal.xxl}`, // 48px all around
               width: "100%",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "24px",
-              }}
-            >
-            {/* Single Section: Subject with Descriptors */}
-            <SectionCard
-              icon={<User size={22} color={tokens.color.brand[500]} />}
-              title="Core Concept"
-              description={
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: tokens.font.family.primary,
-                    fontSize: tokens.font.size.base,
-                    color: tokens.color.ink[700],
-                    lineHeight: tokens.font.lineHeight.normal,
-                  }}
-                >
-                  Define your subject and describe it with three key details
-                </p>
+            {/* Subject Field */}
+            <TextField
+              id="subject-input"
+              label="Subject"
+              value={formData.subject}
+              onChange={(e) => handleFieldChange("subject", e.target.value)}
+              onFocus={() =>
+                onRequestSuggestions?.("subject", formData.subject || "")
               }
-              open={openSections.subject}
-              onToggle={() => toggleSection("subject")}
-              locked={false}
-              completed={isSubjectValid && isActionValid && !openSections.subject}
-            >
-              {/* Subject Field */}
-              <TextField
-                id="subject-input"
-                label="Subject"
-                value={formData.subject}
-                onChange={(e) => handleFieldChange("subject", e.target.value)}
-                onFocus={() =>
-                  onRequestSuggestions?.("subject", formData.subject || "")
-                }
-                placeholder="e.g., athlete, car, dog, dancer, bird"
-                hint="What or who is the main focus? (just the subject, no descriptors)"
-                error={
-                  formData.subject && !isSubjectValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                autoFocus
-              />
+              error={
+                formData.subject && !isSubjectValid
+                  ? "Please enter at least 3 characters"
+                  : ""
+              }
+              required
+              autoFocus
+            />
 
-              <InlineSuggestions
-                suggestions={suggestions?.subject || []}
-                isLoading={Boolean(isLoadingSuggestions?.subject)}
-                onSelect={(text) => handleSuggestionSelect("subject", text)}
-              />
+            <InlineSuggestions
+              suggestions={suggestions?.subject || []}
+              isLoading={Boolean(isLoadingSuggestions?.subject)}
+              onSelect={(text) => handleSuggestionSelect("subject", text)}
+            />
 
-              {/* Descriptor 1: Physical appearance */}
-              <TextField
-                id="descriptor1-input"
-                label="Descriptor 1"
-                value={formData.descriptor1}
-                onChange={(e) => handleFieldChange("descriptor1", e.target.value)}
-                onFocus={() =>
-                  onRequestSuggestions?.("descriptor1", formData.descriptor1 || "")
-                }
-                placeholder="e.g., muscular, chrome-plated, golden-furred"
-                hint="Physical appearance (size, color, texture, shape)"
-                disabled={!isSubjectValid}
-              />
+            {/* Descriptor 1: Physical appearance */}
+            <TextField
+              id="descriptor1-input"
+              label="Descriptor 1"
+              value={formData.descriptor1}
+              onChange={(e) => handleFieldChange("descriptor1", e.target.value)}
+              onFocus={() =>
+                onRequestSuggestions?.("descriptor1", formData.descriptor1 || "")
+              }
+              disabled={!isSubjectValid}
+            />
 
-              <InlineSuggestions
-                suggestions={suggestions?.descriptor1 || []}
-                isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
-                onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
-              />
+            <InlineSuggestions
+              suggestions={suggestions?.descriptor1 || []}
+              isLoading={Boolean(isLoadingSuggestions?.descriptor1)}
+              onSelect={(text) => handleSuggestionSelect("descriptor1", text)}
+            />
 
-              {/* Descriptor 2: Visual details */}
-              <TextField
-                id="descriptor2-input"
-                label="Descriptor 2"
-                value={formData.descriptor2}
-                onChange={(e) => handleFieldChange("descriptor2", e.target.value)}
-                onFocus={() =>
-                  onRequestSuggestions?.("descriptor2", formData.descriptor2 || "")
-                }
-                placeholder="e.g., wearing a red jersey, with gleaming headlights, long-eared"
-                hint="Clothing, accessories, or distinctive features"
-                disabled={!isSubjectValid}
-              />
+            {/* Descriptor 2: Visual details */}
+            <TextField
+              id="descriptor2-input"
+              label="Descriptor 2"
+              value={formData.descriptor2}
+              onChange={(e) => handleFieldChange("descriptor2", e.target.value)}
+              onFocus={() =>
+                onRequestSuggestions?.("descriptor2", formData.descriptor2 || "")
+              }
+              disabled={!isSubjectValid}
+            />
 
-              <InlineSuggestions
-                suggestions={suggestions?.descriptor2 || []}
-                isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
-                onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
-              />
+            <InlineSuggestions
+              suggestions={suggestions?.descriptor2 || []}
+              isLoading={Boolean(isLoadingSuggestions?.descriptor2)}
+              onSelect={(text) => handleSuggestionSelect("descriptor2", text)}
+            />
 
-              {/* Descriptor 3: Physical state or condition */}
-              <TextField
-                id="descriptor3-input"
-                label="Descriptor 3"
-                value={formData.descriptor3}
-                onChange={(e) => handleFieldChange("descriptor3", e.target.value)}
-                onFocus={() =>
-                  onRequestSuggestions?.("descriptor3", formData.descriptor3 || "")
-                }
-                placeholder="e.g., in mid-stride, covered in dust, with wagging tail"
-                hint="Physical state, posture, or condition"
-                disabled={!isSubjectValid}
-              />
+            {/* Descriptor 3: Physical state or condition */}
+            <TextField
+              id="descriptor3-input"
+              label="Descriptor 3"
+              value={formData.descriptor3}
+              onChange={(e) => handleFieldChange("descriptor3", e.target.value)}
+              onFocus={() =>
+                onRequestSuggestions?.("descriptor3", formData.descriptor3 || "")
+              }
+              disabled={!isSubjectValid}
+            />
 
-              <InlineSuggestions
-                suggestions={suggestions?.descriptor3 || []}
-                isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
-                onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
-              />
+            <InlineSuggestions
+              suggestions={suggestions?.descriptor3 || []}
+              isLoading={Boolean(isLoadingSuggestions?.descriptor3)}
+              onSelect={(text) => handleSuggestionSelect("descriptor3", text)}
+            />
 
-              {/* Action Field */}
-              <TextField
-                id="action-input"
-                label="Action"
-                value={formData.action}
-                onChange={(e) => handleFieldChange("action", e.target.value)}
-                onFocus={() =>
-                  isSubjectValid &&
-                  onRequestSuggestions?.("action", formData.action || "")
-                }
-                placeholder="e.g., running through, transforming into, dancing with"
-                hint="What is happening? (movement, activity, transformation)"
-                error={
-                  formData.action && !isActionValid
-                    ? "Please enter at least 3 characters"
-                    : ""
-                }
-                required
-                disabled={!isSubjectValid}
-              />
+            {/* Action Field */}
+            <TextField
+              id="action-input"
+              label="Action"
+              value={formData.action}
+              onChange={(e) => handleFieldChange("action", e.target.value)}
+              onFocus={() =>
+                isSubjectValid &&
+                onRequestSuggestions?.("action", formData.action || "")
+              }
+              error={
+                formData.action && !isActionValid
+                  ? "Please enter at least 3 characters"
+                  : ""
+              }
+              required
+              disabled={!isSubjectValid}
+            />
 
-              <InlineSuggestions
-                suggestions={suggestions?.action || []}
-                isLoading={Boolean(isLoadingSuggestions?.action)}
-                onSelect={(text) => handleSuggestionSelect("action", text)}
-              />
+            <InlineSuggestions
+              suggestions={suggestions?.action || []}
+              isLoading={Boolean(isLoadingSuggestions?.action)}
+              onSelect={(text) => handleSuggestionSelect("action", text)}
+            />
 
+            {/* Button with top margin */}
+            <div style={{ marginTop: tokens.space.vertical.xl }}>
               <PrimaryButton
                 disabled={!isSubjectValid || !isActionValid}
                 onClick={onNext}
@@ -1080,7 +951,6 @@ export function CoreConceptAccordion({
               >
                 Continue to Atmosphere
               </PrimaryButton>
-            </SectionCard>
             </div>
           </div>
         </section>
