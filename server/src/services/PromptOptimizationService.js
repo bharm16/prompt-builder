@@ -17,7 +17,7 @@ export class PromptOptimizationService {
     // Template versions for tracking improvements
     this.templateVersions = {
       default: '2.0.0', // Updated version with 2025 improvements
-      reasoning: '3.0.0',
+      reasoning: '3.1.0', // Context integration
       research: '2.0.0',
       socratic: '2.0.0',
       video: '1.0.0'
@@ -25,11 +25,143 @@ export class PromptOptimizationService {
   }
 
   /**
+   * Automatically infer context from prompt using Claude
+   * Generates context object compatible with existing context integration
+   * @param {string} prompt - The user's original prompt
+   * @returns {Promise<Object>} Context object with specificAspects, backgroundLevel, intendedUse
+   * @private
+   */
+  async inferContextFromPrompt(prompt) {
+    logger.info('Inferring context from prompt', { promptLength: prompt.length });
+
+    try {
+      const inferencePrompt = `Analyze this prompt and infer appropriate context for optimization.
+
+<prompt_to_analyze>
+${prompt}
+</prompt_to_analyze>
+
+Your task: Reason through these analytical lenses to infer the appropriate context:
+
+**LENS 1: Domain & Specificity**
+What field or discipline does this belong to? What level of technical depth is implied?
+
+**LENS 2: Expertise Level**
+Based on language complexity and terminology usage, how expert is this person?
+- novice: Uses general language, asks "what is" questions, seeks basic explanations
+- intermediate: Uses some domain terms, asks "how to" questions, seeks practical guidance
+- expert: Uses precise terminology, discusses trade-offs, assumes domain knowledge
+
+**LENS 3: Key Focus Areas**
+What are the 2-4 most important specific aspects or focus areas in this prompt?
+Be concrete - extract the actual technical concepts, tools, or constraints mentioned.
+
+**LENS 4: Intended Use**
+What is this person likely trying to do with the response?
+- learning/education
+- production implementation
+- research/analysis
+- troubleshooting/debugging
+- strategic planning
+- creative development
+
+Now, output ONLY a JSON object with this exact structure (no other text):
+
+{
+  "specificAspects": "2-4 key technical/domain-specific focus areas from the prompt",
+  "backgroundLevel": "novice|intermediate|expert",
+  "intendedUse": "brief description of likely use case"
+}
+
+Examples of good output:
+
+For: "analyze the current implementation behind the prompt canvas editor highlighting feature, and help me come up with a solution to reduce the amount of time it takes to parse the text and apply the highlights"
+{
+  "specificAspects": "DOM manipulation performance, text parsing algorithms, real-time highlighting optimization, editor rendering efficiency",
+  "backgroundLevel": "expert",
+  "intendedUse": "production performance optimization"
+}
+
+For: "help me understand how neural networks learn"
+{
+  "specificAspects": "backpropagation mechanics, gradient descent, loss functions, weight updates",
+  "backgroundLevel": "novice",
+  "intendedUse": "learning fundamentals"
+}
+
+For: "create a market expansion strategy for our SaaS product in Europe"
+{
+  "specificAspects": "market sizing, competitive analysis, regulatory compliance, go-to-market strategy",
+  "backgroundLevel": "intermediate",
+  "intendedUse": "strategic planning"
+}
+
+Output only the JSON, nothing else:`;
+
+      const response = await this.claudeClient.complete(inferencePrompt, {
+        maxTokens: 500,
+        temperature: 0.3, // Low temperature for consistent inference
+        timeout: 15000, // 15 second timeout
+      });
+
+      const rawOutput = response.content[0].text.trim();
+      logger.debug('Raw inference output', { rawOutput: rawOutput.substring(0, 200) });
+
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonText = rawOutput;
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/```\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        jsonText = jsonMatch[1] || jsonMatch[0];
+      }
+
+      const inferredContext = JSON.parse(jsonText);
+
+      // Validate structure
+      if (
+        !inferredContext.specificAspects ||
+        !inferredContext.backgroundLevel ||
+        !inferredContext.intendedUse
+      ) {
+        throw new Error('Invalid context structure from inference');
+      }
+
+      // Validate backgroundLevel
+      const validLevels = ['novice', 'intermediate', 'expert'];
+      if (!validLevels.includes(inferredContext.backgroundLevel)) {
+        logger.warn('Invalid background level, defaulting to intermediate', {
+          level: inferredContext.backgroundLevel,
+        });
+        inferredContext.backgroundLevel = 'intermediate';
+      }
+
+      logger.info('Successfully inferred context', {
+        hasSpecificAspects: !!inferredContext.specificAspects,
+        backgroundLevel: inferredContext.backgroundLevel,
+        hasIntendedUse: !!inferredContext.intendedUse,
+      });
+
+      return inferredContext;
+    } catch (error) {
+      logger.error('Failed to infer context from prompt', { error: error.message });
+
+      // Return minimal context on failure - system will work without it
+      return {
+        specificAspects: '',
+        backgroundLevel: 'intermediate',
+        intendedUse: '',
+      };
+    }
+  }
+
+  /**
    * Optimize a prompt based on mode and context
    * @param {Object} params - Optimization parameters
    * @param {string} params.prompt - Original prompt
    * @param {string} params.mode - Optimization mode (optional - will auto-detect if not provided)
-   * @param {Object} params.context - Additional context
+   * @param {Object} params.context - Additional context (optional - will auto-infer for reasoning mode if not provided)
    * @param {Object} params.brainstormContext - Context from Creative Brainstorm workflow
    * @param {boolean} params.useConstitutionalAI - Whether to apply Constitutional AI review (default: false)
    * @param {boolean} params.useIterativeRefinement - Whether to use iterative refinement (default: false)
@@ -44,6 +176,13 @@ export class PromptOptimizationService {
     if (!mode) {
       mode = await this.detectOptimalMode(prompt);
       logger.info('Auto-detected mode', { detectedMode: mode });
+    }
+
+    // Auto-infer context if not provided and mode is reasoning
+    if (mode === 'reasoning' && !context) {
+      logger.info('Auto-inferring context for reasoning mode');
+      context = await this.inferContextFromPrompt(prompt);
+      logger.debug('Inferred context', { context });
     }
 
     // Check cache first (include template version to prevent serving outdated cached results)
@@ -143,7 +282,7 @@ export class PromptOptimizationService {
 
     switch (mode) {
       case 'reasoning':
-        systemPrompt = this.getReasoningPrompt(prompt, brainstormContext);
+        systemPrompt = this.getReasoningPrompt(prompt, context, brainstormContext);
         break;
       case 'research':
         systemPrompt = this.getResearchPrompt(prompt, brainstormContext);
@@ -159,7 +298,8 @@ export class PromptOptimizationService {
     }
 
     // Add context enhancement if provided
-    if (context && Object.keys(context).some((k) => context[k])) {
+    // Skip for reasoning mode since it's already integrated into the template
+    if (context && Object.keys(context).some((k) => context[k]) && mode !== 'reasoning') {
       systemPrompt += this.buildContextAddition(context);
     }
 
@@ -170,31 +310,63 @@ export class PromptOptimizationService {
   }
 
   /**
-   * IMPROVED REASONING TEMPLATE v3.0.0
+   * IMPROVED REASONING TEMPLATE v3.1.0 with Context Integration
    * Generates high-quality reasoning prompts by focusing on OUTPUT rather than PROCESS
-   * Follows modern LLM prompting best practices
+   * NOW SUPPORTS: Early context injection for better optimization
+   *
    * @param {string} prompt - User's prompt to optimize
+   * @param {Object} context - Optional user context (specificAspects, backgroundLevel, intendedUse)
    * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getReasoningPrompt(prompt, brainstormContext = null) {
+  getReasoningPrompt(prompt, context = null, brainstormContext = null) {
+    // Log context usage for debugging
+    if (context) {
+      logger.info('Context provided for reasoning mode', {
+        hasSpecificAspects: Boolean(context.specificAspects),
+        hasBackgroundLevel: Boolean(context.backgroundLevel),
+        hasIntendedUse: Boolean(context.intendedUse),
+      });
+    }
+
+    // Build context section to inject early
+    let contextSection = '';
+    if (context && Object.keys(context).some((k) => context[k])) {
+      contextSection = '\n\n**USER-PROVIDED CONTEXT:**';
+      contextSection += '\nThe user has specified these requirements that MUST be integrated into the optimized prompt:';
+
+      if (context.specificAspects) {
+        contextSection += `\n- **Focus Areas:** ${context.specificAspects}`;
+      }
+      if (context.backgroundLevel) {
+        contextSection += `\n- **Target Audience Level:** ${context.backgroundLevel}`;
+      }
+      if (context.intendedUse) {
+        contextSection += `\n- **Intended Use Case:** ${context.intendedUse}`;
+      }
+
+      contextSection += '\n\nEnsure these requirements are woven naturally into your optimized prompt.';
+    }
+
     // Build brainstorm context section if provided
-    const brainstormSection = brainstormContext?.elements 
+    const brainstormSection = brainstormContext?.elements
       ? this.buildBrainstormContextForTemplate(brainstormContext)
       : '';
 
-    // Build transformation steps based on whether we have brainstorm context
-    const transformationSteps = brainstormSection
+    // Build transformation steps with context integration
+    const hasContext = context && Object.keys(context).some((k) => context[k]);
+    const transformationSteps = hasContext || brainstormSection
       ? `
 1. **Extract the core objective** - What are they really trying to accomplish?
-2. **Integrate user-provided context** - The user specified these key elements:
+${hasContext ? `2. **Integrate user-provided requirements** - The user specified these context requirements above. Ensure they are naturally reflected in the Goal, Context, Warnings, and Return Format sections.` : ''}
+${brainstormSection ? `${hasContext ? '3' : '2'}. **Integrate brainstorm elements** - The user specified these creative elements:
 ${brainstormSection}
-Ensure these elements are naturally woven into the optimized prompt's Goal, Context, and Warnings sections.
-3. **Determine specific deliverables** - What concrete outputs would best serve this goal?
-4. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
-5. **Identify essential context** - What background information shapes the solution space?
-6. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
-7. **Remove all meta-instructions** - Trust the model to reason well without process guidance`
+Weave these naturally into the optimized prompt's relevant sections.` : ''}
+${hasContext || brainstormSection ? `${hasContext && brainstormSection ? '4' : '3'}` : '2'}. **Determine specific deliverables** - What concrete outputs would best serve this goal?
+${hasContext || brainstormSection ? `${hasContext && brainstormSection ? '5' : '4'}` : '3'}. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
+${hasContext || brainstormSection ? `${hasContext && brainstormSection ? '6' : '5'}` : '4'}. **Identify essential context** - What background information shapes the solution space?
+${hasContext || brainstormSection ? `${hasContext && brainstormSection ? '7' : '6'}` : '5'}. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
+${hasContext || brainstormSection ? `${hasContext && brainstormSection ? '8' : '7'}` : '6'}. **Remove all meta-instructions** - Trust the model to reason well without process guidance`
       : `
 1. **Extract the core objective** - What are they really trying to accomplish?
 2. **Determine specific deliverables** - What concrete outputs would best serve this goal?
@@ -273,9 +445,11 @@ DO NOT include any of these in your output:
 ❌ Excessive length (>600 words unless truly complex)
 </anti_patterns_to_avoid>
 
-<examples>
-User prompt: "${prompt}"
+<original_prompt>
+"${prompt}"${contextSection}
+</original_prompt>
 
+<examples>
 Example transformation (different domain):
 Input: "analyze the performance of this sorting algorithm"
 
