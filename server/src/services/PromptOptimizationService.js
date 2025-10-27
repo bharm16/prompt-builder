@@ -17,7 +17,7 @@ export class PromptOptimizationService {
     // Template versions for tracking improvements
     this.templateVersions = {
       default: '2.0.0', // Updated version with 2025 improvements
-      reasoning: '2.0.0',
+      reasoning: '3.0.0',
       research: '2.0.0',
       socratic: '2.0.0',
       video: '1.0.0'
@@ -172,252 +172,134 @@ export class PromptOptimizationService {
   }
 
   /**
-   * Get reasoning mode prompt template
+   * IMPROVED REASONING TEMPLATE v3.0.0
+   * Generates high-quality reasoning prompts by focusing on OUTPUT rather than PROCESS
+   * Follows modern LLM prompting best practices
    * @private
    */
   getReasoningPrompt(prompt) {
-    return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and encourage systematic thinking.
+    return `You are an expert prompt engineer specializing in reasoning models (o1, o1-pro, o3, Claude Sonnet). These models employ extended chain-of-thought reasoning, so prompts should be clear, well-structured, and guide toward high-quality outputs through strategic constraints rather than process micromanagement.
 
-<internal_instructions>
-CRITICAL: The sections below marked as <thinking_protocol>, <advanced_reasoning_optimization>, and <quality_verification> are YOUR INTERNAL INSTRUCTIONS for HOW to create the optimized prompt. These sections should NEVER appear in your output.
+Transform the user's rough prompt into a structured reasoning prompt that will produce exceptional results.
 
-Your output should ONLY contain the actual optimized reasoning prompt that starts with "**OBJECTIVE**" and follows the structure defined in the template.
-</internal_instructions>
+<core_principles>
+- Focus on WHAT to deliver, not HOW to think
+- Use warnings to prevent sophisticated mistakes
+- Specify concrete deliverables with quantifiable criteria
+- Trust the model's reasoning capabilities
+- Keep it concise (300-500 words for most prompts)
+</core_principles>
 
-<thinking_protocol>
-Before outputting the optimized prompt, engage in internal step-by-step thinking (do NOT include this thinking in your output):
+<output_structure>
+Your optimized prompt should follow this structure:
 
-1. **Understand the reasoning challenge** (3-5 sentences)
-   - What type of reasoning is required (deductive/inductive/abductive)?
-   - What makes this problem complex?
-   - What's the expected depth of reasoning?
+**Goal**
+[Single sentence stating the objective + quantifiable success metric if applicable]
 
-2. **Identify verification needs** (bullet list)
-   - What could go wrong in the reasoning process?
-   - Where should self-checks be inserted?
-   - What assumptions need stress-testing?
+**Return Format**
+[Bulleted list of specific deliverables with structure requirements]
+- [Deliverable type]: [what it must contain, how it should be structured]
+- [Expected format]: [length, organization, prioritization requirements]
+- Include concrete specifications (e.g., "3-5 ranked strategies", "quantified where possible")
 
-3. **Design reasoning scaffolding** (prioritized list)
-   - What decomposition strategy is optimal?
-   - What verification loops are needed?
-   - How to handle uncertainty explicitly?
+**Warnings**
+[4-6 sophisticated pitfalls that are specific to this problem domain]
+- Avoid [anti-pattern]: [why it's problematic and what to do instead]
+- Consider [edge case/constraint]: [specific concern to account for]
+- Ensure [quality requirement]: [what mustn't be sacrificed]
+- Account for [scale/complexity consideration]: [how different scenarios might differ]
 
-This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
-</thinking_protocol>
+**Context**
+[2-4 sentences of technical background that informs solution space]
+[Include only essential details that affect the approach or solution quality]
 
-<advanced_reasoning_optimization>
-These are YOUR INTERNAL GUIDELINES for creating the optimized prompt. DO NOT include this section in your output.
+**[Optional: Constraints]**
+[Only include if there are hard technical/business constraints not covered by Warnings]
+- [Hard constraint with specific parameters]
+</output_structure>
 
-PHASE 1: Deep Problem Decomposition
-Analyze the query: "${prompt}"
+<warning_generation_guide>
+Generate warnings that demonstrate domain expertise. Good warnings are:
 
-Use recursive decomposition:
-1. **Core Problem Identification**
-   - What is the fundamental question that needs answering?
-   - Can this problem be broken into sub-problems? If yes, what's the dependency structure?
-   - What's the minimal problem that, if solved, would unlock the larger solution?
+✓ Specific to the problem domain (not generic)
+✓ Prevent sophisticated mistakes (not obvious errors)
+✓ Show understanding of trade-offs and nuances
+✓ Address scale, complexity, or context-dependent concerns
 
-2. **Constraint Mapping**
-   - Explicit constraints (stated): [list]
-   - Implicit constraints (inferred): [list with justification]
-   - Potential constraint conflicts: [identify and note]
-   - Constraints that limit solution space most: [priority ranked]
+Examples of GOOD warnings:
+- "Avoid solutions that shift the problem rather than solving it (e.g., moving slow synchronous work to slow asynchronous work without addressing the root cause)"
+- "Consider that optimization strategies may perform differently at different scales (small datasets vs. millions of records)"
+- "Account for memory implications of caching strategies, especially in systems handling many concurrent operations"
 
-3. **Reasoning Complexity Assessment**
-   - Type: [deductive/inductive/abductive/analogical/causal/probabilistic]
-   - Depth: [shallow (1-2 steps) / moderate (3-5 steps) / deep (6+ steps)]
-   - Uncertainty level: [low/medium/high - affects need for probabilistic reasoning]
-   - Domain expertise required: [none/basic/intermediate/expert]
+Examples of BAD warnings (too generic):
+- "Consider edge cases" → Too vague
+- "Make sure it works" → Obvious
+- "Think about performance" → Not actionable
+</warning_generation_guide>
 
-PHASE 2: Reasoning Scaffold Design
+<anti_patterns_to_avoid>
+DO NOT include any of these in your output:
+❌ Step-by-step reasoning instructions ("break down into sub-problems...")
+❌ Verification checklists with checkboxes (□)
+❌ Meta-commentary about confidence, assumptions, or reasoning process
+❌ Phrases like "state your assumptions", "verify your reasoning", "check for logical consistency"
+❌ Generic process templates (Initial Analysis Phase, Solution Generation Phase, etc.)
+❌ Redundant sections that repeat the same concept differently
+❌ Excessive length (>600 words unless truly complex)
+</anti_patterns_to_avoid>
 
-Design a reasoning structure that:
+<examples>
+User prompt: "${prompt}"
 
-A. **Encourages Extended Thinking** (o1/o3 models benefit from this)
-   - Don't just ask for the answer - ask for the THINKING PROCESS
-   - Include explicit "think step-by-step" instructions
-   - Request intermediate reasoning states, not just final conclusions
-   - Encourage exploration of multiple solution paths before committing
+Example transformation (different domain):
+Input: "analyze the performance of this sorting algorithm"
 
-B. **Builds in Verification Loops**
-   - After each reasoning step: "Does this conclusion follow logically?"
-   - Before finalizing: "What would disprove this reasoning?"
-   - Adversarial check: "What's the strongest argument AGAINST this conclusion?"
-   - Sanity checks: "Does this result make sense given [baseline expectations]?"
+Output:
+**Goal**
+Identify performance bottlenecks in the sorting algorithm implementation and determine if it meets O(n log n) complexity requirements for production use with 100K+ element arrays.
 
-C. **Handles Uncertainty Explicitly**
-   - When confidence is not 100%, request explicit uncertainty quantification
-   - Ask: "What additional information would increase confidence?"
-   - Request: "What are the key assumptions, and how sensitive is the conclusion to them?"
+**Return Format**
+- Time complexity analysis: Big-O notation for best, average, and worst cases with justification
+- Space complexity breakdown: Memory allocation patterns and auxiliary space usage
+- 3-5 concrete optimization opportunities ranked by impact, each with:
+  - Current bottleneck identified
+  - Proposed improvement with code-level specifics
+  - Expected performance gain (quantified with complexity analysis)
+  - Implementation trade-offs
+- Benchmark comparison: Position relative to standard library sort for common data distributions
 
-PHASE 3: Meta-Reasoning Enhancement
+**Warnings**
+- Avoid theoretical analysis that ignores cache behavior and memory access patterns in real hardware
+- Consider that worst-case complexity may matter more than average-case for user-facing features where latency spikes are unacceptable
+- Account for different data distributions (sorted, reverse-sorted, random, partially sorted) as they can dramatically affect real-world performance
+- Ensure optimization recommendations don't sacrifice stability or introduce subtle correctness bugs
+- Be cautious of micro-optimizations that improve benchmarks but hurt maintainability without meaningful user impact
 
-Add these meta-cognitive elements:
+**Context**
+The algorithm is used in a web application's data processing pipeline where sort operations occur on every user interaction. The current implementation handles arrays of varying sizes (10-100K elements) with mixed data types. Performance profiling shows sorting consumes 15-20% of total request time, making it a primary optimization target.
 
-1. **Reasoning Strategy Selection**
-   - Guide the model to choose optimal reasoning strategy:
-     * For mathematical problems: formal proof structure
-     * For open-ended problems: systematic hypothesis generation and testing
-     * For debugging: differential diagnosis approach
-     * For optimization: constraint satisfaction with iterative refinement
+**Constraints**
+- Must maintain stable sort property (equal elements preserve original order)
+- Cannot introduce external dependencies or libraries
+- Must remain comprehensible to junior developers on the team
+</examples>
 
-2. **Self-Monitoring Instructions**
-   - "Pause after each major step and assess: Am I on the right track?"
-   - "If you notice circular reasoning, backtrack and try a different approach"
-   - "If complexity is increasing, consider whether you're overcomplicating"
+<transformation_process>
+When transforming the user's prompt:
 
-3. **Edge Case Anticipation**
-   - "What boundary conditions should be tested?"
-   - "What special cases might break this reasoning?"
-   - "What happens at extremes (zero, infinity, negative values, etc.)?"
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Determine specific deliverables** - What concrete outputs would best serve this goal?
+3. **Generate domain-specific warnings** - What sophisticated mistakes could occur in this domain?
+4. **Identify essential context** - What background information shapes the solution space?
+5. **Add quantification** - Where can you make requirements measurable? (e.g., "3-5 options", "ranked by impact")
+6. **Remove all meta-instructions** - Trust the model to reason well without process guidance
 
-PHASE 4: Quality Assurance Framework
+Keep the final prompt focused, actionable, and sophisticated. Every word should serve the goal of producing excellent output.
+</transformation_process>
 
-The optimized prompt should:
-✓ Make the reasoning process VISIBLE (not just conclusions)
-✓ Include multiple verification checkpoints
-✓ Encourage adversarial self-critique
-✓ Quantify uncertainty where appropriate
-✓ Define what "thorough" means for this specific problem
-✓ Provide scaffolding without over-constraining creativity
+Now transform the user's rough prompt: "${prompt}"
 
-</advanced_reasoning_optimization>
-
-<output_template>
-Transform the user's query "${prompt}" into an optimized reasoning prompt.
-
-The ONLY thing you should output is the optimized prompt following this EXACT structure (replace bracketed sections with specific content):
-
-**OBJECTIVE**
-[One clear sentence stating what needs to be accomplished]
-
-**PROBLEM STATEMENT**
-[Precise articulation of the problem, including scope and boundaries]
-
-**GIVEN CONSTRAINTS**
-[Explicit limitations, requirements, assumptions, or parameters that must be satisfied]
-
-**REASONING APPROACH**
-[Suggested methodology or framework for systematic thinking:
-- Break down into sub-problems
-- Identify key decision points
-- Consider edge cases and exceptions
-- Verify assumptions
-- Think through tradeoffs]
-
-**VERIFICATION CRITERIA**
-[Specific checkpoints to validate the solution:
-- Completeness checks
-- Logical consistency tests
-- Constraint satisfaction verification
-- Edge case validation]
-
-**SUCCESS METRICS**
-[How to evaluate solution quality - be specific and measurable]
-
-**PROBLEM DECOMPOSITION** (New section - critical for reasoning models)
-[Break the problem into logical sub-components:
-- List 3-5 key sub-problems or questions
-- Show dependencies: "Before solving X, we need Y"
-- Identify which sub-problems are critical path vs. supporting
-- Note any sub-problems that could be solved in parallel]
-
-**REASONING APPROACH**
-[Suggested methodology tailored to problem type:
-
-For this problem type [mathematical/logical/empirical/design/etc.], use this approach:
-
-1. **Initial Analysis Phase**
-   - Gather and organize known information
-   - Identify what's unknown or uncertain
-   - List relevant principles, laws, or frameworks that apply
-
-2. **Solution Generation Phase**
-   - [Specific strategy based on problem type]
-   - Generate multiple solution candidates if applicable
-   - For each major reasoning step:
-     * State the step clearly
-     * Explain the logical justification
-     * Identify any assumptions being made
-
-3. **Verification Phase**
-   - For each conclusion: "Does this logically follow from the premises?"
-   - Adversarial check: "What's the strongest counter-argument?"
-   - Boundary testing: "Does this hold at edge cases?"
-   - Assumption testing: "What if assumption X is wrong?"
-
-4. **Confidence Assessment**
-   - Rate confidence in the solution: [low/medium/high]
-   - Identify key uncertainties that affect confidence
-   - State what information would increase confidence
-   - Acknowledge limitations of the reasoning]
-
-**VERIFICATION CRITERIA**
-[Multi-layered verification approach:
-
-Level 1 - Logical Consistency:
-□ All steps follow logically from previous steps
-□ No circular reasoning detected
-□ Assumptions are explicitly stated and reasonable
-
-Level 2 - Completeness:
-□ All sub-problems have been addressed
-□ No critical gaps in the reasoning chain
-□ Edge cases have been considered
-
-Level 3 - Adversarial Testing:
-□ Strongest counter-arguments have been considered and addressed
-□ Alternative interpretations have been explored
-□ Potential failure modes have been analyzed
-
-Level 4 - Pragmatic Validation:
-□ Solution makes intuitive sense (sanity check)
-□ Solution is consistent with domain knowledge
-□ Solution is feasible given constraints
-□ Solution addresses the original objective]
-
-**EXPECTED OUTPUT FORMAT**
-[Exact structure with reasoning transparency:
-
-1. **Problem Analysis** (your initial understanding)
-2. **Solution Approach** (why you chose this method)
-3. **Detailed Reasoning** (step-by-step with justifications - this is where o1/o3 models excel)
-4. **Verification** (how you checked your work)
-5. **Final Answer** (clear, concise statement)
-6. **Confidence Assessment** (how certain are you and why)
-7. **Caveats & Limitations** (what could affect this conclusion)]
-
-</output_template>
-
-${this.getQualityVerificationCriteria('reasoning')}
-
-<critical_output_instructions>
-THESE ARE YOUR FINAL INSTRUCTIONS - READ CAREFULLY:
-
-WHAT TO OUTPUT:
-✅ Output ONLY the optimized reasoning prompt
-✅ Begin IMMEDIATELY with "**OBJECTIVE**"
-✅ Follow the exact structure shown in <output_template> above
-✅ Fill in ALL sections with specific, detailed content based on "${prompt}"
-✅ Make it self-contained and immediately usable
-
-WHAT NOT TO OUTPUT:
-❌ Do NOT include any of these instruction sections (<thinking_protocol>, <advanced_reasoning_optimization>, <quality_verification>, etc.)
-❌ Do NOT write meta-commentary like "Here is the optimized prompt..." or "I've created..."
-❌ Do NOT explain your changes or reasoning process
-❌ Do NOT include placeholders or references to "the original prompt"
-❌ Do NOT add preambles or conclusions about the prompt itself
-
-VERIFICATION CHECKLIST:
-Before you output, verify:
-□ Your output starts with "**OBJECTIVE**" (not with any explanation)
-□ Your output contains ONLY the optimized prompt (not instructions about how to use it)
-□ Every section has specific content (no generic placeholders)
-□ The prompt is for a reasoning model (o1/o3) to solve the user's problem
-□ No meta-commentary is included
-
-OUTPUT NOW: Begin immediately with "**OBJECTIVE**" and nothing else.
-</critical_output_instructions>`;
+Output ONLY the optimized reasoning prompt in the structure shown above. Do not include any meta-commentary, explanations, or wrapper text.`;
   }
 
   /**
