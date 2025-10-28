@@ -171,7 +171,7 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
 
       const systemPrompt = service.buildSystemPrompt(
         'explain concept',
-        'optimize', // not reasoning mode
+        'video', // video mode doesn't have integrated context
         context
       );
 

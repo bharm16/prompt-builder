@@ -17,9 +17,10 @@ export class PromptOptimizationService {
     // Template versions for tracking improvements
     this.templateVersions = {
       default: '2.0.0', // Updated version with 2025 improvements
+      optimize: '3.0.0', // Two-stage domain-specific content generation
       reasoning: '4.0.0', // Two-stage domain-specific content generation
-      research: '2.0.0',
-      socratic: '2.0.0',
+      research: '3.0.0', // Two-stage domain-specific content generation
+      socratic: '3.0.0', // Two-stage domain-specific content generation
       video: '1.0.0'
     };
   }
@@ -340,6 +341,598 @@ Do NOT include any explanation or markdown formatting. Output only the JSON.
   }
 
   /**
+   * STAGE 1: Generate domain-specific content for RESEARCH mode
+   * Focuses on research-specific elements: sources, methodologies, quality criteria, biases
+   *
+   * @param {string} prompt - The user's original prompt
+   * @param {Object} context - Inferred or provided context
+   * @returns {Promise<Object>} Domain-specific research content
+   * @private
+   */
+  async generateResearchDomainContent(prompt, context) {
+    logger.info('Generating research domain content (Stage 1)', {
+      promptLength: prompt.length,
+      hasContext: !!context
+    });
+
+    const domain = context?.specificAspects || '';
+    const expertiseLevel = context?.backgroundLevel || 'intermediate';
+    const useCase = context?.intendedUse || '';
+
+    const stage1Prompt = `Generate domain-specific research content for a research planning task.
+
+<task>
+User's Research Query: "${prompt}"
+
+Context:
+- Research Domain: ${domain || 'general'}
+- Researcher Level: ${expertiseLevel}
+- Intended Use: ${useCase || 'not specified'}
+</task>
+
+Your job: Generate domain-specific research elements that will be incorporated into an optimized research plan.
+
+<source_recommendations>
+Generate 3-5 specific source type recommendations. Each MUST:
+
+✓ Specify the exact type of source (journals, databases, datasets, reports)
+✓ Name specific resources when applicable (e.g., "IEEE Xplore", "PubMed", "Papers With Code")
+✓ Explain WHY this source type is essential for this research domain
+✓ Match the ${expertiseLevel} level (experts need cutting-edge sources, beginners need accessible ones)
+
+EXAMPLES for different domains:
+
+For "machine learning model evaluation":
+✓ "Peer-reviewed ML conferences (NeurIPS, ICML, ICLR) for state-of-the-art methodologies"
+✓ "MLPerf benchmarks for standardized performance comparisons across models"
+✓ "Papers With Code for reproducible experiments and code implementations"
+
+For "clinical trial analysis":
+✓ "PubMed and Cochrane Library for peer-reviewed medical research"
+✓ "ClinicalTrials.gov for trial protocols and results"
+✓ "FDA approval documents for regulatory compliance data"
+
+BAD (too generic):
+❌ "Academic papers"
+❌ "Reliable sources"
+❌ "Internet research"
+
+Generate source recommendations for the user's query above.
+</source_recommendations>
+
+<methodology_recommendations>
+Generate 2-4 research methodology recommendations. Each MUST:
+
+✓ Name the specific methodology (systematic review, grounded theory, A/B testing, etc.)
+✓ Explain when and why to use it for THIS domain
+✓ Include domain-specific best practices or standards
+✓ Match ${expertiseLevel} level complexity
+
+EXAMPLES:
+
+For "software performance comparison":
+✓ "Controlled A/B testing with identical hardware to isolate software variables"
+✓ "Statistical significance testing (p < 0.05) across minimum 30 runs to account for variance"
+
+For "user experience research":
+✓ "Mixed methods: quantitative analytics data + qualitative user interviews for triangulation"
+✓ "Think-aloud protocol during usability testing to capture real-time decision-making"
+
+Generate methodologies for the user's query above.
+</methodology_recommendations>
+
+<quality_criteria>
+Generate 2-3 quality criteria/standards. Each MUST:
+
+✓ Be measurable or verifiable
+✓ Be specific to this research domain
+✓ Help ensure research rigor and validity
+
+EXAMPLES:
+
+For "AI model research":
+✓ "Studies must report train/validation/test split to ensure no data leakage"
+✓ "Benchmarks must use standardized datasets (ImageNet, COCO) for reproducibility"
+
+For "medical research":
+✓ "Studies must be peer-reviewed and published in journals with impact factor > 2.0"
+✓ "Clinical trials must be registered and report all outcomes (not just positive results)"
+
+Generate quality criteria for the user's query above.
+</quality_criteria>
+
+<common_biases>
+Generate 2-4 common biases or pitfalls specific to this research domain. Each MUST:
+
+✓ Name the specific bias type
+✓ Explain how it manifests in THIS domain
+✓ Suggest mitigation strategies
+
+EXAMPLES:
+
+For "technology adoption research":
+✓ "Publication bias: Successful implementations are over-reported; seek out failure case studies"
+✓ "Recency bias: Latest tools aren't always better; compare against established baselines"
+
+For "social science research":
+✓ "Sampling bias: Online surveys over-represent tech-savvy demographics; use stratified sampling"
+✓ "Confirmation bias: Researchers may interpret ambiguous data to support hypothesis; use blind analysis"
+
+Generate biases for the user's query above.
+</common_biases>
+
+<output_format>
+Output ONLY valid JSON:
+
+{
+  "sourceTypes": [
+    "Specific source recommendation 1 with justification",
+    "Specific source recommendation 2 with justification",
+    "... 3-5 total"
+  ],
+  "methodologies": [
+    "Specific methodology 1 with when/why to use it",
+    "Specific methodology 2 with when/why to use it",
+    "... 2-4 total"
+  ],
+  "qualityCriteria": [
+    "Measurable quality criterion 1",
+    "Measurable quality criterion 2",
+    "... 2-3 total"
+  ],
+  "commonBiases": [
+    "Specific bias 1 with mitigation strategy",
+    "Specific bias 2 with mitigation strategy",
+    "... 2-4 total"
+  ]
+}
+
+Do NOT include any explanation or markdown formatting. Output only the JSON.
+</output_format>`;
+
+    try {
+      const response = await this.claudeClient.complete(stage1Prompt, {
+        maxTokens: 1500,
+        temperature: 0.3,
+        timeout: 20000,
+      });
+
+      const rawOutput = response.content[0].text.trim();
+      let jsonText = rawOutput;
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/```\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        jsonText = jsonMatch[1] || jsonMatch[0];
+      }
+
+      const domainContent = JSON.parse(jsonText);
+
+      if (!Array.isArray(domainContent.sourceTypes) ||
+          !Array.isArray(domainContent.methodologies) ||
+          !Array.isArray(domainContent.qualityCriteria) ||
+          !Array.isArray(domainContent.commonBiases)) {
+        throw new Error('Invalid research domain content structure from Stage 1');
+      }
+
+      logger.info('Stage 1 research domain content generated successfully', {
+        sourceTypeCount: domainContent.sourceTypes.length,
+        methodologyCount: domainContent.methodologies.length,
+        qualityCriteriaCount: domainContent.qualityCriteria.length,
+        biasCount: domainContent.commonBiases.length,
+      });
+
+      return domainContent;
+    } catch (error) {
+      logger.error('Failed to generate research domain content in Stage 1', {
+        error: error.message
+      });
+
+      return {
+        sourceTypes: [],
+        methodologies: [],
+        qualityCriteria: [],
+        commonBiases: [],
+      };
+    }
+  }
+
+  /**
+   * STAGE 1: Generate domain-specific content for SOCRATIC mode
+   * Focuses on learning-specific elements: prerequisites, misconceptions, analogies, milestones
+   *
+   * @param {string} prompt - The user's original prompt
+   * @param {Object} context - Inferred or provided context
+   * @returns {Promise<Object>} Domain-specific learning content
+   * @private
+   */
+  async generateSocraticDomainContent(prompt, context) {
+    logger.info('Generating socratic domain content (Stage 1)', {
+      promptLength: prompt.length,
+      hasContext: !!context
+    });
+
+    const domain = context?.specificAspects || '';
+    const expertiseLevel = context?.backgroundLevel || 'intermediate';
+    const useCase = context?.intendedUse || '';
+
+    const stage1Prompt = `Generate domain-specific learning content for a Socratic learning journey.
+
+<task>
+User's Learning Query: "${prompt}"
+
+Context:
+- Subject Domain: ${domain || 'general'}
+- Learner Level: ${expertiseLevel}
+- Learning Goal: ${useCase || 'not specified'}
+</task>
+
+Your job: Generate domain-specific learning scaffolds that will be incorporated into a Socratic learning plan.
+
+<prerequisites>
+Generate 2-4 prerequisite concepts. Each MUST:
+
+✓ Be a specific concept or skill (not vague like "basic knowledge")
+✓ Be truly necessary to understand the main topic
+✓ Match the ${expertiseLevel} level (don't assume experts need basics, don't overwhelm beginners)
+✓ Include WHY it's a prerequisite
+
+EXAMPLES:
+
+For "neural networks" (intermediate level):
+✓ "Understanding of gradient descent and backpropagation - needed to comprehend how networks learn"
+✓ "Linear algebra fundamentals (matrix multiplication, dot products) - neural network operations are matrix math"
+✓ "Basic Python with NumPy - required to implement and experiment with networks"
+
+For "React hooks" (beginner level):
+✓ "JavaScript ES6 syntax (arrow functions, destructuring) - hooks use modern JS features"
+✓ "Understanding of component lifecycle - hooks replace lifecycle methods"
+
+BAD (too vague):
+❌ "Basic programming knowledge"
+❌ "Some math background"
+
+Generate prerequisites for the user's query above.
+</prerequisites>
+
+<misconceptions>
+Generate 3-5 common misconceptions specific to this topic. Each MUST:
+
+✓ State the misconception clearly
+✓ Explain why it's wrong
+✓ Provide the correct understanding
+✓ Be genuinely common in this domain (not obscure edge cases)
+
+EXAMPLES:
+
+For "machine learning":
+✓ "Misconception: 'More training data always improves model performance.' Reality: After a point, more data yields diminishing returns; data quality and diversity matter more than quantity."
+✓ "Misconception: 'Neural networks actually understand content like humans do.' Reality: They identify statistical patterns in training data; they don't have semantic understanding."
+
+For "async programming in JavaScript":
+✓ "Misconception: 'Async functions run in parallel.' Reality: JavaScript is single-threaded; async allows non-blocking I/O, not true parallelism."
+
+Generate misconceptions for the user's query above.
+</misconceptions>
+
+<analogies>
+Generate 2-3 domain-appropriate analogies. Each MUST:
+
+✓ Map complex concept to familiar experience
+✓ Be accurate (not misleading)
+✓ Use references appropriate for ${expertiseLevel} level
+✓ Highlight key similarities and where analogy breaks down
+
+EXAMPLES:
+
+For "database indexing":
+✓ "Database index is like a book's index - lets you jump to specific content without reading everything. Unlike a book, maintaining database indexes slows down writes (adding new content)."
+
+For "React component state":
+✓ "Component state is like a form's input values - each component remembers its own data. When state changes, the component re-renders just like refreshing a form shows new values."
+
+Generate analogies for the user's query above.
+</analogies>
+
+<learning_milestones>
+Generate 3-4 learning milestones that show progression. Each MUST:
+
+✓ Be a concrete, measurable achievement
+✓ Show increasing sophistication from basic → advanced
+✓ Be appropriate for ${expertiseLevel} level
+✓ Help learner self-assess progress
+
+EXAMPLES:
+
+For "SQL" (beginner → intermediate):
+✓ "Can write SELECT queries with WHERE, ORDER BY, and LIMIT clauses"
+✓ "Can use JOINs to combine data from multiple tables"
+✓ "Can write subqueries and understand when to use them vs JOINs"
+✓ "Can optimize queries using indexes and EXPLAIN plans"
+
+For "React" (intermediate → advanced):
+✓ "Can implement custom hooks for reusable logic"
+✓ "Understands when to use useCallback and useMemo for optimization"
+✓ "Can debug performance issues using React DevTools Profiler"
+
+Generate milestones for the user's query above.
+</learning_milestones>
+
+<output_format>
+Output ONLY valid JSON:
+
+{
+  "prerequisites": [
+    "Prerequisite concept 1 with justification",
+    "Prerequisite concept 2 with justification",
+    "... 2-4 total"
+  ],
+  "misconceptions": [
+    "Misconception 1: 'Wrong belief.' Reality: Correct understanding.",
+    "Misconception 2: 'Wrong belief.' Reality: Correct understanding.",
+    "... 3-5 total"
+  ],
+  "analogies": [
+    "Analogy 1 mapping concept to familiar experience",
+    "Analogy 2 mapping concept to familiar experience",
+    "... 2-3 total"
+  ],
+  "milestones": [
+    "Concrete milestone 1",
+    "Concrete milestone 2",
+    "... 3-4 total"
+  ]
+}
+
+Do NOT include any explanation or markdown formatting. Output only the JSON.
+</output_format>`;
+
+    try {
+      const response = await this.claudeClient.complete(stage1Prompt, {
+        maxTokens: 1500,
+        temperature: 0.3,
+        timeout: 20000,
+      });
+
+      const rawOutput = response.content[0].text.trim();
+      let jsonText = rawOutput;
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/```\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        jsonText = jsonMatch[1] || jsonMatch[0];
+      }
+
+      const domainContent = JSON.parse(jsonText);
+
+      if (!Array.isArray(domainContent.prerequisites) ||
+          !Array.isArray(domainContent.misconceptions) ||
+          !Array.isArray(domainContent.analogies) ||
+          !Array.isArray(domainContent.milestones)) {
+        throw new Error('Invalid socratic domain content structure from Stage 1');
+      }
+
+      logger.info('Stage 1 socratic domain content generated successfully', {
+        prerequisiteCount: domainContent.prerequisites.length,
+        misconceptionCount: domainContent.misconceptions.length,
+        analogyCount: domainContent.analogies.length,
+        milestoneCount: domainContent.milestones.length,
+      });
+
+      return domainContent;
+    } catch (error) {
+      logger.error('Failed to generate socratic domain content in Stage 1', {
+        error: error.message
+      });
+
+      return {
+        prerequisites: [],
+        misconceptions: [],
+        analogies: [],
+        milestones: [],
+      };
+    }
+  }
+
+  /**
+   * STAGE 1: Generate domain-specific content for DEFAULT/OPTIMIZE mode
+   * Focuses on general optimization elements: technical specs, anti-patterns, success metrics
+   *
+   * @param {string} prompt - The user's original prompt
+   * @param {Object} context - Inferred or provided context
+   * @returns {Promise<Object>} Domain-specific optimization content
+   * @private
+   */
+  async generateDefaultDomainContent(prompt, context) {
+    logger.info('Generating default domain content (Stage 1)', {
+      promptLength: prompt.length,
+      hasContext: !!context
+    });
+
+    const domain = context?.specificAspects || '';
+    const expertiseLevel = context?.backgroundLevel || 'intermediate';
+    const useCase = context?.intendedUse || '';
+
+    const stage1Prompt = `Generate domain-specific optimization content for a general task.
+
+<task>
+User's Task: "${prompt}"
+
+Context:
+- Domain/Technology: ${domain || 'general'}
+- User Level: ${expertiseLevel}
+- Intended Use: ${useCase || 'not specified'}
+</task>
+
+Your job: Generate domain-specific optimization elements for this task.
+
+<technical_specifications>
+Generate 3-5 technical specifications or requirements. Each MUST:
+
+✓ Be specific to this domain/technology
+✓ Include concrete values, standards, or best practices
+✓ Be appropriate for ${expertiseLevel} level
+✓ Help ensure quality output
+
+EXAMPLES:
+
+For "Python API development":
+✓ "Use type hints (PEP 484) for all function signatures to enable static analysis"
+✓ "Implement request validation with Pydantic for automatic data parsing and validation"
+✓ "Follow RESTful conventions: GET for retrieval, POST for creation, PUT for updates, DELETE for removal"
+
+For "React component development":
+✓ "Use TypeScript with strict mode enabled for type safety"
+✓ "Implement prop validation with PropTypes or TypeScript interfaces"
+✓ "Follow React Hooks rules: only call hooks at top level, only call from React functions"
+
+BAD (too vague):
+❌ "Follow best practices"
+❌ "Write clean code"
+
+Generate technical specifications for the user's task above.
+</technical_specifications>
+
+<anti_patterns>
+Generate 3-5 domain-specific anti-patterns to avoid. Each MUST:
+
+✓ Name the specific anti-pattern
+✓ Explain why it's problematic in THIS domain
+✓ Suggest what to do instead
+✓ Be truly common in this domain
+
+EXAMPLES:
+
+For "database design":
+✓ "Avoid storing JSON blobs in relational databases when data has predictable structure - use normalized tables instead for better query performance and data integrity"
+✓ "Avoid using SELECT * in production queries - explicitly list columns to prevent breaking changes when schema evolves"
+
+For "React state management":
+✓ "Avoid storing derived state - calculate it on render instead to prevent synchronization bugs (e.g., don't store both 'firstName' and 'fullName' in state)"
+✓ "Avoid mutating state directly (state.items.push(x)) - use immutable updates (setState([...state.items, x])) to trigger re-renders"
+
+Generate anti-patterns for the user's task above.
+</anti_patterns>
+
+<success_metrics>
+Generate 2-3 success metrics or quality indicators. Each MUST:
+
+✓ Be measurable or verifiable
+✓ Be relevant to ${useCase || 'general use'}
+✓ Help determine if the task is done well
+
+EXAMPLES:
+
+For "API development" (production use):
+✓ "Response time < 200ms for 95th percentile of requests under expected load"
+✓ "Test coverage ≥ 80% for critical paths (authentication, data validation, error handling)"
+
+For "UI component" (reusable library):
+✓ "Component renders correctly in all major browsers (Chrome, Firefox, Safari, Edge)"
+✓ "Passes WCAG 2.1 AA accessibility standards (keyboard navigation, screen reader compatibility)"
+
+Generate success metrics for the user's task above.
+</success_metrics>
+
+<constraints>
+Generate 1-3 important constraints or limitations. Each MUST:
+
+✓ Be a hard requirement or boundary
+✓ Be specific to this domain or use case
+✓ Include rationale
+
+EXAMPLES:
+
+For "production deployment":
+✓ "Must maintain backward compatibility with API v1 clients for 6-month deprecation period"
+✓ "Database migrations must be reversible to enable safe rollbacks"
+
+For "browser-based app":
+✓ "Bundle size must not exceed 250KB gzipped to maintain sub-3s load time on 3G networks"
+
+Generate constraints for the user's task above (or empty array if none apply).
+</constraints>
+
+<output_format>
+Output ONLY valid JSON:
+
+{
+  "technicalSpecs": [
+    "Specific technical specification 1",
+    "Specific technical specification 2",
+    "... 3-5 total"
+  ],
+  "antiPatterns": [
+    "Anti-pattern 1 with what to do instead",
+    "Anti-pattern 2 with what to do instead",
+    "... 3-5 total"
+  ],
+  "successMetrics": [
+    "Measurable success metric 1",
+    "Measurable success metric 2",
+    "... 2-3 total"
+  ],
+  "constraints": [
+    "Hard constraint 1 with rationale",
+    "Hard constraint 2 with rationale",
+    "... 1-3 total (or empty array)"
+  ]
+}
+
+Do NOT include any explanation or markdown formatting. Output only the JSON.
+</output_format>`;
+
+    try {
+      const response = await this.claudeClient.complete(stage1Prompt, {
+        maxTokens: 1500,
+        temperature: 0.3,
+        timeout: 20000,
+      });
+
+      const rawOutput = response.content[0].text.trim();
+      let jsonText = rawOutput;
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/```\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        jsonText = jsonMatch[1] || jsonMatch[0];
+      }
+
+      const domainContent = JSON.parse(jsonText);
+
+      if (!Array.isArray(domainContent.technicalSpecs) ||
+          !Array.isArray(domainContent.antiPatterns) ||
+          !Array.isArray(domainContent.successMetrics) ||
+          !Array.isArray(domainContent.constraints)) {
+        throw new Error('Invalid default domain content structure from Stage 1');
+      }
+
+      logger.info('Stage 1 default domain content generated successfully', {
+        technicalSpecCount: domainContent.technicalSpecs.length,
+        antiPatternCount: domainContent.antiPatterns.length,
+        successMetricCount: domainContent.successMetrics.length,
+        constraintCount: domainContent.constraints.length,
+      });
+
+      return domainContent;
+    } catch (error) {
+      logger.error('Failed to generate default domain content in Stage 1', {
+        error: error.message
+      });
+
+      return {
+        technicalSpecs: [],
+        antiPatterns: [],
+        successMetrics: [],
+        constraints: [],
+      };
+    }
+  }
+
+  /**
    * Optimize a prompt based on mode and context
    * @param {Object} params - Optimization parameters
    * @param {string} params.prompt - Original prompt
@@ -368,14 +961,17 @@ Do NOT include any explanation or markdown formatting. Output only the JSON.
       logger.debug('Inferred context', { context });
     }
 
-    // STAGE 1: Generate domain-specific content for reasoning mode
-    // Only runs if we have context and are in reasoning mode
+    // STAGE 1: Generate domain-specific content for modes that support it
+    // Runs for reasoning, research, socratic, and default modes when context is available
     let domainContent = null;
-    if (mode === 'reasoning' && context && Object.keys(context).some(k => context[k])) {
-      logger.info('Executing Stage 1: Domain-specific content generation');
+    const modesWithStage1 = ['reasoning', 'research', 'socratic', 'optimize'];
+
+    if (modesWithStage1.includes(mode) && context && Object.keys(context).some(k => context[k])) {
+      logger.info('Executing Stage 1: Domain-specific content generation', { mode });
 
       // Check domain content cache first (separate from final prompt cache)
       const domainCacheKey = cacheService.generateKey('domain-content', {
+        mode,
         prompt: prompt.substring(0, 100), // Use first 100 chars of prompt for cache key
         context,
       });
@@ -384,24 +980,59 @@ Do NOT include any explanation or markdown formatting. Output only the JSON.
 
       if (!domainContent) {
         try {
-          domainContent = await this.generateDomainSpecificContent(prompt, context);
+          // Call appropriate Stage 1 function based on mode
+          switch (mode) {
+            case 'reasoning':
+              domainContent = await this.generateDomainSpecificContent(prompt, context);
+              logger.debug('Stage 1 complete - reasoning domain content generated', {
+                warningCount: domainContent.warnings?.length || 0,
+                deliverableCount: domainContent.deliverables?.length || 0,
+                constraintCount: domainContent.constraints?.length || 0,
+              });
+              break;
+
+            case 'research':
+              domainContent = await this.generateResearchDomainContent(prompt, context);
+              logger.debug('Stage 1 complete - research domain content generated', {
+                sourceTypeCount: domainContent.sourceTypes?.length || 0,
+                methodologyCount: domainContent.methodologies?.length || 0,
+                qualityCriteriaCount: domainContent.qualityCriteria?.length || 0,
+                biasCount: domainContent.commonBiases?.length || 0,
+              });
+              break;
+
+            case 'socratic':
+              domainContent = await this.generateSocraticDomainContent(prompt, context);
+              logger.debug('Stage 1 complete - socratic domain content generated', {
+                prerequisiteCount: domainContent.prerequisites?.length || 0,
+                misconceptionCount: domainContent.misconceptions?.length || 0,
+                analogyCount: domainContent.analogies?.length || 0,
+                milestoneCount: domainContent.milestones?.length || 0,
+              });
+              break;
+
+            case 'optimize':
+              domainContent = await this.generateDefaultDomainContent(prompt, context);
+              logger.debug('Stage 1 complete - default domain content generated', {
+                technicalSpecCount: domainContent.technicalSpecs?.length || 0,
+                antiPatternCount: domainContent.antiPatterns?.length || 0,
+                successMetricCount: domainContent.successMetrics?.length || 0,
+                constraintCount: domainContent.constraints?.length || 0,
+              });
+              break;
+          }
 
           // Cache domain content separately (1 hour TTL, reusable across similar prompts)
           await cacheService.set(domainCacheKey, domainContent, { ttl: 3600 });
-
-          logger.debug('Stage 1 complete - domain content generated and cached', {
-            warningCount: domainContent.warnings?.length || 0,
-            deliverableCount: domainContent.deliverables?.length || 0,
-            constraintCount: domainContent.constraints?.length || 0,
-          });
         } catch (error) {
           logger.warn('Stage 1 failed, falling back to standard optimization', {
+            mode,
             error: error.message
           });
           domainContent = null; // Fallback to original single-stage approach
         }
       } else {
-        logger.debug('Stage 1 domain content cache hit');
+        logger.debug('Stage 1 domain content cache hit', { mode });
       }
     }
 
@@ -500,7 +1131,7 @@ Do NOT include any explanation or markdown formatting. Output only the JSON.
    * @param {string} mode - Optimization mode
    * @param {Object} context - User context
    * @param {Object} brainstormContext - Brainstorm context
-   * @param {Object} domainContent - Pre-generated domain-specific content from Stage 1 (reasoning mode only)
+   * @param {Object} domainContent - Pre-generated domain-specific content from Stage 1
    * @private
    */
   buildSystemPrompt(prompt, mode, context, brainstormContext, domainContent = null) {
@@ -511,21 +1142,22 @@ Do NOT include any explanation or markdown formatting. Output only the JSON.
         systemPrompt = this.getReasoningPrompt(prompt, context, brainstormContext, domainContent);
         break;
       case 'research':
-        systemPrompt = this.getResearchPrompt(prompt, brainstormContext);
+        systemPrompt = this.getResearchPrompt(prompt, context, brainstormContext, domainContent);
         break;
       case 'socratic':
-        systemPrompt = this.getSocraticPrompt(prompt, brainstormContext);
+        systemPrompt = this.getSocraticPrompt(prompt, context, brainstormContext, domainContent);
         break;
       case 'video':
         systemPrompt = this.getVideoPrompt(prompt, brainstormContext);
         break;
       default:
-        systemPrompt = this.getDefaultPrompt(prompt, brainstormContext);
+        systemPrompt = this.getDefaultPrompt(prompt, context, brainstormContext, domainContent);
     }
 
     // Add context enhancement if provided
-    // Skip for reasoning mode since it's already integrated into the template
-    if (context && Object.keys(context).some((k) => context[k]) && mode !== 'reasoning') {
+    // Skip for modes with two-stage implementation since context is already integrated
+    const modesWithIntegratedContext = ['reasoning', 'research', 'socratic', 'optimize'];
+    if (context && Object.keys(context).some((k) => context[k]) && !modesWithIntegratedContext.includes(mode)) {
       systemPrompt += this.buildContextAddition(context);
     }
 
@@ -784,14 +1416,105 @@ Output ONLY the optimized reasoning prompt in the structure shown above. Do not 
    * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getResearchPrompt(prompt, brainstormContext = null) {
+  getResearchPrompt(prompt, context = null, brainstormContext = null, domainContent = null) {
+    // Log domain content usage
+    if (domainContent) {
+      logger.info('Stage 1 domain content available for research template', {
+        sourceTypeCount: domainContent.sourceTypes?.length || 0,
+        methodologyCount: domainContent.methodologies?.length || 0,
+        qualityCriteriaCount: domainContent.qualityCriteria?.length || 0,
+        biasCount: domainContent.commonBiases?.length || 0,
+      });
+    }
+
+    // Build domain content section if available
+    let domainContentSection = '';
+    if (domainContent && (domainContent.sourceTypes?.length > 0 || domainContent.methodologies?.length > 0)) {
+      domainContentSection = '\n\n**PRE-GENERATED DOMAIN-SPECIFIC RESEARCH CONTENT:**';
+      domainContentSection += '\nThe following domain-specific research elements have been generated for this prompt.';
+      domainContentSection += '\nYou MUST incorporate these verbatim into the appropriate sections of your research plan:\n';
+
+      // Add source types section
+      if (domainContent.sourceTypes?.length > 0) {
+        domainContentSection += '\n**SOURCE TYPES (include these in your Information Sources section):**\n';
+        domainContent.sourceTypes.forEach((sourceType, i) => {
+          domainContentSection += `${i + 1}. ${sourceType}\n`;
+        });
+      }
+
+      // Add methodologies section
+      if (domainContent.methodologies?.length > 0) {
+        domainContentSection += '\n**METHODOLOGIES (include these in your Methodology section):**\n';
+        domainContent.methodologies.forEach((methodology, i) => {
+          domainContentSection += `${i + 1}. ${methodology}\n`;
+        });
+      }
+
+      // Add quality criteria section
+      if (domainContent.qualityCriteria?.length > 0) {
+        domainContentSection += '\n**QUALITY CRITERIA (add these to Success Metrics or Information Sources):**\n';
+        domainContent.qualityCriteria.forEach((criteria, i) => {
+          domainContentSection += `${i + 1}. ${criteria}\n`;
+        });
+      }
+
+      // Add common biases section
+      if (domainContent.commonBiases?.length > 0) {
+        domainContentSection += '\n**COMMON BIASES (include these in Anticipated Challenges):**\n';
+        domainContent.commonBiases.forEach((bias, i) => {
+          domainContentSection += `${i + 1}. ${bias}\n`;
+        });
+      }
+
+      domainContentSection += '\nIMPORTANT: These elements are already domain-specific and technically precise.';
+      domainContentSection += ' Use them as provided - do not make them more generic.';
+      domainContentSection += ' Your job is to assemble them into a well-structured research plan.\n';
+    } else if (context && Object.keys(context).some((k) => context[k])) {
+      // Fallback to old context section if no domain content
+      domainContentSection = '\n\n**USER-PROVIDED CONTEXT:**';
+      domainContentSection += '\nThe user has specified these requirements that MUST be integrated into the research plan:';
+
+      if (context.specificAspects) {
+        domainContentSection += `\n- **Research Focus:** ${context.specificAspects}`;
+      }
+      if (context.backgroundLevel) {
+        domainContentSection += `\n- **Researcher Level:** ${context.backgroundLevel}`;
+      }
+      if (context.intendedUse) {
+        domainContentSection += `\n- **Research Purpose:** ${context.intendedUse}`;
+      }
+
+      domainContentSection += '\n\nEnsure these requirements are woven naturally into your research plan.';
+    }
+
     // Build brainstorm context section if provided
-    const brainstormSection = brainstormContext?.elements 
+    const brainstormSection = brainstormContext?.elements
       ? this.buildBrainstormContextForTemplate(brainstormContext)
       : '';
 
-    // Build thinking protocol steps based on whether we have brainstorm context
-    const thinkingSteps = brainstormSection
+    // Build thinking protocol steps - SIMPLIFIED when domain content is available
+    const hasDomainContent = domainContent && (domainContent.sourceTypes?.length > 0 || domainContent.methodologies?.length > 0);
+
+    const thinkingSteps = hasDomainContent
+      ? `
+1. **Understand the research scope** (3-5 sentences)
+   - What's the core research question?
+   - What type of research is this (exploratory/explanatory/evaluative)?
+   - What depth and breadth are needed?
+
+2. **Integrate pre-generated domain content** - Source types, methodologies, quality criteria, and biases have been pre-generated above. Include them in the appropriate sections of your research plan.
+   - Copy the SOURCE TYPES into your **Information Sources** section
+   - Copy the METHODOLOGIES into your **Methodology** section
+   - Copy the QUALITY CRITERIA into your **Success Metrics** or **Information Sources** section
+   - Copy the COMMON BIASES into your **Anticipated Challenges** section
+
+3. **Design research structure** (prioritized list)
+   - What's the optimal question hierarchy?
+   - How to ensure source triangulation?
+   - What synthesis framework fits best?
+
+IMPORTANT: The pre-generated research elements are already domain-specific. Do NOT make them more generic.`
+      : brainstormSection
       ? `
 1. **Understand the research scope** (3-5 sentences)
    - What's the core research question?
@@ -843,7 +1566,7 @@ ${thinkingSteps}
 
 This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
-
+${domainContentSection}
 <advanced_research_methodology>
 These are YOUR INTERNAL GUIDELINES for creating the optimized research plan. DO NOT include this section in your output.
 
@@ -1018,14 +1741,104 @@ OUTPUT NOW: Begin immediately with "**RESEARCH OBJECTIVE**" and nothing else.
    * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getSocraticPrompt(prompt, brainstormContext = null) {
+  getSocraticPrompt(prompt, context = null, brainstormContext = null, domainContent = null) {
+    // Log domain content usage
+    if (domainContent) {
+      logger.info('Stage 1 domain content available for socratic template', {
+        prerequisiteCount: domainContent.prerequisites?.length || 0,
+        misconceptionCount: domainContent.misconceptions?.length || 0,
+        analogyCount: domainContent.analogies?.length || 0,
+        milestoneCount: domainContent.milestones?.length || 0,
+      });
+    }
+
+    // Build domain content section if available
+    let domainContentSection = '';
+    if (domainContent && (domainContent.prerequisites?.length > 0 || domainContent.misconceptions?.length > 0)) {
+      domainContentSection = '\n\n**PRE-GENERATED DOMAIN-SPECIFIC LEARNING CONTENT:**';
+      domainContentSection += '\nThe following domain-specific learning elements have been generated for this prompt.';
+      domainContentSection += '\nYou MUST incorporate these verbatim into the appropriate sections of your learning plan:\n';
+
+      // Add prerequisites section
+      if (domainContent.prerequisites?.length > 0) {
+        domainContentSection += '\n**PREREQUISITES (include these in your Prerequisites section):**\n';
+        domainContent.prerequisites.forEach((prereq, i) => {
+          domainContentSection += `${i + 1}. ${prereq}\n`;
+        });
+      }
+
+      // Add misconceptions section
+      if (domainContent.misconceptions?.length > 0) {
+        domainContentSection += '\n**COMMON MISCONCEPTIONS (include these in your Common Misconceptions section):**\n';
+        domainContent.misconceptions.forEach((misconception, i) => {
+          domainContentSection += `${i + 1}. ${misconception}\n`;
+        });
+      }
+
+      // Add analogies section
+      if (domainContent.analogies?.length > 0) {
+        domainContentSection += '\n**TEACHING ANALOGIES (incorporate these into your Guiding Questions or Concept Connections):**\n';
+        domainContent.analogies.forEach((analogy, i) => {
+          domainContentSection += `${i + 1}. ${analogy}\n`;
+        });
+      }
+
+      // Add milestones section
+      if (domainContent.milestones?.length > 0) {
+        domainContentSection += '\n**LEARNING MILESTONES (include these in your Mastery Indicators):**\n';
+        domainContent.milestones.forEach((milestone, i) => {
+          domainContentSection += `${i + 1}. ${milestone}\n`;
+        });
+      }
+
+      domainContentSection += '\nIMPORTANT: These elements are already domain-specific and pedagogically sound.';
+      domainContentSection += ' Use them as provided - do not make them more generic.';
+      domainContentSection += ' Your job is to assemble them into a well-structured learning plan.\n';
+    } else if (context && Object.keys(context).some((k) => context[k])) {
+      // Fallback to old context section if no domain content
+      domainContentSection = '\n\n**USER-PROVIDED CONTEXT:**';
+      domainContentSection += '\nThe user has specified these requirements that MUST be integrated into the learning plan:';
+
+      if (context.specificAspects) {
+        domainContentSection += `\n- **Learning Focus:** ${context.specificAspects}`;
+      }
+      if (context.backgroundLevel) {
+        domainContentSection += `\n- **Learner Level:** ${context.backgroundLevel}`;
+      }
+      if (context.intendedUse) {
+        domainContentSection += `\n- **Learning Purpose:** ${context.intendedUse}`;
+      }
+
+      domainContentSection += '\n\nEnsure these requirements are woven naturally into your learning plan.';
+    }
+
     // Build brainstorm context section if provided
-    const brainstormSection = brainstormContext?.elements 
+    const brainstormSection = brainstormContext?.elements
       ? this.buildBrainstormContextForTemplate(brainstormContext)
       : '';
 
-    // Build thinking protocol steps based on whether we have brainstorm context
-    const thinkingSteps = brainstormSection
+    // Build thinking protocol steps - SIMPLIFIED when domain content is available
+    const hasDomainContent = domainContent && (domainContent.prerequisites?.length > 0 || domainContent.misconceptions?.length > 0);
+
+    const thinkingSteps = hasDomainContent
+      ? `
+1. **Understand the learning domain** (3-5 sentences)
+   - What are the core concepts to master?
+   - What's the optimal question sequence?
+
+2. **Integrate pre-generated domain content** - Prerequisites, misconceptions, analogies, and milestones have been pre-generated above. Include them in the appropriate sections of your learning plan.
+   - Copy the PREREQUISITES into your **Prerequisites** section
+   - Copy the MISCONCEPTIONS into your **Common Misconceptions** section
+   - Weave the ANALOGIES into your **Guiding Questions** or **Concept Connections**
+   - Copy the MILESTONES into your **Mastery Indicators** section
+
+3. **Design learning progression** (bullet list)
+   - Where should difficulty increase?
+   - What active learning techniques apply?
+   - What formative assessment points are needed?
+
+IMPORTANT: The pre-generated learning elements are already domain-specific. Do NOT make them more generic.`
+      : brainstormSection
       ? `
 1. **Understand the learning domain** (3-5 sentences)
    - What are the core concepts to master?
@@ -1077,7 +1890,7 @@ ${thinkingSteps}
 
 This thinking process is for YOUR BENEFIT ONLY - do not include it in the final output.
 </thinking_protocol>
-
+${domainContentSection}
 <advanced_socratic_pedagogy>
 These are YOUR INTERNAL GUIDELINES for creating the optimized learning plan. DO NOT include this section in your output.
 
@@ -1227,17 +2040,101 @@ OUTPUT NOW: Begin immediately with "**LEARNING OBJECTIVE**" and nothing else.
    * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
    * @private
    */
-  getDefaultPrompt(prompt, brainstormContext = null) {
+  getDefaultPrompt(prompt, context = null, brainstormContext = null, domainContent = null) {
     const domain = this.detectDomainFromPrompt(prompt);
     const wordCount = prompt.split(/\s+/).length;
 
+    // Log domain content usage
+    if (domainContent) {
+      logger.info('Stage 1 domain content available for default template', {
+        technicalSpecCount: domainContent.technicalSpecs?.length || 0,
+        antiPatternCount: domainContent.antiPatterns?.length || 0,
+        successMetricCount: domainContent.successMetrics?.length || 0,
+        constraintCount: domainContent.constraints?.length || 0,
+      });
+    }
+
+    // Build domain content section if available
+    let domainContentSection = '';
+    if (domainContent && (domainContent.technicalSpecs?.length > 0 || domainContent.antiPatterns?.length > 0)) {
+      domainContentSection = '\n\n**PRE-GENERATED DOMAIN-SPECIFIC OPTIMIZATION CONTENT:**';
+      domainContentSection += '\nThe following domain-specific optimization elements have been generated for this prompt.';
+      domainContentSection += '\nYou MUST incorporate these verbatim into the appropriate sections of your optimized prompt:\n';
+
+      // Add technical specifications section
+      if (domainContent.technicalSpecs?.length > 0) {
+        domainContentSection += '\n**TECHNICAL SPECIFICATIONS (include these in your Requirements section):**\n';
+        domainContent.technicalSpecs.forEach((spec, i) => {
+          domainContentSection += `${i + 1}. ${spec}\n`;
+        });
+      }
+
+      // Add anti-patterns section
+      if (domainContent.antiPatterns?.length > 0) {
+        domainContentSection += '\n**ANTI-PATTERNS TO AVOID (add an Anti-Patterns section with these):**\n';
+        domainContent.antiPatterns.forEach((pattern, i) => {
+          domainContentSection += `${i + 1}. ${pattern}\n`;
+        });
+      }
+
+      // Add success metrics section
+      if (domainContent.successMetrics?.length > 0) {
+        domainContentSection += '\n**SUCCESS METRICS (include these in your Success Criteria section):**\n';
+        domainContent.successMetrics.forEach((metric, i) => {
+          domainContentSection += `${i + 1}. ${metric}\n`;
+        });
+      }
+
+      // Add constraints section
+      if (domainContent.constraints?.length > 0) {
+        domainContentSection += '\n**CONSTRAINTS (add a Constraints section with these):**\n';
+        domainContent.constraints.forEach((constraint, i) => {
+          domainContentSection += `${i + 1}. ${constraint}\n`;
+        });
+      }
+
+      domainContentSection += '\nIMPORTANT: These elements are already domain-specific and technically precise.';
+      domainContentSection += ' Use them as provided - do not make them more generic.';
+      domainContentSection += ' Your job is to assemble them into a well-structured optimized prompt.\n';
+    } else if (context && Object.keys(context).some((k) => context[k])) {
+      // Fallback to old context section if no domain content
+      domainContentSection = '\n\n**USER-PROVIDED CONTEXT:**';
+      domainContentSection += '\nThe user has specified these requirements that MUST be integrated into the optimized prompt:';
+
+      if (context.specificAspects) {
+        domainContentSection += `\n- **Focus Areas:** ${context.specificAspects}`;
+      }
+      if (context.backgroundLevel) {
+        domainContentSection += `\n- **Target Audience Level:** ${context.backgroundLevel}`;
+      }
+      if (context.intendedUse) {
+        domainContentSection += `\n- **Intended Use Case:** ${context.intendedUse}`;
+      }
+
+      domainContentSection += '\n\nEnsure these requirements are woven naturally into your optimized prompt.';
+    }
+
     // Build brainstorm context section if provided
-    const brainstormSection = brainstormContext?.elements 
+    const brainstormSection = brainstormContext?.elements
       ? this.buildBrainstormContextForTemplate(brainstormContext)
       : '';
 
-    // Build transformation rules based on whether we have brainstorm context
-    const transformationRules = brainstormSection
+    // Build transformation rules - SIMPLIFIED when domain content is available
+    const hasDomainContent = domainContent && (domainContent.technicalSpecs?.length > 0 || domainContent.antiPatterns?.length > 0);
+
+    const transformationRules = hasDomainContent
+      ? `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Integrate pre-generated domain content** - Technical specs, anti-patterns, success metrics, and constraints have been pre-generated above. Include them in the appropriate sections of your optimized prompt.
+   - Copy the TECHNICAL SPECIFICATIONS into your **Requirements** section
+   - Copy the ANTI-PATTERNS into an **Anti-Patterns** or **What to Avoid** section
+   - Copy the SUCCESS METRICS into your **Success Criteria** section
+   - Copy the CONSTRAINTS into a **Constraints** section (if provided)
+3. **Specificity Over Generality** - Replace any remaining vague terms with precise, measurable language
+4. **Structure for Scannability** - Use clear hierarchy and formatting
+
+IMPORTANT: The pre-generated optimization elements are already domain-specific. Do NOT make them more generic.`
+      : brainstormSection
       ? `
 1. **Extract the core objective** - What are they really trying to accomplish?
 2. **Integrate user-provided context** - The user specified these key elements:
@@ -1295,7 +2192,7 @@ Before outputting the optimized prompt, engage in internal step-by-step thinking
 
 This thinking improves output quality significantly. Do this thinking internally - do not include it in your final output.
 </thinking_protocol>
-
+${domainContentSection}
 <analysis_framework>
 These are YOUR INTERNAL GUIDELINES for analyzing and optimizing the prompt. DO NOT include this section in your output.
 

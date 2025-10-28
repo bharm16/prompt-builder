@@ -334,6 +334,7 @@ function PromptOptimizerContent({ user }) {
         skipLoadFromUrlRef.current = true;
         setCurrentPromptUuid(saveResult.uuid);
         setCurrentPromptDocId(saveResult.id ?? null);
+        setDisplayedPromptSilently(result.optimized);
         setShowResults(true);
         applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
         resetEditStacks();
