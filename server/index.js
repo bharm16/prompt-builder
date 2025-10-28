@@ -181,9 +181,13 @@ app.use(
 const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID || !!process.env.VITEST;
 const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
 if (!isTestEnv) {
+  // More generous limits in development to align with OpenAI's 500 RPM
+  const generalMax = isDevEnv ? 500 : 100;
+  const apiMax = isDevEnv ? 300 : 60;
+
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: generalMax, // limit each IP to 500 requests per 15min (dev) or 100 (prod)
     message: 'Too many requests from this IP',
     // Avoid rate limiting the metrics endpoint and role-classify endpoint
     skip: (req) => req.path === '/metrics' || req.path === '/api/role-classify',
@@ -207,8 +211,18 @@ if (!isTestEnv) {
   // Apply API-specific limiter (broad cap)
   app.use('/api/', rateLimit({
     windowMs: 60 * 1000,
-    max: 60, // broad per-minute cap for all API calls
+    max: apiMax, // 300 req/min (dev) or 60 (prod) - aligns with OpenAI's 500 RPM
     message: 'Global rate limit exceeded',
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: rateLimitJSONHandler,
+  }));
+
+  // LLM endpoints get even higher limits to support rapid span labeling during editing
+  app.use('/llm/', rateLimit({
+    windowMs: 60 * 1000,
+    max: isDevEnv ? 400 : 100, // 400 req/min (dev) or 100 (prod) for span labeling
+    message: 'Too many LLM requests',
     standardHeaders: true,
     legacyHeaders: false,
     handler: rateLimitJSONHandler,

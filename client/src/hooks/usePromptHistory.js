@@ -11,16 +11,10 @@ export const usePromptHistory = (user) => {
 
   // Load history from repository
   const loadHistoryFromFirestore = useCallback(async (userId) => {
-    console.log('Loading history for user:', userId);
     setIsLoadingHistory(true);
     try {
       const repository = getPromptRepositoryForUser(true); // Authenticated
       const prompts = await repository.getUserPrompts(userId, 100);
-      console.log('Successfully loaded prompts:', prompts.length);
-
-      // Debug: Check how many have highlightCache
-      const withHighlights = prompts.filter(p => p.highlightCache?.spans?.length > 0).length;
-      console.log(`Prompts with highlights: ${withHighlights}/${prompts.length}`);
 
       const normalizedPrompts = prompts.map((entry) => ({
         ...entry,
@@ -29,19 +23,6 @@ export const usePromptHistory = (user) => {
         versions: entry.versions ?? [],
       }));
       setHistory(normalizedPrompts);
-
-      // Debug: Log first video prompt with highlights
-      const firstVideoWithHighlights = normalizedPrompts.find(
-        p => p.mode === 'video' && p.highlightCache?.spans?.length > 0
-      );
-      if (firstVideoWithHighlights) {
-        console.log('Sample video prompt with highlights:', {
-          id: firstVideoWithHighlights.id,
-          mode: firstVideoWithHighlights.mode,
-          spansCount: firstVideoWithHighlights.highlightCache.spans.length,
-          hasSignature: !!firstVideoWithHighlights.highlightCache.signature,
-        });
-      }
 
       // Also update localStorage with the latest from Firestore
       if (normalizedPrompts.length > 0) {
@@ -64,7 +45,6 @@ export const usePromptHistory = (user) => {
           highlightCache: entry.highlightCache ?? null,
           versions: entry.versions ?? [],
         }));
-        console.log('Loaded history from localStorage fallback:', normalizedHistory.length);
         setHistory(normalizedHistory);
       } catch (localError) {
         console.error('Error loading from localStorage fallback:', localError);
@@ -79,7 +59,6 @@ export const usePromptHistory = (user) => {
     if (user) {
       // Clear localStorage on mount when user is signed in
       localStorage.removeItem('promptHistory');
-      console.log('Cleared localStorage on mount');
 
       // Wait a bit to ensure auth tokens are ready
       setTimeout(async () => {

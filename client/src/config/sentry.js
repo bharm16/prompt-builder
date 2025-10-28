@@ -131,7 +131,12 @@ export function captureException(error, context = {}) {
 // Helper to capture messages
 export function captureMessage(message, level = 'info', context = {}) {
   if (!SENTRY_DSN) {
-    console.log(`[${level}]`, message, context);
+    // Fallback logging when Sentry is not configured
+    if (level === 'error') {
+      console.error(message, context);
+    } else {
+      console.warn(`[${level}]`, message, context);
+    }
     return;
   }
 

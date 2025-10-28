@@ -38,7 +38,9 @@ export default [
         { allowConstantExport: true },
       ],
       // Customize these rules as needed
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'react/prop-types': 'off', // Turn off if not using prop-types
       // Security rules

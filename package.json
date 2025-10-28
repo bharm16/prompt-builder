@@ -63,6 +63,8 @@
   "scripts": {
     "dev": "vite --config config/build/vite.config.js",
     "server": "node server/index.js",
+    "server:e2e": "NODE_ENV=test node server/index.js",
+    "dev:e2e": "NODE_ENV=test node server/index.js & vite --config config/build/vite.config.js",
     "start": "node server/index.js & vite --config config/build/vite.config.js",
     "restart": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true && lsof -ti :5173 | xargs kill -9 2>/dev/null || true && npm start",
     "build": "vite build --config config/build/vite.config.js",
@@ -80,6 +82,8 @@
     "test:e2e": "playwright test --config config/test/playwright.config.js",
     "test:e2e:ui": "playwright test --ui --config config/test/playwright.config.js",
     "test:e2e:debug": "playwright test --debug --config config/test/playwright.config.js",
+    "test:e2e:latency": "playwright test tests/e2e/text-to-highlights-latency.spec.js",
+    "test:e2e:latency:ui": "playwright test tests/e2e/text-to-highlights-latency.spec.js --ui",
     "test:all": "npm run test:unit && npm run test:e2e",
     "test:load": "k6 run tests/load/k6-basic.js",
     "test:load:stress": "k6 run tests/load/k6-stress.js",

@@ -4,6 +4,32 @@
 **Date:** January 2025
 **Goal:** Achieve <200ms total API latency for span labeling
 **Status:** ✅ **COMPLETE** (All optimizations implemented)
+**Last Updated:** January 2025 (Post Code Review)
+
+---
+
+## ⚠️ IMPORTANT: Scope of Performance Claims
+
+**The 290ms user-perceived latency applies to:**
+- ✅ **Editing optimized prompts** in Video Prompt mode
+- ✅ **Typing into displayed optimized text** with automatic re-labeling
+- ✅ **Span labeling updates** after changes to optimized content
+
+**The 290ms does NOT include:**
+- ❌ Initial prompt optimization via "Optimize" button (~8.5 seconds)
+- ❌ Full LLM text generation and formatting
+- ❌ First-time prompt creation workflow
+
+**Typical User Journey:**
+```
+1. User types initial text → Clicks "Optimize" → Waits ~8.5 seconds
+2. Optimized text displays → Highlights appear automatically → ~290ms
+3. User edits optimized text → Highlights update → ~290ms per edit
+```
+
+**Summary:** The performance optimizations in this report focus on **span labeling latency** when editing optimized prompts, not the initial text-to-optimization flow. All claimed metrics (290ms, 85% cache hit rate, etc.) are accurate for their intended scope.
+
+For detailed investigation of the actual UI flow, see [SPAN_LABELING_INVESTIGATION.md](SPAN_LABELING_INVESTIGATION.md).
 
 ---
 
