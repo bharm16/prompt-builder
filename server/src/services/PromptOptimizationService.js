@@ -3,6 +3,7 @@ import { cacheService } from './CacheService.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
 import { generateVideoPrompt } from './VideoPromptTemplates.js';
+import { labelSpans } from '../llm/spanLabeler.js';
 
 /**
  * Service for optimizing prompts across different modes
@@ -52,19 +53,35 @@ export class PromptOptimizationService {
 
     const startTime = Date.now();
 
-    // STAGE 1: Generate fast draft with Groq (200-500ms)
+    // STAGE 1: Generate fast draft with Groq + parallel span labeling (200-500ms)
     try {
       const draftSystemPrompt = this.getDraftSystemPrompt(mode, prompt, context);
 
       logger.debug('Generating draft with Groq', { mode });
       const draftStartTime = Date.now();
 
-      const draftResponse = await this.groqClient.complete(draftSystemPrompt, {
-        userMessage: prompt,
-        maxTokens: mode === 'video' ? 300 : 200, // Concise drafts
-        temperature: 0.7,
-        timeout: 5000,
-      });
+      // Start BOTH operations in parallel (for video mode)
+      // This saves ~150-200ms by not waiting for draft before span labeling
+      const operations = [
+        this.groqClient.complete(draftSystemPrompt, {
+          userMessage: prompt,
+          maxTokens: mode === 'video' ? 300 : 200, // Concise drafts
+          temperature: 0.7,
+          timeout: 5000,
+        }),
+        // Only do span labeling for video mode
+        mode === 'video' ? labelSpans({
+          text: prompt,
+          maxSpans: 60,
+          minConfidence: 0.5,
+          templateVersion: 'v1',
+        }).catch(err => {
+          logger.warn('Parallel span labeling failed, will retry after draft', { error: err.message });
+          return null; // Non-blocking failure
+        }) : Promise.resolve(null)
+      ];
+
+      const [draftResponse, initialSpans] = await Promise.all(operations);
 
       const draft = draftResponse.content[0]?.text || '';
       const draftDuration = Date.now() - draftStartTime;
@@ -72,12 +89,13 @@ export class PromptOptimizationService {
       logger.info('Draft generated successfully', {
         duration: draftDuration,
         draftLength: draft.length,
+        hasSpans: !!initialSpans,
         mode
       });
 
-      // Call onDraft callback if provided (for streaming to client)
+      // Call onDraft callback with BOTH draft and spans if provided
       if (onDraft && typeof onDraft === 'function') {
-        onDraft(draft);
+        onDraft(draft, initialSpans);
       }
 
       // STAGE 2: Refine with primary model (background)
@@ -92,18 +110,42 @@ export class PromptOptimizationService {
       });
 
       const refinementDuration = Date.now() - refinementStartTime;
+
+      // Generate spans for refined text if in video mode
+      let refinedSpans = null;
+      if (mode === 'video') {
+        try {
+          refinedSpans = await labelSpans({
+            text: refined,
+            maxSpans: 60,
+            minConfidence: 0.5,
+            templateVersion: 'v1',
+          });
+          logger.debug('Refined span labeling complete', {
+            spanCount: refinedSpans?.spans?.length || 0
+          });
+        } catch (err) {
+          logger.warn('Refined span labeling failed', { error: err.message });
+          // Fall back to initial spans if available
+          refinedSpans = initialSpans;
+        }
+      }
+
       const totalDuration = Date.now() - startTime;
 
       logger.info('Two-stage optimization complete', {
         draftDuration,
         refinementDuration,
         totalDuration,
-        mode
+        mode,
+        hasSpans: !!(initialSpans || refinedSpans)
       });
 
       return {
         draft,
         refined,
+        draftSpans: initialSpans,  // Spans for draft text
+        refinedSpans: refinedSpans, // Spans for refined text
         metadata: {
           draftDuration,
           refinementDuration,

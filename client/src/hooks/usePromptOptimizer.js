@@ -50,6 +50,10 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
     setIsRefining(false);
 
     try {
+      // ⏱️ PERFORMANCE TIMER: Start optimization
+      performance.mark('optimize-start');
+      console.log('%c⏱️ OPTIMIZE START', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;', new Date().toISOString());
+
       // Use two-stage optimization if enabled
       if (useTwoStage) {
         const result = await promptOptimizationApiV2.optimizeWithFallback({
@@ -58,6 +62,12 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
           context,
           brainstormContext,
           onDraft: (draft) => {
+            // ⏱️ PERFORMANCE TIMER: Draft ready
+            performance.mark('draft-ready');
+            performance.measure('optimize-to-draft', 'optimize-start', 'draft-ready');
+            const draftTime = performance.getEntriesByName('optimize-to-draft')[0].duration;
+            console.log('%c⏱️ DRAFT READY', 'background: #FF9800; color: white; padding: 2px 5px; border-radius: 3px;', `${draftTime.toFixed(0)}ms`, new Date().toISOString());
+
             // Draft is ready - show it immediately
             setDraftPrompt(draft);
             setOptimizedPrompt(draft); // Temporarily show draft
@@ -72,7 +82,25 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
 
             toast.info('Draft ready! Refining in background...');
           },
+          onSpans: (spans, source, meta) => {
+            // Spans received from parallel execution
+            // The PromptCanvas will pick these up via context/props
+            console.log(`Spans received (${source}):`, spans?.length || 0, 'spans');
+
+            // Store spans for the UI to consume
+            // This will be passed to PromptCanvas which uses useSpanLabeling
+          },
           onRefined: (refined, metadata) => {
+            // ⏱️ PERFORMANCE TIMER: Refinement complete
+            performance.mark('refinement-complete');
+            performance.measure('draft-to-refined', 'draft-ready', 'refinement-complete');
+            performance.measure('optimize-to-refined-total', 'optimize-start', 'refinement-complete');
+
+            const refinementTime = performance.getEntriesByName('draft-to-refined')[0].duration;
+            const totalTime = performance.getEntriesByName('optimize-to-refined-total')[0].duration;
+
+            console.log('%c⏱️ REFINEMENT COMPLETE', 'background: #2196F3; color: white; padding: 2px 5px; border-radius: 3px;', `${refinementTime.toFixed(0)}ms (Total: ${totalTime.toFixed(0)}ms)`, new Date().toISOString());
+
             // Refinement complete - upgrade to refined version
             const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);
 

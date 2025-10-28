@@ -672,6 +672,8 @@ export const PromptCanvas = ({
   onRedo = () => {},
   canUndo = false,
   canRedo = false,
+  isDraftReady = false,
+  isRefining = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -720,6 +722,10 @@ export const PromptCanvas = ({
     [enableMLHighlighting, onHighlightsPersist]
   );
 
+  // Track if this is the first time seeing this text (skip debounce for initial optimization)
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const isInitialOptimization = isDraftReady && !hasUserEdited;
+
   const {
     spans: labeledSpans,
     meta: labeledMeta,
@@ -731,6 +737,7 @@ export const PromptCanvas = ({
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
+    immediate: isInitialOptimization, // Skip debounce on initial draft display
     maxSpans: 60,
     minConfidence: 0.5,
     policy: labelingPolicy,
@@ -793,6 +800,14 @@ export const PromptCanvas = ({
       ? [displayedPrompt, enableMLHighlighting] 
       : [displayedPrompt, enableMLHighlighting, promptContext]
   );
+
+  // ⏱️ CRITICAL PERFORMANCE TIMER: Track when prompt appears on screen
+  useEffect(() => {
+    if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
+      performance.mark('prompt-displayed-on-screen');
+      console.log('%c⭐ PROMPT DISPLAYED ON SCREEN', 'background: #E91E63; color: white; padding: 2px 5px; border-radius: 3px; font-weight: bold;', new Date().toISOString());
+    }
+  }, [displayedPrompt, enableMLHighlighting]);
 
   useEffect(() => {
     const canonical = createCanonicalText(displayedPrompt ?? '');
@@ -1199,6 +1214,10 @@ export const PromptCanvas = ({
     const root = editorRef.current;
     if (!root) return;
 
+    // ⏱️ PERFORMANCE TIMER: Highlight rendering starts
+    const highlightRenderStart = performance.now();
+    console.log('%c⏱️ HIGHLIGHT RENDERING START', 'background: #FF5722; color: white; padding: 2px 5px; border-radius: 3px;', new Date().toISOString());
+
     clearHighlights();
 
     const spans = parseResult?.spans;
@@ -1359,6 +1378,37 @@ export const PromptCanvas = ({
     });
 
     highlightStateRef.current = { wrappers, nodeIndex: null };
+
+    // ⏱️ CRITICAL PERFORMANCE TIMER: Highlights are now visible on screen!
+    const highlightRenderEnd = performance.now();
+    const renderDuration = highlightRenderEnd - highlightRenderStart;
+
+    performance.mark('highlights-visible-on-screen');
+
+    // Measure from prompt displayed to highlights visible (THE CRITICAL 290ms METRIC)
+    try {
+      performance.measure('CRITICAL-prompt-to-highlights', 'prompt-displayed-on-screen', 'highlights-visible-on-screen');
+      const criticalMetric = performance.getEntriesByName('CRITICAL-prompt-to-highlights')[0];
+
+      console.log('%c⭐⭐⭐ HIGHLIGHTS VISIBLE ON SCREEN ⭐⭐⭐', 'background: #4CAF50; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold; font-size: 12px;');
+      console.log('%c📊 CRITICAL METRIC: Prompt → Highlights', 'background: #2196F3; color: white; padding: 2px 5px; border-radius: 3px; font-weight: bold;', `${criticalMetric.duration.toFixed(0)}ms`, new Date().toISOString());
+      console.log('%c   Rendering time:', 'color: #666;', `${renderDuration.toFixed(1)}ms`);
+      console.log('%c   Span count:', 'color: #666;', wrappers.length);
+
+      // Check against the 290ms claim
+      if (criticalMetric.duration <= 290) {
+        console.log('%c✅ PERFORMANCE TARGET MET!', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;', `${criticalMetric.duration.toFixed(0)}ms ≤ 290ms`);
+      } else if (criticalMetric.duration <= 600) {
+        console.log('%c⚠️ SLOWER THAN TARGET', 'background: #FF9800; color: white; padding: 2px 5px; border-radius: 3px;', `${criticalMetric.duration.toFixed(0)}ms > 290ms (cache miss expected)`);
+      } else {
+        console.log('%c❌ PERFORMANCE ISSUE', 'background: #F44336; color: white; padding: 2px 5px; border-radius: 3px;', `${criticalMetric.duration.toFixed(0)}ms >> 600ms`);
+      }
+
+      console.log('\n');
+    } catch (err) {
+      // Mark may not exist if prompt wasn't displayed yet (e.g., page load with no content)
+      console.log('%c⏱️ HIGHLIGHTS RENDERED', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;', `${renderDuration.toFixed(1)}ms`, new Date().toISOString());
+    }
   }, [parseResult, enableMLHighlighting]);
 
   return (

@@ -16,9 +16,9 @@ const WizardProgress = ({
   currentStep,
   totalSteps,
   stepLabels,
-  completedSteps,
-  isMobile,
-  onStepClick,
+  completedSteps = [],
+  isMobile = false,
+  onStepClick = null,
   minimal = false
 }) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
@@ -200,13 +200,6 @@ WizardProgress.propTypes = {
   isMobile: PropTypes.bool,
   onStepClick: PropTypes.func,
   minimal: PropTypes.bool
-};
-
-WizardProgress.defaultProps = {
-  completedSteps: [],
-  isMobile: false,
-  onStepClick: null,
-  minimal: false
 };
 
 export default WizardProgress;

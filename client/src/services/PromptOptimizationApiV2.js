@@ -35,9 +35,10 @@ export class PromptOptimizationApiV2 {
    * @param {Object} options.context - Additional context
    * @param {Object} options.brainstormContext - Brainstorm context
    * @param {Function} options.onDraft - Callback when draft is ready (draft: string) => void
+   * @param {Function} options.onSpans - Callback when spans are ready (spans: Array, source: string) => void
    * @param {Function} options.onRefined - Callback when refinement is ready (refined: string, metadata: Object) => void
    * @param {Function} options.onError - Callback for errors (error: Error) => void
-   * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
+   * @returns {Promise<{draft: string, refined: string, spans: Array, metadata: Object}>}
    */
   async optimizeWithStreaming({
     prompt,
@@ -45,12 +46,14 @@ export class PromptOptimizationApiV2 {
     context = null,
     brainstormContext = null,
     onDraft = null,
+    onSpans = null,
     onRefined = null,
     onError = null,
   }) {
     return new Promise((resolve, reject) => {
       let draft = null;
       let refined = null;
+      let spans = null;
       let metadata = null;
 
       // Build request URL
@@ -78,6 +81,14 @@ export class PromptOptimizationApiV2 {
                 }
                 break;
 
+              case 'spans':
+                // New event type for parallel span labeling
+                spans = data.spans;
+                if (onSpans && typeof onSpans === 'function') {
+                  onSpans(data.spans, data.source || 'unknown', data.meta);
+                }
+                break;
+
               case 'refined':
                 refined = data.refined;
                 metadata = data.metadata;
@@ -87,10 +98,11 @@ export class PromptOptimizationApiV2 {
                 break;
 
               case 'done':
-                // Resolve with final result
+                // Resolve with final result including spans
                 resolve({
                   draft: draft || refined, // Fallback if draft wasn't sent
                   refined: refined || draft,
+                  spans: spans || [],
                   metadata,
                   usedFallback: data.usedFallback || false,
                 });

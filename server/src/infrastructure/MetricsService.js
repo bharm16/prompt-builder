@@ -99,6 +99,21 @@ export class MetricsService {
       labelNames: ['method', 'route'],
       registers: [this.register],
     });
+
+    // Request queue length gauge
+    this.requestQueueLength = new promClient.Gauge({
+      name: 'request_queue_length',
+      help: 'Current number of requests in the queue',
+      registers: [this.register],
+    });
+
+    // Request queue time histogram
+    this.requestQueueTime = new promClient.Histogram({
+      name: 'request_queue_time_ms',
+      help: 'Time requests spend in queue in milliseconds',
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
+      registers: [this.register],
+    });
   }
 
   /**
@@ -214,6 +229,38 @@ export class MetricsService {
    */
   recordCoalescedRequest(type = 'middleware') {
     this.coalescedRequests.inc({ type });
+  }
+
+  /**
+   * Record gauge metric
+   * @param {string} name - Name of the gauge metric
+   * @param {number} value - Value to set
+   */
+  recordGauge(name, value) {
+    switch (name) {
+      case 'request_queue_length':
+        this.requestQueueLength.set(value);
+        break;
+      default:
+        // Silently ignore unknown gauges for now
+        break;
+    }
+  }
+
+  /**
+   * Record histogram metric
+   * @param {string} name - Name of the histogram metric
+   * @param {number} value - Value to observe
+   */
+  recordHistogram(name, value) {
+    switch (name) {
+      case 'request_queue_time_ms':
+        this.requestQueueTime.observe(value);
+        break;
+      default:
+        // Silently ignore unknown histograms for now
+        break;
+    }
   }
 }
 

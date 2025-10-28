@@ -24,18 +24,27 @@ export function initSentry() {
     // Performance Monitoring
     integrations: [
       Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
-      }),
+      // Only enable Session Replay in production to avoid rate limiting from verbose dev console logs
+      ...(ENVIRONMENT === 'production' ? [
+        Sentry.replayIntegration({
+          maskAllText: false,
+          blockAllMedia: false,
+          // Limit replay duration to reduce data volume
+          maxReplayDuration: 60000, // 1 minute max
+          // Only capture relevant network requests
+          networkDetailAllowUrls: [window.location.origin],
+          networkCaptureBodies: false, // Don't capture request/response bodies
+        }),
+      ] : []),
     ],
 
     // Performance Monitoring sample rate (1.0 = 100%)
     tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
 
-    // Session Replay sample rate
-    replaysSessionSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
-    replaysOnErrorSampleRate: 1.0, // Always capture replays on errors
+    // Session Replay sample rate (only applies when replay integration is enabled)
+    // Reduced to 1% in production to minimize data volume and avoid rate limits
+    replaysSessionSampleRate: ENVIRONMENT === 'production' ? 0.01 : 0, // 1% in prod, disabled in dev
+    replaysOnErrorSampleRate: ENVIRONMENT === 'production' ? 1.0 : 0, // Always capture on errors in prod, disabled in dev
 
     // Filter out local development errors
     beforeSend(event, hint) {
@@ -72,6 +81,10 @@ export function initSentry() {
       // Firebase auth cancelled flows
       'auth/popup-closed-by-user',
       'auth/cancelled-popup-request',
+      // Sentry rate limit errors (prevents error recursion)
+      '429',
+      'Too Many Requests',
+      'ingest.us.sentry.io',
     ],
 
     // Set context for all events

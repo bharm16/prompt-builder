@@ -21,8 +21,8 @@ const StepQuickFill = ({
   onChange,
   onContinue,
   onSwitchToStepByStep,
-  suggestions,
-  isLoadingSuggestions,
+  suggestions = {},
+  isLoadingSuggestions = {},
   onRequestSuggestions
 }) => {
   // Active field tracking for suggestions
@@ -887,11 +887,6 @@ StepQuickFill.propTypes = {
   suggestions: PropTypes.object,
   isLoadingSuggestions: PropTypes.object,
   onRequestSuggestions: PropTypes.func.isRequired,
-};
-
-StepQuickFill.defaultProps = {
-  suggestions: {},
-  isLoadingSuggestions: {},
 };
 
 export default StepQuickFill;

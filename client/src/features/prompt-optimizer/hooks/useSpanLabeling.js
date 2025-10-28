@@ -266,6 +266,7 @@ export const createHighlightSignature = (text) => hashString(sanitizeText(text ?
  * @param {Object} args
  * @param {string} args.text
  * @param {boolean} [args.enabled]
+ * @param {boolean} [args.immediate] - Skip debounce entirely for instant processing (default: false)
  * @param {number} [args.maxSpans]
  * @param {number} [args.minConfidence]
  * @param {Object} [args.policy]
@@ -279,6 +280,7 @@ export function useSpanLabeling({
   initialDataVersion = 0,
   cacheKey = null,
   enabled = true,
+  immediate = false,
   maxSpans = DEFAULT_OPTIONS.maxSpans,
   minConfidence = DEFAULT_OPTIONS.minConfidence,
   policy,
@@ -382,6 +384,10 @@ const performRequest = useCallback(async (payload, signal) => {
 
   const schedule = useCallback(
     (payload, immediate = false) => {
+      // ⏱️ PERFORMANCE TIMER: Span labeling starts
+      performance.mark('span-labeling-start');
+      console.log('%c⏱️ SPAN LABELING START', 'background: #9C27B0; color: white; padding: 2px 5px; border-radius: 3px;', new Date().toISOString());
+
       cancelPending();
 
       if (!enabled) {
@@ -398,8 +404,18 @@ const performRequest = useCallback(async (payload, signal) => {
       lastPayloadRef.current = payload;
 
       if (!immediate) {
+        const cacheCheckStart = performance.now();
         const cached = getCachedResult(payload);
+        const cacheCheckDuration = performance.now() - cacheCheckStart;
+
         if (cached) {
+          // ⏱️ PERFORMANCE TIMER: Cache hit
+          performance.mark('span-cache-hit');
+          performance.measure('span-labeling-cache-hit', 'span-labeling-start', 'span-cache-hit');
+          const totalCacheTime = performance.getEntriesByName('span-labeling-cache-hit')[0].duration;
+
+          console.log('%c⏱️ CACHE HIT', 'background: #00BCD4; color: white; padding: 2px 5px; border-radius: 3px;', `${totalCacheTime.toFixed(1)}ms (lookup: ${cacheCheckDuration.toFixed(1)}ms)`, new Date().toISOString());
+
           setState({
             spans: Array.isArray(cached.spans) ? cached.spans : [],
             meta: cached.meta ?? null,
@@ -441,7 +457,22 @@ const performRequest = useCallback(async (payload, signal) => {
 
       const run = async (controller) => {
         try {
+          // ⏱️ PERFORMANCE TIMER: API request start
+          performance.mark('span-api-start');
+          console.log('%c⏱️ API REQUEST START', 'background: #673AB7; color: white; padding: 2px 5px; border-radius: 3px;', '/llm/label-spans', new Date().toISOString());
+
           const result = await performRequest(payload, controller.signal);
+
+          // ⏱️ PERFORMANCE TIMER: API request complete
+          performance.mark('span-api-complete');
+          performance.measure('span-api-duration', 'span-api-start', 'span-api-complete');
+          performance.measure('span-labeling-total', 'span-labeling-start', 'span-api-complete');
+
+          const apiDuration = performance.getEntriesByName('span-api-duration')[0].duration;
+          const totalDuration = performance.getEntriesByName('span-labeling-total')[0].duration;
+
+          console.log('%c⏱️ API COMPLETE', 'background: #3F51B5; color: white; padding: 2px 5px; border-radius: 3px;', `${apiDuration.toFixed(0)}ms (Total: ${totalDuration.toFixed(0)}ms)`, new Date().toISOString());
+
           if (requestId !== requestIdRef.current) {
             return;
           }
@@ -559,7 +590,10 @@ const performRequest = useCallback(async (payload, signal) => {
         }
       };
 
+      // Use immediate flag to skip debounce for initial optimization
+      // This saves 200-500ms on first load while keeping debounce for user edits
       if (immediate || debounceMs === 0) {
+        console.log('%c⏱️ DEBOUNCE SKIPPED', 'background: #607D8B; color: white; padding: 2px 5px; border-radius: 3px;', '(immediate mode)', new Date().toISOString());
         run(controller);
       } else {
         // Calculate smart debounce based on text length for better performance
@@ -568,10 +602,15 @@ const performRequest = useCallback(async (payload, signal) => {
           ? calculateSmartDebounce(payload.text)
           : debounceMs;
 
-        debounceRef.current = setTimeout(() => run(controller), effectiveDebounce);
+        console.log('%c⏱️ DEBOUNCE WAIT', 'background: #795548; color: white; padding: 2px 5px; border-radius: 3px;', `${effectiveDebounce}ms`, new Date().toISOString());
+
+        debounceRef.current = setTimeout(() => {
+          console.log('%c⏱️ DEBOUNCE COMPLETE', 'background: #8BC34A; color: white; padding: 2px 5px; border-radius: 3px;', `${effectiveDebounce}ms elapsed`, new Date().toISOString());
+          run(controller);
+        }, effectiveDebounce);
       }
     },
-    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest]
+    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest, immediate]
   );
 
   useEffect(() => {

@@ -72,19 +72,30 @@ export function createAPIRoutes(services) {
       };
 
       try {
-        // Start two-stage optimization
+        // Start two-stage optimization with parallel span labeling
         const result = await promptOptimizationService.optimizeTwoStage({
           prompt,
           mode,
           context,
           brainstormContext,
-          // Stream draft to client immediately when ready
-          onDraft: (draft) => {
+          // Stream draft AND spans to client immediately when ready
+          onDraft: (draft, spans) => {
+            // Send draft text
             sendEvent('draft', {
               draft,
               status: 'draft_ready',
               timestamp: Date.now(),
             });
+
+            // Send spans immediately if available (parallel execution)
+            if (spans) {
+              sendEvent('spans', {
+                spans: spans.spans || [],
+                meta: spans.meta || null,
+                source: 'draft',
+                timestamp: Date.now(),
+              });
+            }
           },
         });
 
@@ -95,6 +106,16 @@ export function createAPIRoutes(services) {
           metadata: result.metadata,
           timestamp: Date.now(),
         });
+
+        // Send updated spans for refined text if available
+        if (result.refinedSpans) {
+          sendEvent('spans', {
+            spans: result.refinedSpans.spans || [],
+            meta: result.refinedSpans.meta || null,
+            source: 'refined',
+            timestamp: Date.now(),
+          });
+        }
 
         // Send completion signal
         sendEvent('done', {
