@@ -509,6 +509,7 @@ const callModel = async ({ systemPrompt, userPayload, callFn, maxTokens = 800 })
  * @param {number} [params.minConfidence]
  * @param {Object} [params.policy]
  * @param {string} [params.templateVersion]
+ * @param {boolean} [params.enableRepair] - Enable repair attempt on validation failure (default: false for performance)
  * @param {Object} [options]
  * @param {Function} [options.callFn]
  * @returns {Promise<{spans: Array, meta: {version: string, notes: string}}>}
@@ -567,6 +568,25 @@ export async function labelSpans(params, options = {}) {
     });
 
     if (validation.ok) {
+      return validation.result;
+    }
+
+    // PERFORMANCE OPTIMIZATION: Skip repair by default (saves ~3-10 seconds per request)
+    // Auto-correction during validation handles most issues via findBestMatchIndices
+    // Only enable repair when explicitly needed via params.enableRepair = true
+    const enableRepair = params.enableRepair === true;
+
+    if (!enableRepair) {
+      // Use attempt=2 to apply more lenient validation rules (drops invalid spans instead of erroring)
+      validation = validateSpans({
+        spans: parsedPrimary.value.spans || [],
+        meta: parsedPrimary.value.meta,
+        text: params.text,
+        policy,
+        options: sanitizedOptions,
+        attempt: 2, // Lenient mode
+      });
+
       return validation.result;
     }
 
