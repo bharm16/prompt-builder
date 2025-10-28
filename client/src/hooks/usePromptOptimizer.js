@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '../components/Toast';
 import { promptOptimizationApi } from '../services';
+import { promptOptimizationApiV2 } from '../services/PromptOptimizationApiV2';
 
-export const usePromptOptimizer = (selectedMode) => {
+export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [optimizedPrompt, setOptimizedPrompt] = useState('');
@@ -10,6 +11,11 @@ export const usePromptOptimizer = (selectedMode) => {
   const [qualityScore, setQualityScore] = useState(null);
   const [skipAnimation, setSkipAnimation] = useState(false);
   const [improvementContext, setImprovementContext] = useState(null);
+
+  // Two-stage optimization states
+  const [draftPrompt, setDraftPrompt] = useState('');
+  const [isDraftReady, setIsDraftReady] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
 
   const toast = useToast();
 
@@ -39,32 +45,84 @@ export const usePromptOptimizer = (selectedMode) => {
     setDisplayedPrompt('');
     setQualityScore(null);
     setSkipAnimation(false);
+    setDraftPrompt('');
+    setIsDraftReady(false);
+    setIsRefining(false);
 
     try {
-      const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
-      const score = promptOptimizationApi.calculateQualityScore(promptToOptimize, optimized);
+      // Use two-stage optimization if enabled
+      if (useTwoStage) {
+        const result = await promptOptimizationApiV2.optimizeWithFallback({
+          prompt: promptToOptimize,
+          mode: selectedMode,
+          context,
+          brainstormContext,
+          onDraft: (draft) => {
+            // Draft is ready - show it immediately
+            setDraftPrompt(draft);
+            setOptimizedPrompt(draft); // Temporarily show draft
+            setDisplayedPrompt(draft);
+            setIsDraftReady(true);
+            setIsRefining(true);
+            setIsProcessing(false); // User can interact with draft
 
-      setOptimizedPrompt(optimized);
-      setQualityScore(score);
+            // Calculate draft score
+            const draftScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, draft);
+            setQualityScore(draftScore);
 
-      // Show quality score toast
-      if (score >= 80) {
-        toast.success(`Excellent prompt! Quality score: ${score}%`);
-      } else if (score >= 60) {
-        toast.info(`Good prompt! Quality score: ${score}%`);
+            toast.info('Draft ready! Refining in background...');
+          },
+          onRefined: (refined, metadata) => {
+            // Refinement complete - upgrade to refined version
+            const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);
+
+            setOptimizedPrompt(refined);
+            setDisplayedPrompt(refined);
+            setQualityScore(refinedScore);
+            setIsRefining(false);
+
+            if (refinedScore >= 80) {
+              toast.success(`Excellent prompt! Quality score: ${refinedScore}%`);
+            } else if (refinedScore >= 60) {
+              toast.success(`Refined! Quality score: ${refinedScore}%`);
+            } else {
+              toast.info(`Refined! Score: ${refinedScore}%`);
+            }
+          },
+        });
+
+        return {
+          optimized: result.refined,
+          score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),
+        };
       } else {
-        toast.warning(`Prompt could be improved. Score: ${score}%`);
-      }
+        // Fallback to legacy single-stage optimization
+        const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
+        const score = promptOptimizationApi.calculateQualityScore(promptToOptimize, optimized);
 
-      return { optimized, score };
+        setOptimizedPrompt(optimized);
+        setQualityScore(score);
+
+        // Show quality score toast
+        if (score >= 80) {
+          toast.success(`Excellent prompt! Quality score: ${score}%`);
+        } else if (score >= 60) {
+          toast.info(`Good prompt! Quality score: ${score}%`);
+        } else {
+          toast.warning(`Prompt could be improved. Score: ${score}%`);
+        }
+
+        return { optimized, score };
+      }
     } catch (error) {
       console.error('Optimization failed:', error);
       toast.error('Failed to optimize. Make sure the server is running.');
       return null;
     } finally {
       setIsProcessing(false);
+      setIsRefining(false);
     }
-  }, [inputPrompt, improvementContext, analyzeAndOptimize, toast]);
+  }, [inputPrompt, improvementContext, analyzeAndOptimize, toast, useTwoStage, selectedMode]);
 
   const resetPrompt = useCallback(() => {
     setInputPrompt('');
@@ -73,6 +131,9 @@ export const usePromptOptimizer = (selectedMode) => {
     setQualityScore(null);
     setImprovementContext(null);
     setSkipAnimation(false);
+    setDraftPrompt('');
+    setIsDraftReady(false);
+    setIsRefining(false);
   }, []);
 
   return {
@@ -89,6 +150,11 @@ export const usePromptOptimizer = (selectedMode) => {
     setSkipAnimation,
     improvementContext,
     setImprovementContext,
+
+    // Two-stage state
+    draftPrompt,
+    isDraftReady,
+    isRefining,
 
     // Actions
     optimize,

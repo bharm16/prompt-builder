@@ -9,8 +9,9 @@ import { generateVideoPrompt } from './VideoPromptTemplates.js';
  * Handles business logic for prompt optimization with intelligent mode detection and iterative refinement
  */
 export class PromptOptimizationService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(claudeClient, groqClient = null) {
+    this.claudeClient = claudeClient; // Primary model (OpenAI/Claude)
+    this.groqClient = groqClient;     // Fast draft model (Groq)
     this.cacheConfig = cacheService.getConfig('promptOptimization');
     this.exampleBank = this.initializeExampleBank();
 
@@ -23,6 +24,166 @@ export class PromptOptimizationService {
       socratic: '3.0.0', // Two-stage domain-specific content generation
       video: '1.0.0'
     };
+  }
+
+  /**
+   * Two-stage optimization: Fast draft with Groq + Quality refinement with primary model
+   *
+   * Stage 1 (Groq): Generate concise draft in ~200-500ms
+   * Stage 2 (OpenAI/Claude): Refine draft in background
+   *
+   * @param {Object} params - Optimization parameters
+   * @param {string} params.prompt - User's original prompt
+   * @param {string} params.mode - Optimization mode
+   * @param {Object} params.context - Optional context
+   * @param {Object} params.brainstormContext - Optional brainstorm context
+   * @param {Function} params.onDraft - Callback when draft is ready
+   * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
+   */
+  async optimizeTwoStage({ prompt, mode, context = null, brainstormContext = null, onDraft = null }) {
+    logger.info('Starting two-stage optimization', { mode, hasGroq: !!this.groqClient });
+
+    // Fallback to single-stage if Groq unavailable
+    if (!this.groqClient) {
+      logger.warn('Groq client not available, falling back to single-stage optimization');
+      const result = await this.optimize({ prompt, mode, context, brainstormContext });
+      return { draft: result, refined: result, usedFallback: true };
+    }
+
+    const startTime = Date.now();
+
+    // STAGE 1: Generate fast draft with Groq (200-500ms)
+    try {
+      const draftSystemPrompt = this.getDraftSystemPrompt(mode, prompt, context);
+
+      logger.debug('Generating draft with Groq', { mode });
+      const draftStartTime = Date.now();
+
+      const draftResponse = await this.groqClient.complete(draftSystemPrompt, {
+        userMessage: prompt,
+        maxTokens: mode === 'video' ? 300 : 200, // Concise drafts
+        temperature: 0.7,
+        timeout: 5000,
+      });
+
+      const draft = draftResponse.content[0]?.text || '';
+      const draftDuration = Date.now() - draftStartTime;
+
+      logger.info('Draft generated successfully', {
+        duration: draftDuration,
+        draftLength: draft.length,
+        mode
+      });
+
+      // Call onDraft callback if provided (for streaming to client)
+      if (onDraft && typeof onDraft === 'function') {
+        onDraft(draft);
+      }
+
+      // STAGE 2: Refine with primary model (background)
+      logger.debug('Starting refinement with primary model', { mode });
+      const refinementStartTime = Date.now();
+
+      const refined = await this.optimize({
+        prompt: draft, // Use draft as input for refinement
+        mode,
+        context,
+        brainstormContext,
+      });
+
+      const refinementDuration = Date.now() - refinementStartTime;
+      const totalDuration = Date.now() - startTime;
+
+      logger.info('Two-stage optimization complete', {
+        draftDuration,
+        refinementDuration,
+        totalDuration,
+        mode
+      });
+
+      return {
+        draft,
+        refined,
+        metadata: {
+          draftDuration,
+          refinementDuration,
+          totalDuration,
+          mode,
+          usedTwoStage: true,
+        }
+      };
+
+    } catch (error) {
+      logger.error('Two-stage optimization failed, falling back to single-stage', {
+        error: error.message,
+        mode
+      });
+
+      // Fallback to single-stage on error
+      const result = await this.optimize({ prompt, mode, context, brainstormContext });
+      return {
+        draft: result,
+        refined: result,
+        usedFallback: true,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Generate system prompt for Groq draft generation
+   * Creates concise, focused prompts optimized for fast generation
+   * @private
+   */
+  getDraftSystemPrompt(mode, prompt, context) {
+    const baseInstructions = {
+      video: `You are a video prompt draft generator. Create a concise video prompt (75-125 words).
+
+Focus on:
+- Clear subject and primary action
+- Essential visual details (lighting, camera angle)
+- Specific cinematographic style
+
+Output ONLY the draft prompt, no explanations or meta-commentary.`,
+
+      reasoning: `You are a reasoning prompt draft generator. Create a concise structured prompt (100-150 words).
+
+Include:
+- Core problem statement
+- Key analytical approach
+- Expected reasoning pattern
+
+Output ONLY the draft prompt, no explanations.`,
+
+      research: `You are a research prompt draft generator. Create a focused research prompt (100-150 words).
+
+Include:
+- Research question
+- Primary sources to consult
+- Key evaluation criteria
+
+Output ONLY the draft prompt, no explanations.`,
+
+      socratic: `You are a Socratic teaching draft generator. Create a concise learning prompt (100-150 words).
+
+Include:
+- Learning objective
+- Progressive question approach
+- Key concepts to explore
+
+Output ONLY the draft prompt, no explanations.`,
+
+      optimize: `You are a prompt optimization draft generator. Create an improved prompt (100-150 words).
+
+Make it:
+- Clear and specific
+- Action-oriented
+- Well-structured
+
+Output ONLY the draft prompt, no explanations.`
+    };
+
+    return baseInstructions[mode] || baseInstructions.optimize;
   }
 
   /**

@@ -33,7 +33,7 @@ export function createAPIRoutes(services) {
     textCategorizerService,
   } = services;
 
-  // POST /api/optimize - Optimize prompt
+  // POST /api/optimize - Optimize prompt (single-stage, backward compatible)
   router.post(
     '/optimize',
     validateRequest(promptSchema),
@@ -48,6 +48,71 @@ export function createAPIRoutes(services) {
       });
 
       res.json({ optimizedPrompt });
+    })
+  );
+
+  // POST /api/optimize-stream - Two-stage optimization with streaming
+  // Streams draft first, then refined version
+  router.post(
+    '/optimize-stream',
+    validateRequest(promptSchema),
+    asyncHandler(async (req, res) => {
+      const { prompt, mode, context, brainstormContext } = req.body;
+
+      // Set up Server-Sent Events (SSE) headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+      // Helper to send SSE message
+      const sendEvent = (eventType, data) => {
+        res.write(`event: ${eventType}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      try {
+        // Start two-stage optimization
+        const result = await promptOptimizationService.optimizeTwoStage({
+          prompt,
+          mode,
+          context,
+          brainstormContext,
+          // Stream draft to client immediately when ready
+          onDraft: (draft) => {
+            sendEvent('draft', {
+              draft,
+              status: 'draft_ready',
+              timestamp: Date.now(),
+            });
+          },
+        });
+
+        // Send refined version when complete
+        sendEvent('refined', {
+          refined: result.refined,
+          status: 'complete',
+          metadata: result.metadata,
+          timestamp: Date.now(),
+        });
+
+        // Send completion signal
+        sendEvent('done', {
+          status: 'finished',
+          usedFallback: result.usedFallback || false,
+        });
+
+        res.end();
+      } catch (error) {
+        logger.error('Streaming optimization failed', { error: error.message });
+
+        sendEvent('error', {
+          error: error.message,
+          status: 'failed',
+        });
+
+        res.end();
+      }
     })
   );
 

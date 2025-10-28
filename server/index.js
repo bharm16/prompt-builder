@@ -19,6 +19,7 @@ import { metricsService } from './src/infrastructure/MetricsService.js';
 
 // Import clients
 import { OpenAIAPIClient } from './src/clients/OpenAIAPIClient.js';
+import { GroqAPIClient } from './src/clients/GroqAPIClient.js';
 
 // Import services
 import { cacheService } from './src/services/CacheService.js';
@@ -88,8 +89,21 @@ const claudeClient = new OpenAIAPIClient(process.env.OPENAI_API_KEY, {
   model: process.env.OPENAI_MODEL || 'gpt-4o-mini', // Default to gpt-4o-mini, can be overridden
 });
 
+// Initialize Groq API client for fast draft generation (optional)
+// Only initialized if GROQ_API_KEY is provided
+let groqClient = null;
+if (process.env.GROQ_API_KEY) {
+  groqClient = new GroqAPIClient(process.env.GROQ_API_KEY, {
+    timeout: parseInt(process.env.GROQ_TIMEOUT_MS) || 5000,
+    model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+  });
+  logger.info('Groq client initialized for two-stage optimization');
+} else {
+  logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
+}
+
 // Initialize business logic services
-const promptOptimizationService = new PromptOptimizationService(claudeClient);
+const promptOptimizationService = new PromptOptimizationService(claudeClient, groqClient);
 const questionGenerationService = new QuestionGenerationService(claudeClient);
 const enhancementService = new EnhancementService(claudeClient);
 const sceneDetectionService = new SceneDetectionService(claudeClient);
