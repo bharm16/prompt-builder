@@ -316,7 +316,6 @@ function PromptOptimizerContent() {
       try {
         const promptData = await getPromptByUuid(uuid);
         if (promptData) {
-          promptOptimizer.setSkipAnimation(true);
           promptOptimizer.setInputPrompt(promptData.input);
           promptOptimizer.setOptimizedPrompt(promptData.output);
           setDisplayedPromptSilently(promptData.output);
@@ -383,33 +382,14 @@ function PromptOptimizerContent() {
     return () => clearInterval(interval);
   }, [aiNames.length]);
 
-  // Typewriter animation for results
+  // Display optimized prompt immediately (no animation)
   useEffect(() => {
-    if (!promptOptimizer.optimizedPrompt || !showResults) {
-      setDisplayedPromptSilently('');
-      return;
-    }
-
-    if (promptOptimizer.skipAnimation) {
+    if (showResults && promptOptimizer.optimizedPrompt) {
       setDisplayedPromptSilently(promptOptimizer.optimizedPrompt);
-      return;
+    } else {
+      setDisplayedPromptSilently('');
     }
-
-    setDisplayedPromptSilently('');
-    let currentIndex = 0;
-
-    const intervalId = setInterval(() => {
-      if (currentIndex <= promptOptimizer.optimizedPrompt.length) {
-        const text = promptOptimizer.optimizedPrompt.slice(0, currentIndex);
-        setDisplayedPromptSilently(text);
-        currentIndex += 3;
-      } else {
-        clearInterval(intervalId);
-      }
-    }, 5);
-
-    return () => clearInterval(intervalId);
-  }, [promptOptimizer.optimizedPrompt, showResults, promptOptimizer.skipAnimation, setDisplayedPromptSilently]);
+  }, [promptOptimizer.optimizedPrompt, showResults]);
 
   // Handle optimization
   const handleOptimize = async (promptToOptimize, context) => {
@@ -440,7 +420,6 @@ function PromptOptimizerContent() {
     });
 
     const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
-    console.log('optimize result:', result);
     if (result) {
       const saveResult = await promptHistory.saveToHistory(
         prompt,
@@ -520,10 +499,8 @@ function PromptOptimizerContent() {
           serializedContext
         );
         if (saveResult?.uuid) {
-          // Skip animation and set displayed prompt immediately
-          promptOptimizer.setSkipAnimation(true);
           setDisplayedPromptSilently(result.optimized);
-          
+
           skipLoadFromUrlRef.current = true; // Prevent URL effect from re-loading
           setCurrentPromptUuid(saveResult.uuid);
           setCurrentPromptDocId(saveResult.id ?? null);
@@ -577,8 +554,7 @@ function PromptOptimizerContent() {
     // This ensures currentPromptUuid matches the URL before navigation
     setCurrentPromptUuid(entry.uuid || null);
     setCurrentPromptDocId(entry.id || null);
-    
-    promptOptimizer.setSkipAnimation(true);
+
     promptOptimizer.setInputPrompt(entry.input);
     promptOptimizer.setOptimizedPrompt(entry.output);
     setDisplayedPromptSilently(entry.output);
@@ -1362,7 +1338,7 @@ function PromptOptimizerContent() {
         )}
 
         {/* Results Section - Canvas Style */}
-        {showResults && promptOptimizer.displayedPrompt && !promptOptimizer.isProcessing && (
+        {showResults && !promptOptimizer.isProcessing && (
           <PromptCanvas
             key={
               currentPromptUuid
@@ -1378,7 +1354,6 @@ function PromptOptimizerContent() {
             promptUuid={currentPromptUuid}
             promptContext={stablePromptContext}
             onDisplayedPromptChange={handleDisplayedPromptChange}
-            onSkipAnimation={promptOptimizer.setSkipAnimation}
             suggestionsData={suggestionsData}
             onFetchSuggestions={fetchEnhancementSuggestions}
             onCreateNew={handleCreateNew}

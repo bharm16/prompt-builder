@@ -662,7 +662,6 @@ export const PromptCanvas = ({
   promptUuid,
   promptContext, // NEW: Context from Creative Brainstorm
   onDisplayedPromptChange,
-  onSkipAnimation,
   suggestionsData,
   onFetchSuggestions,
   onCreateNew,
