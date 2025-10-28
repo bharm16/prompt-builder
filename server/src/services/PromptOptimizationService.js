@@ -17,7 +17,7 @@ export class PromptOptimizationService {
     // Template versions for tracking improvements
     this.templateVersions = {
       default: '2.0.0', // Updated version with 2025 improvements
-      reasoning: '3.1.0', // Context integration
+      reasoning: '4.0.0', // Two-stage domain-specific content generation
       research: '2.0.0',
       socratic: '2.0.0',
       video: '1.0.0'
@@ -157,6 +157,189 @@ Output only the JSON, nothing else:`;
   }
 
   /**
+   * STAGE 1: Generate domain-specific content for reasoning prompts
+   * Uses focused LLM call to create warnings, deliverables, and constraints
+   * that are precisely tailored to the user's domain and expertise level
+   *
+   * @param {string} prompt - The user's original prompt
+   * @param {Object} context - Inferred or provided context
+   * @param {string} context.specificAspects - Domain focus areas
+   * @param {string} context.backgroundLevel - User expertise level
+   * @param {string} context.intendedUse - Use case for the prompt
+   * @returns {Promise<Object>} Domain-specific content { warnings, deliverables, constraints }
+   * @private
+   */
+  async generateDomainSpecificContent(prompt, context) {
+    logger.info('Generating domain-specific content (Stage 1)', {
+      promptLength: prompt.length,
+      hasContext: !!context
+    });
+
+    // Extract context fields
+    const domain = context?.specificAspects || '';
+    const expertiseLevel = context?.backgroundLevel || 'intermediate';
+    const useCase = context?.intendedUse || '';
+
+    // Build Stage 1 prompt
+    const stage1Prompt = `Generate domain-specific content for a reasoning task optimization.
+
+<task>
+User's Prompt: "${prompt}"
+
+Context:
+- Domain Focus: ${domain || 'general'}
+- Expertise Level: ${expertiseLevel}
+- Intended Use: ${useCase || 'not specified'}
+</task>
+
+Your job: Generate domain-specific warnings, deliverables, and constraints that will be incorporated into an optimized reasoning prompt.
+
+<warnings_generation>
+Generate 5-7 domain-specific warnings. Each warning MUST:
+
+✓ Use precise technical terminology from the domain (${domain || 'the relevant domain'})
+✓ Address sophisticated edge cases specific to this problem space
+✓ Be actionable and specific (not generic advice)
+✓ Include technical details appropriate for ${expertiseLevel} level
+✓ Prevent subtle mistakes that require domain expertise to recognize
+
+EXAMPLES OF GOOD WARNINGS for different domains:
+
+For "PostgreSQL query optimization":
+✓ "Avoid sequential scans on tables >1M rows - ensure WHERE clause predicates are covered by B-tree or GiST indexes"
+✓ "Consider that PostgreSQL query planner may choose sequential scan over index if table statistics are stale - run ANALYZE regularly"
+✓ "Account for index-only scans when covering indexes include all SELECT columns to eliminate heap lookups"
+
+For "React hooks optimization":
+✓ "Avoid re-creating functions on every render - use useCallback with proper dependency arrays to maintain referential equality"
+✓ "Consider that useEffect with missing dependencies causes stale closures - include all referenced values in dependency array"
+✓ "Ensure cleanup functions in useEffect properly unsubscribe/cancel to prevent memory leaks on component unmount"
+
+For "machine learning model training":
+✓ "Avoid using accuracy as sole metric for imbalanced datasets - prioritize F1 score, precision-recall curves, or Matthews correlation coefficient"
+✓ "Consider that high training accuracy with low validation accuracy indicates overfitting - implement early stopping and regularization"
+
+EXAMPLES OF BAD WARNINGS (too generic):
+❌ "Think about performance"
+❌ "Consider edge cases"
+❌ "Make sure it works"
+❌ "Check for errors"
+❌ "Optimize the code"
+
+Now generate warnings for the user's prompt above.
+</warnings_generation>
+
+<deliverables_generation>
+Generate 3-5 specific deliverables. Each deliverable MUST:
+
+✓ Specify concrete output format
+✓ Include quantified requirements where applicable
+✓ Match technical depth to ${expertiseLevel} level
+✓ Be appropriate for "${useCase || 'general use'}"
+
+EXAMPLES:
+
+For ${expertiseLevel} level:
+${expertiseLevel === 'expert' ? '- "Flame graph from Chrome DevTools showing parse/compile/execute breakdown with hotspot analysis"\n- "Benchmark suite comparing O(n) vs O(n log n) implementations across dataset sizes from 10³ to 10⁶ elements"' : expertiseLevel === 'intermediate' ? '- "Performance comparison table showing execution times for different approaches"\n- "Code examples demonstrating the recommended solution with inline comments"' : '- "Step-by-step explanation with visual diagrams"\n- "Working code example with detailed comments explaining each section"'}
+
+For "${useCase || 'general'}" use case:
+${useCase.includes('production') ? '- "Production-ready implementation with error handling and logging"\n- "Performance profiling data showing real-world impact"' : useCase.includes('learning') ? '- "Tutorial-style explanation with progressive examples"\n- "Practice exercises with solutions"' : '- "Clear documentation of the approach"\n- "Examples demonstrating key concepts"'}
+
+Now generate deliverables for the user's prompt above.
+</deliverables_generation>
+
+<constraints_generation>
+Generate 2-4 technical or business constraints. Each constraint MUST:
+
+✓ Be a hard requirement (not a preference)
+✓ Specify measurable parameters where applicable
+✓ Be domain-specific
+
+EXAMPLES:
+✓ "Must maintain under 16ms (60fps) for UI updates during user interaction"
+✓ "Cannot introduce breaking changes to public API (maintain semantic versioning)"
+✓ "Must support Unicode text including RTL languages, emoji, and combining characters"
+✓ "Memory footprint must not exceed 100MB for datasets up to 1M records"
+
+Now generate constraints for the user's prompt above (or return empty array if none apply).
+</constraints_generation>
+
+<output_format>
+Output ONLY valid JSON with this exact structure:
+
+{
+  "warnings": [
+    "Domain-specific warning 1 with technical details",
+    "Domain-specific warning 2 with technical details",
+    "... 5-7 total warnings"
+  ],
+  "deliverables": [
+    "Specific deliverable 1 with format and requirements",
+    "Specific deliverable 2 with format and requirements",
+    "... 3-5 total deliverables"
+  ],
+  "constraints": [
+    "Hard constraint 1 with measurable parameters",
+    "Hard constraint 2 with measurable parameters",
+    "... 2-4 total constraints (or empty array if none)"
+  ]
+}
+
+Do NOT include any explanation or markdown formatting. Output only the JSON.
+</output_format>`;
+
+    try {
+      // Call Claude with focused Stage 1 prompt
+      const response = await this.claudeClient.complete(stage1Prompt, {
+        maxTokens: 1500,
+        temperature: 0.3, // Low temperature for consistent, focused output
+        timeout: 20000, // 20 second timeout for Stage 1
+      });
+
+      const rawOutput = response.content[0].text.trim();
+      logger.debug('Stage 1 raw output', { rawOutput: rawOutput.substring(0, 200) });
+
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonText = rawOutput;
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/```\s*([\s\S]*?)\s*```/) ||
+        rawOutput.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        jsonText = jsonMatch[1] || jsonMatch[0];
+      }
+
+      const domainContent = JSON.parse(jsonText);
+
+      // Validate structure
+      if (!Array.isArray(domainContent.warnings) ||
+          !Array.isArray(domainContent.deliverables) ||
+          !Array.isArray(domainContent.constraints)) {
+        throw new Error('Invalid domain content structure from Stage 1');
+      }
+
+      logger.info('Stage 1 domain content generated successfully', {
+        warningCount: domainContent.warnings.length,
+        deliverableCount: domainContent.deliverables.length,
+        constraintCount: domainContent.constraints.length,
+      });
+
+      return domainContent;
+    } catch (error) {
+      logger.error('Failed to generate domain-specific content in Stage 1', {
+        error: error.message
+      });
+
+      // Return minimal generic content as fallback
+      return {
+        warnings: [],
+        deliverables: [],
+        constraints: [],
+      };
+    }
+  }
+
+  /**
    * Optimize a prompt based on mode and context
    * @param {Object} params - Optimization parameters
    * @param {string} params.prompt - Original prompt
@@ -185,12 +368,50 @@ Output only the JSON, nothing else:`;
       logger.debug('Inferred context', { context });
     }
 
+    // STAGE 1: Generate domain-specific content for reasoning mode
+    // Only runs if we have context and are in reasoning mode
+    let domainContent = null;
+    if (mode === 'reasoning' && context && Object.keys(context).some(k => context[k])) {
+      logger.info('Executing Stage 1: Domain-specific content generation');
+
+      // Check domain content cache first (separate from final prompt cache)
+      const domainCacheKey = cacheService.generateKey('domain-content', {
+        prompt: prompt.substring(0, 100), // Use first 100 chars of prompt for cache key
+        context,
+      });
+
+      domainContent = await cacheService.get(domainCacheKey, 'domain-content');
+
+      if (!domainContent) {
+        try {
+          domainContent = await this.generateDomainSpecificContent(prompt, context);
+
+          // Cache domain content separately (1 hour TTL, reusable across similar prompts)
+          await cacheService.set(domainCacheKey, domainContent, { ttl: 3600 });
+
+          logger.debug('Stage 1 complete - domain content generated and cached', {
+            warningCount: domainContent.warnings?.length || 0,
+            deliverableCount: domainContent.deliverables?.length || 0,
+            constraintCount: domainContent.constraints?.length || 0,
+          });
+        } catch (error) {
+          logger.warn('Stage 1 failed, falling back to standard optimization', {
+            error: error.message
+          });
+          domainContent = null; // Fallback to original single-stage approach
+        }
+      } else {
+        logger.debug('Stage 1 domain content cache hit');
+      }
+    }
+
     // Check cache first (include template version to prevent serving outdated cached results)
     const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
       prompt,
       mode,
       context,
       useIterativeRefinement,
+      hasDomainContent: !!domainContent, // Include in cache key to differentiate
       templateVersion: this.templateVersions[mode] || '1.0.0',
     });
 
@@ -207,8 +428,8 @@ Output only the JSON, nothing else:`;
       return result;
     }
 
-    // Build system prompt based on mode
-    const systemPrompt = this.buildSystemPrompt(prompt, mode, context, brainstormContext);
+    // STAGE 2: Build system prompt (with domain content if available)
+    const systemPrompt = this.buildSystemPrompt(prompt, mode, context, brainstormContext, domainContent);
 
     // Determine timeout based on mode (video prompts are much larger and need more time)
     const timeout = mode === 'video' ? 90000 : 30000; // 90s for video, 30s for others
@@ -275,14 +496,19 @@ Output only the JSON, nothing else:`;
 
   /**
    * Build system prompt based on mode
+   * @param {string} prompt - User's prompt
+   * @param {string} mode - Optimization mode
+   * @param {Object} context - User context
+   * @param {Object} brainstormContext - Brainstorm context
+   * @param {Object} domainContent - Pre-generated domain-specific content from Stage 1 (reasoning mode only)
    * @private
    */
-  buildSystemPrompt(prompt, mode, context, brainstormContext) {
+  buildSystemPrompt(prompt, mode, context, brainstormContext, domainContent = null) {
     let systemPrompt = '';
 
     switch (mode) {
       case 'reasoning':
-        systemPrompt = this.getReasoningPrompt(prompt, context, brainstormContext);
+        systemPrompt = this.getReasoningPrompt(prompt, context, brainstormContext, domainContent);
         break;
       case 'research':
         systemPrompt = this.getResearchPrompt(prompt, brainstormContext);
@@ -310,16 +536,17 @@ Output only the JSON, nothing else:`;
   }
 
   /**
-   * IMPROVED REASONING TEMPLATE v3.1.0 with Context Integration
+   * IMPROVED REASONING TEMPLATE v4.0.0 with Two-Stage Domain-Specific Content
    * Generates high-quality reasoning prompts by focusing on OUTPUT rather than PROCESS
-   * NOW SUPPORTS: Early context injection for better optimization
+   * NOW SUPPORTS: Stage 1 pre-generated domain-specific warnings and deliverables
    *
    * @param {string} prompt - User's prompt to optimize
    * @param {Object} context - Optional user context (specificAspects, backgroundLevel, intendedUse)
    * @param {Object} brainstormContext - Optional brainstorm context from Creative Brainstorm
+   * @param {Object} domainContent - Pre-generated domain-specific content from Stage 1
    * @private
    */
-  getReasoningPrompt(prompt, context = null, brainstormContext = null) {
+  getReasoningPrompt(prompt, context = null, brainstormContext = null, domainContent = null) {
     // Log context usage for debugging
     if (context) {
       logger.info('Context provided for reasoning mode', {
@@ -329,23 +556,65 @@ Output only the JSON, nothing else:`;
       });
     }
 
-    // Build context section to inject early
-    let contextSection = '';
-    if (context && Object.keys(context).some((k) => context[k])) {
-      contextSection = '\n\n**USER-PROVIDED CONTEXT:**';
-      contextSection += '\nThe user has specified these requirements that MUST be integrated into the optimized prompt:';
+    // Log domain content usage
+    if (domainContent) {
+      logger.info('Stage 1 domain content available for reasoning template', {
+        warningCount: domainContent.warnings?.length || 0,
+        deliverableCount: domainContent.deliverables?.length || 0,
+        constraintCount: domainContent.constraints?.length || 0,
+      });
+    }
+
+    // Build domain content section if available (replaces generic context section)
+    let domainContentSection = '';
+    if (domainContent && (domainContent.warnings?.length > 0 || domainContent.deliverables?.length > 0)) {
+      domainContentSection = '\n\n**PRE-GENERATED DOMAIN-SPECIFIC CONTENT:**';
+      domainContentSection += '\nThe following domain-specific elements have been generated for this prompt.';
+      domainContentSection += '\nYou MUST incorporate these verbatim into the appropriate sections of your optimized prompt:\n';
+
+      // Add warnings section
+      if (domainContent.warnings?.length > 0) {
+        domainContentSection += '\n**WARNINGS (include these in your Warnings section):**\n';
+        domainContent.warnings.forEach((warning, i) => {
+          domainContentSection += `${i + 1}. ${warning}\n`;
+        });
+      }
+
+      // Add deliverables section
+      if (domainContent.deliverables?.length > 0) {
+        domainContentSection += '\n**DELIVERABLES (include these in your Return Format section):**\n';
+        domainContent.deliverables.forEach((deliverable, i) => {
+          domainContentSection += `${i + 1}. ${deliverable}\n`;
+        });
+      }
+
+      // Add constraints section if available
+      if (domainContent.constraints?.length > 0) {
+        domainContentSection += '\n**CONSTRAINTS (add a Constraints section with these):**\n';
+        domainContent.constraints.forEach((constraint, i) => {
+          domainContentSection += `${i + 1}. ${constraint}\n`;
+        });
+      }
+
+      domainContentSection += '\nIMPORTANT: These elements are already domain-specific and technically precise.';
+      domainContentSection += ' Use them as provided - do not make them more generic or vague.';
+      domainContentSection += ' Your job is to assemble them into a well-structured reasoning prompt.\n';
+    } else if (context && Object.keys(context).some((k) => context[k])) {
+      // Fallback to old context section if no domain content (backward compatibility)
+      domainContentSection = '\n\n**USER-PROVIDED CONTEXT:**';
+      domainContentSection += '\nThe user has specified these requirements that MUST be integrated into the optimized prompt:';
 
       if (context.specificAspects) {
-        contextSection += `\n- **Focus Areas:** ${context.specificAspects}`;
+        domainContentSection += `\n- **Focus Areas:** ${context.specificAspects}`;
       }
       if (context.backgroundLevel) {
-        contextSection += `\n- **Target Audience Level:** ${context.backgroundLevel}`;
+        domainContentSection += `\n- **Target Audience Level:** ${context.backgroundLevel}`;
       }
       if (context.intendedUse) {
-        contextSection += `\n- **Intended Use Case:** ${context.intendedUse}`;
+        domainContentSection += `\n- **Intended Use Case:** ${context.intendedUse}`;
       }
 
-      contextSection += '\n\nEnsure these requirements are woven naturally into your optimized prompt.';
+      domainContentSection += '\n\nEnsure these requirements are woven naturally into your optimized prompt.';
     }
 
     // Build brainstorm context section if provided
@@ -353,9 +622,23 @@ Output only the JSON, nothing else:`;
       ? this.buildBrainstormContextForTemplate(brainstormContext)
       : '';
 
-    // Build transformation steps with context integration
+    // Build transformation steps - SIMPLIFIED when domain content is available
     const hasContext = context && Object.keys(context).some((k) => context[k]);
-    const transformationSteps = hasContext || brainstormSection
+    const hasDomainContent = domainContent && (domainContent.warnings?.length > 0 || domainContent.deliverables?.length > 0);
+
+    const transformationSteps = hasDomainContent
+      ? `
+1. **Extract the core objective** - What are they really trying to accomplish?
+2. **Integrate pre-generated domain content** - Warnings, deliverables, and constraints have been pre-generated above. Include them in the appropriate sections of your optimized prompt.
+   - Copy the WARNINGS into your **Warnings** section (you may add 1-2 more if critically important, but the pre-generated ones are already domain-specific)
+   - Copy the DELIVERABLES into your **Return Format** section
+   - Copy the CONSTRAINTS into a **Constraints** section (if provided)
+3. **Identify essential context** - What background information shapes the solution space?
+4. **Add quantification** - Where else can you make requirements measurable?
+5. **Remove all meta-instructions** - Trust the model to reason well without process guidance
+
+IMPORTANT: The pre-generated warnings and deliverables are already domain-specific and technically precise. Do NOT make them more generic.`
+      : hasContext || brainstormSection
       ? `
 1. **Extract the core objective** - What are they really trying to accomplish?
 ${hasContext ? `2. **Integrate user-provided requirements** - The user specified these context requirements above. Ensure they are naturally reflected in the Goal, Context, Warnings, and Return Format sections.` : ''}
@@ -446,7 +729,7 @@ DO NOT include any of these in your output:
 </anti_patterns_to_avoid>
 
 <original_prompt>
-"${prompt}"${contextSection}
+"${prompt}"${domainContentSection}
 </original_prompt>
 
 <examples>

@@ -138,7 +138,8 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
       expect(spyGetReasoning).toHaveBeenCalledWith(
         'test prompt',
         context,
-        undefined // brainstormContext
+        undefined, // brainstormContext
+        null // domainContent (not provided to buildSystemPrompt)
       );
     });
 
@@ -347,7 +348,10 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
 
   describe('Automatic Context Inference', () => {
     it('should automatically infer context for reasoning mode when not provided', async () => {
-      // Mock the Claude client to return inference response then optimization response
+      // Mock the Claude client to return responses for all 3 stages:
+      // 1. Context inference
+      // 2. Stage 1: Domain content generation
+      // 3. Stage 2: Final optimization
       const mockClient = {
         complete: vi
           .fn()
@@ -364,7 +368,25 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
             ],
           })
           .mockResolvedValueOnce({
-            // Second call: actual optimization
+            // Second call: Stage 1 domain content generation
+            content: [
+              {
+                text: JSON.stringify({
+                  warnings: [
+                    'Avoid re-parsing the entire document on every keystroke',
+                    'Consider that DOM mutations trigger style recalculation'
+                  ],
+                  deliverables: [
+                    'Performance profiling report comparing parse times',
+                    'Flame graph from Chrome DevTools'
+                  ],
+                  constraints: []
+                }),
+              },
+            ],
+          })
+          .mockResolvedValueOnce({
+            // Third call: Stage 2 final optimization
             content: [
               {
                 text: '**Goal**\nOptimize canvas highlighting performance...',
@@ -383,13 +405,17 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
         // NOTE: No context provided!
       });
 
-      // Verify two API calls were made
-      expect(mockClient.complete).toHaveBeenCalledTimes(2);
+      // Verify THREE API calls were made (context inference + Stage 1 + Stage 2)
+      expect(mockClient.complete).toHaveBeenCalledTimes(3);
 
-      // Verify first call was for inference
+      // Verify first call was for context inference
       const firstCall = mockClient.complete.mock.calls[0];
       expect(firstCall[0]).toContain('Analyze this prompt and infer appropriate context');
       expect(firstCall[0]).toContain('canvas highlighting');
+
+      // Verify second call was for domain content generation (Stage 1)
+      const secondCall = mockClient.complete.mock.calls[1];
+      expect(secondCall[0]).toContain('Generate domain-specific content');
 
       // Verify result is returned
       expect(result).toContain('Optimize canvas highlighting');
@@ -397,10 +423,25 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
 
     it('should use provided context instead of inferring', async () => {
       const mockClient = {
-        complete: vi.fn().mockResolvedValueOnce({
-          content: [{ text: '**Goal**\nOptimize...' }],
-          usage: { input_tokens: 100, output_tokens: 200 },
-        }),
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            // First call: Stage 1 domain content generation
+            content: [
+              {
+                text: JSON.stringify({
+                  warnings: ['React-specific warning'],
+                  deliverables: ['React deliverable'],
+                  constraints: []
+                }),
+              },
+            ],
+          })
+          .mockResolvedValueOnce({
+            // Second call: Stage 2 final optimization
+            content: [{ text: '**Goal**\nOptimize...' }],
+            usage: { input_tokens: 100, output_tokens: 200 },
+          }),
       };
 
       service = new PromptOptimizationService(mockClient);
@@ -417,20 +458,34 @@ describe('PromptOptimizationService - Reasoning Mode Context Integration', () =>
         context: explicitContext, // Explicit context provided
       });
 
-      // Should only call once (optimization, not inference)
-      expect(mockClient.complete).toHaveBeenCalledTimes(1);
+      // Should call twice (Stage 1 + Stage 2, no context inference)
+      expect(mockClient.complete).toHaveBeenCalledTimes(2);
 
-      // Verify it didn't call inference
+      // Verify first call was for domain content generation (NOT inference)
       const firstCall = mockClient.complete.mock.calls[0];
       expect(firstCall[0]).not.toContain('Analyze this prompt and infer');
+      expect(firstCall[0]).toContain('Generate domain-specific content');
     });
 
     it('should handle inference failures gracefully', async () => {
       const mockClient = {
         complete: vi
           .fn()
-          .mockRejectedValueOnce(new Error('Network error'))
+          .mockRejectedValueOnce(new Error('Network error')) // Context inference fails
           .mockResolvedValueOnce({
+            // Stage 1 still runs with fallback minimal context
+            content: [
+              {
+                text: JSON.stringify({
+                  warnings: [],
+                  deliverables: [],
+                  constraints: []
+                }),
+              },
+            ],
+          })
+          .mockResolvedValueOnce({
+            // Stage 2: final optimization
             content: [{ text: '**Goal**\nOptimize...' }],
             usage: { input_tokens: 100, output_tokens: 200 },
           }),

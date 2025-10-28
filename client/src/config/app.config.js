@@ -4,6 +4,8 @@
  * Centralized configuration for app-wide settings
  */
 
+import { MessageSquare, Lightbulb, Search, GraduationCap, Video } from 'lucide-react';
+
 const ENV = import.meta.env.MODE || 'development';
 const IS_DEV = ENV === 'development';
 const IS_PROD = ENV === 'production';
@@ -38,31 +40,31 @@ export const APP_CONFIG = {
     {
       id: 'optimize',
       name: 'Standard Prompt',
-      icon: 'MessageSquare',
+      icon: MessageSquare,
       description: 'Optimize any prompt',
     },
     {
       id: 'reasoning',
       name: 'Reasoning Prompt',
-      icon: 'Lightbulb',
+      icon: Lightbulb,
       description: 'Deep thinking & verification',
     },
     {
       id: 'research',
       name: 'Deep Research',
-      icon: 'Search',
+      icon: Search,
       description: 'Create research plans',
     },
     {
       id: 'socratic',
       name: 'Socratic Learning',
-      icon: 'GraduationCap',
+      icon: GraduationCap,
       description: 'Learning journeys',
     },
     {
       id: 'video',
       name: 'Video Prompt',
-      icon: 'Video',
+      icon: Video,
       description: 'Generate AI video prompts',
     },
   ],

@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { MessageSquare, Lightbulb, Search, GraduationCap, Video } from 'lucide-react';
 import { getPromptRepository } from '../../../repositories';
 import { usePromptOptimizer } from '../../../hooks/usePromptOptimizer';
 import { usePromptHistory } from '../../../hooks/usePromptHistory';
@@ -38,31 +39,31 @@ export const PromptStateProvider = ({ children, user }) => {
     {
       id: 'optimize',
       name: 'Standard Prompt',
-      icon: 'MessageSquare',
+      icon: MessageSquare,
       description: 'Optimize any prompt',
     },
     {
       id: 'reasoning',
       name: 'Reasoning Prompt',
-      icon: 'Lightbulb',
+      icon: Lightbulb,
       description: 'Deep thinking & verification',
     },
     {
       id: 'research',
       name: 'Deep Research',
-      icon: 'Search',
+      icon: Search,
       description: 'Create research plans',
     },
     {
       id: 'socratic',
       name: 'Socratic Learning',
-      icon: 'GraduationCap',
+      icon: GraduationCap,
       description: 'Learning journeys',
     },
     {
       id: 'video',
       name: 'Video Prompt',
-      icon: 'Video',
+      icon: Video,
       description: 'Generate AI video prompts',
     },
   ], []);
