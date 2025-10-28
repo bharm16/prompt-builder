@@ -11,7 +11,7 @@ import {
   MessageSquare,
   X
 } from 'lucide-react';
-import { signInWithGoogle, signOutUser } from '../../config/firebase';
+import { getAuthRepository } from '../../repositories';
 import { HistoryEmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 
@@ -138,7 +138,8 @@ export const HistorySidebar = ({
 
   const handleSignIn = async () => {
     try {
-      const user = await signInWithGoogle();
+      const authRepository = getAuthRepository();
+      const user = await authRepository.signInWithGoogle();
       toast.success(`Welcome, ${user.displayName}!`);
     } catch (error) {
       console.error('Sign in failed:', error);
@@ -148,7 +149,8 @@ export const HistorySidebar = ({
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
+      const authRepository = getAuthRepository();
+      await authRepository.signOut();
       toast.success('Signed out successfully');
     } catch (error) {
       console.error('Sign out failed:', error);

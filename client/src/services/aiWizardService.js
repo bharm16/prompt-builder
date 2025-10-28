@@ -1,15 +1,15 @@
 /**
  * AI Wizard Service
  *
- * Bridge to the existing VideoConceptService for wizard-specific AI operations.
+ * Bridge to the VideoConceptApi for wizard-specific AI operations.
  * Handles suggestion fetching, caching, and rate limiting for the wizard interface.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { videoConceptApi } from './VideoConceptApi';
 
 export class AIWizardService {
-  constructor(apiKey = null) {
-    this.apiKey = apiKey;
+  constructor(api = videoConceptApi) {
+    this.api = api;
     this.cache = new Map();
     this.lastCallTime = 0;
     this.minCallInterval = 500; // Minimum 500ms between API calls
@@ -85,26 +85,12 @@ export class AIWizardService {
 
     const elementType = elementTypeMap[fieldName] || fieldName;
 
-    const response = await fetch(`${API_BASE_URL}/api/video/suggestions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': 'dev-key-12345', // Required by backend
-        ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-      },
-      body: JSON.stringify({
-        elementType,
-        currentValue,
-        context: this._sanitizeContext(context),
-        concept: context.concept || ''
-      })
+    const data = await this.api.getSuggestions({
+      elementType,
+      currentValue,
+      context: this._sanitizeContext(context),
+      concept: context.concept || ''
     });
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
 
     // Extract suggestions from response
     const suggestions = data.suggestions || [];
@@ -184,24 +170,10 @@ export class AIWizardService {
    */
   async validatePrompt(formData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/video/validate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'dev-key-12345', // Required by backend
-          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-        },
-        body: JSON.stringify({
-          elements: formData,
-          concept: formData.concept || ''
-        })
+      return await this.api.validatePrompt({
+        elements: formData,
+        concept: formData.concept || ''
       });
-
-      if (!response.ok) {
-        throw new Error(`Validation failed: ${response.status}`);
-      }
-
-      return await response.json();
     } catch (error) {
       console.error('Error validating prompt:', error);
       return {

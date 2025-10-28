@@ -1,7 +1,7 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 
-class ErrorBoundary extends React.Component {
+export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null, eventId: null };
@@ -39,8 +39,25 @@ class ErrorBoundary extends React.Component {
     }
   };
 
+  handleReset = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null, eventId: null });
+  };
+
   render() {
     if (this.state.hasError) {
+      // Custom fallback if provided
+      if (this.props.fallback) {
+        if (typeof this.props.fallback === 'function') {
+          return this.props.fallback({
+            error: this.state.error,
+            errorInfo: this.state.errorInfo,
+            resetError: this.handleReset,
+          });
+        }
+        return this.props.fallback;
+      }
+
+      // Default fallback UI
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
@@ -59,11 +76,11 @@ class ErrorBoundary extends React.Component {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              Something went wrong
+              {this.props.title || 'Something went wrong'}
             </h1>
 
             <p className="text-gray-600 text-center mb-6">
-              We apologize for the inconvenience. The application encountered an unexpected error.
+              {this.props.message || 'We apologize for the inconvenience. The application encountered an unexpected error.'}
             </p>
 
             {import.meta.env.DEV && this.state.error && (
@@ -90,7 +107,7 @@ class ErrorBoundary extends React.Component {
                   Reload Page
                 </button>
               </div>
-              
+
               {this.state.eventId && (
                 <button
                   onClick={this.handleReportFeedback}
@@ -108,5 +125,20 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+/**
+ * Higher-order component that wraps a component with an error boundary
+ */
+export const withErrorBoundary = (Component, errorBoundaryProps = {}) => {
+  const WrappedComponent = (props) => (
+    <ErrorBoundary {...errorBoundaryProps}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name || 'Component'})`;
+
+  return WrappedComponent;
+};
 
 export default ErrorBoundary;

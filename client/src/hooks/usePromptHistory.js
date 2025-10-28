@@ -1,11 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import {
-  auth,
-  savePromptToFirestore,
-  getUserPrompts,
-} from '../config/firebase';
 import { useToast } from '../components/Toast';
-import { v4 as uuidv4 } from 'uuid';
+import { getPromptRepositoryForUser } from '../repositories';
 
 export const usePromptHistory = (user) => {
   const [history, setHistory] = useState([]);
@@ -14,18 +9,19 @@ export const usePromptHistory = (user) => {
 
   const toast = useToast();
 
-  // Load history from Firestore
+  // Load history from repository
   const loadHistoryFromFirestore = useCallback(async (userId) => {
-    console.log('Loading history from Firestore for user:', userId);
+    console.log('Loading history for user:', userId);
     setIsLoadingHistory(true);
     try {
-      const prompts = await getUserPrompts(userId, 100);
-      console.log('Successfully loaded prompts from Firestore:', prompts.length);
-      
+      const repository = getPromptRepositoryForUser(true); // Authenticated
+      const prompts = await repository.getUserPrompts(userId, 100);
+      console.log('Successfully loaded prompts:', prompts.length);
+
       // Debug: Check how many have highlightCache
       const withHighlights = prompts.filter(p => p.highlightCache?.spans?.length > 0).length;
       console.log(`Prompts with highlights: ${withHighlights}/${prompts.length}`);
-      
+
       const normalizedPrompts = prompts.map((entry) => ({
         ...entry,
         brainstormContext: entry.brainstormContext ?? null,
@@ -33,7 +29,7 @@ export const usePromptHistory = (user) => {
         versions: entry.versions ?? [],
       }));
       setHistory(normalizedPrompts);
-      
+
       // Debug: Log first video prompt with highlights
       const firstVideoWithHighlights = normalizedPrompts.find(
         p => p.mode === 'video' && p.highlightCache?.spans?.length > 0
@@ -56,27 +52,20 @@ export const usePromptHistory = (user) => {
         }
       }
     } catch (error) {
-      console.error('Error loading history from Firestore:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        name: error.name
-      });
+      console.error('Error loading history:', error);
 
       // Try to load from localStorage as fallback
       try {
-        const savedHistory = localStorage.getItem('promptHistory');
-        if (savedHistory) {
-          const parsedHistory = JSON.parse(savedHistory);
-          const normalizedHistory = parsedHistory.map((entry) => ({
-            ...entry,
-            brainstormContext: entry.brainstormContext ?? null,
-            highlightCache: entry.highlightCache ?? null,
-            versions: entry.versions ?? [],
-          }));
-          console.log('Loaded history from localStorage fallback:', normalizedHistory.length);
-          setHistory(normalizedHistory);
-        }
+        const localRepository = getPromptRepositoryForUser(false);
+        const localHistory = await localRepository.getUserPrompts(null, 100);
+        const normalizedHistory = localHistory.map((entry) => ({
+          ...entry,
+          brainstormContext: entry.brainstormContext ?? null,
+          highlightCache: entry.highlightCache ?? null,
+          versions: entry.versions ?? [],
+        }));
+        console.log('Loaded history from localStorage fallback:', normalizedHistory.length);
+        setHistory(normalizedHistory);
       } catch (localError) {
         console.error('Error loading from localStorage fallback:', localError);
       }
@@ -85,7 +74,7 @@ export const usePromptHistory = (user) => {
     }
   }, []);
 
-  // Load localStorage history on mount and when user changes
+  // Load history on mount and when user changes
   useEffect(() => {
     if (user) {
       // Clear localStorage on mount when user is signed in
@@ -97,22 +86,23 @@ export const usePromptHistory = (user) => {
         await loadHistoryFromFirestore(user.uid);
       }, 500);
     } else {
-      try {
-        const savedHistory = localStorage.getItem('promptHistory');
-        if (savedHistory) {
-          const parsedHistory = JSON.parse(savedHistory);
-          const normalizedHistory = parsedHistory.map((entry) => ({
+      // Load from localStorage for unauthenticated users
+      const loadLocalHistory = async () => {
+        try {
+          const repository = getPromptRepositoryForUser(false);
+          const localHistory = await repository.getUserPrompts(null, 100);
+          const normalizedHistory = localHistory.map((entry) => ({
             ...entry,
             brainstormContext: entry.brainstormContext ?? null,
             highlightCache: entry.highlightCache ?? null,
             versions: entry.versions ?? [],
           }));
           setHistory(normalizedHistory);
+        } catch (error) {
+          console.error('Error loading history from localStorage:', error);
         }
-      } catch (error) {
-        console.error('Error loading history from localStorage:', error);
-        localStorage.removeItem('promptHistory');
-      }
+      };
+      loadLocalHistory();
     }
   }, [user, loadHistoryFromFirestore]);
 
@@ -134,70 +124,50 @@ export const usePromptHistory = (user) => {
       highlightCache: highlightCache ?? null,
     };
 
-    if (user) {
-      try {
-        const result = await savePromptToFirestore(user.uid, newEntry);
-        const entryWithId = {
-          id: result.id,
-          uuid: result.uuid,
-          timestamp: new Date().toISOString(),
-          ...newEntry,
-        };
-        setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 100));
-        return { uuid: result.uuid, id: result.id };
-      } catch (error) {
-        console.error('Error saving to Firestore:', error);
-        toast.error('Failed to save to cloud');
-        return null;
-      }
-    } else {
-      try {
-        const uuid = uuidv4();
-        const entryWithLocalId = {
-          id: Date.now(),
-          uuid,
-          timestamp: new Date().toISOString(),
-          ...newEntry,
-        };
-        setHistory((prevHistory) => {
-          const updatedHistory = [entryWithLocalId, ...prevHistory].slice(0, 100);
-          localStorage.setItem('promptHistory', JSON.stringify(updatedHistory));
-          return updatedHistory;
-        });
-        return { uuid, id: entryWithLocalId.id };
-      } catch (error) {
-        console.error('Error saving to localStorage:', error);
-        toast.error('Failed to save to history');
-        return null;
-      }
+    const repository = getPromptRepositoryForUser(!!user);
+
+    try {
+      const result = await repository.save(user?.uid, newEntry);
+      const entryWithId = {
+        id: result.id,
+        uuid: result.uuid,
+        timestamp: new Date().toISOString(),
+        ...newEntry,
+      };
+      setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 100));
+      return { uuid: result.uuid, id: result.id };
+    } catch (error) {
+      console.error('Error saving to history:', error);
+      toast.error(user ? 'Failed to save to cloud' : 'Failed to save to history');
+      return null;
     }
   }, [user, toast]);
 
   const updateEntryHighlight = useCallback((uuid, highlightCache) => {
+    const repository = getPromptRepositoryForUser(!!user);
+
+    // Update in repository
+    repository.updateHighlights(uuid, { highlightCache }).catch(error => {
+      console.warn('Unable to persist updated highlights:', error);
+    });
+
+    // Update local state
     setHistory((prevHistory) => {
-      const updated = prevHistory.map((entry) =>
+      return prevHistory.map((entry) =>
         entry.uuid === uuid
-          ? {
-              ...entry,
-              highlightCache: highlightCache ?? null,
-            }
+          ? { ...entry, highlightCache: highlightCache ?? null }
           : entry
       );
-      try {
-        localStorage.setItem('promptHistory', JSON.stringify(updated));
-      } catch (error) {
-        console.warn('Unable to persist updated highlights to localStorage:', error);
-      }
-      return updated;
     });
-  }, []);
+  }, [user]);
 
   // Clear all history
-  const clearHistory = useCallback(() => {
-    localStorage.removeItem('promptHistory');
+  const clearHistory = useCallback(async () => {
+    const repository = getPromptRepositoryForUser(!!user);
+    await repository.clear();
     setHistory([]);
     toast.success('History cleared');
-  }, [toast]);
+  }, [user, toast]);
 
   // Filter history based on search query with useMemo for performance
   const filteredHistory = useMemo(() => {

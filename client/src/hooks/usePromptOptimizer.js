@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '../components/Toast';
+import { promptOptimizationApi } from '../services';
 
 export const usePromptOptimizer = (selectedMode) => {
   const [inputPrompt, setInputPrompt] = useState('');
@@ -12,46 +13,14 @@ export const usePromptOptimizer = (selectedMode) => {
 
   const toast = useToast();
 
-  const calculateQualityScore = useCallback((input, output) => {
-    let score = 0;
-    const inputWords = input.split(/\s+/).length;
-    const outputWords = output.split(/\s+/).length;
-
-    if (outputWords > inputWords * 2) score += 25;
-    else if (outputWords > inputWords) score += 15;
-
-    const sections = (output.match(/\*\*/g) || []).length / 2;
-    score += Math.min(sections * 10, 30);
-
-    if (output.includes('Goal')) score += 15;
-    if (output.includes('Return Format') || output.includes('Research')) score += 15;
-    if (output.includes('Context') || output.includes('Learning')) score += 15;
-
-    return Math.min(score, 100);
-  }, []);
-
   const analyzeAndOptimize = useCallback(async (prompt, context = null, brainstormContext = null) => {
     try {
-      const response = await fetch('/api/optimize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345',
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          mode: selectedMode,
-          context: context,
-          brainstormContext: brainstormContext, // Pass brainstorm context to backend
-        }),
+      const data = await promptOptimizationApi.optimize({
+        prompt,
+        mode: selectedMode,
+        context,
+        brainstormContext,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'API request failed');
-      }
-
-      const data = await response.json();
       return data.optimizedPrompt;
     } catch (error) {
       console.error('Error calling optimization API:', error);
@@ -73,7 +42,7 @@ export const usePromptOptimizer = (selectedMode) => {
 
     try {
       const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
-      const score = calculateQualityScore(promptToOptimize, optimized);
+      const score = promptOptimizationApi.calculateQualityScore(promptToOptimize, optimized);
 
       setOptimizedPrompt(optimized);
       setQualityScore(score);
@@ -95,7 +64,7 @@ export const usePromptOptimizer = (selectedMode) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [inputPrompt, improvementContext, analyzeAndOptimize, calculateQualityScore, toast]);
+  }, [inputPrompt, improvementContext, analyzeAndOptimize, toast]);
 
   const resetPrompt = useCallback(() => {
     setInputPrompt('');
@@ -123,7 +92,6 @@ export const usePromptOptimizer = (selectedMode) => {
 
     // Actions
     optimize,
-    calculateQualityScore,
     resetPrompt
   };
 };
