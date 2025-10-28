@@ -110,42 +110,25 @@ export class PromptOptimizationService {
       });
 
       const refinementDuration = Date.now() - refinementStartTime;
-
-      // Generate spans for refined text if in video mode
-      let refinedSpans = null;
-      if (mode === 'video') {
-        try {
-          refinedSpans = await labelSpans({
-            text: refined,
-            maxSpans: 60,
-            minConfidence: 0.5,
-            templateVersion: 'v1',
-          });
-          logger.debug('Refined span labeling complete', {
-            spanCount: refinedSpans?.spans?.length || 0
-          });
-        } catch (err) {
-          logger.warn('Refined span labeling failed', { error: err.message });
-          // Fall back to initial spans if available
-          refinedSpans = initialSpans;
-        }
-      }
-
       const totalDuration = Date.now() - startTime;
 
+      // PERFORMANCE OPTIMIZATION: Skip refined span labeling to save 3-10 seconds
+      // The initial spans from the parallel execution are sufficient for the UI
+      // and provide faster user experience. If refined spans are needed, they can
+      // be generated client-side after the refined text is displayed.
       logger.info('Two-stage optimization complete', {
         draftDuration,
         refinementDuration,
         totalDuration,
         mode,
-        hasSpans: !!(initialSpans || refinedSpans)
+        hasSpans: !!initialSpans
       });
 
       return {
         draft,
         refined,
-        draftSpans: initialSpans,  // Spans for draft text
-        refinedSpans: refinedSpans, // Spans for refined text
+        draftSpans: initialSpans,  // Spans for draft text (generated in parallel)
+        refinedSpans: null,        // Skip refined spans for performance (can be generated client-side)
         metadata: {
           draftDuration,
           refinementDuration,

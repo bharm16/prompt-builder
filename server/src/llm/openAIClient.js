@@ -32,43 +32,61 @@ export async function callOpenAI({
   user,
   max_tokens = 512,
   temperature = 0,
+  timeout = 3000, // 3-second timeout for fast response
 }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error('Missing OPENAI_API_KEY');
 
   const fetchFn = ensureFetch();
 
-  const res = await fetchFn(OPENAI_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-      max_tokens,
-      temperature,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  // Create an abort controller for timeout handling
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenAI API ${res.status}: ${text}`);
+  try {
+    const res = await fetchFn(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        max_tokens,
+        temperature,
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`OpenAI API ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+    const text =
+      data.choices?.[0]?.message?.content?.trim() ??
+      (data.choices?.[0]?.message?.content ?? '');
+
+    if (!text) {
+      throw new Error('OpenAI API returned an empty response');
+    }
+
+    return text;
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error.name === 'AbortError') {
+      throw new Error(`OpenAI API request timeout after ${timeout}ms`);
+    }
+
+    throw error;
   }
-
-  const data = await res.json();
-  const text =
-    data.choices?.[0]?.message?.content?.trim() ??
-    (data.choices?.[0]?.message?.content ?? '');
-
-  if (!text) {
-    throw new Error('OpenAI API returned an empty response');
-  }
-
-  return text;
 }
