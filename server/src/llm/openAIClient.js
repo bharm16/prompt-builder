@@ -19,6 +19,7 @@ function ensureFetch() {
  * @property {string} user
  * @property {number} [max_tokens]
  * @property {number} [temperature]
+ * @property {number} [timeout]
  */
 
 /**
@@ -32,7 +33,7 @@ export async function callOpenAI({
   user,
   max_tokens = 512,
   temperature = 0,
-  timeout = 3000, // 3-second timeout for fast response
+  timeout = 15000, // 15-second timeout (prevents indefinite hangs while allowing API to complete)
 }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error('Missing OPENAI_API_KEY');
