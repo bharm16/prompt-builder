@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CACHE_STORAGE_KEY = 'promptBuilder.spanLabelingCache.v1';
-const CACHE_LIMIT = 20;
+// Increased from 20 to 50 entries for better cache hit rate (Performance optimization)
+const CACHE_LIMIT = 50;
 
 const highlightCache = new Map();
 let cacheHydrated = false;
@@ -207,11 +208,41 @@ const DEFAULT_POLICY = {
   allowOverlap: false,
 };
 
+/**
+ * Calculate smart debounce delay based on text length
+ *
+ * Performance optimization: Shorter texts get faster processing
+ * to improve perceived responsiveness, while longer texts use
+ * longer delays to reduce unnecessary API calls.
+ *
+ * Thresholds:
+ * - <500 chars: 200ms (fast for short snippets)
+ * - 500-2000 chars: 350ms (balanced for medium text)
+ * - >2000 chars: 500ms (conservative for large text)
+ *
+ * @param {string} text - The text to analyze
+ * @returns {number} Debounce delay in milliseconds
+ */
+const calculateSmartDebounce = (text) => {
+  if (!text) return 200; // Default for empty text
+
+  const length = text.length;
+
+  if (length < 500) {
+    return 200; // Short text: fast response
+  } else if (length < 2000) {
+    return 350; // Medium text: balanced
+  } else {
+    return 500; // Large text: conservative
+  }
+};
+
 const DEFAULT_OPTIONS = {
   maxSpans: 60,
   minConfidence: 0.5,
   templateVersion: 'v1',
-  debounceMs: 500,
+  debounceMs: 500, // Fallback if smart debounce is disabled
+  useSmartDebounce: true, // Enable smart debouncing by default
 };
 
 const buildBody = (payload) => {
@@ -239,7 +270,8 @@ export const createHighlightSignature = (text) => hashString(sanitizeText(text ?
  * @param {number} [args.minConfidence]
  * @param {Object} [args.policy]
  * @param {string} [args.templateVersion]
- * @param {number} [args.debounceMs]
+ * @param {number} [args.debounceMs] - Fixed debounce delay (used when useSmartDebounce is false)
+ * @param {boolean} [args.useSmartDebounce] - Enable smart debouncing based on text length (default: true)
  */
 export function useSpanLabeling({
   text,
@@ -252,6 +284,7 @@ export function useSpanLabeling({
   policy,
   templateVersion = DEFAULT_OPTIONS.templateVersion,
   debounceMs = DEFAULT_OPTIONS.debounceMs,
+  useSmartDebounce = DEFAULT_OPTIONS.useSmartDebounce,
   onResult,
 } = {}) {
   const [state, setState] = useState({
@@ -436,20 +469,66 @@ const performRequest = useCallback(async (payload, signal) => {
             'network'
           );
         } catch (error) {
+          // Abort and stale request checks - ignore these errors silently
           if (controller.signal.aborted) {
             return;
           }
           if (requestId !== requestIdRef.current) {
             return;
           }
+
+          // ============================================================
+          // ENHANCED FALLBACK MECHANISM
+          // ============================================================
+          //
+          // When the network request fails (API error, timeout, network issue),
+          // we implement a graceful degradation strategy using cached results.
+          //
+          // Fallback Decision Tree:
+          //
+          // 1. Network Request Fails
+          //    ├─> Check for cached result
+          //    │   ├─> Cache Hit (from memory or localStorage)
+          //    │   │   └─> Return cached spans with 'success' status
+          //    │   │       - User sees last known good result
+          //    │   │       - No error shown to user
+          //    │   │       - Emit 'cache-fallback' event for monitoring
+          //    │   │
+          //    │   └─> Cache Miss (no previous result for this text)
+          //    │       └─> Set error state
+          //    │           - Show error UI to user
+          //    │           - Return empty spans array
+          //    │           - Error can be retried by user
+          //
+          // Cache Lookup Strategy (Multi-tier):
+          // - Tier 1: In-memory Map cache (fastest, <1ms)
+          // - Tier 2: localStorage cache (fast, ~2-5ms)
+          // - Cache key includes: text hash + policy + templateVersion + maxSpans + minConfidence
+          //
+          // Why This Approach?
+          // - Improves perceived reliability: Users see cached results instead of errors
+          // - Reduces frustration during temporary network issues
+          // - Maintains user flow: Editing continues even if API is down
+          // - Transparent degradation: Status remains 'success', no error UI shown
+          //
+          // Monitoring:
+          // - 'cache-fallback' events are emitted for analytics
+          // - Track fallback rate to detect API health issues
+          //
+          // ============================================================
+
           const fallback = getCachedResult(payload);
+
           if (fallback) {
+            // SUCCESS PATH: Fallback to cached result
+            // This provides a seamless experience when the API fails
             setState({
               spans: Array.isArray(fallback.spans) ? fallback.spans : [],
               meta: fallback.meta ?? null,
-              status: 'success',
-              error: null,
+              status: 'success', // Important: Status is 'success' to hide error UI
+              error: null,        // Clear any previous errors
             });
+
             emitResult(
               {
                 spans: fallback.spans,
@@ -458,15 +537,20 @@ const performRequest = useCallback(async (payload, signal) => {
                 cacheId: fallback.cacheId ?? payload.cacheId,
                 signature: fallback.signature,
               },
-              'cache-fallback'
+              'cache-fallback' // Event type for monitoring/analytics
             );
+
+            // Exit early - user sees cached result, no error handling needed
             return;
           }
+
+          // FAILURE PATH: No cached result available
+          // This is the only case where we show an error to the user
           setState({
             spans: [],
             meta: null,
             status: 'error',
-            error,
+            error, // Original error from API request
           });
         } finally {
           if (abortRef.current === controller) {
@@ -478,10 +562,16 @@ const performRequest = useCallback(async (payload, signal) => {
       if (immediate || debounceMs === 0) {
         run(controller);
       } else {
-        debounceRef.current = setTimeout(() => run(controller), debounceMs);
+        // Calculate smart debounce based on text length for better performance
+        // Short texts get faster processing, long texts get more conservative delays
+        const effectiveDebounce = useSmartDebounce
+          ? calculateSmartDebounce(payload.text)
+          : debounceMs;
+
+        debounceRef.current = setTimeout(() => run(controller), effectiveDebounce);
       }
     },
-    [cancelPending, debounceMs, enabled, performRequest]
+    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest]
   );
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import CircuitBreaker from 'opossum';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
+import { openAILimiter } from '../utils/ConcurrencyLimiter.js';
 
 /**
  * Custom error classes for better error handling
@@ -75,8 +76,15 @@ export class OpenAIAPIClient {
 
   /**
    * Complete a prompt with OpenAI
+   *
+   * This method enforces a maximum of 5 concurrent requests to prevent hitting
+   * OpenAI's rate limits. Additional requests are queued and processed when
+   * slots become available.
+   *
    * @param {string} systemPrompt - System prompt for OpenAI
    * @param {Object} options - Additional options
+   * @param {AbortSignal} options.signal - Optional abort signal for cancellation
+   * @param {boolean} options.priority - If true, cancels oldest queued request
    * @returns {Promise<Object>} OpenAI API response (formatted like Claude for compatibility)
    */
   async complete(systemPrompt, options = {}) {
@@ -84,7 +92,18 @@ export class OpenAIAPIClient {
     const endpoint = 'chat/completions';
 
     try {
-      const result = await this.breaker.fire(systemPrompt, options);
+      // Wrap the circuit breaker call with concurrency limiting
+      // This ensures we never exceed 5 concurrent OpenAI API requests
+      const result = await openAILimiter.execute(
+        async () => {
+          return await this.breaker.fire(systemPrompt, options);
+        },
+        {
+          signal: options.signal,
+          priority: options.priority,
+        }
+      );
+
       const duration = Date.now() - startTime;
 
       // Record successful API call
@@ -93,6 +112,7 @@ export class OpenAIAPIClient {
         endpoint,
         duration,
         model: this.model,
+        limiterStats: openAILimiter.getQueueStatus(),
       });
 
       return result;
@@ -101,6 +121,21 @@ export class OpenAIAPIClient {
 
       // Record failed API call
       metricsService.recordClaudeAPICall(endpoint, duration, false);
+
+      // Handle queue-specific errors
+      if (error.code === 'QUEUE_TIMEOUT') {
+        logger.error('OpenAI API request timed out in queue', {
+          endpoint,
+          duration,
+          limiterStats: openAILimiter.getStats(),
+        });
+        throw new TimeoutError('AI API request timed out in queue - system overloaded');
+      }
+
+      if (error.code === 'CANCELLED') {
+        logger.debug('OpenAI API request cancelled', { endpoint, duration });
+        throw error;
+      }
 
       if (this.breaker.opened) {
         logger.error('OpenAI API circuit breaker is open', error);
@@ -222,5 +257,21 @@ export class OpenAIAPIClient {
     if (this.breaker.opened) return 'OPEN';
     if (this.breaker.halfOpen) return 'HALF-OPEN';
     return 'CLOSED';
+  }
+
+  /**
+   * Get concurrency limiter statistics
+   * Useful for monitoring queue depth and performance
+   */
+  getConcurrencyStats() {
+    return openAILimiter.getStats();
+  }
+
+  /**
+   * Get current queue status
+   * Useful for real-time monitoring
+   */
+  getQueueStatus() {
+    return openAILimiter.getQueueStatus();
   }
 }
