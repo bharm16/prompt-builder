@@ -144,7 +144,7 @@ const MobileFieldView = ({
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col"
+      className="min-h-screen bg-gradient-to-br from-brand-primary-50 to-brand-accent-50 flex flex-col"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -161,7 +161,7 @@ const MobileFieldView = ({
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+            className="bg-brand-primary-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentFieldIndex + 1) / totalFields) * 100}%` }}
           />
         </div>
@@ -182,7 +182,7 @@ const MobileFieldView = ({
               </p>
             )}
             {!field.required && (
-              <p className="text-xs text-indigo-600 mt-1 font-medium">
+              <p className="text-xs text-brand-primary-600 mt-1 font-medium">
                 Optional - you can skip this
               </p>
             )}
@@ -200,13 +200,13 @@ const MobileFieldView = ({
                 onBlur={handleBlur}
                 placeholder={field.placeholder}
                 className={`
-                  w-full px-4 py-4 text-lg border-2 rounded-xl
+                  w-full px-5 py-4 text-lg border-2 rounded-xl
                   transition-all duration-200 min-h-[56px]
                   ${isValid && value
                     ? 'border-green-500 bg-green-50 focus:border-green-600 focus:ring-4 focus:ring-green-100'
                     : validationError
                     ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-100'
-                    : 'border-gray-300 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+                    : 'border-borders-lines bg-white focus:border-brand-primary-500 focus:ring-4 focus:ring-brand-primary-100'
                   }
                   focus:outline-none
                 `}
@@ -295,7 +295,7 @@ const MobileFieldView = ({
               ${canGoNext || isLastField
                 ? isLastField
                   ? 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-lg'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-lg'
+                  : 'bg-brand-accent-500 text-white hover:opacity-90 active:scale-95 shadow-lg'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }
             `}

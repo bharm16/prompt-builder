@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPromptByUuid } from '../config/firebase';
+import { getPromptRepository } from '../repositories';
 import { Home, Copy, Check } from 'lucide-react';
 import { useToast } from './Toast';
 import { PromptContext } from '../utils/PromptContext';
@@ -23,7 +23,8 @@ const SharedPrompt = () => {
     const fetchPrompt = async () => {
       try {
         setLoading(true);
-        const promptData = await getPromptByUuid(uuid);
+        const promptRepository = getPromptRepository();
+        const promptData = await promptRepository.getByUuid(uuid);
         if (promptData) {
           setPrompt(promptData);
           if (promptData.brainstormContext) {

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
-import StepCoreConcept from './StepCoreConcept';
+import StepQuickFill from './StepQuickFill';
+import { CoreConceptAccordion } from './StepCoreConcept';
 import StepAtmosphere from './StepAtmosphere';
-import StepTechnical from './StepTechnical';
 import SummaryReview from './SummaryReview';
+import WizardEntryPage from './WizardEntryPage';
 import { aiWizardService } from '../../services/aiWizardService';
 
 /**
@@ -34,12 +35,18 @@ const WizardVideoBuilder = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isTablet, setIsTablet] = useState(window.innerWidth >= 768 && window.innerWidth < 1024);
 
+  // Entry page state
+  const [showEntryPage, setShowEntryPage] = useState(true);
+
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
   const [currentMobileFieldIndex, setCurrentMobileFieldIndex] = useState(0);
   const [formData, setFormData] = useState({
     // Step 1: Core Concept (required)
     subject: '',
+    descriptor1: '',
+    descriptor2: '',
+    descriptor3: '',
     action: '',
     location: '',
     // Step 2: Atmosphere (optional)
@@ -73,17 +80,17 @@ const WizardVideoBuilder = ({
 
   // Mobile field configuration
   const mobileFields = [
-    { name: 'subject', label: 'What is the subject?', description: 'The main focus of your video (person, object, animal, etc.)', placeholder: 'e.g., A professional athlete', required: true },
-    { name: 'action', label: 'What is happening?', description: 'The action or movement taking place', placeholder: 'e.g., running through', required: true },
-    { name: 'location', label: 'Where is it?', description: 'The setting or environment', placeholder: 'e.g., a sun-drenched beach', required: true },
-    { name: 'time', label: 'When is it?', description: 'Time of day, era, or season (optional)', placeholder: 'e.g., during golden hour', required: false },
-    { name: 'mood', label: 'What\'s the mood?', description: 'The emotional atmosphere (optional)', placeholder: 'e.g., energetic and joyful', required: false },
-    { name: 'style', label: 'What style?', description: 'Visual treatment (optional)', placeholder: 'e.g., cinematic', required: false },
-    { name: 'event', label: 'What\'s the context?', description: 'The occasion or event (optional)', placeholder: 'e.g., a celebration', required: false }
+    { name: 'subject', label: 'What\'s the main focus of your video?', description: 'This could be a person, object, animal, or anything else', placeholder: 'e.g., A professional athlete', required: true },
+    { name: 'action', label: 'What\'s the subject doing?', description: 'Describe the movement, activity, or transformation', placeholder: 'e.g., running through', required: true },
+    { name: 'location', label: 'Where is all this happening?', description: 'Describe the setting or environment', placeholder: 'e.g., a sun-drenched beach', required: true },
+    { name: 'time', label: 'When does this happen?', description: 'Time of day, era, or season (optional but recommended)', placeholder: 'e.g., during golden hour', required: false },
+    { name: 'mood', label: 'What\'s the emotional atmosphere?', description: 'The feeling you want to evoke (optional but recommended)', placeholder: 'e.g., energetic and joyful', required: false },
+    { name: 'style', label: 'What visual style are you going for?', description: 'The aesthetic treatment (optional but recommended)', placeholder: 'e.g., cinematic', required: false },
+    { name: 'event', label: 'Any specific context or occasion?', description: 'The broader story or event (optional)', placeholder: 'e.g., a celebration', required: false }
   ];
 
-  // Desktop step labels
-  const stepLabels = ['Core Concept', 'Atmosphere', 'Technical', 'Review'];
+  // Desktop step labels (with QuickFill as step 0)
+  const stepLabels = ['Quick Fill', 'Core Concept', 'Atmosphere', 'Review'];
 
   // Window resize handler
   useEffect(() => {
@@ -109,6 +116,7 @@ const WizardVideoBuilder = ({
         setFormData(restored.formData);
         setCurrentStep(restored.currentStep || 0);
         setCurrentMobileFieldIndex(restored.currentMobileFieldIndex || 0);
+        setShowEntryPage(false); // Skip entry page when restoring
       } else {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -250,14 +258,21 @@ const WizardVideoBuilder = ({
     const errors = {};
 
     if (step === 0) {
-      if (!formData.subject || formData.subject.trim().length < 3) {
-        errors.subject = 'Subject must be at least 3 characters';
+      // QuickFill step - validate Subject and Action (no min length)
+      if (!formData.subject || formData.subject.trim().length === 0) {
+        errors.subject = 'Subject is required';
       }
-      if (!formData.action || formData.action.trim().length < 3) {
-        errors.action = 'Action must be at least 3 characters';
+      if (!formData.action || formData.action.trim().length === 0) {
+        errors.action = 'Action is required';
       }
-      if (!formData.location || formData.location.trim().length < 3) {
-        errors.location = 'Location must be at least 3 characters';
+      // Note: descriptors are optional, so no validation needed
+    } else if (step === 1) {
+      // Core Concept step - validate Subject and Action (no min length)
+      if (!formData.subject || formData.subject.trim().length === 0) {
+        errors.subject = 'Subject is required';
+      }
+      if (!formData.action || formData.action.trim().length === 0) {
+        errors.action = 'Action is required';
       }
     }
 
@@ -275,6 +290,26 @@ const WizardVideoBuilder = ({
     }
   };
 
+  // Handle QuickFill "Continue to Summary"
+  const handleQuickFillContinue = () => {
+    if (validateStep(0)) {
+      if (!completedSteps.includes(0)) {
+        setCompletedSteps(prev => [...prev, 0]);
+      }
+      // Jump directly to Summary (step 3)
+      setCurrentStep(3);
+    }
+  };
+
+  // Handle switch from QuickFill to step-by-step
+  const handleSwitchToStepByStep = () => {
+    // Mark QuickFill as completed but skip to Core Concept (step 1)
+    if (!completedSteps.includes(0)) {
+      setCompletedSteps(prev => [...prev, 0]);
+    }
+    setCurrentStep(1);
+  };
+
   // Navigate to previous step
   const handlePreviousStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 0));
@@ -282,9 +317,15 @@ const WizardVideoBuilder = ({
 
   // Navigate to specific step (desktop only)
   const handleGoToStep = (step) => {
-    if (step < currentStep) {
+    // Allow navigation to previous completed steps, or to step 0 (QuickFill)
+    if (step <= currentStep || completedSteps.includes(step) || step === 0) {
       setCurrentStep(step);
     }
+  };
+
+  // Handle entry page "Get Started"
+  const handleGetStarted = () => {
+    setShowEntryPage(false);
   };
 
   // Mobile field navigation
@@ -292,10 +333,10 @@ const WizardVideoBuilder = ({
     const currentField = mobileFields[currentMobileFieldIndex];
     const currentValue = formData[currentField.name];
 
-    // Validate required fields
-    if (currentField.required && (!currentValue || currentValue.trim().length < 3)) {
+    // Validate required fields (no minimum length)
+    if (currentField.required && (!currentValue || currentValue.trim().length === 0)) {
       setValidationErrors({
-        [currentField.name]: `${currentField.label} must be at least 3 characters`
+        [currentField.name]: `${currentField.label} is required`
       });
       return;
     }
@@ -315,21 +356,26 @@ const WizardVideoBuilder = ({
   };
 
   const handleMobileComplete = () => {
-    // Navigate to summary (simulated as desktop step 3)
+    // Navigate to summary (now step 3)
     setIsMobile(false); // Force desktop view for summary
     setCurrentStep(3);
   };
 
   // Edit from summary
   const handleEdit = (step) => {
-    setCurrentStep(step);
+    // Map old step references to new structure
+    // step 0 -> step 1 (Core Concept), step 1 -> step 2 (Atmosphere)
+    const stepMap = { 0: 1, 1: 2 };
+    setCurrentStep(stepMap[step] !== undefined ? stepMap[step] : step);
   };
 
   // Complete wizard
   const handleComplete = async () => {
-    if (!validateStep(0)) {
-      alert('Please fill in all required fields (Subject, Action, Location)');
-      setCurrentStep(0);
+    // Validate required fields (Subject and Action) - no minimum length
+    if (!formData.subject || formData.subject.trim().length === 0 || 
+        !formData.action || formData.action.trim().length === 0) {
+      alert('Please fill in all required fields (Subject and Action)');
+      setCurrentStep(0); // Go to QuickFill if validation fails
       return;
     }
 
@@ -403,7 +449,7 @@ const WizardVideoBuilder = ({
     const currentValue = formData[currentField.name];
 
     if (currentField.required) {
-      return currentValue && currentValue.trim().length >= 3;
+      return currentValue && currentValue.trim().length > 0;
     }
     return true; // Optional fields are always valid
   };
@@ -411,8 +457,13 @@ const WizardVideoBuilder = ({
   const isCurrentMobileFieldValid = validateCurrentMobileField();
   const canGoNext = !mobileFields[currentMobileFieldIndex].required || isCurrentMobileFieldValid;
 
+  // Render entry page
+  if (showEntryPage) {
+    return <WizardEntryPage onGetStarted={handleGetStarted} />;
+  }
+
   // Render mobile view
-  if (isMobile && currentStep < 3) {
+  if (isMobile && currentStep < 2) {
     const currentField = mobileFields[currentMobileFieldIndex];
     const currentValue = formData[currentField.name] || '';
 
@@ -440,8 +491,8 @@ const WizardVideoBuilder = ({
 
   // Render desktop view
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Progress Indicator */}
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Progress Indicator - Minimal mode (gradient line only) */}
       <WizardProgress
         currentStep={currentStep}
         totalSteps={stepLabels.length}
@@ -449,23 +500,35 @@ const WizardVideoBuilder = ({
         completedSteps={completedSteps}
         isMobile={isMobile}
         onStepClick={handleGoToStep}
+        minimal={true}
       />
 
       {/* Step Content */}
-      <div className="pb-8">
+      <div className="flex-1 overflow-y-auto pb-8">
         {currentStep === 0 && (
-          <StepCoreConcept
+          <StepQuickFill
+            formData={formData}
+            onChange={handleFieldChange}
+            onContinue={handleQuickFillContinue}
+            onSwitchToStepByStep={handleSwitchToStepByStep}
+            suggestions={suggestions}
+            isLoadingSuggestions={isLoadingSuggestions}
+            onRequestSuggestions={handleRequestSuggestions}
+          />
+        )}
+
+        {currentStep === 1 && (
+          <CoreConceptAccordion
             formData={formData}
             onChange={handleFieldChange}
             onNext={handleNextStep}
             suggestions={suggestions}
             isLoadingSuggestions={isLoadingSuggestions}
             onRequestSuggestions={handleRequestSuggestions}
-            validationErrors={validationErrors}
           />
         )}
 
-        {currentStep === 1 && (
+        {currentStep === 2 && (
           <StepAtmosphere
             formData={formData}
             onChange={handleFieldChange}
@@ -474,15 +537,6 @@ const WizardVideoBuilder = ({
             suggestions={suggestions}
             isLoadingSuggestions={isLoadingSuggestions}
             onRequestSuggestions={handleRequestSuggestions}
-          />
-        )}
-
-        {currentStep === 2 && (
-          <StepTechnical
-            formData={formData}
-            onChange={handleFieldChange}
-            onNext={handleNextStep}
-            onBack={handlePreviousStep}
           />
         )}
 

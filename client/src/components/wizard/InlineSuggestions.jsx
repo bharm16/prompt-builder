@@ -43,10 +43,10 @@ const InlineSuggestions = ({
 
   if (isLoading) {
     return (
-      <div className="mt-3 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-        <div className="flex items-center justify-center space-x-2 text-indigo-600">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm font-medium">Getting AI suggestions...</span>
+      <div className="mt-4 p-5 bg-brand-primary-50 rounded-xl border border-brand-primary-200 animate-fade-in-simple">
+        <div className="flex items-center justify-center space-x-2 text-brand-primary-700">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-semibold">Finding perfect suggestions...</span>
         </div>
       </div>
     );
@@ -54,11 +54,11 @@ const InlineSuggestions = ({
 
   if (!suggestions || suggestions.length === 0) {
     return (
-      <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="flex items-center space-x-2 text-gray-500">
-          <Lightbulb className="w-4 h-4" />
-          <span className="text-sm">
-            Start typing to see AI suggestions
+      <div className="mt-4 p-5 bg-neutral-50 rounded-xl border border-neutral-200">
+        <div className="flex items-center space-x-2.5 text-neutral-600">
+          <Lightbulb className="w-5 h-5" />
+          <span className="text-sm font-medium">
+            Start typing to see AI-powered suggestions
           </span>
         </div>
       </div>
@@ -66,40 +66,42 @@ const InlineSuggestions = ({
   }
 
   return (
-    <div className="mt-3">
-      <div className="flex items-center space-x-2 mb-2">
-        <Sparkles className="w-4 h-4 text-indigo-600" />
-        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-          AI Suggestions
-        </span>
-        <span className="text-xs text-gray-500">
-          (Press 1-{Math.min(suggestions.length, 9)} to select)
+    <div className="mt-4 animate-fade-slide-in">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2.5">
+          <Sparkles className="w-5 h-5 text-brand-primary-600" />
+          <span className="text-sm font-semibold text-neutral-800">
+            AI Suggestions
+          </span>
+        </div>
+        <span className="text-xs font-medium text-neutral-500">
+          Press 1-{Math.min(suggestions.length, 9)}
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {suggestions.slice(0, 9).map((suggestion, index) => (
           <button
             key={index}
             onClick={() => !disabled && onSelect(suggestion.text)}
             disabled={disabled}
             className={`
-              group w-full text-left p-3 rounded-lg border-2 transition-all duration-150
+              group w-full text-left p-4 rounded-xl border-2 transition-all duration-150 hover-lift
               ${disabled
-                ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
-                : 'border-indigo-200 bg-white hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-md cursor-pointer'
+                ? 'border-neutral-200 bg-neutral-50 cursor-not-allowed opacity-50'
+                : 'border-neutral-200 bg-white hover:border-brand-primary-300 hover:bg-brand-primary-50/50 hover:shadow-card-hover cursor-pointer active:scale-[0.98]'
               }
             `}
             aria-label={`Select suggestion ${index + 1}: ${suggestion.text}`}
           >
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-3.5">
               {/* Number Badge */}
               <div
                 className={`
-                  flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                  flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-sm
                   ${disabled
-                    ? 'bg-gray-300 text-gray-500'
-                    : 'bg-indigo-600 text-white group-hover:bg-indigo-700'
+                    ? 'bg-neutral-300 text-neutral-500'
+                    : 'bg-brand-primary-600 text-white group-hover:bg-brand-primary-700 group-hover:scale-110 transition-transform'
                   }
                 `}
               >
@@ -109,23 +111,23 @@ const InlineSuggestions = ({
               {/* Suggestion Content */}
               <div className="flex-1 min-w-0">
                 <p className={`
-                  text-sm font-medium break-words
-                  ${disabled ? 'text-gray-500' : 'text-gray-900 group-hover:text-indigo-900'}
+                  text-base font-normal break-words leading-relaxed
+                  ${disabled ? 'text-neutral-500' : 'text-neutral-900 group-hover:text-brand-primary-900'}
                 `}>
                   {suggestion.text}
                 </p>
                 {suggestion.explanation && (
-                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                  <p className="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">
                     {suggestion.explanation}
                   </p>
                 )}
               </div>
 
-              {/* Hover indicator */}
+              {/* Hover indicator with animated arrow */}
               {!disabled && (
-                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5">
                   <svg
-                    className="w-5 h-5 text-indigo-600"
+                    className="w-5 h-5 text-brand-primary-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -133,7 +135,7 @@ const InlineSuggestions = ({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       d="M9 5l7 7-7 7"
                     />
                   </svg>
@@ -145,9 +147,9 @@ const InlineSuggestions = ({
       </div>
 
       {/* Help text */}
-      <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-        <p className="text-xs text-blue-800">
-          <strong>Tip:</strong> Click a suggestion to use it, or press the number key (1-{Math.min(suggestions.length, 9)}) for quick selection
+      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <p className="text-xs text-blue-800 leading-relaxed">
+          <strong className="font-semibold">💡 Pro Tip:</strong> Click any suggestion or press its number key (1-{Math.min(suggestions.length, 9)}) for instant selection
         </p>
       </div>
     </div>

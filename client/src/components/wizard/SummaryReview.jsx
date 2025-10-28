@@ -59,6 +59,16 @@ const SummaryReview = ({
     URL.revokeObjectURL(url);
   };
 
+  // Get qualitative badge based on completion score
+  const getQualityBadge = (score) => {
+    if (score >= 80) return { text: 'Excellent Prompt!', color: 'green' };
+    if (score >= 60) return { text: 'Good Detail', color: 'blue' };
+    if (score >= 40) return { text: 'Solid Start', color: 'yellow' };
+    return { text: 'Needs More Detail', color: 'red' };
+  };
+
+  const qualityBadge = getQualityBadge(completionScore);
+
   // Field sections for review
   const sections = [
     {
@@ -68,21 +78,24 @@ const SummaryReview = ({
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
-        { key: 'location', label: 'Location', required: true }
+        { key: 'descriptor1', label: 'Descriptor 1', required: false },
+        { key: 'descriptor2', label: 'Descriptor 2', required: false },
+        { key: 'descriptor3', label: 'Descriptor 3', required: false }
       ],
-      step: 0
+      step: 1 // Core Concept is now step 1
     },
     {
       title: 'Atmosphere & Style',
-      icon: '🎨',
+      icon: '✨',
       color: 'purple',
       fields: [
+        { key: 'location', label: 'Location', required: false },
         { key: 'time', label: 'Time', required: false },
         { key: 'mood', label: 'Mood', required: false },
         { key: 'style', label: 'Style', required: false },
         { key: 'event', label: 'Event', required: false }
       ],
-      step: 1
+      step: 2 // Atmosphere is now step 2
     }
   ];
 
@@ -97,61 +110,56 @@ const SummaryReview = ({
   ];
 
   return (
-    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-4xl mx-auto px-8 py-8'}`}>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <FileText className="w-6 h-6 text-green-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Review Your Prompt</h2>
+    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-5xl mx-auto px-8 py-12'} animate-fade-slide-in`}>
+      {/* Celebration Header */}
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 mb-4 animate-scale-in">
+          <Sparkles className="w-10 h-10 text-emerald-600" />
         </div>
-        <p className="text-gray-600 text-lg">
-          Check everything before generating your video prompt.
+        <h2 className="text-4xl font-bold text-neutral-900 mb-3 tracking-tight">
+          Looking great! Here's your video concept
+        </h2>
+        <p className="text-neutral-600 text-lg max-w-2xl mx-auto leading-relaxed">
+          Review your selections below. You can edit any section or generate your optimized prompt right away.
         </p>
       </div>
 
-      {/* Completion Score */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-gray-700">Completion Score</span>
-          <span className="text-2xl font-bold text-indigo-600">{completionScore}%</span>
+      {/* Completion Metrics */}
+      <div className="grid grid-cols-3 gap-4 mb-10">
+        <div className="text-center p-6 bg-gradient-to-br from-brand-primary-50 to-brand-primary-100/50 rounded-xl shadow-card">
+          <div className="text-4xl font-bold text-brand-primary-700">{completionScore}%</div>
+          <div className="text-sm text-brand-primary-700/80 mt-1.5 font-medium">Complete</div>
         </div>
-        <div className="w-full bg-white rounded-full h-3">
-          <div
-            className={`h-3 rounded-full transition-all duration-500 ${
-              completionScore >= 80 ? 'bg-green-500' :
-              completionScore >= 50 ? 'bg-yellow-500' :
-              'bg-red-500'
-            }`}
-            style={{ width: `${completionScore}%` }}
-          />
+        <div className="text-center p-6 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl shadow-card">
+          <div className="text-4xl font-bold text-neutral-700">{wordCount}</div>
+          <div className="text-sm text-neutral-600 mt-1.5 font-medium">Words</div>
         </div>
-        <p className="mt-2 text-xs text-gray-600">
-          {completionScore >= 80 ? 'Excellent! Your prompt is well-detailed.' :
-           completionScore >= 50 ? 'Good! Consider adding more atmosphere details.' :
-           'Add more details for better results.'}
-        </p>
+        <div className="text-center p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl shadow-card">
+          <div className="text-4xl font-bold text-emerald-700">
+            {sections.reduce((acc, s) => acc + s.fields.filter(f => formData[f.key]).length, 0)}/{sections.reduce((acc, s) => acc + s.fields.length, 0)}
+          </div>
+          <div className="text-sm text-emerald-700/80 mt-1.5 font-medium">Fields</div>
+        </div>
       </div>
 
       {/* Generated Prompt Preview */}
-      <div className="mb-8 p-6 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-indigo-600" />
-            <h3 className="font-semibold text-gray-900">Generated Prompt</h3>
+      <div className="mb-10 p-8 bg-white rounded-xl shadow-card-hover border border-neutral-200 hover-lift">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center space-x-2.5">
+            <Sparkles className="w-6 h-6 text-brand-primary-600" />
+            <h3 className="text-xl font-bold text-neutral-900">Your Generated Prompt</h3>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2.5">
             <button
               onClick={handleCopy}
-              className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              className="p-2.5 text-neutral-600 hover:text-brand-primary-600 hover:bg-brand-primary-50 rounded-xl transition-all hover-lift"
               title="Copy to clipboard"
             >
-              {copied ? <CheckCircle className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5" />}
+              {copied ? <CheckCircle className="w-5 h-5 text-emerald-600 animate-scale-in" /> : <Copy className="w-5 h-5" />}
             </button>
             <button
               onClick={handleDownload}
-              className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              className="p-2.5 text-neutral-600 hover:text-brand-primary-600 hover:bg-brand-primary-50 rounded-xl transition-all hover-lift"
               title="Download as text"
             >
               <Download className="w-5 h-5" />
@@ -159,73 +167,75 @@ const SummaryReview = ({
           </div>
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+        <div className="p-5 bg-neutral-50 rounded-xl border border-neutral-200">
+          <p className="text-neutral-900 text-base leading-relaxed whitespace-pre-wrap">
             {generatedPrompt || 'Fill in the core concept fields to see your prompt preview...'}
           </p>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <span className={`font-medium ${
-            wordCount >= 75 && wordCount <= 125 ? 'text-green-600' :
-            wordCount > 125 ? 'text-yellow-600' :
-            'text-gray-600'
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <span className={`font-semibold ${
+            wordCount >= 75 && wordCount <= 125 ? 'text-emerald-600' :
+            wordCount > 125 ? 'text-warning-600' :
+            'text-neutral-600'
           }`}>
             {wordCount} words
           </span>
-          <span className="text-gray-500">
+          <span className="text-neutral-500 font-medium">
             Target: 75-125 words
           </span>
         </div>
       </div>
 
       {/* Field Review Sections */}
-      <div className="space-y-6 mb-8">
+      <div className="space-y-6 mb-10">
         {sections.map((section) => {
           const filledFields = section.fields.filter(f => formData[f.key]);
           const missingRequired = section.fields.filter(f => f.required && !formData[f.key]);
 
           return (
-            <div key={section.title} className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+            <div key={section.title} className="bg-white rounded-xl shadow-card border border-neutral-200 overflow-hidden animate-slide-in-from-bottom hover-lift">
               {/* Section Header */}
-              <div className={`px-5 py-3 bg-${section.color}-50 border-b border-${section.color}-200`}>
+              <div className="px-6 py-4 bg-gradient-to-r from-brand-primary-50 to-brand-primary-100/50 border-b border-brand-primary-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xl">{section.icon}</span>
-                    <h3 className="font-semibold text-gray-900">{section.title}</h3>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-primary-100">
+                      <span className="text-xl">{section.icon}</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-neutral-900">{section.title}</h3>
                   </div>
                   <button
                     onClick={() => onEdit(section.step)}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-brand-primary-700 bg-brand-primary-50 hover:bg-brand-primary-100 rounded-lg transition-colors"
                   >
-                    <Edit2 className="w-4 h-4 mr-1" />
-                    Edit
+                    <Edit2 className="w-4 h-4" />
+                    <span>Edit</span>
                   </button>
                 </div>
               </div>
 
               {/* Section Fields */}
-              <div className="px-5 py-4 space-y-3">
+              <div className="px-6 py-5 space-y-4">
                 {section.fields.map((field) => (
                   <div key={field.key} className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700 mb-1">
+                      <p className="text-sm font-semibold text-neutral-700 mb-1.5">
                         {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                        {field.required && <span className="text-error-500 ml-1">*</span>}
                       </p>
                       {formData[field.key] ? (
-                        <p className="text-sm text-gray-900">{formData[field.key]}</p>
+                        <p className="text-base text-neutral-900 leading-relaxed">{formData[field.key]}</p>
                       ) : (
-                        <p className="text-sm text-gray-400 italic">
+                        <p className="text-sm text-neutral-400 italic">
                           {field.required ? 'Required - not filled' : 'Not specified'}
                         </p>
                       )}
                     </div>
                     {formData[field.key] && (
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 ml-2" />
+                      <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0 ml-3" />
                     )}
                     {field.required && !formData[field.key] && (
-                      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 ml-2" />
+                      <AlertTriangle className="w-6 h-6 text-error-500 flex-shrink-0 ml-3" />
                     )}
                   </div>
                 ))}
@@ -250,10 +260,10 @@ const SummaryReview = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <span className="text-xl">⚙️</span>
-                  <h3 className="font-semibold text-gray-900">Technical Parameters</h3>
+                  <h3 className="font-semibold text-gray-900">Technical Specs</h3>
                 </div>
                 <button
-                  onClick={() => onEdit(2)}
+                  onClick={() => onEdit(1)}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center"
                 >
                   <Edit2 className="w-4 h-4 mr-1" />
@@ -287,33 +297,38 @@ const SummaryReview = ({
         )}
       </div>
 
-      {/* Action Buttons */}
-      <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'justify-between items-center'}`}>
-        <button
-          onClick={onBack}
-          className="px-6 py-3 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
-        >
-          Back to Technical
-        </button>
+      {/* Enhanced CTA Section */}
+      <div className="sticky bottom-0 -mx-8 -mb-12 p-8 bg-gradient-to-t from-neutral-50 via-neutral-50 to-transparent pt-20">
+        <div className={`flex ${isMobile ? 'flex-col space-y-4' : 'justify-between items-center'}`}>
+          <button
+            onClick={onBack}
+            className="px-6 py-3 rounded-xl font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-all hover-lift"
+          >
+            Back to Technical Specs
+          </button>
 
-        <button
-          onClick={onGenerate}
-          disabled={!formData.subject || !formData.action || !formData.location}
-          className={`
-            ${isMobile ? 'w-full' : 'px-12'}
-            py-4 rounded-xl font-bold text-lg
-            transition-all duration-200
-            ${formData.subject && formData.action && formData.location
-              ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:shadow-2xl active:scale-95'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }
-          `}
-        >
-          <div className="flex items-center justify-center space-x-2">
+          <button
+            onClick={onGenerate}
+            disabled={!formData.subject || !formData.action || !formData.location}
+            className={`
+              ${isMobile ? 'w-full' : 'px-12'}
+              py-5 rounded-xl font-bold text-lg shadow-xl
+              transition-all duration-200 flex items-center justify-center space-x-3
+              ${formData.subject && formData.action && formData.location
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-neutral-300 text-neutral-500 cursor-not-allowed shadow-none'
+              }
+            `}
+          >
             <Sparkles className="w-6 h-6" />
-            <span>Generate Video Prompt</span>
-          </div>
-        </button>
+            <span>Generate Your Optimized Prompt</span>
+          </button>
+        </div>
+        {formData.subject && formData.action && formData.location && (
+          <p className="text-center text-sm text-neutral-600 mt-4">
+            This will create a prompt optimized for all major AI video models
+          </p>
+        )}
       </div>
 
       {/* Missing Requirements Warning */}

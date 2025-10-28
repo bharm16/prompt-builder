@@ -30,15 +30,18 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1;
   }
 
   body {
-    @apply font-sans text-neutral-900 bg-neutral-50;
+    @apply font-sans text-neutral-600 bg-gradient-to-br from-neutral-50 to-neutral-100;
+    font-size: 16px;
+    line-height: 1.5;
   }
 
-  /* Improved focus visibility for accessibility - More subtle */
+  /* Improved focus visibility for accessibility - Indigo Accent */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-opacity-30 ring-offset-2;
+    @apply outline-none ring-2 ring-accent-500 ring-opacity-30 ring-offset-2;
   }
 
   /* Remove focus ring for mouse users but keep for keyboard users */
@@ -51,9 +54,9 @@
     scroll-behavior: smooth;
   }
 
-  /* Improve text selection - Refined colors */
+  /* Improve text selection - Indigo Accent */
   ::selection {
-    @apply bg-primary-100 text-primary-900;
+    @apply bg-accent-100 text-accent-900;
   }
 
   /* Custom scrollbar styling */
@@ -83,27 +86,28 @@
   /* Base button styles */
   .btn {
     @apply inline-flex items-center justify-center gap-2
-           px-4 py-2 rounded-lg font-medium
+           px-4 py-2 rounded-xl font-medium
            transition-all duration-200
            focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2
            disabled:cursor-not-allowed disabled:opacity-60;
   }
 
-  /* Primary button - Professional slate */
+  /* Primary button - Indigo Gradient */
   .btn-primary {
-    @apply btn bg-primary-700 text-white
-           hover:bg-primary-800 active:bg-primary-900
-           focus-visible:ring-primary-500 focus-visible:ring-opacity-40
-           shadow-sm hover:shadow;
+    @apply btn bg-gradient-to-br from-accent-600 to-accent-700 text-white rounded-lg
+           hover:shadow-md hover:shadow-accent-500/30 hover:-translate-y-0.5
+           active:scale-[0.98] active:shadow-sm
+           focus-visible:ring-accent-500 focus-visible:ring-opacity-50
+           shadow-sm transition-all duration-150;
   }
 
-  /* Secondary button - Refined neutral */
+  /* Secondary button - Clean white */
   .btn-secondary {
-    @apply btn bg-white text-neutral-700 border border-neutral-300
-           hover:bg-neutral-50 hover:border-neutral-400
-           active:bg-neutral-100
-           focus-visible:ring-neutral-400 focus-visible:ring-opacity-40
-           shadow-xs;
+    @apply btn bg-white text-primary-700 border-2 border-neutral-200 rounded-lg
+           hover:bg-neutral-50 hover:border-neutral-300
+           active:bg-neutral-100 active:scale-[0.98]
+           focus-visible:ring-accent-500 focus-visible:ring-opacity-30
+           shadow-sm transition-all duration-150;
   }
 
   /* Tertiary/Ghost button - Minimal interaction */
@@ -166,15 +170,16 @@
 
   /* ===== INPUT COMPONENTS ===== */
 
-  /* Base input styles - Refined and minimal */
+  /* Base input styles - Clean and modern */
   .input {
-    @apply w-full px-4 py-2.5 rounded-lg
-           bg-white border border-neutral-300
+    @apply w-full px-4 py-3.5 rounded-xl text-base
+           bg-white border-2 border-neutral-200
            text-neutral-900 placeholder-neutral-400
-           transition-all duration-200
-           focus:outline-none focus:border-primary-600 focus:ring-1 focus:ring-primary-500 focus:ring-opacity-20
-           disabled:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60
-           shadow-xs;
+           transition-all duration-150
+           hover:border-neutral-300
+           focus:outline-none focus:border-accent-500 focus:ring-4 focus:ring-accent-100
+           disabled:bg-neutral-50 disabled:border-neutral-200 disabled:text-neutral-400
+           disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   /* Input error state */
@@ -201,17 +206,18 @@
 
   /* ===== CARD COMPONENTS ===== */
 
-  /* Base card - Clean and minimal */
+  /* Base card - Modern elevation */
   .card {
-    @apply rounded-lg bg-white border border-neutral-200 shadow-xs
-           transition-all duration-200;
+    @apply rounded-xl bg-white shadow-lg shadow-neutral-200/30
+           ring-1 ring-neutral-900/5
+           transition-all duration-150;
   }
 
-  /* Interactive card (hoverable/clickable) - Subtle interaction */
+  /* Interactive card (hoverable/clickable) - Lift effect */
   .card-interactive {
     @apply card cursor-pointer
-           hover:shadow-sm hover:border-neutral-300
-           active:shadow-xs;
+           hover:shadow-xl hover:-translate-y-1
+           active:translate-y-0 active:shadow-lg;
   }
 
   /* Elevated card - Refined elevation */
@@ -760,6 +766,132 @@
     }
     100% {
       transform: translateX(100%);
+    }
+  }
+
+  /* ===== AIRBNB DLS-INSPIRED ANIMATIONS ===== */
+  
+  /* Fade + Slide In (for steps) */
+  @keyframes fadeSlideIn {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-slide-in {
+    animation: fadeSlideIn 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Scale In with Bounce (for checkmarks) */
+  @keyframes scaleInBounce {
+    0% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleInBounce 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Pulse Subtle (for current step indicator) */
+  @keyframes pulseSubtle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.95;
+      transform: scale(1.03);
+    }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulseSubtle 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Slide from Right (for success messages) */
+  @keyframes slideFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in-from-right {
+    animation: slideFromRight 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Slide from Bottom (for staggered content) */
+  @keyframes slideFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in-from-bottom {
+    animation: slideFromBottom 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Fade In */
+  @keyframes fadeInSimple {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in-simple {
+    animation: fadeInSimple 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Progress Bar Fill Animation */
+  .animate-progress-fill {
+    transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Hover Lift Effect */
+  .hover-lift {
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Reduced Motion Preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }
