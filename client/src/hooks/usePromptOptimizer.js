@@ -134,6 +134,11 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
           },
         });
 
+        // Check if two-stage fell back to single-stage
+        if (result.usedFallback) {
+          toast.warning('Fast optimization unavailable. Using standard optimization (this may take longer).');
+        }
+
         return {
           optimized: result.refined,
           score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),

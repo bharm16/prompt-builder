@@ -66,6 +66,7 @@
     "dev:e2e": "NODE_ENV=test node server/index.js & vite --config config/build/vite.config.js",
     "start": "node server/index.js & vite --config config/build/vite.config.js",
     "restart": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true && lsof -ti :5173 | xargs kill -9 2>/dev/null || true && npm start",
+    "verify-keys": "node scripts/verify-api-keys.js",
     "build": "vite build --config config/build/vite.config.js",
     "preview": "vite preview --config config/build/vite.config.js",
     "lint": "eslint . --config config/lint/eslint.config.js",

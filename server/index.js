@@ -89,6 +89,18 @@ const claudeClient = new OpenAIAPIClient(process.env.OPENAI_API_KEY, {
   model: process.env.OPENAI_MODEL || 'gpt-4o-mini', // Default to gpt-4o-mini, can be overridden
 });
 
+// Validate OpenAI API key on startup
+claudeClient.healthCheck().then(health => {
+  if (health.healthy) {
+    logger.info('✅ OpenAI API key validated successfully', { responseTime: health.responseTime });
+  } else {
+    logger.error('❌ OpenAI API key validation failed', { error: health.error });
+    logger.error('The application will not function without a valid OpenAI API key');
+  }
+}).catch(err => {
+  logger.error('❌ Failed to validate OpenAI API key', { error: err.message });
+});
+
 // Initialize Groq API client for fast draft generation (optional)
 // Only initialized if GROQ_API_KEY is provided
 let groqClient = null;
@@ -98,6 +110,18 @@ if (process.env.GROQ_API_KEY) {
     model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
   });
   logger.info('Groq client initialized for two-stage optimization');
+
+  // Validate Groq API key on startup
+  groqClient.healthCheck().then(health => {
+    if (health.healthy) {
+      logger.info('✅ Groq API key validated successfully', { responseTime: health.responseTime });
+    } else {
+      logger.error('❌ Groq API key validation failed', { error: health.error });
+      logger.warn('Two-stage optimization will fall back to single-stage mode');
+    }
+  }).catch(err => {
+    logger.error('❌ Failed to validate Groq API key', { error: err.message });
+  });
 } else {
   logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
 }
@@ -354,6 +378,7 @@ app.use(requestCoalescing.middleware());
 // Health check and metrics routes
 const healthRoutes = createHealthRoutes({
   claudeClient,
+  groqClient,
   cacheService,
   metricsService,
 });

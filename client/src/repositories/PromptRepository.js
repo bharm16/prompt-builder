@@ -153,6 +153,16 @@ export class PromptRepository {
 
       await updateDoc(doc(this.db, this.collectionName, docId), updatePayload);
     } catch (error) {
+      // EXPECTED BEHAVIOR: Firestore permission errors are handled gracefully
+      // This is NOT a bug - it's a security feature working as designed.
+      //
+      // When permission errors occur:
+      // - Unauthenticated users: Cannot write to Firestore (expected)
+      // - Authenticated users: Can only update their own prompts
+      // - Expired sessions: Will get permission denied until re-authenticated
+      //
+      // The app continues to work locally even without Firestore write permissions.
+      // This graceful degradation prevents crashes while maintaining security.
       if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
         console.warn('Skipping highlight update due to insufficient Firestore permissions.');
         return;

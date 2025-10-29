@@ -9,7 +9,7 @@ import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
  */
 export function createHealthRoutes(dependencies) {
   const router = express.Router();
-  const { claudeClient, cacheService, metricsService } = dependencies;
+  const { claudeClient, groqClient, cacheService, metricsService } = dependencies;
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
@@ -28,12 +28,22 @@ export function createHealthRoutes(dependencies) {
       // Use internal indicators only (cache health and circuit breaker state)
       const cacheHealth = cacheService.isHealthy();
       const claudeStats = claudeClient.getStats();
+      const groqStats = groqClient ? groqClient.getStats() : null;
 
       const checks = {
         cache: cacheHealth,
-        claudeAPI: {
+        openAI: {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,
+        },
+        groq: groqClient ? {
+          healthy: groqStats.state === 'CLOSED',
+          circuitBreakerState: groqStats.state,
+          enabled: true,
+        } : {
+          healthy: true, // Not required, so consider it healthy
+          enabled: false,
+          message: 'Groq API not configured (two-stage optimization disabled)',
         },
       };
 
@@ -72,12 +82,20 @@ export function createHealthRoutes(dependencies) {
   router.get('/stats', metricsAuthMiddleware, (req, res) => {
     const cacheStats = cacheService.getCacheStats();
     const claudeStats = claudeClient.getStats();
+    const groqStats = groqClient ? groqClient.getStats() : null;
 
     res.json({
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       cache: cacheStats,
-      circuitBreaker: claudeStats,
+      apis: {
+        openAI: claudeStats,
+        groq: groqStats || { message: 'Groq API not configured' },
+      },
+      twoStageOptimization: {
+        enabled: !!groqClient,
+        status: groqClient ? (groqStats.state === 'CLOSED' ? 'operational' : 'degraded') : 'disabled',
+      },
       memory: process.memoryUsage(),
       nodeVersion: process.version,
     });
