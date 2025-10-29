@@ -20,7 +20,7 @@ const SummaryReview = ({
   onEdit,
   onGenerate,
   onBack,
-  isMobile
+  isMobile = false
 }) => {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [wordCount, setWordCount] = useState(0);
@@ -350,10 +350,6 @@ SummaryReview.propTypes = {
   onGenerate: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   isMobile: PropTypes.bool
-};
-
-SummaryReview.defaultProps = {
-  isMobile: false
 };
 
 export default SummaryReview;

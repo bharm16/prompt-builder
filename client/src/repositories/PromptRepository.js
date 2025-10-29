@@ -153,6 +153,11 @@ export class PromptRepository {
 
       await updateDoc(doc(this.db, this.collectionName, docId), updatePayload);
     } catch (error) {
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.warn('Skipping highlight update due to insufficient Firestore permissions.');
+        return;
+      }
+
       console.error('Error updating prompt highlights:', error);
       throw new PromptRepositoryError('Failed to update highlights', error);
     }
