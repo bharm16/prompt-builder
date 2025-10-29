@@ -5,7 +5,7 @@
  * Provides fast perceived performance (~300ms to draft, full refinement in background)
  */
 
-import { apiClient } from './ApiClient';
+import { apiClient, ApiError } from './ApiClient';
 
 export class PromptOptimizationApiV2 {
   constructor(client = apiClient) {
@@ -18,12 +18,21 @@ export class PromptOptimizationApiV2 {
    * @returns {Promise<{optimizedPrompt: string}>}
    */
   async optimizeLegacy({ prompt, mode, context = null, brainstormContext = null }) {
-    return this.client.post('/optimize', {
-      prompt,
-      mode,
-      context,
-      brainstormContext,
-    });
+    try {
+      return await this.client.post('/optimize', {
+        prompt,
+        mode,
+        context,
+        brainstormContext,
+      });
+    } catch (error) {
+      if (this._shouldUseOfflineFallback(error)) {
+        const offline = this._buildOfflineResult({ prompt, mode, context, brainstormContext }, error);
+        return { optimizedPrompt: offline.refined, metadata: offline.metadata };
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -145,7 +154,10 @@ export class PromptOptimizationApiV2 {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        error.status = response.status;
+        error.statusText = response.statusText;
+        throw error;
       }
 
       const reader = response.body.getReader();
@@ -180,6 +192,10 @@ export class PromptOptimizationApiV2 {
         }
       }
     } catch (error) {
+      if (error && typeof error.status === 'undefined' && error instanceof Error) {
+        error.status = error.status ?? (error.response?.status ?? null);
+      }
+
       console.error('Streaming fetch error:', error);
       onError(error);
     }
@@ -192,14 +208,24 @@ export class PromptOptimizationApiV2 {
    * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
    */
   async optimizeWithFallback(options) {
+    let streamingError = null;
+
     try {
       // Try streaming first
       return await this.optimizeWithStreaming(options);
-    } catch (streamingError) {
-      console.warn('Streaming failed, falling back to legacy API:', streamingError);
+    } catch (error) {
+      streamingError = error;
+      console.warn('Streaming failed, falling back to legacy API:', error);
 
+      if (this._shouldUseOfflineFallback(error)) {
+        return this._handleOfflineFallback(options, error);
+      }
+    }
+
+    const { prompt, mode, context, brainstormContext } = options;
+
+    try {
       // Fallback to single-stage API
-      const { prompt, mode, context, brainstormContext } = options;
       const result = await this.optimizeLegacy({
         prompt,
         mode,
@@ -212,9 +238,15 @@ export class PromptOptimizationApiV2 {
       return {
         draft: optimized,
         refined: optimized,
-        metadata: { usedFallback: true },
+        metadata: { usedFallback: true, ...result.metadata },
         usedFallback: true,
       };
+    } catch (legacyError) {
+      if (this._shouldUseOfflineFallback(legacyError) || this._shouldUseOfflineFallback(streamingError)) {
+        return this._handleOfflineFallback(options, legacyError);
+      }
+
+      throw legacyError;
     }
   }
 
@@ -243,6 +275,84 @@ export class PromptOptimizationApiV2 {
     if (outputPrompt.includes('Context') || outputPrompt.includes('Learning')) score += 15;
 
     return Math.min(score, 100);
+  }
+
+  _handleOfflineFallback(options, error) {
+    const offlineResult = this._buildOfflineResult(options, error);
+    this._emitOfflineCallbacks(offlineResult, options);
+    return offlineResult;
+  }
+
+  _emitOfflineCallbacks(result, { onDraft, onSpans, onRefined }) {
+    if (typeof onDraft === 'function') {
+      onDraft(result.draft);
+    }
+
+    if (typeof onSpans === 'function') {
+      onSpans([], 'offline-fallback', result.metadata);
+    }
+
+    if (typeof onRefined === 'function') {
+      onRefined(result.refined, result.metadata);
+    }
+  }
+
+  _shouldUseOfflineFallback(error) {
+    if (!error) {
+      return false;
+    }
+
+    const status = error.status ?? error?.response?.status ?? (error instanceof ApiError ? error.status : null);
+    if (status === 401 || status === 403) {
+      return true;
+    }
+
+    const message = (error.message || '').toLowerCase();
+    return message.includes('401') || message.includes('unauthorized') || message.includes('permission');
+  }
+
+  _buildOfflineResult({ prompt, mode }, error) {
+    const trimmedPrompt = (prompt || '').trim();
+    const normalizedMode = mode ? mode.replace(/-/g, ' ') : 'optimize';
+
+    const baselineSuggestions = [
+      'Clarify the intended audience and the desired tone.',
+      'Specify any formatting or length requirements for the response.',
+      'Add relevant context, constraints, or examples that the model should follow.',
+    ];
+
+    const suggestionList = baselineSuggestions.map((tip) => `- ${tip}`).join('\n');
+
+    const draft = [
+      `✨ Offline Prompt Assistant (${normalizedMode})`,
+      '',
+      trimmedPrompt ? `Original prompt:\n${trimmedPrompt}` : 'No original prompt was provided.',
+      '',
+      'Quick tips to strengthen your prompt:',
+      suggestionList,
+    ].join('\n');
+
+    const refined = [
+      draft,
+      '',
+      'This locally generated guidance is shown because the live optimization API could not be reached (401 Unauthorized).',
+      'Update your API credentials or start the backend service to restore real-time optimizations.',
+    ].join('\n');
+
+    const metadata = {
+      usedFallback: true,
+      offline: true,
+      reason: 'unauthorized',
+      errorMessage: error?.message || null,
+    };
+
+    return {
+      draft,
+      refined,
+      spans: [],
+      metadata,
+      usedFallback: true,
+    };
   }
 }
 
