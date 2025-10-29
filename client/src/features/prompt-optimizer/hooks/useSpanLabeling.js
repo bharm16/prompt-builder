@@ -8,15 +8,41 @@ const CACHE_LIMIT = 50;
 const highlightCache = new Map();
 let cacheHydrated = false;
 
+// Hash cache for memoization (LRU eviction)
+const hashCache = new Map();
+const HASH_CACHE_MAX_SIZE = 1000;
+
+/**
+ * Optimized string hashing with memoization
+ * Uses FNV-1a hash algorithm (faster than original implementation)
+ * Caches results to avoid re-computing hashes for the same strings
+ */
 const hashString = (input = '') => {
   if (!input) return '0';
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    const chr = input.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
+  
+  // Check cache first
+  if (hashCache.has(input)) {
+    return hashCache.get(input);
   }
-  return hash.toString(36);
+  
+  // FNV-1a hash (faster than previous implementation)
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    // FNV prime: 16777619
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  
+  const result = (hash >>> 0).toString(36);
+  
+  // Cache with LRU eviction
+  if (hashCache.size >= HASH_CACHE_MAX_SIZE) {
+    const firstKey = hashCache.keys().next().value;
+    hashCache.delete(firstKey);
+  }
+  hashCache.set(input, result);
+  
+  return result;
 };
 
 const getCacheStorage = () => {
@@ -77,6 +103,10 @@ const buildCacheKey = (payload = {}) => {
   ].join('::');
 };
 
+/**
+ * Hydrate cache from localStorage asynchronously using requestIdleCallback
+ * This prevents blocking the main thread during component mount
+ */
 const hydrateCacheFromStorage = () => {
   if (cacheHydrated) {
     return;
@@ -88,44 +118,55 @@ const hydrateCacheFromStorage = () => {
     return;
   }
 
-  try {
-    const raw = storage.getItem(CACHE_STORAGE_KEY);
-    if (!raw) {
-      return;
-    }
-    const entries = JSON.parse(raw);
-    if (!Array.isArray(entries)) {
-      return;
-    }
-
-    entries.forEach(([key, value]) => {
-      if (!key || typeof key !== 'string' || !value || typeof value !== 'object') {
+  // Defer cache hydration to avoid blocking initial render
+  const performHydration = () => {
+    try {
+      const raw = storage.getItem(CACHE_STORAGE_KEY);
+      if (!raw) {
         return;
       }
-      const normalized = {
-        spans: Array.isArray(value.spans) ? value.spans : [],
-        meta: value.meta ?? null,
-        timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
-        text: typeof value.text === 'string' ? value.text : '',
-        cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
-        signature: typeof value.signature === 'string' ? value.signature : null,
-      };
-      if (!normalized.text) {
+      const entries = JSON.parse(raw);
+      if (!Array.isArray(entries)) {
         return;
       }
-      if (!normalized.signature) {
-        normalized.signature = hashString(normalized.text ?? '');
-      }
-      highlightCache.set(key, normalized);
-    });
 
-    while (highlightCache.size > CACHE_LIMIT) {
-      const oldestKey = highlightCache.keys().next().value;
-      highlightCache.delete(oldestKey);
+      entries.forEach(([key, value]) => {
+        if (!key || typeof key !== 'string' || !value || typeof value !== 'object') {
+          return;
+        }
+        const normalized = {
+          spans: Array.isArray(value.spans) ? value.spans : [],
+          meta: value.meta ?? null,
+          timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
+          text: typeof value.text === 'string' ? value.text : '',
+          cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
+          signature: typeof value.signature === 'string' ? value.signature : null,
+        };
+        if (!normalized.text) {
+          return;
+        }
+        if (!normalized.signature) {
+          normalized.signature = hashString(normalized.text ?? '');
+        }
+        highlightCache.set(key, normalized);
+      });
+
+      while (highlightCache.size > CACHE_LIMIT) {
+        const oldestKey = highlightCache.keys().next().value;
+        highlightCache.delete(oldestKey);
+      }
+    } catch (error) {
+      console.warn('Unable to hydrate span labeling cache:', error);
+      highlightCache.clear();
     }
-  } catch (error) {
-    console.warn('Unable to hydrate span labeling cache:', error);
-    highlightCache.clear();
+  };
+
+  // Use requestIdleCallback for non-blocking hydration
+  // Falls back to setTimeout for browsers without requestIdleCallback
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(performHydration, { timeout: 2000 });
+  } else {
+    setTimeout(performHydration, 100);
   }
 };
 
@@ -545,19 +586,38 @@ const performRequest = useCallback(async (payload, signal) => {
           const fallback = getCachedResult(payload);
 
           if (fallback) {
-            // SUCCESS PATH: Fallback to cached result
-            // This provides a seamless experience when the API fails
+            // DEGRADED PATH: Fallback to cached result with error preservation
+            // Shows cached data but preserves error information for monitoring and user feedback
+            const cacheAge = Date.now() - (fallback.timestamp || 0);
+            
             setState({
               spans: Array.isArray(fallback.spans) ? fallback.spans : [],
-              meta: fallback.meta ?? null,
-              status: 'success', // Important: Status is 'success' to hide error UI
-              error: null,        // Clear any previous errors
+              meta: {
+                ...fallback.meta,
+                source: 'cache-fallback',
+                cacheAge,
+                error: error.message,
+              },
+              status: 'stale', // New status: indicates cached/stale data due to network failure
+              error: error,    // Preserve error for debugging and monitoring
+            });
+
+            // Log warning for monitoring (helps detect API health issues)
+            console.warn('Span labeling network error - using cached fallback', {
+              error: error.message,
+              cacheAgeMs: cacheAge,
+              textLength: payload.text?.length,
             });
 
             emitResult(
               {
                 spans: fallback.spans,
-                meta: fallback.meta,
+                meta: {
+                  ...fallback.meta,
+                  source: 'cache-fallback',
+                  cacheAge,
+                  error: error.message,
+                },
                 text: payload.text,
                 cacheId: fallback.cacheId ?? payload.cacheId,
                 signature: fallback.signature,
@@ -565,7 +625,7 @@ const performRequest = useCallback(async (payload, signal) => {
               'cache-fallback' // Event type for monitoring/analytics
             );
 
-            // Exit early - user sees cached result, no error handling needed
+            // Exit early - user sees cached result with warning indicator
             return;
           }
 

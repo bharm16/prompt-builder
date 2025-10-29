@@ -79,72 +79,103 @@ if ((process.env.VITEST || process.env.VITEST_WORKER_ID) && !(global.fetch && ty
 }
 
 // ============================================================================
-// Initialize Services
+// Initialize Services - Variables declared at module scope
 // ============================================================================
 
-// Initialize OpenAI API client with circuit breaker
-// Timeout set to 60s to accommodate large prompts (especially video mode)
-const claudeClient = new OpenAIAPIClient(process.env.OPENAI_API_KEY, {
-  timeout: parseInt(process.env.OPENAI_TIMEOUT_MS) || 60000,
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini', // Default to gpt-4o-mini, can be overridden
-});
-
-// Validate OpenAI API key on startup
-claudeClient.healthCheck().then(health => {
-  if (health.healthy) {
-    logger.info('✅ OpenAI API key validated successfully', { responseTime: health.responseTime });
-  } else {
-    logger.error('❌ OpenAI API key validation failed', { error: health.error });
-    logger.error('The application will not function without a valid OpenAI API key');
-  }
-}).catch(err => {
-  logger.error('❌ Failed to validate OpenAI API key', { error: err.message });
-});
-
-// Initialize Groq API client for fast draft generation (optional)
-// Only initialized if GROQ_API_KEY is provided
+let claudeClient;
 let groqClient = null;
-if (process.env.GROQ_API_KEY) {
-  groqClient = new GroqAPIClient(process.env.GROQ_API_KEY, {
-    timeout: parseInt(process.env.GROQ_TIMEOUT_MS) || 5000,
-    model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-  });
-  logger.info('Groq client initialized for two-stage optimization');
+let promptOptimizationService;
+let questionGenerationService;
+let enhancementService;
+let sceneDetectionService;
+let videoConceptService;
+let textCategorizerService;
+let redisClient;
+let spanLabelingCacheService;
 
-  // Validate Groq API key on startup
-  groqClient.healthCheck().then(health => {
-    if (health.healthy) {
-      logger.info('✅ Groq API key validated successfully', { responseTime: health.responseTime });
-    } else {
-      logger.error('❌ Groq API key validation failed', { error: health.error });
-      logger.warn('Two-stage optimization will fall back to single-stage mode');
+/**
+ * Initialize and validate all services asynchronously
+ * Fails fast if critical dependencies (OpenAI API) are unavailable
+ */
+async function initializeServices() {
+  // Initialize OpenAI API client with circuit breaker
+  // Timeout set to 60s to accommodate large prompts (especially video mode)
+  claudeClient = new OpenAIAPIClient(process.env.OPENAI_API_KEY, {
+    timeout: parseInt(process.env.OPENAI_TIMEOUT_MS) || 60000,
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  });
+
+  // Validate OpenAI API key (CRITICAL - fail fast)
+  logger.info('Validating OpenAI API key...');
+  const openAIHealth = await claudeClient.healthCheck();
+  
+  if (!openAIHealth.healthy) {
+    logger.error('❌ OpenAI API key validation failed', {
+      error: openAIHealth.error
+    });
+    console.error('\n❌ FATAL: OpenAI API key validation failed');
+    console.error('The application cannot function without a valid OpenAI API key');
+    console.error('Please check your OPENAI_API_KEY in .env file\n');
+    process.exit(1); // Exit immediately - fail fast
+  }
+  
+  logger.info('✅ OpenAI API key validated successfully', {
+    responseTime: openAIHealth.responseTime
+  });
+
+  // Initialize Groq API client for fast draft generation (OPTIONAL)
+  // Only initialized if GROQ_API_KEY is provided
+  if (process.env.GROQ_API_KEY) {
+    groqClient = new GroqAPIClient(process.env.GROQ_API_KEY, {
+      timeout: parseInt(process.env.GROQ_TIMEOUT_MS) || 5000,
+      model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+    });
+    logger.info('Groq client initialized for two-stage optimization');
+
+    // Validate Groq API key (OPTIONAL - degrade gracefully on failure)
+    try {
+      const groqHealth = await groqClient.healthCheck();
+      
+      if (!groqHealth.healthy) {
+        logger.warn('⚠️  Groq API key validation failed - two-stage optimization disabled', {
+          error: groqHealth.error
+        });
+        groqClient = null; // Disable optional feature
+      } else {
+        logger.info('✅ Groq API key validated successfully', {
+          responseTime: groqHealth.responseTime
+        });
+      }
+    } catch (err) {
+      logger.warn('⚠️  Failed to validate Groq API key - two-stage optimization disabled', {
+        error: err.message
+      });
+      groqClient = null; // Disable optional feature
     }
-  }).catch(err => {
-    logger.error('❌ Failed to validate Groq API key', { error: err.message });
+  } else {
+    logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
+  }
+
+  // Initialize business logic services
+  promptOptimizationService = new PromptOptimizationService(claudeClient, groqClient);
+  questionGenerationService = new QuestionGenerationService(claudeClient);
+  enhancementService = new EnhancementService(claudeClient);
+  sceneDetectionService = new SceneDetectionService(claudeClient);
+  videoConceptService = new VideoConceptService(claudeClient);
+  textCategorizerService = new TextCategorizerService(claudeClient);
+
+  // Initialize Redis and span labeling cache
+  // Redis provides 70-90% cache hit rate for span labeling, reducing API latency to <5ms
+  redisClient = createRedisClient();
+  spanLabelingCacheService = initSpanLabelingCache({
+    redis: redisClient,
+    defaultTTL: 3600, // 1 hour for exact matches
+    shortTTL: 300,    // 5 minutes for large texts
+    maxMemoryCacheSize: 100,
   });
-} else {
-  logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
+
+  logger.info('All services initialized and validated successfully');
 }
-
-// Initialize business logic services
-const promptOptimizationService = new PromptOptimizationService(claudeClient, groqClient);
-const questionGenerationService = new QuestionGenerationService(claudeClient);
-const enhancementService = new EnhancementService(claudeClient);
-const sceneDetectionService = new SceneDetectionService(claudeClient);
-const videoConceptService = new VideoConceptService(claudeClient);
-const textCategorizerService = new TextCategorizerService(claudeClient);
-
-// Initialize Redis and span labeling cache
-// Redis provides 70-90% cache hit rate for span labeling, reducing API latency to <5ms
-const redisClient = createRedisClient();
-const spanLabelingCacheService = initSpanLabelingCache({
-  redis: redisClient,
-  defaultTTL: 3600, // 1 hour for exact matches
-  shortTTL: 300,    // 5 minutes for large texts
-  maxMemoryCacheSize: 100,
-});
-
-logger.info('All services initialized successfully');
 
 // ============================================================================
 // Middleware Stack
@@ -430,40 +461,55 @@ app.use(errorHandler);
 
 // Only start server if not in test environment
 if (process.env.NODE_ENV !== 'test') {
-  const server = app.listen(PORT, () => {
-    logger.info('Server started successfully', {
-      port: PORT,
-      environment: process.env.NODE_ENV || 'development',
-      nodeVersion: process.version,
-    });
-    console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
-    console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
-    console.log(`💚 Health check at http://localhost:${PORT}/health`);
-  });
+  // Use async IIFE to properly handle service initialization
+  (async function startServer() {
+    try {
+      // Initialize and validate all services (fail fast if critical services unavailable)
+      await initializeServices();
+      
+      // Start server only after successful initialization
+      const server = app.listen(PORT, () => {
+        logger.info('Server started successfully', {
+          port: PORT,
+          environment: process.env.NODE_ENV || 'development',
+          nodeVersion: process.version,
+        });
+        console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
+        console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
+        console.log(`💚 Health check at http://localhost:${PORT}/health`);
+      });
 
-  // Configure server timeouts
-  server.keepAliveTimeout = 65000;
-  server.headersTimeout = 66000;
+      // Configure server timeouts
+      server.keepAliveTimeout = 65000;
+      server.headersTimeout = 66000;
 
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    logger.info('SIGTERM signal received: closing HTTP server');
+      // Graceful shutdown
+      process.on('SIGTERM', async () => {
+        logger.info('SIGTERM signal received: closing HTTP server');
 
-    // Close HTTP server
-    server.close(async () => {
-      logger.info('HTTP server closed');
+        // Close HTTP server
+        server.close(async () => {
+          logger.info('HTTP server closed');
 
-      // Close Redis connection
-      await closeRedisClient(redisClient);
+          // Close Redis connection
+          await closeRedisClient(redisClient);
 
-      // Stop cache cleanup interval
-      if (spanLabelingCacheService) {
-        spanLabelingCacheService.stopPeriodicCleanup();
-      }
+          // Stop cache cleanup interval
+          if (spanLabelingCacheService) {
+            spanLabelingCacheService.stopPeriodicCleanup();
+          }
 
-      process.exit(0);
-    });
-  });
+          process.exit(0);
+        });
+      });
+      
+    } catch (error) {
+      logger.error('❌ Server initialization failed', error);
+      console.error('\n❌ FATAL: Server initialization failed');
+      console.error(error.message);
+      process.exit(1);
+    }
+  })();
 }
 
 // Export app for testing
