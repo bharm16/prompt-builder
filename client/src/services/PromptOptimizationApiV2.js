@@ -149,6 +149,7 @@ export class PromptOptimizationApiV2 {
         method: method || 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': this.client.apiKey,
         },
         body: JSON.stringify(body),
       });
