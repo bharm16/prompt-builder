@@ -244,7 +244,17 @@ export class LocalStoragePromptRepository {
       const history = this._getHistory();
       const updatedHistory = [entry, ...history].slice(0, 100);
 
-      localStorage.setItem(this.storageKey, JSON.stringify(updatedHistory));
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(updatedHistory));
+      } catch (storageError) {
+        if (storageError.name === 'QuotaExceededError') {
+          // Try to save with fewer items
+          const trimmedHistory = [entry, ...history].slice(0, 50);
+          localStorage.setItem(this.storageKey, JSON.stringify(trimmedHistory));
+        } else {
+          throw storageError;
+        }
+      }
 
       return { uuid, id: entry.id };
     } catch (error) {
@@ -291,7 +301,18 @@ export class LocalStoragePromptRepository {
           : entry
       );
 
-      localStorage.setItem(this.storageKey, JSON.stringify(updated));
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(updated));
+      } catch (storageError) {
+        if (storageError.name === 'QuotaExceededError') {
+          // Try to save with fewer items, keeping the updated one
+          const trimmed = updated.slice(0, 50);
+          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+          console.warn('Storage limit reached, keeping only 50 most recent items');
+        } else {
+          throw storageError;
+        }
+      }
     } catch (error) {
       console.warn('Unable to persist highlights to localStorage:', error);
     }

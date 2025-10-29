@@ -38,6 +38,8 @@ const SharedPrompt = () => {
             } catch (contextError) {
               console.error('Failed to restore prompt context from shared prompt:', contextError);
               setPromptContext(null);
+              // Add user-friendly error notification
+              toast.warning('Some context data could not be loaded. The prompt will still display.');
             }
           } else {
             setPromptContext(null);

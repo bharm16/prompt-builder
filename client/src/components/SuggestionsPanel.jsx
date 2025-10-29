@@ -8,6 +8,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { API_CONFIG } from '../config/api.config';
 
 const DEFAULT_INACTIVE_STATE = {
   icon: Sparkles,
@@ -136,7 +137,7 @@ export function SuggestionsPanel({ suggestionsData = {} }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': 'dev-key-12345',
+            'X-API-Key': API_CONFIG.apiKey,
           },
           body: JSON.stringify({
             highlightedText: selectedText,

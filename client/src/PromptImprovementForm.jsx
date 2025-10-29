@@ -1,6 +1,7 @@
 // src/PromptImprovementForm.jsx
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, Loader2 } from 'lucide-react';
+import { API_CONFIG } from './config/api.config';
 
 const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
   const [expandedSection, setExpandedSection] = useState(1);
@@ -28,7 +29,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-API-Key': 'dev-key-12345',
+              'X-API-Key': API_CONFIG.apiKey,
             },
             body: JSON.stringify({
               prompt: initialPrompt,

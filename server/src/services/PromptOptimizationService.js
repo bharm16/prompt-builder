@@ -94,8 +94,10 @@ export class PromptOptimizationService {
       });
 
       // Call onDraft callback with BOTH draft and spans if provided
+      // Ensure spans have a safe default structure if null
       if (onDraft && typeof onDraft === 'function') {
-        onDraft(draft, initialSpans);
+        const safeSpans = initialSpans || { spans: [], meta: null };
+        onDraft(draft, safeSpans);
       }
 
       // STAGE 2: Refine with primary model (background)

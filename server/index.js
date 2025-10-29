@@ -300,6 +300,15 @@ app.use(
               .filter(Boolean)
           : ['http://localhost:5173', 'http://localhost:5174'];
 
+      // Validate CORS configuration in production
+      if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+        logger.error('ALLOWED_ORIGINS not configured for production', {
+          ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+          FRONTEND_URL: process.env.FRONTEND_URL
+        });
+        return callback(new Error('CORS configuration error: No allowed origins configured for production'));
+      }
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {

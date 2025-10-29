@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { API_CONFIG } from '../../../config/api.config';
 
 const CACHE_STORAGE_KEY = 'promptBuilder.spanLabelingCache.v1';
 // Increased from 20 to 50 entries for better cache hit rate (Performance optimization)
@@ -200,7 +201,7 @@ const setCachedResult = (payload, data) => {
 
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
-  'X-API-Key': 'dev-key-12345',
+  'X-API-Key': API_CONFIG.apiKey,
 };
 
 const DEFAULT_POLICY = {

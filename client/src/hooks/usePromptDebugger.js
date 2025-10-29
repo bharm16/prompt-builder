@@ -18,6 +18,7 @@
 
 import { useState, useCallback } from 'react';
 import { promptDebugger } from '../utils/promptDebugger';
+import { API_CONFIG } from '../config/api.config';
 
 export function usePromptDebugger(state) {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -44,7 +45,7 @@ export function usePromptDebugger(state) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345',
+          'X-API-Key': API_CONFIG.apiKey,
         },
         body: JSON.stringify({
           highlightedText: highlight.text,

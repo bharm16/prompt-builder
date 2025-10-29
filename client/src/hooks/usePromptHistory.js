@@ -29,7 +29,19 @@ export const usePromptHistory = (user) => {
         try {
           localStorage.setItem('promptHistory', JSON.stringify(normalizedPrompts));
         } catch (e) {
-          console.warn('Could not save to localStorage:', e);
+          if (e.name === 'QuotaExceededError') {
+            // Try to free up space by keeping only recent 50 items
+            const trimmed = normalizedPrompts.slice(0, 50);
+            try {
+              localStorage.setItem('promptHistory', JSON.stringify(trimmed));
+              toast.warning('Storage limit reached. Keeping only recent 50 items.');
+            } catch (retryError) {
+              console.error('Unable to save to localStorage even after trimming:', retryError);
+              toast.error('Browser storage full. Please clear browser data.');
+            }
+          } else {
+            console.warn('Could not save to localStorage:', e);
+          }
         }
       }
     } catch (error) {

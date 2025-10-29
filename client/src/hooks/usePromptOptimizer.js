@@ -63,7 +63,16 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
           onDraft: (draft) => {
             // ⏱️ PERFORMANCE TIMER: Draft ready
             performance.mark('draft-ready');
-            performance.measure('optimize-to-draft', 'optimize-start', 'draft-ready');
+
+            // Measure from optimize-start to draft-ready
+            try {
+              const entries = performance.getEntriesByName('optimize-start', 'mark');
+              if (entries.length > 0) {
+                performance.measure('optimize-to-draft', 'optimize-start', 'draft-ready');
+              }
+            } catch (e) {
+              // Silently ignore if mark doesn't exist
+            }
 
             // Draft is ready - show it immediately
             setDraftPrompt(draft);
@@ -89,8 +98,23 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
           onRefined: (refined, metadata) => {
             // ⏱️ PERFORMANCE TIMER: Refinement complete
             performance.mark('refinement-complete');
-            performance.measure('draft-to-refined', 'draft-ready', 'refinement-complete');
-            performance.measure('optimize-to-refined-total', 'optimize-start', 'refinement-complete');
+
+            // Only measure draft-to-refined if draft-ready mark exists
+            try {
+              const entries = performance.getEntriesByName('draft-ready', 'mark');
+              if (entries.length > 0) {
+                performance.measure('draft-to-refined', 'draft-ready', 'refinement-complete');
+              }
+            } catch (e) {
+              // Silently ignore if mark doesn't exist
+            }
+
+            // Measure total time (this should always work as optimize-start is created first)
+            try {
+              performance.measure('optimize-to-refined-total', 'optimize-start', 'refinement-complete');
+            } catch (e) {
+              // Silently ignore if mark doesn't exist
+            }
 
             // Refinement complete - upgrade to refined version
             const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);

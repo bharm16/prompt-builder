@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { API_CONFIG } from '../config/api.config';
 import {
   Sparkles,
   ArrowRight,
@@ -483,7 +484,7 @@ export default function VideoConceptBuilder({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345'
+          'X-API-Key': API_CONFIG.apiKey
         },
         body: JSON.stringify({
           elementType,
@@ -525,7 +526,7 @@ export default function VideoConceptBuilder({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345'
+          'X-API-Key': API_CONFIG.apiKey
         },
         body: JSON.stringify({ elements: enrichedElements }),
       });
@@ -571,7 +572,7 @@ export default function VideoConceptBuilder({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345'
+          'X-API-Key': API_CONFIG.apiKey
         },
         body: JSON.stringify({ existingElements: composedElements }),
       });
@@ -616,7 +617,7 @@ export default function VideoConceptBuilder({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345'
+          'X-API-Key': API_CONFIG.apiKey
         },
         body: JSON.stringify({
           existingElements: composedElements,
@@ -781,7 +782,7 @@ export default function VideoConceptBuilder({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': 'dev-key-12345'
+            'X-API-Key': API_CONFIG.apiKey
           },
           body: JSON.stringify({
             elementType,
@@ -834,7 +835,7 @@ export default function VideoConceptBuilder({
           method: 'POST',
           headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'dev-key-12345'
+          'X-API-Key': API_CONFIG.apiKey
         },
         body: JSON.stringify({
           existingElements: composedElements,
@@ -867,7 +868,7 @@ export default function VideoConceptBuilder({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': 'dev-key-12345'
+            'X-API-Key': API_CONFIG.apiKey
           },
           body: JSON.stringify({ concept }),
         }

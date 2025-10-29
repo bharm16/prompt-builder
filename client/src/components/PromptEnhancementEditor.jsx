@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { detectAndApplySceneChange } from '../utils/detectSceneChange';
+import { API_CONFIG } from '../config/api.config';
 
 export default function PromptEnhancementEditor({
   promptContent,
@@ -156,7 +157,7 @@ export default function PromptEnhancementEditor({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': 'dev-key-12345'
+            'X-API-Key': API_CONFIG.apiKey
           },
           body: JSON.stringify({
             highlightedText,
