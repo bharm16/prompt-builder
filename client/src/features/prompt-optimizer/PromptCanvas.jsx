@@ -681,7 +681,7 @@ export const PromptCanvas = ({
   const [showLegend, setShowLegend] = useState(false);
 
   const editorRef = useRef(null);
-  const highlightStateRef = useRef({ wrappers: [], nodeIndex: null });
+  const highlightStateRef = useRef({ wrappers: [], nodeIndex: null, fingerprint: null });
   const toast = useToast();
 
   const enableMLHighlighting = selectedMode === 'video';
@@ -771,7 +771,7 @@ export const PromptCanvas = ({
     if (wrappers?.length) {
       wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
     }
-    highlightStateRef.current = { wrappers: [], nodeIndex: null };
+    highlightStateRef.current = { wrappers: [], nodeIndex: null, fingerprint: null };
   };
 
   useEffect(() => () => clearHighlights(), []);
@@ -1209,24 +1209,70 @@ export const PromptCanvas = ({
     }
   }, [displayedPrompt, formattedHTML]);
 
+  const highlightFingerprint = useMemo(() => {
+    if (!enableMLHighlighting) {
+      return null;
+    }
+
+    const text = parseResult?.displayText ?? '';
+    const spans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
+    const textSignature = createHighlightSignature(text ?? '');
+
+    if (!spans.length) {
+      return `empty::${textSignature}`;
+    }
+
+    const spanSignature = spans
+      .map((span) =>
+        [span.id ?? '', span.displayStart ?? span.start, span.displayEnd ?? span.end, span.category ?? ''].join(':')
+      )
+      .join('|');
+
+    return `${textSignature}::${spanSignature}`;
+  }, [enableMLHighlighting, parseResult?.displayText, parseResult?.spans]);
+
   useEffect(() => {
     const root = editorRef.current;
     if (!root) return;
 
-    // ⏱️ PERFORMANCE TIMER: Highlight rendering starts
-    const highlightRenderStart = performance.now();
+    if (!enableMLHighlighting) {
+      if (highlightStateRef.current.wrappers.length) {
+        clearHighlights();
+      } else {
+        highlightStateRef.current.fingerprint = null;
+      }
+      return;
+    }
 
-    clearHighlights();
+    const spans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
+    const fingerprint = highlightFingerprint;
+    const previousFingerprint = highlightStateRef.current.fingerprint;
 
-    const spans = parseResult?.spans;
-    if (!enableMLHighlighting || !Array.isArray(spans) || !spans.length) {
+    if (!spans.length) {
+      if (highlightStateRef.current.wrappers.length) {
+        clearHighlights();
+      }
+      highlightStateRef.current.fingerprint = fingerprint ?? null;
+      return;
+    }
+
+    if (fingerprint && previousFingerprint === fingerprint) {
       return;
     }
 
     const displayText = parseResult?.displayText ?? root.textContent ?? '';
     if (!displayText) {
+      if (highlightStateRef.current.wrappers.length) {
+        clearHighlights();
+      }
+      highlightStateRef.current.fingerprint = fingerprint ?? null;
       return;
     }
+
+    // ⏱️ PERFORMANCE TIMER: Highlight rendering starts
+    const highlightRenderStart = performance.now();
+
+    clearHighlights();
 
     const wrappers = [];
     const coverage = [];
@@ -1339,11 +1385,10 @@ export const PromptCanvas = ({
       nodeIndex = buildTextNodeIndex(root);
     });
 
-    highlightStateRef.current = { wrappers, nodeIndex: null };
+    highlightStateRef.current = { wrappers, nodeIndex: null, fingerprint: fingerprint ?? null };
 
     // ⏱️ CRITICAL PERFORMANCE TIMER: Highlights are now visible on screen!
     const highlightRenderEnd = performance.now();
-    const renderDuration = highlightRenderEnd - highlightRenderStart;
 
     performance.mark('highlights-visible-on-screen');
 
@@ -1353,7 +1398,7 @@ export const PromptCanvas = ({
     } catch (err) {
       // Mark may not exist if prompt wasn't displayed yet (e.g., page load with no content)
     }
-  }, [parseResult, enableMLHighlighting]);
+  }, [parseResult, enableMLHighlighting, highlightFingerprint]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>

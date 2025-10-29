@@ -8,7 +8,6 @@
 import React from 'react';
 import { PromptCanvas } from '../PromptCanvas';
 import { usePromptState } from '../context/PromptStateContext';
-import { createHighlightSignature } from '../hooks/useSpanLabeling';
 
 export const PromptResultsSection = ({
   onDisplayedPromptChange,
@@ -61,11 +60,6 @@ export const PromptResultsSection = ({
       )}
 
       <PromptCanvas
-        key={
-          currentPromptUuid
-            ? `prompt-${currentPromptUuid}`
-            : `prompt-${createHighlightSignature(promptOptimizer.displayedPrompt ?? '')}`
-        }
         inputPrompt={promptOptimizer.inputPrompt}
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}
