@@ -32,7 +32,7 @@ export async function callOpenAI({
   user,
   max_tokens = 512,
   temperature = 0,
-  timeout = 3000, // 3-second timeout for fast response
+  timeout = 60000, // 60-second timeout for reliable response
 }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error('Missing OPENAI_API_KEY');

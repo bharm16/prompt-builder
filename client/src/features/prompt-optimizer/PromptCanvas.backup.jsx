@@ -470,25 +470,25 @@ const CategoryLegend = memo(({ show, onClose, hasContext }) => {
               </p>
               <p className="text-xs text-neutral-500 leading-relaxed mb-2">
                 Your Creative Brainstorm selections are prioritized and highlighted first,
-                followed by additional details detected by LLM analysis.
+                followed by additional details detected by NLP.
               </p>
               <ul className="text-xs text-neutral-500 space-y-1 ml-3">
                 <li>• Your input gets highest priority (100% confidence)</li>
                 <li>• Semantic matches detected (related terms)</li>
-                <li>• Additional LLM analysis for new details</li>
+                <li>• Additional NLP extraction for new details</li>
                 <li>• Smart deduplication prevents overlaps</li>
               </ul>
             </>
           ) : (
             <>
               <p className="text-xs text-neutral-500 leading-relaxed mb-2">
-                <strong>Powered by LLM Analysis:</strong>
+                <strong>Powered by compromise.js:</strong>
               </p>
               <ul className="text-xs text-neutral-500 space-y-1 ml-3">
-                <li>• Intelligent semantic understanding</li>
-                <li>• Context-aware categorization</li>
-                <li>• Technical specification detection</li>
-                <li>• Confidence-based highlighting</li>
+                <li>• Natural language phrase extraction</li>
+                <li>• Camera movement detection</li>
+                <li>• Technical spec extraction</li>
+                <li>• Automatic categorization</li>
               </ul>
             </>
           )}
@@ -805,6 +805,7 @@ export const PromptCanvas = ({
   useEffect(() => {
     if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
       performance.mark('prompt-displayed-on-screen');
+      .toISOString());
     }
   }, [displayedPrompt, enableMLHighlighting]);
 
@@ -1215,6 +1216,7 @@ export const PromptCanvas = ({
 
     // ⏱️ PERFORMANCE TIMER: Highlight rendering starts
     const highlightRenderStart = performance.now();
+    .toISOString());
 
     clearHighlights();
 
@@ -1226,6 +1228,17 @@ export const PromptCanvas = ({
     const displayText = parseResult?.displayText ?? root.textContent ?? '';
     if (!displayText) {
       return;
+    }
+
+    if (DEBUG_HIGHLIGHTS) {
+       + '...',
+        rootTextContent: root.textContent?.substring(0, 200) + '...',
+        textContentMatch: displayText === root.textContent
+      });
+    }
+
+    if (DEBUG_HIGHLIGHTS) {
+      ));
     }
 
     const wrappers = [];
@@ -1277,6 +1290,10 @@ export const PromptCanvas = ({
         return;
       }
 
+      if (DEBUG_HIGHLIGHTS) {
+        
+      }
+
       const segmentWrappers = wrapRangeSegments({
         root,
         start: highlightStart,
@@ -1321,6 +1338,10 @@ export const PromptCanvas = ({
         return;
       }
 
+      if (DEBUG_HIGHLIGHTS) {
+        
+      }
+
       segmentWrappers.forEach((wrapper) => {
         wrapper.dataset.quote = span.quote ?? '';
         wrapper.dataset.leftCtx = span.leftCtx ?? '';
@@ -1350,8 +1371,26 @@ export const PromptCanvas = ({
     // Measure from prompt displayed to highlights visible (THE CRITICAL 290ms METRIC)
     try {
       performance.measure('CRITICAL-prompt-to-highlights', 'prompt-displayed-on-screen', 'highlights-visible-on-screen');
+      const criticalMetric = performance.getEntriesByName('CRITICAL-prompt-to-highlights')[0];
+
+      
+      }ms`, new Date().toISOString());
+      }ms`);
+      
+
+      // Check against the 290ms claim
+      if (criticalMetric.duration <= 290) {
+        }ms ≤ 290ms`);
+      } else if (criticalMetric.duration <= 600) {
+        }ms > 290ms (cache miss expected)`);
+      } else {
+        }ms >> 600ms`);
+      }
+
+      
     } catch (err) {
       // Mark may not exist if prompt wasn't displayed yet (e.g., page load with no content)
+      }ms`, new Date().toISOString());
     }
   }, [parseResult, enableMLHighlighting]);
 

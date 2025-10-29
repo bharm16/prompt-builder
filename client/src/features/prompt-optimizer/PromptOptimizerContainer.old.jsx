@@ -409,11 +409,7 @@ function PromptOptimizerContent() {
         }
       : null;
 
-    console.log('handleOptimize called with:', {
-      prompt,
-      ctx,
-      selectedMode,
-      hasBrainstormContext: Boolean(brainstormContextData),
+    ,
     });
 
     const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
@@ -466,8 +462,7 @@ function PromptOptimizerContent() {
     const context = new PromptContext(elements, metadata);
     setPromptContext(context);
 
-    console.log('[DEBUG] Context created in handleConceptComplete:', {
-      context: context.toJSON(),
+    ,
       elements,
       metadata,
       timestamp: new Date().toISOString()
@@ -536,13 +531,7 @@ function PromptOptimizerContent() {
 
   // Load from history
   const loadFromHistory = (entry) => {
-    console.log('[History] Loading entry:', {
-      id: entry.id,
-      mode: entry.mode,
-      hasHighlightCache: !!entry.highlightCache,
-      spansCount: entry.highlightCache?.spans?.length || 0,
-      hasSignature: !!entry.highlightCache?.signature,
-    });
+    
     
     // Set skip flag to prevent URL loader from interfering
     skipLoadFromUrlRef.current = true;
@@ -566,12 +555,10 @@ function PromptOptimizerContent() {
       : null;
     
     if (preloadedHighlight) {
-      console.log('[History] Applying highlights:', {
-        spansCount: preloadedHighlight.spans?.length,
-        signature: preloadedHighlight.signature?.slice(0, 8),
+      ,
       });
     } else {
-      console.log('[History] No highlights to apply');
+      
     }
     
     applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
@@ -633,13 +620,7 @@ function PromptOptimizerContent() {
         }
       : null;
 
-    console.log('[DEBUG] fetchEnhancementSuggestions called with:', {
-      highlightedText: trimmedHighlight,
-      hasPromptContext: !!promptContext,
-      contextElements: promptContext?.elements,
-      metadata,
-      trigger,
-      timestamp: new Date().toISOString(),
+    .toISOString(),
     });
 
     if (selectedMode !== 'video' || !trimmedHighlight) {

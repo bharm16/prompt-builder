@@ -225,13 +225,13 @@ export const apiClient = new ApiClient({
 if (import.meta.env.MODE === 'development') {
   apiClient.addRequestInterceptor((config) => {
     // eslint-disable-next-line no-console
-    console.log('[API Request]', config.method, config.url || 'unknown');
+    
     return config;
   });
 
   apiClient.addResponseInterceptor((response) => {
     // eslint-disable-next-line no-console
-    console.log('[API Response]', response.status, response.url);
+    
     return response;
   });
 }

@@ -151,11 +151,7 @@ export const PromptStateProvider = ({ children, user }) => {
 
   // Load from history
   const loadFromHistory = useCallback((entry) => {
-    console.log('[History] Loading entry:', {
-      id: entry.id,
-      mode: entry.mode,
-      hasHighlightCache: !!entry.highlightCache,
-    });
+    
 
     skipLoadFromUrlRef.current = true;
     setCurrentPromptUuid(entry.uuid || null);

@@ -204,7 +204,7 @@ export class PredictiveCacheService {
         this.stats.preWarmSuccess++;
       } catch (error) {
         // Silently fail - pre-warming is best-effort
-        console.debug('Pre-warm failed:', error.message);
+        
       }
     }
 

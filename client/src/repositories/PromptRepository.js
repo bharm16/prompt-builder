@@ -83,7 +83,7 @@ export class PromptRepository {
     } catch (error) {
       // Check for index error - return empty array gracefully
       if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-        console.info('Firestore index not yet created. History will be available once the index is built.');
+        
         return [];
       }
 

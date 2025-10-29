@@ -176,14 +176,7 @@ export default function PromptEnhancementEditor({
       }
 
       const data = await response.json();
-      console.log('Enhancement API Response:', {
-        isPlaceholder: data.isPlaceholder,
-        hasCategories: data.hasCategories,
-        suggestionsCount: data.suggestions?.length,
-        firstSuggestion: data.suggestions?.[0],
-        suggestions: data.suggestions,
-        isGrouped: data.suggestions?.[0]?.suggestions !== undefined
-      });
+      
 
       // Pass the suggestions directly - they may be grouped or flat
       setSuggestions(data.suggestions || []);

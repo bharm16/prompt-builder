@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { runExtractionPipeline } from '../phraseExtractor.js';
 import { GOLDEN_CORPUS } from '../../../../../tests/fixtures/goldenCorpus.js';
 import { PromptContext } from '../../../utils/PromptContext.js';
 

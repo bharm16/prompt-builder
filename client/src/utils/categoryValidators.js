@@ -1,5 +1,3 @@
-import nlp from 'compromise';
-
 const GENERIC_ADJECTIVES = new Set([
   'beautiful',
   'cinematic',
@@ -30,11 +28,25 @@ const STYLE_ADJ = /\b(noir|pastel|monochrome|analog|grainy|dreamy|painterly|surr
 
 const ENVIRONMENT_NOUN = /\b(street|alley|alleyway|alleyways|warehouse|factory|rooftop|forest|desert|interior|exterior|cavern|bridge|corridor|hallway|market|shore|coast|temple|cathedral|diner|station|plaza|square|ship|hangar)\b/i;
 
+// Simple word detection patterns for validation (replaces compromise.js NLP)
+const ADJECTIVE_PATTERN = /\b(warm|cool|soft|hard|golden|dark|bright|vivid|moody|dramatic|epic|stunning|beautiful|cinematic|gorgeous|amazing|incredible|noir|pastel|monochrome|analog|grainy|dreamy|painterly|surreal|documentary|minimalist|minimal|expressionist|baroque|graphic)\b/i;
+const VERB_PATTERN = /\b(dolly|truck|push|pull|pan|tilt|crane|zoom|track|follow|move|shift|glide|sweep|drift)\b/i;
+const NOUN_PATTERN = /\b(shot|movement|camera|lighting|light|style|aesthetic|look|atmosphere|tone|mood|composition|framing|angle)\b/i;
+
 const ensureText = (span) => (span?.text || span?.quote || '').trim();
 
-const testNLPPattern = (span, pattern) => {
-  const doc = nlp(span.text || span.quote || '');
-  return doc.has(pattern);
+// Simple pattern matcher (replaces compromise.js testNLPPattern)
+const hasVerbAndNoun = (text) => {
+  return VERB_PATTERN.test(text) && NOUN_PATTERN.test(text);
+};
+
+const hasAdjAndNoun = (text) => {
+  return ADJECTIVE_PATTERN.test(text) && NOUN_PATTERN.test(text);
+};
+
+const extractAdjectives = (text) => {
+  const matches = text.match(ADJECTIVE_PATTERN);
+  return matches ? matches.map(m => m.toLowerCase()) : [];
 };
 
 const cameraValidator = (span) => {
@@ -49,7 +61,7 @@ const cameraValidator = (span) => {
     return { pass: true };
   }
 
-  if (testNLPPattern(span, '#Verb #Noun')) {
+  if (hasVerbAndNoun(text)) {
     return { pass: true };
   }
 
@@ -70,7 +82,7 @@ const lightingValidator = (span) => {
   }
 
   if (hasSource) {
-    if (testNLPPattern(span, '#Adj #Noun') || testNLPPattern(span, '#Verb #Noun')) {
+    if (hasAdjAndNoun(text) || hasVerbAndNoun(text)) {
       return { pass: true };
     }
     if (/\blight(?:ing)?\b/i.test(text)) {
@@ -105,9 +117,8 @@ const styleValidator = (span) => {
     return { pass: true };
   }
 
-  if (testNLPPattern(span, '#Adj #Noun')) {
-    const doc = nlp(text);
-    const adjectives = doc.match('#Adjective').out('array').map(word => word.toLowerCase());
+  if (hasAdjAndNoun(text)) {
+    const adjectives = extractAdjectives(text);
     const hasSpecificAdj = adjectives.some(adj => !GENERIC_ADJECTIVES.has(adj));
     if (hasSpecificAdj) {
       return { pass: true };

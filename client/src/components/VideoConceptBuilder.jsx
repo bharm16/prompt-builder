@@ -699,7 +699,7 @@ export default function VideoConceptBuilder({
           .map(([el]) => el);
 
         if (dependentElements.length > 0) {
-          console.log(`Consider filling: ${dependentElements.join(', ')}`);
+          }`);
         }
       }
       

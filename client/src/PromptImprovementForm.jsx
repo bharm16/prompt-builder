@@ -20,7 +20,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
       setError(null);
 
       try {
-        console.log('🔄 Fetching AI-generated questions for:', initialPrompt);
+        
 
         const response = await fetch(
           '/api/generate-questions',
@@ -36,7 +36,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
           }
         );
 
-        console.log('📡 Response status:', response.status);
+        
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -45,17 +45,17 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
         }
 
         const data = await response.json();
-        console.log('✅ Received questions:', data);
+        
 
         if (data.questions && Array.isArray(data.questions)) {
           setQuestions(data.questions);
-          console.log('✨ AI-generated questions loaded successfully');
+          
         } else {
           throw new Error('Invalid response format');
         }
       } catch (err) {
         console.error('❌ Error fetching questions:', err);
-        console.log('⚠️ Falling back to static questions');
+        
         setError(err.message);
         // Fallback to static questions
         setQuestions(generateFallbackQuestions());

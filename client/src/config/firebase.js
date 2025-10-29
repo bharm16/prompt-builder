@@ -151,7 +151,7 @@ export const getUserPrompts = async (userId, limitCount = 10) => {
   } catch (error) {
     // Check for index error - silently return empty array
     if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-      console.info('Firestore index not yet created. History will be available once the index is built.');
+      
       return [];
     }
 
@@ -169,20 +169,7 @@ export const checkUserPromptsRaw = async (userId) => {
       where('userId', '==', userId)
     );
     const querySnapshot = await getDocs(q);
-    console.info('Total prompts for user:', { userId, count: querySnapshot.size });
-    querySnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      let timestamp = data.timestamp;
-      if (timestamp && timestamp.toDate) {
-        timestamp = timestamp.toDate().toISOString();
-      }
-      console.debug('Prompt details:', {
-        id: doc.id,
-        timestamp: timestamp,
-        timestampType: typeof timestamp,
-        input: data.input?.substring(0, 50)
-      });
-    });
+
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
       let timestamp = data.timestamp;
@@ -211,14 +198,14 @@ export const deleteUserPromptsRaw = async (userId) => {
       where('userId', '==', userId)
     );
     const querySnapshot = await getDocs(q);
-    console.info('Found prompts to delete:', { userId, count: querySnapshot.size });
+    
 
     const deletePromises = querySnapshot.docs.map((doc) =>
       deleteDoc(doc.ref)
     );
 
     await Promise.all(deletePromises);
-    console.info('All prompts deleted successfully:', { userId, count: querySnapshot.size });
+    
     return querySnapshot.size;
   } catch (error) {
     console.error('Error deleting prompts:', error);
@@ -261,14 +248,13 @@ export const deleteAllUserPrompts = async (userId) => {
     );
     const querySnapshot = await getDocs(q);
 
-    console.info('Found prompts to delete for migration:', { userId, count: querySnapshot.size });
+    
 
     const deletePromises = querySnapshot.docs.map((doc) =>
       deleteDoc(doc.ref)
     );
 
     await Promise.all(deletePromises);
-    console.info('All prompts deleted successfully (migration):', { userId, count: querySnapshot.size });
     return querySnapshot.size;
   } catch (error) {
     console.error('Error deleting prompts during migration:', error);
