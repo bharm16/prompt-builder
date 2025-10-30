@@ -22,6 +22,9 @@ import { CategoryLegend } from './components/CategoryLegend.jsx';
 import { FloatingToolbar } from './components/FloatingToolbar.jsx';
 import { PromptEditor } from './components/PromptEditor.jsx';
 
+// Configuration
+import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '../../config/performance.config';
+
 // Styles
 import './PromptCanvas.css';
 
@@ -50,6 +53,8 @@ export const PromptCanvas = ({
   canRedo = false,
   isDraftReady = false,
   isRefining = false,
+  draftSpans = null, // NEW: Spans from parallel execution
+  refinedSpans = null, // NEW: Spans from refined text
 }) => {
   // UI state
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -66,28 +71,67 @@ export const PromptCanvas = ({
   const enableMLHighlighting = selectedMode === 'video';
 
   const labelingPolicy = useMemo(
-    () => ({
-      nonTechnicalWordLimit: 6,
-      allowOverlap: false,
-    }),
+    () => DEFAULT_LABELING_POLICY,
     []
   );
 
   const memoizedInitialHighlights = useMemo(() => {
-    // Console logs removed to prevent spam during rapid recomputation
-    if (!enableMLHighlighting || !initialHighlights || !Array.isArray(initialHighlights.spans)) {
+    if (!enableMLHighlighting) {
       return null;
     }
-    const resolvedSignature =
-      initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
-    
-    return {
-      spans: initialHighlights.spans,
-      meta: initialHighlights.meta ?? null,
-      signature: resolvedSignature,
-      cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-    };
-  }, [enableMLHighlighting, initialHighlights, initialHighlightsVersion, promptUuid, displayedPrompt]);
+
+    // PRIORITY 1: Use draft spans if available and we're showing draft text
+    // This provides instant highlights at ~300ms
+    if (draftSpans && isDraftReady && !refinedSpans) {
+      const signature = createHighlightSignature(displayedPrompt ?? '');
+      return {
+        spans: draftSpans.spans || [],
+        meta: draftSpans.meta || null,
+        signature,
+        cacheId: promptUuid ? String(promptUuid) : null,
+        source: 'draft', // Mark as draft spans
+      };
+    }
+
+    // PRIORITY 2: Use refined spans if available
+    // This provides updated highlights when refinement completes
+    if (refinedSpans && !isRefining) {
+      const signature = createHighlightSignature(displayedPrompt ?? '');
+      return {
+        spans: refinedSpans.spans || [],
+        meta: refinedSpans.meta || null,
+        signature,
+        cacheId: promptUuid ? String(promptUuid) : null,
+        source: 'refined', // Mark as refined spans
+      };
+    }
+
+    // PRIORITY 3: Fallback to persisted highlights (e.g., loaded from history)
+    if (initialHighlights && Array.isArray(initialHighlights.spans)) {
+      const resolvedSignature =
+        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+
+      return {
+        spans: initialHighlights.spans,
+        meta: initialHighlights.meta ?? null,
+        signature: resolvedSignature,
+        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: 'persisted',
+      };
+    }
+
+    return null;
+  }, [
+    enableMLHighlighting,
+    draftSpans,
+    refinedSpans,
+    isDraftReady,
+    isRefining,
+    initialHighlights,
+    initialHighlightsVersion,
+    promptUuid,
+    displayedPrompt
+  ]);
 
   const handleLabelingResult = useCallback(
     (result) => {
@@ -117,11 +161,11 @@ export const PromptCanvas = ({
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
     immediate: isInitialOptimization, // Skip debounce on initial draft display
-    maxSpans: 60,
-    minConfidence: 0.5,
+    maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
+    minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
     policy: labelingPolicy,
-    templateVersion: 'v1',
-    debounceMs: 500,
+    templateVersion: TEMPLATE_VERSIONS.SPAN_LABELING_V1,
+    debounceMs: PERFORMANCE_CONFIG.DEBOUNCE_DELAY_MS,
     onResult: handleLabelingResult,
   });
 

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_CONFIG } from '../../../config/api.config';
+import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.config';
 
-const CACHE_STORAGE_KEY = 'promptBuilder.spanLabelingCache.v1';
-// Increased from 20 to 50 entries for better cache hit rate (Performance optimization)
-const CACHE_LIMIT = 50;
+const CACHE_STORAGE_KEY = STORAGE_KEYS.SPAN_LABELING_CACHE;
+const CACHE_LIMIT = PERFORMANCE_CONFIG.SPAN_LABELING_CACHE_LIMIT;
 
 const highlightCache = new Map();
 let cacheHydrated = false;
 
 // Hash cache for memoization (LRU eviction)
 const hashCache = new Map();
-const HASH_CACHE_MAX_SIZE = 1000;
+const HASH_CACHE_MAX_SIZE = PERFORMANCE_CONFIG.HASH_CACHE_MAX_SIZE;
 
 /**
  * Optimized string hashing with memoization

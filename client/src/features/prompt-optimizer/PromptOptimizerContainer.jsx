@@ -12,7 +12,7 @@
  * - Side effects (loading from URL, highlights persistence, etc.)
  */
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePromptState, PromptStateProvider } from './context/PromptStateContext';
 import { PromptInputSection } from './components/PromptInputSection';
 import { PromptResultsSection } from './components/PromptResultsSection';
@@ -27,6 +27,7 @@ import { PromptContext } from '../../utils/PromptContext';
 import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
 import { applySuggestionToPrompt } from './utils/applySuggestion.js';
 import { createHighlightSignature } from './hooks/useSpanLabeling.js';
+import { PERFORMANCE_CONFIG } from '../../config/performance.config';
 
 /**
  * Inner component with access to PromptStateContext
@@ -142,6 +143,7 @@ function PromptOptimizerContent({ user }) {
               setPromptContext(restoredContext);
             } catch (contextError) {
               console.error('Failed to restore prompt context from shared link:', contextError);
+              toast.warning('Could not restore video context. The prompt will still load.');
               setPromptContext(null);
             }
           } else {
@@ -229,6 +231,11 @@ function PromptOptimizerContent({ user }) {
       persistedSignatureRef.current = result.signature;
     } catch (error) {
       console.error('Failed to persist highlight snapshot:', error);
+      // Silent failure for background highlight persistence - not critical to user workflow
+      // Only show error if it's a permission issue
+      if (error.code === 'permission-denied') {
+        toast.warning('Unable to save highlights. You may need to sign in.');
+      }
     }
   }, [applyInitialHighlightSnapshot, currentPromptDocId, currentPromptUuid, promptHistory, user, latestHighlightRef, persistedSignatureRef]);
 
@@ -248,7 +255,7 @@ function PromptOptimizerContent({ user }) {
         undoStackRef.current = [...undoStackRef.current, {
           text: currentText,
           highlight: latestHighlightRef.current,
-        }].slice(-100);
+        }].slice(-PERFORMANCE_CONFIG.UNDO_STACK_SIZE);
         redoStackRef.current = [];
       }
 
@@ -256,6 +263,20 @@ function PromptOptimizerContent({ user }) {
     },
     [promptOptimizer, isApplyingHistoryRef, undoStackRef, redoStackRef, latestHighlightRef]
   );
+
+  // Track setTimeout IDs for cleanup
+  const undoTimeoutRef = useRef(null);
+  const redoTimeoutRef = useRef(null);
+  const conceptOptimizeTimeoutRef = useRef(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+      if (redoTimeoutRef.current) clearTimeout(redoTimeoutRef.current);
+      if (conceptOptimizeTimeoutRef.current) clearTimeout(conceptOptimizeTimeoutRef.current);
+    };
+  }, []);
 
   // ============================================================================
   // Undo/Redo Handlers
@@ -268,15 +289,19 @@ function PromptOptimizerContent({ user }) {
       text: promptOptimizer.displayedPrompt,
       highlight: latestHighlightRef.current,
     };
-    redoStackRef.current = [...redoStackRef.current, currentSnapshot].slice(-100);
+    redoStackRef.current = [...redoStackRef.current, currentSnapshot].slice(-PERFORMANCE_CONFIG.UNDO_STACK_SIZE);
 
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(previous.text);
     promptOptimizer.setOptimizedPrompt(previous.text);
     applyInitialHighlightSnapshot(previous.highlight ?? null, { bumpVersion: true, markPersisted: false });
-    setTimeout(() => {
+
+    // Clear any existing timeout and set new one
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    undoTimeoutRef.current = setTimeout(() => {
       isApplyingHistoryRef.current = false;
-    }, 0);
+      undoTimeoutRef.current = null;
+    }, PERFORMANCE_CONFIG.REF_RESET_DELAY_MS);
   }, [applyInitialHighlightSnapshot, promptOptimizer, setDisplayedPromptSilently, undoStackRef, redoStackRef, latestHighlightRef, isApplyingHistoryRef]);
 
   const handleRedo = useCallback(() => {
@@ -286,15 +311,19 @@ function PromptOptimizerContent({ user }) {
     undoStackRef.current = [...undoStackRef.current, {
       text: promptOptimizer.displayedPrompt,
       highlight: latestHighlightRef.current,
-    }].slice(-100);
+    }].slice(-PERFORMANCE_CONFIG.UNDO_STACK_SIZE);
 
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(next.text);
     promptOptimizer.setOptimizedPrompt(next.text);
     applyInitialHighlightSnapshot(next.highlight ?? null, { bumpVersion: true, markPersisted: false });
-    setTimeout(() => {
+
+    // Clear any existing timeout and set new one
+    if (redoTimeoutRef.current) clearTimeout(redoTimeoutRef.current);
+    redoTimeoutRef.current = setTimeout(() => {
       isApplyingHistoryRef.current = false;
-    }, 0);
+      redoTimeoutRef.current = null;
+    }, PERFORMANCE_CONFIG.REF_RESET_DELAY_MS);
   }, [applyInitialHighlightSnapshot, promptOptimizer, setDisplayedPromptSilently, undoStackRef, redoStackRef, latestHighlightRef, isApplyingHistoryRef]);
 
   // ============================================================================
@@ -382,31 +411,40 @@ function PromptOptimizerContent({ user }) {
     promptOptimizer.setInputPrompt(finalConcept);
     setShowBrainstorm(false);
 
-    setTimeout(async () => {
-      const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
-      if (result) {
-        const saveResult = await promptHistory.saveToHistory(
-          finalConcept,
-          result.optimized,
-          result.score,
-          selectedMode,
-          serializedContext
-        );
-        if (saveResult?.uuid) {
-          setDisplayedPromptSilently(result.optimized);
+    // Clear any existing timeout and set new one
+    if (conceptOptimizeTimeoutRef.current) clearTimeout(conceptOptimizeTimeoutRef.current);
+    conceptOptimizeTimeoutRef.current = setTimeout(async () => {
+      try {
+        const result = await promptOptimizer.optimize(finalConcept, null, brainstormContextData);
+        if (result) {
+          const saveResult = await promptHistory.saveToHistory(
+            finalConcept,
+            result.optimized,
+            result.score,
+            selectedMode,
+            serializedContext
+          );
+          if (saveResult?.uuid) {
+            setDisplayedPromptSilently(result.optimized);
 
-          skipLoadFromUrlRef.current = true;
-          setCurrentPromptUuid(saveResult.uuid);
-          setCurrentPromptDocId(saveResult.id ?? null);
-          setShowResults(true);
-          toast.success('Video prompt generated successfully!');
-          applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-          resetEditStacks();
-          persistedSignatureRef.current = null;
-          navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+            skipLoadFromUrlRef.current = true;
+            setCurrentPromptUuid(saveResult.uuid);
+            setCurrentPromptDocId(saveResult.id ?? null);
+            setShowResults(true);
+            toast.success('Video prompt generated successfully!');
+            applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
+            resetEditStacks();
+            persistedSignatureRef.current = null;
+            navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+          }
         }
+      } catch (error) {
+        toast.error('Failed to generate video prompt. Please try again.');
+        console.error('Error in handleConceptComplete:', error);
+      } finally {
+        conceptOptimizeTimeoutRef.current = null;
       }
-    }, 100);
+    }, PERFORMANCE_CONFIG.ASYNC_OPERATION_DELAY_MS);
   };
 
   const handleSkipBrainstorm = () => {

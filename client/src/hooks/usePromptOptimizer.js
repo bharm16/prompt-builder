@@ -3,6 +3,14 @@ import { useToast } from '../components/Toast';
 import { promptOptimizationApi } from '../services';
 import { promptOptimizationApiV2 } from '../services/PromptOptimizationApiV2';
 
+// Simple logger for client-side debugging
+const logger = {
+  debug: (msg, data) => console.debug(`[usePromptOptimizer] ${msg}`, data),
+  info: (msg, data) => console.info(`[usePromptOptimizer] ${msg}`, data),
+  warn: (msg, data) => console.warn(`[usePromptOptimizer] ${msg}`, data),
+  error: (msg, data) => console.error(`[usePromptOptimizer] ${msg}`, data),
+};
+
 export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -16,6 +24,10 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
   const [draftPrompt, setDraftPrompt] = useState('');
   const [isDraftReady, setIsDraftReady] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+
+  // Span labeling states for highlighting
+  const [draftSpans, setDraftSpans] = useState(null);
+  const [refinedSpans, setRefinedSpans] = useState(null);
 
   const toast = useToast();
 
@@ -48,6 +60,8 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
     setDraftPrompt('');
     setIsDraftReady(false);
     setIsRefining(false);
+    setDraftSpans(null);
+    setRefinedSpans(null);
 
     try {
       // ⏱️ PERFORMANCE TIMER: Start optimization
@@ -89,11 +103,30 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
             toast.info('Draft ready! Refining in background...');
           },
           onSpans: (spans, source, meta) => {
-            // Spans received from parallel execution
-            // The PromptCanvas will pick these up via context/props
+            // ⏱️ PERFORMANCE: Spans received from parallel execution (~300ms)
+            performance.mark(`spans-received-${source}`);
 
-            // Store spans for the UI to consume
-            // This will be passed to PromptCanvas which uses useSpanLabeling
+            // Store spans based on source (draft or refined)
+            const spansData = {
+              spans: spans || [],
+              meta: meta || null,
+              source,
+              timestamp: Date.now(),
+            };
+
+            if (source === 'draft') {
+              setDraftSpans(spansData);
+              logger.debug('Draft spans received', {
+                spanCount: spans?.length || 0,
+                source
+              });
+            } else if (source === 'refined') {
+              setRefinedSpans(spansData);
+              logger.debug('Refined spans received', {
+                spanCount: spans?.length || 0,
+                source
+              });
+            }
           },
           onRefined: (refined, metadata) => {
             // ⏱️ PERFORMANCE TIMER: Refinement complete
@@ -120,7 +153,15 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
             const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);
 
             setOptimizedPrompt(refined);
-            setDisplayedPrompt(refined);
+            // IMPORTANT: Don't update displayedPrompt yet if we're waiting for refined spans
+            // This prevents the draft highlights from being cleared before refined highlights are ready
+            // The PromptCanvas will handle the transition when refined spans arrive
+            if (!refinedSpans) {
+              // No refined spans yet, update immediately
+              setDisplayedPrompt(refined);
+            }
+            // If refinedSpans exist, PromptCanvas will update displayedPrompt when ready
+
             setQualityScore(refinedScore);
             setIsRefining(false);
 
@@ -182,6 +223,8 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
     setDraftPrompt('');
     setIsDraftReady(false);
     setIsRefining(false);
+    setDraftSpans(null);
+    setRefinedSpans(null);
   }, []);
 
   return {
@@ -203,6 +246,10 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
     draftPrompt,
     isDraftReady,
     isRefining,
+
+    // Span labeling state
+    draftSpans,
+    refinedSpans,
 
     // Actions
     optimize,
