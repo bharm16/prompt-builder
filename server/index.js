@@ -31,6 +31,15 @@ import { VideoConceptService } from './src/services/VideoConceptService.js';
 import { TextCategorizerService } from './src/services/TextCategorizerService.js';
 import { initSpanLabelingCache } from './src/services/SpanLabelingCacheService.js';
 
+// Import enhancement sub-services
+import { PlaceholderDetectionService } from './src/services/enhancement/PlaceholderDetectionService.js';
+import { VideoPromptService } from './src/services/enhancement/VideoPromptService.js';
+import { BrainstormContextBuilder } from './src/services/enhancement/BrainstormContextBuilder.js';
+import { PromptBuilderService } from './src/services/enhancement/PromptBuilderService.js';
+import { SuggestionValidationService } from './src/services/enhancement/SuggestionValidationService.js';
+import { SuggestionDiversityEnforcer } from './src/services/enhancement/SuggestionDiversityEnforcer.js';
+import { CategoryAlignmentService } from './src/services/enhancement/CategoryAlignmentService.js';
+
 // Import config
 import { createRedisClient, closeRedisClient } from './src/config/redis.js';
 
@@ -159,7 +168,28 @@ async function initializeServices() {
   // Initialize business logic services
   promptOptimizationService = new PromptOptimizationService(claudeClient, groqClient);
   questionGenerationService = new QuestionGenerationService(claudeClient);
-  enhancementService = new EnhancementService(claudeClient);
+
+  // Initialize enhancement sub-services in dependency order
+  const placeholderDetector = new PlaceholderDetectionService();
+  const videoService = new VideoPromptService();
+  const brainstormBuilder = new BrainstormContextBuilder();
+  const promptBuilder = new PromptBuilderService(brainstormBuilder, videoService);
+  const validationService = new SuggestionValidationService(videoService);
+  const diversityEnforcer = new SuggestionDiversityEnforcer(claudeClient);
+  const categoryAligner = new CategoryAlignmentService(validationService);
+
+  // Initialize EnhancementService with all dependencies
+  enhancementService = new EnhancementService(
+    claudeClient,
+    placeholderDetector,
+    videoService,
+    brainstormBuilder,
+    promptBuilder,
+    validationService,
+    diversityEnforcer,
+    categoryAligner
+  );
+
   sceneDetectionService = new SceneDetectionService(claudeClient);
   videoConceptService = new VideoConceptService(claudeClient);
   textCategorizerService = new TextCategorizerService(claudeClient);
