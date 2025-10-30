@@ -406,54 +406,7 @@ app.use(requestCoalescing.middleware());
 // Routes
 // ============================================================================
 
-// Health check and metrics routes
-const healthRoutes = createHealthRoutes({
-  claudeClient,
-  groqClient,
-  cacheService,
-  metricsService,
-});
-app.use('/', healthRoutes);
-
-// API routes with authentication
-const apiRoutes = createAPIRoutes({
-  promptOptimizationService,
-  questionGenerationService,
-  enhancementService,
-  sceneDetectionService,
-  videoConceptService,
-  textCategorizerService,
-});
-
-app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
-// Batch endpoint for processing multiple span labeling requests
-// Reduces API calls by 60% under concurrent load
-app.post('/llm/label-spans-batch', apiAuthMiddleware, createBatchMiddleware());
-app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
-app.use('/api', apiAuthMiddleware, apiRoutes);
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-    path: req.path,
-    requestId: req.id,
-  });
-});
-
-// The error handler must be registered before any other error middleware and after all controllers
-Sentry.setupExpressErrorHandler(app);
-
-// Optional fallthrough error handler
-app.use(function onError(err, req, res, next) {
-  // The error id is attached to `res.sentry` to be returned
-  // and optionally displayed to the user for support.
-  res.statusCode = 500;
-  res.end(res.sentry + "\n");
-});
-
-// Error handling middleware (must be last)
-app.use(errorHandler);
+// Note: Routes and error handlers will be registered after service initialization in startServer()
 
 // ============================================================================
 // Server Startup
@@ -466,7 +419,55 @@ if (process.env.NODE_ENV !== 'test') {
     try {
       // Initialize and validate all services (fail fast if critical services unavailable)
       await initializeServices();
-      
+
+      // Register routes AFTER services are initialized
+      const healthRoutes = createHealthRoutes({
+        claudeClient,
+        groqClient,
+        cacheService,
+        metricsService,
+      });
+      app.use('/', healthRoutes);
+
+      const apiRoutes = createAPIRoutes({
+        promptOptimizationService,
+        questionGenerationService,
+        enhancementService,
+        sceneDetectionService,
+        videoConceptService,
+        textCategorizerService,
+      });
+
+      app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
+      // Batch endpoint for processing multiple span labeling requests
+      // Reduces API calls by 60% under concurrent load
+      app.post('/llm/label-spans-batch', apiAuthMiddleware, createBatchMiddleware());
+      app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
+      app.use('/api', apiAuthMiddleware, apiRoutes);
+
+      // 404 handler - must be registered AFTER all routes
+      app.use((req, res) => {
+        res.status(404).json({
+          error: 'Not found',
+          path: req.path,
+          requestId: req.id,
+        });
+      });
+
+      // The error handler must be registered before any other error middleware and after all controllers
+      Sentry.setupExpressErrorHandler(app);
+
+      // Optional fallthrough error handler
+      app.use(function onError(err, req, res, next) {
+        // The error id is attached to `res.sentry` to be returned
+        // and optionally displayed to the user for support.
+        res.statusCode = 500;
+        res.end(res.sentry + "\n");
+      });
+
+      // Error handling middleware (must be last)
+      app.use(errorHandler);
+
       // Start server only after successful initialization
       const server = app.listen(PORT, () => {
         logger.info('Server started successfully', {

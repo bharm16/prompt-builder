@@ -75,6 +75,10 @@ export class AIWizardService {
   async _fetchSuggestions(fieldName, currentValue, context) {
     const elementTypeMap = {
       subject: 'subject',
+      // Map wizard descriptor fields to API's expected element types
+      descriptor1: 'subjectDescriptor1',
+      descriptor2: 'subjectDescriptor2',
+      descriptor3: 'subjectDescriptor3',
       action: 'action',
       location: 'location',
       time: 'time',
