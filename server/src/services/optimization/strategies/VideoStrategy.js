@@ -20,8 +20,18 @@ export class VideoStrategy extends BaseStrategy {
   async optimize({ prompt }) {
     logger.info('Optimizing prompt with video strategy');
 
-    // Use existing video prompt template generator
-    const optimized = generateVideoPrompt(prompt);
+    // Generate the system prompt with instructions
+    const systemPrompt = generateVideoPrompt(prompt);
+
+    // Call Claude to process the prompt and generate the optimized video prompt
+    const config = this.getConfig();
+    const response = await this.claudeClient.complete(systemPrompt, {
+      maxTokens: config.maxTokens,
+      temperature: config.temperature,
+      timeout: config.timeout,
+    });
+
+    const optimized = response.content[0].text.trim();
 
     logger.info('Video optimization complete', {
       originalLength: prompt.length,
@@ -35,7 +45,7 @@ export class VideoStrategy extends BaseStrategy {
    * Video mode does not generate domain content
    * @override
    */
-  async generateDomainContent(prompt, context) {
+  async generateDomainContent() {
     return null;
   }
 
