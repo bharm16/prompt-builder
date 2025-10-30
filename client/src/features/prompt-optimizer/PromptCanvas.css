@@ -1,0 +1,207 @@
+/* Prompt Line Styles */
+.prompt-line {
+  font-size: 0.9375rem;
+  color: rgb(64, 64, 64);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.prompt-line--heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(23, 23, 23);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.prompt-line--section {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(38, 38, 38);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prompt-line--bullet,
+.prompt-line--ordered {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.prompt-bullet-marker,
+.prompt-ordered-index {
+  flex-shrink: 0;
+  color: rgb(120, 120, 120);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.prompt-ordered-text,
+.prompt-bullet-text {
+  flex: 1;
+  display: block;
+}
+
+.prompt-line--gap {
+  height: 0.75rem;
+}
+
+.prompt-line--separator {
+  color: rgb(212, 212, 212);
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+.prompt-line--code {
+  background: rgba(243, 244, 246, 0.6);
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+/* Base value word styles */
+.value-word {
+  position: relative;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Confidence level indicators */
+.high-confidence {
+  opacity: 1;
+}
+
+.medium-confidence {
+  opacity: 0.9;
+}
+
+.low-confidence {
+  opacity: 0.8;
+  border-style: dashed !important;
+}
+
+/* Enhanced hover effects for all categories */
+.value-word:hover {
+  filter: brightness(0.95);
+  border-bottom-width: 2px !important;
+  transform: translateY(-0.5px);
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
+
+.value-word:active {
+  transform: translateY(0px);
+}
+
+/* Category-specific hover enhancements */
+.value-word-wardrobe:hover {
+  background-color: rgba(255,214,0,.35) !important;
+  border-bottom-color: rgba(255,214,0,.8) !important;
+}
+
+.value-word-appearance:hover {
+  background-color: rgba(255,105,180,.35) !important;
+  border-bottom-color: rgba(255,105,180,.8) !important;
+}
+
+.value-word-lighting:hover {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  border-bottom-color: rgba(249, 115, 22, 0.6) !important;
+}
+
+.value-word-timeofday:hover {
+  background-color: rgba(135,206,235,.35) !important;
+  border-bottom-color: rgba(135,206,235,.8) !important;
+}
+
+.value-word-cameramove:hover {
+  background-color: rgba(139, 92, 246, 0.2) !important;
+  border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+}
+
+.value-word-framing:hover {
+  background-color: rgba(186,85,211,.35) !important;
+  border-bottom-color: rgba(186,85,211,.8) !important;
+}
+
+.value-word-environment:hover {
+  background-color: rgba(6, 182, 212, 0.2) !important;
+  border-bottom-color: rgba(6, 182, 212, 0.6) !important;
+}
+
+.value-word-color:hover {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+  border-bottom-color: rgba(244, 63, 94, 0.6) !important;
+}
+
+.value-word-technical:hover {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+}
+
+.value-word-descriptive:hover {
+  background-color: rgba(250, 204, 21, 0.25) !important;
+  border-bottom-color: rgba(250, 204, 21, 0.6) !important;
+}
+
+/* Tooltip on hover - shows category */
+.value-word::before {
+  content: attr(data-category);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background-color: rgba(23, 23, 23, 0.9);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: capitalize;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+  letter-spacing: 0.5px;
+}
+
+.value-word::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  border: 4px solid transparent;
+  border-top-color: rgba(23, 23, 23, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+}
+
+.value-word:hover::before,
+.value-word:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
+}
+
+.value-word:hover::after {
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* Prevent tooltip overflow */
+[contenteditable] {
+  position: relative;
+}
