@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { labelSpans } from '../spanLabeler.js';
+import { labelSpans } from '../span-labeling/SpanLabelingService.js';
 
 describe('labelSpans integration', () => {
   it('returns up to 60 spans with expanded token budget', async () => {
