@@ -11,7 +11,7 @@ Add [FEATURE NAME] component
 
 ARCHITECTURE (follow VideoConceptBuilder pattern):
 Structure:
-- ComponentName.jsx (orchestrator, max 300 lines)
+- ComponentName.jsx (orchestrator, max 500 lines)
 - hooks/useComponentState.js (useReducer for state)
 - api/componentApi.js (all fetch calls)
 - utils/componentUtils.js (pure functions)
@@ -22,7 +22,8 @@ REFERENCE IMPLEMENTATION:
 client/src/components/VideoConceptBuilder/
 
 CONSTRAINTS:
-- No component over 200 lines
+- Orchestrator components max 500 lines (main files that compose pieces)
+- Regular UI components max 200 lines
 - All API calls in api/ layer
 - Business logic in hooks/
 - Configuration in config/
@@ -65,7 +66,8 @@ CONSTRAINTS:
 - If adding business logic → extract to hooks/
 - If adding 50+ lines of UI → extract to new component in components/
 - MUST NOT exceed file size limits:
-  - Components: 200 lines
+  - Orchestrator components: 500 lines
+  - Regular UI components: 200 lines
   - Hooks: 150 lines
   - Utils: 100 lines
 
@@ -205,13 +207,13 @@ FRONTEND:
 - Location: client/src/[features|components]/[feature-name]/
 - Architecture: VideoConceptBuilder pattern
 - Components: [list expected components]
-- Max lines: 200 per component
+- Max lines: 500 for orchestrators, 200 for UI components
 
 BACKEND:
 - Location: server/src/services/[service-name]/
 - Architecture: PromptOptimizationService pattern
 - Services: [list expected services]
-- Max lines: 300 per service
+- Max lines: 500 for orchestrators, 300 for specialized services
 
 API CONTRACT:
 Define API endpoints first:
@@ -354,12 +356,20 @@ TARGET STATE:
 
 | File Type | Max Lines | Reasoning |
 |-----------|-----------|-----------|
-| React Component | 200 | If larger, extract subcomponents |
+| Orchestrator Component/Service | 500 | Main files that compose many pieces (see note below) |
+| Regular UI Component | 200 | If larger, extract subcomponents |
 | React Hook | 150 | Single concern per hook |
-| Backend Service | 300 | Orchestrators can be 500 |
+| Specialized Service | 300 | Focused business logic services |
 | Utility | 100 | Pure functions, focused |
 | Config | 200 | Data only, no logic |
-| API Layer | 200 | Just fetch wrappers |
+| API Layer | 150 | Just fetch wrappers |
+
+**Why Orchestrators Get 500 Lines:**
+Orchestrator components/services compose multiple smaller pieces. This composition requires more lines for imports, hook calls, event handlers, and JSX/function composition. Examples:
+- `VideoConceptBuilder.jsx` (519 lines) - well-architected orchestrator
+- `PromptOptimizerContainer.jsx` (400 lines) - delegates to hooks/components/services
+
+Both are well-architected despite size because they **delegate** to hooks/components/services rather than containing business logic. If your orchestrator has business logic, it should be extracted.
 
 ---
 
@@ -393,9 +403,17 @@ find client/src server/src -type f \( -name "*.js" -o -name "*.jsx" \) -exec wc 
 # Check specific directory
 find client/src/components/VideoConceptBuilder -name "*.jsx" -exec wc -l {} +
 
-# Check if any file exceeds limit
-find client/src -name "*.jsx" -exec wc -l {} + | awk '$1 > 200 {print "❌ " $0}'
-find server/src -name "*.js" -exec wc -l {} + | awk '$1 > 300 {print "❌ " $0}'
+# Check regular components (should be < 200 lines)
+find client/src -name "*.jsx" -path "*/components/*" -exec wc -l {} + | awk '$1 > 200 {print "❌ Component over 200: " $0}'
+
+# Check orchestrator components (should be < 500 lines)
+find client/src -name "*.jsx" ! -path "*/components/*" -exec wc -l {} + | awk '$1 > 500 {print "❌ Orchestrator over 500: " $0}'
+
+# Check orchestrator services (should be < 500 lines)
+find server/src/services -maxdepth 1 -name "*.js" -exec wc -l {} + | awk '$1 > 500 {print "❌ Service orchestrator over 500: " $0}'
+
+# Check specialized services (should be < 300 lines)
+find server/src/services -mindepth 2 -name "*.js" -exec wc -l {} + | awk '$1 > 300 {print "❌ Specialized service over 300: " $0}'
 ```
 
 ---
@@ -419,16 +437,24 @@ Add to your `~/.bashrc` or `~/.zshrc`:
 # Alias for quick validation
 alias check-sizes="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' \) -exec wc -l {} + | sort -rn | head -20"
 
-# Alias to check frontend only
-alias check-fe="find client/src -name '*.jsx' -exec wc -l {} + | awk '\$1 > 200 {print \"❌ \" \$0}' | head -10"
+# Check regular components (should be < 200 lines)
+alias check-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"❌ Component over 200: \" \$0}'"
 
-# Alias to check backend only
-alias check-be="find server/src -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"❌ \" \$0}' | head -10"
+# Check orchestrator components (should be < 500 lines)
+alias check-fe-main="find client/src -name '*.jsx' ! -path '*/components/*' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Orchestrator over 500: \" \$0}'"
+
+# Check orchestrator services (should be < 500 lines)
+alias check-be-main="find server/src/services -maxdepth 1 -name '*.js' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Service orchestrator over 500: \" \$0}'"
+
+# Check specialized services (should be < 300 lines)
+alias check-be-spec="find server/src/services -mindepth 2 -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"❌ Specialized service over 300: \" \$0}'"
 ```
 
 Then just run:
 ```bash
-check-sizes    # After any Claude Code changes
-check-fe       # Quick frontend check
-check-be       # Quick backend check
+check-sizes      # After any Claude Code changes (top 20 files)
+check-fe         # Check regular UI components (< 200 lines)
+check-fe-main    # Check orchestrator components (< 500 lines)
+check-be-main    # Check orchestrator services (< 500 lines)
+check-be-spec    # Check specialized services (< 300 lines)
 ```

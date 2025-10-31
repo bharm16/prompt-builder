@@ -17,7 +17,7 @@ Show me the proposed file structure BEFORE implementing.
 Add [FEATURE]
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- ComponentName.jsx (max 300 lines)
+- ComponentName.jsx (orchestrator, max 500 lines)
 - hooks/ (useReducer)
 - api/ (fetch calls)
 - components/ (UI < 200 lines each)
@@ -46,7 +46,7 @@ Modify [FILE] to [DO WHAT]
 CURRENT: [file path] ([run: wc -l file])
 CONSTRAINTS:
 - Maintain existing pattern
-- No file over [200 for components | 300 for services]
+- No file over [500 orchestrators | 200 components | 300 services]
 - If exceeds, refactor first
 
 SHOW WHAT CHANGES BEFORE implementing
@@ -59,12 +59,12 @@ Add [FEATURE] (full-stack)
 BACKEND FIRST:
 - Service: server/src/services/[name]/
 - Pattern: PromptOptimizationService
-- Max 300 lines per service
+- Max 500 lines orchestrator, 300 lines specialized services
 
 THEN FRONTEND:
 - Component: client/src/features/[name]/
 - Pattern: VideoConceptBuilder
-- Max 200 lines per component
+- Max 500 lines orchestrator, 200 lines UI components
 
 API CONTRACT:
 - [POST /api/endpoint { request }]
@@ -79,11 +79,15 @@ SHOW COMPLETE STRUCTURE FIRST
 
 | Type | Max Lines |
 |------|-----------|
-| React Component | **200** |
+| Orchestrator Component/Service | **500** |
+| Regular UI Component | **200** |
 | React Hook | **150** |
-| Backend Service | **300** (orchestrators: 500) |
+| Specialized Service | **300** |
 | Utility | **100** |
 | Config | **200** |
+| API Layer | **150** |
+
+**Note:** Orchestrators compose pieces (imports, hooks, handlers, JSX). Regular components contain UI logic. If your orchestrator has business logic, extract it.
 
 ---
 
@@ -123,14 +127,15 @@ wc -l [file-path]
 
 **Example:**
 ```bash
-claude-code "Add PDF export button
+claude-code "Add PDF export feature
 
 ARCHITECTURE: VideoConceptBuilder pattern
-- Component: client/src/features/prompt-optimizer/components/PdfExportButton.jsx (< 200 lines)
+- Orchestrator: client/src/features/prompt-optimizer/PdfExportManager.jsx (< 500 lines)
+- UI Components: components/PdfExportButton.jsx, components/PdfPreview.jsx (< 200 lines each)
 - Hook: hooks/usePdfExport.js (< 150 lines)
 - API: api/promptOptimizerApi.js (add exportToPdf method)
 
-REFERENCE: client/src/components/VideoConceptBuilder/components/
+REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST"
 ```
 
@@ -138,11 +143,13 @@ SHOW STRUCTURE FIRST"
 
 ## 🔥 Red Flags (Stop and Refactor First)
 
-- File approaching 200 lines (components) or 300 lines (services)
+- UI component approaching 200 lines (extract subcomponents)
+- Orchestrator approaching 500 lines (extract hooks/services)
+- Specialized service approaching 300 lines (split responsibilities)
 - Adding API calls inline (must go in api/ layer)
 - Adding useState when useReducer exists
 - Copy-pasting code (extract to shared utility)
-- Mixing UI and business logic
+- Business logic in orchestrators (extract to hooks/services)
 - Hardcoding config (extract to config/)
 
 ---
@@ -153,7 +160,8 @@ SHOW STRUCTURE FIRST"
 2. **Always request structure first**: "Show me the proposed structure BEFORE implementing"
 3. **Always validate after**: Run `wc -l [files]` to check sizes
 4. **Use project knowledge**: Your docs are indexed, mention them
-5. **Be specific**: "max 200 lines" not "keep it small"
+5. **Be specific with limits**: "max 500 lines orchestrator, 200 lines UI components" not "keep it small"
+6. **Understand orchestrator vs component**: Orchestrators compose (imports, hooks, handlers), components contain UI logic
 
 ---
 
@@ -176,7 +184,7 @@ SHOW REFACTORING PLAN FIRST"
 ```
 Pattern: [VideoConceptBuilder | PromptOptimizationService]
 Reference: [existing similar code]
-Limits: [200 component | 300 service]
+Limits: [500 orchestrator | 200 UI | 300 service]
 Show structure first ← ALWAYS SAY THIS
 ```
 
