@@ -75,6 +75,42 @@ SHOW COMPLETE STRUCTURE FIRST
 
 ---
 
+## 🎯 Pattern Selection (CRITICAL)
+
+**Always specify the correct pattern for the location:**
+
+| Working On | Pattern | Reference File |
+|------------|---------|----------------|
+| **Frontend** (client/src/) | VideoConceptBuilder | `client/src/components/VideoConceptBuilder/` |
+| **Backend** (server/src/) | PromptOptimizationService | `server/src/services/PromptOptimizationService.js` |
+
+### Frontend Structure
+```
+ComponentName/
+├── ComponentName.jsx (orchestrator)
+├── hooks/ (useReducer, custom hooks)
+├── api/ (fetch wrappers) ← Frontend uses api/
+├── config/ (constants)
+├── utils/ (pure functions)
+└── components/ (UI pieces)
+```
+
+### Backend Structure
+```
+ServiceName/
+├── MainService.js (orchestrator)
+├── service-name/ (specialized services) ← Backend uses services/
+│   ├── SpecializedService.js
+│   └── Repository.js
+└── templates/ (.md files)
+```
+
+**Rule of thumb:**
+- `api/` = frontend fetches data
+- `services/` = backend processes data
+
+---
+
 ## 🚨 File Size Limits (Enforce These)
 
 | Type | Max Lines |
