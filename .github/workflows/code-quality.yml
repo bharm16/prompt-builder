@@ -1,0 +1,17 @@
+name: Code Quality Checks
+
+on: [pull_request]
+
+jobs:
+  check-file-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check for large files
+        run: |
+          # Fail if any .js/.jsx file exceeds 500 lines
+          find src client/src -type f \( -name "*.js" -o -name "*.jsx" \) -exec wc -l {} + | \
+          awk '$1 > 500 {print "❌ Large file: " $2 " (" $1 " lines)"; exit 1}'
+
+          echo "✅ All files under 500 lines"
