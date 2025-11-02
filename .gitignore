@@ -56,6 +56,11 @@ build/
 .temp/
 tmp/
 
+# Backup files
+*.backup
+*.bak
+*.old
+
 # OS files
 Thumbs.db
 .DS_Store
