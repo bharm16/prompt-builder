@@ -7,6 +7,9 @@
 // Main component
 export { StepCoreConcept } from './StepCoreConcept';
 
+// Backward compatibility - alias for old import name
+export { StepCoreConcept as CoreConceptAccordion } from './StepCoreConcept';
+
 // Reusable primitive components (for use in other wizard steps)
 export { SuccessBanner } from './components/SuccessBanner';
 export { PrimaryButton } from './components/PrimaryButton';
