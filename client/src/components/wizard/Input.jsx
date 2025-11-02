@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-const EnhancedInput = ({
+const Input = ({
   name,
   value,
   onChange,
@@ -140,7 +140,7 @@ const EnhancedInput = ({
   );
 };
 
-EnhancedInput.propTypes = {
+Input.propTypes = {
   name: PropTypes.string.isRequired,
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
@@ -154,4 +154,4 @@ EnhancedInput.propTypes = {
   autoFocus: PropTypes.bool
 };
 
-export default EnhancedInput;
+export default Input;

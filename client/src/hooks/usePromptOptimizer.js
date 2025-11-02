@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '../components/Toast';
 import { promptOptimizationApi } from '../services';
-import { promptOptimizationApiV2 } from '../services/PromptOptimizationApiV2';
+import { promptOptimizationApiV2 } from '../services/PromptOptimizationApi';
 
 // Simple logger for client-side debugging
 const logger = {

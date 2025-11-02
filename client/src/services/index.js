@@ -6,6 +6,6 @@
 
 export { ApiClient, apiClient, ApiError } from './ApiClient';
 export { PromptOptimizationApi, promptOptimizationApi } from './PromptOptimizationApi';
-export { PromptOptimizationApiV2, promptOptimizationApiV2 } from './PromptOptimizationApiV2';
+export { PromptOptimizationApi, promptOptimizationApiV2 } from './PromptOptimizationApi';
 export { EnhancementApi, enhancementApi } from './EnhancementApi';
 export { VideoConceptApi, videoConceptApi } from './VideoConceptApi';

@@ -44,7 +44,7 @@ export class ServiceUnavailableError extends Error {
  * - 50-80% reduction in duplicate API calls (coalescing)
  * - Better resilience under high load
  */
-export class ClaudeAPIClientV2 {
+export class ClaudeAPIClient {
   constructor(apiKey, config = {}) {
     this.apiKey = apiKey;
     this.baseURL = 'https://api.anthropic.com/v1';
