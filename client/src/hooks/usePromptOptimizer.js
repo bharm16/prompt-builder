@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '../components/Toast';
-import { promptOptimizationApi } from '../services';
-import { promptOptimizationApiV2 } from '../services/PromptOptimizationApi';
+import { promptOptimizationApiV2 } from '../services';
 
 // Simple logger for client-side debugging
 const logger = {
@@ -33,7 +32,7 @@ export const usePromptOptimizer = (selectedMode, useTwoStage = true) => {
 
   const analyzeAndOptimize = useCallback(async (prompt, context = null, brainstormContext = null) => {
     try {
-      const data = await promptOptimizationApi.optimize({
+      const data = await promptOptimizationApiV2.optimize({
         prompt,
         mode: selectedMode,
         context,

@@ -10,7 +10,7 @@
  * - Main component: SuggestionsPanel.jsx (orchestration)
  * - State management: hooks/useSuggestionsState.js (category logic)
  * - API layer: api/customSuggestionsApi.js (centralized fetching)
- * - Business logic: utils/suggestionHelpers.js (pure functions)
+ * - Business logic: utils/suggestionHelpers.jsx (pure functions)
  * - Configuration: config/panelConfig.js (data-driven)
  * - Custom hooks: hooks/*.js (isolated concerns)
  * - UI components: components/*.jsx (reusable pieces)

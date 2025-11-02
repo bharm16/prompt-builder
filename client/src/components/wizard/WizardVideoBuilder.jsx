@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
-import StepQuickFill from './StepQuickFill';
+import { StepQuickFill } from './StepQuickFill';
 import { CoreConceptAccordion } from './StepCoreConcept';
 import StepAtmosphere from './StepAtmosphere';
 import SummaryReview from './SummaryReview';
