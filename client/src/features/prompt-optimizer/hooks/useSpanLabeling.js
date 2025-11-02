@@ -1,308 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_CONFIG } from '../../../config/api.config';
-import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.config';
-
-const CACHE_STORAGE_KEY = STORAGE_KEYS.SPAN_LABELING_CACHE;
-const CACHE_LIMIT = PERFORMANCE_CONFIG.SPAN_LABELING_CACHE_LIMIT;
-
-const highlightCache = new Map();
-let cacheHydrated = false;
-
-// Hash cache for memoization (LRU eviction)
-const hashCache = new Map();
-const HASH_CACHE_MAX_SIZE = PERFORMANCE_CONFIG.HASH_CACHE_MAX_SIZE;
-
-/**
- * Optimized string hashing with memoization
- * Uses FNV-1a hash algorithm (faster than original implementation)
- * Caches results to avoid re-computing hashes for the same strings
- */
-const hashString = (input = '') => {
-  if (!input) return '0';
-  
-  // Check cache first
-  if (hashCache.has(input)) {
-    return hashCache.get(input);
-  }
-  
-  // FNV-1a hash (faster than previous implementation)
-  let hash = 2166136261; // FNV offset basis
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    // FNV prime: 16777619
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  
-  const result = (hash >>> 0).toString(36);
-  
-  // Cache with LRU eviction
-  if (hashCache.size >= HASH_CACHE_MAX_SIZE) {
-    const firstKey = hashCache.keys().next().value;
-    hashCache.delete(firstKey);
-  }
-  hashCache.set(input, result);
-  
-  return result;
-};
-
-const getCacheStorage = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    if (window.localStorage) {
-      return window.localStorage;
-    }
-  } catch (error) {
-    // Ignore storage access errors and try sessionStorage
-  }
-
-  try {
-    if (window.sessionStorage) {
-      return window.sessionStorage;
-    }
-  } catch (error) {
-    // Ignore storage access errors
-  }
-
-  return null;
-};
-
-const serializePolicy = (policy) => {
-  if (!policy || typeof policy !== 'object') {
-    return '';
-  }
-
-  return Object.keys(policy)
-    .sort()
-    .map((key) => {
-      const value = policy[key];
-      if (value && typeof value === 'object') {
-        return `${key}:${JSON.stringify(value)}`;
-      }
-      return `${key}:${String(value)}`;
-    })
-    .join('|');
-};
-
-const buildCacheKey = (payload = {}) => {
-  const text = payload.text ?? '';
-  const baseId =
-    typeof payload.cacheId === 'string' && payload.cacheId.trim().length > 0
-      ? payload.cacheId.trim()
-      : null;
-  const derivedId = baseId ? `${baseId}::${hashString(text)}` : `anon::${hashString(text)}`;
-  const policyKey = serializePolicy(payload.policy);
-  return [
-    payload.maxSpans ?? '',
-    payload.minConfidence ?? '',
-    payload.templateVersion ?? '',
-    policyKey,
-    derivedId,
-  ].join('::');
-};
-
-/**
- * Hydrate cache from localStorage asynchronously using requestIdleCallback
- * This prevents blocking the main thread during component mount
- */
-const hydrateCacheFromStorage = () => {
-  if (cacheHydrated) {
-    return;
-  }
-  cacheHydrated = true;
-
-  const storage = getCacheStorage();
-  if (!storage) {
-    return;
-  }
-
-  // Defer cache hydration to avoid blocking initial render
-  const performHydration = () => {
-    try {
-      const raw = storage.getItem(CACHE_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-      const entries = JSON.parse(raw);
-      if (!Array.isArray(entries)) {
-        return;
-      }
-
-      entries.forEach(([key, value]) => {
-        if (!key || typeof key !== 'string' || !value || typeof value !== 'object') {
-          return;
-        }
-        const normalized = {
-          spans: Array.isArray(value.spans) ? value.spans : [],
-          meta: value.meta ?? null,
-          timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
-          text: typeof value.text === 'string' ? value.text : '',
-          cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
-          signature: typeof value.signature === 'string' ? value.signature : null,
-        };
-        if (!normalized.text) {
-          return;
-        }
-        if (!normalized.signature) {
-          normalized.signature = hashString(normalized.text ?? '');
-        }
-        highlightCache.set(key, normalized);
-      });
-
-      while (highlightCache.size > CACHE_LIMIT) {
-        const oldestKey = highlightCache.keys().next().value;
-        highlightCache.delete(oldestKey);
-      }
-    } catch (error) {
-      console.warn('Unable to hydrate span labeling cache:', error);
-      highlightCache.clear();
-    }
-  };
-
-  // Use requestIdleCallback for non-blocking hydration
-  // Falls back to setTimeout for browsers without requestIdleCallback
-  if (typeof requestIdleCallback !== 'undefined') {
-    requestIdleCallback(performHydration, { timeout: 2000 });
-  } else {
-    setTimeout(performHydration, 100);
-  }
-};
-
-const persistCacheToStorage = () => {
-  const storage = getCacheStorage();
-  if (!storage) {
-    return;
-  }
-
-  try {
-    const serialized = Array.from(highlightCache.entries()).map(([key, value]) => [
-      key,
-      {
-        spans: Array.isArray(value.spans) ? value.spans : [],
-        meta: value.meta ?? null,
-        timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
-        text: typeof value.text === 'string' ? value.text : '',
-        cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
-        signature: typeof value.signature === 'string' ? value.signature : hashString(value.text ?? ''),
-      },
-    ]);
-    storage.setItem(CACHE_STORAGE_KEY, JSON.stringify(serialized));
-  } catch (error) {
-    console.warn('Unable to persist span labeling cache:', error);
-  }
-};
-
-const getCachedResult = (payload) => {
-  hydrateCacheFromStorage();
-  const key = buildCacheKey(payload);
-  const cached = highlightCache.get(key);
-  if (!cached) {
-    return null;
-  }
-  if (cached.text !== payload.text) {
-    return null;
-  }
-  const signature = typeof cached.signature === 'string' ? cached.signature : hashString(cached.text ?? '');
-  return {
-    ...cached,
-    signature,
-  };
-};
-
-const setCachedResult = (payload, data) => {
-  hydrateCacheFromStorage();
-  if (!payload?.text) {
-    return;
-  }
-  const key = buildCacheKey(payload);
-  const entry = {
-    spans: Array.isArray(data?.spans) ? data.spans : [],
-    meta: data?.meta ?? null,
-    timestamp: Date.now(),
-    text: payload.text ?? '',
-    cacheId: payload.cacheId ?? null,
-    signature: data?.signature ?? hashString(payload.text ?? ''),
-  };
-
-  // Update recency for simple LRU semantics
-  if (highlightCache.has(key)) {
-    highlightCache.delete(key);
-  }
-  highlightCache.set(key, entry);
-
-  while (highlightCache.size > CACHE_LIMIT) {
-    const oldestKey = highlightCache.keys().next().value;
-    highlightCache.delete(oldestKey);
-  }
-
-  persistCacheToStorage();
-};
-
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-API-Key': API_CONFIG.apiKey,
-};
-
-const DEFAULT_POLICY = {
-  nonTechnicalWordLimit: 6,
-  allowOverlap: false,
-};
-
-/**
- * Calculate smart debounce delay based on text length
- *
- * Performance optimization: Shorter texts get faster processing
- * to improve perceived responsiveness, while longer texts use
- * longer delays to reduce unnecessary API calls.
- *
- * Optimized Thresholds (LLM-only system - 2x faster):
- * - <100 chars: 50ms (instant for very short snippets)
- * - 100-500 chars: 150ms (fast for short text)
- * - 500-2000 chars: 300ms (balanced for medium text)
- * - >2000 chars: 450ms (still responsive for large text)
- *
- * @param {string} text - The text to analyze
- * @returns {number} Debounce delay in milliseconds
- */
-const calculateSmartDebounce = (text) => {
-  if (!text) return 50; // Default for empty text
-
-  const length = text.length;
-
-  if (length < 100) {
-    return 50; // Very short: instant
-  } else if (length < 500) {
-    return 150; // Short text: fast response
-  } else if (length < 2000) {
-    return 300; // Medium text: balanced
-  } else {
-    return 450; // Large text: still responsive
-  }
-};
-
-const DEFAULT_OPTIONS = {
-  maxSpans: 60,
-  minConfidence: 0.5,
-  templateVersion: 'v1',
-  debounceMs: 500, // Fallback if smart debounce is disabled
-  useSmartDebounce: true, // Enable smart debouncing by default
-};
-
-const buildBody = (payload) => {
-  const body = {
-    text: payload.text,
-    maxSpans: payload.maxSpans,
-    minConfidence: payload.minConfidence,
-    policy: payload.policy,
-    templateVersion: payload.templateVersion,
-  };
-
-  return JSON.stringify(body);
-};
-
-const sanitizeText = (text) => (typeof text === 'string' ? text.normalize('NFC') : '');
+import { DEFAULT_POLICY, DEFAULT_OPTIONS } from './useSpanLabeling/config/constants.js';
+import { calculateSmartDebounce } from './useSpanLabeling/config/debounce.js';
+import { sanitizeText } from './useSpanLabeling/utils/textUtils.js';
+import { hashString } from './useSpanLabeling/utils/hashing.js';
+import { spanLabelingCache } from './useSpanLabeling/services/SpanLabelingCache.js';
+import { SpanLabelingApi } from './useSpanLabeling/api/spanLabelingApi.js';
 
 export const createHighlightSignature = (text) => hashString(sanitizeText(text ?? ''));
 
@@ -375,33 +77,7 @@ export function useSpanLabeling({
   }, []);
 
 const performRequest = useCallback(async (payload, signal) => {
-  const res = await fetch('/llm/label-spans', {
-    method: 'POST',
-    headers: DEFAULT_HEADERS,
-    body: buildBody(payload),
-    signal,
-    });
-
-    if (!res.ok) {
-      let message = `Request failed with status ${res.status}`;
-      try {
-        const errorBody = await res.json();
-        if (errorBody?.message) {
-          message = errorBody.message;
-        }
-      } catch {
-        // Ignore JSON parse errors and fall back to default message
-      }
-      const error = new Error(message);
-      error.status = res.status;
-      throw error;
-    }
-
-  const data = await res.json();
-  return {
-    spans: Array.isArray(data?.spans) ? data.spans : [],
-    meta: data?.meta ?? null,
-  };
+  return SpanLabelingApi.labelSpans(payload, signal);
 }, []);
 
   const emitResult = useCallback(
@@ -449,7 +125,7 @@ const performRequest = useCallback(async (payload, signal) => {
 
       if (!immediate) {
         const cacheCheckStart = performance.now();
-        const cached = getCachedResult(payload);
+        const cached = spanLabelingCache.get(payload);
         const cacheCheckDuration = performance.now() - cacheCheckStart;
 
         if (cached) {
@@ -523,7 +199,7 @@ const performRequest = useCallback(async (payload, signal) => {
             status: 'success',
             error: null,
           });
-          setCachedResult(payload, normalizedResult);
+          spanLabelingCache.set(payload, normalizedResult);
           emitResult(
             {
               spans: normalizedResult.spans,
@@ -583,7 +259,7 @@ const performRequest = useCallback(async (payload, signal) => {
           //
           // ============================================================
 
-          const fallback = getCachedResult(payload);
+          const fallback = spanLabelingCache.get(payload);
 
           if (fallback) {
             // DEGRADED PATH: Fallback to cached result with error preservation
@@ -701,7 +377,7 @@ const performRequest = useCallback(async (payload, signal) => {
         status: 'success',
         error: null,
       });
-      setCachedResult(payload, {
+      spanLabelingCache.set(payload, {
         spans: initialData.spans,
         meta: initialData.meta ?? null,
         signature: initialData.signature ?? hashString(normalized ?? ''),
@@ -753,23 +429,9 @@ const performRequest = useCallback(async (payload, signal) => {
 }
 
 export const __clearSpanLabelingCache = () => {
-  highlightCache.clear();
-  cacheHydrated = false;
-  const storage = getCacheStorage();
-  if (!storage) {
-    return;
-  }
-  try {
-    storage.removeItem(CACHE_STORAGE_KEY);
-  } catch (error) {
-    // Ignore storage access errors
-  }
+  spanLabelingCache.clear();
 };
 
-export const __getSpanLabelingCacheSnapshot = () =>
-  Array.from(highlightCache.entries()).map(([key, value]) => ({
-    key,
-    cacheId: value?.cacheId ?? null,
-    spanCount: Array.isArray(value?.spans) ? value.spans.length : 0,
-    textPreview: typeof value?.text === 'string' ? value.text.slice(0, 40) : '',
-  }));
+export const __getSpanLabelingCacheSnapshot = () => {
+  return spanLabelingCache.getSnapshot();
+};
