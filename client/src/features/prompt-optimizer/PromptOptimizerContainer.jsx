@@ -28,6 +28,7 @@ import { detectAndApplySceneChange } from '../../utils/detectSceneChange';
 import { applySuggestionToPrompt } from './utils/applySuggestion.js';
 import { createHighlightSignature } from './hooks/useSpanLabeling.js';
 import { PERFORMANCE_CONFIG } from '../../config/performance.config';
+import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from './api/enhancementSuggestionsApi';
 
 /**
  * Inner component with access to PromptStateContext
@@ -455,6 +456,45 @@ function PromptOptimizerContent({ user }) {
   // ============================================================================
   // Enhancement Suggestions
   // ============================================================================
+  const handleSuggestionClick = async (suggestion) => {
+    const suggestionText =
+      typeof suggestion === 'string' ? suggestion : suggestion?.text || '';
+
+    if (!suggestionText || !suggestionsData) return;
+
+    const {
+      selectedText,
+      fullPrompt,
+      range,
+      offsets,
+      metadata,
+    } = suggestionsData;
+
+    try {
+      // Apply the suggestion (delegates to utility)
+      const result = await applySuggestionToPrompt({
+        currentPrompt: fullPrompt,
+        selectedText,
+        suggestionText,
+        range,
+        offsets,
+        metadata,
+      });
+
+      // Update displayed prompt
+      if (result.updatedPrompt) {
+        setDisplayedPromptSilently(result.updatedPrompt);
+        toast.success('Suggestion applied');
+      }
+
+      // Close suggestions panel
+      setSuggestionsData(null);
+    } catch (error) {
+      console.error('Error applying suggestion:', error);
+      toast.error('Failed to apply suggestion');
+    }
+  };
+
   const fetchEnhancementSuggestions = async (payload = {}) => {
     const {
       highlightedText,
@@ -476,6 +516,7 @@ function PromptOptimizerContent({ user }) {
         }
       : null;
 
+    // Early returns for invalid cases
     if (selectedMode !== 'video' || !trimmedHighlight) {
       return;
     }
@@ -484,9 +525,59 @@ function PromptOptimizerContent({ user }) {
       return;
     }
 
-    // Implementation continues... (fetch logic from original component)
-    // For brevity, I'm not duplicating the entire 300-line suggestion logic here
-    // It would be the same as in the original component
+    // Show loading state immediately
+    setSuggestionsData({
+      show: true,
+      selectedText: trimmedHighlight,
+      originalText: originalText || trimmedHighlight,
+      suggestions: [],
+      isLoading: true,
+      isPlaceholder: false,
+      fullPrompt: normalizedPrompt,
+      range,
+      offsets,
+      metadata,
+      setSuggestions: (newSuggestions, newIsPlaceholder) => {
+        setSuggestionsData((prev) => ({
+          ...prev,
+          suggestions: newSuggestions,
+          isPlaceholder:
+            newIsPlaceholder !== undefined
+              ? newIsPlaceholder
+              : prev.isPlaceholder,
+        }));
+      },
+      onSuggestionClick: handleSuggestionClick,
+      onClose: () => setSuggestionsData(null),
+    });
+
+    try {
+      // Delegate to API layer (VideoConceptBuilder pattern)
+      const { suggestions, isPlaceholder } = await fetchSuggestionsAPI({
+        highlightedText: trimmedHighlight,
+        normalizedPrompt,
+        inputPrompt: promptOptimizer.inputPrompt,
+        brainstormContext: stablePromptContext,
+        metadata,
+      });
+
+      // Update with results
+      setSuggestionsData(prev => ({
+        ...prev,
+        suggestions,
+        isLoading: false,
+        isPlaceholder,
+      }));
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      toast.error('Failed to load suggestions');
+
+      setSuggestionsData((prev) => ({
+        ...prev,
+        isLoading: false,
+        suggestions: [{ text: 'Failed to load suggestions. Please try again.' }],
+      }));
+    }
   };
 
   // ============================================================================
