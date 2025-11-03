@@ -103,7 +103,27 @@ export async function labelSpans(params, options = {}) {
       throw new Error(parsedPrimary.error);
     }
 
-    // Validate schema
+    // DEFENSIVE: Inject default meta if LLM omitted it
+    // Groq/Llama models sometimes optimize by omitting "optional" fields
+    // This ensures schema validation always passes
+    if (parsedPrimary.value) {
+      if (!parsedPrimary.value.meta || typeof parsedPrimary.value.meta !== 'object') {
+        parsedPrimary.value.meta = {
+          version: sanitizedOptions.templateVersion || 'v1',
+          notes: `Labeled ${parsedPrimary.value.spans?.length || 0} spans`,
+        };
+      } else {
+        // Ensure meta has required sub-fields
+        if (!parsedPrimary.value.meta.version) {
+          parsedPrimary.value.meta.version = sanitizedOptions.templateVersion || 'v1';
+        }
+        if (typeof parsedPrimary.value.meta.notes !== 'string') {
+          parsedPrimary.value.meta.notes = '';
+        }
+      }
+    }
+
+    // Validate schema (should pass now with defensive meta injection)
     validateSchemaOrThrow(parsedPrimary.value);
 
     // Validate spans (strict mode)

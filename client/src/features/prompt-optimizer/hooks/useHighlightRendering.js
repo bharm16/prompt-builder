@@ -5,7 +5,7 @@ import { createHighlightSignature } from './useSpanLabeling.js';
 import { PromptContext } from '../../../utils/PromptContext.js';
 
 // Debug flag for highlight logging
-const DEBUG_HIGHLIGHTS = false;
+const DEBUG_HIGHLIGHTS = true;
 
 /**
  * Custom hook for rendering highlights in the editor
@@ -131,19 +131,39 @@ export function useHighlightRendering({
 
       const expectedText = span.displayQuote ?? span.quote ?? '';
       const actualSlice = displayText.slice(highlightStart, highlightEnd);
-      if (expectedText && actualSlice !== expectedText) {
-        if (DEBUG_HIGHLIGHTS) {
-          console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
-            id: span.id,
-            role: span.role,
-            expected: expectedText,
-            found: actualSlice,
-            start: highlightStart,
-            end: highlightEnd,
-            displayTextLength: displayText.length,
-            context: displayText.slice(Math.max(0, highlightStart - 20), Math.min(displayText.length, highlightEnd + 20))
-          });
+
+      // RELAXED VALIDATION: Use fuzzy matching to handle whitespace/case differences
+      // This prevents filtering out valid highlights due to minor text variations
+      if (expectedText && actualSlice) {
+        // Normalize both strings (lowercase, trim, collapse whitespace)
+        const normalizedExpected = expectedText.toLowerCase().trim().replace(/\s+/g, ' ');
+        const normalizedActual = actualSlice.toLowerCase().trim().replace(/\s+/g, ' ');
+
+        // Only skip if there's a significant mismatch
+        if (normalizedExpected !== normalizedActual) {
+          // Allow substring matches (e.g., "Close-up" in "Close-up of")
+          const isSubstringMatch =
+            normalizedActual.includes(normalizedExpected) ||
+            normalizedExpected.includes(normalizedActual);
+
+          if (!isSubstringMatch) {
+            if (DEBUG_HIGHLIGHTS) {
+              console.warn('[HIGHLIGHT] SPAN_MISMATCH - Skipping highlight', {
+                id: span.id,
+                role: span.role,
+                expected: expectedText,
+                found: actualSlice,
+                normalizedExpected,
+                normalizedActual,
+                start: highlightStart,
+                end: highlightEnd,
+              });
+            }
+            return;
+          }
         }
+      } else if (!actualSlice || !actualSlice.trim()) {
+        // Skip empty slices
         return;
       }
 
