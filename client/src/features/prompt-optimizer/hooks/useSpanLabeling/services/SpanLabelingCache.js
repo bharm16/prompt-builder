@@ -13,6 +13,9 @@ import { hashString } from '../utils/hashing.js';
 import { buildCacheKey as buildCacheKeyUtil } from '../utils/cacheKey.js';
 import { getCacheStorage } from './storageAdapter.js';
 
+// Cache version - increment when highlight format changes
+const CURRENT_CACHE_VERSION = 2;
+
 /**
  * Cache service for span labeling results
  * Singleton pattern - shared across all hook instances for better cache hit rate
@@ -64,6 +67,14 @@ class SpanLabelingCache {
           if (!key || typeof key !== 'string' || !value || typeof value !== 'object') {
             return;
           }
+
+          // CACHE VERSION CHECK: Skip outdated entries during hydration
+          const cacheVersion = value.meta?.cacheVersion || 1;
+          if (cacheVersion < CURRENT_CACHE_VERSION) {
+            // Silently skip - will be logged when user tries to access
+            return;
+          }
+
           const normalized = {
             spans: Array.isArray(value.spans) ? value.spans : [],
             meta: value.meta ?? null,
@@ -145,6 +156,15 @@ class SpanLabelingCache {
     if (cached.text !== payload.text) {
       return null;
     }
+
+    // CACHE VERSION CHECK: Invalidate old format highlights
+    const cacheVersion = cached.meta?.cacheVersion || 1;
+    if (cacheVersion < CURRENT_CACHE_VERSION) {
+      console.log('[CACHE] Invalidating outdated cache entry (v' + cacheVersion + ' < v' + CURRENT_CACHE_VERSION + ')');
+      this.cache.delete(key);
+      return null;
+    }
+
     const signature = typeof cached.signature === 'string' ? cached.signature : hashString(cached.text ?? '');
     return {
       ...cached,
@@ -165,7 +185,10 @@ class SpanLabelingCache {
     const key = this.buildCacheKey(payload);
     const entry = {
       spans: Array.isArray(data?.spans) ? data.spans : [],
-      meta: data?.meta ?? null,
+      meta: {
+        ...(data?.meta ?? {}),
+        cacheVersion: CURRENT_CACHE_VERSION, // Add version stamp
+      },
       timestamp: Date.now(),
       text: payload.text ?? '',
       cacheId: payload.cacheId ?? null,
