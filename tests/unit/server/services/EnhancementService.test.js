@@ -16,6 +16,7 @@ vi.mock('../../../../server/src/services/DescriptorCategories.js');
 describe('EnhancementService', () => {
   let service;
   let mockClaudeClient;
+  let mockGroqClient;
   let mockPlaceholderDetector;
   let mockVideoService;
   let mockBrainstormBuilder;
@@ -30,6 +31,10 @@ describe('EnhancementService', () => {
 
     // Setup mock dependencies
     mockClaudeClient = {
+      complete: vi.fn(),
+    };
+
+    mockGroqClient = {
       complete: vi.fn(),
     };
 
@@ -90,6 +95,7 @@ describe('EnhancementService', () => {
     // Create service instance
     service = new EnhancementService(
       mockClaudeClient,
+      mockGroqClient,
       mockPlaceholderDetector,
       mockVideoService,
       mockBrainstormBuilder,

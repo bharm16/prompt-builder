@@ -15,6 +15,7 @@ import { detectDescriptorCategory, getCategoryFallbacks } from './DescriptorCate
 export class EnhancementService {
   constructor(
     claudeClient,
+    groqClient,
     placeholderDetector,
     videoService,
     brainstormBuilder,
@@ -24,6 +25,7 @@ export class EnhancementService {
     categoryAligner
   ) {
     this.claudeClient = claudeClient;
+    this.groqClient = groqClient;
     this.placeholderDetector = placeholderDetector;
     this.videoService = videoService;
     this.brainstormBuilder = brainstormBuilder;
@@ -152,9 +154,9 @@ export class EnhancementService {
       precision: 'medium',
     });
 
-    // Call Claude API with structured output enforcement
+    // Call Groq API for 8x faster suggestions (with Claude fallback)
     const suggestions = await StructuredOutputEnforcer.enforceJSON(
-      this.claudeClient,
+      this.groqClient || this.claudeClient,
       systemPrompt,
       {
         schema,
@@ -271,7 +273,7 @@ export class EnhancementService {
           });
 
           const fallbackSuggestions = await StructuredOutputEnforcer.enforceJSON(
-            this.claudeClient,
+            this.groqClient || this.claudeClient,
             fallbackPrompt,
             {
               schema,
@@ -467,9 +469,9 @@ export class EnhancementService {
       precision: 'medium',
     });
 
-    // Call Claude API with structured output enforcement
+    // Call Groq API for 8x faster suggestions (with Claude fallback)
     const suggestions = await StructuredOutputEnforcer.enforceJSON(
-      this.claudeClient,
+      this.groqClient || this.claudeClient,
       systemPrompt,
       {
         schema,

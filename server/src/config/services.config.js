@@ -203,6 +203,7 @@ export function configureServices() {
     'enhancementService',
     (
       claudeClient,
+      groqClient,
       placeholderDetector,
       videoService,
       brainstormBuilder,
@@ -213,6 +214,7 @@ export function configureServices() {
     ) =>
       new EnhancementService(
         claudeClient,
+        groqClient,
         placeholderDetector,
         videoService,
         brainstormBuilder,
@@ -223,6 +225,7 @@ export function configureServices() {
       ),
     [
       'claudeClient',
+      'groqClient',
       'placeholderDetector',
       'videoService',
       'brainstormBuilder',
