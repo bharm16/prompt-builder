@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { logger } from '../infrastructure/Logger.js';
 import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
 import { spanLabelingCache } from '../services/SpanLabelingCacheService.js';
+import { callGroq } from '../llm/groqClient.js';
 
 export const labelSpansRoute = Router();
 
@@ -47,7 +48,7 @@ labelSpansRoute.post('/', async (req, res) => {
 
   try {
     // Cache-aside pattern: Check cache first
-    // This reduces OpenAI API calls by 70-90% and provides <5ms response time for cached results
+    // This reduces Groq API calls by 70-90% and provides <5ms response time for cached results
     let result;
     let cacheHit = false;
 
@@ -71,10 +72,15 @@ labelSpansRoute.post('/', async (req, res) => {
       }
     }
 
-    // Cache miss: call OpenAI API
+    // Cache miss: use Groq for SPEED
     if (!result) {
       const startTime = Date.now();
-      result = await labelSpans(payload);
+
+      // Use Groq instead of OpenAI for sub-200ms latency
+      result = await labelSpans(payload, {
+        callFn: callGroq,
+      });
+
       const apiTime = Date.now() - startTime;
 
       // Store in cache for future requests
@@ -84,15 +90,17 @@ labelSpansRoute.post('/', async (req, res) => {
         await spanLabelingCache.set(text, policy, templateVersion, result, { ttl });
       }
 
-      logger.debug('Span labeling completed', {
+      logger.info('Span labeling completed with Groq', {
         apiTime,
         textLength: text.length,
         spanCount: result.spans?.length || 0,
+        model: 'llama-3.1-8b-instant',
       });
 
       // Add cache miss headers for monitoring
       res.setHeader('X-Cache', 'MISS');
       res.setHeader('X-API-Time', `${apiTime}ms`);
+      res.setHeader('X-Model', 'groq-llama-3.1-8b-instant');
     }
 
     return res.json(result);
