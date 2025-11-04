@@ -166,10 +166,30 @@ export class GroqAPIClient {
 
       if (!response.ok) {
         const errorBody = await response.text();
-        throw new APIError(
-          `Groq API error: ${response.status} - ${errorBody}`,
-          response.status
-        );
+
+        // Parse error for better messaging
+        let errorMessage = `Groq API error: ${response.status} - ${errorBody}`;
+        let parsedError;
+        try {
+          parsedError = JSON.parse(errorBody);
+        } catch {
+          // Keep original error if not JSON
+        }
+
+        // Provide clear error messages for common issues
+        if (response.status === 401) {
+          if (parsedError?.error?.code === 'invalid_api_key') {
+            errorMessage = `Invalid Groq API key. Please check your GROQ_API_KEY in the .env file and regenerate at https://console.groq.com`;
+          } else {
+            errorMessage = `Groq API authentication failed. Please verify your API key at https://console.groq.com`;
+          }
+        } else if (response.status === 429) {
+          errorMessage = `Groq API rate limit exceeded. Please wait before retrying or upgrade your plan.`;
+        } else if (response.status === 500) {
+          errorMessage = `Groq API server error. The service may be temporarily unavailable.`;
+        }
+
+        throw new APIError(errorMessage, response.status);
       }
 
       // Parse SSE stream
@@ -265,10 +285,30 @@ export class GroqAPIClient {
 
       if (!response.ok) {
         const errorBody = await response.text();
-        throw new APIError(
-          `Groq API error: ${response.status} - ${errorBody}`,
-          response.status
-        );
+
+        // Parse error for better messaging
+        let errorMessage = `Groq API error: ${response.status} - ${errorBody}`;
+        let parsedError;
+        try {
+          parsedError = JSON.parse(errorBody);
+        } catch {
+          // Keep original error if not JSON
+        }
+
+        // Provide clear error messages for common issues
+        if (response.status === 401) {
+          if (parsedError?.error?.code === 'invalid_api_key') {
+            errorMessage = `Invalid Groq API key. Please check your GROQ_API_KEY in the .env file and regenerate at https://console.groq.com`;
+          } else {
+            errorMessage = `Groq API authentication failed. Please verify your API key at https://console.groq.com`;
+          }
+        } else if (response.status === 429) {
+          errorMessage = `Groq API rate limit exceeded. Please wait before retrying or upgrade your plan.`;
+        } else if (response.status === 500) {
+          errorMessage = `Groq API server error. The service may be temporarily unavailable.`;
+        }
+
+        throw new APIError(errorMessage, response.status);
       }
 
       const data = await response.json();

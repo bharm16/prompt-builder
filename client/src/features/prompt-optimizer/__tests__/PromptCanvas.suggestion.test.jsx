@@ -14,6 +14,7 @@ beforeAll(() => {
 
 vi.mock('../hooks/useSpanLabeling.js', () => ({
   useSpanLabeling: vi.fn(),
+  createHighlightSignature: vi.fn((text = '') => text),
 }));
 
 vi.mock('../../utils/anchorRanges.js', () => {

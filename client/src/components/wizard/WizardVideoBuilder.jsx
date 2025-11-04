@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import WizardProgress from './WizardProgress';
 import MobileFieldView from './MobileFieldView';
-import StepQuickFill from './StepQuickFill';
+import { StepQuickFill } from './StepQuickFill';
 import { CoreConceptAccordion } from './StepCoreConcept';
 import StepAtmosphere from './StepAtmosphere';
 import SummaryReview from './SummaryReview';
@@ -73,10 +73,16 @@ const WizardVideoBuilder = ({
   // Auto-save timer
   const autoSaveTimer = useRef(null);
   const lastSavedData = useRef(null);
+  const onSaveRef = useRef(onSave);
 
   // Constants
   const STORAGE_KEY = 'wizard_video_builder_draft';
   const AUTO_SAVE_DELAY = 2000; // 2 seconds
+  
+  // Keep onSave ref up to date
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   // Mobile field configuration
   const mobileFields = [
@@ -129,29 +135,32 @@ const WizardVideoBuilder = ({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save effect
+  // Auto-save effect with optimized change detection
   useEffect(() => {
     // Clear existing timer
     if (autoSaveTimer.current) {
       clearTimeout(autoSaveTimer.current);
     }
 
-    // Only save if data has changed
-    if (JSON.stringify(formData) !== JSON.stringify(lastSavedData.current)) {
-      autoSaveTimer.current = setTimeout(() => {
+    // Schedule auto-save (debounced)
+    autoSaveTimer.current = setTimeout(() => {
+      // Only save if data has actually changed (simple reference check)
+      // lastSavedData will be updated in saveToLocalStorage
+      if (formData !== lastSavedData.current) {
         saveToLocalStorage();
-        if (onSave) {
-          onSave(formData);
+        if (onSaveRef.current) {
+          onSaveRef.current(formData);
         }
-      }, AUTO_SAVE_DELAY);
-    }
+        lastSavedData.current = formData;
+      }
+    }, AUTO_SAVE_DELAY);
 
     return () => {
       if (autoSaveTimer.current) {
         clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [formData, onSave]);
+  }, [formData]); // Only depend on formData, not onSave
 
   // Save to localStorage
   const saveToLocalStorage = () => {
@@ -192,6 +201,7 @@ const WizardVideoBuilder = ({
   };
 
   // Update form data
+  // Use stable callback without validationErrors dependency to avoid re-renders
   const handleFieldChange = useCallback((fieldName, value) => {
     setFormData(prev => {
       // Handle nested fields (e.g., "camera.angle")
@@ -211,15 +221,16 @@ const WizardVideoBuilder = ({
       };
     });
 
-    // Clear validation error for this field
-    if (validationErrors[fieldName]) {
-      setValidationErrors(prev => {
+    // Clear validation error for this field (using functional update)
+    setValidationErrors(prev => {
+      if (prev[fieldName]) {
         const newErrors = { ...prev };
         delete newErrors[fieldName];
         return newErrors;
-      });
-    }
-  }, [validationErrors]);
+      }
+      return prev; // No change if no error existed
+    });
+  }, []); // Stable callback with no dependencies
 
   // Request AI suggestions
   const handleRequestSuggestions = useCallback(async (fieldName, currentValue) => {
@@ -422,6 +433,15 @@ const WizardVideoBuilder = ({
   };
 
   // Keyboard shortcuts (desktop only)
+  // Use refs to avoid re-attaching listener on every state change
+  const currentStepRef = useRef(currentStep);
+  const handlePreviousStepRef = useRef(handlePreviousStep);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+    handlePreviousStepRef.current = handlePreviousStep;
+  }, [currentStep, handlePreviousStep]);
+
   useEffect(() => {
     if (isMobile) return;
 
@@ -433,15 +453,15 @@ const WizardVideoBuilder = ({
 
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (currentStep > 0) {
-          handlePreviousStep();
+        if (currentStepRef.current > 0) {
+          handlePreviousStepRef.current();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobile, currentStep]);  
+  }, [isMobile]); // Stable dependencies - no re-attachment  
 
   // Validate current field (mobile)
   const validateCurrentMobileField = () => {

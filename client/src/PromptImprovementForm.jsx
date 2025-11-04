@@ -1,6 +1,7 @@
 // src/PromptImprovementForm.jsx
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, Loader2 } from 'lucide-react';
+import { API_CONFIG } from './config/api.config';
 
 const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
   const [expandedSection, setExpandedSection] = useState(1);
@@ -20,7 +21,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
       setError(null);
 
       try {
-        console.log('🔄 Fetching AI-generated questions for:', initialPrompt);
+        
 
         const response = await fetch(
           '/api/generate-questions',
@@ -28,7 +29,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-API-Key': 'dev-key-12345',
+              'X-API-Key': API_CONFIG.apiKey,
             },
             body: JSON.stringify({
               prompt: initialPrompt,
@@ -36,7 +37,7 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
           }
         );
 
-        console.log('📡 Response status:', response.status);
+        
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -45,17 +46,17 @@ const PromptImprovementForm = ({ onComplete, initialPrompt = '' }) => {
         }
 
         const data = await response.json();
-        console.log('✅ Received questions:', data);
+        
 
         if (data.questions && Array.isArray(data.questions)) {
           setQuestions(data.questions);
-          console.log('✨ AI-generated questions loaded successfully');
+          
         } else {
           throw new Error('Invalid response format');
         }
       } catch (err) {
         console.error('❌ Error fetching questions:', err);
-        console.log('⚠️ Falling back to static questions');
+        
         setError(err.message);
         // Fallback to static questions
         setQuestions(generateFallbackQuestions());

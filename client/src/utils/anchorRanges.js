@@ -139,6 +139,30 @@ const isTextNode = (node) => {
   return node.nodeType === 3;
 };
 
+const findFirstOverlappingNodeIndex = (nodes, start) => {
+  if (!Array.isArray(nodes) || !nodes.length) {
+    return -1;
+  }
+
+  let low = 0;
+  let high = nodes.length - 1;
+  let candidate = nodes.length;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const entry = nodes[mid];
+
+    if (start < entry.end) {
+      candidate = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  return candidate === nodes.length ? -1 : candidate;
+};
+
 export const wrapRangeSegments = ({ root, start, end, createWrapper, nodeIndex }) => {
   if (!root || typeof createWrapper !== 'function') {
     return [];
@@ -159,7 +183,12 @@ export const wrapRangeSegments = ({ root, start, end, createWrapper, nodeIndex }
     return wrappers;
   }
 
-  for (let i = 0; i < index.nodes.length; i += 1) {
+  const startIndex = findFirstOverlappingNodeIndex(index.nodes, start);
+  if (startIndex === -1) {
+    return wrappers;
+  }
+
+  for (let i = startIndex; i < index.nodes.length; i += 1) {
     const entry = index.nodes[i];
     if (!isTextNode(entry.node)) {
       continue;

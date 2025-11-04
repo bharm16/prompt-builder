@@ -12,11 +12,11 @@ import { Loader2, Lightbulb, Sparkles } from 'lucide-react';
  * - Click to insert into field
  */
 const InlineSuggestions = ({
-  suggestions,
-  isLoading,
+  suggestions = [],
+  isLoading = false,
   onSelect,
-  fieldName,
-  disabled
+  fieldName = '',
+  disabled = false
 }) => {
   // Handle keyboard shortcuts
   React.useEffect(() => {
@@ -167,13 +167,6 @@ InlineSuggestions.propTypes = {
   onSelect: PropTypes.func.isRequired,
   fieldName: PropTypes.string,
   disabled: PropTypes.bool
-};
-
-InlineSuggestions.defaultProps = {
-  suggestions: [],
-  isLoading: false,
-  fieldName: '',
-  disabled: false
 };
 
 export default InlineSuggestions;

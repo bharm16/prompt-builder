@@ -8,7 +8,6 @@
 import React from 'react';
 import { PromptCanvas } from '../PromptCanvas';
 import { usePromptState } from '../context/PromptStateContext';
-import { createHighlightSignature } from '../hooks/useSpanLabeling';
 
 export const PromptResultsSection = ({
   onDisplayedPromptChange,
@@ -61,11 +60,6 @@ export const PromptResultsSection = ({
       )}
 
       <PromptCanvas
-        key={
-          currentPromptUuid
-            ? `prompt-${currentPromptUuid}`
-            : `prompt-${createHighlightSignature(promptOptimizer.displayedPrompt ?? '')}`
-        }
         inputPrompt={promptOptimizer.inputPrompt}
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}
@@ -88,6 +82,9 @@ export const PromptResultsSection = ({
         // Two-stage indicators
         isDraftReady={promptOptimizer.isDraftReady}
         isRefining={promptOptimizer.isRefining}
+        // Span labeling for fast highlights (NEW!)
+        draftSpans={promptOptimizer.draftSpans}
+        refinedSpans={promptOptimizer.refinedSpans}
       />
     </>
   );

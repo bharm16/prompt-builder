@@ -113,6 +113,10 @@ export class ConcurrencyLimiter {
       // Handle priority requests (cancel oldest if enabled)
       if (options.priority && this.enableCancellation && this.queue.length > 0) {
         const oldestRequest = this.queue.shift();
+        // Clear timeout before rejecting to prevent memory leak
+        if (oldestRequest.timeoutId) {
+          clearTimeout(oldestRequest.timeoutId);
+        }
         oldestRequest.reject(new Error('Request cancelled by higher priority request'));
         this.stats.totalCancelled++;
 

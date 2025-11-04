@@ -1,4 +1,5 @@
 // src/lib/api.js
+import { API_CONFIG } from '../config/api.config';
 
 /**
  * @typedef {{ text: string, start: number, end: number }} ClientSpan
@@ -13,14 +14,13 @@
  * @param {string} [templateVersion='v1']
  * @returns {Promise<LabeledSpan[]>}
  */
-const API_KEY = 'dev-key-12345';
 
 export async function fetchRoles(spans, templateVersion = 'v1') {
   const res = await fetch('/api/role-classify', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'X-API-Key': API_KEY,
+      'X-API-Key': API_CONFIG.apiKey,
     },
     body: JSON.stringify({ spans, templateVersion }),
   });

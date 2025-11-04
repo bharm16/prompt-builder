@@ -30,7 +30,7 @@
  */
 
 import { initializeFirebaseAdmin, admin } from './firebase-admin-init.js';
-import { labelSpans } from '../../server/src/llm/spanLabeler.js';
+import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingService.js';
 import crypto from 'crypto';
 
 // Parse command line arguments

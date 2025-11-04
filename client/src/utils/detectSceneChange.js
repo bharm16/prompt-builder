@@ -1,3 +1,5 @@
+import { API_CONFIG } from '../config/api.config';
+
 const escapeRegExp = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -125,7 +127,7 @@ export async function detectAndApplySceneChange({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': 'dev-key-12345',
+        'X-API-Key': API_CONFIG.apiKey,
       },
       body: JSON.stringify({
         changedField: changedField || 'Unknown Field',

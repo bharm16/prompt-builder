@@ -4,10 +4,8 @@ import { getPromptRepository } from '../repositories';
 import { Home, Copy, Check } from 'lucide-react';
 import { useToast } from './Toast';
 import { PromptContext } from '../utils/PromptContext';
-import {
-  formatTextToHTML,
-  VALUE_WORD_STYLE_BLOCK,
-} from '../features/prompt-optimizer/PromptCanvas';
+import { formatTextToHTML } from '../features/prompt-optimizer/utils/textFormatting';
+import '../features/prompt-optimizer/PromptCanvas.css';
 
 const SharedPrompt = () => {
   const { uuid } = useParams();
@@ -38,6 +36,8 @@ const SharedPrompt = () => {
             } catch (contextError) {
               console.error('Failed to restore prompt context from shared prompt:', contextError);
               setPromptContext(null);
+              // Add user-friendly error notification
+              toast.warning('Some context data could not be loaded. The prompt will still display.');
             }
           } else {
             setPromptContext(null);
@@ -181,7 +181,7 @@ const SharedPrompt = () => {
             </button>
           </div>
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            {prompt?.mode === 'video' && <style>{VALUE_WORD_STYLE_BLOCK}</style>}
+            {/* Styles are now imported from PromptCanvas.css */}
             <div
               className="text-neutral-700 font-medium"
               dangerouslySetInnerHTML={{ __html: formattedOutput.html || '' }}

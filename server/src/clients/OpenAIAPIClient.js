@@ -177,8 +177,6 @@ export class OpenAIAPIClient {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
         const errorBody = await response.text();
         throw new APIError(
@@ -202,13 +200,14 @@ export class OpenAIAPIClient {
         _original: data
       };
     } catch (error) {
-      clearTimeout(timeoutId);
-
       if (error.name === 'AbortError') {
         throw new TimeoutError(`AI API request timeout after ${timeout}ms`);
       }
 
       throw error;
+    } finally {
+      // Always clear timeout, whether success or failure
+      clearTimeout(timeoutId);
     }
   }
 

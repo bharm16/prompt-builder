@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { labelSpans } from '../spanLabeler.js';
+import { labelSpans } from '../span-labeling/SpanLabelingService.js';
 
 /**
  * Test to verify what content actually gets highlighted in multi-section prompts

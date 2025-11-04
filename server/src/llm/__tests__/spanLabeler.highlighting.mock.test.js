@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { labelSpans } from '../spanLabeler.js';
+import { labelSpans } from '../span-labeling/SpanLabelingService.js';
 
 /**
  * Mock test to demonstrate what gets highlighted

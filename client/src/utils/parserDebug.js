@@ -69,10 +69,10 @@ export const parserDebugLog = (event, payload = {}) => {
   const record = baseEvent(event, payload);
   if (typeof console !== 'undefined' && console.groupCollapsed) {
     console.groupCollapsed(`%c[PARSER_DEBUG] ${event}`, 'color: #2563eb; font-weight: 600;');
-    console.log(record);
+    
     console.groupEnd();
   } else if (typeof console !== 'undefined' && console.debug) {
-    console.debug('[PARSER_DEBUG]', record);
+    
   }
 };
 

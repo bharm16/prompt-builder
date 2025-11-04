@@ -15,7 +15,7 @@ import { logger } from '../infrastructure/Logger.js';
  */
 export class RequestCoalescingMiddleware {
   constructor() {
-    // Map of request keys to pending promises
+    // Map of request keys to pending promises with completion timestamps
     this.pendingRequests = new Map();
 
     // Statistics for monitoring
@@ -24,6 +24,11 @@ export class RequestCoalescingMiddleware {
       unique: 0,
       totalSaved: 0,
     };
+
+    // Start periodic cleanup of completed requests
+    this.cleanupInterval = setInterval(() => {
+      this._cleanupCompletedRequests();
+    }, 1000); // Run cleanup every second
   }
 
   /**
@@ -71,23 +76,28 @@ export class RequestCoalescingMiddleware {
 
       // Check if this request is already in-flight
       if (this.pendingRequests.has(requestKey)) {
-        this.stats.coalesced++;
-        logger.debug('Request coalesced', {
-          requestId: req.id,
-          path: req.path,
-          coalescedWith: requestKey,
-        });
+        const pendingEntry = this.pendingRequests.get(requestKey);
 
-        try {
-          // Wait for the existing request to complete
-          const result = await this.pendingRequests.get(requestKey);
+        // Only coalesce if the request is still pending (not completed)
+        if (pendingEntry && pendingEntry.completedAt === null) {
+          this.stats.coalesced++;
+          logger.debug('Request coalesced', {
+            requestId: req.id,
+            path: req.path,
+            coalescedWith: requestKey,
+          });
 
-          // Send the cached result
-          res.json(result);
-          return;
-        } catch (error) {
-          // If the coalesced request failed, let this one fail too
-          return next(error);
+          try {
+            // Wait for the existing request to complete
+            const result = await pendingEntry.promise;
+
+            // Send the cached result
+            res.json(result);
+            return;
+          } catch (error) {
+            // If the coalesced request failed, let this one fail too
+            return next(error);
+          }
         }
       }
 
@@ -102,7 +112,11 @@ export class RequestCoalescingMiddleware {
         rejectPromise = reject;
       });
 
-      this.pendingRequests.set(requestKey, requestPromise);
+      // Store promise with metadata
+      this.pendingRequests.set(requestKey, {
+        promise: requestPromise,
+        completedAt: null,
+      });
 
       // Override res.json to capture the response
       const originalJson = res.json.bind(res);
@@ -110,11 +124,12 @@ export class RequestCoalescingMiddleware {
         // Resolve the promise with the response data
         resolvePromise(data);
 
-        // Clean up the pending request after a brief delay
-        // This allows concurrent requests to coalesce
-        setTimeout(() => {
-          this.pendingRequests.delete(requestKey);
-        }, 100); // 100ms window for coalescing
+        // Mark the request as completed instead of deleting immediately
+        // This allows concurrent requests to still coalesce during the window
+        const entry = this.pendingRequests.get(requestKey);
+        if (entry) {
+          entry.completedAt = Date.now();
+        }
 
         // Send the original response
         return originalJson(data);
@@ -131,6 +146,21 @@ export class RequestCoalescingMiddleware {
       // Continue to the actual handler
       next();
     };
+  }
+
+  /**
+   * Clean up completed requests after the coalescing window
+   * @private
+   */
+  _cleanupCompletedRequests() {
+    const now = Date.now();
+    const coalescingWindow = 100; // 100ms window for coalescing
+
+    for (const [key, entry] of this.pendingRequests.entries()) {
+      if (entry.completedAt && now - entry.completedAt > coalescingWindow) {
+        this.pendingRequests.delete(key);
+      }
+    }
   }
 
   /**
@@ -164,6 +194,10 @@ export class RequestCoalescingMiddleware {
    */
   clear() {
     this.pendingRequests.clear();
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 }
 
