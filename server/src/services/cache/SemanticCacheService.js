@@ -1,10 +1,14 @@
 import crypto from 'crypto';
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../../infrastructure/Logger.js';
 
 /**
- * Semantic Cache Enhancer
- * Improves cache hit rates through intelligent normalization and similarity matching
- * Aims to increase hit rate from ~30% to ~60%
+ * Semantic Cache Service
+ * 
+ * Improves cache hit rates through intelligent normalization and similarity matching.
+ * Aims to increase hit rate from ~30% to ~60%.
+ * 
+ * Previously located in utils/ - moved to services/cache/ as this is a stateful
+ * service with complex business logic, not a simple utility function.
  */
 export class SemanticCacheEnhancer {
   /**

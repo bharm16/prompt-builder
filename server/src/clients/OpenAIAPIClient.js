@@ -1,7 +1,7 @@
 import CircuitBreaker from 'opossum';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
-import { openAILimiter } from '../utils/ConcurrencyLimiter.js';
+import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
 
 /**
  * Custom error classes for better error handling
