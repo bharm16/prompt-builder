@@ -3,6 +3,8 @@ import { PhraseRoleAnalyzer } from './services/PhraseRoleAnalyzer.js';
 import { ConstraintGenerator } from './services/ConstraintGenerator.js';
 import { FallbackStrategyService } from './services/FallbackStrategyService.js';
 import { CategoryGuidanceService } from './services/CategoryGuidanceService.js';
+import { ModelTargetDetector } from './services/ModelTargetDetector.js';
+import { PromptSectionDetector } from './services/PromptSectionDetector.js';
 import { countWords } from './utils/textHelpers.js';
 
 /**
@@ -20,6 +22,8 @@ export class VideoPromptService {
     this.constraintGenerator = new ConstraintGenerator();
     this.fallbackStrategy = new FallbackStrategyService();
     this.categoryGuidance = new CategoryGuidanceService();
+    this.modelDetector = new ModelTargetDetector();
+    this.sectionDetector = new PromptSectionDetector();
   }
 
   /**
@@ -95,6 +99,82 @@ export class VideoPromptService {
    */
   getCategoryFocusGuidance(phraseRole, categoryHint) {
     return this.categoryGuidance.getCategoryFocusGuidance(phraseRole, categoryHint);
+  }
+
+  /**
+   * Detect which AI video model is being targeted
+   * @param {string} fullPrompt - Full prompt text
+   * @returns {string|null} Model identifier or null
+   */
+  detectTargetModel(fullPrompt) {
+    return this.modelDetector.detectTargetModel(fullPrompt);
+  }
+
+  /**
+   * Get model capabilities (strengths and weaknesses)
+   * @param {string} model - Model identifier
+   * @returns {Object|null} Capabilities object or null
+   */
+  getModelCapabilities(model) {
+    return this.modelDetector.getModelCapabilities(model);
+  }
+
+  /**
+   * Get model-specific guidance for a category
+   * @param {string} model - Model identifier
+   * @param {string} category - Category being edited
+   * @returns {Array<string>} Array of guidance strings
+   */
+  getModelSpecificGuidance(model, category) {
+    return this.modelDetector.getModelSpecificGuidance(model, category);
+  }
+
+  /**
+   * Format model context for prompt inclusion
+   * @param {string} model - Model identifier
+   * @returns {string} Formatted context
+   */
+  formatModelContext(model) {
+    return this.modelDetector.formatModelContext(model);
+  }
+
+  /**
+   * Detect which section of the prompt template is being edited
+   * @param {string} highlightedText - The highlighted text
+   * @param {string} fullPrompt - Full prompt text
+   * @param {string} contextBefore - Text before highlight
+   * @returns {string} Section identifier
+   */
+  detectPromptSection(highlightedText, fullPrompt, contextBefore) {
+    return this.sectionDetector.detectSection(highlightedText, fullPrompt, contextBefore);
+  }
+
+  /**
+   * Get section-specific constraints
+   * @param {string} section - Section identifier
+   * @returns {Object|null} Constraints object or null
+   */
+  getSectionConstraints(section) {
+    return this.sectionDetector.getSectionConstraints(section);
+  }
+
+  /**
+   * Get section-specific guidance for a category
+   * @param {string} section - Section identifier
+   * @param {string} category - Category being edited
+   * @returns {Array<string>} Array of guidance strings
+   */
+  getSectionGuidance(section, category) {
+    return this.sectionDetector.getSectionGuidance(section, category);
+  }
+
+  /**
+   * Format section context for prompt inclusion
+   * @param {string} section - Section identifier
+   * @returns {string} Formatted context
+   */
+  formatSectionContext(section) {
+    return this.sectionDetector.formatSectionContext(section);
   }
 }
 

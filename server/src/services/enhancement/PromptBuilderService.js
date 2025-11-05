@@ -15,6 +15,170 @@ export class PromptBuilderService {
   }
 
   /**
+   * Build model and section context
+   * @param {string} modelTarget - Target AI model
+   * @param {string} promptSection - Template section
+   * @param {string} category - Category being edited
+   * @param {boolean} isVideoPrompt - Whether this is a video prompt
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildModelAndSectionContext(modelTarget, promptSection, category, isVideoPrompt) {
+    if (!isVideoPrompt) {
+      return '';
+    }
+
+    let context = '';
+
+    // Add model-specific context if detected
+    if (modelTarget) {
+      const modelName = modelTarget.charAt(0).toUpperCase() + modelTarget.slice(1);
+      context += `\n**TARGET MODEL: ${modelName}**\n`;
+
+      // Get model capabilities from service (would need to inject it, but for now use inline)
+      const capabilities = this._getModelCapabilitiesInline(modelTarget);
+      if (capabilities) {
+        context += `Strengths: ${capabilities.primary.slice(0, 3).join(', ')}\n`;
+        context += `Optimize for: ${capabilities.optimizeFor}\n`;
+        context += `Avoid: ${capabilities.weaknesses.slice(0, 2).join(', ')}\n`;
+      }
+
+      // Add model-specific guidance for this category
+      if (category) {
+        const guidance = this._getModelGuidanceInline(modelTarget, category);
+        if (guidance.length > 0) {
+          context += `\n**Model-Specific ${category.toUpperCase()} Guidance:**\n`;
+          guidance.forEach((tip) => {
+            context += `- ${tip}\n`;
+          });
+        }
+      }
+    }
+
+    // Add section-specific context if detected
+    if (promptSection) {
+      const sectionName = promptSection
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      context += `\n**PROMPT SECTION: ${sectionName}**\n`;
+
+      const constraints = this._getSectionConstraintsInline(promptSection);
+      if (constraints) {
+        context += `Tone: ${constraints.tone.charAt(0).toUpperCase() + constraints.tone.slice(1)}\n`;
+        context += `Precision: ${constraints.precision.charAt(0).toUpperCase() + constraints.precision.slice(1)}\n`;
+        context += `Key Requirements: ${constraints.requirements.slice(0, 2).join(', ')}\n`;
+        context += `Must Avoid: ${constraints.avoid.slice(0, 2).join(', ')}\n`;
+      }
+    }
+
+    return context;
+  }
+
+  /**
+   * Get model capabilities inline (simplified)
+   * @private
+   */
+  _getModelCapabilitiesInline(model) {
+    const capabilities = {
+      sora: {
+        primary: ['Realistic motion', 'Physics simulation', 'Long takes'],
+        optimizeFor: 'Continuous action, natural movement',
+        weaknesses: ['Stylized content', 'Text rendering'],
+      },
+      veo3: {
+        primary: ['Cinematic lighting', 'Atmospheric effects', 'Mood'],
+        optimizeFor: 'Lighting quality, atmosphere',
+        weaknesses: ['Fast action', 'Abstract content'],
+      },
+      runway: {
+        primary: ['Stylized visuals', 'Artistic filters', 'Creative effects'],
+        optimizeFor: 'Artistic style, visual treatments',
+        weaknesses: ['Photorealism', 'Long sequences'],
+      },
+      kling: {
+        primary: ['Character animation', 'Facial expressions', 'Close-ups'],
+        optimizeFor: 'Character emotion, facial detail',
+        weaknesses: ['Wide shots', 'Environmental detail'],
+      },
+      luma: {
+        primary: ['Surreal visuals', 'Morphing effects', 'Dreamlike'],
+        optimizeFor: 'Abstract concepts, transitions',
+        weaknesses: ['Photorealism', 'Precise control'],
+      },
+    };
+    return capabilities[model] || null;
+  }
+
+  /**
+   * Get model-specific guidance inline (simplified)
+   * @private
+   */
+  _getModelGuidanceInline(model, category) {
+    const normalizedCategory = (category || '').toLowerCase();
+    const guidance = [];
+
+    if (model === 'sora' && (normalizedCategory.includes('motion') || normalizedCategory.includes('action'))) {
+      guidance.push('Describe continuous, realistic motion');
+      guidance.push('Mention physical interactions');
+    }
+
+    if (model === 'veo3' && normalizedCategory.includes('lighting')) {
+      guidance.push('Emphasize atmospheric quality');
+      guidance.push('Specify technical lighting details');
+    }
+
+    if (model === 'runway' && normalizedCategory.includes('style')) {
+      guidance.push('Embrace artistic, stylized approaches');
+    }
+
+    if (model === 'kling' && normalizedCategory.includes('subject')) {
+      guidance.push('Focus on facial expressions and emotion');
+    }
+
+    if (model === 'luma' && normalizedCategory.includes('style')) {
+      guidance.push('Embrace surreal, abstract concepts');
+    }
+
+    return guidance;
+  }
+
+  /**
+   * Get section constraints inline (simplified)
+   * @private
+   */
+  _getSectionConstraintsInline(section) {
+    const constraints = {
+      main_prompt: {
+        tone: 'descriptive',
+        precision: 'moderate',
+        requirements: ['Clear descriptions', 'Narrative flow'],
+        avoid: ['Technical jargon', 'Ambiguous terms'],
+      },
+      technical_specs: {
+        tone: 'technical',
+        precision: 'high',
+        requirements: ['Exact values', 'Standard terminology'],
+        avoid: ['Poetic language', 'Vague descriptors'],
+      },
+      alternatives: {
+        tone: 'suggestive',
+        precision: 'moderate',
+        requirements: ['Diverse variations', 'Different directions'],
+        avoid: ['Minor tweaks', 'Same concept'],
+      },
+      style_direction: {
+        tone: 'referential',
+        precision: 'high',
+        requirements: ['Specific references', 'Named styles'],
+        avoid: ['Generic terms', 'Vague comparisons'],
+      },
+    };
+    return constraints[section] || null;
+  }
+
+  /**
    * Build edit history context section
    * @param {Array} editHistory - Array of recent edits
    * @returns {string} Formatted context section
@@ -152,7 +316,9 @@ export class PromptBuilderService {
     elementDependencies,  // Actual dependency values
     allLabeledSpans = [],  // Complete span composition
     nearbySpans = [],  // Proximate context
-    editHistory = [],  // NEW: Edit history for consistency
+    editHistory = [],  // Edit history for consistency
+    modelTarget = null,  // NEW: Target AI model
+    promptSection = null,  // NEW: Template section
   }) {
     // Get specific constraints for this category if available
     const subcategory = detectSubcategory(highlightedText, highlightedCategory);
@@ -204,9 +370,17 @@ ${constraint.forbidden || ''}
     // Build edit history context
     const editHistoryContext = this._buildEditHistoryContext(editHistory);
 
+    // Build model and section context
+    const modelContext = this._buildModelAndSectionContext(
+      modelTarget,
+      promptSection,
+      highlightedCategory,
+      isVideoPrompt
+    );
+
     return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${constraintInstruction ? `\n${constraintInstruction}` : ''}
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}${constraintInstruction ? `\n${constraintInstruction}` : ''}
 
 <analysis_process>
 Step 1: Identify the placeholder type and context
@@ -298,7 +472,9 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     elementDependencies,  // Actual dependency values
     allLabeledSpans = [],  // Complete span composition
     nearbySpans = [],  // Proximate context
-    editHistory = [],  // NEW: Edit history for consistency
+    editHistory = [],  // Edit history for consistency
+    modelTarget = null,  // NEW: Target AI model
+    promptSection = null,  // NEW: Template section
   }) {
     const brainstormSection = this.brainstormBuilder.buildBrainstormContextSection(brainstormContext, {
       isVideoPrompt,
@@ -418,9 +594,17 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
       // Build edit history context
       const editHistoryContext = this._buildEditHistoryContext(editHistory);
 
+      // Build model and section context
+      const modelContext = this._buildModelAndSectionContext(
+        modelTarget,
+        promptSection,
+        highlightedCategory,
+        isVideoPrompt
+      );
+
       return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
         brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-      }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${categoryEmphasis}
+      }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}${categoryEmphasis}
 
 **APPROACH:**
 ${approachLines.join('\n')}
@@ -466,9 +650,17 @@ Return ONLY a JSON array (no markdown, no code blocks):
     // Build edit history context
     const editHistoryContext = this._buildEditHistoryContext(editHistory);
 
+    // Build model and section context (only for video prompts)
+    const modelContext = this._buildModelAndSectionContext(
+      modelTarget,
+      promptSection,
+      highlightedCategory,
+      isVideoPrompt
+    );
+
     return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}
 
 <analysis_process>
 Step 1: Analyze the highlighted section

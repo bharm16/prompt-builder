@@ -101,6 +101,18 @@ export class EnhancementService {
         })
       : null;
 
+    // Detect model target and prompt section for video prompts
+    const modelTarget = isVideoPrompt ? this.videoService.detectTargetModel(fullPrompt) : null;
+    const promptSection = isVideoPrompt
+      ? this.videoService.detectPromptSection(highlightedText, fullPrompt, contextBefore)
+      : null;
+
+    logger.debug('Model and section detection', {
+      isVideoPrompt,
+      modelTarget: modelTarget || 'none detected',
+      promptSection: promptSection || 'main_prompt',
+    });
+
     // Check cache
     const cacheKey = this._generateCacheKey({
       highlightedText,
@@ -117,6 +129,8 @@ export class EnhancementService {
       allLabeledSpans,
       nearbySpans,
       editHistory,
+      modelTarget,
+      promptSection,
     });
 
     const cached = await cacheService.get(cacheKey, 'enhancement');
@@ -181,7 +195,9 @@ export class EnhancementService {
       elementDependencies,
       allLabeledSpans, // Complete composition
       nearbySpans, // Proximate context
-      editHistory, // NEW: Edit history for consistency
+      editHistory, // Edit history for consistency
+      modelTarget, // NEW: Target AI model
+      promptSection, // NEW: Template section
     });
 
     // Generate initial suggestions
@@ -466,6 +482,8 @@ export class EnhancementService {
       semanticFingerprint: semanticFingerprint || null,
       spanFingerprint: spanFingerprint || null,
       editFingerprint: editFingerprint || null,
+      modelTarget: params.modelTarget || null,
+      promptSection: params.promptSection || null,
     });
   }
 
