@@ -42,6 +42,70 @@ OUTPUT: [path]/__tests__/[name].test.js"
 
 ---
 
+## 🏆 Gold Standard Test Examples
+
+### Frontend Component Test Pattern
+**File:** `EXAMPLE_FRONTEND_TEST.test.jsx` (Add to your project)
+
+This exemplary test demonstrates:
+- Service boundary mocking (NOT fetch)
+- Comprehensive user flow testing
+- Proper AAA pattern
+- Accessibility testing
+- Responsive behavior testing
+- Error handling
+- Complete keyboard navigation
+
+Key patterns from this test:
+```javascript
+// ✅ GOOD - Dependency injection
+const mockAiWizardService = {
+  getSuggestions: vi.fn(),
+  generatePrompt: vi.fn()
+};
+
+// ✅ GOOD - Test user behavior
+await user.click(screen.getByRole('button', { name: /next/i }));
+expect(screen.getByRole('heading', { name: /atmosphere/i })).toBeInTheDocument();
+
+// ✅ GOOD - Accessibility testing
+const results = await axe(container);
+expect(results).toHaveNoViolations();
+```
+
+### Backend Service Test Pattern
+**File:** `EXAMPLE_BACKEND_TEST.test.js` (Add to your project)
+
+This exemplary test demonstrates:
+- Constructor dependency injection
+- No module-level mocks
+- Comprehensive error handling
+- Cache behavior testing
+- Performance testing
+- Resource cleanup
+
+Key patterns from this test:
+```javascript
+// ✅ GOOD - Constructor injection
+service = new PromptOptimizationService({
+  claudeClient: mockClaudeClient,
+  groqClient: mockGroqClient,
+  cacheService: mockCacheService
+});
+
+// ✅ GOOD - Test cache behavior
+mockCacheService.get.mockResolvedValue(cachedResult);
+const result = await service.optimize(prompt);
+expect(mockClaudeClient.complete).not.toHaveBeenCalled();
+
+// ✅ GOOD - Test error recovery
+mockClaudeClient.complete
+  .mockRejectedValueOnce(new Error('Network timeout'))
+  .mockResolvedValueOnce({ content: [{ text: 'Success after retry' }] });
+```
+
+---
+
 ## Template 1: React Component Tests
 
 ```bash
@@ -747,5 +811,26 @@ Add these comments to your test files for clarity:
 
 ---
 
+## 📎 Attached Gold Standard Examples
+
+This template includes two exemplary test files:
+
+1. **EXAMPLE_FRONTEND_TEST.test.jsx** - Gold standard React component test
+   - 650+ lines of comprehensive testing
+   - All best practices demonstrated
+   - Use as template for frontend tests
+
+2. **EXAMPLE_BACKEND_TEST.test.js** - Gold standard backend service test  
+   - 500+ lines of thorough testing
+   - Proper dependency injection
+   - Use as template for service tests
+
+Add these to your project at:
+- `docs/examples/tests/EXAMPLE_FRONTEND_TEST.test.jsx`
+- `docs/examples/tests/EXAMPLE_BACKEND_TEST.test.js`
+
+---
+
 *Last Updated: Current Session*
 *Follows patterns from: CLAUDE_CODE_TEMPLATES.md, REFACTORING_STANDARD.md*
+*Gold standard examples: EXAMPLE_FRONTEND_TEST.test.jsx, EXAMPLE_BACKEND_TEST.test.js*
