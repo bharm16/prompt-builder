@@ -6,6 +6,7 @@ import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schema
 import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';
 import { StyleTransferService } from './services/StyleTransferService.js';
+import { SemanticDependencyAnalyzer } from './services/SemanticDependencyAnalyzer.js';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -47,6 +48,7 @@ export class EnhancementService {
     );
     this.suggestionProcessor = new SuggestionProcessor(validationService);
     this.styleTransfer = new StyleTransferService(claudeClient);
+    this.dependencyAnalyzer = new SemanticDependencyAnalyzer();
   }
 
   /**
@@ -64,6 +66,9 @@ export class EnhancementService {
     highlightedCategory,
     highlightedCategoryConfidence,
     highlightedPhrase,
+    allLabeledSpans = [], // Complete span composition
+    nearbySpans = [], // Proximate context
+    editHistory = [], // NEW: Edit history for consistency
   }) {
     logger.info('Getting enhancement suggestions', {
       highlightedLength: highlightedText?.length,
@@ -109,6 +114,9 @@ export class EnhancementService {
       highlightWordCount,
       phraseRole,
       videoConstraints,
+      allLabeledSpans,
+      nearbySpans,
+      editHistory,
     });
 
     const cached = await cacheService.get(cacheKey, 'enhancement');
@@ -125,6 +133,35 @@ export class EnhancementService {
       fullPrompt
     );
 
+    // Analyze semantic dependencies
+    const elementDependencies = this.dependencyAnalyzer.detectElementDependencies(
+      highlightedCategory,
+      brainstormContext
+    );
+    const dependencyContext = this.dependencyAnalyzer.buildDependencyContext(
+      highlightedCategory,
+      elementDependencies
+    );
+
+    logger.debug('Semantic dependency analysis', {
+      highlightedCategory,
+      dependencyCount: Object.keys(elementDependencies).length,
+      hasDependencyContext: Boolean(dependencyContext),
+    });
+
+    // Log span context for debugging
+    logger.debug('Span context analysis', {
+      totalSpans: allLabeledSpans.length,
+      nearbySpansCount: nearbySpans.length,
+      hasSpanContext: allLabeledSpans.length > 0,
+    });
+
+    // Log edit history for debugging
+    logger.debug('Edit history analysis', {
+      editCount: editHistory.length,
+      hasEditHistory: editHistory.length > 0,
+    });
+
     // Build prompt
     const systemPrompt = this._buildSystemPrompt({
       isPlaceholder,
@@ -140,6 +177,11 @@ export class EnhancementService {
       phraseRole,
       highlightWordCount,
       videoConstraints,
+      dependencyContext,
+      elementDependencies,
+      allLabeledSpans, // Complete composition
+      nearbySpans, // Proximate context
+      editHistory, // NEW: Edit history for consistency
     });
 
     // Generate initial suggestions
@@ -369,9 +411,46 @@ export class EnhancementService {
 
   /**
    * Generate cache key for enhancement request
+   * Includes semantic fingerprint for dependency-aware caching
    * @private
    */
   _generateCacheKey(params) {
+    // Build semantic fingerprint from element dependencies
+    let semanticFingerprint = null;
+    if (params.highlightedCategory && params.brainstormContext) {
+      const deps = this.dependencyAnalyzer.detectElementDependencies(
+        params.highlightedCategory,
+        params.brainstormContext
+      );
+      if (Object.keys(deps).length > 0) {
+        // Create stable fingerprint from sorted dependency values
+        semanticFingerprint = Object.keys(deps)
+          .sort()
+          .map((key) => `${key}:${deps[key]}`)
+          .join('|');
+      }
+    }
+
+    // Build span context fingerprint
+    let spanFingerprint = null;
+    if (Array.isArray(params.allLabeledSpans) && params.allLabeledSpans.length > 0) {
+      // Create compact fingerprint from span categories and positions
+      spanFingerprint = params.allLabeledSpans
+        .slice(0, 10) // Limit to first 10 spans for cache key
+        .map((span) => `${span.category}@${span.start}`)
+        .join(',');
+    }
+
+    // Build edit history fingerprint
+    let editFingerprint = null;
+    if (Array.isArray(params.editHistory) && params.editHistory.length > 0) {
+      // Create compact fingerprint from recent edit patterns
+      editFingerprint = params.editHistory
+        .slice(-5) // Last 5 edits only
+        .map((edit) => `${edit.category || 'n'}:${edit.original.substring(0, 10)}`)
+        .join('|');
+    }
+
     return cacheService.generateKey(this.cacheConfig.namespace, {
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
@@ -384,6 +463,9 @@ export class EnhancementService {
       highlightWordCount: params.highlightWordCount,
       phraseRole: params.phraseRole,
       videoConstraintMode: params.videoConstraints?.mode || null,
+      semanticFingerprint: semanticFingerprint || null,
+      spanFingerprint: spanFingerprint || null,
+      editFingerprint: editFingerprint || null,
     });
   }
 

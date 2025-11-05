@@ -276,6 +276,9 @@ export function createAPIRoutes(services) {
         highlightedCategory,
         highlightedCategoryConfidence,
         highlightedPhrase,
+        allLabeledSpans, // Complete span composition
+        nearbySpans, // Proximate context
+        editHistory, // NEW: Edit history for consistency
       } = req.body;
 
       const result = await enhancementService.getEnhancementSuggestions({
@@ -288,6 +291,9 @@ export function createAPIRoutes(services) {
         highlightedCategory,
         highlightedCategoryConfidence,
         highlightedPhrase,
+        allLabeledSpans, // Pass to service
+        nearbySpans, // Pass to service
+        editHistory, // NEW: Pass to service
       });
 
       res.json(result);

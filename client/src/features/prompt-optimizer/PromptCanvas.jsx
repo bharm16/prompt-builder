@@ -310,6 +310,7 @@ export const PromptCanvas = ({
         offsets,
         metadata: null,
         trigger: 'selection',
+        allLabeledSpans: labeledSpans, // NEW: Complete span context
       });
     }
   };
@@ -396,6 +397,7 @@ export const PromptCanvas = ({
             offsets,
             metadata,
             trigger: 'highlight',
+            allLabeledSpans: labeledSpans, // NEW: Complete span context
           });
         }
 

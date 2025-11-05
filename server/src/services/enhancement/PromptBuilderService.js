@@ -15,6 +15,124 @@ export class PromptBuilderService {
   }
 
   /**
+   * Build edit history context section
+   * @param {Array} editHistory - Array of recent edits
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildEditHistoryContext(editHistory = []) {
+    if (!Array.isArray(editHistory) || editHistory.length === 0) {
+      return '';
+    }
+
+    let section = '\n**EDIT CONSISTENCY CONTEXT:**\n';
+    section += 'Previous edits in this session (most recent to oldest):\n';
+
+    // Show up to 10 most recent edits
+    const recentEdits = editHistory.slice(0, 10);
+
+    recentEdits.forEach((edit) => {
+      const minutesAgo = edit.minutesAgo || 0;
+      const timeStr = minutesAgo === 0 
+        ? 'just now' 
+        : minutesAgo === 1 
+        ? '1 min ago' 
+        : `${minutesAgo} mins ago`;
+
+      const categoryStr = edit.category 
+        ? ` [${edit.category.charAt(0).toUpperCase() + edit.category.slice(1)}]` 
+        : '';
+
+      section += `- Changed${categoryStr} from "${edit.original}" to "${edit.replacement}" (${timeStr})\n`;
+    });
+
+    section += '\n**CRITICAL CONSISTENCY REQUIREMENT:**\n';
+    section += 'Your suggestions MUST respect these editorial choices. ';
+    section += 'Do NOT suggest alternatives that would contradict or undo these decisions. ';
+    section += 'The user has already made these changes deliberately - honor their creative direction. ';
+    section += 'Build upon these choices rather than reverting them.\n';
+
+    // Add specific guidance based on edit patterns
+    if (recentEdits.length >= 3) {
+      const categories = recentEdits
+        .map(e => e.category)
+        .filter(Boolean)
+        .reduce((acc, cat) => {
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {});
+
+      const dominantCategory = Object.entries(categories)
+        .sort((a, b) => b[1] - a[1])[0]?.[0];
+
+      if (dominantCategory) {
+        section += `\n**PATTERN DETECTED:** User is actively refining ${dominantCategory} choices. `;
+        section += `Your suggestions should continue this refinement direction.\n`;
+      }
+    }
+
+    return section;
+  }
+
+  /**
+   * Build span composition context section
+   * @param {Array} allLabeledSpans - All labeled spans in the prompt
+   * @param {Array} nearbySpans - Spans near the selection
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildSpanCompositionContext(allLabeledSpans = [], nearbySpans = []) {
+    if (!Array.isArray(allLabeledSpans) || allLabeledSpans.length === 0) {
+      return '';
+    }
+
+    let section = '\n**COMPLETE PROMPT COMPOSITION:**\n';
+    section += 'All labeled elements identified in this prompt:\n';
+
+    // Group spans by category for better readability
+    const spansByCategory = allLabeledSpans.reduce((acc, span) => {
+      const category = span.category || span.role || 'other';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(span);
+      return acc;
+    }, {});
+
+    // Format each category
+    Object.entries(spansByCategory).forEach(([category, spans]) => {
+      const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+      spans.forEach(span => {
+        const confidenceStr = span.confidence 
+          ? ` (confidence: ${(span.confidence * 100).toFixed(0)}%)`
+          : '';
+        section += `- ${formattedCategory}: '${span.text}'${confidenceStr}\n`;
+      });
+    });
+
+    // Add nearby spans context if available
+    if (Array.isArray(nearbySpans) && nearbySpans.length > 0) {
+      section += '\n**PROXIMATE CONTEXT:**\n';
+      section += 'Elements near your selected text:\n';
+      
+      nearbySpans.forEach(span => {
+        const distance = span.distance || 0;
+        const position = span.position || 'nearby';
+        const formattedCategory = (span.category || 'element').charAt(0).toUpperCase() + 
+          (span.category || 'element').slice(1);
+        section += `- ${position.charAt(0).toUpperCase() + position.slice(1)} (${distance} chars): ${formattedCategory} '${span.text}'\n`;
+      });
+    }
+
+    section += '\n**COHERENCE PRINCIPLE:**\n';
+    section += 'Your suggestions must harmonize with ALL these existing elements. ';
+    section += 'This is a complete composition where each element influences the others. ';
+    section += 'Avoid suggestions that would contradict or clash with the established creative direction.\n';
+
+    return section;
+  }
+
+  /**
    * Build prompt for placeholder value suggestions
    * @param {Object} params - Parameters for building the prompt
    * @returns {string} System prompt for Claude
@@ -30,6 +148,11 @@ export class PromptBuilderService {
     highlightedCategory,
     highlightedCategoryConfidence,
     detectPlaceholderTypeFunc,  // Function passed in for detecting placeholder type
+    dependencyContext,  // Semantic dependency context
+    elementDependencies,  // Actual dependency values
+    allLabeledSpans = [],  // Complete span composition
+    nearbySpans = [],  // Proximate context
+    editHistory = [],  // NEW: Edit history for consistency
   }) {
     // Get specific constraints for this category if available
     const subcategory = detectSubcategory(highlightedText, highlightedCategory);
@@ -75,9 +198,15 @@ ${constraint.forbidden || ''}
       ? '✓ For video: consider different visual/cinematic approaches'
       : '✓ Different approaches to achieve the goal';
 
+    // Build span composition context
+    const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+    // Build edit history context
+    const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
     return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }${constraintInstruction ? `\n${constraintInstruction}` : ''}
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${constraintInstruction ? `\n${constraintInstruction}` : ''}
 
 <analysis_process>
 Step 1: Identify the placeholder type and context
@@ -165,6 +294,11 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     videoConstraints,
     highlightedCategory,
     highlightedCategoryConfidence,
+    dependencyContext,  // Semantic dependency context
+    elementDependencies,  // Actual dependency values
+    allLabeledSpans = [],  // Complete span composition
+    nearbySpans = [],  // Proximate context
+    editHistory = [],  // NEW: Edit history for consistency
   }) {
     const brainstormSection = this.brainstormBuilder.buildBrainstormContextSection(brainstormContext, {
       isVideoPrompt,
@@ -278,9 +412,15 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         ? `\n\n🎯 **CRITICAL**: User clicked on ${highlightedCategory.toUpperCase()} text. ALL ${focusLines.length} suggestions MUST focus exclusively on ${resolvedPhraseRole}. Do NOT suggest alternatives for other categories.\n`
         : '';
 
+      // Build span composition context
+      const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+      // Build edit history context
+      const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
       return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
         brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-      }${categoryEmphasis}
+      }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${categoryEmphasis}
 
 **APPROACH:**
 ${approachLines.join('\n')}
@@ -320,9 +460,15 @@ Return ONLY a JSON array (no markdown, no code blocks):
       ? '✓ Reinforces the Creative Brainstorm anchors above\n'
       : '';
 
+    // Build span composition context
+    const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+    // Build edit history context
+    const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
     return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}
 
 <analysis_process>
 Step 1: Analyze the highlighted section
