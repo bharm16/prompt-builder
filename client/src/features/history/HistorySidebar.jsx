@@ -10,7 +10,8 @@ import {
   Video,
   MessageSquare,
   X,
-  Trash2
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { getAuthRepository } from '../../repositories';
 import { HistoryEmptyState } from '../../components/EmptyState';
@@ -185,6 +186,7 @@ const AuthMenu = ({ user, onSignIn, onSignOut }) => {
 // Main History Sidebar Component
 export const HistorySidebar = ({
   showHistory,
+  setShowHistory,
   user,
   history,
   filteredHistory,
@@ -229,15 +231,42 @@ export const HistorySidebar = ({
     >
       {showHistory && (
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
-          <div className="flex-shrink-0 px-4 pt-20 pb-2">
-            {!user && (
-              <p className="mb-2 text-[11px] text-neutral-500">
-                Sign in to sync across devices
-              </p>
-            )}
+          {/* Header with toggle + title */}
+          <header className="flex-shrink-0 px-4 py-3 border-b border-neutral-200">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-1.5 hover:bg-neutral-100 rounded transition-colors"
+                aria-label="Close sidebar"
+              >
+                <PanelLeft className="h-5 w-5 text-neutral-600" />
+              </button>
+              <h1 className="text-lg font-semibold text-neutral-900">Prompt Builder</h1>
+            </div>
+          </header>
+
+          {/* New Prompt button */}
+          <div className="flex-shrink-0 px-4 py-3">
+            <button
+              onClick={onCreateNew}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+              aria-label="Create new prompt"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Prompt</span>
+            </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2 pt-14">
+          {/* Sign-in message */}
+          {!user && (
+            <div className="flex-shrink-0 px-4 pb-2">
+              <p className="text-[11px] text-neutral-500">
+                Sign in to sync across devices
+              </p>
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
             <h2 className="px-2 mb-2 text-xs font-semibold text-neutral-900 tracking-wide">
               Recent
             </h2>
