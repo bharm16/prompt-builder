@@ -13,10 +13,12 @@
  * - Edit history tracking (original feature)
  * 
  * Pattern: Custom hook testing with renderHook
+ * 
+ * Note: Uses act() for all state mutations and flushes state between operations
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useEditHistory } from '../useEditHistory.js';
 
 describe('useEditHistory', () => {
@@ -149,6 +151,9 @@ describe('useEditHistory', () => {
 
       act(() => {
         result.current.saveState('First');
+      });
+      
+      act(() => {
         result.current.saveState('Second');
       });
 
@@ -174,9 +179,12 @@ describe('useEditHistory', () => {
         result.current.saveState('Third');
       });
 
-      // Act
+      // Act - separate undos to ensure state updates flush
       act(() => {
         result.current.undo(); // Back to Second
+      });
+      
+      act(() => {
         result.current.undo(); // Back to First
       });
 
@@ -233,6 +241,9 @@ describe('useEditHistory', () => {
       act(() => {
         result.current.saveState('First');
         result.current.saveState('Second');
+      });
+      
+      act(() => {
         result.current.undo(); // Back to First
       });
 
@@ -256,13 +267,22 @@ describe('useEditHistory', () => {
         result.current.saveState('First');
         result.current.saveState('Second');
         result.current.saveState('Third');
+      });
+      
+      act(() => {
         result.current.undo();
+      });
+      
+      act(() => {
         result.current.undo();
       });
 
-      // Act
+      // Act - separate redos to ensure state updates flush
       act(() => {
         result.current.redo(); // Forward to Second
+      });
+      
+      act(() => {
         result.current.redo(); // Forward to Third
       });
 
@@ -320,19 +340,19 @@ describe('useEditHistory', () => {
       act(() => {
         result.current.saveState('First');
       });
-      expect(result.current.canUndo).toBe(false); // At beginning
+      expect(result.current.canUndo).toBe(false); // At beginning (index 0, need index > 0 to undo)
 
       // After second save
       act(() => {
         result.current.saveState('Second');
       });
-      expect(result.current.canUndo).toBe(true); // Can undo
+      expect(result.current.canUndo).toBe(true); // Can undo (index 1 > 0)
 
       // After undo
       act(() => {
         result.current.undo();
       });
-      expect(result.current.canUndo).toBe(false); // Back at beginning
+      expect(result.current.canUndo).toBe(false); // Back at beginning (index 0)
     });
 
     it('should update canRedo based on history position', () => {
@@ -344,6 +364,9 @@ describe('useEditHistory', () => {
 
       act(() => {
         result.current.saveState('First');
+      });
+      
+      act(() => {
         result.current.saveState('Second');
       });
 
@@ -375,6 +398,9 @@ describe('useEditHistory', () => {
 
       act(() => {
         result.current.saveState('First');
+      });
+      
+      act(() => {
         result.current.saveState('Second');
       });
 
@@ -408,7 +434,13 @@ describe('useEditHistory', () => {
 
       act(() => {
         result.current.saveState('First');
+      });
+      
+      act(() => {
         result.current.saveState('Second');
+      });
+      
+      act(() => {
         result.current.undo();
       });
 
@@ -599,16 +631,32 @@ describe('useEditHistory', () => {
         result.current.saveState('Third');
       });
 
+      // Starting at index 2 (Third)
+      expect(result.current.historyIndex).toBe(2);
+
       // Act - undo, redo, undo, redo cycles
+      // Each operation needs its own act() to properly flush state updates
       act(() => {
-        result.current.undo();
-        result.current.redo();
-        result.current.undo();
-        result.current.undo();
-        result.current.redo();
+        result.current.undo(); // 2 -> 1 (back to Second)
+      });
+      
+      act(() => {
+        result.current.redo(); // 1 -> 2 (forward to Third)
+      });
+      
+      act(() => {
+        result.current.undo(); // 2 -> 1 (back to Second)
+      });
+      
+      act(() => {
+        result.current.undo(); // 1 -> 0 (back to First)
+      });
+      
+      act(() => {
+        result.current.redo(); // 0 -> 1 (forward to Second)
       });
 
-      // Assert
+      // Assert - should be at index 1 (Second)
       expect(result.current.historyIndex).toBe(1);
     });
 

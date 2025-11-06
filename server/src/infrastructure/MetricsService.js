@@ -1,4 +1,5 @@
 import promClient from 'prom-client';
+import { logger } from './Logger.js';
 
 /**
  * Prometheus metrics service for application observability
@@ -112,6 +113,107 @@ export class MetricsService {
       name: 'request_queue_time_ms',
       help: 'Time requests spend in queue in milliseconds',
       buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
+      registers: [this.register],
+    });
+
+    // Enhancement service performance metrics
+    this.enhancementTotalDuration = new promClient.Histogram({
+      name: 'enhancement_total_duration_ms',
+      help: 'Total duration of enhancement requests in milliseconds',
+      labelNames: ['category', 'isVideo', 'error'],
+      buckets: [100, 250, 500, 750, 1000, 1500, 2000, 3000, 5000],
+      registers: [this.register],
+    });
+
+    this.enhancementCacheCheck = new promClient.Histogram({
+      name: 'enhancement_cache_check_ms',
+      help: 'Duration of cache check in enhancement requests',
+      labelNames: ['category', 'isVideo'],
+      buckets: [1, 5, 10, 25, 50, 100],
+      registers: [this.register],
+    });
+
+    this.enhancementSemanticAnalysis = new promClient.Histogram({
+      name: 'enhancement_semantic_analysis_ms',
+      help: 'Duration of semantic dependency analysis',
+      labelNames: ['category'],
+      buckets: [1, 5, 10, 25, 50, 100],
+      registers: [this.register],
+    });
+
+    this.enhancementModelDetection = new promClient.Histogram({
+      name: 'enhancement_model_detection_ms',
+      help: 'Duration of model target detection',
+      labelNames: ['modelTarget'],
+      buckets: [1, 5, 10, 25, 50, 100],
+      registers: [this.register],
+    });
+
+    this.enhancementSectionDetection = new promClient.Histogram({
+      name: 'enhancement_section_detection_ms',
+      help: 'Duration of prompt section detection',
+      labelNames: ['section'],
+      buckets: [1, 5, 10, 25, 50, 100],
+      registers: [this.register],
+    });
+
+    this.enhancementGroqCall = new promClient.Histogram({
+      name: 'enhancement_groq_call_ms',
+      help: 'Duration of Groq API call in enhancement requests',
+      labelNames: ['category', 'isVideo'],
+      buckets: [100, 250, 500, 750, 1000, 1500, 2000, 3000],
+      registers: [this.register],
+    });
+
+    this.enhancementPostProcessing = new promClient.Histogram({
+      name: 'enhancement_post_processing_ms',
+      help: 'Duration of post-processing in enhancement requests',
+      labelNames: ['category'],
+      buckets: [10, 25, 50, 100, 150, 250, 500],
+      registers: [this.register],
+    });
+
+    this.enhancementRequestsTotal = new promClient.Counter({
+      name: 'enhancement_requests_total',
+      help: 'Total number of enhancement requests',
+      labelNames: ['category', 'isVideo', 'cache'],
+      registers: [this.register],
+    });
+
+    this.enhancementSlowRequests = new promClient.Counter({
+      name: 'enhancement_slow_requests_total',
+      help: 'Total number of enhancement requests that exceeded 2s',
+      labelNames: ['category', 'isVideo'],
+      registers: [this.register],
+    });
+
+    // Alert counter
+    this.alertsTotal = new promClient.Counter({
+      name: 'alerts_total',
+      help: 'Total number of alerts triggered',
+      labelNames: ['alert'],
+      registers: [this.register],
+    });
+
+    // User analytics counters
+    this.suggestionAcceptedTotal = new promClient.Counter({
+      name: 'suggestion_accepted_total',
+      help: 'Total number of accepted suggestions',
+      labelNames: ['category', 'modelTarget', 'cacheHit'],
+      registers: [this.register],
+    });
+
+    this.suggestionRejectedTotal = new promClient.Counter({
+      name: 'suggestion_rejected_total',
+      help: 'Total number of rejected suggestions',
+      labelNames: ['category', 'modelTarget'],
+      registers: [this.register],
+    });
+
+    this.undoActionsTotal = new promClient.Counter({
+      name: 'undo_actions_total',
+      help: 'Total number of undo actions',
+      labelNames: ['category'],
       registers: [this.register],
     });
   }
@@ -259,6 +361,120 @@ export class MetricsService {
         break;
       default:
         // Silently ignore unknown histograms for now
+        break;
+    }
+  }
+
+  /**
+   * Record enhancement timing metrics
+   * @param {Object} metrics - Timing metrics object
+   * @param {Object} metadata - Request metadata
+   */
+  recordEnhancementTiming(metrics, metadata = {}) {
+    const category = metadata.category || 'unknown';
+    const isVideo = String(metadata.isVideo || false);
+    const error = metadata.error ? 'true' : 'false';
+
+    // Record total duration
+    this.enhancementTotalDuration.observe(
+      { category, isVideo, error },
+      metrics.total || 0
+    );
+
+    // Record cache check duration
+    if (metrics.cacheCheck !== undefined) {
+      this.enhancementCacheCheck.observe(
+        { category, isVideo },
+        metrics.cacheCheck
+      );
+    }
+
+    // Record semantic analysis duration
+    if (metrics.semanticDeps > 0) {
+      this.enhancementSemanticAnalysis.observe(
+        { category },
+        metrics.semanticDeps
+      );
+    }
+
+    // Record model detection duration
+    if (metrics.modelDetection > 0) {
+      this.enhancementModelDetection.observe(
+        { modelTarget: metadata.modelTarget || 'none' },
+        metrics.modelDetection
+      );
+    }
+
+    // Record section detection duration
+    if (metrics.sectionDetection > 0) {
+      this.enhancementSectionDetection.observe(
+        { section: metadata.promptSection || 'main_prompt' },
+        metrics.sectionDetection
+      );
+    }
+
+    // Record Groq call duration
+    if (metrics.groqCall > 0) {
+      this.enhancementGroqCall.observe(
+        { category, isVideo },
+        metrics.groqCall
+      );
+    }
+
+    // Record post-processing duration
+    if (metrics.postProcessing > 0) {
+      this.enhancementPostProcessing.observe(
+        { category },
+        metrics.postProcessing
+      );
+    }
+
+    // Increment request counter
+    this.enhancementRequestsTotal.inc({
+      category,
+      isVideo,
+      cache: metrics.cache ? 'hit' : 'miss',
+    });
+
+    // Track slow requests
+    if (metrics.total > 2000) {
+      this.enhancementSlowRequests.inc({ category, isVideo });
+    }
+  }
+
+  /**
+   * Record alert
+   * @param {string} alertName - Name of the alert
+   * @param {Object} metadata - Alert metadata
+   */
+  recordAlert(alertName, metadata = {}) {
+    this.alertsTotal.inc({ alert: alertName });
+    
+    // Log alert for visibility
+    logger.warn('Alert triggered', {
+      alert: alertName,
+      ...metadata,
+    });
+  }
+
+  /**
+   * Record counter metric (generic)
+   * @param {string} name - Name of the counter
+   * @param {Object} labels - Counter labels
+   */
+  recordCounter(name, labels = {}) {
+    switch (name) {
+      case 'suggestion_accepted_total':
+        this.suggestionAcceptedTotal.inc(labels);
+        break;
+      case 'suggestion_rejected_total':
+        this.suggestionRejectedTotal.inc(labels);
+        break;
+      case 'undo_actions_total':
+        this.undoActionsTotal.inc(labels);
+        break;
+      default:
+        // Silently ignore unknown counters
         break;
     }
   }

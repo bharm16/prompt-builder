@@ -26,7 +26,8 @@ export class EnhancementService {
     promptBuilder,
     validationService,
     diversityEnforcer,
-    categoryAligner
+    categoryAligner,
+    metricsService = null
   ) {
     this.claudeClient = claudeClient;
     this.groqClient = groqClient;
@@ -37,6 +38,7 @@ export class EnhancementService {
     this.validationService = validationService;
     this.diversityEnforcer = diversityEnforcer;
     this.categoryAligner = categoryAligner;
+    this.metricsService = metricsService;
     this.cacheConfig = cacheService.getConfig('enhancement');
 
     // Initialize specialized services
@@ -70,17 +72,31 @@ export class EnhancementService {
     nearbySpans = [], // Proximate context
     editHistory = [], // NEW: Edit history for consistency
   }) {
-    logger.info('Getting enhancement suggestions', {
-      highlightedLength: highlightedText?.length,
-      highlightedCategory: highlightedCategory || null,
-      categoryConfidence: highlightedCategoryConfidence ?? null,
-      highlightedPhrasePreview: highlightedPhrase
-        ? String(highlightedPhrase).slice(0, 80)
-        : undefined,
-    });
+    // Initialize metrics tracking
+    const metrics = {
+      total: 0,
+      cache: false,
+      cacheCheck: 0,
+      semanticDeps: 0,
+      modelDetection: 0,
+      sectionDetection: 0,
+      groqCall: 0,
+      postProcessing: 0,
+    };
+    const startTotal = Date.now();
 
-    // Detect video prompt and compute metadata
-    const isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
+    try {
+      logger.info('Getting enhancement suggestions', {
+        highlightedLength: highlightedText?.length,
+        highlightedCategory: highlightedCategory || null,
+        categoryConfidence: highlightedCategoryConfidence ?? null,
+        highlightedPhrasePreview: highlightedPhrase
+          ? String(highlightedPhrase).slice(0, 80)
+          : undefined,
+      });
+
+      // Detect video prompt and compute metadata
+      const isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
     const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext);
     const highlightWordCount = this.videoService.countWords(highlightedText);
     const phraseRole = isVideoPrompt
@@ -101,20 +117,31 @@ export class EnhancementService {
         })
       : null;
 
-    // Detect model target and prompt section for video prompts
-    const modelTarget = isVideoPrompt ? this.videoService.detectTargetModel(fullPrompt) : null;
-    const promptSection = isVideoPrompt
-      ? this.videoService.detectPromptSection(highlightedText, fullPrompt, contextBefore)
-      : null;
+      // Detect model target and prompt section for video prompts
+      let modelTarget = null;
+      let promptSection = null;
+      
+      if (isVideoPrompt) {
+        const modelStart = Date.now();
+        modelTarget = this.videoService.detectTargetModel(fullPrompt);
+        metrics.modelDetection = Date.now() - modelStart;
 
-    logger.debug('Model and section detection', {
-      isVideoPrompt,
-      modelTarget: modelTarget || 'none detected',
-      promptSection: promptSection || 'main_prompt',
-    });
+        const sectionStart = Date.now();
+        promptSection = this.videoService.detectPromptSection(highlightedText, fullPrompt, contextBefore);
+        metrics.sectionDetection = Date.now() - sectionStart;
+      }
 
-    // Check cache
-    const cacheKey = this._generateCacheKey({
+      logger.debug('Model and section detection', {
+        isVideoPrompt,
+        modelTarget: modelTarget || 'none detected',
+        promptSection: promptSection || 'main_prompt',
+        modelDetectionTime: metrics.modelDetection,
+        sectionDetectionTime: metrics.sectionDetection,
+      });
+
+      // Check cache
+      const cacheStart = Date.now();
+      const cacheKey = this._generateCacheKey({
       highlightedText,
       contextBefore,
       contextAfter,
@@ -133,35 +160,51 @@ export class EnhancementService {
       promptSection,
     });
 
-    const cached = await cacheService.get(cacheKey, 'enhancement');
-    if (cached) {
-      logger.debug('Cache hit for enhancement suggestions');
-      return cached;
-    }
+      const cached = await cacheService.get(cacheKey, 'enhancement');
+      metrics.cacheCheck = Date.now() - cacheStart;
+      
+      if (cached) {
+        metrics.cache = true;
+        metrics.total = Date.now() - startTotal;
+        this._logMetrics(metrics, {
+          highlightedCategory,
+          isVideoPrompt,
+          modelTarget,
+          promptSection,
+        });
+        logger.debug('Cache hit for enhancement suggestions', {
+          cacheCheckTime: metrics.cacheCheck,
+          totalTime: metrics.total,
+        });
+        return cached;
+      }
 
-    // Detect placeholder
-    const isPlaceholder = this.placeholderDetector.detectPlaceholder(
+      // Detect placeholder
+      const isPlaceholder = this.placeholderDetector.detectPlaceholder(
       highlightedText,
       contextBefore,
       contextAfter,
       fullPrompt
     );
 
-    // Analyze semantic dependencies
-    const elementDependencies = this.dependencyAnalyzer.detectElementDependencies(
-      highlightedCategory,
-      brainstormContext
-    );
-    const dependencyContext = this.dependencyAnalyzer.buildDependencyContext(
-      highlightedCategory,
-      elementDependencies
-    );
+      // Analyze semantic dependencies
+      const semanticStart = Date.now();
+      const elementDependencies = this.dependencyAnalyzer.detectElementDependencies(
+        highlightedCategory,
+        brainstormContext
+      );
+      const dependencyContext = this.dependencyAnalyzer.buildDependencyContext(
+        highlightedCategory,
+        elementDependencies
+      );
+      metrics.semanticDeps = Date.now() - semanticStart;
 
-    logger.debug('Semantic dependency analysis', {
-      highlightedCategory,
-      dependencyCount: Object.keys(elementDependencies).length,
-      hasDependencyContext: Boolean(dependencyContext),
-    });
+      logger.debug('Semantic dependency analysis', {
+        highlightedCategory,
+        dependencyCount: Object.keys(elementDependencies).length,
+        hasDependencyContext: Boolean(dependencyContext),
+        analysisTime: metrics.semanticDeps,
+      });
 
     // Log span context for debugging
     logger.debug('Span context analysis', {
@@ -200,24 +243,26 @@ export class EnhancementService {
       promptSection, // NEW: Template section
     });
 
-    // Generate initial suggestions
-    const schema = getEnhancementSchema(isPlaceholder);
-    const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
-      diversity: 'high',
-      precision: 'medium',
-    });
+      // Generate initial suggestions
+      const schema = getEnhancementSchema(isPlaceholder);
+      const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
+        diversity: 'high',
+        precision: 'medium',
+      });
 
-    const suggestions = await StructuredOutputEnforcer.enforceJSON(
-      this.groqClient || this.claudeClient,
-      systemPrompt,
-      {
-        schema,
-        isArray: true,
-        maxTokens: 2048,
-        maxRetries: 2,
-        temperature,
-      }
-    );
+      const groqStart = Date.now();
+      const suggestions = await StructuredOutputEnforcer.enforceJSON(
+        this.groqClient || this.claudeClient,
+        systemPrompt,
+        {
+          schema,
+          isArray: true,
+          maxTokens: 2048,
+          maxRetries: 2,
+          temperature,
+        }
+      );
+      metrics.groqCall = Date.now() - groqStart;
 
     logger.info('Raw suggestions from Claude', {
       isPlaceholder,
@@ -228,27 +273,28 @@ export class EnhancementService {
       highlightWordCount,
     });
 
-    // Process suggestions
-    const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions);
+      // Process suggestions
+      const postStart = Date.now();
+      const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions);
 
-    // Apply category alignment if needed
-    const alignmentResult = this._applyCategoryAlignment(
-      diverseSuggestions,
-      highlightedCategory,
-      highlightedText,
-      highlightedCategoryConfidence
-    );
-
-    // Sanitize suggestions
-    const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
-      alignmentResult.suggestions,
-      {
+      // Apply category alignment if needed
+      const alignmentResult = this._applyCategoryAlignment(
+        diverseSuggestions,
+        highlightedCategory,
         highlightedText,
-        isPlaceholder,
-        isVideoPrompt,
-        videoConstraints,
-      }
-    );
+        highlightedCategoryConfidence
+      );
+
+      // Sanitize suggestions
+      const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
+        alignmentResult.suggestions,
+        {
+          highlightedText,
+          isPlaceholder,
+          isVideoPrompt,
+          videoConstraints,
+        }
+      );
 
     // Attempt fallback regeneration if needed
     const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration({
@@ -315,32 +361,55 @@ export class EnhancementService {
       isPlaceholder
     );
 
-    // Build final result
-    const result = this.suggestionProcessor.buildResult({
-      groupedSuggestions,
-      isPlaceholder,
-      phraseRole,
-      activeConstraints,
-      alignmentFallbackApplied: alignmentResult.fallbackApplied,
-      usedFallback,
-      hasNoSuggestions: suggestionsToUse.length === 0,
-    });
+      // Build final result
+      const result = this.suggestionProcessor.buildResult({
+        groupedSuggestions,
+        isPlaceholder,
+        phraseRole,
+        activeConstraints,
+        alignmentFallbackApplied: alignmentResult.fallbackApplied,
+        usedFallback,
+        hasNoSuggestions: suggestionsToUse.length === 0,
+      });
 
-    // Log result
-    this.suggestionProcessor.logResult(
-      result,
-      sanitizedSuggestions,
-      usedFallback,
-      fallbackSourceCount,
-      suggestions
-    );
+      metrics.postProcessing = Date.now() - postStart;
 
-    // Cache result
-    await cacheService.set(cacheKey, result, {
-      ttl: this.cacheConfig.ttl,
-    });
+      // Log result
+      this.suggestionProcessor.logResult(
+        result,
+        sanitizedSuggestions,
+        usedFallback,
+        fallbackSourceCount,
+        suggestions
+      );
 
-    return result;
+      // Cache result
+      await cacheService.set(cacheKey, result, {
+        ttl: this.cacheConfig.ttl,
+      });
+
+      // Complete metrics tracking
+      metrics.total = Date.now() - startTotal;
+      this._logMetrics(metrics, {
+        highlightedCategory,
+        isVideoPrompt,
+        modelTarget,
+        promptSection,
+      });
+      this._checkLatencyThreshold(metrics);
+
+      return result;
+    } catch (error) {
+      // Track error metrics
+      metrics.total = Date.now() - startTotal;
+      this._logMetrics(metrics, {
+        highlightedCategory,
+        isVideoPrompt,
+        modelTarget: null,
+        promptSection: null,
+      }, error);
+      throw error;
+    }
   }
 
   /**
@@ -521,6 +590,89 @@ export class EnhancementService {
     }
 
     return alignmentResult;
+  }
+
+  /**
+   * Log metrics for enhancement request
+   * @private
+   */
+  _logMetrics(metrics, params, error = null) {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    // Console logging in development
+    if (isDev) {
+      console.log('\n=== Enhancement Service Performance ===');
+      console.log(`Total: ${metrics.total}ms`);
+      console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
+      
+      if (metrics.semanticDeps > 0) {
+        console.log(`Semantic Analysis: ${metrics.semanticDeps}ms`);
+      }
+      if (metrics.modelDetection > 0) {
+        console.log(`Model Detection: ${metrics.modelDetection}ms`);
+      }
+      if (metrics.sectionDetection > 0) {
+        console.log(`Section Detection: ${metrics.sectionDetection}ms`);
+      }
+      if (metrics.groqCall > 0) {
+        console.log(`Groq Call: ${metrics.groqCall}ms`);
+      }
+      if (metrics.postProcessing > 0) {
+        console.log(`Post-Processing: ${metrics.postProcessing}ms`);
+      }
+      
+      console.log('======================================\n');
+    }
+
+    // Send to metrics service in production
+    if (this.metricsService && !isDev) {
+      this.metricsService.recordEnhancementTiming(metrics, {
+        category: params.highlightedCategory || 'unknown',
+        isVideo: params.isVideoPrompt,
+        modelTarget: params.modelTarget,
+        promptSection: params.promptSection,
+        error: error?.message,
+      });
+    }
+
+    // Always log to structured logger
+    logger.info('Enhancement request completed', {
+      ...metrics,
+      category: params.highlightedCategory,
+      isVideo: params.isVideoPrompt,
+      modelTarget: params.modelTarget,
+      promptSection: params.promptSection,
+      error: error?.message,
+    });
+  }
+
+  /**
+   * Check if latency threshold was exceeded and alert if necessary
+   * @private
+   */
+  _checkLatencyThreshold(metrics) {
+    if (metrics.total > 2000) {
+      logger.warn('Enhancement request exceeded latency threshold', {
+        total: metrics.total,
+        threshold: 2000,
+        breakdown: {
+          cacheCheck: metrics.cacheCheck,
+          semanticDeps: metrics.semanticDeps,
+          modelDetection: metrics.modelDetection,
+          sectionDetection: metrics.sectionDetection,
+          groq: metrics.groqCall,
+          postProcessing: metrics.postProcessing,
+        },
+      });
+
+      // Alert in production
+      if (process.env.NODE_ENV === 'production' && this.metricsService) {
+        this.metricsService.recordAlert('enhancement_latency_exceeded', {
+          total: metrics.total,
+          threshold: 2000,
+        });
+      }
+    }
   }
 }
 

@@ -51,6 +51,35 @@ export const suggestionSchema = Joi.object({
     .optional()
     .allow(null)
     .unknown(true),
+
+  // Enhanced context-aware fields for semantic understanding
+  allLabeledSpans: Joi.array().items(
+    Joi.object({
+      text: Joi.string().required(),
+      role: Joi.string().required(),
+      start: Joi.number().integer().min(0).required(),
+      end: Joi.number().integer().min(0).required(),
+      confidence: Joi.number().min(0).max(1).optional()
+    })
+  ).optional(),
+
+  nearbySpans: Joi.array().items(
+    Joi.object({
+      text: Joi.string().required(),
+      role: Joi.string().required(),
+      distance: Joi.number().integer().min(0).required(),
+      position: Joi.string().valid('before', 'after').required()
+    })
+  ).optional(),
+
+  editHistory: Joi.array().items(
+    Joi.object({
+      original: Joi.string().required(),
+      replacement: Joi.string().required(),
+      category: Joi.string().allow(null).optional(),
+      timestamp: Joi.number().optional()
+    })
+  ).max(50).optional()
 });
 
 export const customSuggestionSchema = Joi.object({
