@@ -148,7 +148,7 @@ export const PromptInput = ({
     <div className="mb-12 w-full max-w-3xl text-center animate-fade-in">
       {/* Hero Section */}
       <div className="mb-12">
-        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">
+        <h1 className="text-5xl font-extrabold text-neutral-900 tracking-tight">
           Turn your rough ideas into perfect prompts
         </h1>
       </div>
