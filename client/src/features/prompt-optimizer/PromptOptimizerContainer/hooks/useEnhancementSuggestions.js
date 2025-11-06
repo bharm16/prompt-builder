@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { applySuggestionToPrompt } from '../../utils/applySuggestion.js';
 import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/enhancementSuggestionsApi';
-import { useEditHistory } from '../hooks/useEditHistory';
+import { useEditHistory } from '../../hooks/useEditHistory';
 
 /**
  * Find spans that are near the selected text
