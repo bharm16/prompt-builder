@@ -35,6 +35,7 @@ export const PromptSidebar = ({ user }) => {
       onSearchChange={promptHistory.setSearchQuery}
       onLoadFromHistory={loadFromHistory}
       onCreateNew={handleCreateNew}
+      onDelete={promptHistory.deleteFromHistory}
       modes={modes}
     />
   );
