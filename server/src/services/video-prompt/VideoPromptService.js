@@ -93,12 +93,23 @@ export class VideoPromptService {
 
   /**
    * Get category-specific focus guidance for better suggestions
+   * NEW: Now context-aware with full prompt, spans, and edit history
+   * 
    * @param {string} phraseRole - Role of the phrase
    * @param {string} categoryHint - Category hint
+   * @param {string} fullContext - Full prompt text (NEW)
+   * @param {Array} allSpans - All labeled spans (NEW)
+   * @param {Array} editHistory - Recent edits (NEW)
    * @returns {Array|null} Array of guidance strings or null
    */
-  getCategoryFocusGuidance(phraseRole, categoryHint) {
-    return this.categoryGuidance.getCategoryFocusGuidance(phraseRole, categoryHint);
+  getCategoryFocusGuidance(phraseRole, categoryHint, fullContext = '', allSpans = [], editHistory = []) {
+    return this.categoryGuidance.getCategoryFocusGuidance(
+      phraseRole,
+      categoryHint,
+      fullContext,
+      allSpans,
+      editHistory
+    );
   }
 
   /**

@@ -527,8 +527,14 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
         : '';
 
-      // Get category-specific focus guidance if available
-      const categorySpecificFocus = this.videoService.getCategoryFocusGuidance(resolvedPhraseRole, highlightedCategory);
+      // Get context-aware category-specific focus guidance if available
+      const categorySpecificFocus = this.videoService.getCategoryFocusGuidance(
+        resolvedPhraseRole,
+        highlightedCategory,
+        fullPrompt,  // NEW: Full prompt for intelligent analysis
+        allLabeledSpans,  // NEW: All spans for context
+        editHistory  // NEW: Edit history for consistency
+      );
       
       const focusLines =
         Array.isArray(focusGuidance) && focusGuidance.length > 0

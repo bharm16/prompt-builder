@@ -13,6 +13,11 @@ import { useReducer, useCallback, useMemo } from 'react';
 const initialState = {
   edits: [], // Array of edit objects
   maxEdits: 50, // Limit history to prevent memory issues
+  
+  // NEW: Undo/Redo functionality
+  promptHistory: [], // Array of complete prompt states
+  historyIndex: -1, // Current position in history (-1 = no history)
+  maxHistorySize: 100, // Limit history size
 };
 
 /**
@@ -57,6 +62,67 @@ function editHistoryReducer(state, action) {
         ...state,
         edits: state.edits.filter((edit) => edit.id !== action.payload),
       };
+
+    // NEW: Undo/Redo actions
+    case 'SAVE_STATE': {
+      const { prompt, metadata } = action.payload;
+      
+      // If we're in the middle of history (user went back), discard future states
+      const currentHistory = state.historyIndex >= 0 
+        ? state.promptHistory.slice(0, state.historyIndex + 1)
+        : state.promptHistory;
+
+      // Add new state
+      const newHistory = [
+        ...currentHistory,
+        {
+          prompt,
+          metadata,
+          timestamp: Date.now(),
+        }
+      ];
+
+      // Limit history size
+      const trimmedHistory = newHistory.length > state.maxHistorySize
+        ? newHistory.slice(-state.maxHistorySize)
+        : newHistory;
+
+      return {
+        ...state,
+        promptHistory: trimmedHistory,
+        historyIndex: trimmedHistory.length - 1,
+      };
+    }
+
+    case 'UNDO': {
+      if (state.historyIndex <= 0) {
+        return state; // Can't undo
+      }
+
+      return {
+        ...state,
+        historyIndex: state.historyIndex - 1,
+      };
+    }
+
+    case 'REDO': {
+      if (state.historyIndex >= state.promptHistory.length - 1) {
+        return state; // Can't redo
+      }
+
+      return {
+        ...state,
+        historyIndex: state.historyIndex + 1,
+      };
+    }
+
+    case 'CLEAR_HISTORY_STATES': {
+      return {
+        ...state,
+        promptHistory: [],
+        historyIndex: -1,
+      };
+    }
 
     default:
       return state;
@@ -196,6 +262,106 @@ export function useEditHistory() {
     }));
   }, [state.edits]);
 
+  // ============ NEW: Undo/Redo Methods ============
+
+  /**
+   * Save current prompt state to history
+   * @param {string} prompt - Current prompt text
+   * @param {Object} metadata - Optional metadata (e.g., edit type, position)
+   */
+  const saveState = useCallback((prompt, metadata = {}) => {
+    if (!prompt || typeof prompt !== 'string') {
+      return;
+    }
+
+    dispatch({
+      type: 'SAVE_STATE',
+      payload: { prompt, metadata },
+    });
+  }, []);
+
+  /**
+   * Undo last change
+   * @returns {Object|null} Previous state or null if can't undo
+   */
+  const undo = useCallback(() => {
+    if (state.historyIndex <= 0) {
+      return null;
+    }
+
+    dispatch({ type: 'UNDO' });
+    return state.promptHistory[state.historyIndex - 1];
+  }, [state.historyIndex, state.promptHistory]);
+
+  /**
+   * Redo last undone change
+   * @returns {Object|null} Next state or null if can't redo
+   */
+  const redo = useCallback(() => {
+    if (state.historyIndex >= state.promptHistory.length - 1) {
+      return null;
+    }
+
+    dispatch({ type: 'REDO' });
+    return state.promptHistory[state.historyIndex + 1];
+  }, [state.historyIndex, state.promptHistory]);
+
+  /**
+   * Check if undo is available
+   * @returns {boolean} True if can undo
+   */
+  const canUndo = useMemo(() => {
+    return state.historyIndex > 0;
+  }, [state.historyIndex]);
+
+  /**
+   * Check if redo is available
+   * @returns {boolean} True if can redo
+   */
+  const canRedo = useMemo(() => {
+    return state.historyIndex >= 0 && state.historyIndex < state.promptHistory.length - 1;
+  }, [state.historyIndex, state.promptHistory.length]);
+
+  /**
+   * Get preview of what undo would restore
+   * @returns {Object|null} State that undo would restore
+   */
+  const getUndoPreview = useCallback(() => {
+    if (!canUndo) {
+      return null;
+    }
+    return state.promptHistory[state.historyIndex - 1];
+  }, [canUndo, state.historyIndex, state.promptHistory]);
+
+  /**
+   * Get preview of what redo would restore
+   * @returns {Object|null} State that redo would restore
+   */
+  const getRedoPreview = useCallback(() => {
+    if (!canRedo) {
+      return null;
+    }
+    return state.promptHistory[state.historyIndex + 1];
+  }, [canRedo, state.historyIndex, state.promptHistory]);
+
+  /**
+   * Get current state from history
+   * @returns {Object|null} Current state or null
+   */
+  const getCurrentState = useCallback(() => {
+    if (state.historyIndex < 0 || state.historyIndex >= state.promptHistory.length) {
+      return null;
+    }
+    return state.promptHistory[state.historyIndex];
+  }, [state.historyIndex, state.promptHistory]);
+
+  /**
+   * Clear prompt history (keeps edit history)
+   */
+  const clearHistoryStates = useCallback(() => {
+    dispatch({ type: 'CLEAR_HISTORY_STATES' });
+  }, []);
+
   // Memoized computed values
   const editCount = useMemo(() => state.edits.length, [state.edits]);
   const hasEdits = useMemo(() => state.edits.length > 0, [state.edits]);
@@ -227,6 +393,19 @@ export function useEditHistory() {
     removeEdit,
     getRecentEditsByTime,
     getEditSummary,
+
+    // NEW: Undo/Redo state and methods
+    promptHistory: state.promptHistory,
+    historyIndex: state.historyIndex,
+    canUndo,
+    canRedo,
+    saveState,
+    undo,
+    redo,
+    getUndoPreview,
+    getRedoPreview,
+    getCurrentState,
+    clearHistoryStates,
   };
 }
 

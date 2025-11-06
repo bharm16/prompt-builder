@@ -280,6 +280,38 @@ export const PromptCanvas = ({
     toast.success(`Exported as ${format.toUpperCase()}`);
   };
 
+  // NEW: Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for Cmd (Mac) or Ctrl (Windows/Linux)
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo: Cmd/Ctrl + Z (without Shift)
+      if (modifier && e.key === 'z' && !e.shiftKey) {
+        if (canUndo) {
+          e.preventDefault();
+          onUndo();
+          toast.info('Undone');
+        }
+        return;
+      }
+
+      // Redo: Cmd/Ctrl + Shift + Z OR Cmd/Ctrl + Y
+      if ((modifier && e.shiftKey && e.key === 'z') || (modifier && e.key === 'y')) {
+        if (canRedo) {
+          e.preventDefault();
+          onRedo();
+          toast.info('Redone');
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onUndo, onRedo, canUndo, canRedo, toast]);
+
   // Text selection helpers (using extracted utilities)
 
   const handleTextSelection = () => {
