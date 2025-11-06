@@ -43,7 +43,7 @@ export const PromptInput = ({
       label: 'Research Topic',
       icon: Search,
       mode: 'research',
-      prompt: 'impact of AI on healthcare',
+      prompt: 'Research [your topic here]',
       category: 'research',
       description: 'Deep dive into any subject',
     },
@@ -51,7 +51,7 @@ export const PromptInput = ({
       label: 'Analyze Data',
       icon: FileText,
       mode: 'optimize',
-      prompt: 'analyze customer feedback data and identify trends',
+      prompt: 'Analyze data about [paste or describe your data]',
       category: 'research',
       description: 'Extract insights from data',
     },
@@ -59,7 +59,7 @@ export const PromptInput = ({
       label: 'Draft Document',
       icon: FileText,
       mode: 'optimize',
-      prompt: 'write a business plan for a coffee shop',
+      prompt: 'Draft a [type of document] about [topic]',
       category: 'writing',
       description: 'Create professional documents',
     },
@@ -67,7 +67,7 @@ export const PromptInput = ({
       label: 'Brainstorm Ideas',
       icon: Lightbulb,
       mode: 'optimize',
-      prompt: 'brainstorm innovative product ideas for sustainable living',
+      prompt: 'Brainstorm ideas for [your project or challenge]',
       category: 'creative',
       description: 'Generate creative concepts',
     },
@@ -148,12 +148,9 @@ export const PromptInput = ({
     <div className="mb-12 w-full max-w-3xl text-center animate-fade-in">
       {/* Hero Section */}
       <div className="mb-12">
-        <h1 className="mb-4 text-4xl font-bold text-neutral-900 tracking-tight">
-          Prompt Builder
+        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">
+          Turn your rough ideas into perfect prompts
         </h1>
-        <p className="text-base text-neutral-600 max-w-lg mx-auto">
-          Transform your ideas into optimized prompts for AI
-        </p>
       </div>
 
       {/* Mode Selector - Minimal Tabs */}
