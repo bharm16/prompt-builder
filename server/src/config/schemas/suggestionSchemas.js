@@ -57,6 +57,7 @@ export const suggestionSchema = Joi.object({
     Joi.object({
       text: Joi.string().required(),
       role: Joi.string().required(),
+      category: Joi.string().optional(),
       start: Joi.number().integer().min(0).required(),
       end: Joi.number().integer().min(0).required(),
       confidence: Joi.number().min(0).max(1).optional()
@@ -67,8 +68,12 @@ export const suggestionSchema = Joi.object({
     Joi.object({
       text: Joi.string().required(),
       role: Joi.string().required(),
+      category: Joi.string().optional(),
+      confidence: Joi.number().min(0).max(1).optional(),
       distance: Joi.number().integer().min(0).required(),
-      position: Joi.string().valid('before', 'after').required()
+      position: Joi.string().valid('before', 'after').required(),
+      start: Joi.number().integer().min(0).optional(),
+      end: Joi.number().integer().min(0).optional()
     })
   ).optional(),
 

@@ -195,38 +195,50 @@ export function useEnhancementSuggestions({
     });
 
     try {
-      // CRITICAL: Filter spans FIRST before any processing
-      // This prevents sending empty spans to any API endpoint
-      const validSpans = sanitizedInputSpans.filter(span => {
-        if (!span) return false;
-        const text = span.quote || span.text || '';
-        return typeof text === 'string' && text.trim().length > 0;
-      });
+      // Build simplified spans with defensive mapping
+      // Map first, then filter the results to ensure no empty text
+      const simplifiedSpans = sanitizedInputSpans
+        .map(span => {
+          if (!span || typeof span !== 'object') return null;
+          
+          const text = (span.quote || span.text || '').trim();
+          
+          // Skip this span if text is empty after trimming
+          if (!text || text.length === 0) return null;
+          
+          return {
+            text: text,
+            role: span.role || span.category || 'unknown',
+            category: span.category || span.role || 'unknown',
+            confidence: span.confidence,
+            start: span.start,
+            end: span.end,
+          };
+        })
+        .filter(span => span !== null && span.text && span.text.length > 0);
 
-      // Find nearby spans for contextual awareness (using filtered spans)
-      const nearbySpans = findNearbySpans(metadata, validSpans, 100);
-
-      // Prepare all labeled spans for API (simplified for transmission)
-      const simplifiedSpans = validSpans.map(span => ({
-        text: (span.quote || span.text || '').trim(),
-        role: span.role || span.category || 'unknown',
-        category: span.category || span.role || 'unknown',
-        confidence: span.confidence,
-        start: span.start,
-        end: span.end,
-      }));
+      // Find nearby spans using the already-validated simplified spans
+      const nearbySpans = findNearbySpans(metadata, sanitizedInputSpans, 100)
+        .filter(span => span.text && span.text.length > 0);
 
       // Get edit history for context
       const editHistory = getEditSummary(10); // Last 10 edits
 
-      // FINAL DEFENSIVE CHECK: Ensure no empty spans slip through
-      const finalSimplifiedSpans = simplifiedSpans.filter(s => s.text && s.text.length > 0);
-      const finalNearbySpans = nearbySpans.filter(s => s.text && s.text.length > 0);
-
-      // ONLY send labeled spans if we have valid ones
-      // Don't send empty/incomplete spans - backend will work without them
-      const shouldSendSpans = finalSimplifiedSpans.length > 0 && 
-                              finalSimplifiedSpans.every(s => s.text && s.text.length > 0);
+      // DEBUG: Log what we're actually sending
+      console.log('🔍 Sending to API:', {
+        simplifiedSpansCount: simplifiedSpans.length,
+        nearbySpansCount: nearbySpans.length,
+        firstSimplifiedSpan: simplifiedSpans[0],
+        firstNearbySpan: nearbySpans[0],
+        hasEmptySpans: simplifiedSpans.some(s => !s.text || s.text.length === 0),
+        hasEmptyNearby: nearbySpans.some(s => !s.text || s.text.length === 0),
+        // Check EVERY span for empty text
+        emptySpanIndices: simplifiedSpans.map((s, i) => !s.text || s.text.length === 0 ? i : -1).filter(i => i !== -1),
+        emptyNearbyIndices: nearbySpans.map((s, i) => !s.text || s.text.length === 0 ? i : -1).filter(i => i !== -1),
+        // Show the actual empty spans
+        emptySpans: simplifiedSpans.filter(s => !s.text || s.text.length === 0),
+        emptyNearbySpans: nearbySpans.filter(s => !s.text || s.text.length === 0),
+      });
 
       // Delegate to API layer (VideoConceptBuilder pattern)
       const { suggestions, isPlaceholder } = await fetchSuggestionsAPI({
@@ -235,8 +247,8 @@ export function useEnhancementSuggestions({
         inputPrompt: promptOptimizer.inputPrompt,
         brainstormContext: stablePromptContext,
         metadata,
-        allLabeledSpans: [],
-        nearbySpans: [],
+        allLabeledSpans: simplifiedSpans,
+        nearbySpans: nearbySpans,
         editHistory, // NEW: Edit history for consistency
       });
 
