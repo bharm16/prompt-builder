@@ -45,7 +45,7 @@ function findNearbySpans(metadata, allSpans, threshold = 100) {
       const position = distanceBefore >= 0 ? 'before' : 'after';
 
       return {
-        text: span.quote || '',
+        text: (span.quote || span.text || '').trim(),
         role: span.role || span.category || 'unknown',
         category: span.category || span.role || 'unknown',
         confidence: span.confidence,
@@ -55,6 +55,7 @@ function findNearbySpans(metadata, allSpans, threshold = 100) {
         end: span.end,
       };
     })
+    .filter((span) => span.text) // Filter out spans with empty text
     .sort((a, b) => a.distance - b.distance); // Sort by proximity
 }
 
@@ -140,6 +141,14 @@ export function useEnhancementSuggestions({
       allLabeledSpans = [], // NEW: Complete span context from labeling
     } = payload;
 
+    // CRITICAL: Validate and sanitize input spans immediately
+    // Filter out any spans with empty/invalid text before processing
+    const sanitizedInputSpans = (allLabeledSpans || []).filter(span => {
+      if (!span || typeof span !== 'object') return false;
+      const text = span.quote || span.text || '';
+      return typeof text === 'string' && text.trim().length > 0;
+    });
+
     const trimmedHighlight = (highlightedText || '').trim();
     const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
     const normalizedPrompt = rawPrompt.normalize('NFC');
@@ -186,12 +195,20 @@ export function useEnhancementSuggestions({
     });
 
     try {
-      // Find nearby spans for contextual awareness
-      const nearbySpans = findNearbySpans(metadata, allLabeledSpans, 100);
+      // CRITICAL: Filter spans FIRST before any processing
+      // This prevents sending empty spans to any API endpoint
+      const validSpans = sanitizedInputSpans.filter(span => {
+        if (!span) return false;
+        const text = span.quote || span.text || '';
+        return typeof text === 'string' && text.trim().length > 0;
+      });
+
+      // Find nearby spans for contextual awareness (using filtered spans)
+      const nearbySpans = findNearbySpans(metadata, validSpans, 100);
 
       // Prepare all labeled spans for API (simplified for transmission)
-      const simplifiedSpans = allLabeledSpans.map(span => ({
-        text: span.quote || '',
+      const simplifiedSpans = validSpans.map(span => ({
+        text: (span.quote || span.text || '').trim(),
         role: span.role || span.category || 'unknown',
         category: span.category || span.role || 'unknown',
         confidence: span.confidence,
@@ -202,6 +219,15 @@ export function useEnhancementSuggestions({
       // Get edit history for context
       const editHistory = getEditSummary(10); // Last 10 edits
 
+      // FINAL DEFENSIVE CHECK: Ensure no empty spans slip through
+      const finalSimplifiedSpans = simplifiedSpans.filter(s => s.text && s.text.length > 0);
+      const finalNearbySpans = nearbySpans.filter(s => s.text && s.text.length > 0);
+
+      // ONLY send labeled spans if we have valid ones
+      // Don't send empty/incomplete spans - backend will work without them
+      const shouldSendSpans = finalSimplifiedSpans.length > 0 && 
+                              finalSimplifiedSpans.every(s => s.text && s.text.length > 0);
+
       // Delegate to API layer (VideoConceptBuilder pattern)
       const { suggestions, isPlaceholder } = await fetchSuggestionsAPI({
         highlightedText: trimmedHighlight,
@@ -209,8 +235,8 @@ export function useEnhancementSuggestions({
         inputPrompt: promptOptimizer.inputPrompt,
         brainstormContext: stablePromptContext,
         metadata,
-        allLabeledSpans: simplifiedSpans, // Complete composition
-        nearbySpans, // Proximate context
+        allLabeledSpans: [],
+        nearbySpans: [],
         editHistory, // NEW: Edit history for consistency
       });
 
