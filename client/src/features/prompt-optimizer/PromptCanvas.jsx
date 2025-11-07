@@ -21,6 +21,7 @@ import { useHighlightRendering, useHighlightFingerprint } from './hooks/useHighl
 import { CategoryLegend } from './components/CategoryLegend.jsx';
 import { FloatingToolbar } from './components/FloatingToolbar.jsx';
 import { PromptEditor } from './components/PromptEditor.jsx';
+import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid.jsx';
 
 // Configuration
 import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '../../config/performance.config';
@@ -450,6 +451,40 @@ export const PromptCanvas = ({
     triggerSuggestionsFromTarget(e.target, e);
   };
 
+  // Handle clicks on spans from the Bento Grid
+  const handleSpanClickFromBento = (span) => {
+    if (!onFetchSuggestions || selectedMode !== 'video') {
+      return;
+    }
+    
+    // Create synthetic event matching highlight click behavior
+    onFetchSuggestions({
+      highlightedText: span.quote,
+      originalText: span.quote,
+      displayedPrompt,
+      range: null, // Not needed for bento clicks
+      offsets: { start: span.start, end: span.end },
+      metadata: {
+        category: span.category,
+        source: span.source,
+        spanId: span.id,
+        start: span.start,
+        end: span.end,
+        startGrapheme: span.startGrapheme,
+        endGrapheme: span.endGrapheme,
+        validatorPass: span.validatorPass,
+        confidence: span.confidence,
+        quote: span.quote,
+        leftCtx: span.leftCtx,
+        rightCtx: span.rightCtx,
+        idempotencyKey: span.idempotencyKey,
+        span: span, // Full span object
+      },
+      trigger: 'bento-grid',
+      allLabeledSpans: labeledSpans,
+    });
+  };
+
   const handleCopyEvent = (e) => {
     // Check if there's a text selection
     const selection = window.getSelection();
@@ -560,29 +595,13 @@ export const PromptCanvas = ({
 
       {/* Main Content Container */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Narrow Left Sidebar - Original Prompt */}
-        <div className="w-72 flex-shrink-0 flex flex-col border-r border-neutral-200 bg-neutral-50 overflow-hidden">
-          <div className="flex-shrink-0 px-5 py-4 border-b border-neutral-200 bg-white">
-            <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-              Your Input
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <div className="px-5 py-5">
-              <div
-                className="text-[13px] text-neutral-600 whitespace-pre-wrap"
-                style={{
-                  lineHeight: '1.6',
-                  wordBreak: 'break-word',
-                  overflowWrap: 'break-word',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
-                  letterSpacing: '-0.01em'
-                }}
-              >
-                {inputPrompt}
-              </div>
-            </div>
-          </div>
+        {/* Left Sidebar - Span Bento Grid (Desktop) / Bottom Drawer (Mobile) */}
+        <div className="w-72 flex-shrink-0 max-md:w-full max-md:h-auto">
+          <SpanBentoGrid
+            spans={parseResult.spans}
+            onSpanClick={handleSpanClickFromBento}
+            editorRef={editorRef}
+          />
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
