@@ -5,6 +5,17 @@
 
 export const CATEGORY_GUIDANCE = {
   /**
+   * Subject-specific guidance
+   */
+  subject: [
+    'Person type: specific occupation, age group, character archetype',
+    'Object type: vehicle, tool, artifact, natural object with defining characteristics',
+    'Animal type: species, breed, age, distinctive markings',
+    'Identity markers: 2-3 key identifiers that make the subject recognizable',
+    'Avoid vague terms: use "young painter" not "person", "bengal cat" not "cat"',
+  ],
+
+  /**
    * Lighting-specific guidance
    */
   lighting: [
@@ -108,16 +119,19 @@ export const CATEGORY_GUIDANCE = {
  * Mapping of role keywords to guidance categories
  */
 export const GUIDANCE_MAPPING = {
+  subject: 'subject',
+  character: 'subject',
+  person: 'subject',
+  
+  appearance: 'subject',
+  physical: 'subject',
+  
   lighting: 'lighting',
   timeofday: 'lighting',
   light: 'lighting',
   
   camera: 'camera',
   framing: 'camera',
-  
-  subject: 'subject',
-  character: 'subject',
-  appearance: 'subject',
   
   wardrobe: 'wardrobe',
   costume: 'wardrobe',

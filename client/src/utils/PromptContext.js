@@ -230,24 +230,25 @@ export class PromptContext {
    */
   static getCategoryColor(category) {
     const colors = {
-      subject: { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.5)' }, // Blue
-      action: { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.5)' }, // Purple (for both brainstorm and span action)
-      location: { bg: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.5)' }, // Green
-      time: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)' }, // Amber
-      mood: { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)' }, // Pink
-      style: { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)' }, // Indigo
-      event: { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.5)' }, // Sky
-      technical: { bg: 'rgba(139, 92, 246, 0.25)', border: 'rgba(139, 92, 246, 0.7)' }, // Violet - increased opacity for visibility
-      descriptive: { bg: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
-      lighting: { bg: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)' }, // Yellow
-      cameraMove: { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)' }, // Sky blue
-      framing: { bg: 'rgba(147, 197, 253, 0.18)', border: 'rgba(59, 130, 246, 0.45)' }, // Light blue
+      // Brainstorm categories (Creative Brainstorm workflow)
+      subject: { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.5)' }, // Blue (brainstorm)
+      action: { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.5)' }, // Purple (both systems)
+      location: { bg: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.5)' }, // Green (brainstorm)
+      time: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)' }, // Amber (brainstorm)
+      mood: { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)' }, // Pink (brainstorm)
+      style: { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)' }, // Indigo (brainstorm)
+      event: { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.5)' }, // Sky (brainstorm)
+      
+      // Span labeling categories (actual Groq categories)
+      appearance: { bg: 'rgba(255, 105, 180, 0.35)', border: 'rgba(255, 105, 180, 0.8)' }, // Hot pink
+      wardrobe: { bg: 'rgba(255, 214, 0, 0.35)', border: 'rgba(255, 214, 0, 0.8)' }, // Yellow
       environment: { bg: 'rgba(34, 197, 94, 0.18)', border: 'rgba(34, 197, 94, 0.55)' }, // Green
-      color: { bg: 'rgba(244, 114, 182, 0.2)', border: 'rgba(244, 114, 182, 0.55)' }, // Pink
-      depthOfField: { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.5)' }, // Orange
-      wardrobe: { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.55)' }, // Emerald
-      appearance: { bg: 'rgba(244, 63, 94, 0.18)', border: 'rgba(244, 63, 94, 0.5)' }, // Rose
-      timeOfDay: { bg: 'rgba(234, 179, 8, 0.2)', border: 'rgba(234, 179, 8, 0.55)' }, // Amber
+      lighting: { bg: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)' }, // Yellow
+      timeOfDay: { bg: 'rgba(135, 206, 235, 0.35)', border: 'rgba(135, 206, 235, 0.8)' }, // Sky blue
+      cameraMove: { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)' }, // Cyan
+      framing: { bg: 'rgba(147, 197, 253, 0.18)', border: 'rgba(59, 130, 246, 0.45)' }, // Light blue
+      technical: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)' }, // Violet
+      descriptive: { bg: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber (fallback)
     };
 
     return colors[category] || { bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.5)' };

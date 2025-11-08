@@ -9,32 +9,32 @@
  * Maps category identifiers to their visual and metadata properties
  */
 export const CATEGORY_CONFIG = {
-  lighting: {
-    label: 'Lighting',
-    color: 'rgba(253, 224, 71, 0.2)',
-    borderColor: 'rgba(253, 224, 71, 0.6)',
-    icon: '💡',
+  subject: {
+    label: 'Subject',
+    color: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.5)',
+    icon: '🎯',
     order: 1,
   },
-  framing: {
-    label: 'Shot Framing',
-    color: 'rgba(147, 197, 253, 0.18)',
-    borderColor: 'rgba(59, 130, 246, 0.45)',
-    icon: '🎬',
+  appearance: {
+    label: 'Appearance',
+    color: 'rgba(255, 105, 180, 0.35)',
+    borderColor: 'rgba(255, 105, 180, 0.8)',
+    icon: '👤',
     order: 2,
   },
-  cameraMove: {
-    label: 'Camera Movement',
-    color: 'rgba(56, 189, 248, 0.18)',
-    borderColor: 'rgba(56, 189, 248, 0.55)',
-    icon: '🎥',
+  wardrobe: {
+    label: 'Wardrobe',
+    color: 'rgba(255, 214, 0, 0.35)',
+    borderColor: 'rgba(255, 214, 0, 0.8)',
+    icon: '👔',
     order: 3,
   },
-  technical: {
-    label: 'Technical Specs',
-    color: 'rgba(139, 92, 246, 0.15)',
-    borderColor: 'rgba(139, 92, 246, 0.5)',
-    icon: '⚙️',
+  action: {
+    label: 'Action',
+    color: 'rgba(168, 85, 247, 0.15)',
+    borderColor: 'rgba(168, 85, 247, 0.5)',
+    icon: '🏃',
     order: 4,
   },
   environment: {
@@ -44,11 +44,11 @@ export const CATEGORY_CONFIG = {
     icon: '🌲',
     order: 5,
   },
-  color: {
-    label: 'Color Palette',
-    color: 'rgba(244, 114, 182, 0.2)',
-    borderColor: 'rgba(244, 114, 182, 0.55)',
-    icon: '🎨',
+  lighting: {
+    label: 'Lighting',
+    color: 'rgba(253, 224, 71, 0.2)',
+    borderColor: 'rgba(253, 224, 71, 0.6)',
+    icon: '💡',
     order: 6,
   },
   timeOfDay: {
@@ -58,25 +58,25 @@ export const CATEGORY_CONFIG = {
     icon: '🌅',
     order: 7,
   },
-  appearance: {
-    label: 'Appearance',
-    color: 'rgba(255, 105, 180, 0.35)',
-    borderColor: 'rgba(255, 105, 180, 0.8)',
-    icon: '👤',
+  cameraMove: {
+    label: 'Camera Movement',
+    color: 'rgba(56, 189, 248, 0.18)',
+    borderColor: 'rgba(56, 189, 248, 0.55)',
+    icon: '🎥',
     order: 8,
   },
-  wardrobe: {
-    label: 'Wardrobe',
-    color: 'rgba(255, 214, 0, 0.35)',
-    borderColor: 'rgba(255, 214, 0, 0.8)',
-    icon: '👔',
+  framing: {
+    label: 'Shot Framing',
+    color: 'rgba(147, 197, 253, 0.18)',
+    borderColor: 'rgba(59, 130, 246, 0.45)',
+    icon: '🎬',
     order: 9,
   },
-  action: {
-    label: 'Action',
-    color: 'rgba(168, 85, 247, 0.15)',
-    borderColor: 'rgba(168, 85, 247, 0.5)',
-    icon: '🏃',
+  technical: {
+    label: 'Technical Specs',
+    color: 'rgba(139, 92, 246, 0.15)',
+    borderColor: 'rgba(139, 92, 246, 0.5)',
+    icon: '⚙️',
     order: 10,
   },
   descriptive: {

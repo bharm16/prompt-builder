@@ -10,15 +10,15 @@ const CONTEXT_WINDOW_CHARS = 20;
  * Maps LLM role names to category identifiers
  */
 const ROLE_TO_CATEGORY = {
-  Wardrobe: 'wardrobe',
+  Subject: 'subject',
   Appearance: 'appearance',
+  Wardrobe: 'wardrobe',
+  Action: 'action',
+  Environment: 'environment',
   Lighting: 'lighting',
   TimeOfDay: 'timeOfDay',
-  Action: 'action',
   CameraMove: 'cameraMove',
   Framing: 'framing',
-  Environment: 'environment',
-  Color: 'color',
   Technical: 'technical',
   Descriptive: 'descriptive',
 };

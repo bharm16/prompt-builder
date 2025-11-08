@@ -7,17 +7,17 @@ import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../SpanBentoGrid/config/bentoCo
  */
 function getCategoryExample(category) {
   const examples = {
-    lighting: 'golden hour lighting, neon glow',
-    framing: 'wide shot, low-angle shot',
-    cameraMove: 'dolly in, pan left',
-    technical: '35mm, 24fps, 2.39:1',
-    environment: 'rain-soaked alley, frozen tundra',
-    color: 'teal and orange, muted pastels',
-    timeOfDay: 'golden hour, twilight, blue hour',
-    appearance: 'weathered hands, blue eyes',
+    subject: 'young painter, elderly historian',
+    appearance: 'weathered hands, focused expression',
     wardrobe: 'worn leather jacket, fedora',
-    action: 'walking slowly, reaching upward',
-    descriptive: 'soft shadows, weathered texture',
+    action: 'gripping paintbrush, walking slowly',
+    environment: 'cozy studio, rain-soaked alley',
+    lighting: 'soft diffused light, neon glow',
+    timeOfDay: 'golden hour, twilight, blue hour',
+    cameraMove: 'gently pans, dolly in',
+    framing: 'close-up, wide shot, low-angle',
+    technical: 'shallow DOF, 24fps, 35mm film',
+    descriptive: 'serene atmosphere, intimate moment',
   };
   return examples[category] || '';
 }
