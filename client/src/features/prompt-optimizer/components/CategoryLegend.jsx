@@ -42,7 +42,7 @@ export const CategoryLegend = memo(({ show, onClose, hasContext }) => {
   });
 
   return (
-    <div className="fixed top-20 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
+    <div className="fixed top-16 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
       <div className="flex flex-col gap-2 px-4 py-3 border-b border-neutral-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

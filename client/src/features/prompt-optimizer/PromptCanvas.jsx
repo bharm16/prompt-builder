@@ -566,25 +566,27 @@ export const PromptCanvas = ({
 
   // Render the component
   return (
-    <div className="fixed inset-0 flex bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
+    <div className="fixed inset-0 flex flex-col bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
 
-      {/* Floating Toolbar */}
-      <FloatingToolbar
-        onCopy={handleCopy}
-        onExport={handleExport}
-        onCreateNew={onCreateNew}
-        onShare={handleShare}
-        copied={copied}
-        shared={shared}
-        showExportMenu={showExportMenu}
-        onToggleExportMenu={setShowExportMenu}
-        showLegend={showLegend}
-        onToggleLegend={setShowLegend}
-        onUndo={onUndo}
-        onRedo={onRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-      />
+      {/* Fixed Header */}
+      <header className="flex-shrink-0 border-b border-neutral-200 bg-white">
+        <FloatingToolbar
+          onCopy={handleCopy}
+          onExport={handleExport}
+          onCreateNew={onCreateNew}
+          onShare={handleShare}
+          copied={copied}
+          shared={shared}
+          showExportMenu={showExportMenu}
+          onToggleExportMenu={setShowExportMenu}
+          showLegend={showLegend}
+          onToggleLegend={setShowLegend}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+        />
+      </header>
 
       {/* Category Legend */}
       <CategoryLegend
@@ -596,7 +598,7 @@ export const PromptCanvas = ({
       {/* Main Content Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Span Bento Grid (Desktop) / Bottom Drawer (Mobile) */}
-        <div className="w-72 flex-shrink-0 max-md:w-full max-md:h-auto">
+        <div className="w-72 h-full flex-shrink-0 max-md:w-full max-md:h-auto">
           <SpanBentoGrid
             spans={parseResult.spans}
             onSpanClick={handleSpanClickFromBento}
@@ -619,10 +621,10 @@ export const PromptCanvas = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Right Side - AI Suggestions Panel (Always Visible) */}
-      <SuggestionsPanel suggestionsData={suggestionsData || { show: false }} />
+        {/* Right Side - AI Suggestions Panel (Always Visible) */}
+        <SuggestionsPanel suggestionsData={suggestionsData || { show: false }} />
+      </div>
     </div>
   );
 };
