@@ -435,18 +435,9 @@ ${brainstormRequirement}${modeRequirement}
 Return ONLY a JSON array with categorized suggestions (2-4 per category):
 
 [
-  {"text": "oak", "category": "Natural Wood", "explanation": "Classic hardwood with prominent grain"},
-  {"text": "walnut", "category": "Natural Wood", "explanation": "Premium dark wood with rich tones"},
-  {"text": "mahogany", "category": "Natural Wood", "explanation": "Deep red-brown luxury wood"},
-  {"text": "brushed steel", "category": "Modern Materials", "explanation": "Contemporary industrial aesthetic"},
-  {"text": "glass", "category": "Modern Materials", "explanation": "Transparent/translucent modern look"},
-  {"text": "chrome", "category": "Modern Materials", "explanation": "Reflective high-tech finish"},
-  {"text": "marble", "category": "Stone & Mineral", "explanation": "Elegant stone with veining patterns"},
-  {"text": "granite", "category": "Stone & Mineral", "explanation": "Durable speckled stone surface"},
-  {"text": "quartz", "category": "Stone & Mineral", "explanation": "Engineered stone with consistent pattern"},
-  {"text": "weathered", "category": "Surface Finishes", "explanation": "Aged, worn surface quality"},
-  {"text": "polished", "category": "Surface Finishes", "explanation": "Smooth, reflective finish"},
-  {"text": "distressed", "category": "Surface Finishes", "explanation": "Intentionally aged appearance"}
+  {"text": "suggestion text", "category": "Category Name", "explanation": "Brief explanation"},
+  {"text": "another suggestion", "category": "Different Category", "explanation": "Why this works"},
+  {"text": "third option", "category": "Another Category", "explanation": "Reasoning here"}
 ]`;
   }
 
