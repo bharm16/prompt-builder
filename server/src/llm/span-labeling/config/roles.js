@@ -16,6 +16,7 @@ export const ROLE_SET = new Set([
   'Appearance',
   'Lighting',
   'TimeOfDay',
+  'Action',
   'CameraMove',
   'Framing',
   'Environment',
@@ -30,6 +31,7 @@ export const ROLE_SET = new Set([
 export const ROLE_CATEGORIES = {
   visual: ['Wardrobe', 'Appearance', 'Color', 'Environment'],
   cinematic: ['Lighting', 'TimeOfDay', 'CameraMove', 'Framing'],
+  narrative: ['Action'],
   metadata: ['Technical', 'Descriptive']
 };
 

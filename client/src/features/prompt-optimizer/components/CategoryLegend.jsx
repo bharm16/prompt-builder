@@ -1,32 +1,45 @@
 import { memo } from 'react';
 import { Info, X } from 'lucide-react';
+import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../SpanBentoGrid/config/bentoConfig';
+
+/**
+ * Get example text for each category
+ */
+function getCategoryExample(category) {
+  const examples = {
+    lighting: 'golden hour lighting, neon glow',
+    framing: 'wide shot, low-angle shot',
+    cameraMove: 'dolly in, pan left',
+    technical: '35mm, 24fps, 2.39:1',
+    environment: 'rain-soaked alley, frozen tundra',
+    color: 'teal and orange, muted pastels',
+    timeOfDay: 'golden hour, twilight, blue hour',
+    appearance: 'weathered hands, blue eyes',
+    wardrobe: 'worn leather jacket, fedora',
+    action: 'walking slowly, reaching upward',
+    descriptive: 'soft shadows, weathered texture',
+  };
+  return examples[category] || '';
+}
 
 /**
  * Category Legend Component
  * Displays a legend of all highlight categories with examples
+ * Now dynamically generated from bentoConfig for consistency
  */
 export const CategoryLegend = memo(({ show, onClose, hasContext }) => {
   if (!show) return null;
 
-  const categories = [
-    // Categories from Creative Brainstorm (when context is active)
-    { name: 'Subject', color: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.5)', example: 'lone astronaut, weathered soldier', source: 'brainstorm' },
-    { name: 'Action', color: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.5)', example: 'walking slowly, sprinting through rain', source: 'brainstorm' },
-    { name: 'Location', color: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.5)', example: 'abandoned station, foggy battlefield', source: 'brainstorm' },
-    { name: 'Time', color: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)', example: 'golden hour, twilight, blue hour', source: 'brainstorm' },
-    { name: 'Mood', color: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)', example: 'melancholic, tense, hopeful', source: 'brainstorm' },
-    { name: 'Style', color: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)', example: '35mm film, documentary, noir', source: 'brainstorm' },
-
-    // Categories from NLP extraction (always active)
-    { name: 'Lighting', color: 'rgba(253, 224, 71, 0.2)', border: 'rgba(253, 224, 71, 0.6)', example: 'golden hour lighting, neon glow', source: 'nlp' },
-    { name: 'Shot Framing', color: 'rgba(147, 197, 253, 0.18)', border: 'rgba(59, 130, 246, 0.45)', example: 'wide shot, low-angle shot', source: 'nlp' },
-    { name: 'Camera Movement', color: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.55)', example: 'dolly in, pan left', source: 'nlp' },
-    { name: 'Depth of Field', color: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.5)', example: 'shallow depth of field, creamy bokeh', source: 'nlp' },
-    { name: 'Color Palette', color: 'rgba(244, 114, 182, 0.2)', border: 'rgba(244, 114, 182, 0.55)', example: 'teal and orange, muted pastels', source: 'nlp' },
-    { name: 'Environment Details', color: 'rgba(34, 197, 94, 0.18)', border: 'rgba(34, 197, 94, 0.55)', example: 'rain-soaked alley, frozen tundra', source: 'nlp' },
-    { name: 'Technical Specs', color: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)', example: '35mm, 24fps, 2.39:1', source: 'nlp' },
-    { name: 'Descriptive Language', color: 'rgba(251, 191, 36, 0.12)', border: 'rgba(251, 191, 36, 0.4)', example: 'soft shadows, weathered hands', source: 'nlp' },
-  ];
+  // Generate categories dynamically from actual configuration
+  const categories = CATEGORY_ORDER.map(categoryKey => {
+    const config = CATEGORY_CONFIG[categoryKey];
+    return {
+      name: config.label,
+      color: config.color,
+      border: config.borderColor,
+      example: getCategoryExample(categoryKey),
+    };
+  });
 
   return (
     <div className="fixed top-20 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
@@ -44,14 +57,18 @@ export const CategoryLegend = memo(({ show, onClose, hasContext }) => {
             <X className="h-4 w-4" />
           </button>
         </div>
-        {hasContext && (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md text-xs font-medium text-emerald-700 self-start" title="Using context from Creative Brainstorm for intelligent highlighting">
-            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <span>Brainstorm Context Active</span>
-          </div>
-        )}
+        <div className="text-xs text-neutral-500">
+          {hasContext ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md font-medium text-emerald-700" title="Using context from Creative Brainstorm for intelligent highlighting">
+              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>Brainstorm Context Active</span>
+            </div>
+          ) : (
+            <span>Showing all span labeling categories</span>
+          )}
+        </div>
       </div>
       <div className="p-3 max-h-96 overflow-y-auto">
         <div className="space-y-2">
@@ -72,11 +89,11 @@ export const CategoryLegend = memo(({ show, onClose, hasContext }) => {
           ))}
         </div>
         <div className="mt-3 pt-3 border-t border-neutral-200">
+          <p className="text-xs font-semibold text-neutral-700 mb-2">
+            How It Works
+          </p>
           {hasContext ? (
             <>
-              <p className="text-xs font-semibold text-emerald-700 mb-2">
-                Context-Aware Highlighting Active
-              </p>
               <p className="text-xs text-neutral-500 leading-relaxed mb-2">
                 Your Creative Brainstorm selections are prioritized and highlighted first,
                 followed by additional details detected by LLM analysis.
@@ -91,18 +108,18 @@ export const CategoryLegend = memo(({ show, onClose, hasContext }) => {
           ) : (
             <>
               <p className="text-xs text-neutral-500 leading-relaxed mb-2">
-                <strong>Powered by LLM Analysis:</strong>
+                Categories are automatically detected using LLM analysis based on video production standards.
               </p>
               <ul className="text-xs text-neutral-500 space-y-1 ml-3">
                 <li>• Intelligent semantic understanding</li>
                 <li>• Context-aware categorization</li>
-                <li>• Technical specification detection</li>
+                <li>• Aligned with video generation models</li>
                 <li>• Confidence-based highlighting</li>
               </ul>
             </>
           )}
           <p className="text-xs text-neutral-500 leading-relaxed mt-2">
-            Click highlights to get AI-powered alternatives.
+            Click any highlight to get AI-powered alternatives.
           </p>
         </div>
       </div>

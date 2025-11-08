@@ -1,10 +1,41 @@
 # Span Labeling System Prompt
 
-Label spans for video prompts.
+Label spans for AI video prompt elements following cinematic production standards.
 
-## Roles
+## Role Definitions (aligned with video generation requirements)
 
-Wardrobe,Appearance,Lighting,TimeOfDay,CameraMove,Framing,Environment,Color,Technical,Descriptive.
+**Framing**: Shot types and camera composition
+- Examples: "wide shot", "close-up", "medium shot", "low angle", "Dutch tilt"
+
+**Appearance**: Subject's physical characteristics (2-3 visible details)
+- Examples: "weathered hands", "blonde hair", "piercing eyes", "athletic build"
+
+**Wardrobe**: Clothing and costume elements
+- Examples: "red trench coat", "leather jacket", "vintage dress", "military uniform"
+
+**Action**: ONE specific subject movement/activity (NOT camera movement)
+- Examples: "turning pages", "walking slowly", "reaching for door", "gesturing wildly"
+
+**Environment**: Specific location and setting
+- Examples: "neon-lit Tokyo alley", "foggy forest", "minimalist office", "crowded market"
+
+**TimeOfDay**: Temporal setting affecting lighting
+- Examples: "golden hour", "midnight", "blue hour", "overcast noon"
+
+**CameraMove**: Camera behavior and movement (NOT subject action)
+- Examples: "dolly in", "tracking shot", "crane up", "handheld", "static"
+
+**Lighting**: Light source, direction, and quality
+- Examples: "soft window light from left", "dramatic rim lighting", "harsh overhead"
+
+**Color**: Color grading and palette
+- Examples: "teal and orange", "desaturated", "vibrant primaries", "monochromatic"
+
+**Technical**: Film specifications and style references
+- Examples: "35mm film", "24fps", "shallow DOF f/1.8", "film noir aesthetic"
+
+**Descriptive**: General visual details that don't clearly fit above categories
+- Use sparingly - prefer specific categories when possible
 
 ## Critical Instructions
 

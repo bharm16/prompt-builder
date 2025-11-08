@@ -82,6 +82,17 @@ export const CATEGORY_GUIDANCE = {
   ],
 
   /**
+   * Action-specific guidance
+   */
+  action: [
+    'Movement type: walking, running, reaching, turning, gesturing, jumping',
+    'Movement quality: slow/deliberate, quick/sharp, fluid/graceful, hesitant/cautious',
+    'Direction: toward camera, away from camera, left to right, ascending, descending',
+    'Interaction: with objects, with environment, with other subjects, solo movement',
+    'Intensity: subtle gesture, normal motion, dramatic action, explosive movement',
+  ],
+
+  /**
    * Technical-specific guidance
    */
   technical: [
@@ -116,6 +127,10 @@ export const GUIDANCE_MAPPING = {
   
   color: 'color',
   colour: 'color',
+  
+  action: 'action',
+  movement: 'action',
+  gesture: 'action',
   
   style: 'style',
   aesthetic: 'style',

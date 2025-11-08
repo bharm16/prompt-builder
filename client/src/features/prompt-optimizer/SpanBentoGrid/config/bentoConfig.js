@@ -72,12 +72,19 @@ export const CATEGORY_CONFIG = {
     icon: '👔',
     order: 9,
   },
+  action: {
+    label: 'Action',
+    color: 'rgba(168, 85, 247, 0.15)',
+    borderColor: 'rgba(168, 85, 247, 0.5)',
+    icon: '🏃',
+    order: 10,
+  },
   descriptive: {
     label: 'Descriptive',
     color: 'rgba(251, 191, 36, 0.12)',
     borderColor: 'rgba(251, 191, 36, 0.4)',
     icon: '📝',
-    order: 10,
+    order: 11,
   },
 };
 

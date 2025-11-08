@@ -9,10 +9,12 @@ const cache = new NodeCache({ stdTTL: 120 });
 
 const SYSTEM_PROMPT = `
 You label short prompt spans for a video prompt editor.
-Roles: Wardrobe, Appearance, Lighting, TimeOfDay, CameraMove, Framing, Environment, Color, Technical, Descriptive.
+Roles: Wardrobe, Appearance, Lighting, TimeOfDay, Action, CameraMove, Framing, Environment, Color, Technical, Descriptive.
 Rules:
 - Do not change "text", "start", or "end".
 - Do not merge or split spans.
+- Action = subject movement (NOT camera movement)
+- CameraMove = camera movement (NOT subject movement)
 - If unsure, use "Descriptive".
 Return ONLY valid JSON: {"spans":[...]}.
 `;
@@ -22,6 +24,7 @@ const ROLE_SET = new Set([
   'Appearance',
   'Lighting',
   'TimeOfDay',
+  'Action',
   'CameraMove',
   'Framing',
   'Environment',

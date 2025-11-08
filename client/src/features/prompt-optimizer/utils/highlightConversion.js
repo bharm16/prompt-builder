@@ -14,6 +14,7 @@ const ROLE_TO_CATEGORY = {
   Appearance: 'appearance',
   Lighting: 'lighting',
   TimeOfDay: 'timeOfDay',
+  Action: 'action',
   CameraMove: 'cameraMove',
   Framing: 'framing',
   Environment: 'environment',
