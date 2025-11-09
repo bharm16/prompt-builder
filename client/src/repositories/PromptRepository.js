@@ -22,6 +22,7 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
+  deleteDoc,
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -170,6 +171,25 @@ export class PromptRepository {
 
       console.error('Error updating prompt highlights:', error);
       throw new PromptRepositoryError('Failed to update highlights', error);
+    }
+  }
+
+  /**
+   * Delete a prompt by its document ID
+   * @param {string} docId - Firestore document ID
+   * @returns {Promise<void>}
+   */
+  async deleteById(docId) {
+    try {
+      if (!docId) {
+        throw new Error('Document ID is required for deletion');
+      }
+
+      const docRef = doc(this.db, this.collectionName, docId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting prompt:', error);
+      throw new PromptRepositoryError('Failed to delete prompt', error);
     }
   }
 
@@ -333,6 +353,28 @@ export class LocalStoragePromptRepository {
    */
   async clear() {
     localStorage.removeItem(this.storageKey);
+  }
+
+  /**
+   * Delete a prompt by its ID from localStorage
+   * @param {string|number} id - The prompt ID
+   * @returns {Promise<void>}
+   */
+  async deleteById(id) {
+    try {
+      const history = this._getHistory();
+      const filtered = history.filter(entry => entry.id !== id);
+      
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(filtered));
+      } catch (storageError) {
+        console.error('Error deleting from localStorage:', storageError);
+        throw storageError;
+      }
+    } catch (error) {
+      console.error('Error deleting prompt from localStorage:', error);
+      throw new PromptRepositoryError('Failed to delete from local storage', error);
+    }
   }
 
   /**

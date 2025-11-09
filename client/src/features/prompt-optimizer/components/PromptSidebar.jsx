@@ -12,6 +12,7 @@ import { usePromptState } from '../context/PromptStateContext';
 export const PromptSidebar = ({ user }) => {
   const {
     showHistory,
+    setShowHistory,
     showBrainstorm,
     modes,
     promptHistory,
@@ -27,6 +28,7 @@ export const PromptSidebar = ({ user }) => {
   return (
     <HistorySidebar
       showHistory={showHistory}
+      setShowHistory={setShowHistory}
       user={user}
       history={promptHistory.history}
       filteredHistory={promptHistory.filteredHistory}
@@ -35,6 +37,7 @@ export const PromptSidebar = ({ user }) => {
       onSearchChange={promptHistory.setSearchQuery}
       onLoadFromHistory={loadFromHistory}
       onCreateNew={handleCreateNew}
+      onDelete={promptHistory.deleteFromHistory}
       modes={modes}
     />
   );

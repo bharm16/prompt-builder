@@ -124,12 +124,12 @@ export default function PromptEnhancementEditor({
     setIsPlaceholder(false);
 
     try {
-      // Extract context around the highlighted text
+      // Extract context around the highlighted text (1000 chars for richer semantic understanding)
       const fullText = promptContent;
       const highlightIndex = fullText.indexOf(highlightedText);
 
       const contextBefore = fullText
-        .substring(Math.max(0, highlightIndex - 300), highlightIndex)
+        .substring(Math.max(0, highlightIndex - 1000), highlightIndex)
         .trim();
 
       const contextAfter = fullText
@@ -137,7 +137,7 @@ export default function PromptEnhancementEditor({
           highlightIndex + highlightedText.length,
           Math.min(
             fullText.length,
-            highlightIndex + highlightedText.length + 300
+            highlightIndex + highlightedText.length + 1000
           )
         )
         .trim();

@@ -210,7 +210,8 @@ export function configureServices() {
       promptBuilder,
       validationService,
       diversityEnforcer,
-      categoryAligner
+      categoryAligner,
+      metricsService
     ) =>
       new EnhancementService(
         claudeClient,
@@ -221,7 +222,8 @@ export function configureServices() {
         promptBuilder,
         validationService,
         diversityEnforcer,
-        categoryAligner
+        categoryAligner,
+        metricsService
       ),
     [
       'claudeClient',
@@ -233,6 +235,7 @@ export function configureServices() {
       'validationService',
       'diversityEnforcer',
       'categoryAligner',
+      'metricsService',
     ]
   );
 

@@ -1,7 +1,28 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ClaudeAPIClient, APIError, TimeoutError, ServiceUnavailableError } from '../ClaudeAPIClient.js';
+/**
+ * @test {ClaudeAPIClient}
+ * @description Comprehensive test suite for ClaudeAPIClient
+ * 
+ * Test Coverage:
+ * - Constructor initialization and configuration
+ * - Request execution with circuit breaker
+ * - Request coalescing and deduplication
+ * - Timeout handling and error handling
+ * - Statistics tracking and metrics
+ * - Health checks and graceful shutdown
+ * 
+ * Mocking Strategy:
+ * - Logger and MetricsService are module-level mocks (not ideal, but necessary)
+ *   because ClaudeAPIClient doesn't currently support constructor injection
+ * - NOTE: Ideally, ClaudeAPIClient would accept logger and metricsService
+ *   as constructor parameters for true dependency injection
+ * - global.fetch IS mocked here (appropriate for HTTP client testing)
+ * - Circuit breaker mocked to avoid complex async behavior in tests
+ */
 
-// Mock external dependencies
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Module-level mocks (required due to direct imports in ClaudeAPIClient)
+// TODO: Refactor ClaudeAPIClient to accept logger and metricsService via constructor
 vi.mock('../../infrastructure/Logger.js', () => ({
   logger: {
     info: vi.fn(),
@@ -18,7 +39,7 @@ vi.mock('../../infrastructure/MetricsService.js', () => ({
   },
 }));
 
-// Mock opossum circuit breaker
+// Mock circuit breaker for predictable behavior
 vi.mock('opossum', () => {
   return {
     default: class MockCircuitBreaker {
@@ -61,6 +82,8 @@ vi.mock('opossum', () => {
     },
   };
 });
+
+import { ClaudeAPIClient, APIError, TimeoutError, ServiceUnavailableError } from '../ClaudeAPIClient.js';
 
 describe('ClaudeAPIClient', () => {
   let client;

@@ -9,41 +9,103 @@ import {
   GraduationCap,
   Video,
   MessageSquare,
-  X
+  X,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { getAuthRepository } from '../../repositories';
 import { HistoryEmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 
-// Memoized history item component for performance
-const HistoryItem = memo(({ entry, modes, onLoad }) => {
+// Memoized history item component with delete functionality
+const HistoryItem = memo(({ entry, modes, onLoad, onDelete }) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const modeInfo = modes.find((m) => m.id === entry.mode);
   const ModeIcon = modeInfo?.icon || FileText;
 
-  return (
-    <li>
-      <button
-        onClick={() => onLoad(entry)}
-        className="group w-full rounded-lg p-3 text-left transition-colors hover:bg-neutral-100"
-        aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
-      >
-        <div className="flex items-start gap-2.5">
-          <ModeIcon
-            className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-neutral-400"
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-neutral-900 line-clamp-1 leading-relaxed">
-              {entry.input}
-            </p>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-500">
-              <time dateTime={entry.timestamp || ''}>
-                {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
-              </time>
-            </div>
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (showDeleteConfirm) {
+      // Confirmed - actually delete
+      onDelete(entry.id);
+      setShowDeleteConfirm(false);
+    } else {
+      // Show confirmation
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleCancel = (e) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(false);
+  };
+
+  const handleLoad = () => {
+    if (!showDeleteConfirm) {
+      onLoad(entry);
+    }
+  };
+
+  if (showDeleteConfirm) {
+    return (
+      <li>
+        <div className="group w-full rounded-lg p-3 bg-red-50 border border-red-200">
+          <p className="text-xs text-red-900 mb-2">Delete this prompt?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDelete}
+              className="flex-1 px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex-1 px-2 py-1 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
-      </button>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <div className="group relative w-full rounded-lg transition-colors hover:bg-neutral-100">
+        <button
+          onClick={handleLoad}
+          className="w-full p-3 text-left"
+          aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
+        >
+          <div className="flex items-start gap-2.5">
+            <ModeIcon
+              className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-neutral-400"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-neutral-900 line-clamp-1 leading-relaxed">
+                {entry.input}
+              </p>
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-500">
+                <time dateTime={entry.timestamp || ''}>
+                  {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
+                </time>
+              </div>
+            </div>
+          </div>
+        </button>
+        
+        {/* Delete button - shows on hover */}
+        <button
+          onClick={handleDelete}
+          className="absolute right-2 top-2 p-1.5 opacity-0 group-hover:opacity-100 rounded hover:bg-red-50 transition-all"
+          aria-label="Delete prompt"
+          title="Delete prompt"
+        >
+          <Trash2 className="h-3.5 w-3.5 text-neutral-400 hover:text-red-600" />
+        </button>
+      </div>
     </li>
   );
 }, (prevProps, nextProps) => {
@@ -124,6 +186,7 @@ const AuthMenu = ({ user, onSignIn, onSignOut }) => {
 // Main History Sidebar Component
 export const HistorySidebar = ({
   showHistory,
+  setShowHistory,
   user,
   history,
   filteredHistory,
@@ -132,6 +195,7 @@ export const HistorySidebar = ({
   onSearchChange,
   onLoadFromHistory,
   onCreateNew,
+  onDelete,
   modes
 }) => {
   const toast = useToast();
@@ -167,15 +231,42 @@ export const HistorySidebar = ({
     >
       {showHistory && (
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
-          <div className="flex-shrink-0 px-4 pt-20 pb-2">
-            {!user && (
-              <p className="mb-2 text-[11px] text-neutral-500">
-                Sign in to sync across devices
-              </p>
-            )}
+          {/* Header with toggle + title */}
+          <header className="flex-shrink-0 px-4 py-3 border-b border-neutral-200">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-1.5 hover:bg-neutral-100 rounded transition-colors"
+                aria-label="Close sidebar"
+              >
+                <PanelLeft className="h-5 w-5 text-neutral-600" />
+              </button>
+              <h1 className="text-lg font-semibold text-neutral-900">Prompt Builder</h1>
+            </div>
+          </header>
+
+          {/* New Prompt button */}
+          <div className="flex-shrink-0 px-4 py-3">
+            <button
+              onClick={onCreateNew}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+              aria-label="Create new prompt"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Prompt</span>
+            </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2 pt-14">
+          {/* Sign-in message */}
+          {!user && (
+            <div className="flex-shrink-0 px-4 pb-2">
+              <p className="text-[11px] text-neutral-500">
+                Sign in to sync across devices
+              </p>
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
             <h2 className="px-2 mb-2 text-xs font-semibold text-neutral-900 tracking-wide">
               Recent
             </h2>
@@ -203,6 +294,7 @@ export const HistorySidebar = ({
                       entry={entry}
                       modes={modes}
                       onLoad={onLoadFromHistory}
+                      onDelete={onDelete}
                     />
                   ))}
                 </ul>

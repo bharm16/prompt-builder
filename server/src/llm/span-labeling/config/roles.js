@@ -12,14 +12,15 @@
  * @type {Set<string>}
  */
 export const ROLE_SET = new Set([
-  'Wardrobe',
+  'Subject',
   'Appearance',
+  'Wardrobe',
+  'Action',
+  'Environment',
   'Lighting',
   'TimeOfDay',
   'CameraMove',
   'Framing',
-  'Environment',
-  'Color',
   'Technical',
   'Descriptive',
 ]);
@@ -28,8 +29,10 @@ export const ROLE_SET = new Set([
  * Role categories for validation and analysis
  */
 export const ROLE_CATEGORIES = {
-  visual: ['Wardrobe', 'Appearance', 'Color', 'Environment'],
-  cinematic: ['Lighting', 'TimeOfDay', 'CameraMove', 'Framing'],
+  subject: ['Subject', 'Appearance', 'Wardrobe'],
+  environment: ['Environment', 'Lighting', 'TimeOfDay'],
+  cinematic: ['CameraMove', 'Framing'],
+  narrative: ['Action'],
   metadata: ['Technical', 'Descriptive']
 };
 

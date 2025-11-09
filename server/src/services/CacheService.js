@@ -2,7 +2,7 @@ import NodeCache from 'node-cache';
 import crypto from 'crypto';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
-import { SemanticCacheEnhancer } from '../utils/SemanticCacheEnhancer.js';
+import { SemanticCacheEnhancer } from './cache/SemanticCacheService.js';
 
 /**
  * Cache service for storing API responses

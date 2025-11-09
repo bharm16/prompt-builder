@@ -2,6 +2,7 @@ import express from 'express';
 import { logger } from '../infrastructure/Logger.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validateRequest } from '../middleware/validateRequest.js';
+import { PerformanceMonitor } from '../middleware/performanceMonitor.js';
 import {
   promptSchema,
   suggestionSchema,
@@ -31,7 +32,11 @@ export function createAPIRoutes(services) {
     sceneDetectionService,
     videoConceptService,
     textCategorizerService,
+    metricsService,
   } = services;
+
+  // Initialize performance monitor
+  const perfMonitor = new PerformanceMonitor(metricsService);
 
   // POST /api/optimize - Optimize prompt (single-stage, backward compatible)
   router.post(
@@ -264,6 +269,7 @@ export function createAPIRoutes(services) {
   // POST /api/get-enhancement-suggestions - Get enhancement suggestions
   router.post(
     '/get-enhancement-suggestions',
+    perfMonitor.trackRequest.bind(perfMonitor),
     validateRequest(suggestionSchema),
     asyncHandler(async (req, res) => {
       const {
@@ -276,7 +282,15 @@ export function createAPIRoutes(services) {
         highlightedCategory,
         highlightedCategoryConfidence,
         highlightedPhrase,
+        allLabeledSpans, // Complete span composition
+        nearbySpans, // Proximate context
+        editHistory, // NEW: Edit history for consistency
       } = req.body;
+
+      // Track service call timing
+      if (req.perfMonitor) {
+        req.perfMonitor.start('service_call');
+      }
 
       const result = await enhancementService.getEnhancementSuggestions({
         highlightedText,
@@ -288,7 +302,18 @@ export function createAPIRoutes(services) {
         highlightedCategory,
         highlightedCategoryConfidence,
         highlightedPhrase,
+        allLabeledSpans, // Pass to service
+        nearbySpans, // Pass to service
+        editHistory, // NEW: Pass to service
       });
+
+      // Track metadata
+      if (req.perfMonitor) {
+        req.perfMonitor.end('service_call');
+        req.perfMonitor.addMetadata('cacheHit', result.fromCache || false);
+        req.perfMonitor.addMetadata('suggestionCount', result.suggestions?.length || 0);
+        req.perfMonitor.addMetadata('category', highlightedCategory || 'unknown');
+      }
 
       res.json(result);
     })

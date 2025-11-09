@@ -1,7 +1,27 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { CacheService } from '../../../../server/src/services/CacheService.js';
+/**
+ * @test {CacheService}
+ * @description Comprehensive test suite for CacheService
+ * 
+ * Test Coverage:
+ * - Constructor initialization and configuration
+ * - Cache operations (get, set, delete, flush)
+ * - Cache key generation (semantic and standard)
+ * - Statistics tracking and hit rate calculation
+ * - Health checks
+ * - Edge cases and error handling
+ * 
+ * Mocking Strategy:
+ * - Logger, MetricsService, and SemanticCacheEnhancer are module-level mocks
+ *   because CacheService doesn't currently support constructor injection
+ * - NOTE: Ideally, CacheService would accept these as constructor parameters
+ *   for true dependency injection (see EXAMPLE_BACKEND_TEST.test.js)
+ * - The actual cache logic (NodeCache) is NOT mocked - we test real behavior
+ */
 
-// Mock external dependencies (but not the cache logic itself)
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
+// Module-level mocks (required due to direct imports in CacheService)
+// TODO: Refactor CacheService to accept dependencies via constructor
 vi.mock('../../../../server/src/infrastructure/Logger.js', () => ({
   logger: {
     info: vi.fn(),
@@ -19,7 +39,7 @@ vi.mock('../../../../server/src/infrastructure/MetricsService.js', () => ({
   },
 }));
 
-vi.mock('../../../../server/src/utils/SemanticCacheEnhancer.js', () => ({
+vi.mock('../../../../server/src/services/cache/SemanticCacheService.js', () => ({
   SemanticCacheEnhancer: {
     generateSemanticKey: vi.fn((namespace, data) => {
       // Simple mock implementation that creates predictable keys
@@ -29,9 +49,10 @@ vi.mock('../../../../server/src/utils/SemanticCacheEnhancer.js', () => ({
   },
 }));
 
+import { CacheService } from '../../../../server/src/services/CacheService.js';
 import { logger } from '../../../../server/src/infrastructure/Logger.js';
 import { metricsService } from '../../../../server/src/infrastructure/MetricsService.js';
-import { SemanticCacheEnhancer } from '../../../../server/src/utils/SemanticCacheEnhancer.js';
+import { SemanticCacheEnhancer } from '../../../../server/src/services/cache/SemanticCacheService.js';
 
 describe('CacheService', () => {
   let cacheService;

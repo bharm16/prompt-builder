@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Plus, PanelLeft } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { usePromptState } from '../context/PromptStateContext';
 
 export const PromptTopBar = () => {
@@ -14,28 +14,19 @@ export const PromptTopBar = () => {
     showHistory,
     setShowHistory,
     showBrainstorm,
-    handleCreateNew,
   } = usePromptState();
 
-  // Hide when brainstorm wizard is open
-  if (showBrainstorm) {
+  // Hide when brainstorm wizard is open or when sidebar is visible
+  if (showBrainstorm || showHistory) {
     return null;
   }
 
   return (
-    <div className="fixed left-6 top-6 z-fixed flex flex-col gap-2">
+    <div className="fixed left-6 top-6 z-fixed">
       <button
-        onClick={handleCreateNew}
+        onClick={() => setShowHistory(true)}
         className="btn-icon-secondary shadow-lg hover-scale ripple"
-        aria-label="Create new prompt"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-      <button
-        onClick={() => setShowHistory(!showHistory)}
-        className="btn-icon-secondary shadow-lg hover-scale ripple"
-        aria-label={showHistory ? 'Hide history sidebar' : 'Show history sidebar'}
-        aria-expanded={showHistory}
+        aria-label="Show history sidebar"
       >
         <PanelLeft className="h-5 w-5" />
       </button>

@@ -160,6 +160,38 @@ export const usePromptHistory = (user) => {
     toast.success('History cleared');
   }, [user, toast]);
 
+  // Delete a single prompt from history
+  const deleteFromHistory = useCallback(async (entryId) => {
+    const repository = getPromptRepositoryForUser(!!user);
+    
+    // Optimistic update - remove from UI immediately
+    setHistory((prevHistory) => prevHistory.filter(entry => entry.id !== entryId));
+    
+    try {
+      await repository.deleteById(entryId);
+      toast.success('Prompt deleted');
+    } catch (error) {
+      console.error('Error deleting prompt:', error);
+      
+      // Revert optimistic update on error
+      if (user) {
+        await loadHistoryFromFirestore(user.uid);
+      } else {
+        const localRepository = getPromptRepositoryForUser(false);
+        const localHistory = await localRepository.getUserPrompts(null, 100);
+        const normalizedHistory = localHistory.map((entry) => ({
+          ...entry,
+          brainstormContext: entry.brainstormContext ?? null,
+          highlightCache: entry.highlightCache ?? null,
+          versions: entry.versions ?? [],
+        }));
+        setHistory(normalizedHistory);
+      }
+      
+      toast.error('Failed to delete prompt');
+    }
+  }, [user, toast, loadHistoryFromFirestore]);
+
   // Filter history based on search query with useMemo for performance
   const filteredHistory = useMemo(() => {
     if (!searchQuery) return history;
@@ -178,6 +210,7 @@ export const usePromptHistory = (user) => {
     setSearchQuery,
     saveToHistory,
     clearHistory,
+    deleteFromHistory,
     loadHistoryFromFirestore,
     updateEntryHighlight,
   };

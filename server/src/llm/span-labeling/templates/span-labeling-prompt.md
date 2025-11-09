@@ -1,10 +1,76 @@
 # Span Labeling System Prompt
 
-Label spans for video prompts.
+Label spans for AI video prompt elements following cinematic production standards.
 
-## Roles
+## Role Definitions with Detection Patterns
 
-Wardrobe,Appearance,Lighting,TimeOfDay,CameraMove,Framing,Environment,Color,Technical,Descriptive.
+**Subject**: Main person/object/character being filmed (WHO or WHAT)
+- MUST identify: person type, occupation, character, animal, or main object
+- Examples: "young painter", "elderly historian", "siberian husky", "vintage car"
+- Pattern: Nouns with descriptors that identify the main focus
+- Check for: profession words, age descriptors + person, animal names, object names
+
+**Appearance**: Physical traits and characteristics of the subject
+- MUST describe: facial features, body type, physical details, expressions
+- Examples: "weathered hands", "focused expression", "athletic build", "piercing eyes"
+- Pattern: Physical descriptors, body parts, facial features, visible traits
+- NOT: clothing (use Wardrobe) or held objects (part of Action context)
+
+**Action**: Subject's movement or activity (NOT camera movement)
+- MUST use: verbs describing what subject is DOING
+- Examples: "gripping a paintbrush", "turning pages", "walking slowly", "poised above"
+- Pattern: -ing verbs (present participle), action phrases with subject doing something
+- Check for: holding, gripping, walking, running, turning, reaching, standing, sitting
+- NOT: camera actions like "panning", "tracking", "dollying"
+
+**Wardrobe**: Clothing and costume worn by subject
+- MUST describe: garments, accessories, clothing items
+- Examples: "red trench coat", "worn apron", "leather jacket", "fedora"
+- Pattern: Clothing nouns, garment names, worn items
+- NOT: objects held in hands (those are part of Action)
+
+**Environment**: Physical location and setting
+- MUST identify: places, rooms, outdoor locations, backgrounds
+- Examples: "cozy studio", "neon-lit Tokyo alley", "sunlit studio", "foggy forest"
+- Pattern: Location nouns, place descriptions, spatial context
+- Check for: studio, alley, forest, room, outdoor, indoor location words
+
+**Lighting**: Light characteristics and behavior
+- MUST describe: light quality, direction, source, shadows, illumination
+- Examples: "soft diffused light", "dramatic side lighting", "warm glow", "streams through windows"
+- Pattern: Words containing "light", "lit", "glow", "shadows", "illuminat", "diffused"
+- Check for: light source descriptions, shadow descriptions, brightness quality
+
+**TimeOfDay**: Temporal lighting conditions
+- MUST specify: time-based lighting or time period
+- Examples: "golden hour", "midnight", "afternoon sunlight", "blue hour", "dusk"
+- Pattern: Time words + lighting, hour references, temporal descriptors
+- Check for: hour, morning, afternoon, dusk, dawn, noon, midnight
+
+**CameraMove**: Camera motion and behavior (NOT subject motion)
+- MUST describe: what the CAMERA does, not what subject does
+- Examples: "gently pans", "dollies back", "tracking shot", "static", "crane up"
+- Pattern: Camera-specific verbs (pan, dolly, track, crane, zoom)
+- Check for: "camera" + verb, or specific camera movement terminology
+- NOT: subject movements like "walking" or "turning"
+
+**Framing**: Shot composition and camera angles
+- MUST specify: shot types, camera angles, composition
+- Examples: "Close-up", "wide shot", "medium shot", "low angle", "eye-level"
+- Pattern: Shot type words, angle descriptions, framing terminology
+- Check for: close-up, wide, medium, angle, shot, frame
+
+**Technical**: Film/video specifications and aesthetic style
+- MUST specify: technical specs, film stocks, formats, aesthetic references
+- Examples: "shallow depth of field", "24fps", "French New Wave", "35mm film", "f/1.8"
+- Pattern: Numbers + technical units, film stocks, genre aesthetics, cinematographer styles
+- Check for: fps, mm, f/, depth of field, film stock, aesthetic movements, aspect ratios
+
+**Descriptive**: ONLY when absolutely none of the above categories fit
+- Use as LAST RESORT after checking all other categories
+- For general atmospheric or mood descriptions that don't fit elsewhere
+- Examples: "serene atmosphere", "intimate moment", "subtle movements"
+- RULE: Before using Descriptive, verify the text doesn't match ANY pattern above
 
 ## Critical Instructions
 

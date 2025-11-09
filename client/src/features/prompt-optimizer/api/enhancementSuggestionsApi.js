@@ -18,6 +18,9 @@ import { API_CONFIG } from '../../../config/api.config';
  * @param {string} params.inputPrompt - Original user input
  * @param {Object|null} params.brainstormContext - Brainstorm context
  * @param {Object|null} params.metadata - Highlight metadata (category, confidence, etc.)
+ * @param {Array} params.allLabeledSpans - All labeled spans in the prompt
+ * @param {Array} params.nearbySpans - Spans near the selection
+ * @param {Array} params.editHistory - Edit history for consistency (NEW)
  * @returns {Promise<{suggestions: Array, isPlaceholder: boolean}>}
  * @throws {Error} If API call fails
  */
@@ -27,12 +30,15 @@ export async function fetchEnhancementSuggestions({
   inputPrompt,
   brainstormContext = null,
   metadata = null,
+  allLabeledSpans = [],
+  nearbySpans = [],
+  editHistory = [],
 }) {
-  // Extract context around the highlighted text
+  // Extract context around the highlighted text (1000 chars for richer semantic understanding)
   const highlightIndex = normalizedPrompt.indexOf(highlightedText);
 
   const contextBefore = normalizedPrompt
-    .substring(Math.max(0, highlightIndex - 300), highlightIndex)
+    .substring(Math.max(0, highlightIndex - 1000), highlightIndex)
     .trim();
 
   const contextAfter = normalizedPrompt
@@ -40,7 +46,7 @@ export async function fetchEnhancementSuggestions({
       highlightIndex + highlightedText.length,
       Math.min(
         normalizedPrompt.length,
-        highlightIndex + highlightedText.length + 300
+        highlightIndex + highlightedText.length + 1000
       )
     )
     .trim();
@@ -64,6 +70,9 @@ export async function fetchEnhancementSuggestions({
       highlightedCategory: metadata?.category || null,
       highlightedCategoryConfidence: metadata?.confidence || null,
       highlightedPhrase: metadata?.quote || highlightedText,
+      allLabeledSpans, // Complete span composition
+      nearbySpans, // Proximate context
+      editHistory, // NEW: Edit history for consistency
     }),
   });
 

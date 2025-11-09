@@ -1,4 +1,5 @@
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../CategoryConstraints.js';
+import { ContextAwareExamples } from './utils/ContextAwareExamples.js';
 
 /**
  * PromptBuilderService
@@ -12,6 +13,288 @@ export class PromptBuilderService {
   constructor(brainstormBuilder, videoService) {
     this.brainstormBuilder = brainstormBuilder;
     this.videoService = videoService;
+  }
+
+  /**
+   * Build model and section context
+   * @param {string} modelTarget - Target AI model
+   * @param {string} promptSection - Template section
+   * @param {string} category - Category being edited
+   * @param {boolean} isVideoPrompt - Whether this is a video prompt
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildModelAndSectionContext(modelTarget, promptSection, category, isVideoPrompt) {
+    if (!isVideoPrompt) {
+      return '';
+    }
+
+    let context = '';
+
+    // Add model-specific context if detected
+    if (modelTarget) {
+      const modelName = modelTarget.charAt(0).toUpperCase() + modelTarget.slice(1);
+      context += `\n**TARGET MODEL: ${modelName}**\n`;
+
+      // Get model capabilities from service (would need to inject it, but for now use inline)
+      const capabilities = this._getModelCapabilitiesInline(modelTarget);
+      if (capabilities) {
+        context += `Strengths: ${capabilities.primary.slice(0, 3).join(', ')}\n`;
+        context += `Optimize for: ${capabilities.optimizeFor}\n`;
+        context += `Avoid: ${capabilities.weaknesses.slice(0, 2).join(', ')}\n`;
+      }
+
+      // Add model-specific guidance for this category
+      if (category) {
+        const guidance = this._getModelGuidanceInline(modelTarget, category);
+        if (guidance.length > 0) {
+          context += `\n**Model-Specific ${category.toUpperCase()} Guidance:**\n`;
+          guidance.forEach((tip) => {
+            context += `- ${tip}\n`;
+          });
+        }
+      }
+    }
+
+    // Add section-specific context if detected
+    if (promptSection) {
+      const sectionName = promptSection
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      context += `\n**PROMPT SECTION: ${sectionName}**\n`;
+
+      const constraints = this._getSectionConstraintsInline(promptSection);
+      if (constraints) {
+        context += `Tone: ${constraints.tone.charAt(0).toUpperCase() + constraints.tone.slice(1)}\n`;
+        context += `Precision: ${constraints.precision.charAt(0).toUpperCase() + constraints.precision.slice(1)}\n`;
+        context += `Key Requirements: ${constraints.requirements.slice(0, 2).join(', ')}\n`;
+        context += `Must Avoid: ${constraints.avoid.slice(0, 2).join(', ')}\n`;
+      }
+    }
+
+    return context;
+  }
+
+  /**
+   * Get model capabilities inline (simplified)
+   * @private
+   */
+  _getModelCapabilitiesInline(model) {
+    const capabilities = {
+      sora: {
+        primary: ['Realistic motion', 'Physics simulation', 'Long takes'],
+        optimizeFor: 'Continuous action, natural movement',
+        weaknesses: ['Stylized content', 'Text rendering'],
+      },
+      veo3: {
+        primary: ['Cinematic lighting', 'Atmospheric effects', 'Mood'],
+        optimizeFor: 'Lighting quality, atmosphere',
+        weaknesses: ['Fast action', 'Abstract content'],
+      },
+      runway: {
+        primary: ['Stylized visuals', 'Artistic filters', 'Creative effects'],
+        optimizeFor: 'Artistic style, visual treatments',
+        weaknesses: ['Photorealism', 'Long sequences'],
+      },
+      kling: {
+        primary: ['Character animation', 'Facial expressions', 'Close-ups'],
+        optimizeFor: 'Character emotion, facial detail',
+        weaknesses: ['Wide shots', 'Environmental detail'],
+      },
+      luma: {
+        primary: ['Surreal visuals', 'Morphing effects', 'Dreamlike'],
+        optimizeFor: 'Abstract concepts, transitions',
+        weaknesses: ['Photorealism', 'Precise control'],
+      },
+    };
+    return capabilities[model] || null;
+  }
+
+  /**
+   * Get model-specific guidance inline (simplified)
+   * @private
+   */
+  _getModelGuidanceInline(model, category) {
+    const normalizedCategory = (category || '').toLowerCase();
+    const guidance = [];
+
+    if (model === 'sora' && (normalizedCategory.includes('motion') || normalizedCategory.includes('action'))) {
+      guidance.push('Describe continuous, realistic motion');
+      guidance.push('Mention physical interactions');
+    }
+
+    if (model === 'veo3' && normalizedCategory.includes('lighting')) {
+      guidance.push('Emphasize atmospheric quality');
+      guidance.push('Specify technical lighting details');
+    }
+
+    if (model === 'runway' && normalizedCategory.includes('style')) {
+      guidance.push('Embrace artistic, stylized approaches');
+    }
+
+    if (model === 'kling' && normalizedCategory.includes('subject')) {
+      guidance.push('Focus on facial expressions and emotion');
+    }
+
+    if (model === 'luma' && normalizedCategory.includes('style')) {
+      guidance.push('Embrace surreal, abstract concepts');
+    }
+
+    return guidance;
+  }
+
+  /**
+   * Get section constraints inline (simplified)
+   * @private
+   */
+  _getSectionConstraintsInline(section) {
+    const constraints = {
+      main_prompt: {
+        tone: 'descriptive',
+        precision: 'moderate',
+        requirements: ['Clear descriptions', 'Narrative flow'],
+        avoid: ['Technical jargon', 'Ambiguous terms'],
+      },
+      technical_specs: {
+        tone: 'technical',
+        precision: 'high',
+        requirements: ['Exact values', 'Standard terminology'],
+        avoid: ['Poetic language', 'Vague descriptors'],
+      },
+      alternatives: {
+        tone: 'suggestive',
+        precision: 'moderate',
+        requirements: ['Diverse variations', 'Different directions'],
+        avoid: ['Minor tweaks', 'Same concept'],
+      },
+      style_direction: {
+        tone: 'referential',
+        precision: 'high',
+        requirements: ['Specific references', 'Named styles'],
+        avoid: ['Generic terms', 'Vague comparisons'],
+      },
+    };
+    return constraints[section] || null;
+  }
+
+  /**
+   * Build edit history context section
+   * @param {Array} editHistory - Array of recent edits
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildEditHistoryContext(editHistory = []) {
+    if (!Array.isArray(editHistory) || editHistory.length === 0) {
+      return '';
+    }
+
+    let section = '\n**EDIT CONSISTENCY CONTEXT:**\n';
+    section += 'Previous edits in this session (most recent to oldest):\n';
+
+    // Show up to 10 most recent edits
+    const recentEdits = editHistory.slice(0, 10);
+
+    recentEdits.forEach((edit) => {
+      const minutesAgo = edit.minutesAgo || 0;
+      const timeStr = minutesAgo === 0 
+        ? 'just now' 
+        : minutesAgo === 1 
+        ? '1 min ago' 
+        : `${minutesAgo} mins ago`;
+
+      const categoryStr = edit.category 
+        ? ` [${edit.category.charAt(0).toUpperCase() + edit.category.slice(1)}]` 
+        : '';
+
+      section += `- Changed${categoryStr} from "${edit.original}" to "${edit.replacement}" (${timeStr})\n`;
+    });
+
+    section += '\n**CRITICAL CONSISTENCY REQUIREMENT:**\n';
+    section += 'Your suggestions MUST respect these editorial choices. ';
+    section += 'Do NOT suggest alternatives that would contradict or undo these decisions. ';
+    section += 'The user has already made these changes deliberately - honor their creative direction. ';
+    section += 'Build upon these choices rather than reverting them.\n';
+
+    // Add specific guidance based on edit patterns
+    if (recentEdits.length >= 3) {
+      const categories = recentEdits
+        .map(e => e.category)
+        .filter(Boolean)
+        .reduce((acc, cat) => {
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {});
+
+      const dominantCategory = Object.entries(categories)
+        .sort((a, b) => b[1] - a[1])[0]?.[0];
+
+      if (dominantCategory) {
+        section += `\n**PATTERN DETECTED:** User is actively refining ${dominantCategory} choices. `;
+        section += `Your suggestions should continue this refinement direction.\n`;
+      }
+    }
+
+    return section;
+  }
+
+  /**
+   * Build span composition context section
+   * @param {Array} allLabeledSpans - All labeled spans in the prompt
+   * @param {Array} nearbySpans - Spans near the selection
+   * @returns {string} Formatted context section
+   * @private
+   */
+  _buildSpanCompositionContext(allLabeledSpans = [], nearbySpans = []) {
+    if (!Array.isArray(allLabeledSpans) || allLabeledSpans.length === 0) {
+      return '';
+    }
+
+    let section = '\n**COMPLETE PROMPT COMPOSITION:**\n';
+    section += 'All labeled elements identified in this prompt:\n';
+
+    // Group spans by category for better readability
+    const spansByCategory = allLabeledSpans.reduce((acc, span) => {
+      const category = span.category || span.role || 'other';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(span);
+      return acc;
+    }, {});
+
+    // Format each category
+    Object.entries(spansByCategory).forEach(([category, spans]) => {
+      const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+      spans.forEach(span => {
+        const confidenceStr = span.confidence 
+          ? ` (confidence: ${(span.confidence * 100).toFixed(0)}%)`
+          : '';
+        section += `- ${formattedCategory}: '${span.text}'${confidenceStr}\n`;
+      });
+    });
+
+    // Add nearby spans context if available
+    if (Array.isArray(nearbySpans) && nearbySpans.length > 0) {
+      section += '\n**PROXIMATE CONTEXT:**\n';
+      section += 'Elements near your selected text:\n';
+      
+      nearbySpans.forEach(span => {
+        const distance = span.distance || 0;
+        const position = span.position || 'nearby';
+        const formattedCategory = (span.category || 'element').charAt(0).toUpperCase() + 
+          (span.category || 'element').slice(1);
+        section += `- ${position.charAt(0).toUpperCase() + position.slice(1)} (${distance} chars): ${formattedCategory} '${span.text}'\n`;
+      });
+    }
+
+    section += '\n**COHERENCE PRINCIPLE:**\n';
+    section += 'Your suggestions must harmonize with ALL these existing elements. ';
+    section += 'This is a complete composition where each element influences the others. ';
+    section += 'Avoid suggestions that would contradict or clash with the established creative direction.\n';
+
+    return section;
   }
 
   /**
@@ -30,6 +313,13 @@ export class PromptBuilderService {
     highlightedCategory,
     highlightedCategoryConfidence,
     detectPlaceholderTypeFunc,  // Function passed in for detecting placeholder type
+    dependencyContext,  // Semantic dependency context
+    elementDependencies,  // Actual dependency values
+    allLabeledSpans = [],  // Complete span composition
+    nearbySpans = [],  // Proximate context
+    editHistory = [],  // Edit history for consistency
+    modelTarget = null,  // NEW: Target AI model
+    promptSection = null,  // NEW: Template section
   }) {
     // Get specific constraints for this category if available
     const subcategory = detectSubcategory(highlightedText, highlightedCategory);
@@ -60,6 +350,16 @@ ${constraint.forbidden || ''}
       ? detectPlaceholderTypeFunc(highlightedText, contextBefore, contextAfter)
       : 'general';
     
+    // Generate contextually appropriate examples based on part of speech
+    const examples = ContextAwareExamples.generateExamples(
+      highlightedText,
+      highlightedCategory,
+      placeholderType,
+      contextBefore,  // Add context before for POS detection
+      contextAfter,   // Context after for grammatical analysis
+      null            // videoConstraints not available in placeholder context
+    );
+    
     const brainstormSection = this.brainstormBuilder.buildBrainstormContextSection(brainstormContext, {
       includeCategoryGuidance: true,
       isVideoPrompt,
@@ -75,9 +375,23 @@ ${constraint.forbidden || ''}
       ? '✓ For video: consider different visual/cinematic approaches'
       : '✓ Different approaches to achieve the goal';
 
+    // Build span composition context
+    const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+    // Build edit history context
+    const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
+    // Build model and section context
+    const modelContext = this._buildModelAndSectionContext(
+      modelTarget,
+      promptSection,
+      highlightedCategory,
+      isVideoPrompt
+    );
+
     return `You are an expert prompt engineer specializing in placeholder value suggestion with deep contextual understanding.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }${constraintInstruction ? `\n${constraintInstruction}` : ''}
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}${constraintInstruction ? `\n${constraintInstruction}` : ''}
 
 <analysis_process>
 Step 1: Identify the placeholder type and context
@@ -131,20 +445,7 @@ ${brainstormRequirement}${modeRequirement}
 **Output Format:**
 Return ONLY a JSON array with categorized suggestions (2-4 per category):
 
-[
-  {"text": "oak", "category": "Natural Wood", "explanation": "Classic hardwood with prominent grain"},
-  {"text": "walnut", "category": "Natural Wood", "explanation": "Premium dark wood with rich tones"},
-  {"text": "mahogany", "category": "Natural Wood", "explanation": "Deep red-brown luxury wood"},
-  {"text": "brushed steel", "category": "Modern Materials", "explanation": "Contemporary industrial aesthetic"},
-  {"text": "glass", "category": "Modern Materials", "explanation": "Transparent/translucent modern look"},
-  {"text": "chrome", "category": "Modern Materials", "explanation": "Reflective high-tech finish"},
-  {"text": "marble", "category": "Stone & Mineral", "explanation": "Elegant stone with veining patterns"},
-  {"text": "granite", "category": "Stone & Mineral", "explanation": "Durable speckled stone surface"},
-  {"text": "quartz", "category": "Stone & Mineral", "explanation": "Engineered stone with consistent pattern"},
-  {"text": "weathered", "category": "Surface Finishes", "explanation": "Aged, worn surface quality"},
-  {"text": "polished", "category": "Surface Finishes", "explanation": "Smooth, reflective finish"},
-  {"text": "distressed", "category": "Surface Finishes", "explanation": "Intentionally aged appearance"}
-]`;
+${JSON.stringify(examples, null, 2)}`;
   }
 
   /**
@@ -165,6 +466,13 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
     videoConstraints,
     highlightedCategory,
     highlightedCategoryConfidence,
+    dependencyContext,  // Semantic dependency context
+    elementDependencies,  // Actual dependency values
+    allLabeledSpans = [],  // Complete span composition
+    nearbySpans = [],  // Proximate context
+    editHistory = [],  // Edit history for consistency
+    modelTarget = null,  // NEW: Target AI model
+    promptSection = null,  // NEW: Template section
   }) {
     const brainstormSection = this.brainstormBuilder.buildBrainstormContextSection(brainstormContext, {
       isVideoPrompt,
@@ -217,8 +525,14 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         ? '✓ Honor the Creative Brainstorm anchors above in every alternative\n'
         : '';
 
-      // Get category-specific focus guidance if available
-      const categorySpecificFocus = this.videoService.getCategoryFocusGuidance(resolvedPhraseRole, highlightedCategory);
+      // Get context-aware category-specific focus guidance if available
+      const categorySpecificFocus = this.videoService.getCategoryFocusGuidance(
+        resolvedPhraseRole,
+        highlightedCategory,
+        fullPrompt,  // NEW: Full prompt for intelligent analysis
+        allLabeledSpans,  // NEW: All spans for context
+        editHistory  // NEW: Edit history for consistency
+      );
       
       const focusLines =
         Array.isArray(focusGuidance) && focusGuidance.length > 0
@@ -278,9 +592,23 @@ Return ONLY a JSON array with categorized suggestions (2-4 per category):
         ? `\n\n🎯 **CRITICAL**: User clicked on ${highlightedCategory.toUpperCase()} text. ALL ${focusLines.length} suggestions MUST focus exclusively on ${resolvedPhraseRole}. Do NOT suggest alternatives for other categories.\n`
         : '';
 
+      // Build span composition context
+      const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+      // Build edit history context
+      const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
+      // Build model and section context
+      const modelContext = this._buildModelAndSectionContext(
+        modelTarget,
+        promptSection,
+        highlightedCategory,
+        isVideoPrompt
+      );
+
       return `You are a video prompt expert for AI video generation (Sora, Veo3, RunwayML, Kling, Luma).${
         brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-      }${categoryEmphasis}
+      }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}${categoryEmphasis}
 
 **APPROACH:**
 ${approachLines.join('\n')}
@@ -320,9 +648,23 @@ Return ONLY a JSON array (no markdown, no code blocks):
       ? '✓ Reinforces the Creative Brainstorm anchors above\n'
       : '';
 
+    // Build span composition context
+    const spanCompositionContext = this._buildSpanCompositionContext(allLabeledSpans, nearbySpans);
+
+    // Build edit history context
+    const editHistoryContext = this._buildEditHistoryContext(editHistory);
+
+    // Build model and section context (only for video prompts)
+    const modelContext = this._buildModelAndSectionContext(
+      modelTarget,
+      promptSection,
+      highlightedCategory,
+      isVideoPrompt
+    );
+
     return `You are a prompt engineering expert specializing in clarity, specificity, and actionability.${
       brainstormSection ? `\n${brainstormSection.trimEnd()}` : ''
-    }
+    }${dependencyContext ? `\n${dependencyContext.trimEnd()}` : ''}${spanCompositionContext ? `${spanCompositionContext.trimEnd()}` : ''}${editHistoryContext ? `${editHistoryContext.trimEnd()}` : ''}${modelContext ? `${modelContext.trimEnd()}` : ''}
 
 <analysis_process>
 Step 1: Analyze the highlighted section

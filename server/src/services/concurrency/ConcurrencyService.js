@@ -1,8 +1,11 @@
-import { logger } from '../infrastructure/Logger.js';
-import { metricsService } from '../infrastructure/MetricsService.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { metricsService } from '../../infrastructure/MetricsService.js';
 
 /**
- * ConcurrencyLimiter - Manages concurrent API request limits with priority queue
+ * ConcurrencyService - Manages concurrent API request limits with priority queue
+ *
+ * Previously located in utils/ - moved to services/ as this is a stateful service,
+ * not a utility function.
  *
  * Prevents exceeding OpenAI's rate limits by enforcing a maximum number of
  * concurrent requests. When the limit is reached, new requests are queued
