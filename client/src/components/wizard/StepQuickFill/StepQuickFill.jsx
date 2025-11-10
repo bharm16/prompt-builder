@@ -1,9 +1,10 @@
 /**
  * StepQuickFill - Quick Fill mode orchestrator
  *
- * All-in-one form for faster video prompt creation:
- * - Two-column layout (Core Concept | Atmosphere & Style)
- * - 10 form fields with AI suggestions
+ * Bento box grid layout for faster video prompt creation:
+ * - Asymmetric grid with large required fields, small optional fields
+ * - Tap to expand inline for editing
+ * - AI suggestions appear inside expanded boxes
  * - Staggered entrance animations
  * - Progress tracking
  * - Mode toggle (Quick Fill ↔ Step-by-Step)
@@ -14,25 +15,26 @@
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { ChevronRight } from 'lucide-react';
-import InlineSuggestions from '../InlineSuggestions';
 import { wizardTheme } from '../../../styles/wizardTheme';
 
 // Reuse from StepCoreConcept
 import { useResponsiveLayout } from '../StepCoreConcept/hooks/useResponsiveLayout';
 
 // Config
-import { FIELD_CONFIG, CORE_CONCEPT_FIELDS, ATMOSPHERE_FIELDS, SECTIONS } from './config/fieldConfig';
+import { FIELD_CONFIG } from './config/fieldConfig';
+import { BENTO_FIELD_CONFIG, getBentoFieldOrder } from './config/bentoLayout';
 import { injectAnimations } from './config/animations';
 
 // Hooks
 import { useStaggeredAnimation } from './hooks/useStaggeredAnimation';
 import { useQuickFillForm } from './hooks/useQuickFillForm';
+import { useBentoExpansion } from './hooks/useBentoExpansion';
 
 // Components
-import { FloatingTextField } from './components/FloatingTextField';
 import { ProgressBadge } from './components/ProgressBadge';
-import { SectionHeader } from './components/SectionHeader';
 import { ModeToggle } from './components/ModeToggle';
+import { BentoGrid } from './components/BentoGrid';
+import BentoField from './components/BentoField';
 
 /**
  * StepQuickFill component
@@ -59,10 +61,27 @@ export function StepQuickFill({
     onRequestSuggestions
   );
   const { isDesktop, containerPadding, cardPadding } = useResponsiveLayout();
+  const {
+    expandedField,
+    handleExpand,
+    handleCollapse,
+    isExpanded,
+    registerInputRef,
+  } = useBentoExpansion();
 
   const { canContinue } = validation;
   const { filledFields, totalFields, completionPercentage } = progress;
   const { handleFieldChange, handleSuggestionSelect, handleFocus, handleBlur } = handlers;
+
+  // Get field order from bento config
+  const fieldOrder = getBentoFieldOrder();
+  
+  // Merge field config with bento config
+  const fieldsWithBentoConfig = fieldOrder.map(fieldId => {
+    const field = FIELD_CONFIG.find(f => f.id === fieldId);
+    const bentoConfig = BENTO_FIELD_CONFIG[fieldId];
+    return { ...field, bentoConfig };
+  });
 
   return (
     <main
@@ -155,107 +174,35 @@ export function StepQuickFill({
                 position: 'absolute',
                 top: cardPadding,
                 right: cardPadding,
+                zIndex: 10,
               }}
             >
               <ModeToggle onSwitchToStepByStep={onSwitchToStepByStep} />
             </div>
 
-            {/* Two-Column Layout */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr',
-                gap: isDesktop ? '40px' : '0',
-                paddingTop: '64px',
-              }}
-            >
-              {/* LEFT COLUMN - Core Concept */}
-              <div>
-                <SectionHeader
-                  icon={SECTIONS.core.icon}
-                  iconBg={SECTIONS.core.iconBg}
-                  iconShadow={SECTIONS.core.iconShadow}
-                  title={SECTIONS.core.title}
-                  subtitle={SECTIONS.core.subtitle}
-                />
-
-                <div>
-                  {CORE_CONCEPT_FIELDS.map((field) => (
-                    <div key={field.id}>
-                      <FloatingTextField
-                        id={field.id}
-                        label={field.label}
-                        description={field.description}
-                        value={formData[field.id]}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        delay={field.delay}
-                        onChange={(e) =>
-                          handleFieldChange(field.id, e.target.value)
-                        }
-                        onFocus={() => handleFocus(field.id)}
-                        onBlur={handleBlur}
-                        mounted={mounted}
-                      />
-                      {activeField === field.id && (
-                        <InlineSuggestions
-                          innerRef={suggestionsRef}
-                          suggestions={suggestions?.[field.id] || []}
-                          isLoading={Boolean(isLoadingSuggestions?.[field.id])}
-                          onSelect={(text) =>
-                            handleSuggestionSelect(field.id, text)
-                          }
-                          fieldName={field.id}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN - Atmosphere & Style */}
-              <div>
-                <SectionHeader
-                  icon={SECTIONS.atmosphere.icon}
-                  iconBg={SECTIONS.atmosphere.iconBg}
-                  iconShadow={SECTIONS.atmosphere.iconShadow}
-                  title={SECTIONS.atmosphere.title}
-                  subtitle={SECTIONS.atmosphere.subtitle}
-                />
-
-                <div>
-                  {ATMOSPHERE_FIELDS.map((field) => (
-                    <div key={field.id}>
-                      <FloatingTextField
-                        id={field.id}
-                        label={field.label}
-                        description={field.description}
-                        value={formData[field.id]}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        delay={field.delay}
-                        onChange={(e) =>
-                          handleFieldChange(field.id, e.target.value)
-                        }
-                        onFocus={() => handleFocus(field.id)}
-                        onBlur={handleBlur}
-                        mounted={mounted}
-                      />
-                      {activeField === field.id && (
-                        <InlineSuggestions
-                          innerRef={suggestionsRef}
-                          suggestions={suggestions?.[field.id] || []}
-                          isLoading={Boolean(isLoadingSuggestions?.[field.id])}
-                          onSelect={(text) =>
-                            handleSuggestionSelect(field.id, text)
-                          }
-                          fieldName={field.id}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {/* Bento Grid Layout */}
+            <div style={{ paddingTop: '64px' }}>
+              <BentoGrid mounted={mounted}>
+                {fieldsWithBentoConfig.map((field) => (
+                  <BentoField
+                    key={field.id}
+                    field={field}
+                    config={field.bentoConfig}
+                    value={formData[field.id]}
+                    isExpanded={isExpanded(field.id)}
+                    onExpand={handleExpand}
+                    onCollapse={handleCollapse}
+                    onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                    onFocus={() => handleFocus(field.id)}
+                    suggestions={suggestions?.[field.id]}
+                    isLoadingSuggestions={Boolean(isLoadingSuggestions?.[field.id])}
+                    onRequestSuggestions={onRequestSuggestions}
+                    onSuggestionSelect={handleSuggestionSelect}
+                    registerInputRef={registerInputRef}
+                    mounted={mounted}
+                  />
+                ))}
+              </BentoGrid>
             </div>
 
             {/* CTA Button */}

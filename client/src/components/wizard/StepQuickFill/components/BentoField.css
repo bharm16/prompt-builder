@@ -1,0 +1,241 @@
+/**
+ * BentoField Styles
+ * 
+ * Styles for collapsed and expanded bento box states
+ * Includes animations, hover effects, and responsive behavior
+ */
+
+/* Base field container */
+.bento-field {
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Size variants (Desktop only) */
+@media (min-width: 1024px) {
+  .bento-field--large {
+    grid-column: span 2;
+  }
+  
+  .bento-field--small {
+    grid-column: span 1;
+  }
+}
+
+/* On tablet and mobile, all fields span full width */
+@media (max-width: 1023px) {
+  .bento-field--large,
+  .bento-field--small {
+    grid-column: span 1;
+  }
+}
+
+/* Expanded fields always span full width on mobile */
+@media (max-width: 767px) {
+  .bento-field--expanded {
+    grid-column: 1 / -1;
+  }
+}
+
+/* === COLLAPSED STATE === */
+.bento-field__collapsed {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px;
+  background: white;
+  border: 2px solid;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  text-align: left;
+  min-height: 100px;
+}
+
+.bento-field__collapsed:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.bento-field__collapsed:active {
+  transform: translateY(0);
+}
+
+/* Touch devices: no hover effect */
+@media (hover: none) {
+  .bento-field__collapsed:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+}
+
+.bento-field__icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.bento-field__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bento-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bento-field__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2D2D2D;
+  line-height: 1.3;
+}
+
+.bento-field__required {
+  font-weight: 700;
+}
+
+.bento-field__check {
+  flex-shrink: 0;
+  animation: checkBounce 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes checkBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.bento-field__preview {
+  margin: 0;
+  font-size: 13px;
+  color: #5A5A5A;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bento-field__placeholder {
+  margin: 0;
+  font-size: 13px;
+  color: #A0A0A0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.bento-field__chevron {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.bento-field__collapsed:hover .bento-field__chevron {
+  transform: translateY(2px);
+}
+
+/* === EXPANDED STATE === */
+.bento-field__expanded {
+  padding: 24px;
+  background: white;
+  border: 2px solid;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  animation: expandIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.bento-field__expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.bento-field__expanded-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bento-field__expanded-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.bento-field__expanded-label {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2D2D2D;
+}
+
+.bento-field__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: #F5F5F5;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #5A5A5A;
+}
+
+.bento-field__close:hover {
+  background: #E8E8E8;
+  color: #2D2D2D;
+}
+
+.bento-field__close:active {
+  transform: scale(0.95);
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .bento-field__collapsed {
+    padding: 16px;
+    min-height: 80px;
+  }
+
+  .bento-field__icon {
+    font-size: 28px;
+  }
+
+  .bento-field__label {
+    font-size: 14px;
+  }
+
+  .bento-field__expanded {
+    padding: 20px;
+  }
+
+  .bento-field__expanded-icon {
+    font-size: 24px;
+  }
+
+  .bento-field__expanded-label {
+    font-size: 16px;
+  }
+}
+
