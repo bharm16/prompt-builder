@@ -1,11 +1,16 @@
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getPromptRepository } from '../../../../repositories';
 import { createHighlightSignature } from '../../hooks/useSpanLabeling.js';
 import { PromptContext } from '../../../../utils/PromptContext';
 
 /**
- * Custom hook for loading prompts from URL parameters
- * Handles prompt data fetching, highlight restoration, and context restoration
+ * Custom hook for loading prompts from URL parameters OR navigation state
+ * Handles:
+ * - Prompt data fetching from URL params
+ * - Highlight restoration
+ * - Context restoration
+ * - Wizard-generated prompts from navigation state
  */
 export function usePromptLoader({
   uuid,
@@ -22,6 +27,27 @@ export function usePromptLoader({
   setPromptContext,
   skipLoadFromUrlRef,
 }) {
+  const location = useLocation();
+
+  // Handle wizard-generated prompts from navigation state
+  useEffect(() => {
+    if (location.state?.fromWizard && location.state?.inputPrompt) {
+      const { inputPrompt, mode } = location.state;
+      
+      // Set the input prompt to trigger optimization
+      promptOptimizer.setInputPrompt(inputPrompt);
+      
+      // Clear the navigation state to prevent re-triggering
+      navigate(location.pathname, { replace: true, state: {} });
+      
+      // Don't show results yet - let the user optimize
+      setShowResults(false);
+      
+      toast.info('Wizard prompt loaded. Click "Optimize" to continue.');
+    }
+  }, [location, promptOptimizer, navigate, toast, setShowResults]);
+
+  // Handle loading from URL parameter
   useEffect(() => {
     const loadPromptFromUrl = async () => {
       if (!uuid) return;
@@ -97,6 +123,6 @@ export function usePromptLoader({
     setShowResults,
     setPromptContext,
     skipLoadFromUrlRef,
+    location,
   ]);
 }
-

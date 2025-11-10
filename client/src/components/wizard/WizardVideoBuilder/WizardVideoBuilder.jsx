@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useToast } from '../../../components/Toast';
 
 // Components
 import WizardProgress from '../WizardProgress';
@@ -59,6 +60,10 @@ export const WizardVideoBuilder = ({
 }) => {
   // Responsive detection
   const { isMobile, isTablet, isDesktop } = useResponsive();
+
+  // Toast notifications and loading state
+  const toast = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Parse initial concept if provided
   const initialFormData = initialConcept && typeof initialConcept === 'string' && initialConcept.trim()
@@ -273,6 +278,57 @@ export const WizardVideoBuilder = ({
     }
   }, [formData, validateRequiredFields, clearLocalStorage, onConceptComplete, actions]);
 
+  /**
+   * Generate wizard prompt and close modal
+   * This calls onConceptComplete which closes the wizard modal
+   * and automatically optimizes the prompt
+   */
+  const handleGenerate = useCallback(async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Validate required fields
+      if (!validateRequiredFields()) {
+        toast.error('Please fill in all required fields before generating');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Generate final prompt
+      const finalPrompt = aiWizardService.generatePrompt(formData);
+      
+      // Validate prompt isn't empty
+      if (!finalPrompt || finalPrompt.trim().length === 0) {
+        toast.error('Unable to generate prompt. Please check your inputs.');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Format elements and metadata for the concept complete callback
+      const elements = formatElements(formData);
+      const metadata = {
+        ...formatMetadata(formData),
+        validationScore: aiWizardService.getCompletionPercentage(formData),
+        history: [],
+        subjectDescriptors: [],
+      };
+      
+      // Call onConceptComplete callback
+      // This will close the wizard modal and automatically optimize the prompt
+      if (onConceptComplete) {
+        onConceptComplete(finalPrompt, elements, metadata);
+      }
+      
+      // Clear saved draft
+      clearLocalStorage();
+      
+    } catch (error) {
+      console.error('Failed to generate prompt:', error);
+      toast.error('Failed to generate prompt. Please try again.');
+      setIsGenerating(false);
+    }
+  }, [formData, validateRequiredFields, clearLocalStorage, onConceptComplete, toast]);
+
   // ============================================================================
   // Keyboard Shortcuts (Desktop only)
   // ============================================================================
@@ -390,7 +446,8 @@ export const WizardVideoBuilder = ({
           <SummaryReview
             formData={formData}
             onEdit={handleEdit}
-            onComplete={handleComplete}
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
             onBack={handlePreviousStep}
           />
         )}
