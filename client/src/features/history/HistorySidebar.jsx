@@ -199,6 +199,13 @@ export const HistorySidebar = ({
   modes
 }) => {
   const toast = useToast();
+  const [showAllHistory, setShowAllHistory] = React.useState(false);
+  const INITIAL_HISTORY_LIMIT = 5;
+
+  // Determine which history items to display
+  const displayedHistory = showAllHistory 
+    ? filteredHistory 
+    : filteredHistory.slice(0, INITIAL_HISTORY_LIMIT);
 
   const handleSignIn = async () => {
     try {
@@ -249,10 +256,9 @@ export const HistorySidebar = ({
           <div className="flex-shrink-0 px-4 py-3">
             <button
               onClick={onCreateNew}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
               aria-label="Create new prompt"
             >
-              <Plus className="h-4 w-4" />
               <span>New Prompt</span>
             </button>
           </div>
@@ -286,19 +292,29 @@ export const HistorySidebar = ({
             ) : filteredHistory.length === 0 ? (
               <HistoryEmptyState onCreateNew={onCreateNew} />
             ) : (
-              <nav aria-label="Recent prompts list">
-                <ul className="space-y-0.5">
-                  {filteredHistory.map((entry) => (
-                    <HistoryItem
-                      key={entry.id}
-                      entry={entry}
-                      modes={modes}
-                      onLoad={onLoadFromHistory}
-                      onDelete={onDelete}
-                    />
-                  ))}
-                </ul>
-              </nav>
+              <>
+                <nav aria-label="Recent prompts list">
+                  <ul className="space-y-0.5">
+                    {displayedHistory.map((entry) => (
+                      <HistoryItem
+                        key={entry.id}
+                        entry={entry}
+                        modes={modes}
+                        onLoad={onLoadFromHistory}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </ul>
+                </nav>
+                {filteredHistory.length > INITIAL_HISTORY_LIMIT && (
+                  <button
+                    onClick={() => setShowAllHistory(!showAllHistory)}
+                    className="w-full px-2 py-2 text-xs text-neutral-500 hover:text-neutral-700 transition-colors text-left"
+                  >
+                    {showAllHistory ? 'See less' : 'See more...'}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
