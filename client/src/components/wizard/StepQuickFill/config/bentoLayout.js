@@ -9,6 +9,17 @@
  * @module bentoLayout
  */
 
+import { 
+  Target, 
+  Activity, 
+  Sparkles, 
+  MapPin, 
+  Clock, 
+  Theater, 
+  Palette, 
+  PartyPopper 
+} from 'lucide-react';
+
 /**
  * Bento field configuration
  * Maps each field to its display properties
@@ -16,7 +27,7 @@
 export const BENTO_FIELD_CONFIG = {
   subject: {
     size: 'large',
-    icon: '🎯',
+    icon: Target,
     color: '#FF385C',
     borderColor: 'rgba(255, 56, 92, 0.3)',
     bgColor: 'rgba(255, 56, 92, 0.05)',
@@ -24,7 +35,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   action: {
     size: 'large',
-    icon: '🏃',
+    icon: Activity,
     color: '#A78BFA',
     borderColor: 'rgba(167, 139, 250, 0.3)',
     bgColor: 'rgba(167, 139, 250, 0.05)',
@@ -32,7 +43,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   descriptor1: {
     size: 'small',
-    icon: '✨',
+    icon: Sparkles,
     color: '#60A5FA',
     borderColor: 'rgba(96, 165, 250, 0.3)',
     bgColor: 'rgba(96, 165, 250, 0.05)',
@@ -40,7 +51,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   location: {
     size: 'small',
-    icon: '📍',
+    icon: MapPin,
     color: '#34D399',
     borderColor: 'rgba(52, 211, 153, 0.3)',
     bgColor: 'rgba(52, 211, 153, 0.05)',
@@ -48,7 +59,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   descriptor2: {
     size: 'small',
-    icon: '✨',
+    icon: Sparkles,
     color: '#60A5FA',
     borderColor: 'rgba(96, 165, 250, 0.3)',
     bgColor: 'rgba(96, 165, 250, 0.05)',
@@ -56,7 +67,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   time: {
     size: 'small',
-    icon: '🕐',
+    icon: Clock,
     color: '#FBBF24',
     borderColor: 'rgba(251, 191, 36, 0.3)',
     bgColor: 'rgba(251, 191, 36, 0.05)',
@@ -64,7 +75,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   descriptor3: {
     size: 'small',
-    icon: '✨',
+    icon: Sparkles,
     color: '#60A5FA',
     borderColor: 'rgba(96, 165, 250, 0.3)',
     bgColor: 'rgba(96, 165, 250, 0.05)',
@@ -72,7 +83,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   mood: {
     size: 'small',
-    icon: '🎭',
+    icon: Theater,
     color: '#F472B6',
     borderColor: 'rgba(244, 114, 182, 0.3)',
     bgColor: 'rgba(244, 114, 182, 0.05)',
@@ -80,7 +91,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   style: {
     size: 'small',
-    icon: '🎨',
+    icon: Palette,
     color: '#8B5CF6',
     borderColor: 'rgba(139, 92, 246, 0.3)',
     bgColor: 'rgba(139, 92, 246, 0.05)',
@@ -88,7 +99,7 @@ export const BENTO_FIELD_CONFIG = {
   },
   event: {
     size: 'small',
-    icon: '🎉',
+    icon: PartyPopper,
     color: '#EC4899',
     borderColor: 'rgba(236, 72, 153, 0.3)',
     bgColor: 'rgba(236, 72, 153, 0.05)',

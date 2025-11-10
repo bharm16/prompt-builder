@@ -10,6 +10,7 @@ import { CoreConceptAccordion } from '../StepCoreConcept';
 import StepAtmosphere from '../StepAtmosphere';
 import SummaryReview from '../SummaryReview';
 import WizardEntryPage from '../WizardEntryPage';
+import SavedDraftBanner from '../SavedDraftBanner';
 
 // Services
 import { aiWizardService } from '../../../services/aiWizardService';
@@ -64,6 +65,9 @@ export const WizardVideoBuilder = ({
   // Toast notifications and loading state
   const toast = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Saved draft state
+  const [savedDraft, setSavedDraft] = useState(null);
 
   // Parse initial concept if provided
   const initialFormData = initialConcept && typeof initialConcept === 'string' && initialConcept.trim()
@@ -96,17 +100,38 @@ export const WizardVideoBuilder = ({
     currentStep,
     currentMobileFieldIndex,
     onSave,
-    onRestore: (restored) => {
-      actions.setFormData(restored.formData);
-      actions.setCurrentStep(restored.currentStep || 0);
-      actions.setMobileFieldIndex(restored.currentMobileFieldIndex || 0);
-      actions.setShowEntryPage(false);
+    onDraftFound: (restored) => {
+      // Store the draft and show banner instead of immediately restoring
+      setSavedDraft(restored);
     },
   });
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
+
+  /**
+   * Handle continuing with saved draft
+   */
+  const handleContinueDraft = useCallback(() => {
+    if (savedDraft) {
+      actions.setFormData(savedDraft.formData);
+      actions.setCurrentStep(savedDraft.currentStep || 0);
+      actions.setMobileFieldIndex(savedDraft.currentMobileFieldIndex || 0);
+      actions.setShowEntryPage(false);
+      setSavedDraft(null);
+      toast.success('Your saved draft has been restored');
+    }
+  }, [savedDraft, actions, toast]);
+
+  /**
+   * Handle starting fresh (discarding saved draft)
+   */
+  const handleStartFresh = useCallback(() => {
+    clearLocalStorage();
+    setSavedDraft(null);
+    toast.info('Starting with a fresh draft');
+  }, [clearLocalStorage, toast]);
 
   /**
    * Handle field change
@@ -370,30 +395,51 @@ export const WizardVideoBuilder = ({
     const currentValue = formData[currentField.name] || '';
 
     return (
-      <MobileFieldView
-        field={currentField}
-        value={currentValue}
-        onChange={(value) => handleFieldChange(currentField.name, value)}
-        onNext={handleMobileNextField}
-        onPrevious={handleMobilePreviousField}
-        onComplete={handleMobileComplete}
-        suggestions={suggestions[currentField.name] || []}
-        isLoadingSuggestions={isLoadingSuggestions[currentField.name] || false}
-        onRequestSuggestions={handleRequestSuggestions}
-        currentFieldIndex={currentMobileFieldIndex}
-        totalFields={MOBILE_FIELDS.length}
-        isLastField={currentMobileFieldIndex === MOBILE_FIELDS.length - 1}
-        canGoBack={currentMobileFieldIndex > 0}
-        canGoNext={canGoNext}
-        validationError={validationErrors[currentField.name]}
-        isValid={isCurrentMobileFieldValid}
-      />
+      <div className="h-screen flex flex-col overflow-hidden">
+        {/* Saved Draft Banner */}
+        {savedDraft && (
+          <SavedDraftBanner
+            onContinue={handleContinueDraft}
+            onStartFresh={handleStartFresh}
+          />
+        )}
+
+        {/* Mobile Field View */}
+        <div className="flex-1 overflow-hidden">
+          <MobileFieldView
+            field={currentField}
+            value={currentValue}
+            onChange={(value) => handleFieldChange(currentField.name, value)}
+            onNext={handleMobileNextField}
+            onPrevious={handleMobilePreviousField}
+            onComplete={handleMobileComplete}
+            suggestions={suggestions[currentField.name] || []}
+            isLoadingSuggestions={isLoadingSuggestions[currentField.name] || false}
+            onRequestSuggestions={handleRequestSuggestions}
+            currentFieldIndex={currentMobileFieldIndex}
+            totalFields={MOBILE_FIELDS.length}
+            isLastField={currentMobileFieldIndex === MOBILE_FIELDS.length - 1}
+            canGoBack={currentMobileFieldIndex > 0}
+            canGoNext={canGoNext}
+            validationError={validationErrors[currentField.name]}
+            isValid={isCurrentMobileFieldValid}
+          />
+        </div>
+      </div>
     );
   }
 
   // Render desktop view
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Saved Draft Banner */}
+      {savedDraft && (
+        <SavedDraftBanner
+          onContinue={handleContinueDraft}
+          onStartFresh={handleStartFresh}
+        />
+      )}
+
       {/* Progress Indicator */}
       <WizardProgress
         currentStep={currentStep}

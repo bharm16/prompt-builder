@@ -72,7 +72,9 @@
 }
 
 .bento-field__icon {
-  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -177,7 +179,9 @@
 }
 
 .bento-field__expanded-icon {
-  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 
@@ -211,6 +215,19 @@
   transform: scale(0.95);
 }
 
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-field__icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .bento-field__expanded-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
 /* Mobile adjustments */
 @media (max-width: 767px) {
   .bento-field__collapsed {
@@ -218,8 +235,9 @@
     min-height: 80px;
   }
 
-  .bento-field__icon {
-    font-size: 28px;
+  .bento-field__icon svg {
+    width: 24px;
+    height: 24px;
   }
 
   .bento-field__label {
@@ -230,8 +248,9 @@
     padding: 20px;
   }
 
-  .bento-field__expanded-icon {
-    font-size: 24px;
+  .bento-field__expanded-icon svg {
+    width: 20px;
+    height: 20px;
   }
 
   .bento-field__expanded-label {
