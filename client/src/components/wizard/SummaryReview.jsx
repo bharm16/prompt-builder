@@ -79,9 +79,7 @@ const SummaryReview = ({
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
-        { key: 'descriptor1', label: 'Descriptor 1', required: false },
-        { key: 'descriptor2', label: 'Descriptor 2', required: false },
-        { key: 'descriptor3', label: 'Descriptor 3', required: false }
+        { key: 'descriptors', label: 'Descriptors', required: false }
       ],
       step: 1 // Core Concept is now step 1
     },

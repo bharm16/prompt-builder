@@ -79,6 +79,7 @@ export class AIWizardService {
       descriptor1: 'subjectDescriptor1',
       descriptor2: 'subjectDescriptor2',
       descriptor3: 'subjectDescriptor3',
+      descriptors: 'subjectDescriptor1', // Quick Fill mode uses single descriptors field
       action: 'action',
       location: 'location',
       time: 'time',

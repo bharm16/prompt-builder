@@ -41,29 +41,13 @@ export const BENTO_FIELD_CONFIG = {
     bgColor: 'rgba(167, 139, 250, 0.05)',
     order: 2,
   },
-  descriptor1: {
-    size: 'small',
-    icon: Sparkles,
-    color: '#60A5FA',
-    borderColor: 'rgba(96, 165, 250, 0.3)',
-    bgColor: 'rgba(96, 165, 250, 0.05)',
-    order: 3,
-  },
   location: {
     size: 'small',
     icon: MapPin,
     color: '#34D399',
     borderColor: 'rgba(52, 211, 153, 0.3)',
     bgColor: 'rgba(52, 211, 153, 0.05)',
-    order: 4,
-  },
-  descriptor2: {
-    size: 'small',
-    icon: Sparkles,
-    color: '#60A5FA',
-    borderColor: 'rgba(96, 165, 250, 0.3)',
-    bgColor: 'rgba(96, 165, 250, 0.05)',
-    order: 5,
+    order: 3,
   },
   time: {
     size: 'small',
@@ -71,15 +55,7 @@ export const BENTO_FIELD_CONFIG = {
     color: '#FBBF24',
     borderColor: 'rgba(251, 191, 36, 0.3)',
     bgColor: 'rgba(251, 191, 36, 0.05)',
-    order: 6,
-  },
-  descriptor3: {
-    size: 'small',
-    icon: Sparkles,
-    color: '#60A5FA',
-    borderColor: 'rgba(96, 165, 250, 0.3)',
-    bgColor: 'rgba(96, 165, 250, 0.05)',
-    order: 7,
+    order: 4,
   },
   mood: {
     size: 'small',
@@ -87,7 +63,15 @@ export const BENTO_FIELD_CONFIG = {
     color: '#F472B6',
     borderColor: 'rgba(244, 114, 182, 0.3)',
     bgColor: 'rgba(244, 114, 182, 0.05)',
-    order: 8,
+    order: 5,
+  },
+  descriptors: {
+    size: 'wide',
+    icon: Sparkles,
+    color: '#60A5FA',
+    borderColor: 'rgba(96, 165, 250, 0.3)',
+    bgColor: 'rgba(96, 165, 250, 0.05)',
+    order: 6,
   },
   style: {
     size: 'small',
@@ -95,7 +79,7 @@ export const BENTO_FIELD_CONFIG = {
     color: '#8B5CF6',
     borderColor: 'rgba(139, 92, 246, 0.3)',
     bgColor: 'rgba(139, 92, 246, 0.05)',
-    order: 9,
+    order: 7,
   },
   event: {
     size: 'small',
@@ -103,7 +87,7 @@ export const BENTO_FIELD_CONFIG = {
     color: '#EC4899',
     borderColor: 'rgba(236, 72, 153, 0.3)',
     bgColor: 'rgba(236, 72, 153, 0.05)',
-    order: 10,
+    order: 8,
   },
 };
 
@@ -119,24 +103,27 @@ export function getBentoFieldOrder() {
 
 /**
  * Grid column span configuration
- * - Desktop: Large = 2 columns, Small = 1 column (4-column grid)
- * - Tablet: All = 1 column (2-column grid)
+ * - Desktop: Large = 2 columns, Wide = 3 columns, Small = 1 column (5-column grid)
+ * - Tablet: Large = 2 columns, Wide = 2 columns, Small = 1 column (3-column grid)
  * - Mobile: All = 1 column (1-column grid)
  */
 export const GRID_CONFIG = {
   desktop: {
-    columns: 4,
+    columns: 5,
     largeSpan: 2,
+    wideSpan: 3,
     smallSpan: 1,
   },
   tablet: {
-    columns: 2,
-    largeSpan: 1,
+    columns: 3,
+    largeSpan: 2,
+    wideSpan: 2,
     smallSpan: 1,
   },
   mobile: {
     columns: 1,
     largeSpan: 1,
+    wideSpan: 1,
     smallSpan: 1,
   },
 };

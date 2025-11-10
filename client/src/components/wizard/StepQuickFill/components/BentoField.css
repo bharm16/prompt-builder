@@ -17,14 +17,34 @@
     grid-column: span 2;
   }
   
+  .bento-field--wide {
+    grid-column: span 3;
+  }
+  
   .bento-field--small {
     grid-column: span 1;
   }
 }
 
-/* On tablet and mobile, all fields span full width */
-@media (max-width: 1023px) {
+/* Tablet: Wide fields span 2 columns */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-field--large {
+    grid-column: span 2;
+  }
+  
+  .bento-field--wide {
+    grid-column: span 2;
+  }
+  
+  .bento-field--small {
+    grid-column: span 1;
+  }
+}
+
+/* On mobile, all fields span full width */
+@media (max-width: 767px) {
   .bento-field--large,
+  .bento-field--wide,
   .bento-field--small {
     grid-column: span 1;
   }

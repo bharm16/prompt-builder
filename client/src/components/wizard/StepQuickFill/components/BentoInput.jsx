@@ -38,6 +38,25 @@ export function BentoInput({
     return () => registerInputRef(field.id, null);
   }, [field.id, registerInputRef]);
 
+  const isTextarea = field.inputType === 'textarea';
+
+  const inputStyles = {
+    width: '100%',
+    padding: '12px 16px',
+    fontSize: '15px',
+    fontFamily: wizardTheme.fontFamily.primary,
+    color: wizardTheme.colors.neutral[900],
+    backgroundColor: wizardTheme.colors.background.card,
+    border: `2px solid ${accentColor}`,
+    borderRadius: '10px',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    boxShadow: `0 0 0 3px ${accentColor}20`,
+    resize: isTextarea ? 'vertical' : 'none',
+    minHeight: isTextarea ? '80px' : 'auto',
+    lineHeight: '1.5',
+  };
+
   return (
     <div className="bento-input">
       {/* Description */}
@@ -54,28 +73,28 @@ export function BentoInput({
         </p>
       )}
 
-      {/* Input field */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={value || ''}
-        onChange={onChange}
-        onFocus={onFocus}
-        placeholder={field.placeholder}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          fontSize: '15px',
-          fontFamily: wizardTheme.fontFamily.primary,
-          color: wizardTheme.colors.neutral[900],
-          backgroundColor: wizardTheme.colors.background.card,
-          border: `2px solid ${accentColor}`,
-          borderRadius: '10px',
-          outline: 'none',
-          transition: 'all 0.2s ease',
-          boxShadow: `0 0 0 3px ${accentColor}20`,
-        }}
-      />
+      {/* Input field or Textarea */}
+      {isTextarea ? (
+        <textarea
+          ref={inputRef}
+          value={value || ''}
+          onChange={onChange}
+          onFocus={onFocus}
+          placeholder={field.placeholder}
+          rows={3}
+          style={inputStyles}
+        />
+      ) : (
+        <input
+          ref={inputRef}
+          type="text"
+          value={value || ''}
+          onChange={onChange}
+          onFocus={onFocus}
+          placeholder={field.placeholder}
+          style={inputStyles}
+        />
+      )}
 
       {/* AI Suggestions */}
       <InlineSuggestions

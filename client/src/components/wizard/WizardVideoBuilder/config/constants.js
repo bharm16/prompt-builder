@@ -23,9 +23,7 @@ export const TOTAL_STEPS = 4; // Quick Fill, Core Concept, Atmosphere, Review
 export const INITIAL_FORM_DATA = {
   // Step 1: Core Concept (required)
   subject: '',
-  descriptor1: '',
-  descriptor2: '',
-  descriptor3: '',
+  descriptors: '',
   action: '',
   location: '',
   // Step 2: Atmosphere (optional)
