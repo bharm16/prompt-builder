@@ -272,7 +272,7 @@ export const HistorySidebar = ({
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pt-5 pb-2">
             <h2 className="px-2 mb-2 text-xs font-semibold text-neutral-900 tracking-wide">
               Recent
             </h2>

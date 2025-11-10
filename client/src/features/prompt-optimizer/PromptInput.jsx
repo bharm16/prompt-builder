@@ -232,7 +232,7 @@ export const PromptInput = ({
   };
 
   return (
-    <div className="mb-12 w-full max-w-3xl text-center animate-fade-in">
+    <div className="mb-12 w-full max-w-4xl text-center animate-fade-in">
       {/* Hero Section */}
       <div className="mb-12">
         <h1 className="text-5xl font-extrabold text-neutral-900 tracking-tight">
@@ -252,8 +252,8 @@ export const PromptInput = ({
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe what you want to create..."
-              rows={2}
-              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed px-6 pt-6 pb-0 rounded-t-xl"
+              rows={1}
+              className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed px-6 pt-5 pb-0 rounded-t-xl"
               style={{
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
                 border: 'none',
@@ -264,7 +264,7 @@ export const PromptInput = ({
             />
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-white rounded-b-xl">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-white rounded-b-xl">
             <div className="flex items-center gap-2">
               <ModeDropdown
                 modes={modes}
