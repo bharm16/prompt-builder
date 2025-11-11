@@ -71,7 +71,7 @@ const InlineSuggestions = ({
         <div className="flex items-center space-x-2.5">
           <Sparkles className="w-5 h-5 text-brand-primary-600" />
           <span className="text-sm font-semibold text-neutral-800">
-            AI Suggestions
+            Suggestions
           </span>
         </div>
         <span className="text-xs font-medium text-neutral-500">

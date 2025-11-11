@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { useToast } from '../../../components/Toast';
 
 // Components
-import WizardProgress from '../WizardProgress';
 import MobileFieldView from '../MobileFieldView';
 import { StepQuickFill } from '../StepQuickFill';
 import { CoreConceptAccordion } from '../StepCoreConcept';
@@ -439,17 +438,6 @@ export const WizardVideoBuilder = ({
           onStartFresh={handleStartFresh}
         />
       )}
-
-      {/* Progress Indicator */}
-      <WizardProgress
-        currentStep={currentStep}
-        totalSteps={STEP_LABELS.length}
-        stepLabels={STEP_LABELS}
-        completedSteps={completedSteps}
-        isMobile={isMobile}
-        onStepClick={handleGoToStep}
-        minimal={true}
-      />
 
       {/* Step Content */}
       <div className="flex-1 overflow-y-auto pb-8">

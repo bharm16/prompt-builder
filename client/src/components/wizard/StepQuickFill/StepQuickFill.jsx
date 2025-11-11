@@ -31,7 +31,6 @@ import { useQuickFillForm } from './hooks/useQuickFillForm';
 import { useBentoExpansion } from './hooks/useBentoExpansion';
 
 // Components
-import { ProgressBadge } from './components/ProgressBadge';
 import { BentoGrid } from './components/BentoGrid';
 import BentoField from './components/BentoField';
 import { ContinueButton } from './components/ContinueButton';
@@ -151,13 +150,6 @@ export function StepQuickFill({
           >
             Fill in the details to generate your video prompt
           </p>
-
-          {/* Progress Indicator */}
-          <ProgressBadge
-            filledFields={filledFields}
-            totalFields={totalFields}
-            completionPercentage={completionPercentage}
-          />
         </section>
 
         {/* Form Card */}
