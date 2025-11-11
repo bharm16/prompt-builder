@@ -87,17 +87,15 @@ export function BentoField({
           <div className={`absolute inset-px rounded-lg ${filledBgClass} group-hover:bg-gray-100 transition-colors`} />
           
           {/* Pattern Background - Enhanced Visual */}
-          {gradient.from && (
-            <div 
-              className="absolute inset-px rounded-lg pointer-events-none"
-              style={{
-                backgroundImage: `radial-gradient(circle, ${gradient.from} 1.5px, transparent 1.5px)`,
-                backgroundSize: '20px 20px',
-                opacity: 0.35,
-                zIndex: 1
-              }}
-            />
-          )}
+          <div 
+            className="absolute inset-px rounded-lg pointer-events-none"
+            style={{
+              backgroundColor: '#DFDBE5',
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%239C92AC' fill-opacity='0.4' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E\")",
+              opacity: 0.3,
+              zIndex: 1
+            }}
+          />
           
           {/* Layer 2: Content */}
           <button
