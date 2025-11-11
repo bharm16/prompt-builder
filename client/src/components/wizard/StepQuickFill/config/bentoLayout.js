@@ -102,7 +102,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'What is your prompt about?',
+    description: "What's the main focus? (e.g., person, object, animal)",
     
     // Visual properties
     icon: Target,
@@ -138,7 +138,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'What action should be performed?',
+    description: "What's happening?",
     
     // Visual properties
     icon: Activity,
@@ -174,7 +174,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'Where does this take place?',
+    description: 'Where does it take place?',
     
     // Visual properties
     icon: MapPin,
@@ -210,7 +210,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'When does this happen?',
+    description: 'When does it happen?',
     
     // Visual properties
     icon: Clock,
@@ -246,7 +246,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'What tone should the prompt have?',
+    description: 'Emotional atmosphere',
     
     // Visual properties
     icon: Theater,
@@ -282,7 +282,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'What writing style do you prefer?',
+    description: 'Visual treatment',
     
     // Visual properties
     icon: Palette,
@@ -318,7 +318,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'Add keywords to refine your prompt',
+    description: 'Visual details about the subject (appearance, clothing, physical state)',
     
     // Visual properties
     icon: Sparkles,
@@ -353,7 +353,7 @@ export const BENTO_FIELD_CONFIG = {
     cornerClasses: '',
     
     // Content
-    description: 'Is this related to a specific event?',
+    description: 'Context or occasion',
     
     // Visual properties
     icon: PartyPopper,

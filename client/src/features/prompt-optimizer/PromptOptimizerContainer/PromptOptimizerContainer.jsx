@@ -301,8 +301,8 @@ function PromptOptimizerContent({ user }) {
         )}
       </main>
 
-      {/* Debug Button */}
-      {(process.env.NODE_ENV === 'development' ||
+      {/* Debug Button - Hidden */}
+      {false && (process.env.NODE_ENV === 'development' ||
         new URLSearchParams(window.location.search).get('debug') === 'true') && (
         <DebugButton
           inputPrompt={promptOptimizer.inputPrompt}

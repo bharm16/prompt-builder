@@ -58,7 +58,7 @@ export function BentoInput({
   };
 
   return (
-    <div className="bento-input">
+    <div className="bento-input relative">
       {/* Description */}
       {field.description && (
         <p
@@ -96,7 +96,7 @@ export function BentoInput({
         />
       )}
 
-      {/* AI Suggestions */}
+      {/* Suggestions Dropdown */}
       <InlineSuggestions
         suggestions={suggestions || []}
         isLoading={Boolean(isLoadingSuggestions)}

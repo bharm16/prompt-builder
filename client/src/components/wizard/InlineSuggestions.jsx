@@ -43,7 +43,7 @@ const InlineSuggestions = ({
 
   if (isLoading) {
     return (
-      <div className="mt-4 p-5 bg-brand-primary-50 rounded-xl border border-brand-primary-200 animate-fade-in-simple">
+      <div className="absolute left-0 right-0 top-full mt-2 p-5 bg-brand-primary-50 rounded-xl border border-brand-primary-200 shadow-lg animate-fade-in-simple" style={{ zIndex: 9999 }}>
         <div className="flex items-center justify-center space-x-2 text-brand-primary-700">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm font-semibold">Finding perfect suggestions...</span>
@@ -53,21 +53,12 @@ const InlineSuggestions = ({
   }
 
   if (!suggestions || suggestions.length === 0) {
-    return (
-      <div className="mt-4 p-5 bg-neutral-50 rounded-xl border border-neutral-200">
-        <div className="flex items-center space-x-2.5 text-neutral-600">
-          <Lightbulb className="w-5 h-5" />
-          <span className="text-sm font-medium">
-            Start typing to see AI-powered suggestions
-          </span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="mt-4 animate-fade-slide-in">
-      <div className="flex items-center justify-between mb-3">
+    <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-xl border-2 border-neutral-200 shadow-2xl animate-fade-slide-in max-h-96 overflow-y-auto p-4" style={{ zIndex: 9999 }}>
+      <div className="flex items-center justify-between mb-3 sticky top-0 bg-white pb-2 border-b border-neutral-100">
         <div className="flex items-center space-x-2.5">
           <Sparkles className="w-5 h-5 text-brand-primary-600" />
           <span className="text-sm font-semibold text-neutral-800">
@@ -79,26 +70,26 @@ const InlineSuggestions = ({
         </span>
       </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-2 pt-2">
         {suggestions.slice(0, 9).map((suggestion, index) => (
           <button
             key={index}
             onClick={() => !disabled && onSelect(suggestion.text)}
             disabled={disabled}
             className={`
-              group w-full text-left p-4 rounded-xl border-2 transition-all duration-150 hover-lift
+              group w-full text-left p-3 rounded-lg border transition-all duration-150 hover-lift
               ${disabled
                 ? 'border-neutral-200 bg-neutral-50 cursor-not-allowed opacity-50'
-                : 'border-neutral-200 bg-white hover:border-brand-primary-300 hover:bg-brand-primary-50/50 hover:shadow-card-hover cursor-pointer active:scale-[0.98]'
+                : 'border-neutral-200 bg-white hover:border-brand-primary-300 hover:bg-brand-primary-50/50 hover:shadow-md cursor-pointer active:scale-[0.98]'
               }
             `}
             aria-label={`Select suggestion ${index + 1}: ${suggestion.text}`}
           >
-            <div className="flex items-start space-x-3.5">
+            <div className="flex items-start space-x-2.5">
               {/* Number Badge */}
               <div
                 className={`
-                  flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-sm
+                  flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm
                   ${disabled
                     ? 'bg-neutral-300 text-neutral-500'
                     : 'bg-brand-primary-600 text-white group-hover:bg-brand-primary-700 group-hover:scale-110 transition-transform'
@@ -111,13 +102,13 @@ const InlineSuggestions = ({
               {/* Suggestion Content */}
               <div className="flex-1 min-w-0">
                 <p className={`
-                  text-base font-normal break-words leading-relaxed
+                  text-sm font-normal break-words leading-relaxed
                   ${disabled ? 'text-neutral-500' : 'text-neutral-900 group-hover:text-brand-primary-900'}
                 `}>
                   {suggestion.text}
                 </p>
                 {suggestion.explanation && (
-                  <p className="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">
+                  <p className="mt-2 text-xs text-neutral-600 line-clamp-2 leading-relaxed">
                     {suggestion.explanation}
                   </p>
                 )}

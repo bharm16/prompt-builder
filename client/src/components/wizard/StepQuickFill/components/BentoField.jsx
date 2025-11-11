@@ -78,6 +78,7 @@ export function BentoField({
         transform: mounted ? 'scale(1)' : 'scale(0.95)',
         transitionDelay: `${field.delay}ms`,
         transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+        zIndex: isExpanded ? 100 : 'auto',
       }}
     >
       {!isExpanded ? (
@@ -202,7 +203,7 @@ export function BentoField({
           <div className="absolute inset-px rounded-lg bg-white" />
           
           {/* Layer 2: Content */}
-          <div className="relative flex h-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.lg)+1px)]">
+          <div className="relative flex h-full flex-col overflow-visible rounded-[calc(theme(borderRadius.lg)+1px)]">
             <div className="px-8 pt-8 sm:px-10 sm:pt-10">
               {/* Header with close button */}
               <div className="flex items-center justify-between mb-6">
