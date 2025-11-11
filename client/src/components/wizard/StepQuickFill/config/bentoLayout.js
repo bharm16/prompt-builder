@@ -22,6 +22,8 @@ import {
   PartyPopper 
 } from 'lucide-react';
 
+import { COLOR_SCHEMES } from '../../../../utils/patternUtils';
+
 /**
  * Design System Colors
  */
@@ -120,6 +122,9 @@ export const BENTO_FIELD_CONFIG = {
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
     
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.subject,
+    
     order: 1,
   },
   
@@ -153,6 +158,9 @@ export const BENTO_FIELD_CONFIG = {
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
     
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.action,
+    
     order: 2,
   },
   
@@ -184,6 +192,9 @@ export const BENTO_FIELD_CONFIG = {
     // States
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
+    
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.location,
     
     group: 'location-time', // Grouped with time
     order: 3,
@@ -218,6 +229,9 @@ export const BENTO_FIELD_CONFIG = {
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
     
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.time,
+    
     group: 'location-time',
     order: 4,
   },
@@ -250,6 +264,9 @@ export const BENTO_FIELD_CONFIG = {
     // States
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
+    
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.mood,
     
     group: 'mood-style',
     order: 5,
@@ -284,6 +301,9 @@ export const BENTO_FIELD_CONFIG = {
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
     
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.style,
+    
     group: 'mood-style',
     order: 6,
   },
@@ -317,6 +337,9 @@ export const BENTO_FIELD_CONFIG = {
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
     
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.descriptors,
+    
     order: 7,
   },
   
@@ -348,6 +371,9 @@ export const BENTO_FIELD_CONFIG = {
     // States
     borderColorFilled: BENTO_COLORS.accentGreen,
     backgroundColorFilled: 'rgba(16, 185, 129, 0.03)',
+    
+    // Enhanced visuals
+    colorScheme: COLOR_SCHEMES.event,
     
     order: 8,
   },

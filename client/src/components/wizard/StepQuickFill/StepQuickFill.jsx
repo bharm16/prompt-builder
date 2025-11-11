@@ -36,6 +36,7 @@ import { BentoGrid } from './components/BentoGrid';
 import BentoField from './components/BentoField';
 import { ContinueButton } from './components/ContinueButton';
 import './components/ContinueButton.css';
+import { MeshGradientBackground } from '../MeshGradientBackground';
 
 /**
  * StepQuickFill component
@@ -96,8 +97,12 @@ export function StepQuickFill({
         justifyContent: 'center',
         minHeight: 'calc(100vh - 4px)',
         background: 'linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%)',
+        position: 'relative',
       }}
     >
+      {/* Animated Mesh Gradient Background */}
+      <MeshGradientBackground />
+      
       <div
         style={{
           display: 'flex',
@@ -107,6 +112,8 @@ export function StepQuickFill({
           gap: '32px',
           maxWidth: '1600px',
           width: '100%',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Heading Section */}

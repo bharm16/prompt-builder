@@ -1,5 +1,5 @@
 /**
- * BentoField - Tailwind UI style layered bento box
+ * BentoField - Enhanced bento box with visual polish
  * 
  * Features:
  * - Layered border technique (3 layers)
@@ -7,6 +7,7 @@
  * - Very round corners (2rem)
  * - Utility-first with Tailwind classes
  * - Light theme adaptation
+ * - Enhanced visuals: gradients, glows, patterns
  * 
  * @module BentoField
  */
@@ -38,6 +39,10 @@ export function BentoField({
   const hasValue = value && value.length > 0;
   const isRequired = field.required;
   const bentoConfig = config;
+
+  // Extract color scheme for visual enhancements
+  const colorScheme = bentoConfig.colorScheme || {};
+  const { gradient = {}, icon = {}, glow = '#60a5fa' } = colorScheme;
 
   // Truncate value for preview (max 40 chars)
   const previewValue = hasValue ? 
@@ -81,6 +86,17 @@ export function BentoField({
           {/* Layer 1: Background */}
           <div className={`absolute inset-px rounded-lg ${filledBgClass} group-hover:bg-gray-100 transition-colors`} />
           
+          {/* Pattern Background - Enhanced Visual */}
+          {gradient.from && (
+            <div 
+              className="absolute inset-0 opacity-20 rounded-lg pointer-events-none"
+              style={{
+                backgroundImage: `radial-gradient(circle, ${gradient.from} 1px, transparent 1px)`,
+                backgroundSize: '20px 20px'
+              }}
+            />
+          )}
+          
           {/* Layer 2: Content */}
           <button
             type="button"
@@ -93,17 +109,35 @@ export function BentoField({
             <div className="flex h-full flex-col overflow-hidden px-8 pb-10 pt-8 sm:px-10 sm:pb-10 sm:pt-10">
               {/* Header Section: Icon + Title - AT TOP */}
               <div className="flex items-center gap-x-3">
-                <div 
-                  className="flex items-center justify-center"
-                  style={{ 
-                    color: bentoConfig.iconColor,
-                    filter: bentoConfig.iconFilter || 'none',
-                  }}
-                >
-                  {React.createElement(bentoConfig.icon, {
-                    size: bentoConfig.iconSize,
-                    strokeWidth: bentoConfig.iconStrokeWidth,
-                  })}
+                {/* Enhanced Icon with Glow */}
+                <div className="relative inline-block">
+                  {/* Glow effect */}
+                  {glow && (
+                    <div 
+                      className="absolute inset-0 blur-xl opacity-30 rounded-lg transition-opacity group-hover:opacity-50"
+                      style={{ backgroundColor: glow }}
+                    />
+                  )}
+                  {/* Icon container with gradient */}
+                  <div 
+                    className="relative flex items-center justify-center transition-transform group-hover:scale-110"
+                    style={{
+                      color: icon.from && icon.to 
+                        ? '#ffffff'
+                        : bentoConfig.iconColor,
+                      filter: bentoConfig.iconFilter || 'none',
+                      background: icon.from && icon.to 
+                        ? `linear-gradient(135deg, ${icon.from}, ${icon.to})`
+                        : 'transparent',
+                      padding: icon.from && icon.to ? '12px' : '0',
+                      borderRadius: icon.from && icon.to ? '12px' : '0',
+                    }}
+                  >
+                    {React.createElement(bentoConfig.icon, {
+                      size: bentoConfig.iconSize,
+                      strokeWidth: bentoConfig.iconStrokeWidth,
+                    })}
+                  </div>
                 </div>
                 <h3 className="text-lg/7 font-medium tracking-tight text-gray-900">
                   {field.label}
@@ -128,7 +162,12 @@ export function BentoField({
               <div className="mt-10 flex flex-1 items-end">
                 {hasValue ? (
                   <div className="w-full">
-                    <div className="bg-white/50 backdrop-blur-sm rounded-xl ring-1 ring-gray-900/5 p-6">
+                    <div 
+                      className="bg-white/50 backdrop-blur-sm rounded-xl ring-1 ring-gray-900/5 p-6"
+                      style={{
+                        background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)'
+                      }}
+                    >
                       <p className={`${bentoConfig.size === 'hero' ? 'text-base leading-relaxed' : bentoConfig.size === 'large' ? 'text-xl font-semibold' : 'text-lg'} text-gray-900`}>
                         {previewValue}
                       </p>
@@ -164,14 +203,35 @@ export function BentoField({
               {/* Header with close button */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <span 
-                    style={{ color: bentoConfig.iconColor }}
-                  >
-                    {React.createElement(bentoConfig.icon, {
-                      size: bentoConfig.iconSize,
-                      strokeWidth: bentoConfig.iconStrokeWidth,
-                    })}
-                  </span>
+                  {/* Enhanced Icon with Glow - Expanded State */}
+                  <div className="relative inline-block">
+                    {/* Glow effect */}
+                    {glow && (
+                      <div 
+                        className="absolute inset-0 blur-xl opacity-30 rounded-lg"
+                        style={{ backgroundColor: glow }}
+                      />
+                    )}
+                    {/* Icon container with gradient */}
+                    <div 
+                      className="relative flex items-center justify-center"
+                      style={{
+                        color: icon.from && icon.to 
+                          ? '#ffffff'
+                          : bentoConfig.iconColor,
+                        background: icon.from && icon.to 
+                          ? `linear-gradient(135deg, ${icon.from}, ${icon.to})`
+                          : 'transparent',
+                        padding: icon.from && icon.to ? '12px' : '0',
+                        borderRadius: icon.from && icon.to ? '12px' : '0',
+                      }}
+                    >
+                      {React.createElement(bentoConfig.icon, {
+                        size: bentoConfig.iconSize,
+                        strokeWidth: bentoConfig.iconStrokeWidth,
+                      })}
+                    </div>
+                  </div>
                   <span className="text-xl font-semibold text-gray-900">
                     {field.label}
                     {isRequired && (
