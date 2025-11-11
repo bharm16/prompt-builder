@@ -89,10 +89,12 @@ export function BentoField({
           {/* Pattern Background - Enhanced Visual */}
           {gradient.from && (
             <div 
-              className="absolute inset-0 opacity-20 rounded-lg pointer-events-none"
+              className="absolute inset-px rounded-lg pointer-events-none"
               style={{
-                backgroundImage: `radial-gradient(circle, ${gradient.from} 1px, transparent 1px)`,
-                backgroundSize: '20px 20px'
+                backgroundImage: `radial-gradient(circle, ${gradient.from} 1.5px, transparent 1.5px)`,
+                backgroundSize: '20px 20px',
+                opacity: 0.35,
+                zIndex: 1
               }}
             />
           )}
@@ -101,6 +103,7 @@ export function BentoField({
           <button
             type="button"
             className="relative flex h-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.lg)+1px)] cursor-pointer group"
+            style={{ zIndex: 2 }}
             onClick={handleBoxClick}
             onKeyDown={handleKeyDown}
             aria-expanded={false}
@@ -114,13 +117,16 @@ export function BentoField({
                   {/* Glow effect */}
                   {glow && (
                     <div 
-                      className="absolute inset-0 blur-xl opacity-30 rounded-lg transition-opacity group-hover:opacity-50"
-                      style={{ backgroundColor: glow }}
+                      className="absolute -inset-2 blur-2xl rounded-xl transition-opacity duration-300"
+                      style={{ 
+                        backgroundColor: glow,
+                        opacity: 0.4
+                      }}
                     />
                   )}
                   {/* Icon container with gradient */}
                   <div 
-                    className="relative flex items-center justify-center transition-transform group-hover:scale-110"
+                    className="relative flex items-center justify-center transition-all duration-300 group-hover:scale-110"
                     style={{
                       color: icon.from && icon.to 
                         ? '#ffffff'
@@ -208,13 +214,16 @@ export function BentoField({
                     {/* Glow effect */}
                     {glow && (
                       <div 
-                        className="absolute inset-0 blur-xl opacity-30 rounded-lg"
-                        style={{ backgroundColor: glow }}
+                        className="absolute -inset-2 blur-2xl rounded-xl"
+                        style={{ 
+                          backgroundColor: glow,
+                          opacity: 0.4
+                        }}
                       />
                     )}
                     {/* Icon container with gradient */}
                     <div 
-                      className="relative flex items-center justify-center"
+                      className="relative flex items-center justify-center transition-all duration-300"
                       style={{
                         color: icon.from && icon.to 
                           ? '#ffffff'
