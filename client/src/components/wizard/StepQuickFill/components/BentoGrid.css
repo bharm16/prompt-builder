@@ -2,7 +2,7 @@
  * BentoGrid Styles
  * 
  * Responsive CSS Grid layout for bento boxes
- * Desktop: 5 columns, Tablet: 3 columns, Mobile: 1 column
+ * Desktop: 6 columns with auto rows, Tablet: 3 columns, Mobile: 1 column
  */
 
 .bento-grid {
@@ -12,11 +12,12 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Desktop: 5-column grid */
+/* Desktop: 6-column grid with consistent row height */
 @media (min-width: 1024px) {
   .bento-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(6, 1fr);
+    grid-auto-rows: 180px;
+    gap: 28px;
   }
 }
 

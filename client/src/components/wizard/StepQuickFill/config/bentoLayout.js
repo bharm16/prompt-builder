@@ -23,23 +23,18 @@ import {
 /**
  * Bento field configuration
  * Maps each field to its display properties
+ * Layout: Asymmetric 6-column grid with tall Subject/Action boxes
  */
 export const BENTO_FIELD_CONFIG = {
   subject: {
-    size: 'large',
+    size: 'tall',
     icon: Target,
     color: '#FF385C',
     borderColor: 'rgba(255, 56, 92, 0.3)',
     bgColor: 'rgba(255, 56, 92, 0.05)',
+    gridColumn: 2,
+    gridRow: 2,
     order: 1,
-  },
-  action: {
-    size: 'large',
-    icon: Activity,
-    color: '#A78BFA',
-    borderColor: 'rgba(167, 139, 250, 0.3)',
-    bgColor: 'rgba(167, 139, 250, 0.05)',
-    order: 2,
   },
   location: {
     size: 'small',
@@ -47,7 +42,9 @@ export const BENTO_FIELD_CONFIG = {
     color: '#34D399',
     borderColor: 'rgba(52, 211, 153, 0.3)',
     bgColor: 'rgba(52, 211, 153, 0.05)',
-    order: 3,
+    gridColumn: 1,
+    gridRow: 1,
+    order: 2,
   },
   time: {
     size: 'small',
@@ -55,6 +52,18 @@ export const BENTO_FIELD_CONFIG = {
     color: '#FBBF24',
     borderColor: 'rgba(251, 191, 36, 0.3)',
     bgColor: 'rgba(251, 191, 36, 0.05)',
+    gridColumn: 1,
+    gridRow: 1,
+    order: 3,
+  },
+  action: {
+    size: 'tall',
+    icon: Activity,
+    color: '#A78BFA',
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+    bgColor: 'rgba(167, 139, 250, 0.05)',
+    gridColumn: 2,
+    gridRow: 2,
     order: 4,
   },
   mood: {
@@ -63,15 +72,9 @@ export const BENTO_FIELD_CONFIG = {
     color: '#F472B6',
     borderColor: 'rgba(244, 114, 182, 0.3)',
     bgColor: 'rgba(244, 114, 182, 0.05)',
+    gridColumn: 1,
+    gridRow: 1,
     order: 5,
-  },
-  descriptors: {
-    size: 'wide',
-    icon: Sparkles,
-    color: '#60A5FA',
-    borderColor: 'rgba(96, 165, 250, 0.3)',
-    bgColor: 'rgba(96, 165, 250, 0.05)',
-    order: 6,
   },
   style: {
     size: 'small',
@@ -79,6 +82,18 @@ export const BENTO_FIELD_CONFIG = {
     color: '#8B5CF6',
     borderColor: 'rgba(139, 92, 246, 0.3)',
     bgColor: 'rgba(139, 92, 246, 0.05)',
+    gridColumn: 1,
+    gridRow: 1,
+    order: 6,
+  },
+  descriptors: {
+    size: 'wide',
+    icon: Sparkles,
+    color: '#60A5FA',
+    borderColor: 'rgba(96, 165, 250, 0.3)',
+    bgColor: 'rgba(96, 165, 250, 0.05)',
+    gridColumn: 4,
+    gridRow: 1,
     order: 7,
   },
   event: {
@@ -87,6 +102,8 @@ export const BENTO_FIELD_CONFIG = {
     color: '#EC4899',
     borderColor: 'rgba(236, 72, 153, 0.3)',
     bgColor: 'rgba(236, 72, 153, 0.05)',
+    gridColumn: 1,
+    gridRow: 1,
     order: 8,
   },
 };
@@ -102,29 +119,30 @@ export function getBentoFieldOrder() {
 }
 
 /**
- * Grid column span configuration
- * - Desktop: Large = 2 columns, Wide = 3 columns, Small = 1 column (5-column grid)
- * - Tablet: Large = 2 columns, Wide = 2 columns, Small = 1 column (3-column grid)
- * - Mobile: All = 1 column (1-column grid)
+ * Grid column and row span configuration
+ * - Desktop: Tall = 2 cols × 2 rows, Wide = 4 cols × 1 row, Small = 1 col × 1 row (6-column grid)
+ * - Tablet: Tall = 2 cols × 1 row, Wide = 2 cols, Small = 1 col (3-column grid)
+ * - Mobile: All = 1 col × 1 row (1-column grid)
  */
 export const GRID_CONFIG = {
   desktop: {
-    columns: 5,
-    largeSpan: 2,
-    wideSpan: 3,
-    smallSpan: 1,
+    columns: 6,
+    tallSpan: { column: 2, row: 2 },
+    wideSpan: { column: 4, row: 1 },
+    smallSpan: { column: 1, row: 1 },
+    rowHeight: '140px',
   },
   tablet: {
     columns: 3,
-    largeSpan: 2,
-    wideSpan: 2,
-    smallSpan: 1,
+    tallSpan: { column: 2, row: 1 },
+    wideSpan: { column: 2, row: 1 },
+    smallSpan: { column: 1, row: 1 },
   },
   mobile: {
     columns: 1,
-    largeSpan: 1,
-    wideSpan: 1,
-    smallSpan: 1,
+    tallSpan: { column: 1, row: 1 },
+    wideSpan: { column: 1, row: 1 },
+    smallSpan: { column: 1, row: 1 },
   },
 };
 

@@ -35,6 +35,8 @@ import { ProgressBadge } from './components/ProgressBadge';
 import { ModeToggle } from './components/ModeToggle';
 import { BentoGrid } from './components/BentoGrid';
 import BentoField from './components/BentoField';
+import { ContinueButton } from './components/ContinueButton';
+import './components/ContinueButton.css';
 
 /**
  * StepQuickFill component
@@ -105,7 +107,7 @@ export function StepQuickFill({
           justifyContent: 'center',
           alignItems: 'center',
           gap: '32px',
-          maxWidth: '1200px',
+          maxWidth: '1600px',
           width: '100%',
         }}
       >
@@ -202,87 +204,15 @@ export function StepQuickFill({
                     mounted={mounted}
                   />
                 ))}
+                
+                {/* Continue Button as Bento Box */}
+                <ContinueButton
+                  onClick={onContinue}
+                  disabled={!canContinue}
+                  mounted={mounted}
+                />
               </BentoGrid>
             </div>
-
-            {/* CTA Button */}
-            <div
-              style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '40px' }}
-            >
-              <button
-                onClick={onContinue}
-                disabled={!canContinue}
-                style={{
-                  position: 'relative',
-                  padding: '16px 40px',
-                  fontFamily: wizardTheme.fontFamily.primary,
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  letterSpacing: '-0.01em',
-                  color: '#FFFFFF',
-                  background: canContinue
-                    ? `linear-gradient(135deg, ${wizardTheme.colors.accent.base} 0%, ${wizardTheme.colors.accent.hover} 100%)`
-                    : wizardTheme.colors.neutral[200],
-                  borderRadius: '14px',
-                  border: 'none',
-                  cursor: canContinue ? 'pointer' : 'not-allowed',
-                  boxShadow: canContinue
-                    ? '0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06)'
-                    : 'none',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  overflow: 'hidden',
-                }}
-                onMouseEnter={(e) => {
-                  if (canContinue) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow =
-                      '0 12px 28px rgba(255, 56, 92, 0.4), 0 4px 12px rgba(0, 0, 0, 0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (canContinue) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow =
-                      '0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06)';
-                  }
-                }}
-              >
-                Continue to Summary
-                <ChevronRight size={20} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            {/* Keyboard Shortcut Hint */}
-            {canContinue && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  textAlign: 'right',
-                  fontFamily: wizardTheme.fontFamily.primary,
-                  fontSize: '12px',
-                  color: wizardTheme.colors.neutral[400],
-                  animation: 'slideDown 0.3s ease-out',
-                }}
-              >
-                Press{' '}
-                <kbd
-                  style={{
-                    padding: '2px 6px',
-                    background: wizardTheme.colors.neutral[100],
-                    border: `1px solid ${wizardTheme.colors.neutral[200]}`,
-                    borderRadius: '4px',
-                    fontFamily: wizardTheme.fontFamily.mono,
-                    fontSize: '11px',
-                  }}
-                >
-                  Enter
-                </kbd>{' '}
-                to continue
-              </div>
-            )}
           </div>
         </section>
       </div>

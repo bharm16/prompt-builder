@@ -92,7 +92,7 @@ export function BentoField({
             style={{ color: bentoConfig.color }}
           >
             {React.createElement(bentoConfig.icon, {
-              size: 32,
+              size: 40,
               color: bentoConfig.color,
               strokeWidth: 2,
             })}
@@ -155,7 +155,7 @@ export function BentoField({
                 style={{ color: bentoConfig.color }}
               >
                 {React.createElement(bentoConfig.icon, {
-                  size: 28,
+                  size: 36,
                   color: bentoConfig.color,
                   strokeWidth: 2,
                 })}

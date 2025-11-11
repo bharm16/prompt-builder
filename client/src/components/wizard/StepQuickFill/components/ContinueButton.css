@@ -1,0 +1,134 @@
+/**
+ * ContinueButton Styles
+ * 
+ * Bento-styled continue button that integrates into the grid
+ */
+
+.continue-button-bento {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 180px;
+  padding: 32px;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+/* Gradient background for enabled state */
+.continue-button-bento:not(:disabled) {
+  background: linear-gradient(135deg, #FF385C 0%, #E03252 100%);
+  border-color: rgba(255, 56, 92, 0.3);
+  box-shadow: 0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Disabled state */
+.continue-button-bento:disabled {
+  background: #F5F5F5;
+  border-color: #E0E0E0;
+  cursor: not-allowed;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Hover effect */
+.continue-button-bento:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(255, 56, 92, 0.4), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Active effect */
+.continue-button-bento:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(255, 56, 92, 0.3), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Touch devices: no hover effect */
+@media (hover: none) {
+  .continue-button-bento:not(:disabled):hover {
+    transform: none;
+    box-shadow: 0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* Content layout */
+.continue-button-bento__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-direction: column;
+}
+
+/* Text styling */
+.continue-button-bento__text {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  transition: all 0.3s ease;
+}
+
+.continue-button-bento:not(:disabled) .continue-button-bento__text {
+  color: #FFFFFF;
+}
+
+.continue-button-bento:disabled .continue-button-bento__text {
+  color: #A0A0A0;
+}
+
+/* Icon styling */
+.continue-button-bento__icon {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.continue-button-bento:not(:disabled) .continue-button-bento__icon {
+  color: #FFFFFF;
+}
+
+.continue-button-bento:disabled .continue-button-bento__icon {
+  color: #A0A0A0;
+}
+
+/* Icon animation on hover */
+.continue-button-bento:not(:disabled):hover .continue-button-bento__icon {
+  transform: translateX(4px);
+}
+
+/* Shimmer effect for enabled button */
+.continue-button-bento:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.continue-button-bento:not(:disabled):hover::before {
+  left: 100%;
+}
+
+/* Desktop: Make it fit the grid */
+@media (min-width: 1024px) {
+  .continue-button-bento {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
+/* Tablet & Mobile: Full width */
+@media (max-width: 1023px) {
+  .continue-button-bento {
+    grid-column: 1 / -1;
+  }
+}
+
