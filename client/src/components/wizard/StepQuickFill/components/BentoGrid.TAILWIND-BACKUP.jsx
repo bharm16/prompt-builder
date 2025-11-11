@@ -1,17 +1,18 @@
 /**
- * BentoGrid - Tailwind UI style layered bento grid
+ * BentoGrid - Asymmetric grid container for bento fields
  * 
  * Features:
- * - Explicit 3-column, 2-row grid (lg breakpoint)
- * - Tailwind utility classes for responsive design
- * - Mobile-first with max-lg modifiers
- * - Staggered entrance animations
+ * - CSS Grid with responsive breakpoints
+ * - Large fields span 2 columns (required fields)
+ * - Small fields span 1 column (optional fields)
+ * - Auto-adjusts for tablet/mobile (all 1 column)
  * 
  * @module BentoGrid
  */
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import './BentoGrid.css';
 
 /**
  * BentoGrid component
@@ -22,11 +23,10 @@ import PropTypes from 'prop-types';
 export function BentoGrid({ children, mounted = true }) {
   return (
     <div 
-      className="mt-10 grid gap-4 sm:mt-16 lg:grid-cols-3"
+      className="bento-grid"
       style={{
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-        transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {children}

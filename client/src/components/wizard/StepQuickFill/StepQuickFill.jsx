@@ -32,7 +32,6 @@ import { useBentoExpansion } from './hooks/useBentoExpansion';
 
 // Components
 import { ProgressBadge } from './components/ProgressBadge';
-import { ModeToggle } from './components/ModeToggle';
 import { BentoGrid } from './components/BentoGrid';
 import BentoField from './components/BentoField';
 import { ContinueButton } from './components/ContinueButton';
@@ -45,7 +44,6 @@ export function StepQuickFill({
   formData,
   onChange,
   onContinue,
-  onSwitchToStepByStep,
   suggestions = {},
   isLoadingSuggestions = {},
   onRequestSuggestions,
@@ -131,7 +129,7 @@ export function StepQuickFill({
               animation: mounted ? 'none' : 'shimmer 3s linear infinite',
             }}
           >
-            Quick Fill Mode
+            Create Your Prompt
           </h1>
           <p
             style={{
@@ -144,7 +142,7 @@ export function StepQuickFill({
               color: wizardTheme.colors.neutral[600],
             }}
           >
-            Complete all fields at once for faster creation
+            Fill in the details to generate your video prompt
           </p>
 
           {/* Progress Indicator */}
@@ -170,20 +168,8 @@ export function StepQuickFill({
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            {/* Mode Toggle */}
-            <div
-              style={{
-                position: 'absolute',
-                top: cardPadding,
-                right: cardPadding,
-                zIndex: 10,
-              }}
-            >
-              <ModeToggle onSwitchToStepByStep={onSwitchToStepByStep} />
-            </div>
-
             {/* Bento Grid Layout */}
-            <div style={{ paddingTop: '64px' }}>
+            <div>
               <BentoGrid mounted={mounted}>
                 {fieldsWithBentoConfig.map((field) => (
                   <BentoField
@@ -235,7 +221,6 @@ StepQuickFill.propTypes = {
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onContinue: PropTypes.func.isRequired,
-  onSwitchToStepByStep: PropTypes.func.isRequired,
   suggestions: PropTypes.object,
   isLoadingSuggestions: PropTypes.object,
   onRequestSuggestions: PropTypes.func.isRequired,

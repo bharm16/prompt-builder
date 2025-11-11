@@ -50,19 +50,25 @@
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 20px; /* Increased from 0.75rem (12px) to 20px */
 }
 
 /* Individual bento box */
 .bento-box {
-  border-radius: 8px;
+  border-radius: 10px; /* Increased from 8px */
   border: 1px solid;
   overflow: hidden;
-  transition: box-shadow 0.2s;
+  transition: all 200ms ease-out;
+  /* Resting state shadow - subtle elevation */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
+              0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .bento-box:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  /* Hover state shadow - increased lift */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08),
+              0 4px 8px rgba(0, 0, 0, 0.04);
+  border-color: #D0D0D0; /* Darker border on hover */
 }
 
 /* Bento header (clickable for collapse/expand) */
@@ -70,19 +76,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 16px; /* Increased from 0.75rem (12px) */
   font-weight: 600;
   font-size: 0.875rem;
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 200ms ease-out;
   border: none;
   width: 100%;
   text-align: left;
 }
 
 .bento-header:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .category-icon {
@@ -111,7 +117,7 @@
 
 /* Bento content area */
 .bento-content {
-  padding: 0.5rem;
+  padding: 12px; /* Increased from 0.5rem (8px) */
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -124,7 +130,7 @@
   border-radius: 4px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 200ms ease-out;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -134,13 +140,13 @@
 }
 
 .span-item:hover {
-  transform: translateX(2px);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: scale(1.02);
+  border-color: #D0D0D0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .span-item:active {
-  transform: translateX(1px);
+  transform: scale(1.0);
 }
 
 .span-text {
