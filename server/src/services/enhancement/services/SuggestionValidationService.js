@@ -1,4 +1,4 @@
-import { validateAgainstVideoTemplate, detectSubcategory } from './config/CategoryConstraints.js';
+import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
 
 /**
  * SuggestionValidationService

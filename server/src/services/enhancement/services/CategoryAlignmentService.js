@@ -1,5 +1,5 @@
-import { logger } from '../../infrastructure/Logger.js';
-import { CATEGORY_CONSTRAINTS, detectSubcategory } from './config/CategoryConstraints.js';
+import { logger } from '../../../infrastructure/Logger.js';
+import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
 
 /**
  * CategoryAlignmentService

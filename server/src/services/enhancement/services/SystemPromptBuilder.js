@@ -1,5 +1,5 @@
-import { CATEGORY_CONSTRAINTS, detectSubcategory } from './config/CategoryConstraints.js';
-import { ContextAwareExamples } from './utils/ContextAwareExamples.js';
+import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
+import { ContextAwareExamples } from '../utils/ContextAwareExamples.js';
 
 /**
  * PromptBuilderService
