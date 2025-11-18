@@ -1,7 +1,7 @@
-import { logger } from '../infrastructure/Logger.js';
-import { cacheService } from './cache/CacheService.js';
-import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
-import { getCategoryDefinitions } from './CategoryRegistry.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { cacheService } from '../cache/CacheService.js';
+import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.js';
+import { getCategoryDefinitions } from './CategoryDefinitionAggregator.js';
 
 const CACHE_NAMESPACE = 'video-llm-parse';
 const CACHE_TYPE = 'video-llm-parse';

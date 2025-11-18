@@ -9,7 +9,7 @@
  *   - CategoryAlignmentService (fallback suggestions)
  *   - PromptBuilderService (AI prompt constraints)
  *   - SuggestionValidationService (pattern validation)
- *   - CategoryRegistry (metadata aggregation)
+ *   - CategoryDefinitionAggregator (metadata aggregation)
  * 
  * STRUCTURE:
  *   - CATEGORY_CONSTRAINTS: Configuration with patterns, instructions, fallbacks

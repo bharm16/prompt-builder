@@ -24,7 +24,7 @@ import { QuestionGenerationService } from '../services/QuestionGenerationService
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneDetectionService } from '../services/SceneDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
-import { TextCategorizerService } from '../services/TextCategorizerService.js';
+import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/SpanLabelingCacheService.js';
 
 // Import enhancement sub-services

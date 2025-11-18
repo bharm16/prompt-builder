@@ -1,5 +1,19 @@
-import { logger } from '../infrastructure/Logger.js';
-import { CATEGORY_CONSTRAINTS } from './enhancement/config/CategoryConstraints.js';
+/**
+ * Category Definition Aggregator
+ * 
+ * Aggregates category definitions from multiple sources for semantic text parsing:
+ * 1. Client-side PromptContext (video element categories)
+ * 2. Client-side categoryValidators (validation caps)
+ * 3. Server-side CategoryConstraints (enhancement constraints)
+ * 
+ * Used by: TextCategorizerService for AI-powered semantic parsing
+ * 
+ * NOTE: Currently imports from client code (architectural debt).
+ *       Consider moving shared definitions to /shared/ directory.
+ */
+
+import { logger } from '../../infrastructure/Logger.js';
+import { CATEGORY_CONSTRAINTS } from '../enhancement/config/CategoryConstraints.js';
 
 let PromptContextModule = null;
 let categoryValidatorsModule = null;
@@ -11,18 +25,18 @@ let categoryValidatorsModule = null;
 async function loadSharedModules() {
   if (!PromptContextModule) {
     try {
-      PromptContextModule = await import('../../client/src/utils/PromptContext.js');
+      PromptContextModule = await import('../../../client/src/utils/PromptContext.js');
     } catch (error) {
-      logger.warn('[CategoryRegistry] Failed to load PromptContext', { error: error.message });
+      logger.warn('[CategoryDefinitionAggregator] Failed to load PromptContext', { error: error.message });
       PromptContextModule = { PromptContext: null };
     }
   }
 
   if (!categoryValidatorsModule) {
     try {
-      categoryValidatorsModule = await import('../../client/src/utils/categoryValidators.js');
+      categoryValidatorsModule = await import('../../../client/src/utils/categoryValidators.js');
     } catch (error) {
-      logger.warn('[CategoryRegistry] Failed to load categoryValidators', { error: error.message });
+      logger.warn('[CategoryDefinitionAggregator] Failed to load categoryValidators', { error: error.message });
       categoryValidatorsModule = { CATEGORY_CAPS: {} };
     }
   }
@@ -111,7 +125,7 @@ const extractFromPromptContext = (definitions, PromptContext) => {
       });
     }
   } catch (error) {
-    logger.warn('[CategoryRegistry] Failed to extract PromptContext categories', {
+    logger.warn('[CategoryDefinitionAggregator] Failed to extract PromptContext categories', {
       error: error.message,
     });
   }
