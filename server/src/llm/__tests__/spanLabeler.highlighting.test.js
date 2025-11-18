@@ -91,7 +91,7 @@ ALTERNATIVE APPROACHES
 
   it('should highlight expected camera-related terms across all sections', () => {
     const cameraTerms = result.spans.filter((span) =>
-      span.role === 'CameraMove' || span.role === 'Framing'
+      span.role === 'Camera' || span.role === 'Framing'
     );
 
     expect(cameraTerms.length).toBeGreaterThan(0);
@@ -112,7 +112,7 @@ ALTERNATIVE APPROACHES
 
   it('should highlight expected lighting terms across all sections', () => {
     const lightingTerms = result.spans.filter((span) =>
-      span.role === 'Lighting' || span.role === 'TimeOfDay'
+      span.role === 'Lighting'
     );
 
     expect(lightingTerms.length).toBeGreaterThan(0);
@@ -126,7 +126,7 @@ ALTERNATIVE APPROACHES
 
   it('should highlight technical specs like frame rate and aspect ratio', () => {
     const technicalTerms = result.spans.filter((span) =>
-      span.role === 'Technical'
+      span.role === 'Specs' || span.role === 'Style'
     );
 
     expect(technicalTerms.length).toBeGreaterThan(0);

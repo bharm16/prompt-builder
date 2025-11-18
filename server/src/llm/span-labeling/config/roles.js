@@ -1,10 +1,6 @@
 /**
  * Role definitions for span labeling
- *
- * These roles categorize different aspects of video prompts:
- * - Visual: Wardrobe, Appearance, Color, Environment
- * - Cinematic: Lighting, TimeOfDay, CameraMove, Framing
- * - Metadata: Technical, Descriptive
+ * Updated for Video AI standards (Sora/Runway/Kling)
  */
 
 /**
@@ -15,14 +11,14 @@ export const ROLE_SET = new Set([
   'Subject',
   'Appearance',
   'Wardrobe',
-  'Action',
+  'Movement',    // Was 'Action' - specific to subject movement
   'Environment',
-  'Lighting',
-  'TimeOfDay',
-  'CameraMove',
+  'Lighting',    // Includes TimeOfDay
+  'Camera',      // Was 'CameraMove' - includes move + lens
   'Framing',
-  'Technical',
-  'Descriptive',
+  'Specs',       // Hardware/Res details (8k, 16:9)
+  'Style',       // Artistic style (Cyberpunk, 35mm film)
+  'Quality',     // Was 'Descriptive' - Prompt boosters
 ]);
 
 /**
@@ -30,10 +26,10 @@ export const ROLE_SET = new Set([
  */
 export const ROLE_CATEGORIES = {
   subject: ['Subject', 'Appearance', 'Wardrobe'],
-  environment: ['Environment', 'Lighting', 'TimeOfDay'],
-  cinematic: ['CameraMove', 'Framing'],
-  narrative: ['Action'],
-  metadata: ['Technical', 'Descriptive']
+  narrative: ['Movement'],
+  environment: ['Environment', 'Lighting'], // Lighting now covers time
+  cinematic: ['Camera', 'Framing', 'Specs', 'Style'],
+  metadata: ['Quality']
 };
 
 /**
@@ -50,5 +46,5 @@ export function isValidRole(role) {
  * @returns {string} Default role
  */
 export function getDefaultRole() {
-  return 'Descriptive';
+  return 'Quality';
 }

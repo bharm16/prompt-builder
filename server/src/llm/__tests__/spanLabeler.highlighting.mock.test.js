@@ -27,22 +27,22 @@ ALTERNATIVE APPROACHES
           { text: 'Wide shot', start: 0, end: 9, role: 'Framing', confidence: 0.95 },
           { text: 'blue Revolutionary War uniform', start: 40, end: 70, role: 'Wardrobe', confidence: 0.9 },
           { text: 'leaf-strewn battlefield', start: 94, end: 117, role: 'Environment', confidence: 0.85 },
-          { text: 'overcast skies', start: 124, end: 138, role: 'TimeOfDay', confidence: 0.88 },
-          { text: 'camera slowly pans in', start: 241, end: 262, role: 'CameraMove', confidence: 0.92 },
+          { text: 'overcast skies', start: 124, end: 138, role: 'Lighting', confidence: 0.88 },
+          { text: 'camera slowly pans in', start: 241, end: 262, role: 'Camera', confidence: 0.92 },
           { text: 'Soft, diffused light', start: 324, end: 344, role: 'Lighting', confidence: 0.9 },
-          { text: 'shot on 35mm film', start: 464, end: 481, role: 'Technical', confidence: 0.95 },
-          { text: 'shallow depth of field', start: 516, end: 538, role: 'Technical', confidence: 0.93 },
+          { text: 'shot on 35mm film', start: 464, end: 481, role: 'Style', confidence: 0.95 },
+          { text: 'shallow depth of field', start: 516, end: 538, role: 'Specs', confidence: 0.93 },
 
           // Technical Specs section highlights
-          { text: '4-8s', start: 633, end: 637, role: 'Technical', confidence: 0.98 },
-          { text: '16:9', start: 659, end: 663, role: 'Technical', confidence: 0.98 },
-          { text: '24fps', start: 682, end: 687, role: 'Technical', confidence: 0.98 },
+          { text: '4-8s', start: 633, end: 637, role: 'Specs', confidence: 0.98 },
+          { text: '16:9', start: 659, end: 663, role: 'Specs', confidence: 0.98 },
+          { text: '24fps', start: 682, end: 687, role: 'Specs', confidence: 0.98 },
 
           // Alternative Approaches section highlights
           { text: 'Close-up', start: 739, end: 747, role: 'Framing', confidence: 0.95 },
           { text: 'leaf-strewn battlefield', start: 831, end: 854, role: 'Environment', confidence: 0.85 },
-          { text: 'overcast skies', start: 861, end: 875, role: 'TimeOfDay', confidence: 0.88 },
-          { text: 'camera holds steady', start: 881, end: 900, role: 'CameraMove', confidence: 0.9 },
+          { text: 'overcast skies', start: 861, end: 875, role: 'Lighting', confidence: 0.88 },
+          { text: 'camera holds steady', start: 881, end: 900, role: 'Camera', confidence: 0.9 },
           { text: 'Medium shot', start: 961, end: 972, role: 'Framing', confidence: 0.95 },
           { text: 'blue Revolutionary War uniform', start: 1005, end: 1035, role: 'Wardrobe', confidence: 0.9 },
           { text: 'bright, high-key lighting', start: 1083, end: 1108, role: 'Lighting', confidence: 0.92 },
@@ -119,11 +119,11 @@ ALTERNATIVE APPROACHES
     expect(sections['Alternative Approaches'].length).toBeGreaterThan(0);
 
     // Verify we found technical specs
-    const technicalSpans = result.spans.filter(s => s.role === 'Technical');
+    const technicalSpans = result.spans.filter(s => s.role === 'Specs' || s.role === 'Style');
     expect(technicalSpans.length).toBeGreaterThan(0);
 
     // Verify we found camera and lighting in multiple sections
-    const cameraSpans = result.spans.filter(s => s.role === 'CameraMove' || s.role === 'Framing');
+    const cameraSpans = result.spans.filter(s => s.role === 'Camera' || s.role === 'Framing');
     const cameraSections = new Set(cameraSpans.map(s => getSection(s.start, MULTI_SECTION_PROMPT)));
     expect(cameraSections.size).toBeGreaterThan(1);
   });

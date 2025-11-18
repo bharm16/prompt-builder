@@ -13,7 +13,7 @@ describe('labelSpans integration', () => {
         text: word,
         start: offset,
         end: offset + word.length,
-        role: 'Descriptive',
+        role: 'Quality',
         confidence: 0.95,
       };
       offset += word.length + 1;

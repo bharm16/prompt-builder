@@ -34,8 +34,8 @@ export const CATEGORY_CONFIG = {
     icon: '👔',
     order: 3,
   },
-  action: {
-    label: 'Action',
+  movement: {
+    label: 'Movement',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🏃',
@@ -55,39 +55,39 @@ export const CATEGORY_CONFIG = {
     icon: '💡',
     order: 6,
   },
-  timeOfDay: {
-    label: 'Time of Day',
-    color: '#FFFFFF',
-    borderColor: '#E8E8E8',
-    icon: '🌅',
-    order: 7,
-  },
-  cameraMove: {
-    label: 'Camera Movement',
+  camera: {
+    label: 'Camera',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎥',
-    order: 8,
+    order: 7,
   },
   framing: {
     label: 'Shot Framing',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎬',
-    order: 9,
+    order: 8,
   },
-  technical: {
+  specs: {
     label: 'Technical Specs',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '⚙️',
-    order: 10,
+    order: 9,
   },
-  descriptive: {
-    label: 'Descriptive',
+  style: {
+    label: 'Style',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '📝',
+    icon: '🎨',
+    order: 10,
+  },
+  quality: {
+    label: 'Quality',
+    color: '#FFFFFF',
+    borderColor: '#E8E8E8',
+    icon: '✨',
     order: 11,
   },
 };

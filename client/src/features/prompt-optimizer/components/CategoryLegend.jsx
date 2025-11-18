@@ -10,14 +10,14 @@ function getCategoryExample(category) {
     subject: 'young painter, elderly historian',
     appearance: 'weathered hands, focused expression',
     wardrobe: 'worn leather jacket, fedora',
-    action: 'gripping paintbrush, walking slowly',
+    movement: 'gripping paintbrush, walking slowly',
     environment: 'cozy studio, rain-soaked alley',
-    lighting: 'soft diffused light, neon glow',
-    timeOfDay: 'golden hour, twilight, blue hour',
-    cameraMove: 'gently pans, dolly in',
+    lighting: 'soft diffused light, golden hour',
+    camera: 'gently pans, dolly in, rack focus',
     framing: 'close-up, wide shot, low-angle',
-    technical: 'shallow DOF, 24fps, 35mm film',
-    descriptive: 'serene atmosphere, intimate moment',
+    specs: '4k, 8k, 16:9, shallow DOF',
+    style: '35mm film, cyberpunk, noir',
+    quality: 'masterpiece, highly detailed',
   };
   return examples[category] || '';
 }

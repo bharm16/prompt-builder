@@ -47,8 +47,8 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier
-  templateVersion: 'v1',
+  // Template version identifier - v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
+  templateVersion: 'v2',
 };
 
 /**

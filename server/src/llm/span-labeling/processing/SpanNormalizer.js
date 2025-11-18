@@ -12,7 +12,7 @@ import { clamp01 } from '../utils/textUtils.js';
  * Normalize a single span's role and confidence
  *
  * In strict mode (lenient=false), returns null for invalid roles.
- * In lenient mode (lenient=true), assigns 'Descriptive' for invalid roles.
+ * In lenient mode (lenient=true), assigns 'Quality' for invalid roles.
  *
  * @param {Object} span - The span to normalize
  * @param {string} span.text - Span text
@@ -20,7 +20,7 @@ import { clamp01 } from '../utils/textUtils.js';
  * @param {number} span.end - End position
  * @param {string} span.role - Role to validate
  * @param {number} span.confidence - Confidence to clamp
- * @param {boolean} lenient - If true, assigns 'Descriptive' for invalid roles; if false, returns null
+ * @param {boolean} lenient - If true, assigns 'Quality' for invalid roles; if false, returns null
  * @returns {Object|null} Normalized span with role and confidence, or null if invalid
  */
 export function normalizeSpan(span, lenient = false) {
@@ -31,7 +31,7 @@ export function normalizeSpan(span, lenient = false) {
     typeof span.role === 'string' && ROLE_SET.has(span.role)
       ? span.role
       : lenient
-        ? 'Descriptive'
+        ? 'Quality'
         : null;
 
   // Return null if role is invalid in strict mode

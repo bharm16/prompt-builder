@@ -13,14 +13,14 @@ const ROLE_TO_CATEGORY = {
   Subject: 'subject',
   Appearance: 'appearance',
   Wardrobe: 'wardrobe',
-  Action: 'action',
+  Movement: 'movement',
   Environment: 'environment',
   Lighting: 'lighting',
-  TimeOfDay: 'timeOfDay',
-  CameraMove: 'cameraMove',
+  Camera: 'camera',
   Framing: 'framing',
-  Technical: 'technical',
-  Descriptive: 'descriptive',
+  Specs: 'specs',
+  Style: 'style',
+  Quality: 'quality',
 };
 
 /**
@@ -42,8 +42,8 @@ export const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
         return null;
       }
 
-      const role = typeof span.role === 'string' ? span.role : 'Descriptive';
-      const category = ROLE_TO_CATEGORY[role] || 'descriptive';
+      const role = typeof span.role === 'string' ? span.role : 'Quality';
+      const category = ROLE_TO_CATEGORY[role] || 'quality';
 
       const start = Number(span.start);
       const end = Number(span.end);

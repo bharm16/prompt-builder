@@ -9,15 +9,15 @@ export const CATEGORY_PATTERNS = {
     role: 'subject or character detail',
   },
 
-  // Lighting (includes TimeOfDay from span labeler)
+  // Lighting (includes TimeOfDay - now merged into Lighting in span labeler)
   LIGHTING: {
-    pattern: /light|lighting|illumination|shadow|timeofday|timeday/,
+    pattern: /light|lighting|illumination|shadow|timeofday|timeday|golden hour|dusk|dawn/,
     role: 'lighting description',
   },
 
-  // Camera (includes CameraMove and Framing from span labeler)
+  // Camera (includes Camera and Framing from span labeler)
   CAMERA: {
-    pattern: /camera|framing|shot|lens|cameramove|angle|viewpoint/,
+    pattern: /camera|framing|shot|lens|angle|viewpoint|pan|dolly|tracking/,
     role: 'camera or framing description',
   },
 
@@ -25,6 +25,12 @@ export const CATEGORY_PATTERNS = {
   LOCATION: {
     pattern: /location|setting|environment|background|place/,
     role: 'location or environment detail',
+  },
+
+  // Movement (was Action in span labeler)
+  MOVEMENT: {
+    pattern: /movement|action|motion|activity|moving|running|walking/,
+    role: 'subject movement or activity',
   },
 
   // Wardrobe/Costume (from span labeler)
@@ -39,15 +45,15 @@ export const CATEGORY_PATTERNS = {
     role: 'color and visual tone',
   },
 
-  // Style/Aesthetic
+  // Style/Aesthetic (split from Technical in span labeler)
   STYLE: {
-    pattern: /style|tone|aesthetic|mood|genre/,
-    role: 'style or tone descriptor',
+    pattern: /style|tone|aesthetic|mood|genre|film|cyberpunk|noir/,
+    role: 'style or aesthetic descriptor',
   },
 
-  // Technical (from span labeler)
-  TECHNICAL: {
-    pattern: /technical|spec|duration|framerate|resolution/,
+  // Specs (split from Technical in span labeler)
+  SPECS: {
+    pattern: /spec|technical|duration|framerate|resolution|4k|8k|fps/,
     role: 'technical specification',
   },
 
@@ -57,10 +63,10 @@ export const CATEGORY_PATTERNS = {
     role: 'audio or score descriptor',
   },
 
-  // Descriptive (catch-all from span labeler)
-  DESCRIPTIVE: {
-    pattern: /descriptive|general/,
-    role: 'general visual detail',
+  // Quality (was Descriptive in span labeler)
+  QUALITY: {
+    pattern: /quality|masterpiece|detailed|photorealistic/,
+    role: 'quality booster',
   },
 };
 

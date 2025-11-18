@@ -9,16 +9,19 @@ const cache = new NodeCache({ stdTTL: 120 });
 
 const SYSTEM_PROMPT = `
 You label short prompt spans for a video prompt editor.
-Roles: Subject, Appearance, Wardrobe, Action, Environment, Lighting, TimeOfDay, CameraMove, Framing, Technical, Descriptive.
+Roles: Subject, Appearance, Wardrobe, Movement, Environment, Lighting, Camera, Framing, Specs, Style, Quality.
 Rules:
 - Do not change "text", "start", or "end".
 - Do not merge or split spans.
 - Subject = WHO/WHAT (person type, character, object being filmed)
 - Appearance = physical traits (faces, bodies, expressions)
-- Action = subject movement with -ing verbs (NOT camera movement)
-- CameraMove = camera movement only (pan, dolly, track)
-- Check ALL categories before using Descriptive
-- If unsure after checking all, use "Descriptive".
+- Movement = subject movement with -ing verbs (NOT camera movement)
+- Camera = camera movement only (pan, dolly, track, focus)
+- Lighting = includes time of day (golden hour, dusk, etc.)
+- Specs = technical parameters (4k, 8k, 16:9, fps)
+- Style = aesthetic references (35mm film, cyberpunk, noir)
+- Check ALL categories before using Quality
+- If unsure after checking all, use "Quality".
 Return ONLY valid JSON: {"spans":[...]}.
 `;
 
@@ -26,14 +29,14 @@ const ROLE_SET = new Set([
   'Subject',
   'Appearance',
   'Wardrobe',
-  'Action',
+  'Movement',
   'Environment',
   'Lighting',
-  'TimeOfDay',
-  'CameraMove',
+  'Camera',
   'Framing',
-  'Technical',
-  'Descriptive',
+  'Specs',
+  'Style',
+  'Quality',
 ]);
 
 /**
@@ -74,7 +77,7 @@ export async function roleClassify(spans, templateVersion) {
     });
     return spans.map((span) => ({
       ...span,
-      role: 'Descriptive',
+      role: 'Quality',
       confidence: 0,
     }));
   }

@@ -103,7 +103,8 @@ export function validateSpans({
 
     // Check word limit for non-technical spans
     if (
-      normalized.role !== 'Technical' &&
+      normalized.role !== 'Specs' &&
+      normalized.role !== 'Style' &&
       policy.nonTechnicalWordLimit > 0 &&
       wordCount(normalized.text) > policy.nonTechnicalWordLimit
     ) {

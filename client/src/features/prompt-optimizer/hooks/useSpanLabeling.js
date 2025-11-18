@@ -367,7 +367,8 @@ const performRequest = useCallback(async (payload, signal) => {
       initialData &&
       Array.isArray(initialData.spans) &&
       initialData.spans.length > 0 &&
-      initialData.signature === hashString(normalized ?? '');
+      initialData.signature === hashString(normalized ?? '') &&
+      initialData.meta?.version === templateVersion; // Invalidate old versions
 
     if (initialMatch) {
       cancelPending();

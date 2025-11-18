@@ -83,33 +83,33 @@ describe('highlightConversion', () => {
       expect(result[0]?.category).toBe('lighting');
     });
 
-    it('maps CameraMove to cameraMove - catches camelCase mapping', () => {
+    it('maps Camera to camera - catches camelCase mapping', () => {
       // Would fail if camelCase handling is wrong
-      const spans = [{ role: 'CameraMove', start: 0, end: 3 }];
+      const spans = [{ role: 'Camera', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.category).toBe('cameraMove');
+      expect(result[0]?.category).toBe('camera');
     });
 
-    it('defaults unknown role to descriptive - catches fallback', () => {
-      // Would fail if || 'descriptive' fallback is missing
+    it('defaults unknown role to quality - catches fallback', () => {
+      // Would fail if || 'quality' fallback is missing
       const spans = [{ role: 'UnknownRole', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.category).toBe('descriptive');
+      expect(result[0]?.category).toBe('quality');
     });
 
-    it('uses Descriptive for missing role - catches default role', () => {
+    it('uses Quality for missing role - catches default role', () => {
       // Would fail if default role is not set
       const spans = [{ start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.role).toBe('Descriptive');
-      expect(result[0]?.category).toBe('descriptive');
+      expect(result[0]?.role).toBe('Quality');
+      expect(result[0]?.category).toBe('quality');
     });
 
     it('handles non-string role - catches type coercion', () => {
       // Would fail if typeof check is missing
       const spans = [{ role: 123, start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.role).toBe('Descriptive');
+      expect(result[0]?.role).toBe('Quality');
     });
   });
 
@@ -377,7 +377,7 @@ describe('highlightConversion', () => {
       const spans = [
         { role: 'Lighting', start: 20, end: 25 },
         { role: 'Wardrobe', start: 0, end: 3 },
-        { role: 'Technical', start: 10, end: 15 }
+        { role: 'Specs', start: 10, end: 15 }
       ];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result[0]?.start).toBe(0);
@@ -390,7 +390,7 @@ describe('highlightConversion', () => {
       const spans = [
         { role: 'Wardrobe', start: 0, end: 5 },
         { role: 'Lighting', start: 0, end: 3 },
-        { role: 'Technical', start: 0, end: 10 }
+        { role: 'Specs', start: 0, end: 10 }
       ];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result[0]?.end).toBe(3);

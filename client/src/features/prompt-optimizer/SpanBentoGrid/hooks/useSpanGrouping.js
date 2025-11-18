@@ -19,12 +19,12 @@ export function useSpanGrouping(spans) {
     // Populate with actual spans
     if (Array.isArray(spans)) {
       spans.forEach(span => {
-        const category = span.category || 'descriptive';
+        const category = span.category || 'quality';
         if (groups[category]) {
           groups[category].push(span);
         } else {
-          // Fallback to descriptive if unknown category
-          groups.descriptive.push(span);
+          // Fallback to quality if unknown category
+          groups.quality.push(span);
         }
       });
     }
