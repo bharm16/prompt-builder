@@ -24,6 +24,55 @@ const ROLE_TO_CATEGORY = {
 };
 
 /**
+ * Helper to merge adjacent spans that were split by newlines/whitespace
+ * @param {Array} highlights - Sorted array of highlight objects
+ * @param {string} fullText - The full text being highlighted
+ * @returns {Array} Array of merged highlight objects
+ */
+function mergeFragmentedSpans(highlights, fullText) {
+  if (highlights.length < 2) return highlights;
+
+  const merged = [];
+  let current = highlights[0];
+
+  for (let i = 1; i < highlights.length; i++) {
+    const next = highlights[i];
+
+    // 1. Must be same category/role
+    const sameCategory = current.category === next.category;
+
+    // 2. Must be adjacent (only whitespace/newlines in between)
+    // We assume highlights are already sorted by start
+    const gapText = fullText.slice(current.end, next.start);
+    const isAdjacent = !gapText.trim(); // True if gap is empty or just whitespace
+
+    if (sameCategory && isAdjacent) {
+      // MERGE THEM
+      // Extend current span to include the next one
+      current.end = next.end;
+      current.displayEnd = next.end;
+      current.quote = fullText.slice(current.start, current.end);
+      current.displayQuote = current.quote;
+
+      // Inherit the right context from the later span
+      current.rightCtx = next.rightCtx;
+      current.displayRightCtx = next.displayRightCtx;
+      current.endGrapheme = next.endGrapheme;
+
+      // Combine IDs for debugging (optional)
+      current.id = `${current.id}_merged`;
+    } else {
+      // No merge, push current and move to next
+      merged.push(current);
+      current = next;
+    }
+  }
+  merged.push(current);
+
+  return merged;
+}
+
+/**
  * Converts labeled spans from the LLM into highlight objects
  * @param {Object} params
  * @param {Array} params.spans - Array of span objects from the LLM
@@ -36,7 +85,8 @@ export const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
     return [];
   }
 
-  return spans
+  // 1. Convert raw LLM spans to highlight objects
+  const rawHighlights = spans
     .map((span, index) => {
       if (!span || typeof span !== 'object') {
         return null;
@@ -109,4 +159,7 @@ export const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
       }
       return a.start - b.start;
     });
+
+  // 2. Merge fragmented spans before returning
+  return mergeFragmentedSpans(rawHighlights, text);
 };

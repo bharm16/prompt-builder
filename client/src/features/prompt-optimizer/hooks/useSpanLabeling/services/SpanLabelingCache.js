@@ -14,7 +14,8 @@ import { buildCacheKey as buildCacheKeyUtil } from '../utils/cacheKey.js';
 import { getCacheStorage } from './storageAdapter.js';
 
 // Cache version - increment when highlight format changes
-const CURRENT_CACHE_VERSION = 2;
+// v3: Added mergeFragmentedSpans to combine adjacent spans of same category
+const CURRENT_CACHE_VERSION = 3;
 
 /**
  * Cache service for span labeling results
