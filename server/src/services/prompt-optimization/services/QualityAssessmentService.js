@@ -1,5 +1,5 @@
-import { logger } from '../../infrastructure/Logger.js';
-import OptimizationConfig from '../../config/OptimizationConfig.js';
+import { logger } from '../../../infrastructure/Logger.js';
+import OptimizationConfig from '../../../config/OptimizationConfig.js';
 
 /**
  * Service for assessing the quality of prompts
@@ -170,3 +170,4 @@ Output only the JSON, nothing else:`;
 }
 
 export default QualityAssessmentService;
+

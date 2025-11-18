@@ -6,11 +6,11 @@ import { labelSpans } from '../../llm/span-labeling/SpanLabelingService.js';
 import OptimizationConfig from '../../config/OptimizationConfig.js';
 
 // Import specialized services
-import { ContextInferenceService } from '../optimization/ContextInferenceService.js';
-import { ModeDetectionService } from '../optimization/ModeDetectionService.js';
-import { QualityAssessmentService } from '../optimization/QualityAssessmentService.js';
-import { StrategyFactory } from '../optimization/StrategyFactory.js';
-import { templateService } from '../optimization/TemplateService.js';
+import { ContextInferenceService } from './services/ContextInferenceService.js';
+import { ModeDetectionService } from './services/ModeDetectionService.js';
+import { QualityAssessmentService } from './services/QualityAssessmentService.js';
+import { StrategyFactory } from './services/StrategyFactory.js';
+import { templateService } from './services/TemplateService.js';
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern

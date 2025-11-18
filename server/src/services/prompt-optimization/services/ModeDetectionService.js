@@ -1,5 +1,5 @@
-import { logger } from '../../infrastructure/Logger.js';
-import OptimizationConfig from '../../config/OptimizationConfig.js';
+import { logger } from '../../../infrastructure/Logger.js';
+import OptimizationConfig from '../../../config/OptimizationConfig.js';
 
 /**
  * Service for detecting the optimal optimization mode for a prompt
@@ -139,3 +139,4 @@ Output ONLY the mode name (one word): reasoning, research, socratic, video, or o
 }
 
 export default ModeDetectionService;
+

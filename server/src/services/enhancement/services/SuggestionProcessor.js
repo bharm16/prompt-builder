@@ -1,5 +1,5 @@
 import { logger } from '../../../infrastructure/Logger.js';
-import { detectDescriptorCategory, getCategoryFallbacks } from '../../../video-concept/SubjectDescriptorCategories.js';
+import { detectDescriptorCategory, getCategoryFallbacks } from '../../video-concept/SubjectDescriptorCategories.js';
 
 /**
  * Service responsible for processing and finalizing suggestions

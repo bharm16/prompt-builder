@@ -116,3 +116,4 @@ Keep the final prompt focused, actionable, and sophisticated. Every word should 
 Now transform the user's rough prompt: "${prompt}"
 
 Output ONLY the optimized reasoning prompt in the structure shown above. Do not include any meta-commentary, explanations, or wrapper text.
+

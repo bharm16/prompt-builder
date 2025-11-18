@@ -130,3 +130,4 @@ export class BaseStrategy {
 }
 
 export default BaseStrategy;
+

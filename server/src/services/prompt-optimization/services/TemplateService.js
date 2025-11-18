@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../../../infrastructure/Logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
  */
 export class TemplateService {
   constructor() {
-    this.templateDir = join(__dirname, 'templates');
+    this.templateDir = join(__dirname, '../templates');
     this.templateCache = new Map();
     this.cacheEnabled = true;
   }
@@ -125,3 +125,4 @@ export class TemplateService {
 
 export const templateService = new TemplateService();
 export default templateService;
+

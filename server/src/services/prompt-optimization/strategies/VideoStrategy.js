@@ -63,3 +63,4 @@ export class VideoStrategy extends BaseStrategy {
 }
 
 export default VideoStrategy;
+

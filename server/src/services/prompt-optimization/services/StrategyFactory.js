@@ -1,9 +1,9 @@
-import { ReasoningStrategy } from './strategies/ReasoningStrategy.js';
-import { ResearchStrategy } from './strategies/ResearchStrategy.js';
-import { SocraticStrategy } from './strategies/SocraticStrategy.js';
-import { VideoStrategy } from './strategies/VideoStrategy.js';
-import { DefaultStrategy } from './strategies/DefaultStrategy.js';
-import { logger } from '../../infrastructure/Logger.js';
+import { ReasoningStrategy } from '../strategies/ReasoningStrategy.js';
+import { ResearchStrategy } from '../strategies/ResearchStrategy.js';
+import { SocraticStrategy } from '../strategies/SocraticStrategy.js';
+import { VideoStrategy } from '../strategies/VideoStrategy.js';
+import { DefaultStrategy } from '../strategies/DefaultStrategy.js';
+import { logger } from '../../../infrastructure/Logger.js';
 
 /**
  * Factory for creating optimization strategy instances
@@ -73,3 +73,4 @@ export class StrategyFactory {
 }
 
 export default StrategyFactory;
+

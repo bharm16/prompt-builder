@@ -77,3 +77,4 @@ export default { generateUniversalVideoPrompt };
 // Also export with old name for backwards compatibility
 export const generateVideoPrompt = generateUniversalVideoPrompt;
 
+
