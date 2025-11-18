@@ -1,8 +1,21 @@
 import NodeCache from 'node-cache';
 import crypto from 'crypto';
-import { logger } from '../infrastructure/Logger.js';
-import { metricsService } from '../infrastructure/MetricsService.js';
-import { SemanticCacheEnhancer } from './cache/SemanticCacheService.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { metricsService } from '../../infrastructure/MetricsService.js';
+import { SemanticCacheEnhancer } from './SemanticCacheService.js';
+
+/**
+ * LEGACY CACHE SERVICE
+ * 
+ * ⚠️ This is a singleton-based cache service used by legacy services.
+ * 
+ * STATUS: Currently in use by 6 services
+ * FUTURE: Should eventually be replaced with dependency-injected pattern
+ *         using CacheServiceWithStatistics from this directory
+ * 
+ * New code should use: services/cache/CacheServiceWithStatistics.js
+ * with proper dependency injection via services.config.js
+ */
 
 /**
  * Cache service for storing API responses
@@ -203,3 +216,4 @@ export class CacheService {
 
 // Export singleton instance
 export const cacheService = new CacheService();
+

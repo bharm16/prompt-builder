@@ -18,7 +18,7 @@ import { OpenAIAPIClient } from '../clients/OpenAIAPIClient.js';
 import { GroqAPIClient } from '../clients/GroqAPIClient.js';
 
 // Import services
-import { cacheService } from '../services/CacheService.js';
+import { cacheService } from '../services/cache/CacheService.js';
 import { PromptOptimizationService } from '../services/PromptOptimizationService.js';
 import { QuestionGenerationService } from '../services/QuestionGenerationService.js';
 import { EnhancementService } from '../services/EnhancementService.js';

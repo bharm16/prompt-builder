@@ -49,7 +49,7 @@ vi.mock('../../../../server/src/services/cache/SemanticCacheService.js', () => (
   },
 }));
 
-import { CacheService } from '../../../../server/src/services/CacheService.js';
+import { CacheService } from '../../../../server/src/services/cache/CacheService.js';
 import { logger } from '../../../../server/src/infrastructure/Logger.js';
 import { metricsService } from '../../../../server/src/infrastructure/MetricsService.js';
 import { SemanticCacheEnhancer } from '../../../../server/src/services/cache/SemanticCacheService.js';

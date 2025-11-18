@@ -1,5 +1,5 @@
 import { logger } from '../infrastructure/Logger.js';
-import { cacheService } from './CacheService.js';
+import { cacheService } from './cache/CacheService.js';
 import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
 import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';

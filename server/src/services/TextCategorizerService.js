@@ -1,5 +1,5 @@
 import { logger } from '../infrastructure/Logger.js';
-import { cacheService } from './CacheService.js';
+import { cacheService } from './cache/CacheService.js';
 import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
 import { getCategoryDefinitions } from './CategoryRegistry.js';
 
