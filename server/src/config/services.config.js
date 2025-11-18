@@ -29,7 +29,7 @@ import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheServic
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.js';
-import { VideoPromptService } from '../services/video-prompt/index.js';
+import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
 import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.js';
 import { PromptBuilderService } from '../services/enhancement/services/SystemPromptBuilder.js';
 import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.js';
