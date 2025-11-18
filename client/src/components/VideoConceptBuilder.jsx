@@ -50,7 +50,7 @@ import { TemplateSelector } from './components/TemplateSelector';
 import SuggestionsPanel from '../SuggestionsPanel';
 
 // Utils for descriptor categories
-import { detectDescriptorCategoryClient } from '../../utils/descriptorCategories';
+import { detectDescriptorCategoryClient } from '../../utils/subjectDescriptorCategories';
 import { SUBJECT_DESCRIPTOR_KEYS } from './config/constants';
 
 export default function VideoConceptBuilder({

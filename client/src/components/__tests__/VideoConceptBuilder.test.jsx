@@ -84,7 +84,7 @@ vi.mock('../VideoConceptBuilder/hooks/useKeyboardShortcuts.js', () => ({
 }));
 
 // Mock internal utility modules
-vi.mock('../../utils/descriptorCategories.js', () => ({
+vi.mock('../../utils/subjectDescriptorCategories.js', () => ({
   detectDescriptorCategoryClient: vi.fn(() => ({ confidence: 0.5 })),
 }));
 

@@ -4,14 +4,14 @@ import { logger } from '../../../../server/src/infrastructure/Logger.js';
 import { cacheService } from '../../../../server/src/services/CacheService.js';
 import { StructuredOutputEnforcer } from '../../../../server/src/utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../../../../server/src/utils/TemperatureOptimizer.js';
-import * as DescriptorCategories from '../../../../server/src/services/DescriptorCategories.js';
+import * as DescriptorCategories from '../../../../server/src/services/video-concept/SubjectDescriptorCategories.js';
 
 // Mock external dependencies
 vi.mock('../../../../server/src/infrastructure/Logger.js');
 vi.mock('../../../../server/src/services/CacheService.js');
 vi.mock('../../../../server/src/utils/StructuredOutputEnforcer.js');
 vi.mock('../../../../server/src/utils/TemperatureOptimizer.js');
-vi.mock('../../../../server/src/services/DescriptorCategories.js');
+vi.mock('../../../../server/src/services/video-concept/SubjectDescriptorCategories.js');
 
 describe('EnhancementService', () => {
   let service;

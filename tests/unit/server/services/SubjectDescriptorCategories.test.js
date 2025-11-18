@@ -6,7 +6,7 @@ import {
   getCategoryForbidden,
   getAllCategories,
   detectMultipleCategories,
-} from '../../../../server/src/services/DescriptorCategories.js';
+} from '../../../../server/src/services/video-concept/SubjectDescriptorCategories.js';
 
 describe('DescriptorCategories', () => {
   describe('detectDescriptorCategory', () => {
@@ -206,3 +206,4 @@ describe('DescriptorCategories', () => {
     });
   });
 });
+

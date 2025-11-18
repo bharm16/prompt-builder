@@ -8,7 +8,7 @@ import {
   getCategoryInstruction,
   getCategoryForbidden,
   getAllCategories,
-} from '../DescriptorCategories.js';
+} from './SubjectDescriptorCategories.js';
 
 /**
  * Service responsible for building prompts for AI video generation.

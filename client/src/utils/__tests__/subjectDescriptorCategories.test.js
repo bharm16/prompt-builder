@@ -22,7 +22,7 @@ import {
   getCategoryColors,
   getCategoryLabel,
   getAllCategoriesInfo
-} from '../descriptorCategories.js';
+} from '../subjectDescriptorCategories.js';
 
 describe('descriptorCategories', () => {
   describe('detectDescriptorCategoryClient', () => {
@@ -362,3 +362,4 @@ describe('descriptorCategories', () => {
     });
   });
 });
+

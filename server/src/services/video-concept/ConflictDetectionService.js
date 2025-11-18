@@ -3,7 +3,7 @@ import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.j
 import { conflictsOutputSchema } from '../../utils/validation.js';
 import {
   detectDescriptorCategory,
-} from '../DescriptorCategories.js';
+} from './SubjectDescriptorCategories.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 

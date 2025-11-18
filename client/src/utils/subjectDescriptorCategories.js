@@ -112,3 +112,4 @@ export function getAllCategoriesInfo() {
     colors: CATEGORY_COLORS[cat],
   }));
 }
+

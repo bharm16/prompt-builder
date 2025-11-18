@@ -240,3 +240,4 @@ export function detectMultipleCategories(text) {
 
   return categories.sort((a, b) => b.confidence - a.confidence);
 }
+
