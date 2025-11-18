@@ -12,4 +12,5 @@
  * This shim maintains backward compatibility with existing imports.
  */
 
-export { QualityFeedbackService as QualityFeedbackSystem, qualityFeedbackService as qualityFeedbackSystem } from './quality-feedback/index.js';
+export { QualityFeedbackService as QualityFeedbackSystem, qualityFeedbackService as qualityFeedbackSystem } from './index.js';
+
