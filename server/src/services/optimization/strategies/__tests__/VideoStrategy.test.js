@@ -31,7 +31,7 @@ vi.mock('../../../../config/OptimizationConfig.js', () => ({
   },
 }));
 
-vi.mock('../../../VideoPromptTemplates.js', () => ({
+vi.mock('../videoPromptOptimizationTemplate.js', () => ({
   generateVideoPrompt: vi.fn((prompt) => `VIDEO_TEMPLATE: ${prompt}`),
 }));
 
@@ -89,7 +89,7 @@ describe('VideoStrategy', () => {
 
   describe('optimize', () => {
     it('should use generateVideoPrompt helper', async () => {
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
 
       mockClaudeClient.complete.mockResolvedValue({
         content: [{ text: 'Optimized video prompt' }],
@@ -103,7 +103,7 @@ describe('VideoStrategy', () => {
     });
 
     it('should call Claude with generated system prompt', async () => {
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
       generateVideoPrompt.mockReturnValue('System prompt for video generation');
 
       mockClaudeClient.complete.mockResolvedValue({
@@ -246,7 +246,7 @@ describe('VideoStrategy', () => {
 
       expect(result).toBe('Optimized');
 
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
       expect(generateVideoPrompt).toHaveBeenCalledWith(longPrompt);
     });
 
@@ -271,7 +271,7 @@ describe('VideoStrategy', () => {
         prompt: '🎬 Video with emoji 中文字符',
       });
 
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
       expect(generateVideoPrompt).toHaveBeenCalledWith('🎬 Video with emoji 中文字符');
     });
 
@@ -336,7 +336,7 @@ Scene 3: Seagulls flying overhead`;
 
       expect(result).toBe('Optimized multiline');
 
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
       expect(generateVideoPrompt).toHaveBeenCalledWith(multilinePrompt);
     });
   });
@@ -370,7 +370,7 @@ Scene 3: Seagulls flying overhead`;
 
   describe('generateVideoPrompt Interaction', () => {
     it('should pass prompt exactly as received', async () => {
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
 
       mockClaudeClient.complete.mockResolvedValue({
         content: [{ text: 'Result' }],
@@ -384,7 +384,7 @@ Scene 3: Seagulls flying overhead`;
     });
 
     it('should use return value from generateVideoPrompt', async () => {
-      const { generateVideoPrompt } = require('../../../VideoPromptTemplates.js');
+      const { generateVideoPrompt } = require('../videoPromptOptimizationTemplate.js');
       const customSystemPrompt = 'Custom system prompt for video';
       generateVideoPrompt.mockReturnValue(customSystemPrompt);
 

@@ -1,7 +1,7 @@
 import { BaseStrategy } from './BaseStrategy.js';
 import { logger } from '../../../infrastructure/Logger.js';
 import OptimizationConfig from '../../../config/OptimizationConfig.js';
-import { generateVideoPrompt } from '../../VideoPromptTemplates.js';
+import { generateVideoPrompt } from './videoPromptOptimizationTemplate.js';
 
 /**
  * Strategy for optimizing video generation prompts
