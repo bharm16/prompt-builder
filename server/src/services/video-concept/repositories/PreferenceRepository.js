@@ -1,4 +1,4 @@
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../../../infrastructure/Logger.js';
 
 /**
  * Repository for user preferences with support for eventual persistence.

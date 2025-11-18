@@ -1,8 +1,10 @@
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../../../infrastructure/Logger.js';
 
 /**
- * Service responsible for managing video concept templates.
+ * Repository for managing video concept templates.
  * Handles template saving, loading, and recommendations.
+ * 
+ * Renamed from TemplateManagerService to follow repository pattern naming.
  *
  * Future improvements:
  * - Add database persistence
@@ -10,7 +12,7 @@ import { logger } from '../../infrastructure/Logger.js';
  * - Add template categorization and tagging
  * - Support template versioning
  */
-export class TemplateManagerService {
+export class VideoTemplateRepository {
   constructor(options = {}) {
     // Storage adapter - currently in-memory, easily swappable
     this.storage = options.storage || new InMemoryTemplateStorage();
@@ -218,3 +220,4 @@ class InMemoryTemplateStorage {
  *   // ... other methods
  * }
  */
+

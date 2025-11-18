@@ -1,7 +1,7 @@
-import { logger } from '../../infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '../../utils/TemperatureOptimizer.js';
-import { PromptBuilderService } from './PromptBuilderService.js';
+import { logger } from '../../../../infrastructure/Logger.js';
+import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '../../../../utils/TemperatureOptimizer.js';
+import { PromptBuilderService } from './SystemPromptBuilder.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 

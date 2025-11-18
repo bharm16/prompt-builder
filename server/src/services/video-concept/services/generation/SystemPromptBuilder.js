@@ -2,13 +2,13 @@ import {
   buildAnalysisProcessTemplate,
   getElementPromptTemplate,
   VIDEO_PROMPT_PRINCIPLES,
-} from '../../config/videoPromptTemplates.js';
+} from '../../../../config/videoPromptTemplates.js';
 import {
   detectDescriptorCategory,
   getCategoryInstruction,
   getCategoryForbidden,
   getAllCategories,
-} from './SubjectDescriptorCategories.js';
+} from '../../config/descriptorCategories.js';
 
 /**
  * Service responsible for building prompts for AI video generation.
@@ -326,3 +326,4 @@ Return ONLY a JSON array (no markdown, no code blocks):
     };
   }
 }
+

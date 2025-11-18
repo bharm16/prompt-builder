@@ -22,7 +22,7 @@ import { cacheService } from '../services/cache/CacheService.js';
 import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
 import { QuestionGenerationService } from '../services/question-generation/index.js';
 import { EnhancementService } from '../services/EnhancementService.js';
-import { SceneChangeDetectionService } from '../services/video-concept/SceneChangeDetectionService.js';
+import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
 import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';

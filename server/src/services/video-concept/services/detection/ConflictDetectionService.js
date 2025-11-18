@@ -1,9 +1,9 @@
-import { logger } from '../../infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.js';
-import { conflictsOutputSchema } from '../../utils/validation.js';
+import { logger } from '../../../../infrastructure/Logger.js';
+import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
+import { conflictsOutputSchema } from '../../../../utils/validation.js';
 import {
   detectDescriptorCategory,
-} from './SubjectDescriptorCategories.js';
+} from '../../config/descriptorCategories.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 
