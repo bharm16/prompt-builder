@@ -28,13 +28,13 @@ import { TextCategorizerService } from '../services/text-categorization/TextCate
 import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 
 // Import enhancement sub-services
-import { PlaceholderDetectionService } from '../services/enhancement/PlaceholderDetectionService.js';
-import { VideoPromptService } from '../services/enhancement/VideoPromptService.js';
-import { BrainstormContextBuilder } from '../services/enhancement/BrainstormContextBuilder.js';
-import { PromptBuilderService } from '../services/enhancement/PromptBuilderService.js';
-import { SuggestionValidationService } from '../services/enhancement/SuggestionValidationService.js';
-import { SuggestionDiversityEnforcer } from '../services/enhancement/SuggestionDiversityEnforcer.js';
-import { CategoryAlignmentService } from '../services/enhancement/CategoryAlignmentService.js';
+import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.js';
+import { VideoPromptService } from '../services/video-prompt/index.js';
+import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.js';
+import { PromptBuilderService } from '../services/enhancement/services/SystemPromptBuilder.js';
+import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.js';
+import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.js';
+import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.js';
 
 // Import config
 import { createRedisClient } from './redis.js';
