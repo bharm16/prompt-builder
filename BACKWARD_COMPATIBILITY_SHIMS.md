@@ -3,7 +3,7 @@
 **Status:** 🟡 ACTIVE SHIMS IN USE  
 **Created:** 2025-01-18  
 **Priority:** Low (all shims functioning correctly)  
-**Effort:** Medium (5 shims, 11 import statements to update)
+**Effort:** Medium (6 shims, 12 import statements to update)
 
 ## Overview
 
@@ -24,7 +24,7 @@ During the major service refactoring project, several large monolithic files (50
 
 ---
 
-## Server-Side Shims (3 files)
+## Server-Side Shims (4 files)
 
 ### 1. EnhancementService.js 🔴 Priority
 
@@ -112,6 +112,34 @@ import { VideoPromptService } from '../services/video-prompt/index.js';
 
 ---
 
+### 4. QuestionGenerationService.js
+
+**Location:** `server/src/services/QuestionGenerationService.js` (18 lines)  
+**Exports:** `QuestionGenerationService`, `questionGenerationService`  
+**Real Location:** `server/src/services/question-generation/QuestionGenerationService.js`  
+**Purpose:** Re-exports after refactoring 459-line monolith into modular structure
+
+**Refactoring Details:**
+- Original: 459 lines with mixed responsibilities
+- Split into: PromptAnalyzer, QuestionScorer
+- Config: analysisPatterns.js, promptTemplate.js
+- Main orchestrator: 119 lines (74% reduction)
+
+**Current Usage (1 import):**
+```javascript
+// server/src/config/services.config.js:23
+import { QuestionGenerationService } from '../services/question-generation/index.js';
+```
+
+**Migration Target:**
+```javascript
+import { QuestionGenerationService } from '../services/question-generation/index.js';
+```
+
+**Documentation:** `server/src/services/question-generation/REFACTORING_SUMMARY.md`
+
+---
+
 ## Client-Side Shims (2 files)
 
 ### 4. PromptOptimizerContainer.jsx
@@ -168,11 +196,11 @@ import { useHighlightRendering, useHighlightFingerprint } from './hooks/useHighl
 
 | Metric | Count |
 |--------|-------|
-| Total Shims | 5 |
-| Server-side | 3 |
+| Total Shims | 6 |
+| Server-side | 4 |
 | Client-side | 2 |
-| Total Imports to Update | ~11 |
-| Documented Refactorings | 5 |
+| Total Imports to Update | ~12 |
+| Documented Refactorings | 6 |
 | Estimated Effort | 2-4 hours |
 
 ---
@@ -252,6 +280,7 @@ import { useHighlightRendering, useHighlightFingerprint } from './hooks/useHighl
 - `server/src/services/enhancement/REFACTORING_SUMMARY.md`
 - `server/src/services/quality-feedback/REFACTORING_SUMMARY.md`
 - `server/src/services/video-prompt/REFACTORING_SUMMARY.md`
+- `server/src/services/question-generation/REFACTORING_SUMMARY.md`
 - `client/src/features/prompt-optimizer/PromptOptimizerContainer/REFACTORING_SUMMARY.md`
 - `client/src/features/prompt-optimizer/hooks/useHighlightRendering/REFACTORING_SUMMARY.md`
 - `REFACTORING_PROJECT.md` (main project tracker)
