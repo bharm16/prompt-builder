@@ -9,6 +9,7 @@ export { SuggestionGeneratorService } from './SuggestionGeneratorService.js';
 export { CompatibilityService } from './CompatibilityService.js';
 export { PreferenceRepository } from './PreferenceRepository.js';
 export { SceneAnalysisService } from './SceneAnalysisService.js';
+export { SceneChangeDetectionService } from './SceneChangeDetectionService.js';
 export { ConflictDetectionService } from './ConflictDetectionService.js';
 export { PromptBuilderService } from './PromptBuilderService.js';
 export { TemplateManagerService } from './TemplateManagerService.js';

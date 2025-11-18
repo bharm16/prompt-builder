@@ -22,7 +22,7 @@ import { cacheService } from '../services/cache/CacheService.js';
 import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
 import { QuestionGenerationService } from '../services/question-generation/index.js';
 import { EnhancementService } from '../services/EnhancementService.js';
-import { SceneDetectionService } from '../services/SceneDetectionService.js';
+import { SceneChangeDetectionService } from '../services/video-concept/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
 import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/SpanLabelingCacheService.js';
@@ -241,7 +241,7 @@ export function configureServices() {
 
   container.register(
     'sceneDetectionService',
-    (claudeClient) => new SceneDetectionService(claudeClient),
+    (claudeClient) => new SceneChangeDetectionService(claudeClient),
     ['claudeClient']
   );
 

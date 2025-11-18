@@ -1,13 +1,17 @@
-import { logger } from '../infrastructure/Logger.js';
-import { cacheService } from './cache/CacheService.js';
-import { StructuredOutputEnforcer } from '../utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { cacheService } from '../cache/CacheService.js';
+import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '../../utils/TemperatureOptimizer.js';
 
 /**
  * Service for detecting scene changes in video prompts
  * Determines if field changes require updating related fields
+ * 
+ * Moved from SceneDetectionService.js to video-concept folder for better
+ * logical grouping with other scene-related services (SceneAnalysisService,
+ * ConflictDetectionService).
  */
-export class SceneDetectionService {
+export class SceneChangeDetectionService {
   constructor(claudeClient) {
     this.claudeClient = claudeClient;
     this.cacheConfig = cacheService.getConfig('sceneDetection');
@@ -182,3 +186,4 @@ Return ONLY a JSON object (no markdown, no code blocks):
 - If isSceneChange is TRUE: provide specific suggested values for ALL affected fields`;
   }
 }
+

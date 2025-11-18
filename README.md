@@ -163,7 +163,8 @@ prompt-builder/
 │   │   ├── PromptOptimizationService.js (1882 lines)
 │   │   ├── VideoConceptService.js
 │   │   ├── EnhancementService.js
-│   │   ├── SceneDetectionService.js
+│   │   ├── video-concept/
+│   │   │   └── SceneChangeDetectionService.js
 │   │   ├── QuestionGenerationService.js
 │   │   ├── VideoPromptTemplates.js
 │   │   ├── CacheService.js
@@ -889,9 +890,9 @@ async getEnhancements(selectedText, fullPrompt, position)
 async getCustomSuggestions(request)
 ```
 
-#### SceneDetectionService
+#### SceneChangeDetectionService
 
-Scene change detection for video prompts.
+Scene change detection for video prompts (located in video-concept/).
 
 **Methods:**
 ```javascript
