@@ -88,17 +88,6 @@ export function PanelHeader({
           </div>
         </div>
       )}
-
-      {isPlaceholder && hasActiveSuggestions && (
-        <div className="mt-3 flex items-start gap-3 bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg">
-          <div className="p-1 bg-blue-100 rounded-lg">
-            <Info className="h-3.5 w-3.5 flex-shrink-0 text-blue-700" aria-hidden="true" />
-          </div>
-          <p className="text-[12px] leading-relaxed break-words text-blue-900 font-medium">
-            Context-aware values to replace your placeholder.
-          </p>
-        </div>
-      )}
     </header>
   );
 }

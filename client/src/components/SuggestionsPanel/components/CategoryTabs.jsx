@@ -16,7 +16,7 @@ export function CategoryTabs({ categories = [], activeCategory = null, onCategor
         <button
           key={cat.category}
           onClick={() => onCategoryChange(cat.category)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all duration-150 ${
+          className={`inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold rounded-lg transition-all duration-150 ${
             activeCategory === cat.category
               ? 'bg-neutral-900 text-white shadow-sm'
               : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-300 hover:border-neutral-400'
@@ -26,7 +26,7 @@ export function CategoryTabs({ categories = [], activeCategory = null, onCategor
         >
           <span>{cat.category}</span>
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+            className={`text-[9px] px-1.5 py-0.5 rounded-full ${
               activeCategory === cat.category
                 ? 'bg-white/20'
                 : 'bg-neutral-200 text-neutral-600'

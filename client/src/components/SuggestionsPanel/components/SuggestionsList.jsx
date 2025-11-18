@@ -71,17 +71,17 @@ export function SuggestionsList({
 
               <div className="space-y-2 pr-6">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="text-[14px] font-semibold text-neutral-900 break-words leading-snug whitespace-pre-wrap">
+                  <div className="text-[12px] font-semibold text-neutral-900 break-words leading-snug whitespace-pre-wrap">
                     {suggestionText}
                   </div>
                   {renderCompatibilityBadge(suggestionObj?.compatibility)}
                 </div>
                 {isPlaceholder && suggestionObj?.explanation ? (
-                  <div className="text-[12px] leading-relaxed text-neutral-600 break-words">
+                  <div className="text-[11px] leading-relaxed text-neutral-600 break-words">
                     {suggestionObj.explanation}
                   </div>
                 ) : suggestionObj?.explanation ? (
-                  <div className="text-[12px] leading-relaxed text-neutral-600 break-words">
+                  <div className="text-[11px] leading-relaxed text-neutral-600 break-words">
                     {suggestionObj.explanation}
                   </div>
                 ) : null}

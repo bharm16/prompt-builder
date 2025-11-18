@@ -23,7 +23,7 @@ export function CustomRequestForm({
   };
 
   return (
-    <div className="flex-shrink-0 p-4 border-b border-neutral-200 bg-gradient-to-b from-white to-neutral-50/30 space-y-3">
+    <div className="flex-shrink-0 p-3 border-b border-neutral-200 bg-gradient-to-b from-white to-neutral-50/30 space-y-2">
       <div className="space-y-1">
         <label
           htmlFor="custom-request"
@@ -40,7 +40,7 @@ export function CustomRequestForm({
           value={customRequest}
           onChange={(e) => onCustomRequestChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-20 text-[13px] text-neutral-900 bg-white border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
+          className="w-full h-12 text-[13px] text-neutral-900 bg-white border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
           maxLength={MAX_REQUEST_LENGTH}
         />
 
