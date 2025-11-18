@@ -113,7 +113,7 @@ Structure:
 - templates/ (external .md files for prompts)
 
 REFERENCE IMPLEMENTATION:
-server/src/services/PromptOptimizationService.js
+server/src/services/prompt-optimization/PromptOptimizationService.js
 server/src/services/VideoConceptService.js
 
 PATTERNS:
@@ -188,7 +188,7 @@ After changes: wc -l server/src/services/[ServiceName]/*.js
 claude-code "Modify PromptOptimizationService to add custom temperature strategies per domain
 
 CURRENT ARCHITECTURE:
-- Location: server/src/services/PromptOptimizationService.js
+- Location: server/src/services/prompt-optimization/PromptOptimizationService.js
 - Current structure: ContextInference, ModeDetection, QualityAssessment, StrategyFactory
 - Pattern: Orchestrator with specialized services
 - Current line count: ~400 lines
@@ -343,7 +343,7 @@ TARGET STATE:
 
 ### Backend (Services)
 **Pattern:** PromptOptimizationService
-**Location:** `server/src/services/PromptOptimizationService.js`
+**Location:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
 **Key concepts:**
 - Orchestrator delegates to specialized services
 - Each service < 300 lines, single responsibility

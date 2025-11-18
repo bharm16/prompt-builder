@@ -192,7 +192,7 @@ console.log('Used fallback?', result.usedFallback);
    - Error handling and retries
    - Metrics integration
 
-2. **PromptOptimizationService** (`server/src/services/PromptOptimizationService.js`)
+2. **PromptOptimizationService** (`server/src/services/prompt-optimization/PromptOptimizationService.js`)
    - `optimizeTwoStage()` method
    - Draft system prompts for each mode
    - Automatic fallback logic

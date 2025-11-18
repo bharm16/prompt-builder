@@ -1,5 +1,5 @@
 // Verification script for template enhancements
-import { PromptOptimizationService } from './src/services/PromptOptimizationService.js';
+import { PromptOptimizationService } from './src/services/prompt-optimization/PromptOptimizationService.js';
 
 console.log('✓ PromptOptimizationService imported successfully');
 

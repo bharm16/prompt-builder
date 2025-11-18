@@ -1,16 +1,16 @@
-import { logger } from '../infrastructure/Logger.js';
-import { cacheService } from './cache/CacheService.js';
-import { TemperatureOptimizer } from '../utils/TemperatureOptimizer.js';
-import { ConstitutionalAI } from '../utils/ConstitutionalAI.js';
-import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
-import OptimizationConfig from '../config/OptimizationConfig.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { cacheService } from '../cache/CacheService.js';
+import { TemperatureOptimizer } from '../../utils/TemperatureOptimizer.js';
+import { ConstitutionalAI } from '../../utils/ConstitutionalAI.js';
+import { labelSpans } from '../../llm/span-labeling/SpanLabelingService.js';
+import OptimizationConfig from '../../config/OptimizationConfig.js';
 
 // Import specialized services
-import { ContextInferenceService } from './optimization/ContextInferenceService.js';
-import { ModeDetectionService } from './optimization/ModeDetectionService.js';
-import { QualityAssessmentService } from './optimization/QualityAssessmentService.js';
-import { StrategyFactory } from './optimization/StrategyFactory.js';
-import { templateService } from './optimization/TemplateService.js';
+import { ContextInferenceService } from '../optimization/ContextInferenceService.js';
+import { ModeDetectionService } from '../optimization/ModeDetectionService.js';
+import { QualityAssessmentService } from '../optimization/QualityAssessmentService.js';
+import { StrategyFactory } from '../optimization/StrategyFactory.js';
+import { templateService } from '../optimization/TemplateService.js';
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -472,3 +472,4 @@ Output ONLY the draft prompt, no explanations.`
 }
 
 export default PromptOptimizationService;
+

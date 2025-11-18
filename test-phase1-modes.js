@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { OpenAIAPIClient } from './server/src/clients/OpenAIAPIClient.js';
-import { PromptOptimizationService } from './server/src/services/PromptOptimizationService.js';
+import { PromptOptimizationService } from './server/src/services/prompt-optimization/PromptOptimizationService.js';
 
 // Load environment variables
 dotenv.config();

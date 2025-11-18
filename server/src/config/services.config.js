@@ -19,7 +19,7 @@ import { GroqAPIClient } from '../clients/GroqAPIClient.js';
 
 // Import services
 import { cacheService } from '../services/cache/CacheService.js';
-import { PromptOptimizationService } from '../services/PromptOptimizationService.js';
+import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
 import { QuestionGenerationService } from '../services/QuestionGenerationService.js';
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneDetectionService } from '../services/SceneDetectionService.js';

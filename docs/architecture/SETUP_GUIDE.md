@@ -106,7 +106,7 @@ Create `.vscode/claude-code.code-snippets`:
       "- services/${3:service-name}/ (specialized services < 300 lines)",
       "- templates/ (.md files for prompts)",
       "",
-      "REFERENCE: server/src/services/PromptOptimizationService.js",
+      "REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js",
       "SHOW STRUCTURE FIRST"
     ],
     "description": "Template for new backend service"
@@ -439,7 +439,7 @@ ARCHITECTURE: PromptOptimizationService pattern
 - services/${service,,}/ (specialized services < 300 lines)
 - templates/ (.md files for prompts)
 
-REFERENCE: server/src/services/PromptOptimizationService.js
+REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 EOF
     ;;

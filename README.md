@@ -843,7 +843,7 @@ Prompt history with search and filtering.
 
 Core optimization engine (1882 lines).
 
-**Location:** `src/services/PromptOptimizationService.js`
+**Location:** `src/services/prompt-optimization/PromptOptimizationService.js`
 
 **Key Methods:**
 

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PromptOptimizationService } from '../PromptOptimizationService.js';
+import { PromptOptimizationService } from '../prompt-optimization/PromptOptimizationService.js';
 
 describe('PromptOptimizationService', () => {
   // ============================================
