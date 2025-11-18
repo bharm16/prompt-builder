@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
-import { logger } from '../infrastructure/Logger.js';
-import { metricsService } from '../infrastructure/MetricsService.js';
+import { logger } from '../../infrastructure/Logger.js';
+import { metricsService } from '../../infrastructure/MetricsService.js';
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -398,3 +398,4 @@ export function initSpanLabelingCache(options = {}) {
   spanLabelingCache.startPeriodicCleanup();
   return spanLabelingCache;
 }
+

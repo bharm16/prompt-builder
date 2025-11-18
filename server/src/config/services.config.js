@@ -25,7 +25,7 @@ import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneChangeDetectionService } from '../services/video-concept/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
 import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
-import { initSpanLabelingCache } from '../services/SpanLabelingCacheService.js';
+import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '../services/enhancement/PlaceholderDetectionService.js';
