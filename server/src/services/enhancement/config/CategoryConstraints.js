@@ -1,5 +1,21 @@
 /**
- * Category constraints and fallbacks for video prompt suggestions
+ * Category Constraints Configuration
+ * 
+ * Provides validation rules, AI prompt instructions, and fallback suggestions
+ * for video enhancement category constraints.
+ * 
+ * SCOPE: Enhancement service category validation
+ * USED BY: 
+ *   - CategoryAlignmentService (fallback suggestions)
+ *   - PromptBuilderService (AI prompt constraints)
+ *   - SuggestionValidationService (pattern validation)
+ *   - CategoryRegistry (metadata aggregation)
+ * 
+ * STRUCTURE:
+ *   - CATEGORY_CONSTRAINTS: Configuration with patterns, instructions, fallbacks
+ *   - detectSubcategory(): Detects technical subcategories
+ *   - validateAgainstVideoTemplate(): Validates suggestion patterns
+ * 
  * Aligned with VideoPromptTemplates.js requirements
  */
 
@@ -112,3 +128,4 @@ export function validateAgainstVideoTemplate(suggestion, category, subcategory) 
   }
   return true;
 }
+

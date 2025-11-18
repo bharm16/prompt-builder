@@ -1,5 +1,5 @@
 import { logger } from '../infrastructure/Logger.js';
-import { CATEGORY_CONSTRAINTS } from './CategoryConstraints.js';
+import { CATEGORY_CONSTRAINTS } from './enhancement/config/CategoryConstraints.js';
 
 let PromptContextModule = null;
 let categoryValidatorsModule = null;
