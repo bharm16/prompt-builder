@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateVideoPrompt } from '../../../../server/src/services/optimization/strategies/videoPromptOptimizationTemplate.js';
+import { generateVideoPrompt } from '../../../../server/src/services/prompt-optimization/strategies/videoPromptOptimizationTemplate.js';
 
 describe('VideoPromptTemplates - Research-Based Single Template', () => {
   const testPrompt = 'A cat jumping over a fence';

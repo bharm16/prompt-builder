@@ -11,7 +11,7 @@ Documentation for writing comprehensive tests using Claude Code. Maintains consi
 claude-code "Write comprehensive tests for [FILE_PATH]
 
 PATTERN TO FOLLOW:
-- Backend: server/src/services/optimization/strategies/__tests__/VideoStrategy.test.js
+- Backend: server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js
 - Frontend: Create new patterns (current tests need improvement)
 
 TEST REQUIREMENTS:
@@ -28,7 +28,7 @@ OUTPUT: [path]/__tests__/[name].test.js"
 ## Current Test Quality Assessment
 
 ### ✅ Good Examples (Use as Reference)
-- **Backend:** `server/src/services/optimization/strategies/__tests__/VideoStrategy.test.js`
+- **Backend:** `server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js`
   - Proper mocking with vitest
   - Comprehensive edge cases
   - Clear AAA pattern
@@ -366,7 +366,7 @@ describe('[ServiceName]', () => {
 });
 
 REFERENCE PATTERN:
-server/src/services/optimization/strategies/__tests__/VideoStrategy.test.js
+server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js
 
 OUTPUT:
 Create test file at: [service-path]/__tests__/[ServiceName].test.js
@@ -758,7 +758,7 @@ const mockLocalStorage = {
 Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
 
 REFERENCE PATTERNS:
-- Backend: server/src/services/optimization/strategies/__tests__/VideoStrategy.test.js
+- Backend: server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js
 - Frontend: (create new pattern - current tests need improvement)
 
 OUTPUT: client/src/components/wizard/WizardVideoBuilder/__tests__/WizardVideoBuilder.test.jsx
