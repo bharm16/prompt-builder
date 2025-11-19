@@ -63,6 +63,8 @@ function PromptOptimizerContent({ user }) {
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setShowResults,
+    setCanUndo,
+    setCanRedo,
 
     // Refs
     latestHighlightRef,
@@ -147,6 +149,8 @@ function PromptOptimizerContent({ user }) {
     redoStackRef,
     latestHighlightRef,
     isApplyingHistoryRef,
+    setCanUndo,
+    setCanRedo,
   });
 
   // Prompt optimization
@@ -200,7 +204,7 @@ function PromptOptimizerContent({ user }) {
     selectedMode,
     suggestionsData,
     setSuggestionsData,
-    setDisplayedPromptSilently,
+    handleDisplayedPromptChange,
     stablePromptContext,
     toast,
   });

@@ -27,7 +27,7 @@ import { useSuggestionFetch } from './useSuggestionFetch.js';
  * @param {string} params.selectedMode - Current mode (video/image/etc)
  * @param {Object} params.suggestionsData - Current suggestions state
  * @param {Function} params.setSuggestionsData - Update suggestions state
- * @param {Function} params.setDisplayedPromptSilently - Update prompt silently
+ * @param {Function} params.handleDisplayedPromptChange - Update prompt with undo/redo support
  * @param {Object} params.stablePromptContext - Stable brainstorm context
  * @param {Object} params.toast - Toast notification instance
  * @returns {Object} { fetchEnhancementSuggestions, handleSuggestionClick }
@@ -37,14 +37,14 @@ export function useEnhancementSuggestions({
   selectedMode,
   suggestionsData,
   setSuggestionsData,
-  setDisplayedPromptSilently,
+  handleDisplayedPromptChange,
   stablePromptContext,
   toast,
 }) {
   // Handle applying suggestions
   const { handleSuggestionClick } = useSuggestionApply({
     suggestionsData,
-    setDisplayedPromptSilently,
+    handleDisplayedPromptChange,
     setSuggestionsData,
     toast,
   });

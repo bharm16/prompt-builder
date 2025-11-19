@@ -18,14 +18,14 @@ import { useEditHistory } from '../../hooks/useEditHistory.js';
  * Hook for applying suggestions to prompt
  * @param {Object} params - Hook parameters
  * @param {Object} params.suggestionsData - Current suggestions state
- * @param {Function} params.setDisplayedPromptSilently - Update prompt without side effects
+ * @param {Function} params.handleDisplayedPromptChange - Update prompt with undo/redo support
  * @param {Function} params.setSuggestionsData - Update suggestions state
  * @param {Object} params.toast - Toast notification instance
  * @returns {Object} { handleSuggestionClick }
  */
 export function useSuggestionApply({
   suggestionsData,
-  setDisplayedPromptSilently,
+  handleDisplayedPromptChange,
   setSuggestionsData,
   toast,
 }) {
@@ -62,7 +62,7 @@ export function useSuggestionApply({
 
       // Update displayed prompt
       if (result.updatedPrompt) {
-        setDisplayedPromptSilently(result.updatedPrompt);
+        handleDisplayedPromptChange(result.updatedPrompt);
         toast.success('Suggestion applied');
 
         // Track this edit in history
@@ -83,7 +83,7 @@ export function useSuggestionApply({
       console.error('Error applying suggestion:', error);
       toast.error('Failed to apply suggestion');
     }
-  }, [suggestionsData, setDisplayedPromptSilently, setSuggestionsData, toast, addEdit]);
+  }, [suggestionsData, handleDisplayedPromptChange, setSuggestionsData, toast, addEdit]);
 
   return {
     handleSuggestionClick,
