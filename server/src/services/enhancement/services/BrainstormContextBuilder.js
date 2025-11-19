@@ -1,3 +1,42 @@
+import { TAXONOMY } from '../../../../../shared/taxonomy.js';
+
+/**
+ * Suggestion mappings from creative intent to taxonomy categories
+ * Maps semantic suggestions to structured taxonomy IDs
+ */
+const SUGGESTION_MAPPINGS = {
+  TIME_PERIOD: {
+    category: TAXONOMY.STYLE.attributes.AESTHETIC,
+    displayLabel: 'Time Period',
+    reason: 'Nostalgic narratives need temporal anchoring'
+  },
+  VISUAL_TREATMENT: {
+    category: TAXONOMY.STYLE.attributes.AESTHETIC,
+    displayLabel: 'Visual Treatment',
+    reason: 'Consider period-appropriate visual aesthetics'
+  },
+  LIGHTING: {
+    category: TAXONOMY.LIGHTING.id,
+    displayLabel: 'Lighting',
+    reason: 'Lighting establishes mood and atmosphere'
+  },
+  MATERIALS: {
+    category: TAXONOMY.ENVIRONMENT.attributes.CONTEXT,
+    displayLabel: 'Materials & Textures',
+    reason: 'Material choices reinforce aesthetic direction'
+  },
+  CAMERA: {
+    category: TAXONOMY.CAMERA.id,
+    displayLabel: 'Camera Work',
+    reason: 'Camera choices affect viewer perspective and emotional impact'
+  },
+  ENVIRONMENT: {
+    category: TAXONOMY.ENVIRONMENT.id,
+    displayLabel: 'Environment',
+    reason: 'Setting establishes context and supports narrative'
+  }
+};
+
 /**
  * BrainstormContextBuilder
  * 
@@ -168,6 +207,7 @@ export class BrainstormContextBuilder {
   /**
    * Suggest missing elements based on creative intent
    * NEW: Identifies gaps in the creative direction
+   * Uses taxonomy-based SUGGESTION_MAPPINGS for consistency
    * 
    * @param {Object} intent - Creative intent from inferCreativeIntent
    * @param {Object} elements - Existing elements
@@ -184,37 +224,65 @@ export class BrainstormContextBuilder {
       return keywords.some(k => elementText.includes(k));
     };
 
-    // Intent-specific suggestions
+    // Intent-specific suggestions using taxonomy mappings
     if (intent.primaryIntent === 'nostalgic narrative') {
       if (!hasElement(['time', 'era', 'period', 'year'])) {
-        suggestions.push({ category: 'time_period', reason: 'Nostalgic narratives need temporal anchoring' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.TIME_PERIOD.category,
+          displayLabel: SUGGESTION_MAPPINGS.TIME_PERIOD.displayLabel,
+          reason: SUGGESTION_MAPPINGS.TIME_PERIOD.reason
+        });
       }
       if (!hasElement(['sepia', 'faded', 'vintage', 'aged'])) {
-        suggestions.push({ category: 'visual_treatment', reason: 'Consider period-appropriate visual aesthetics' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.VISUAL_TREATMENT.category,
+          displayLabel: SUGGESTION_MAPPINGS.VISUAL_TREATMENT.displayLabel,
+          reason: SUGGESTION_MAPPINGS.VISUAL_TREATMENT.reason
+        });
       }
     }
 
     if (intent.primaryIntent === 'futuristic vision') {
       if (!hasElement(['neon', 'holographic', 'led', 'digital'])) {
-        suggestions.push({ category: 'lighting', reason: 'Futuristic settings often feature artificial/neon lighting' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.LIGHTING.category,
+          displayLabel: SUGGESTION_MAPPINGS.LIGHTING.displayLabel,
+          reason: 'Futuristic settings often feature artificial/neon lighting'
+        });
       }
       if (!hasElement(['glass', 'metal', 'chrome', 'sleek'])) {
-        suggestions.push({ category: 'materials', reason: 'Futuristic aesthetics benefit from modern materials' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.MATERIALS.category,
+          displayLabel: SUGGESTION_MAPPINGS.MATERIALS.displayLabel,
+          reason: 'Futuristic aesthetics benefit from modern materials'
+        });
       }
     }
 
     if (intent.primaryIntent === 'tension and suspense') {
       if (!hasElement(['shadow', 'dim', 'low key', 'dark'])) {
-        suggestions.push({ category: 'lighting', reason: 'Suspense typically requires low-key lighting for atmosphere' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.LIGHTING.category,
+          displayLabel: SUGGESTION_MAPPINGS.LIGHTING.displayLabel,
+          reason: 'Suspense typically requires low-key lighting for atmosphere'
+        });
       }
       if (!hasElement(['close-up', 'dutch', 'handheld'])) {
-        suggestions.push({ category: 'camera', reason: 'Tension benefits from claustrophobic framing or unstable camera' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.CAMERA.category,
+          displayLabel: SUGGESTION_MAPPINGS.CAMERA.displayLabel,
+          reason: 'Tension benefits from claustrophobic framing or unstable camera'
+        });
       }
     }
 
     if (intent.narrativeDirection === 'journey/quest') {
       if (!hasElement(['landscape', 'path', 'road', 'horizon'])) {
-        suggestions.push({ category: 'environment', reason: 'Journey narratives often emphasize the landscape/path' });
+        suggestions.push({
+          category: SUGGESTION_MAPPINGS.ENVIRONMENT.category,
+          displayLabel: SUGGESTION_MAPPINGS.ENVIRONMENT.displayLabel,
+          reason: 'Journey narratives often emphasize the landscape/path'
+        });
       }
     }
 

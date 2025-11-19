@@ -208,6 +208,11 @@ Object.values(TAXONOMY).forEach(category => {
 });
 
 /**
+ * Taxonomy Version - Used for cache invalidation and debugging
+ */
+export const TAXONOMY_VERSION = '2.0.0';
+
+/**
  * Check if a category ID is valid
  * @param {string} id - Category ID to validate
  * @returns {boolean} True if valid

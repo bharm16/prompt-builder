@@ -1,3 +1,9 @@
+import { TAXONOMY, VALID_CATEGORIES, getParentCategory } from '../../../shared/taxonomy.js';
+
+// ============================================================================
+// REGEX PATTERNS (Preserved from legacy implementation)
+// ============================================================================
+
 const GENERIC_ADJECTIVES = new Set([
   'beautiful',
   'cinematic',
@@ -33,6 +39,49 @@ const ADJECTIVE_PATTERN = /\b(warm|cool|soft|hard|golden|dark|bright|vivid|moody
 const VERB_PATTERN = /\b(dolly|truck|push|pull|pan|tilt|crane|zoom|track|follow|move|shift|glide|sweep|drift)\b/i;
 const NOUN_PATTERN = /\b(shot|movement|camera|lighting|light|style|aesthetic|look|atmosphere|tone|mood|composition|framing|angle)\b/i;
 
+// ============================================================================
+// LEGACY COMPATIBILITY LAYER
+// ============================================================================
+
+/**
+ * Maps old flat IDs to new Taxonomy IDs on the fly.
+ * Provides backward compatibility during migration.
+ */
+export const LEGACY_MAPPINGS = {
+  'cameramove': TAXONOMY.CAMERA.attributes.MOVEMENT,
+  'aesthetic': TAXONOMY.STYLE.attributes.AESTHETIC,
+  'timeOfDay': TAXONOMY.LIGHTING.attributes.TIME,
+  'time': TAXONOMY.LIGHTING.attributes.TIME,
+  'mood': TAXONOMY.STYLE.id,
+  'framing': TAXONOMY.CAMERA.attributes.FRAMING,
+  'filmFormat': TAXONOMY.STYLE.attributes.FILM_STOCK,
+  'cameraMove': TAXONOMY.CAMERA.attributes.MOVEMENT,
+  'location': TAXONOMY.ENVIRONMENT.attributes.LOCATION,
+  'subject': TAXONOMY.SUBJECT.id,
+  'action': TAXONOMY.SUBJECT.attributes.ACTION,
+  'camera': TAXONOMY.CAMERA.id,
+  'lighting': TAXONOMY.LIGHTING.id,
+  'technical': TAXONOMY.TECHNICAL.id,
+  'style': TAXONOMY.STYLE.id,
+  'environment': TAXONOMY.ENVIRONMENT.id,
+};
+
+/**
+ * Attributes that inherit their parent's regex validator
+ */
+const INHERIT_PARENT_VALIDATION = new Set([
+  TAXONOMY.TECHNICAL.attributes.FPS,
+  TAXONOMY.TECHNICAL.attributes.RESOLUTION,
+  TAXONOMY.TECHNICAL.attributes.ASPECT_RATIO,
+  TAXONOMY.CAMERA.attributes.LENS,
+  TAXONOMY.CAMERA.attributes.ANGLE,
+  TAXONOMY.STYLE.attributes.FILM_STOCK,
+]);
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 const ensureText = (span) => (span?.text || span?.quote || '').trim();
 
 // Simple pattern matcher (replaces compromise.js testNLPPattern)
@@ -48,6 +97,10 @@ const extractAdjectives = (text) => {
   const matches = text.match(ADJECTIVE_PATTERN);
   return matches ? matches.map(m => m.toLowerCase()) : [];
 };
+
+// ============================================================================
+// CATEGORY-SPECIFIC VALIDATORS
+// ============================================================================
 
 const cameraValidator = (span) => {
   const text = ensureText(span);
@@ -136,68 +189,98 @@ const environmentValidator = (span) => {
     : { pass: false, reason: 'environment_missing_place_noun' };
 };
 
+// ============================================================================
+// VALIDATOR MAPPING (Using Taxonomy IDs)
+// ============================================================================
+
 const validators = {
-  camera: cameraValidator,
-  cameramove: cameraValidator,
-  lighting: lightingValidator,
-  technical: technicalValidator,
-  style: styleValidator,
-  aesthetic: styleValidator,
-  environment: environmentValidator,
-  location: environmentValidator,
-  subject: () => ({ pass: true }),
-  action: () => ({ pass: true }),
-  timeOfDay: () => ({ pass: true }),
-  time: () => ({ pass: true }),
-  mood: () => ({ pass: true }),
+  // Parent categories
+  [TAXONOMY.CAMERA.id]: cameraValidator,
+  [TAXONOMY.LIGHTING.id]: lightingValidator,
+  [TAXONOMY.TECHNICAL.id]: technicalValidator,
+  [TAXONOMY.STYLE.id]: styleValidator,
+  [TAXONOMY.ENVIRONMENT.id]: environmentValidator,
+  [TAXONOMY.SUBJECT.id]: () => ({ pass: true }),
+
+  // Camera attributes
+  [TAXONOMY.CAMERA.attributes.MOVEMENT]: cameraValidator,
+  [TAXONOMY.CAMERA.attributes.FRAMING]: cameraValidator,
+
+  // Lighting attributes
+  [TAXONOMY.LIGHTING.attributes.TIME]: () => ({ pass: true }),
+
+  // Subject attributes (pass-through)
+  [TAXONOMY.SUBJECT.attributes.ACTION]: () => ({ pass: true }),
 };
+
+// ============================================================================
+// CATEGORY CAPS (Using Taxonomy IDs)
+// ============================================================================
 
 export const CATEGORY_CAPS = {
-  camera: 2,
-  cameramove: 2,
-  lighting: 2,
-  technical: 3,
-  style: 2,
-  aesthetic: 2,
-  environment: 2,
-  subject: 3,
-  action: 3,
+  [TAXONOMY.CAMERA.id]: 2,
+  [TAXONOMY.CAMERA.attributes.MOVEMENT]: 2,
+  [TAXONOMY.LIGHTING.id]: 2,
+  [TAXONOMY.TECHNICAL.id]: 3,
+  [TAXONOMY.STYLE.id]: 2,
+  [TAXONOMY.STYLE.attributes.AESTHETIC]: 2,
+  [TAXONOMY.ENVIRONMENT.id]: 2,
+  [TAXONOMY.SUBJECT.id]: 3,
+  [TAXONOMY.SUBJECT.attributes.ACTION]: 3,
 };
 
+// ============================================================================
+// MAIN VALIDATION FUNCTION
+// ============================================================================
+
+/**
+ * Validate a span using the unified taxonomy system
+ * Handles both new taxonomy IDs and legacy IDs with mapping
+ * 
+ * @param {Object} span - Span object with category and text
+ * @returns {Object} Validation result with pass/fail, category, and reason
+ */
 export const validateSpan = (span) => {
   if (!span) return { span, pass: false, reason: 'missing_span' };
 
-  const category = span.category;
-  const validator = validators[category];
-  if (validator) {
-    const result = validator(span);
-    return {
-      span,
-      pass: result.pass,
-      category,
-      reason: result.reason ?? null,
-    };
+  let category = span.category;
+
+  // 1. Handle Legacy Mappings
+  if (LEGACY_MAPPINGS[category]) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[Validator] Legacy category "${category}" mapped to "${LEGACY_MAPPINGS[category]}"`);
+    }
+    category = LEGACY_MAPPINGS[category];
   }
 
-  // Attempt re-typing
-  for (const [candidateCategory, candidateValidator] of Object.entries(validators)) {
-    if (candidateCategory === category) continue;
-    const result = candidateValidator(span);
-    if (result.pass) {
-      return {
-        span,
-        pass: true,
-        category: candidateCategory,
-        reason: 'retyped_category',
-      };
+  // 2. Strict Taxonomy Check
+  if (!VALID_CATEGORIES.has(category)) {
+    return { span, pass: false, category, reason: 'invalid_taxonomy_id' };
+  }
+
+  // 3. Validator Lookup
+  let validator = validators[category];
+
+  // 4. Inheritance Logic for attributes without specific validators
+  if (!validator && INHERIT_PARENT_VALIDATION.has(category)) {
+    const parent = getParentCategory(category);
+    if (parent) {
+      validator = validators[parent];
     }
   }
 
+  // 5. Pass-through for non-validated categories (Subject attributes, etc)
+  if (!validator) {
+    return { span, pass: true, category, reason: 'generic_pass' };
+  }
+
+  // 6. Run the validator
+  const result = validator(span);
   return {
     span,
-    pass: false,
+    pass: result.pass,
     category,
-    reason: 'no_matching_validator',
+    reason: result.reason ?? null,
   };
 };
 
