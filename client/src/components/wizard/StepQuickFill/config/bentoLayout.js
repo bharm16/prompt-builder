@@ -22,7 +22,7 @@ import {
   PartyPopper 
 } from 'lucide-react';
 
-import { COLOR_SCHEMES } from '../../../../utils/patternUtils';
+import { COLOR_SCHEMES } from '../../../../styles/wizard';
 
 /**
  * Design System Colors

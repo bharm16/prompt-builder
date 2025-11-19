@@ -1,4 +1,11 @@
-import { API_CONFIG } from '../config/api.config';
+/**
+ * Scene Change Detection and Application
+ * 
+ * Detects scene changes via API and applies suggested updates to the prompt
+ */
+
+import { API_CONFIG } from '../../config/api.config.js';
+import { extractSceneContext } from './sceneContextParser.js';
 
 const escapeRegExp = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -10,81 +17,18 @@ const defaultConfirm = (message) => {
   return true;
 };
 
-const extractSceneContext = (fullPrompt, targetValue) => {
-  if (!fullPrompt) {
-    return {
-      changedField: 'Unknown Field',
-      affectedFields: {},
-      sectionHeading: null,
-      sectionContext: null,
-    };
-  }
-
-  const normalizedTarget = typeof targetValue === 'string' ? targetValue.toLowerCase().trim() : '';
-  const sectionRegex = /\*\*(.+?)\*\*([\s\S]*?)(?=\*\*|$)/g;
-  let matchedFields = null;
-  let matchedHeading = null;
-  let matchedContext = null;
-  let fallbackFields = null;
-  let fallbackHeading = null;
-  let fallbackContext = null;
-
-  let sectionMatch;
-  while ((sectionMatch = sectionRegex.exec(fullPrompt))) {
-    const heading = sectionMatch[1].trim();
-    const body = sectionMatch[2] || '';
-    const fields = {};
-
-    const fieldRegex = /- ([^:]+): \[(.*?)\]/g;
-    let fieldMatch;
-    let foundInSection = false;
-    while ((fieldMatch = fieldRegex.exec(body))) {
-      const fieldName = fieldMatch[1].trim();
-      const fieldValue = fieldMatch[2].trim();
-      fields[fieldName] = fieldValue;
-
-      if (!foundInSection && normalizedTarget && fieldValue.toLowerCase().includes(normalizedTarget)) {
-        foundInSection = true;
-      }
-    }
-
-    if (foundInSection && !matchedFields) {
-      matchedFields = { ...fields };
-      matchedHeading = heading;
-      matchedContext = body.trim();
-    } else if (!matchedFields && Object.keys(fields).length > 0 && !fallbackFields) {
-      fallbackFields = { ...fields };
-      fallbackHeading = heading;
-      fallbackContext = body.trim();
-    }
-
-    if (matchedFields) {
-      break;
-    }
-  }
-
-  const selectedFields = matchedFields || fallbackFields || {};
-  const heading = matchedHeading || fallbackHeading || null;
-  const context = matchedContext || fallbackContext || null;
-
-  let changedField = 'Unknown Field';
-  if (normalizedTarget && Object.keys(selectedFields).length > 0) {
-    const match = Object.entries(selectedFields).find(([, value]) =>
-      value.toLowerCase().includes(normalizedTarget)
-    );
-    if (match) {
-      changedField = match[0];
-    }
-  }
-
-  return {
-    changedField,
-    affectedFields: selectedFields,
-    sectionHeading: heading,
-    sectionContext: context,
-  };
-};
-
+/**
+ * Detect and apply scene changes to a prompt
+ * 
+ * @param {Object} params
+ * @param {string} params.originalPrompt - The original prompt text
+ * @param {string} params.updatedPrompt - The updated prompt text
+ * @param {string} params.oldValue - Previous field value
+ * @param {string} params.newValue - New field value
+ * @param {Function} params.fetchImpl - Fetch implementation (optional, defaults to global fetch)
+ * @param {Function} params.confirmSceneChange - Confirmation function (optional, defaults to window.confirm)
+ * @returns {Promise<string>} Updated prompt with scene changes applied
+ */
 export async function detectAndApplySceneChange({
   originalPrompt,
   updatedPrompt,
@@ -189,4 +133,3 @@ export async function detectAndApplySceneChange({
   }
 }
 
-export default detectAndApplySceneChange;

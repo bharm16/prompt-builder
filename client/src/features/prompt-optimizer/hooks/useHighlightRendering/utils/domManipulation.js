@@ -4,7 +4,7 @@
  * Functions for creating and manipulating highlight wrapper elements.
  */
 
-import { PromptContext } from '../../../../../utils/PromptContext.js';
+import { PromptContext } from '../../../../../utils/PromptContext';
 import { getHighlightClassName, applyHighlightStyles } from '../config/highlightStyles.js';
 import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.js';
 
