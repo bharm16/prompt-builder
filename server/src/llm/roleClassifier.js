@@ -1,43 +1,71 @@
 // server/llm/roleClassifier.js
 // LLM system prompt + validator + cache.
+// Now uses unified taxonomy system with namespaced IDs.
 
 import crypto from 'crypto';
 import NodeCache from 'node-cache';
 import { callOpenAI } from './openAIClient.js';
+import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.js';
 
 const cache = new NodeCache({ stdTTL: 120 });
 
+// Cache version for taxonomy migration - bump to invalidate old cached responses
+const CACHE_VERSION = 'v2-taxonomy';
+
 const SYSTEM_PROMPT = `
-You label short prompt spans for a video prompt editor.
-Roles: Subject, Appearance, Wardrobe, Movement, Environment, Lighting, Camera, Framing, Specs, Style, Quality.
-Rules:
-- Do not change "text", "start", or "end".
-- Do not merge or split spans.
-- Subject = WHO/WHAT (person type, character, object being filmed)
-- Appearance = physical traits (faces, bodies, expressions)
-- Movement = subject movement with -ing verbs (NOT camera movement)
-- Camera = camera movement only (pan, dolly, track, focus)
-- Lighting = includes time of day (golden hour, dusk, etc.)
-- Specs = technical parameters (4k, 8k, 16:9, fps)
-- Style = aesthetic references (35mm film, cyberpunk, noir)
-- Check ALL categories before using Quality
-- If unsure after checking all, use "Quality".
+You label short prompt spans for a video prompt editor using our hierarchical taxonomy system.
+
+TAXONOMY CATEGORIES (use these exact IDs):
+
+ENTITY GROUP (subject and attributes):
+- subject: Main focal point (person, object, animal)
+- subject.identity: Core identity ("a cowboy", "an alien")
+- subject.appearance: Physical traits (face, body, build, features)
+- subject.wardrobe: Clothing, costume, attire
+- subject.action: Movement or activity (running, sitting, leaning)
+- subject.emotion: Emotional state, expression
+
+SETTING GROUP (environment and lighting):
+- environment: Location or setting
+- environment.location: Specific place (diner, forest, Mars)
+- environment.weather: Weather conditions (rainy, foggy, sunny)
+- environment.context: Environmental context (crowded, empty, abandoned)
+- lighting: Illumination and atmosphere
+- lighting.source: Light source (neon sign, sun, candles)
+- lighting.quality: Light quality (soft, hard, diffused)
+- lighting.timeOfDay: Time of day (golden hour, dusk, dawn)
+
+TECHNICAL GROUP (camera, style, specs):
+- camera: Camera operations
+- camera.framing: Shot type (close-up, wide shot, medium)
+- camera.movement: Camera movement (dolly, pan, crane, static)
+- camera.lens: Lens specification (35mm, anamorphic)
+- camera.angle: Camera angle (low angle, overhead, eye level)
+- style: Visual treatment and aesthetic
+- style.aesthetic: Aesthetic style (cyberpunk, noir, vintage)
+- style.filmStock: Film medium (Kodak Portra, 35mm film, digital)
+- technical: Technical specifications
+- technical.aspectRatio: Aspect ratio (16:9, 2.39:1, 9:16)
+- technical.frameRate: Frame rate (24fps, 30fps, 60fps)
+- technical.resolution: Resolution (4K, 1080p, 8K)
+- audio: Audio elements
+- audio.score: Music or score (orchestral, ambient)
+- audio.soundEffect: Sound effects (footsteps, wind, traffic)
+
+RULES:
+- Use namespaced IDs exactly as shown above (e.g., "subject.wardrobe" not "wardrobe")
+- Do not change "text", "start", or "end" values
+- Do not merge or split spans
+- Choose the most specific attribute when possible (prefer "subject.wardrobe" over "subject")
+- For camera movement use "camera.movement", for subject movement use "subject.action"
+- Time of day goes under "lighting.timeOfDay"
+- Check ALL categories before using generic parent categories
+
 Return ONLY valid JSON: {"spans":[...]}.
 `;
 
-const ROLE_SET = new Set([
-  'Subject',
-  'Appearance',
-  'Wardrobe',
-  'Movement',
-  'Environment',
-  'Lighting',
-  'Camera',
-  'Framing',
-  'Specs',
-  'Style',
-  'Quality',
-]);
+// Use taxonomy validation set directly
+export const ROLE_SET = VALID_CATEGORIES;
 
 /**
  * @typedef {{ text: string, start: number, end: number }} InputSpan
@@ -77,7 +105,7 @@ export async function roleClassify(spans, templateVersion) {
     });
     return spans.map((span) => ({
       ...span,
-      role: 'Quality',
+      role: TAXONOMY.SUBJECT.id,
       confidence: 0,
     }));
   }
@@ -91,8 +119,29 @@ export async function roleClassify(spans, templateVersion) {
 export function hashKey(spans, ver) {
   return crypto
     .createHash('sha1')
-    .update(JSON.stringify(spans) + '|' + ver)
+    .update(JSON.stringify(spans) + '|' + ver + '|' + CACHE_VERSION)
     .digest('hex');
+}
+
+/**
+ * Normalize and validate a role against the taxonomy
+ * @param {string} role - Role to validate
+ * @returns {string} Valid taxonomy ID
+ */
+function normalizeRole(role) {
+  if (!role || typeof role !== 'string') {
+    console.warn('[roleClassifier] Invalid role type, defaulting to subject');
+    return TAXONOMY.SUBJECT.id;
+  }
+
+  // Check if it's already a valid taxonomy ID
+  if (ROLE_SET.has(role)) {
+    return role;
+  }
+
+  // Log warning for unknown roles
+  console.warn(`[roleClassifier] Unknown role "${role}", defaulting to subject`);
+  return TAXONOMY.SUBJECT.id;
 }
 
 /**
@@ -140,14 +189,16 @@ export function validate(source, labeled) {
       end > start &&
       srcSet.has(`${text}|${start}|${end}`)
     ) {
-      const role = ROLE_SET.has(item.role) ? item.role : 'Descriptive';
+      // Normalize role to valid taxonomy ID
+      const role = normalizeRole(item.role);
       const confidence =
         typeof item.confidence === 'number'
           ? Math.max(0, Math.min(1, item.confidence))
           : 0.7;
 
       const words = (text.match(/\b[\p{L}\p{N}']+\b/gu) || []).length;
-      if (role !== 'Technical' && words > 6) continue;
+      // Skip very long spans unless they're technical specs
+      if (role !== TAXONOMY.TECHNICAL.id && words > 6) continue;
 
       out.push({
         text,
@@ -165,8 +216,9 @@ export function validate(source, labeled) {
   for (const span of out) {
     const last = final[final.length - 1];
     if (last && span.start < last.end) {
+      // Prefer technical specs and higher confidence
       const score = (candidate) =>
-        (candidate.role === 'Technical' ? 2 : 0) + (candidate.confidence || 0);
+        (candidate.role === TAXONOMY.TECHNICAL.id ? 2 : 0) + (candidate.confidence || 0);
       if (score(span) > score(last)) {
         final[final.length - 1] = span;
       }

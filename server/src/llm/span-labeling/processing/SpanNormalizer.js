@@ -1,4 +1,5 @@
 import { ROLE_SET } from '../config/roles.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 import { clamp01 } from '../utils/textUtils.js';
 
 /**
@@ -12,26 +13,26 @@ import { clamp01 } from '../utils/textUtils.js';
  * Normalize a single span's role and confidence
  *
  * In strict mode (lenient=false), returns null for invalid roles.
- * In lenient mode (lenient=true), assigns 'Quality' for invalid roles.
+ * In lenient mode (lenient=true), assigns 'subject' for invalid roles.
  *
  * @param {Object} span - The span to normalize
  * @param {string} span.text - Span text
  * @param {number} span.start - Start position
  * @param {number} span.end - End position
- * @param {string} span.role - Role to validate
+ * @param {string} span.role - Role to validate (taxonomy ID)
  * @param {number} span.confidence - Confidence to clamp
- * @param {boolean} lenient - If true, assigns 'Quality' for invalid roles; if false, returns null
+ * @param {boolean} lenient - If true, assigns 'subject' for invalid roles; if false, returns null
  * @returns {Object|null} Normalized span with role and confidence, or null if invalid
  */
 export function normalizeSpan(span, lenient = false) {
   const confidence = clamp01(span.confidence);
 
-  // Validate role
+  // Validate role against taxonomy
   const role =
     typeof span.role === 'string' && ROLE_SET.has(span.role)
       ? span.role
       : lenient
-        ? 'Quality'
+        ? TAXONOMY.SUBJECT.id
         : null;
 
   // Return null if role is invalid in strict mode

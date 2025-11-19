@@ -1,27 +1,59 @@
 /**
  * Highlight Conversion Utility
  * Converts labeled spans from the LLM into highlight data structures
+ * Now uses unified taxonomy system with namespaced IDs
  */
 
-const LLM_PARSER_VERSION = 'llm-v1';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy.js';
+
+const LLM_PARSER_VERSION = 'llm-v2-taxonomy';
 const CONTEXT_WINDOW_CHARS = 20;
 
 /**
- * Maps LLM role names to category identifiers
+ * Legacy mapping for backward compatibility (deprecated)
+ * Will be removed once all cached responses are using taxonomy IDs
  */
-const ROLE_TO_CATEGORY = {
+const LEGACY_ROLE_TO_CATEGORY = {
   Subject: 'subject',
-  Appearance: 'appearance',
-  Wardrobe: 'wardrobe',
-  Movement: 'movement',
+  Appearance: 'subject.appearance',
+  Wardrobe: 'subject.wardrobe',
+  Movement: 'subject.action',
   Environment: 'environment',
   Lighting: 'lighting',
   Camera: 'camera',
-  Framing: 'framing',
-  Specs: 'specs',
+  Framing: 'camera.framing',
+  Specs: 'technical',
   Style: 'style',
-  Quality: 'quality',
+  Quality: 'style.aesthetic',
 };
+
+/**
+ * Normalize a role to a valid taxonomy ID
+ * @param {string} role - Role from LLM response
+ * @returns {string} Valid taxonomy ID
+ */
+function normalizeRole(role) {
+  if (!role || typeof role !== 'string') {
+    return TAXONOMY.SUBJECT.id;
+  }
+
+  // If it's already a valid taxonomy ID, use it directly
+  if (VALID_CATEGORIES.has(role)) {
+    return role;
+  }
+
+  // Check for legacy capitalized format
+  if (LEGACY_ROLE_TO_CATEGORY[role]) {
+    if (import.meta.env.DEV) {
+      console.warn(`[highlightConversion] Legacy role "${role}" detected, mapping to "${LEGACY_ROLE_TO_CATEGORY[role]}"`);
+    }
+    return LEGACY_ROLE_TO_CATEGORY[role];
+  }
+
+  // Fallback for unknown roles
+  console.warn(`[highlightConversion] Unknown role "${role}", defaulting to subject`);
+  return TAXONOMY.SUBJECT.id;
+}
 
 /**
  * Helper to merge adjacent spans that were split by newlines/whitespace
@@ -92,8 +124,9 @@ export const convertLabeledSpansToHighlights = ({ spans, text, canonical }) => {
         return null;
       }
 
-      const role = typeof span.role === 'string' ? span.role : 'Quality';
-      const category = ROLE_TO_CATEGORY[role] || 'quality';
+      // Normalize role to valid taxonomy ID (handles both new and legacy formats)
+      const role = typeof span.role === 'string' ? span.role : TAXONOMY.SUBJECT.id;
+      const category = normalizeRole(role);
 
       const start = Number(span.start);
       const end = Number(span.end);

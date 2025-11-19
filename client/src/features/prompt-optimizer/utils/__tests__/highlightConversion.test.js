@@ -44,14 +44,14 @@ describe('highlightConversion', () => {
 
     it('returns empty array for null text - catches text validation', () => {
       // Would fail if text check is missing
-      const spans = [{ role: 'Wardrobe', start: 0, end: 3 }];
+      const spans = [{ role: 'subject.wardrobe', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: null });
       expect(result).toEqual([]);
     });
 
     it('converts valid span to highlight - catches basic conversion', () => {
       // Would fail if conversion logic is broken
-      const spans = [{ role: 'Wardrobe', start: 0, end: 3 }];
+      const spans = [{ role: 'subject.wardrobe', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result.length).toBe(1);
       expect(result[0]).toHaveProperty('category');
@@ -62,54 +62,75 @@ describe('highlightConversion', () => {
 
     it('extracts correct text slice - catches slice extraction', () => {
       // Would fail if text.slice is broken
-      const spans = [{ role: 'Wardrobe', start: 4, end: 9 }]; // "quick"
+      const spans = [{ role: 'subject.wardrobe', start: 4, end: 9 }]; // "quick"
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result[0]?.quote).toBe('quick');
     });
   });
 
   describe('role to category mapping', () => {
-    it('maps Wardrobe to wardrobe - catches mapping entry', () => {
-      // Would fail if ROLE_TO_CATEGORY mapping is broken
-      const spans = [{ role: 'Wardrobe', start: 0, end: 3 }];
+    it('uses taxonomy ID directly as category - catches new taxonomy behavior', () => {
+      // New behavior: taxonomy IDs are used directly
+      const spans = [{ role: 'subject.wardrobe', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.category).toBe('wardrobe');
+      expect(result[0]?.category).toBe('subject.wardrobe');
     });
 
-    it('maps Lighting to lighting - catches mapping entry', () => {
-      // Would fail if mapping is incomplete
+    it('handles parent taxonomy IDs - catches taxonomy hierarchy', () => {
+      // Should handle parent categories too
+      const spans = [{ role: 'lighting', start: 0, end: 3 }];
+      const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
+      expect(result[0]?.category).toBe('lighting');
+    });
+
+    it('handles namespaced attribute IDs - catches namespaced IDs', () => {
+      // Should handle full namespaced IDs
+      const spans = [{ role: 'camera.movement', start: 0, end: 3 }];
+      const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
+      expect(result[0]?.category).toBe('camera.movement');
+    });
+
+    it('maps legacy Wardrobe to subject.wardrobe - catches backward compatibility', () => {
+      // Legacy format should still work via mapping
+      const spans = [{ role: 'Wardrobe', start: 0, end: 3 }];
+      const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
+      expect(result[0]?.category).toBe('subject.wardrobe');
+    });
+
+    it('maps legacy Lighting to lighting - catches legacy mapping', () => {
+      // Legacy capitalized format should map
       const spans = [{ role: 'Lighting', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result[0]?.category).toBe('lighting');
     });
 
-    it('maps Camera to camera - catches camelCase mapping', () => {
-      // Would fail if camelCase handling is wrong
+    it('maps legacy Camera to camera - catches legacy mapping', () => {
+      // Legacy capitalized Camera should map
       const spans = [{ role: 'Camera', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
       expect(result[0]?.category).toBe('camera');
     });
 
-    it('defaults unknown role to quality - catches fallback', () => {
-      // Would fail if || 'quality' fallback is missing
+    it('defaults unknown role to subject - catches fallback', () => {
+      // Unknown roles should default to subject
       const spans = [{ role: 'UnknownRole', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.category).toBe('quality');
+      expect(result[0]?.category).toBe('subject');
     });
 
-    it('uses Quality for missing role - catches default role', () => {
-      // Would fail if default role is not set
+    it('uses subject for missing role - catches default role', () => {
+      // Missing role should default to subject
       const spans = [{ start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.role).toBe('Quality');
-      expect(result[0]?.category).toBe('quality');
+      expect(result[0]?.role).toBe('subject');
+      expect(result[0]?.category).toBe('subject');
     });
 
     it('handles non-string role - catches type coercion', () => {
-      // Would fail if typeof check is missing
+      // Non-string roles should default to subject
       const spans = [{ role: 123, start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.role).toBe('Quality');
+      expect(result[0]?.role).toBe('subject');
     });
   });
 
@@ -274,11 +295,11 @@ describe('highlightConversion', () => {
       expect(result[0]?.validatorPass).toBe(true);
     });
 
-    it('sets version to llm-v1 - catches version field', () => {
-      // Would fail if version is not set
-      const spans = [{ role: 'Wardrobe', start: 0, end: 3 }];
+    it('sets version to llm-v2-taxonomy - catches version field', () => {
+      // Would fail if version is not set correctly
+      const spans = [{ role: 'subject.wardrobe', start: 0, end: 3 }];
       const result = convertLabeledSpansToHighlights({ spans, text: sampleText });
-      expect(result[0]?.version).toBe('llm-v1');
+      expect(result[0]?.version).toBe('llm-v2-taxonomy');
     });
 
     it('includes confidence if provided - catches confidence preservation', () => {

@@ -3,10 +3,64 @@ import { CATEGORY_ORDER } from '../config/bentoConfig.js';
 import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '@shared/taxonomy.js';
 
 /**
+ * Legacy category mapping for backward compatibility
+ * Maps old flat categories to new taxonomy parent categories
+ */
+const LEGACY_CATEGORY_MAP = {
+  'appearance': TAXONOMY.SUBJECT.id,
+  'wardrobe': TAXONOMY.SUBJECT.id,
+  'movement': TAXONOMY.SUBJECT.id,
+  'action': TAXONOMY.SUBJECT.id,
+  'framing': TAXONOMY.CAMERA.id,
+  'specs': TAXONOMY.TECHNICAL.id,
+  'quality': TAXONOMY.STYLE.id,
+  // Keep existing parent IDs as-is
+  'subject': TAXONOMY.SUBJECT.id,
+  'environment': TAXONOMY.ENVIRONMENT.id,
+  'lighting': TAXONOMY.LIGHTING.id,
+  'camera': TAXONOMY.CAMERA.id,
+  'style': TAXONOMY.STYLE.id,
+  'technical': TAXONOMY.TECHNICAL.id,
+  'audio': TAXONOMY.AUDIO.id,
+};
+
+/**
+ * Maps any category ID to its display category (parent)
+ * Handles taxonomy IDs, legacy IDs, and unknown categories
+ * 
+ * @param {string} categoryId - Category ID from span
+ * @returns {string} Parent category ID for display
+ */
+function mapToDisplayCategory(categoryId) {
+  if (!categoryId) return TAXONOMY.SUBJECT.id;
+
+  // Check if it's already a taxonomy parent category
+  if (getAllParentCategories().includes(categoryId)) {
+    return categoryId;
+  }
+
+  // Check if it's a taxonomy attribute - get its parent
+  if (isAttribute(categoryId)) {
+    const parent = getParentCategory(categoryId);
+    return parent || TAXONOMY.SUBJECT.id;
+  }
+
+  // Check if it's a legacy category
+  if (LEGACY_CATEGORY_MAP[categoryId]) {
+    return LEGACY_CATEGORY_MAP[categoryId];
+  }
+
+  // Unknown category - default to subject
+  console.warn(`[useSpanGrouping] Unknown category "${categoryId}", mapping to subject`);
+  return TAXONOMY.SUBJECT.id;
+}
+
+/**
  * Groups spans by category with hierarchical awareness
- * Now understands parent-child relationships from TAXONOMY
+ * Now fully integrated with unified taxonomy system
+ * - Maps all categories to parent categories for display
  * - Groups attributes under their parent categories
- * - Maintains visual hierarchy in bento grid layout
+ * - Handles legacy categories with backward compatibility
  * 
  * @param {Array} spans - Array of span objects with category property
  * @param {Object} options - Grouping options
@@ -34,14 +88,17 @@ export function useSpanGrouping(spans, options = {}) {
       const categoriesPresent = new Set(spans.map(s => s.category).filter(Boolean));
       
       spans.forEach(span => {
-        const category = span.category || 'quality';
+        const originalCategory = span.category || TAXONOMY.SUBJECT.id;
+        
+        // Map to display category (parent)
+        const displayCategory = mapToDisplayCategory(originalCategory);
         
         // Track hierarchy if enabled
         if (enableHierarchy) {
-          if (getAllParentCategories().includes(category)) {
-            hierarchyInfo.parentCategories.push(category);
-          } else if (isAttribute(category)) {
-            const parentCategory = getParentCategory(category);
+          if (getAllParentCategories().includes(originalCategory)) {
+            hierarchyInfo.parentCategories.push(originalCategory);
+          } else if (isAttribute(originalCategory)) {
+            const parentCategory = getParentCategory(originalCategory);
             if (parentCategory) {
               if (!hierarchyInfo.attributesByParent[parentCategory]) {
                 hierarchyInfo.attributesByParent[parentCategory] = [];
@@ -59,25 +116,27 @@ export function useSpanGrouping(spans, options = {}) {
           }
         }
         
-        // Group span by category (or parent if hierarchy enabled)
-        let groupKey = category;
-        
-        if (enableHierarchy && isAttribute(category)) {
-          // Group attributes under their parent category
-          const parentCategory = getParentCategory(category);
-          if (parentCategory && groups[parentCategory] !== undefined) {
-            groupKey = parentCategory;
-            // Add metadata to track it's a child
-            span._isAttribute = true;
-            span._parentCategory = parentCategory;
-          }
+        // Add metadata about the original category for debugging
+        if (originalCategory !== displayCategory) {
+          span._originalCategory = originalCategory;
+          span._mappedTo = displayCategory;
         }
         
-        if (groups[groupKey]) {
-          groups[groupKey].push(span);
-        } else if (groups.quality) {
-          // Fallback to quality if unknown category
-          groups.quality.push(span);
+        // Add metadata if it's an attribute
+        if (isAttribute(originalCategory)) {
+          span._isAttribute = true;
+          span._parentCategory = displayCategory;
+        }
+        
+        // Add to the appropriate group
+        if (groups[displayCategory]) {
+          groups[displayCategory].push(span);
+        } else {
+          // If display category not in config, default to subject
+          if (groups[TAXONOMY.SUBJECT.id]) {
+            groups[TAXONOMY.SUBJECT.id].push(span);
+            console.warn(`[useSpanGrouping] Category "${displayCategory}" not in config, adding to subject`);
+          }
         }
       });
     }

@@ -2,93 +2,74 @@
  * Bento Grid Configuration
  * Category metadata for the Span Bento Grid display
  * 
- * Monochromatic design system:
- * - All categories use consistent neutral colors
- * - Emoji icons provide visual distinction
- * - No color coding - rely on icons and labels for identification
+ * Now aligned with unified taxonomy system:
+ * - Uses taxonomy parent categories as box keys
+ * - All attributes (e.g., subject.wardrobe) grouped under their parents
+ * - Monochromatic design system with emoji icons
  */
+
+import { TAXONOMY } from '@shared/taxonomy.js';
 
 /**
  * Category Configuration
- * Maps category identifiers to their visual and metadata properties
+ * Maps taxonomy parent category IDs to their visual and metadata properties
  */
 export const CATEGORY_CONFIG = {
-  subject: {
-    label: 'Subject',
+  [TAXONOMY.SUBJECT.id]: {
+    label: 'Subject & Character',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎯',
     order: 1,
+    description: 'The focal point (person, object, animal) and their attributes',
   },
-  appearance: {
-    label: 'Appearance',
-    color: '#FFFFFF',
-    borderColor: '#E8E8E8',
-    icon: '👤',
-    order: 2,
-  },
-  wardrobe: {
-    label: 'Wardrobe',
-    color: '#FFFFFF',
-    borderColor: '#E8E8E8',
-    icon: '👔',
-    order: 3,
-  },
-  movement: {
-    label: 'Movement',
-    color: '#FFFFFF',
-    borderColor: '#E8E8E8',
-    icon: '🏃',
-    order: 4,
-  },
-  environment: {
+  [TAXONOMY.ENVIRONMENT.id]: {
     label: 'Environment',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🌲',
-    order: 5,
+    order: 2,
+    description: 'Location, weather, and spatial context',
   },
-  lighting: {
+  [TAXONOMY.LIGHTING.id]: {
     label: 'Lighting',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '💡',
-    order: 6,
+    order: 3,
+    description: 'Light source, quality, and time of day',
   },
-  camera: {
+  [TAXONOMY.CAMERA.id]: {
     label: 'Camera',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎥',
-    order: 7,
+    order: 4,
+    description: 'Framing, movement, lens, and angles',
   },
-  framing: {
-    label: 'Shot Framing',
+  [TAXONOMY.STYLE.id]: {
+    label: 'Style & Aesthetic',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎬',
-    order: 8,
+    icon: '🎨',
+    order: 5,
+    description: 'Visual treatment, film stock, and aesthetic',
   },
-  specs: {
+  [TAXONOMY.TECHNICAL.id]: {
     label: 'Technical Specs',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '⚙️',
-    order: 9,
+    order: 6,
+    description: 'Frame rate, aspect ratio, and resolution',
   },
-  style: {
-    label: 'Style',
+  [TAXONOMY.AUDIO.id]: {
+    label: 'Audio',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎨',
-    order: 10,
-  },
-  quality: {
-    label: 'Quality',
-    color: '#FFFFFF',
-    borderColor: '#E8E8E8',
-    icon: '✨',
-    order: 11,
+    icon: '🔊',
+    order: 7,
+    description: 'Music, score, and sound effects',
   },
 };
 

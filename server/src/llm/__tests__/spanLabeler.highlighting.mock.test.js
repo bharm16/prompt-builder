@@ -19,37 +19,37 @@ ALTERNATIVE APPROACHES
 - **Variation 2:** Medium shot of George Washington draped in a blue Revolutionary War uniform, gesturing emphatically to soldiers as bright, high-key lighting breaks through the clouds, illuminating the battlefield and creating a hopeful contrast to the somber surroundings.`;
 
   it('demonstrates expected highlighting across all sections', async () => {
-    // Mock LLM response that shows highlighting in all three sections
+    // Mock LLM response using new taxonomy IDs
     const mockCallFn = async () => {
       return JSON.stringify({
         spans: [
           // Main paragraph highlights
-          { text: 'Wide shot', start: 0, end: 9, role: 'Framing', confidence: 0.95 },
-          { text: 'blue Revolutionary War uniform', start: 40, end: 70, role: 'Wardrobe', confidence: 0.9 },
-          { text: 'leaf-strewn battlefield', start: 94, end: 117, role: 'Environment', confidence: 0.85 },
-          { text: 'overcast skies', start: 124, end: 138, role: 'Lighting', confidence: 0.88 },
-          { text: 'camera slowly pans in', start: 241, end: 262, role: 'Camera', confidence: 0.92 },
-          { text: 'Soft, diffused light', start: 324, end: 344, role: 'Lighting', confidence: 0.9 },
-          { text: 'shot on 35mm film', start: 464, end: 481, role: 'Style', confidence: 0.95 },
-          { text: 'shallow depth of field', start: 516, end: 538, role: 'Specs', confidence: 0.93 },
+          { text: 'Wide shot', start: 0, end: 9, role: 'camera.framing', confidence: 0.95 },
+          { text: 'blue Revolutionary War uniform', start: 40, end: 70, role: 'subject.wardrobe', confidence: 0.9 },
+          { text: 'leaf-strewn battlefield', start: 94, end: 117, role: 'environment', confidence: 0.85 },
+          { text: 'overcast skies', start: 124, end: 138, role: 'lighting', confidence: 0.88 },
+          { text: 'camera slowly pans in', start: 241, end: 262, role: 'camera.movement', confidence: 0.92 },
+          { text: 'Soft, diffused light', start: 324, end: 344, role: 'lighting', confidence: 0.9 },
+          { text: 'shot on 35mm film', start: 464, end: 481, role: 'style.filmStock', confidence: 0.95 },
+          { text: 'shallow depth of field', start: 516, end: 538, role: 'technical', confidence: 0.93 },
 
           // Technical Specs section highlights
-          { text: '4-8s', start: 633, end: 637, role: 'Specs', confidence: 0.98 },
-          { text: '16:9', start: 659, end: 663, role: 'Specs', confidence: 0.98 },
-          { text: '24fps', start: 682, end: 687, role: 'Specs', confidence: 0.98 },
+          { text: '4-8s', start: 633, end: 637, role: 'technical', confidence: 0.98 },
+          { text: '16:9', start: 659, end: 663, role: 'technical.aspectRatio', confidence: 0.98 },
+          { text: '24fps', start: 682, end: 687, role: 'technical.frameRate', confidence: 0.98 },
 
           // Alternative Approaches section highlights
-          { text: 'Close-up', start: 739, end: 747, role: 'Framing', confidence: 0.95 },
-          { text: 'leaf-strewn battlefield', start: 831, end: 854, role: 'Environment', confidence: 0.85 },
-          { text: 'overcast skies', start: 861, end: 875, role: 'Lighting', confidence: 0.88 },
-          { text: 'camera holds steady', start: 881, end: 900, role: 'Camera', confidence: 0.9 },
-          { text: 'Medium shot', start: 961, end: 972, role: 'Framing', confidence: 0.95 },
-          { text: 'blue Revolutionary War uniform', start: 1005, end: 1035, role: 'Wardrobe', confidence: 0.9 },
-          { text: 'bright, high-key lighting', start: 1083, end: 1108, role: 'Lighting', confidence: 0.92 },
+          { text: 'Close-up', start: 739, end: 747, role: 'camera.framing', confidence: 0.95 },
+          { text: 'leaf-strewn battlefield', start: 831, end: 854, role: 'environment', confidence: 0.85 },
+          { text: 'overcast skies', start: 861, end: 875, role: 'lighting', confidence: 0.88 },
+          { text: 'camera holds steady', start: 881, end: 900, role: 'camera.movement', confidence: 0.9 },
+          { text: 'Medium shot', start: 961, end: 972, role: 'camera.framing', confidence: 0.95 },
+          { text: 'blue Revolutionary War uniform', start: 1005, end: 1035, role: 'subject.wardrobe', confidence: 0.9 },
+          { text: 'bright, high-key lighting', start: 1083, end: 1108, role: 'lighting', confidence: 0.92 },
         ],
         meta: {
-          version: 'v1',
-          notes: 'Successfully analyzed all sections including main paragraph, technical specs, and alternative approaches'
+          version: 'v2-taxonomy',
+          notes: 'Successfully analyzed all sections using unified taxonomy IDs'
         }
       });
     };
@@ -118,12 +118,14 @@ ALTERNATIVE APPROACHES
     expect(sections['Technical Specs'].length).toBeGreaterThan(0);
     expect(sections['Alternative Approaches'].length).toBeGreaterThan(0);
 
-    // Verify we found technical specs
-    const technicalSpans = result.spans.filter(s => s.role === 'Specs' || s.role === 'Style');
+    // Verify we found technical specs (using taxonomy IDs)
+    const technicalSpans = result.spans.filter(s => 
+      s.role.startsWith('technical') || s.role.startsWith('style')
+    );
     expect(technicalSpans.length).toBeGreaterThan(0);
 
     // Verify we found camera and lighting in multiple sections
-    const cameraSpans = result.spans.filter(s => s.role === 'Camera' || s.role === 'Framing');
+    const cameraSpans = result.spans.filter(s => s.role.startsWith('camera'));
     const cameraSections = new Set(cameraSpans.map(s => getSection(s.start, MULTI_SECTION_PROMPT)));
     expect(cameraSections.size).toBeGreaterThan(1);
   });
