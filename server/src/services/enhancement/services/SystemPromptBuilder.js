@@ -1,4 +1,5 @@
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
+import { TAXONOMY } from '../../../../shared/taxonomy.js';
 import { ContextAwareExamples } from '../utils/ContextAwareExamples.js';
 
 /**

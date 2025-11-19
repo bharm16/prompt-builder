@@ -1,9 +1,13 @@
+import { TAXONOMY } from '../../../../shared/taxonomy.js';
+
 /**
  * Semantic categories for subject descriptors in Video Concept Builder
  * Provides intelligent categorization without restricting user input
+ * Now mapped to TAXONOMY.SUBJECT.attributes for consistency
  */
 
 export const DESCRIPTOR_CATEGORIES = {
+  // Maps to TAXONOMY.SUBJECT.attributes.APPEARANCE
   physical: {
     pattern: /\b(face|eyes|hands|body|hair|build|skin|features|complexion|stature|physique|jaw|cheekbones|wrinkles|scars|marks|beard|mustache|eyebrows|nose|lips|ears|fingers|arms|legs|shoulders|neck|posture)\b/i,
     examples: [
@@ -23,6 +27,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Maps to TAXONOMY.SUBJECT.attributes.WARDROBE
   wardrobe: {
     pattern: /\b(wearing|dressed|outfit|clothing|garment|coat|jacket|shirt|pants|trousers|dress|suit|hat|cap|shoes|boots|costume|uniform|attire|clad|donning|robe|vest|tie|scarf|gloves)\b/i,
     examples: [
@@ -42,6 +47,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Props - Related to subject interaction (could map to ACTION or remain standalone)
   props: {
     pattern: /\b(holding|carrying|clutching|gripping|wielding|cradling|grasping|with a|with an|brandishing|bearing)\b/i,
     examples: [
@@ -61,6 +67,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Maps to TAXONOMY.SUBJECT.attributes.EMOTION
   emotional: {
     pattern: /\b(expression|mood|demeanor|countenance|gaze|eyes (showing|reflecting|conveying)|face showing|looking|appearing|seeming|exuding|radiating)\b/i,
     examples: [
@@ -80,6 +87,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Maps to TAXONOMY.SUBJECT.attributes.ACTION
   action: {
     pattern: /\b(standing|sitting|leaning|kneeling|crouching|walking|moving|gesturing|performing|dancing|playing|working|resting|lounging|perched|poised)\b/i,
     examples: [
@@ -99,6 +107,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Maps to TAXONOMY.LIGHTING (subject-specific lighting)
   lighting: {
     pattern: /\b(bathed|lit|illuminated|shadowed|highlighted|backlit|spotlit|glowing|dappled|framed by|silhouetted|rimlit)\b/i,
     examples: [
@@ -118,6 +127,7 @@ export const DESCRIPTOR_CATEGORIES = {
     ],
   },
 
+  // Maps to TAXONOMY.ENVIRONMENT (spatial context)
   contextual: {
     pattern: /\b(surrounded by|amidst|among|framed by|against backdrop of|in front of|beside|near|underneath)\b/i,
     examples: [
@@ -139,13 +149,33 @@ export const DESCRIPTOR_CATEGORIES = {
 };
 
 /**
+ * Map descriptor category to TAXONOMY constant
+ * @param {string} descriptorCategory - Local descriptor category name
+ * @returns {string|null} Corresponding TAXONOMY ID
+ */
+export function mapDescriptorCategoryToTaxonomy(descriptorCategory) {
+  const mapping = {
+    physical: TAXONOMY.SUBJECT.attributes.APPEARANCE,
+    wardrobe: TAXONOMY.SUBJECT.attributes.WARDROBE,
+    emotional: TAXONOMY.SUBJECT.attributes.EMOTION,
+    action: TAXONOMY.SUBJECT.attributes.ACTION,
+    lighting: TAXONOMY.LIGHTING.id,
+    contextual: TAXONOMY.ENVIRONMENT.id,
+    props: 'props', // Keep standalone for now
+  };
+  
+  return mapping[descriptorCategory] || null;
+}
+
+/**
  * Detect the semantic category of a descriptor text
+ * Now returns both local category and taxonomy ID
  * @param {string} descriptorText - The descriptor text to analyze
- * @returns {Object} { category: string|null, confidence: number }
+ * @returns {Object} { category: string|null, taxonomyId: string|null, confidence: number }
  */
 export function detectDescriptorCategory(descriptorText) {
   if (!descriptorText || typeof descriptorText !== 'string') {
-    return { category: null, confidence: 0 };
+    return { category: null, taxonomyId: null, confidence: 0 };
   }
 
   const text = descriptorText.toLowerCase().trim();
@@ -176,11 +206,17 @@ export function detectDescriptorCategory(descriptorText) {
 
   // Return highest confidence match, or null if none
   if (matches.length === 0) {
-    return { category: null, confidence: 0 };
+    return { category: null, taxonomyId: null, confidence: 0 };
   }
 
   matches.sort((a, b) => b.confidence - a.confidence);
-  return matches[0];
+  const topMatch = matches[0];
+  
+  return {
+    category: topMatch.category,
+    taxonomyId: mapDescriptorCategoryToTaxonomy(topMatch.category),
+    confidence: topMatch.confidence
+  };
 }
 
 /**

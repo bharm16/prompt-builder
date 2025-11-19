@@ -1,4 +1,5 @@
 import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '../../config/categoryGuidance.js';
+import { TAXONOMY } from '../../../../../shared/taxonomy.js';
 import { normalizeText } from '../../utils/textHelpers.js';
 
 /**
@@ -72,16 +73,16 @@ export class CategoryGuidanceService {
     // Analyze relationships with existing elements
     const relationships = this.analyzeRelationships(category, existingElements);
 
-    // Build prescriptive guidance based on analysis
-    if (category.includes('lighting')) {
+    // Build prescriptive guidance based on analysis (using TAXONOMY)
+    if (category === TAXONOMY.LIGHTING.id || category.includes('lighting')) {
       guidance.push(...this._buildLightingGuidance(existingElements, gaps, relationships, editHistory));
-    } else if (category.includes('camera')) {
+    } else if (category === TAXONOMY.CAMERA.id || category.includes('camera')) {
       guidance.push(...this._buildCameraGuidance(existingElements, gaps, relationships, editHistory));
-    } else if (category.includes('subject') || category.includes('character')) {
+    } else if (category === TAXONOMY.SUBJECT.id || category.includes('subject') || category.includes('character')) {
       guidance.push(...this._buildSubjectGuidance(existingElements, gaps, relationships));
-    } else if (category.includes('action') || category.includes('movement')) {
+    } else if (category === TAXONOMY.SUBJECT.attributes.ACTION || category.includes('action') || category.includes('movement')) {
       guidance.push(...this._buildActionGuidance(existingElements, gaps, relationships));
-    } else if (category.includes('location') || category.includes('environment')) {
+    } else if (category === TAXONOMY.ENVIRONMENT.id || category.includes('location') || category.includes('environment')) {
       guidance.push(...this._buildLocationGuidance(existingElements, gaps, relationships));
     } else if (category.includes('mood') || category.includes('atmosphere')) {
       guidance.push(...this._buildMoodGuidance(existingElements, gaps, relationships, editHistory));

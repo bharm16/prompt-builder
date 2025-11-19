@@ -9,6 +9,7 @@ import {
   getCategoryForbidden,
   getAllCategories,
 } from '../../config/descriptorCategories.js';
+import { TAXONOMY } from '../../../../shared/taxonomy.js';
 
 /**
  * Service responsible for building prompts for AI video generation.

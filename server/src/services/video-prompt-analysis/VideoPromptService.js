@@ -5,6 +5,7 @@ import { FallbackStrategyService } from './services/guidance/FallbackStrategySer
 import { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService.js';
 import { ModelDetectionService } from './services/detection/ModelDetectionService.js';
 import { SectionDetectionService } from './services/detection/SectionDetectionService.js';
+import { TaxonomyValidationService } from '../taxonomy-validation/TaxonomyValidationService.js';
 import { countWords } from './utils/textHelpers.js';
 
 /**
@@ -24,6 +25,7 @@ export class VideoPromptService {
     this.categoryGuidance = new CategoryGuidanceService();
     this.modelDetector = new ModelDetectionService();
     this.sectionDetector = new SectionDetectionService();
+    this.taxonomyValidator = new TaxonomyValidationService();
   }
 
   /**
@@ -186,6 +188,57 @@ export class VideoPromptService {
    */
   formatSectionContext(section) {
     return this.sectionDetector.formatSectionContext(section);
+  }
+
+  /**
+   * Validate taxonomy hierarchy in spans
+   * NEW: Detects orphaned attributes and hierarchy violations
+   * 
+   * @param {Array} spans - Array of span objects with category property
+   * @param {Object} options - Validation options
+   * @returns {Object} Validation result with issues and suggestions
+   */
+  validateSpanHierarchy(spans, options = {}) {
+    return this.taxonomyValidator.validateSpans(spans, options);
+  }
+
+  /**
+   * Check if spans have orphaned attributes
+   * Quick check for UI warnings
+   * 
+   * @param {Array} spans - Array of spans
+   * @returns {boolean} True if orphans detected
+   */
+  hasOrphanedAttributes(spans) {
+    return this.taxonomyValidator.hasOrphanedAttributes(spans);
+  }
+
+  /**
+   * Get missing parent categories for validation suggestions
+   * @param {Array} spans - Array of spans
+   * @returns {Array<string>} Array of missing parent category IDs
+   */
+  getMissingParentCategories(spans) {
+    return this.taxonomyValidator.getMissingParents(spans);
+  }
+
+  /**
+   * Validate before adding a category to spans
+   * @param {string} categoryId - Category ID to validate
+   * @param {Array} existingSpans - Current spans
+   * @returns {Object} Validation result with warnings
+   */
+  validateCategoryBeforeAdd(categoryId, existingSpans) {
+    return this.taxonomyValidator.validateBeforeAdd(categoryId, existingSpans);
+  }
+
+  /**
+   * Get validation statistics for analytics
+   * @param {Array} spans - Array of spans
+   * @returns {Object} Statistics about validation
+   */
+  getValidationStats(spans) {
+    return this.taxonomyValidator.getValidationStats(spans);
   }
 }
 
