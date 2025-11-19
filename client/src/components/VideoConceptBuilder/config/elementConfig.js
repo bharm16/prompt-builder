@@ -5,6 +5,7 @@
  * - Display properties (icon, label, color)
  * - Input guidance (placeholder, examples)
  * - Categorization (group, optional/required status)
+ * - Taxonomy mapping (taxonomyId, taxonomyGroup)
  */
 
 import {
@@ -17,11 +18,13 @@ import {
   Lightbulb,
   Tag,
 } from 'lucide-react';
+import { TAXONOMY } from '@shared/taxonomy';
 
 export const ELEMENT_CONFIG = {
   subject: {
     icon: User,
     label: 'Subject',
+    taxonomyId: TAXONOMY.SUBJECT.id,
     placeholder: 'Who/what with 2-3 visual details (e.g., "elderly historian with trembling hands")',
     color: 'slate',
     examples: [
@@ -35,6 +38,8 @@ export const ELEMENT_CONFIG = {
   subjectDescriptor1: {
     icon: Tag,
     label: 'Descriptor 1',
+    taxonomyId: null, // Content-dependent
+    taxonomyGroup: TAXONOMY.SUBJECT.id, // Scoped to Subject entity
     placeholder: 'Optional visual detail (e.g., "with weathered hands")',
     color: 'slate',
     examples: [
@@ -48,6 +53,8 @@ export const ELEMENT_CONFIG = {
   subjectDescriptor2: {
     icon: Tag,
     label: 'Descriptor 2',
+    taxonomyId: null, // Content-dependent
+    taxonomyGroup: TAXONOMY.SUBJECT.id, // Scoped to Subject entity
     placeholder: 'Optional second detail (e.g., "strumming a guitar")',
     color: 'slate',
     examples: [
@@ -61,6 +68,8 @@ export const ELEMENT_CONFIG = {
   subjectDescriptor3: {
     icon: Tag,
     label: 'Descriptor 3',
+    taxonomyId: null, // Content-dependent
+    taxonomyGroup: TAXONOMY.SUBJECT.id, // Scoped to Subject entity
     placeholder: 'Optional third detail (e.g., "strings vibrating with each note")',
     color: 'slate',
     examples: [
@@ -74,6 +83,7 @@ export const ELEMENT_CONFIG = {
   action: {
     icon: Zap,
     label: 'Action',
+    taxonomyId: TAXONOMY.SUBJECT.attributes.ACTION,
     placeholder: 'ONE specific action (e.g., "leaping over concrete barriers")',
     color: 'slate',
     examples: [
@@ -86,6 +96,7 @@ export const ELEMENT_CONFIG = {
   location: {
     icon: MapPin,
     label: 'Location',
+    taxonomyId: TAXONOMY.ENVIRONMENT.attributes.LOCATION,
     placeholder: 'Specific place with atmosphere (e.g., "neon-lit Tokyo alley at midnight")',
     color: 'slate',
     examples: [
@@ -98,6 +109,7 @@ export const ELEMENT_CONFIG = {
   time: {
     icon: Calendar,
     label: 'Time',
+    taxonomyId: TAXONOMY.LIGHTING.attributes.TIME,
     placeholder: 'Lighting quality (e.g., "golden hour with warm shadows")',
     color: 'slate',
     examples: [
@@ -110,6 +122,7 @@ export const ELEMENT_CONFIG = {
   mood: {
     icon: Palette,
     label: 'Mood',
+    taxonomyId: TAXONOMY.STYLE.attributes.AESTHETIC,
     placeholder: 'Atmosphere with visual cues (e.g., "tense with low-key lighting")',
     color: 'slate',
     examples: [
@@ -122,6 +135,7 @@ export const ELEMENT_CONFIG = {
   style: {
     icon: Sparkles,
     label: 'Style',
+    taxonomyId: TAXONOMY.STYLE.id,
     placeholder: 'Film stock or aesthetic (NOT "cinematic")',
     color: 'slate',
     examples: [
@@ -134,6 +148,7 @@ export const ELEMENT_CONFIG = {
   event: {
     icon: Lightbulb,
     label: 'Context',
+    taxonomyId: TAXONOMY.ENVIRONMENT.attributes.CONTEXT,
     placeholder: "Event or narrative moment (e.g., \"product reveal moment\")",
     color: 'slate',
     examples: [

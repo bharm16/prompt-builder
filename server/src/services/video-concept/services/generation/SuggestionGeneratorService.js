@@ -2,8 +2,23 @@ import { logger } from '../../../../infrastructure/Logger.js';
 import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../../../../utils/TemperatureOptimizer.js';
 import { PromptBuilderService } from './SystemPromptBuilder.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
+
+/**
+ * Map legacy wizard field names to strict Taxonomy IDs
+ * Ensures server-side suggestion generation uses correct taxonomy categories
+ */
+const FIELD_CATEGORY_MAP = {
+  subject: TAXONOMY.SUBJECT.id,
+  action: TAXONOMY.SUBJECT.attributes.ACTION,
+  location: TAXONOMY.ENVIRONMENT.attributes.LOCATION,
+  time: TAXONOMY.LIGHTING.attributes.TIME,
+  mood: TAXONOMY.STYLE.attributes.AESTHETIC,
+  style: TAXONOMY.STYLE.id,
+  event: TAXONOMY.ENVIRONMENT.attributes.CONTEXT,
+};
 
 /**
  * Service responsible for generating creative suggestions for video elements.
@@ -35,7 +50,17 @@ export class SuggestionGeneratorService {
       ? 'subjectDescriptor'
       : elementType;
 
-    logger.info('Generating creative suggestions', { elementType, normalizedElementType });
+    // Resolve Taxonomy ID for scoping
+    // If it's a descriptor, scope to the Subject Group generally
+    const taxonomyScope = normalizedElementType === 'subjectDescriptor'
+      ? TAXONOMY.SUBJECT.id 
+      : FIELD_CATEGORY_MAP[elementType];
+
+    logger.info('Generating creative suggestions', { 
+      elementType, 
+      normalizedElementType,
+      taxonomyScope 
+    });
 
     // Check cache
     const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
@@ -52,9 +77,10 @@ export class SuggestionGeneratorService {
       return cached;
     }
 
-    // Build system prompt
+    // Build system prompt with taxonomy scope
     const systemPrompt = this.promptBuilder.buildSystemPrompt({
       elementType: normalizedElementType,
+      taxonomyScope,
       currentValue,
       context,
       concept,

@@ -18,19 +18,33 @@ import { TAXONOMY } from '#shared/taxonomy.js';
 export class PromptBuilderService {
   /**
    * Build system prompt for creative suggestions with multi-level context analysis
+   * @param {Object} params - Prompt building parameters
+   * @param {string} params.elementType - The element type being suggested
+   * @param {string} [params.taxonomyScope] - Optional taxonomy ID for scoping suggestions
+   * @param {string} params.currentValue - Current value being completed/suggested
+   * @param {Object} params.context - Context from other wizard fields
+   * @param {string} params.concept - Full concept text
+   * @returns {string} System prompt for LLM
    */
-  buildSystemPrompt({ elementType, currentValue, context, concept }) {
+  buildSystemPrompt({ elementType, taxonomyScope, currentValue, context, concept }) {
     // Check if this is a subject descriptor
     const isDescriptor = elementType === 'subjectDescriptor';
 
     // If it's a descriptor, use specialized descriptor prompt
     if (isDescriptor) {
-      return this.buildDescriptorPrompt({ currentValue, context, concept });
+      return this.buildDescriptorPrompt({ currentValue, context, concept, taxonomyScope });
     }
 
     const elementLabel =
       elementType === 'subjectDescriptor' ? 'subject descriptor' : elementType;
     const contextDisplay = context ? JSON.stringify(context, null, 2) : 'No other elements defined yet';
+    
+    // Log taxonomy scope if provided (for future constraint logic)
+    if (taxonomyScope) {
+      // Future enhancement: Use taxonomyScope to constrain suggestion generation
+      // Example: Filter suggestions to match the taxonomy category
+      // For now, we just log it for tracking
+    }
 
     // Perform multi-level context analysis
     const contextAnalysis = {
@@ -137,9 +151,14 @@ Return ONLY a JSON array (no markdown, no code blocks):
 
   /**
    * Build specialized prompt for subject descriptors with category awareness
+   * @param {Object} params - Descriptor prompt parameters
+   * @param {string} params.currentValue - Current descriptor value
+   * @param {Object} params.context - Context from other wizard fields
+   * @param {string} params.concept - Full concept text
+   * @param {string} [params.taxonomyScope] - Optional taxonomy scope (should be SUBJECT.id for descriptors)
    * @private
    */
-  buildDescriptorPrompt({ currentValue, context, concept }) {
+  buildDescriptorPrompt({ currentValue, context, concept, taxonomyScope }) {
     const isCompletion = currentValue && currentValue.trim().length > 0;
 
     // Detect category from current value or context
