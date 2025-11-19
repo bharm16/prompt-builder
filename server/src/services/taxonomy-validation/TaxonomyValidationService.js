@@ -54,21 +54,19 @@ export class TaxonomyValidationService {
       ? spans.filter(s => !ignoreCategories.includes(s.category))
       : spans;
 
-    // Step 1: Validate hierarchy (parent-child relationships)
-    const hierarchyIssues = this.hierarchyValidator.validateHierarchy(filteredSpans);
-
-    // Step 2: Detect orphaned attributes
+    // Step 1: Detect orphaned attributes (primary check)
     const orphans = this.orphanDetector.findOrphanedAttributes(filteredSpans);
 
-    // Step 3: Optional consistency checks
+    // Step 2: Optional consistency checks (proximity, etc.)
     let consistencyIssues = [];
     if (checkConsistency) {
       consistencyIssues = this.hierarchyValidator.validateConsistency(filteredSpans);
     }
 
-    // Step 4: Combine and format results
-    const allIssues = [...hierarchyIssues, ...consistencyIssues];
-    const result = this.reporter.formatValidationResult(allIssues, orphans);
+    // Step 3: Format results
+    // Note: We use orphans as the primary source since they provide better grouping
+    // than raw hierarchy issues. Consistency issues are separate (span proximity, etc.)
+    const result = this.reporter.formatValidationResult(consistencyIssues, orphans);
 
     // Step 5: Apply strict mode if enabled
     if (strictMode && result.hasWarnings) {
@@ -140,12 +138,11 @@ export class TaxonomyValidationService {
    */
   getValidationStats(spans) {
     const orphans = this.orphanDetector.findOrphanedAttributes(spans);
-    const issues = this.hierarchyValidator.validateHierarchy(spans);
 
     return {
       totalSpans: spans.length,
       orphanedCount: orphans.reduce((sum, o) => sum + o.count, 0),
-      issueCount: issues.length,
+      issueCount: orphans.length,
       hasOrphans: orphans.length > 0,
       missingParents: orphans.map(o => o.missingParent)
     };

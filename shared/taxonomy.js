@@ -3,12 +3,16 @@
  * The single source of truth for all Video Prompt Builder categories.
  * 
  * HIERARCHY PRINCIPLE:
- * 1. ENTITIES (Subject) - Have attributes (Wardrobe, Action, Appearance)
+ * 1. ENTITIES (Subject) - Have attributes (Wardrobe, Action)
  * 2. SETTING (Environment, Lighting) - Global scene context
  * 3. TECHNICAL (Camera, Style) - Production parameters
  * 
  * This taxonomy structurally enforces parent-child relationships,
  * preventing "orphaned attributes" (e.g., wardrobe without subject).
+ * 
+ * VERSION 2.0: Namespaced IDs and camelCase consistency
+ * - All IDs are namespaced: 'subject.wardrobe' instead of 'wardrobe'
+ * - All attributes use camelCase: 'filmStock' instead of 'film_stock'
  */
 
 export const TAXONOMY = {
@@ -25,21 +29,22 @@ export const TAXONOMY = {
     label: 'Subject & Character',
     description: 'The focal point of the shot',
     group: 'entity',
+    color: 'orange',
     attributes: {
       /** Core identity: "A cowboy", "An alien" */
-      IDENTITY: 'identity',
+      IDENTITY: 'subject.identity',
       
       /** Physical traits: "Weathered face", "Tall", "Athletic build" */
-      APPEARANCE: 'appearance',
+      APPEARANCE: 'subject.appearance',
       
       /** Clothing: "Leather jacket", "Space suit", "Vintage attire" */
-      WARDROBE: 'wardrobe',
+      WARDROBE: 'subject.wardrobe',
       
       /** Movement/Activity: "Running", "Sitting", "Leaning against wall" */
-      ACTION: 'action',
+      ACTION: 'subject.action',
       
       /** Emotional state: "Stoic expression", "Joyful demeanor" */
-      EMOTION: 'emotion',
+      EMOTION: 'subject.emotion',
     }
   },
 
@@ -56,15 +61,16 @@ export const TAXONOMY = {
     label: 'Environment',
     description: 'Where the scene takes place',
     group: 'setting',
+    color: 'green',
     attributes: {
       /** Physical location: "Diner", "Mars", "Forest" */
-      LOCATION: 'location',
+      LOCATION: 'environment.location',
       
       /** Weather conditions: "Rainy", "Foggy", "Sunny" */
-      WEATHER: 'weather',
+      WEATHER: 'environment.weather',
       
       /** Environmental context: "Crowded", "Empty", "Abandoned" */
-      CONTEXT: 'context',
+      CONTEXT: 'environment.context',
     }
   },
 
@@ -77,15 +83,16 @@ export const TAXONOMY = {
     label: 'Lighting',
     description: 'Illumination and atmosphere',
     group: 'setting',
+    color: 'yellow',
     attributes: {
       /** Light source: "Neon sign", "Sun", "Candles" */
-      SOURCE: 'lighting_source',
+      SOURCE: 'lighting.source',
       
       /** Light quality: "Soft", "Hard", "Diffused" */
-      QUALITY: 'lighting_quality',
+      QUALITY: 'lighting.quality',
       
       /** Time of day: "Golden hour", "Night", "Dawn" */
-      TIME: 'time_of_day',
+      TIME: 'lighting.timeOfDay',
     }
   },
 
@@ -102,18 +109,19 @@ export const TAXONOMY = {
     label: 'Camera',
     description: 'Cinematography and framing',
     group: 'technical',
+    color: 'blue',
     attributes: {
       /** Shot type: "Close-up", "Wide shot", "Medium" */
-      FRAMING: 'framing',
+      FRAMING: 'camera.framing',
       
       /** Camera movement: "Dolly", "Pan", "Static", "Crane" */
-      MOVEMENT: 'camera_move',
+      MOVEMENT: 'camera.movement',
       
       /** Lens specs: "35mm", "Anamorphic", "Wide angle" */
-      LENS: 'lens',
+      LENS: 'camera.lens',
       
       /** Camera angle: "Low angle", "Overhead", "Eye level" */
-      ANGLE: 'angle',
+      ANGLE: 'camera.angle',
     }
   },
 
@@ -126,12 +134,13 @@ export const TAXONOMY = {
     label: 'Style & Aesthetic',
     description: 'Visual treatment and medium',
     group: 'technical',
+    color: 'purple',
     attributes: {
       /** Aesthetic style: "Cyberpunk", "Noir", "Vintage" */
-      AESTHETIC: 'aesthetic',
+      AESTHETIC: 'style.aesthetic',
       
       /** Film medium: "Kodak Portra", "35mm film", "Digital" */
-      FILM_STOCK: 'film_stock',
+      FILM_STOCK: 'style.filmStock',
     }
   },
 
@@ -144,15 +153,16 @@ export const TAXONOMY = {
     label: 'Technical Specs',
     description: 'Video technical parameters',
     group: 'technical',
+    color: 'gray',
     attributes: {
       /** Aspect ratio: "16:9", "2.39:1", "9:16" */
-      ASPECT_RATIO: 'aspect_ratio',
+      ASPECT_RATIO: 'technical.aspectRatio',
       
       /** Frame rate: "24fps", "30fps", "60fps" */
-      FPS: 'frame_rate',
+      FPS: 'technical.frameRate',
       
       /** Resolution: "4K", "1080p", "8K" */
-      RESOLUTION: 'resolution'
+      RESOLUTION: 'technical.resolution'
     }
   },
 
@@ -165,94 +175,200 @@ export const TAXONOMY = {
     label: 'Audio',
     description: 'Sound and music elements',
     group: 'technical',
+    color: 'indigo',
     attributes: {
       /** Music/Score: "Orchestral score", "Ambient music" */
-      SCORE: 'score',
+      SCORE: 'audio.score',
       
       /** Sound effects: "Footsteps", "Wind", "Traffic" */
-      SFX: 'sound_effect'
+      SFX: 'audio.soundEffect'
     }
   }
 };
+
+// ============================================================================
+// VALIDATION SET
+// ============================================================================
+
+/**
+ * Fast lookup set for validation.
+ * Contains ALL valid IDs (parents + attributes).
+ * Use .has() for O(1) validation instead of object lookup.
+ */
+export const VALID_CATEGORIES = new Set();
+
+// Populate the validation set
+Object.values(TAXONOMY).forEach(category => {
+  VALID_CATEGORIES.add(category.id);
+  if (category.attributes) {
+    Object.values(category.attributes).forEach(attributeId => {
+      VALID_CATEGORIES.add(attributeId);
+    });
+  }
+});
+
+/**
+ * Check if a category ID is valid
+ * @param {string} id - Category ID to validate
+ * @returns {boolean} True if valid
+ * 
+ * @example
+ * isValidCategory('subject') // true
+ * isValidCategory('subject.wardrobe') // true
+ * isValidCategory('invalid') // false
+ */
+export function isValidCategory(id) {
+  return VALID_CATEGORIES.has(id);
+}
+
+// ============================================================================
+// LEGACY COMPATIBILITY
+// ============================================================================
+
+/**
+ * Map old flat IDs to new namespaced IDs
+ * Provides backward compatibility during migration
+ */
+export const LEGACY_ID_MAP = {
+  // Subject attributes
+  'identity': 'subject.identity',
+  'appearance': 'subject.appearance',
+  'wardrobe': 'subject.wardrobe',
+  'action': 'subject.action',
+  'emotion': 'subject.emotion',
+  
+  // Environment attributes
+  'location': 'environment.location',
+  'weather': 'environment.weather',
+  'context': 'environment.context',
+  
+  // Lighting attributes
+  'lighting_source': 'lighting.source',
+  'lightingSource': 'lighting.source',
+  'lighting_quality': 'lighting.quality',
+  'lightingQuality': 'lighting.quality',
+  'time_of_day': 'lighting.timeOfDay',
+  'timeOfDay': 'lighting.timeOfDay',
+  'timeofday': 'lighting.timeOfDay',
+  'timeday': 'lighting.timeOfDay',
+  
+  // Camera attributes
+  'framing': 'camera.framing',
+  'camera_move': 'camera.movement',
+  'cameraMove': 'camera.movement',
+  'movement': 'camera.movement',
+  'lens': 'camera.lens',
+  'angle': 'camera.angle',
+  
+  // Style attributes
+  'aesthetic': 'style.aesthetic',
+  'film_stock': 'style.filmStock',
+  'filmStock': 'style.filmStock',
+  
+  // Technical attributes
+  'aspect_ratio': 'technical.aspectRatio',
+  'aspectRatio': 'technical.aspectRatio',
+  'frame_rate': 'technical.frameRate',
+  'frameRate': 'technical.frameRate',
+  'fps': 'technical.frameRate',
+  'resolution': 'technical.resolution',
+  'specs': 'technical.resolution',
+  
+  // Audio attributes
+  'score': 'audio.score',
+  'sound_effect': 'audio.soundEffect',
+  'soundEffect': 'audio.soundEffect',
+  'sfx': 'audio.soundEffect',
+};
+
+/**
+ * Resolve a category ID (handles both new and legacy IDs)
+ * @param {string} id - Category ID (new or legacy format)
+ * @returns {string} Resolved category ID in new format
+ * 
+ * @example
+ * resolveCategory('wardrobe') // 'subject.wardrobe' (legacy mapped)
+ * resolveCategory('subject.wardrobe') // 'subject.wardrobe' (already namespaced)
+ */
+export function resolveCategory(id) {
+  if (!id) return id;
+  return LEGACY_ID_MAP[id] || id;
+}
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Get the parent category ID from any category or attribute ID
- * 
- * @param {string} categoryId - Category or attribute ID to look up
- * @returns {string|null} Parent category ID, or null if not found or is top-level
+ * Parse a category ID into its components
+ * @param {string} id - Category ID
+ * @returns {Object|null} Parsed components or null
  * 
  * @example
- * getParentCategory('wardrobe') // returns 'subject'
- * getParentCategory('subject') // returns 'subject' (is already parent)
- * getParentCategory('framing') // returns 'camera'
+ * parseCategoryId('subject.wardrobe')
+ * // { parent: 'subject', attribute: 'wardrobe', isParent: false }
+ * 
+ * parseCategoryId('subject')
+ * // { parent: 'subject', attribute: null, isParent: true }
+ */
+export function parseCategoryId(id) {
+  if (!id || typeof id !== 'string') return null;
+  
+  const parts = id.split('.');
+  if (parts.length === 1) {
+    // Parent category
+    return { parent: parts[0], attribute: null, isParent: true };
+  }
+  
+  // Attribute category
+  return { parent: parts[0], attribute: parts[1], isParent: false };
+}
+
+/**
+ * Get the parent category ID from any category or attribute ID
+ * @param {string} categoryId - Category or attribute ID
+ * @returns {string|null} Parent category ID, or null if not found
+ * 
+ * @example
+ * getParentCategory('subject.wardrobe') // 'subject'
+ * getParentCategory('subject') // 'subject' (is already parent)
+ * getParentCategory('camera.framing') // 'camera'
  */
 export function getParentCategory(categoryId) {
   if (!categoryId) return null;
 
-  // Check if it's already a top-level category
-  for (const [parentKey, parentVal] of Object.entries(TAXONOMY)) {
-    if (parentVal.id === categoryId) {
-      return parentVal.id; // It's a parent, return itself
-    }
-  }
-
-  // Search through attributes to find parent
-  for (const [parentKey, parentVal] of Object.entries(TAXONOMY)) {
-    if (parentVal.attributes) {
-      const attributeValues = Object.values(parentVal.attributes);
-      if (attributeValues.includes(categoryId)) {
-        return parentVal.id; // Found the parent
-      }
-    }
-  }
-
-  return null; // Not found in taxonomy
+  // Resolve legacy ID first
+  const resolvedId = resolveCategory(categoryId);
+  const parsed = parseCategoryId(resolvedId);
+  
+  if (!parsed) return null;
+  return parsed.parent;
 }
 
 /**
  * Check if a category ID is an attribute (child) rather than a parent
- * 
  * @param {string} categoryId - Category ID to check
- * @returns {boolean} True if it's an attribute, false if parent or not found
+ * @returns {boolean} True if it's an attribute
  * 
  * @example
- * isAttribute('wardrobe') // true
+ * isAttribute('subject.wardrobe') // true
  * isAttribute('subject') // false
  */
 export function isAttribute(categoryId) {
   if (!categoryId) return false;
 
-  // Check if it's a top-level category (parent)
-  for (const category of Object.values(TAXONOMY)) {
-    if (category.id === categoryId) {
-      return false; // It's a parent
-    }
-  }
-
-  // Check if it's in any attributes
-  for (const category of Object.values(TAXONOMY)) {
-    if (category.attributes) {
-      const attributeValues = Object.values(category.attributes);
-      if (attributeValues.includes(categoryId)) {
-        return true; // It's an attribute
-      }
-    }
-  }
-
-  return false; // Not found
+  const resolvedId = resolveCategory(categoryId);
+  const parsed = parseCategoryId(resolvedId);
+  
+  return parsed ? !parsed.isParent : false;
 }
 
 /**
  * Get all attribute IDs across the entire taxonomy
- * 
  * @returns {string[]} Array of all attribute IDs
  * 
  * @example
- * getAllAttributes() // ['identity', 'appearance', 'wardrobe', ...]
+ * getAllAttributes() // ['subject.identity', 'subject.appearance', ...]
  */
 export function getAllAttributes() {
   const attributes = [];
@@ -268,7 +384,6 @@ export function getAllAttributes() {
 
 /**
  * Get all parent category IDs
- * 
  * @returns {string[]} Array of all parent category IDs
  * 
  * @example
@@ -280,35 +395,34 @@ export function getAllParentCategories() {
 
 /**
  * Get category configuration by ID (parent or attribute)
- * 
  * @param {string} categoryId - Category or attribute ID
  * @returns {Object|null} Category config object or null if not found
  * 
  * @example
  * getCategoryById('subject') // { id: 'subject', label: '...', ... }
- * getCategoryById('wardrobe') // { id: 'wardrobe', parent: 'subject', ... }
+ * getCategoryById('subject.wardrobe') // { id: 'subject.wardrobe', parent: 'subject', ... }
  */
 export function getCategoryById(categoryId) {
   if (!categoryId) return null;
 
+  const resolvedId = resolveCategory(categoryId);
+  const parsed = parseCategoryId(resolvedId);
+  
+  if (!parsed) return null;
+
   // Check if it's a parent category
   for (const category of Object.values(TAXONOMY)) {
-    if (category.id === categoryId) {
-      return category;
-    }
-  }
-
-  // Check if it's an attribute
-  for (const category of Object.values(TAXONOMY)) {
-    if (category.attributes) {
-      for (const [attrKey, attrValue] of Object.entries(category.attributes)) {
-        if (attrValue === categoryId) {
-          return {
-            id: attrValue,
-            parent: category.id,
-            isAttribute: true
-          };
-        }
+    if (category.id === parsed.parent) {
+      if (parsed.isParent) {
+        return category;
+      } else {
+        // It's an attribute
+        return {
+          id: resolvedId,
+          parent: parsed.parent,
+          attribute: parsed.attribute,
+          isAttribute: true
+        };
       }
     }
   }
@@ -318,12 +432,11 @@ export function getCategoryById(categoryId) {
 
 /**
  * Get all attributes for a given parent category
- * 
  * @param {string} parentId - Parent category ID
  * @returns {string[]} Array of attribute IDs for that parent
  * 
  * @example
- * getAttributesForParent('subject') // ['identity', 'appearance', 'wardrobe', ...]
+ * getAttributesForParent('subject') // ['subject.identity', 'subject.appearance', ...]
  */
 export function getAttributesForParent(parentId) {
   if (!parentId) return [];
@@ -339,34 +452,48 @@ export function getAttributesForParent(parentId) {
 
 /**
  * Get the group (entity, setting, technical) for a category
- * 
  * @param {string} categoryId - Category or attribute ID
  * @returns {string|null} Group name or null if not found
  * 
  * @example
- * getGroupForCategory('wardrobe') // 'entity'
+ * getGroupForCategory('subject.wardrobe') // 'entity'
  * getGroupForCategory('lighting') // 'setting'
  */
 export function getGroupForCategory(categoryId) {
   if (!categoryId) return null;
 
-  // If it's a parent, return its group directly
-  for (const category of Object.values(TAXONOMY)) {
-    if (category.id === categoryId) {
-      return category.group;
-    }
-  }
-
-  // If it's an attribute, find parent and return parent's group
   const parentId = getParentCategory(categoryId);
-  if (parentId) {
-    for (const category of Object.values(TAXONOMY)) {
-      if (category.id === parentId) {
-        return category.group;
-      }
+  if (!parentId) return null;
+
+  for (const category of Object.values(TAXONOMY)) {
+    if (category.id === parentId) {
+      return category.group;
     }
   }
 
   return null;
 }
 
+/**
+ * Get the color theme for a category
+ * @param {string} categoryId - Category or attribute ID
+ * @returns {string|null} Color theme or null
+ * 
+ * @example
+ * getColorForCategory('subject.wardrobe') // 'orange'
+ * getColorForCategory('camera') // 'blue'
+ */
+export function getColorForCategory(categoryId) {
+  if (!categoryId) return null;
+
+  const parentId = getParentCategory(categoryId);
+  if (!parentId) return null;
+
+  for (const category of Object.values(TAXONOMY)) {
+    if (category.id === parentId) {
+      return category.color;
+    }
+  }
+
+  return null;
+}

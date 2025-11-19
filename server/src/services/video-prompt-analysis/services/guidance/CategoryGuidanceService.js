@@ -1,5 +1,5 @@
 import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '../../config/categoryGuidance.js';
-import { TAXONOMY } from '../../../../../shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 import { normalizeText } from '../../utils/textHelpers.js';
 
 /**

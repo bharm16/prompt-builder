@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '../../../shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '@shared/taxonomy.js';
 
 /**
  * useHierarchyValidation

@@ -1,4 +1,4 @@
-import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '../../../shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories, resolveCategory } from '#shared/taxonomy.js';
 
 /**
  * HierarchyValidator
@@ -20,24 +20,30 @@ export class HierarchyValidator {
     }
 
     const issues = [];
-    const categoriesPresent = new Set(spans.map(s => s.category).filter(Boolean));
+    // Resolve all categories to handle legacy IDs
+    const categoriesPresent = new Set(
+      spans.map(s => s.category ? resolveCategory(s.category) : null).filter(Boolean)
+    );
     
     // Check each span
     for (const span of spans) {
       if (!span.category) continue;
 
+      const resolvedCategory = resolveCategory(span.category);
+      
       // If this is an attribute, check if its parent exists
-      if (isAttribute(span.category)) {
-        const parentCategory = getParentCategory(span.category);
+      if (isAttribute(resolvedCategory)) {
+        const parentCategory = getParentCategory(resolvedCategory);
         
         if (parentCategory && !categoriesPresent.has(parentCategory)) {
           issues.push({
             type: 'MISSING_PARENT',
             severity: 'warning',
-            attributeCategory: span.category,
+            attributeCategory: resolvedCategory,
+            originalCategory: span.category,
             requiredParent: parentCategory,
             affectedSpan: span,
-            message: `Attribute '${span.category}' requires parent category '${parentCategory}'`
+            message: `Attribute '${resolvedCategory}' requires parent category '${parentCategory}'`
           });
         }
       }
@@ -53,16 +59,20 @@ export class HierarchyValidator {
    * @returns {Object} { valid: boolean, missingParent: string|null }
    */
   canAttributeExist(attributeId, existingCategories) {
-    if (!isAttribute(attributeId)) {
+    const resolvedId = resolveCategory(attributeId);
+    
+    if (!isAttribute(resolvedId)) {
       return { valid: true, missingParent: null };
     }
 
-    const parentCategory = getParentCategory(attributeId);
+    const parentCategory = getParentCategory(resolvedId);
     if (!parentCategory) {
       return { valid: true, missingParent: null };
     }
 
-    const parentExists = existingCategories.includes(parentCategory);
+    // Check if parent exists (resolve existing categories too)
+    const resolvedExisting = existingCategories.map(c => resolveCategory(c));
+    const parentExists = resolvedExisting.includes(parentCategory);
     
     return {
       valid: parentExists,

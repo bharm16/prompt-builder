@@ -1,4 +1,4 @@
-import { TAXONOMY } from '../../../../shared/taxonomy.js';
+import { TAXONOMY } from '@shared/taxonomy.js';
 
 /**
  * Category Styling Configuration
@@ -138,7 +138,15 @@ export function getCategoryColor(category) {
   }
 
   // Default fallback for unknown categories
-  return { bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.5)' };
+  if (import.meta.env.DEV) {
+    console.warn(`[CategoryStyles] Unknown category: "${category}"`);
+  }
+  
+  // Error color for unknown/invalid categories
+  return { 
+    bg: '#fee2e2',  // Red-100
+    border: '#ef4444'  // Red-500
+  };
 }
 
 // Export as a static method on PromptContext for backward compatibility

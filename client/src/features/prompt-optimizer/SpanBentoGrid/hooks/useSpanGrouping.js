@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CATEGORY_ORDER } from '../config/bentoConfig.js';
-import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '../../../../../../shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories } from '@shared/taxonomy.js';
 
 /**
  * Groups spans by category with hierarchical awareness

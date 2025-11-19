@@ -1,4 +1,4 @@
-import { TAXONOMY, getParentCategory, isAttribute } from '../../../shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute, resolveCategory } from '#shared/taxonomy.js';
 
 /**
  * OrphanDetector
@@ -20,15 +20,21 @@ export class OrphanDetector {
     }
 
     const orphans = [];
-    const categoriesPresent = new Set(spans.map(s => s.category).filter(Boolean));
+    // Resolve all categories to handle legacy IDs
+    const categoriesPresent = new Set(
+      spans.map(s => s.category ? resolveCategory(s.category) : null).filter(Boolean)
+    );
     
     // Group orphaned attributes by their missing parent
     const orphansByParent = {};
 
     for (const span of spans) {
-      if (!span.category || !isAttribute(span.category)) continue;
+      if (!span.category) continue;
+      
+      const resolvedCategory = resolveCategory(span.category);
+      if (!isAttribute(resolvedCategory)) continue;
 
-      const parentCategory = getParentCategory(span.category);
+      const parentCategory = getParentCategory(resolvedCategory);
       if (parentCategory && !categoriesPresent.has(parentCategory)) {
         if (!orphansByParent[parentCategory]) {
           orphansByParent[parentCategory] = [];
@@ -43,7 +49,7 @@ export class OrphanDetector {
         missingParent,
         orphanedSpans,
         count: orphanedSpans.length,
-        categories: [...new Set(orphanedSpans.map(s => s.category))]
+        categories: [...new Set(orphanedSpans.map(s => resolveCategory(s.category)))]
       });
     }
 
@@ -110,16 +116,22 @@ export class OrphanDetector {
    * @returns {boolean} True if orphaned
    */
   isSpanOrphaned(span, allSpans) {
-    if (!span.category || !isAttribute(span.category)) {
+    if (!span.category) return false;
+    
+    const resolvedCategory = resolveCategory(span.category);
+    if (!isAttribute(resolvedCategory)) {
       return false;
     }
 
-    const parentCategory = getParentCategory(span.category);
+    const parentCategory = getParentCategory(resolvedCategory);
     if (!parentCategory) {
       return false;
     }
 
-    const hasParent = allSpans.some(s => s.category === parentCategory);
+    const hasParent = allSpans.some(s => {
+      const resolved = resolveCategory(s.category);
+      return resolved === parentCategory;
+    });
     return !hasParent;
   }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaxonomyValidationService } from '../TaxonomyValidationService.js';
-import { TAXONOMY } from '../../../shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 
 describe('TaxonomyValidationService', () => {
   let validator;

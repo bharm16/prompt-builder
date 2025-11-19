@@ -1,4 +1,4 @@
-import { TAXONOMY } from '../../../shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 
 /**
  * ValidationReporter
@@ -158,16 +158,14 @@ export class ValidationReporter {
    * @returns {string} Severity level
    */
   determineOrphanSeverity(orphan) {
-    const { missingParent, count } = orphan;
+    const { missingParent } = orphan;
 
+    // Subject orphans are critical - they represent attributes without a subject
     if (missingParent === TAXONOMY.SUBJECT.id) {
-      return count > 2 ? 'error' : 'warning';
+      return 'error';
     }
 
-    if (missingParent === TAXONOMY.CAMERA.id) {
-      return 'info'; // Camera attributes often standalone
-    }
-
+    // All other orphaned attributes are warnings
     return 'warning';
   }
 

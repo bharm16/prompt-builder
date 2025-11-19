@@ -1,4 +1,4 @@
-import { TAXONOMY, getParentCategory, isAttribute } from '../../../../shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute } from '#shared/taxonomy.js';
 
 /**
  * Category Constraints Configuration
