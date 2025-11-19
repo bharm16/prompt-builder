@@ -98,6 +98,11 @@
     "perf:monitor:stop": "docker-compose -f infrastructure/docker/docker-compose.monitoring.yml down",
     "perf:monitor:logs": "docker-compose -f infrastructure/docker/docker-compose.monitoring.yml logs -f",
     "perf:stats": "curl -s http://localhost:3001/stats | jq",
-    "perf:metrics": "curl -s http://localhost:3001/metrics"
+    "perf:metrics": "curl -s http://localhost:3001/metrics",
+    "migrate:rerender": "node scripts/migrations/force-highlight-rerender.js --mode=clear",
+    "migrate:rerender:regenerate": "node scripts/migrations/force-highlight-rerender.js --mode=regenerate",
+    "migrate:rerender:dry": "node scripts/migrations/force-highlight-rerender.js --mode=clear --dry-run",
+    "migrate:backfill": "node scripts/migrations/backfill-highlight-cache.js",
+    "migrate:backfill:dry": "node scripts/migrations/backfill-highlight-cache.js --dry-run"
   }
 }
