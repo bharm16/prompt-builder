@@ -1,13 +1,20 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
-import { useSpanLabeling, createHighlightSignature } from './hooks/useSpanLabeling.js';
+import { useSpanLabeling } from './hooks/useSpanLabeling.js';
+import { useHighlightSourceSelection } from './hooks/useHighlightSourceSelection.js';
 import { createCanonicalText } from '../../utils/canonicalText.js';
 
 // Extracted utilities
 import { formatTextToHTML } from './utils/textFormatting.js';
 import { getSelectionOffsets, restoreSelectionFromOffsets } from './utils/textSelection.js';
 import { convertLabeledSpansToHighlights } from './utils/highlightConversion.js';
+import {
+  findHighlightNode,
+  extractHighlightMetadata,
+  createHighlightRange,
+  selectRange,
+} from './utils/highlightInteractionHelpers.js';
 
 // Extracted services
 import { ExportService } from '../../services/exportService.js';
@@ -76,63 +83,18 @@ export const PromptCanvas = ({
     []
   );
 
-  const memoizedInitialHighlights = useMemo(() => {
-    if (!enableMLHighlighting) {
-      return null;
-    }
-
-    // PRIORITY 1: Use draft spans if available and we're showing draft text
-    // This provides instant highlights at ~300ms
-    if (draftSpans && isDraftReady && !refinedSpans) {
-      const signature = createHighlightSignature(displayedPrompt ?? '');
-      return {
-        spans: draftSpans.spans || [],
-        meta: draftSpans.meta || null,
-        signature,
-        cacheId: promptUuid ? String(promptUuid) : null,
-        source: 'draft', // Mark as draft spans
-      };
-    }
-
-    // PRIORITY 2: Use refined spans if available
-    // This provides updated highlights when refinement completes
-    if (refinedSpans && !isRefining) {
-      const signature = createHighlightSignature(displayedPrompt ?? '');
-      return {
-        spans: refinedSpans.spans || [],
-        meta: refinedSpans.meta || null,
-        signature,
-        cacheId: promptUuid ? String(promptUuid) : null,
-        source: 'refined', // Mark as refined spans
-      };
-    }
-
-    // PRIORITY 3: Fallback to persisted highlights (e.g., loaded from history)
-    if (initialHighlights && Array.isArray(initialHighlights.spans)) {
-      const resolvedSignature =
-        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
-
-      return {
-        spans: initialHighlights.spans,
-        meta: initialHighlights.meta ?? null,
-        signature: resolvedSignature,
-        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-        source: 'persisted',
-      };
-    }
-
-    return null;
-  }, [
-    enableMLHighlighting,
+  // EXTRACTED: Highlight source selection logic
+  const memoizedInitialHighlights = useHighlightSourceSelection({
     draftSpans,
     refinedSpans,
     isDraftReady,
     isRefining,
     initialHighlights,
-    initialHighlightsVersion,
     promptUuid,
-    displayedPrompt
-  ]);
+    displayedPrompt,
+    enableMLHighlighting,
+    initialHighlightsVersion,
+  });
 
   const handleLabelingResult = useCallback(
     (result) => {
@@ -348,95 +310,47 @@ export const PromptCanvas = ({
     }
   };
 
-  // Shared helper to trigger suggestions from a DOM target
+  // REFACTORED: Trigger suggestions from a DOM target (highlight click)
   const triggerSuggestionsFromTarget = (targetElement, e) => {
-    // Only handle highlight clicks in video mode
     if (selectedMode !== 'video') {
       return;
     }
 
-    // Check if clicked element or its parent is a highlighted word
-    let node = targetElement;
+    // Find the highlighted word element
+    const node = findHighlightNode(targetElement, editorRef.current);
+    if (!node) {
+      return;
+    }
 
-    // Traverse up to find a value-word span (in case user clicks on text inside the span)
-    while (node && node !== editorRef.current) {
-      if (node.classList && node.classList.contains('value-word')) {
-        // Prevent default text selection behavior
-        if (e && e.preventDefault) e.preventDefault();
+    // Prevent default text selection behavior
+    if (e && e.preventDefault) e.preventDefault();
 
-        // Get the word text and metadata
-        const wordText = node.textContent.trim();
+    // Extract metadata from the node
+    const metadata = extractHighlightMetadata(node, parseResult);
+    const wordText = node.textContent.trim();
 
-        let metadata = null;
-        if (node.dataset) {
-          const {
-            category,
-            source,
-            spanId,
-            start,
-            end,
-            startGrapheme,
-            endGrapheme,
-            validatorPass,
-            confidence,
-            quote,
-            leftCtx,
-            rightCtx,
-            idempotencyKey,
-          } = node.dataset;
+    if (wordText && onFetchSuggestions) {
+      // Create range and get offsets
+      const { range, rangeClone, offsets } = createHighlightRange(
+        node,
+        editorRef.current,
+        getSelectionOffsets
+      );
 
-          metadata = {
-            category: category || null,
-            source: source || null,
-            spanId: spanId || null,
-            start: start ? Number(start) : -1,
-            end: end ? Number(end) : -1,
-            startGrapheme: startGrapheme ? Number(startGrapheme) : -1,
-            endGrapheme: endGrapheme ? Number(endGrapheme) : -1,
-            validatorPass: validatorPass !== 'false',
-            confidence: confidence ? Number(confidence) : null,
-            quote: quote || wordText,
-            leftCtx: leftCtx || '',
-            rightCtx: rightCtx || '',
-            idempotencyKey: idempotencyKey || null,
-          };
+      // Update browser selection
+      selectRange(range);
 
-          if (metadata.spanId && Array.isArray(parseResult?.spans)) {
-            const spanDetail = parseResult.spans.find((span) => span.id === metadata.spanId);
-            if (spanDetail) {
-              metadata.span = { ...spanDetail };
-            }
-          }
-        }
-
-        if (wordText && onFetchSuggestions) {
-          // Create a range for the clicked word
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          const rangeClone = range.cloneRange();
-          const offsets = getSelectionOffsets(editorRef.current, rangeClone);
-
-          // Clear any existing selection
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-
-          // Trigger suggestions for this word
-          onFetchSuggestions({
-            highlightedText: wordText,
-            originalText: wordText,
-            displayedPrompt,
-            range: rangeClone,
-            offsets,
-            metadata,
-            trigger: 'highlight',
-            allLabeledSpans: labeledSpans, // NEW: Complete span context
-          });
-        }
-
-        return;
-      }
-      node = node.parentElement;
+      // Trigger suggestions
+      onFetchSuggestions({
+        highlightedText: wordText,
+        originalText: wordText,
+        displayedPrompt,
+        range: rangeClone,
+        offsets,
+        metadata,
+        trigger: 'highlight',
+        allLabeledSpans: labeledSpans,
+      });
     }
   };
 
