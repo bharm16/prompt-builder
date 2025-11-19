@@ -29,10 +29,12 @@ Sentry.init({
   ],
 
   // Performance Monitoring sample rate (1.0 = 100%)
-  tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
+  // Disabled in development to avoid rate limits and noise
+  tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 0,
 
   // Profiling sample rate
-  profilesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
+  // Disabled in development to avoid rate limits and noise
+  profilesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 0,
 
   // Filter out sensitive data
   beforeSend(event, hint) {
