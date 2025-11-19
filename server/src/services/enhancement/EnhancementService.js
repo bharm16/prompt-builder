@@ -7,6 +7,10 @@ import { FallbackRegenerationService } from './services/FallbackRegenerationServ
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';
 import { StyleTransferService } from './services/StyleTransferService.js';
 import { SemanticDependencyAnalyzer } from './services/SemanticDependencyAnalyzer.js';
+import { GrammaticalAnalysisService } from './services/GrammaticalAnalysisService.js';
+import { ResilientGenerationService } from './services/ResilientGenerationService.js';
+import { FallbackStrategyService } from './services/FallbackStrategyService.js';
+import { GRAMMATICAL_CONFIG } from './config/grammaticalAnalysis.js';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -51,6 +55,14 @@ export class EnhancementService {
     this.suggestionProcessor = new SuggestionProcessor(validationService);
     this.styleTransfer = new StyleTransferService(claudeClient);
     this.dependencyAnalyzer = new SemanticDependencyAnalyzer();
+
+    // Initialize grammatical analysis services
+    this.grammaticalAnalyzer = new GrammaticalAnalysisService(GRAMMATICAL_CONFIG);
+    this.resilientGenerator = new ResilientGenerationService(
+      this.groqClient || this.claudeClient,
+      this.promptBuilder
+    );
+    this.fallbackStrategy = new FallbackStrategyService();
   }
 
   /**
@@ -82,6 +94,10 @@ export class EnhancementService {
       sectionDetection: 0,
       groqCall: 0,
       postProcessing: 0,
+      grammaticalAnalysis: 0, // NEW: Grammatical complexity analysis time
+      complexHandling: 0, // NEW: Complex span handling time
+      retryAttempts: 0, // NEW: Number of retry attempts
+      fallbackUsed: false, // NEW: Whether algorithmic fallback was used
     };
     const startTotal = Date.now();
 
@@ -217,6 +233,62 @@ export class EnhancementService {
     logger.debug('Edit history analysis', {
       editCount: editHistory.length,
       hasEditHistory: editHistory.length > 0,
+    });
+
+    // Analyze grammatical complexity
+    const grammaticalStart = Date.now();
+    const grammaticalAnalysis = this.grammaticalAnalyzer.analyzeSpan(
+      highlightedText,
+      { contextBefore, contextAfter }
+    );
+    metrics.grammaticalAnalysis = Date.now() - grammaticalStart;
+
+    logger.debug('Grammatical complexity analysis', {
+      structure: grammaticalAnalysis.structure,
+      complexity: grammaticalAnalysis.complexity.toFixed(3),
+      tense: grammaticalAnalysis.tense,
+      requiresComplexHandling: this._requiresComplexHandling(grammaticalAnalysis),
+      analysisTime: metrics.grammaticalAnalysis,
+    });
+
+    // Route to complex handling if needed
+    if (this._requiresComplexHandling(grammaticalAnalysis)) {
+      logger.info('Routing to complex span handler', {
+        structure: grammaticalAnalysis.structure,
+        complexity: grammaticalAnalysis.complexity.toFixed(3),
+      });
+
+      return this._handleComplexSpan({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        brainstormContext,
+        highlightedCategory,
+        highlightedCategoryConfidence,
+        highlightedPhrase,
+        allLabeledSpans,
+        nearbySpans,
+        editHistory,
+        isVideoPrompt,
+        phraseRole,
+        highlightWordCount,
+        videoConstraints,
+        dependencyContext,
+        elementDependencies,
+        modelTarget,
+        promptSection,
+        grammaticalAnalysis,
+        metrics,
+        startTotal,
+      });
+    }
+
+    // Continue with existing simple path for non-complex spans
+    logger.debug('Using standard enhancement path', {
+      structure: grammaticalAnalysis.structure,
+      complexity: grammaticalAnalysis.complexity.toFixed(3),
     });
 
     // Build prompt
@@ -608,6 +680,18 @@ export class EnhancementService {
       if (metrics.semanticDeps > 0) {
         console.log(`Semantic Analysis: ${metrics.semanticDeps}ms`);
       }
+      if (metrics.grammaticalAnalysis > 0) {
+        console.log(`Grammatical Analysis: ${metrics.grammaticalAnalysis}ms`);
+      }
+      if (metrics.complexHandling > 0) {
+        console.log(`Complex Handling: ${metrics.complexHandling}ms`);
+      }
+      if (metrics.retryAttempts > 0) {
+        console.log(`Retry Attempts: ${metrics.retryAttempts}`);
+      }
+      if (metrics.fallbackUsed) {
+        console.log(`Fallback: Algorithmic transformation used`);
+      }
       if (metrics.modelDetection > 0) {
         console.log(`Model Detection: ${metrics.modelDetection}ms`);
       }
@@ -673,6 +757,120 @@ export class EnhancementService {
         });
       }
     }
+  }
+
+  /**
+   * Check if grammatical analysis indicates complex handling is needed
+   * @param {Object} analysis - Grammatical analysis result
+   * @returns {boolean} True if complex handling required
+   * @private
+   */
+  _requiresComplexHandling(analysis) {
+    return (
+      analysis.complexity > GRAMMATICAL_CONFIG.complexityThreshold ||
+      GRAMMATICAL_CONFIG.complexStructures.includes(analysis.structure)
+    );
+  }
+
+  /**
+   * Handle complex span enhancement with resilient generation and fallback
+   * @param {Object} params - All enhancement parameters plus grammatical analysis
+   * @returns {Promise<Object>} Enhancement result
+   * @private
+   */
+  async _handleComplexSpan(params) {
+    const { grammaticalAnalysis, highlightedText, metrics, startTotal } = params;
+    const complexStart = Date.now();
+
+    try {
+      logger.info('Handling complex span', {
+        text: highlightedText.substring(0, 50),
+        structure: grammaticalAnalysis.structure,
+        complexity: grammaticalAnalysis.complexity.toFixed(3),
+      });
+
+      // Attempt resilient generation with retry-validation loop
+      const suggestions = await this.resilientGenerator.generate(
+        params,
+        grammaticalAnalysis
+      );
+
+      if (suggestions && suggestions.length > 0) {
+        metrics.complexHandling = Date.now() - complexStart;
+        metrics.retryAttempts = 0; // Tracked internally by resilient generator
+        metrics.fallbackUsed = false;
+        metrics.total = Date.now() - startTotal;
+
+        this._logMetrics(metrics, params);
+
+        logger.info('Complex span enhancement succeeded via AI', {
+          suggestionsCount: suggestions.length,
+          handleTime: metrics.complexHandling,
+        });
+
+        return this._formatComplexResult(suggestions, 'ai_enhanced');
+      }
+
+      // AI generation failed after retries - use algorithmic fallback
+      logger.warn('Resilient generation failed, applying algorithmic fallback');
+
+      const fallbackText = this.fallbackStrategy.generateFallback(
+        highlightedText,
+        grammaticalAnalysis
+      );
+
+      metrics.complexHandling = Date.now() - complexStart;
+      metrics.fallbackUsed = true;
+      metrics.total = Date.now() - startTotal;
+
+      this._logMetrics(metrics, params);
+
+      logger.info('Complex span enhancement succeeded via fallback', {
+        originalText: highlightedText,
+        fallbackText,
+        handleTime: metrics.complexHandling,
+      });
+
+      return this._formatComplexResult(
+        [{ text: fallbackText, explanation: 'Enhanced using algorithmic transformation' }],
+        'algorithmic_fallback'
+      );
+    } catch (error) {
+      logger.error('Complex span handling failed completely', {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      metrics.complexHandling = Date.now() - complexStart;
+      metrics.total = Date.now() - startTotal;
+
+      this._logMetrics(metrics, params, error);
+
+      // Return null to signal failure - caller can fall back to simple path
+      return null;
+    }
+  }
+
+  /**
+   * Format complex span result with proper structure
+   * @param {Array} suggestions - Array of suggestion objects
+   * @param {string} source - Source of suggestions ('ai_enhanced' or 'algorithmic_fallback')
+   * @returns {Object} Formatted result
+   * @private
+   */
+  _formatComplexResult(suggestions, source) {
+    return {
+      suggestions: suggestions.map(s => ({
+        text: s.text,
+        explanation: s.explanation || `Enhanced via ${source.replace('_', ' ')}`,
+        category: 'enhancement',
+      })),
+      metadata: {
+        method: 'grammatical_analysis',
+        source,
+        timestamp: Date.now(),
+      },
+    };
   }
 }
 
