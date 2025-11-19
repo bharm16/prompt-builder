@@ -32,6 +32,7 @@ import { PlaceholderDetectionService } from '../services/enhancement/services/Pl
 import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
 import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.js';
 import { PromptBuilderService } from '../services/enhancement/services/SystemPromptBuilder.js';
+import { AlgorithmicPromptBuilder } from '../services/enhancement/services/AlgorithmicPromptBuilder.js';
 import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.js';
 import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.js';
 import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.js';
@@ -80,6 +81,9 @@ export function configureServices() {
     server: {
       port: process.env.PORT || 3001,
       environment: process.env.NODE_ENV || 'development',
+    },
+    enhancement: {
+      useAlgorithmicPromptBuilder: process.env.USE_ALGORITHMIC_PROMPT_BUILDER === 'true' || false,
     },
   });
 
@@ -159,9 +163,15 @@ export function configureServices() {
 
   container.register(
     'promptBuilder',
-    (brainstormBuilder, videoService) =>
-      new PromptBuilderService(brainstormBuilder, videoService),
-    ['brainstormBuilder', 'videoService']
+    (brainstormBuilder, videoService, config) => {
+      if (config.enhancement?.useAlgorithmicPromptBuilder) {
+        logger.info('🚀 AlgorithmicPromptBuilder ENABLED - Using statistical analysis with natural language translation');
+        return new AlgorithmicPromptBuilder(brainstormBuilder, videoService);
+      }
+      logger.info('Using baseline PromptBuilderService');
+      return new PromptBuilderService(brainstormBuilder, videoService);
+    },
+    ['brainstormBuilder', 'videoService', 'config']
   );
 
   container.register(

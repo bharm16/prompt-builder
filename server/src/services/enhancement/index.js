@@ -16,6 +16,7 @@ export { BrainstormContextBuilder } from './services/BrainstormContextBuilder.js
 export { CategoryAlignmentService } from './services/CategoryAlignmentService.js';
 export { PlaceholderDetectionService } from './services/PlaceholderDetectionService.js';
 export { PromptBuilderService } from './services/SystemPromptBuilder.js';
+export { AlgorithmicPromptBuilder } from './services/AlgorithmicPromptBuilder.js';
 export { SuggestionDiversityEnforcer } from './services/SuggestionDeduplicator.js';
 export { SuggestionValidationService } from './services/SuggestionValidationService.js';
 
