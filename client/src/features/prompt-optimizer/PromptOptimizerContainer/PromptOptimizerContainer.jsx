@@ -282,6 +282,7 @@ function PromptOptimizerContent({ user }) {
         <PromptResultsSection
           onDisplayedPromptChange={handleDisplayedPromptChange}
           onFetchSuggestions={fetchEnhancementSuggestions}
+          onSuggestionClick={handleSuggestionClick}
           onHighlightsPersist={handleHighlightsPersist}
           onUndo={handleUndo}
           onRedo={handleRedo}

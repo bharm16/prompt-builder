@@ -51,6 +51,7 @@ export const PromptCanvas = ({
   onDisplayedPromptChange,
   suggestionsData,
   onFetchSuggestions,
+  onSuggestionClick,
   onCreateNew,
   initialHighlights = null,
   initialHighlightsVersion = 0,
@@ -537,7 +538,13 @@ export const PromptCanvas = ({
         </div>
 
         {/* Right Side - AI Suggestions Panel (Always Visible) */}
-        <SuggestionsPanel suggestionsData={suggestionsData || { show: false }} />
+        <SuggestionsPanel 
+          suggestionsData={
+            suggestionsData 
+              ? { ...suggestionsData, onSuggestionClick } 
+              : { show: false }
+          } 
+        />
       </div>
     </div>
   );

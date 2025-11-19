@@ -12,6 +12,7 @@ import { usePromptState } from '../context/PromptStateContext';
 export const PromptResultsSection = ({
   onDisplayedPromptChange,
   onFetchSuggestions,
+  onSuggestionClick,
   onHighlightsPersist,
   onUndo,
   onRedo,
@@ -71,6 +72,7 @@ export const PromptResultsSection = ({
         onDisplayedPromptChange={onDisplayedPromptChange}
         suggestionsData={suggestionsData}
         onFetchSuggestions={onFetchSuggestions}
+        onSuggestionClick={onSuggestionClick}
         onCreateNew={handleCreateNew}
         initialHighlights={initialHighlights}
         initialHighlightsVersion={initialHighlightsVersion}
