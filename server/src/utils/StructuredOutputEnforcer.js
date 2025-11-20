@@ -48,7 +48,7 @@ export class StructuredOutputEnforcer {
           aiService,
           operation,
           currentSystemPrompt,
-          restOptions
+          { ...restOptions, isArray }  // Pass the isArray flag through
         );
 
         // Extract and clean JSON from response

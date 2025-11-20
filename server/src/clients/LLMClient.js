@@ -263,8 +263,8 @@ export class LLMClient {
         stream: true,
       };
 
-      // Conditionally add JSON mode
-      if (options.jsonMode) {
+      // Don't set json_object mode for arrays - Groq doesn't support it
+      if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
       }
 
@@ -379,8 +379,8 @@ export class LLMClient {
         temperature: options.temperature !== undefined ? options.temperature : 0.7,
       };
 
-      // Conditionally add JSON mode only when requested
-      if (options.jsonMode) {
+      // Don't set json_object mode for arrays - Groq doesn't support it
+      if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
       }
 
