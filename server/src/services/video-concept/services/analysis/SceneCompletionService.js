@@ -56,11 +56,12 @@ Return ONLY a JSON object with the missing elements:
   ...
 }`;
 
-    try {
+    try{
       const suggestions = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_scene_completion',
           schema: completeSceneOutputSchema,
           maxTokens: 512,
           temperature: 0.7,

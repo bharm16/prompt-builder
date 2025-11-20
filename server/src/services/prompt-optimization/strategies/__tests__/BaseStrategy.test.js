@@ -20,34 +20,37 @@ class TestStrategy extends BaseStrategy {
 
 describe('BaseStrategy', () => {
   let strategy;
-  let mockClaudeClient;
+  let mockAIService;
   let mockTemplateService;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockClaudeClient = {
-      complete: vi.fn(),
+    mockAIService = {
+      execute: vi.fn(),
+      stream: vi.fn(),
+      listOperations: vi.fn(),
+      supportsStreaming: vi.fn(),
     };
 
     mockTemplateService = {
       load: vi.fn(),
     };
 
-    strategy = new TestStrategy('test', mockClaudeClient, mockTemplateService);
+    strategy = new TestStrategy('test', mockAIService, mockTemplateService);
   });
 
   describe('Constructor', () => {
     it('should initialize with correct name and dependencies', () => {
       expect(strategy.name).toBe('test');
-      expect(strategy.claudeClient).toBe(mockClaudeClient);
+      expect(strategy.ai).toBe(mockAIService);
       expect(strategy.templateService).toBe(mockTemplateService);
     });
   });
 
   describe('Abstract Methods', () => {
     it('should throw error if optimize() not implemented', async () => {
-      const baseStrategy = new BaseStrategy('base', mockClaudeClient, mockTemplateService);
+      const baseStrategy = new BaseStrategy('base', mockAIService, mockTemplateService);
 
       await expect(
         baseStrategy.optimize({ prompt: 'test' })

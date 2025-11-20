@@ -55,9 +55,10 @@ Return ONLY a JSON array of 3 variations:
 
     try {
       const variations = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_scene_variations',
           schema: variationsOutputSchema,
           isArray: true,
           maxTokens: 2048,

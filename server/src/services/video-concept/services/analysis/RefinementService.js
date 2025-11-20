@@ -46,9 +46,10 @@ Return ONLY a JSON object:
 
     try {
       const refinements = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_refinements',
           schema: refinementsOutputSchema,
           maxTokens: 512,
           temperature: 0.6,

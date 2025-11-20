@@ -71,9 +71,10 @@ Return ONLY a JSON array of conflicts (empty array if none):
 
     try {
       const conflicts = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_conflict_detection',
           schema: conflictsOutputSchema,
           isArray: true,
           maxTokens: 512,

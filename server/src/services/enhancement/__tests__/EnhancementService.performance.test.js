@@ -1,4 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock cache service at top level before imports
+vi.mock('../../cache/CacheService.js', () => ({
+  cacheService: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue(true),
+    getConfig: vi.fn().mockReturnValue({ ttl: 3600, namespace: 'enhancement' }),
+    generateKey: vi.fn().mockReturnValue('cache-key'),
+  },
+}));
+
+// Mock StructuredOutputEnforcer
+vi.mock('../../../utils/StructuredOutputEnforcer.js', () => ({
+  StructuredOutputEnforcer: {
+    enforceJSON: vi.fn().mockResolvedValue([
+      { value: 'suggestion 1', category: 'lighting' },
+      { value: 'suggestion 2', category: 'lighting' },
+    ]),
+  },
+}));
+
 import { EnhancementService } from '../EnhancementService.js';
 
 /**
@@ -9,8 +30,7 @@ import { EnhancementService } from '../EnhancementService.js';
  */
 describe('EnhancementService - Performance Monitoring', () => {
   let enhancementService;
-  let mockClaudeClient;
-  let mockGroqClient;
+  let mockAIService;
   let mockPlaceholderDetector;
   let mockVideoService;
   let mockBrainstormBuilder;
@@ -23,12 +43,13 @@ describe('EnhancementService - Performance Monitoring', () => {
 
   beforeEach(() => {
     // Mock all dependencies
-    mockClaudeClient = {
-      generateText: vi.fn().mockResolvedValue('mocked response'),
-    };
-
-    mockGroqClient = {
-      generateText: vi.fn().mockResolvedValue('mocked response'),
+    mockAIService = {
+      execute: vi.fn().mockResolvedValue({
+        content: [{ text: 'mocked response' }]
+      }),
+      stream: vi.fn(),
+      listOperations: vi.fn(),
+      supportsStreaming: vi.fn(),
     };
 
     mockPlaceholderDetector = {
@@ -88,8 +109,7 @@ describe('EnhancementService - Performance Monitoring', () => {
 
     // Create service with mocked metrics service
     enhancementService = new EnhancementService(
-      mockClaudeClient,
-      mockGroqClient,
+      mockAIService,
       mockPlaceholderDetector,
       mockVideoService,
       mockBrainstormBuilder,
@@ -99,26 +119,6 @@ describe('EnhancementService - Performance Monitoring', () => {
       mockCategoryAligner,
       mockMetricsService
     );
-
-    // Mock cache service to always miss
-    vi.mock('../../CacheService.js', () => ({
-      cacheService: {
-        get: vi.fn().mockResolvedValue(null),
-        set: vi.fn().mockResolvedValue(true),
-        getConfig: vi.fn().mockReturnValue({ ttl: 3600, namespace: 'enhancement' }),
-        generateKey: vi.fn().mockReturnValue('cache-key'),
-      },
-    }));
-
-    // Mock StructuredOutputEnforcer
-    vi.mock('../../../utils/StructuredOutputEnforcer.js', () => ({
-      StructuredOutputEnforcer: {
-        enforceJSON: vi.fn().mockResolvedValue([
-          { value: 'suggestion 1', category: 'lighting' },
-          { value: 'suggestion 2', category: 'lighting' },
-        ]),
-      },
-    }));
   });
 
   afterEach(() => {
@@ -128,7 +128,7 @@ describe('EnhancementService - Performance Monitoring', () => {
   describe('Metrics Tracking', () => {
     it('should track metrics for cache hit', async () => {
       // Mock cache to return a hit
-      const { cacheService } = await import('../../CacheService.js');
+      const { cacheService } = await import('../../cache/CacheService.js');
       cacheService.get.mockResolvedValueOnce({ suggestions: [] });
 
       await enhancementService.getEnhancementSuggestions({

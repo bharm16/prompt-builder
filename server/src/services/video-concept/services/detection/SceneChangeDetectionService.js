@@ -75,11 +75,12 @@ export class SceneChangeDetectionService {
       precision: 'high',
     });
 
-    // Call Claude API with structured output enforcement
+    // Call AI service with structured output enforcement
     const result = await StructuredOutputEnforcer.enforceJSON(
-      this.claudeClient,
+      this.ai,
       systemPrompt,
       {
+        operation: 'video_scene_change_detection',
         schema,
         isArray: false, // Expecting object
         maxTokens: 2048,

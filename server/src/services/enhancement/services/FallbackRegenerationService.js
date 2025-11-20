@@ -25,8 +25,7 @@ export class FallbackRegenerationService {
     videoConstraints,
     regenerationDetails,
     requestParams,
-    claudeClient,
-    groqClient,
+    aiService,
     schema,
     temperature,
   }) {
@@ -66,8 +65,7 @@ export class FallbackRegenerationService {
         const result = await this._attemptSingleFallback({
           fallbackConstraints,
           requestParams,
-          claudeClient,
-          groqClient,
+          aiService,
           schema,
           temperature,
           isPlaceholder,
@@ -117,8 +115,7 @@ export class FallbackRegenerationService {
   async _attemptSingleFallback({
     fallbackConstraints,
     requestParams,
-    claudeClient,
-    groqClient,
+    aiService,
     schema,
     temperature,
     isPlaceholder,
@@ -130,11 +127,12 @@ export class FallbackRegenerationService {
       videoConstraints: fallbackConstraints,
     });
 
-    // Generate suggestions
+    // Generate suggestions using aiService
     const fallbackSuggestions = await StructuredOutputEnforcer.enforceJSON(
-      groqClient || claudeClient,
+      aiService,
       fallbackPrompt,
       {
+        operation: 'enhance_fallback',
         schema,
         isArray: true,
         maxTokens: 2048,

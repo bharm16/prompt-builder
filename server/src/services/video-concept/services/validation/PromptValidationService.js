@@ -57,9 +57,10 @@ Return ONLY a JSON object:
 
     try {
       const validation = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_prompt_validation',
           schema: validatePromptOutputSchema,
           maxTokens: 512,
           temperature: 0.3,
@@ -112,9 +113,10 @@ Return ONLY a JSON array:
 
     try {
       const defaults = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_smart_defaults',
           schema: smartDefaultsOutputSchema,
           isArray: true,
           maxTokens: 256,

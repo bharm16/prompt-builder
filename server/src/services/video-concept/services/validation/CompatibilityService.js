@@ -140,9 +140,10 @@ Respond with ONLY a JSON object:
 
     try {
       return await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_compatibility_check',
           schema: compatibilityOutputSchema,
           maxTokens: 256,
           temperature: 0.3,

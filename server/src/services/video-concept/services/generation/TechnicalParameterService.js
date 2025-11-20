@@ -72,9 +72,10 @@ Return ONLY a JSON object:
 
     try {
       const params = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_technical_params',
           schema: technicalParamsOutputSchema,
           maxTokens: 768,
           temperature: 0.5,

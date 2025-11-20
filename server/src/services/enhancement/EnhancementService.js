@@ -99,6 +99,11 @@ export class EnhancementService {
     };
     const startTotal = Date.now();
 
+    // Declare variables outside try block so they're accessible in catch
+    let isVideoPrompt = false;
+    let modelTarget = null;
+    let promptSection = null;
+
     try {
       logger.info('Getting enhancement suggestions', {
         highlightedLength: highlightedText?.length,
@@ -110,7 +115,7 @@ export class EnhancementService {
       });
 
       // Detect video prompt and compute metadata
-      const isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
+      isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
     const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext);
     const highlightWordCount = this.videoService.countWords(highlightedText);
     const phraseRole = isVideoPrompt
@@ -132,8 +137,6 @@ export class EnhancementService {
       : null;
 
       // Detect model target and prompt section for video prompts
-      let modelTarget = null;
-      let promptSection = null;
       
       if (isVideoPrompt) {
         const modelStart = Date.now();
@@ -393,8 +396,7 @@ export class EnhancementService {
         highlightedCategory,
         highlightedCategoryConfidence,
       },
-      claudeClient: this.claudeClient,
-      groqClient: this.groqClient,
+      aiService: this.ai,
       schema,
       temperature,
     });
@@ -526,9 +528,10 @@ export class EnhancementService {
     });
 
     const suggestions = await StructuredOutputEnforcer.enforceJSON(
-      this.groqClient || this.claudeClient,
+      this.ai,
       systemPrompt,
       {
+        operation: 'custom_suggestions',
         schema,
         isArray: true,
         maxTokens: 2048,

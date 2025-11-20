@@ -100,11 +100,12 @@ export class SuggestionGeneratorService {
       precision: 'low',
     });
 
-    // Call Claude API with structured output enforcement
+    // Call AI service with structured output enforcement
     const suggestions = await StructuredOutputEnforcer.enforceJSON(
-      this.claudeClient,
+      this.ai,
       systemPrompt,
       {
+        operation: 'video_suggestions',
         schema,
         isArray: true,
         maxTokens: 2048,
@@ -243,9 +244,10 @@ Return ONLY a JSON array:
       };
 
       const alternatives = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_alternatives',
           schema,
           isArray: true,
           maxTokens: 512,

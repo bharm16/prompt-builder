@@ -50,9 +50,10 @@ Return ONLY a JSON object with ALL elements:
 
     try {
       const elements = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         prompt,
         {
+          operation: 'video_concept_parsing',
           schema: parseConceptOutputSchema,
           maxTokens: 512,
           temperature: 0.5,
