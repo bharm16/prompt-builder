@@ -28,28 +28,58 @@ export class ServiceUnavailableError extends Error {
 }
 
 /**
- * Groq API Client with circuit breaker pattern
- * Provides ultra-fast draft generation using Llama 3.1 8B Instant
- *
- * Designed for two-stage optimization:
- * - Stage 1: Fast draft generation (200-500ms)
- * - Stage 2: Quality refinement with slower models
+ * Generic LLM Client for OpenAI-compatible APIs
+ * 
+ * Works with any provider that follows the OpenAI chat completions API format:
+ * - OpenAI (api.openai.com)
+ * - Groq (api.groq.com/openai/v1)
+ * - Together AI (api.together.xyz/v1)
+ * - Any other OpenAI-compatible endpoint
+ * 
+ * Features:
+ * - Circuit breaker pattern for resilience
+ * - Optional concurrency limiting
+ * - Automatic response normalization
+ * - JSON mode support
+ * - Streaming support
+ * - Health checks
  */
-export class GroqAPIClient {
-  constructor(apiKey, config = {}) {
-    this.apiKey = apiKey;
-    this.baseURL = 'https://api.groq.com/openai/v1';
-    this.model = config.model || 'llama-3.1-8b-instant';
-    this.defaultTimeout = config.timeout || 5000; // 5s for fast drafts
+export class LLMClient {
+  constructor({ 
+    apiKey, 
+    baseURL,
+    providerName,
+    defaultModel,
+    defaultTimeout = 60000,
+    circuitBreakerConfig = {},
+    concurrencyLimiter = null,
+  }) {
+    if (!apiKey) {
+      throw new Error(`API key required for ${providerName || 'LLM client'}`);
+    }
+    if (!baseURL) {
+      throw new Error(`Base URL required for ${providerName || 'LLM client'}`);
+    }
+    if (!defaultModel) {
+      throw new Error(`Default model required for ${providerName || 'LLM client'}`);
+    }
 
-    // Circuit breaker configuration - more lenient than OpenAI
+    this.apiKey = apiKey;
+    this.baseURL = baseURL;
+    this.providerName = providerName || 'llm';
+    this.model = defaultModel;
+    this.defaultTimeout = defaultTimeout;
+    this.concurrencyLimiter = concurrencyLimiter;
+
+    // Merge default circuit breaker options with provider-specific config
     const breakerOptions = {
-      timeout: config.timeout || 5000, // Fast timeout for draft generation
-      errorThresholdPercentage: 60, // Groq is fast, tolerate more errors
-      resetTimeout: 15000, // Quick recovery
+      timeout: defaultTimeout,
+      errorThresholdPercentage: 50,
+      resetTimeout: 30000,
       rollingCountTimeout: 10000,
       rollingCountBuckets: 10,
-      name: 'groq-api',
+      name: `${this.providerName}-api`,
+      ...circuitBreakerConfig,
     };
 
     this.breaker = new CircuitBreaker(
@@ -59,44 +89,62 @@ export class GroqAPIClient {
 
     // Circuit breaker event handlers
     this.breaker.on('open', () => {
-      logger.error('Circuit breaker OPEN - Groq API failing');
-      metricsService.updateCircuitBreakerState('groq-api', 'open');
+      logger.error(`Circuit breaker OPEN - ${this.providerName} API failing`);
+      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'open');
     });
 
     this.breaker.on('halfOpen', () => {
-      logger.warn('Circuit breaker HALF-OPEN - Testing Groq API');
-      metricsService.updateCircuitBreakerState('groq-api', 'half-open');
+      logger.warn(`Circuit breaker HALF-OPEN - Testing ${this.providerName} API`);
+      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'half-open');
     });
 
     this.breaker.on('close', () => {
-      logger.info('Circuit breaker CLOSED - Groq API healthy');
-      metricsService.updateCircuitBreakerState('groq-api', 'closed');
+      logger.info(`Circuit breaker CLOSED - ${this.providerName} API healthy`);
+      metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'closed');
     });
 
     // Initially set circuit breaker state to closed
-    metricsService.updateCircuitBreakerState('groq-api', 'closed');
+    metricsService.updateCircuitBreakerState(`${this.providerName}-api`, 'closed');
   }
 
   /**
-   * Generate a draft prompt with Groq (non-streaming)
+   * Complete a prompt with the LLM (non-streaming)
    * @param {string} systemPrompt - System prompt
    * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Groq API response (Claude-compatible format)
+   * @param {string} options.userMessage - User message
+   * @param {string} options.model - Override default model
+   * @param {number} options.maxTokens - Max tokens to generate
+   * @param {number} options.temperature - Temperature (0-2)
+   * @param {number} options.timeout - Request timeout in ms
+   * @param {AbortSignal} options.signal - Abort signal for cancellation
+   * @param {boolean} options.priority - Priority flag for queue management
+   * @returns {Promise<Object>} API response in normalized format
    */
   async complete(systemPrompt, options = {}) {
     const startTime = Date.now();
     const endpoint = 'chat/completions';
 
     try {
-      const result = await this.breaker.fire(systemPrompt, options);
+      // Execute with optional concurrency limiting
+      const executeRequest = async () => {
+        return await this.breaker.fire(systemPrompt, options);
+      };
+
+      const result = this.concurrencyLimiter
+        ? await this.concurrencyLimiter.execute(executeRequest, {
+            signal: options.signal,
+            priority: options.priority,
+          })
+        : await executeRequest();
+
       const duration = Date.now() - startTime;
 
       // Record successful API call
-      metricsService.recordClaudeAPICall('groq-' + endpoint, duration, true);
-      logger.debug('Groq API call succeeded', {
+      metricsService.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, true);
+      logger.debug(`${this.providerName} API call succeeded`, {
         endpoint,
         duration,
-        model: this.model,
+        model: options.model || this.model,
       });
 
       return result;
@@ -104,20 +152,38 @@ export class GroqAPIClient {
       const duration = Date.now() - startTime;
 
       // Record failed API call
-      metricsService.recordClaudeAPICall('groq-' + endpoint, duration, false);
+      metricsService.recordClaudeAPICall(`${this.providerName}-${endpoint}`, duration, false);
 
-      if (this.breaker.opened) {
-        logger.error('Groq API circuit breaker is open', error);
-        throw new ServiceUnavailableError('Groq API is currently unavailable');
+      // Handle concurrency limiter errors
+      if (error.code === 'QUEUE_TIMEOUT') {
+        logger.error(`${this.providerName} API request timed out in queue`, {
+          endpoint,
+          duration,
+        });
+        throw new TimeoutError(`${this.providerName} API request timed out in queue - system overloaded`);
       }
 
-      logger.error('Groq API call failed', error, { endpoint, duration });
+      if (error.code === 'CANCELLED') {
+        logger.debug(`${this.providerName} API request cancelled`, { endpoint, duration });
+        throw error;
+      }
+
+      if (this.breaker.opened) {
+        logger.error(`${this.providerName} API circuit breaker is open`, error);
+        throw new ServiceUnavailableError(`${this.providerName} API is currently unavailable`);
+      }
+
+      logger.error(`${this.providerName} API call failed`, {
+        endpoint,
+        duration,
+        error: error.message,
+      });
       throw error;
     }
   }
 
   /**
-   * Generate a draft prompt with streaming (for real-time UI updates)
+   * Stream completion with real-time chunks
    * @param {string} systemPrompt - System prompt
    * @param {Object} options - Additional options
    * @param {Function} options.onChunk - Callback for each streamed chunk
@@ -153,11 +219,11 @@ export class GroqAPIClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: this.model,
+          model: options.model || this.model,
           messages: messages,
-          max_tokens: maxTokens || 500, // Keep drafts concise
+          max_tokens: maxTokens || 2048,
           temperature: temperature !== undefined ? temperature : 0.7,
-          stream: true, // Enable streaming
+          stream: true,
         }),
         signal: controller.signal,
       });
@@ -166,30 +232,10 @@ export class GroqAPIClient {
 
       if (!response.ok) {
         const errorBody = await response.text();
-
-        // Parse error for better messaging
-        let errorMessage = `Groq API error: ${response.status} - ${errorBody}`;
-        let parsedError;
-        try {
-          parsedError = JSON.parse(errorBody);
-        } catch {
-          // Keep original error if not JSON
-        }
-
-        // Provide clear error messages for common issues
-        if (response.status === 401) {
-          if (parsedError?.error?.code === 'invalid_api_key') {
-            errorMessage = `Invalid Groq API key. Please check your GROQ_API_KEY in the .env file and regenerate at https://console.groq.com`;
-          } else {
-            errorMessage = `Groq API authentication failed. Please verify your API key at https://console.groq.com`;
-          }
-        } else if (response.status === 429) {
-          errorMessage = `Groq API rate limit exceeded. Please wait before retrying or upgrade your plan.`;
-        } else if (response.status === 500) {
-          errorMessage = `Groq API server error. The service may be temporarily unavailable.`;
-        }
-
-        throw new APIError(errorMessage, response.status);
+        throw new APIError(
+          `${this.providerName} API error: ${response.status} - ${errorBody}`,
+          response.status
+        );
       }
 
       // Parse SSE stream
@@ -205,7 +251,7 @@ export class GroqAPIClient {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6); // Remove 'data: ' prefix
+            const data = line.slice(6);
 
             if (data === '[DONE]') {
               continue;
@@ -217,10 +263,9 @@ export class GroqAPIClient {
 
               if (content) {
                 fullText += content;
-                onChunk(content); // Stream to UI
+                onChunk(content);
               }
             } catch (e) {
-              // Skip malformed JSON chunks
               logger.debug('Skipping malformed SSE chunk', { chunk: data });
             }
           }
@@ -228,9 +273,9 @@ export class GroqAPIClient {
       }
 
       const duration = Date.now() - startTime;
-      metricsService.recordClaudeAPICall('groq-stream', duration, true);
+      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, true);
 
-      logger.debug('Groq streaming completed', {
+      logger.debug(`${this.providerName} streaming completed`, {
         duration,
         textLength: fullText.length,
       });
@@ -240,13 +285,13 @@ export class GroqAPIClient {
       clearTimeout(timeoutId);
 
       const duration = Date.now() - startTime;
-      metricsService.recordClaudeAPICall('groq-stream', duration, false);
+      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, false);
 
       if (error.name === 'AbortError') {
-        throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
       }
 
-      logger.error('Groq streaming failed', error);
+      logger.error(`${this.providerName} streaming failed`, { error: error.message });
       throw error;
     }
   }
@@ -275,8 +320,9 @@ export class GroqAPIClient {
         body: JSON.stringify({
           model: options.model || this.model,
           messages: messages,
-          max_tokens: options.maxTokens || 500,
+          max_tokens: options.maxTokens || 2048,
           temperature: options.temperature !== undefined ? options.temperature : 0.7,
+          response_format: { type: 'json_object' },
         }),
         signal: controller.signal,
       });
@@ -285,35 +331,15 @@ export class GroqAPIClient {
 
       if (!response.ok) {
         const errorBody = await response.text();
-
-        // Parse error for better messaging
-        let errorMessage = `Groq API error: ${response.status} - ${errorBody}`;
-        let parsedError;
-        try {
-          parsedError = JSON.parse(errorBody);
-        } catch {
-          // Keep original error if not JSON
-        }
-
-        // Provide clear error messages for common issues
-        if (response.status === 401) {
-          if (parsedError?.error?.code === 'invalid_api_key') {
-            errorMessage = `Invalid Groq API key. Please check your GROQ_API_KEY in the .env file and regenerate at https://console.groq.com`;
-          } else {
-            errorMessage = `Groq API authentication failed. Please verify your API key at https://console.groq.com`;
-          }
-        } else if (response.status === 429) {
-          errorMessage = `Groq API rate limit exceeded. Please wait before retrying or upgrade your plan.`;
-        } else if (response.status === 500) {
-          errorMessage = `Groq API server error. The service may be temporarily unavailable.`;
-        }
-
-        throw new APIError(errorMessage, response.status);
+        throw new APIError(
+          `${this.providerName} API error: ${response.status} - ${errorBody}`,
+          response.status
+        );
       }
 
       const data = await response.json();
 
-      // Transform to Claude-compatible format
+      // Normalize to Claude-compatible format
       return {
         content: [
           {
@@ -326,7 +352,7 @@ export class GroqAPIClient {
       clearTimeout(timeoutId);
 
       if (error.name === 'AbortError') {
-        throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
       }
 
       throw error;
@@ -334,15 +360,15 @@ export class GroqAPIClient {
   }
 
   /**
-   * Health check for Groq API
+   * Health check for the API
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
     try {
       const startTime = Date.now();
-      await this.complete('Respond with "healthy"', {
-        maxTokens: 10,
-        timeout: 3000,
+      await this.complete('Respond with valid JSON containing: {"status": "healthy"}', {
+        maxTokens: 50,
+        timeout: 5000,
       });
       const duration = Date.now() - startTime;
 
@@ -378,4 +404,19 @@ export class GroqAPIClient {
     if (this.breaker.halfOpen) return 'HALF-OPEN';
     return 'CLOSED';
   }
+
+  /**
+   * Get concurrency limiter statistics (if available)
+   */
+  getConcurrencyStats() {
+    return this.concurrencyLimiter ? this.concurrencyLimiter.getStats() : null;
+  }
+
+  /**
+   * Get current queue status (if concurrency limiter available)
+   */
+  getQueueStatus() {
+    return this.concurrencyLimiter ? this.concurrencyLimiter.getQueueStatus() : null;
+  }
 }
+

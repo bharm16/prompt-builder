@@ -13,9 +13,9 @@ import { createContainer } from '../infrastructure/DIContainer.js';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
 
-// Import clients
-import { OpenAIAPIClient } from '../clients/OpenAIAPIClient.js';
-import { GroqAPIClient } from '../clients/GroqAPIClient.js';
+// Import generic LLM client
+import { LLMClient } from '../clients/LLMClient.js';
+import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
 
 // Import AI Model Service
 import { AIModelService } from '../services/ai-model/index.js';
@@ -95,16 +95,26 @@ export function configureServices() {
   // ============================================================================
 
   // OpenAI client (CRITICAL - required)
+  // Using generic LLMClient configured for OpenAI
   container.register(
     'claudeClient',
-    (config) => new OpenAIAPIClient(config.openai.apiKey, {
-      timeout: config.openai.timeout,
-      model: config.openai.model,
+    (config) => new LLMClient({
+      apiKey: config.openai.apiKey,
+      baseURL: 'https://api.openai.com/v1',
+      providerName: 'openai',
+      defaultModel: config.openai.model,
+      defaultTimeout: config.openai.timeout,
+      circuitBreakerConfig: {
+        errorThresholdPercentage: 50,
+        resetTimeout: 30000,
+      },
+      concurrencyLimiter: openAILimiter, // Limit concurrent requests
     }),
     ['config']
   );
 
   // Groq client (OPTIONAL - for two-stage optimization)
+  // Using generic LLMClient configured for Groq
   // Factory returns null if not configured
   container.register(
     'groqClient',
@@ -113,9 +123,17 @@ export function configureServices() {
         logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
         return null;
       }
-      return new GroqAPIClient(config.groq.apiKey, {
-        timeout: config.groq.timeout,
-        model: config.groq.model,
+      return new LLMClient({
+        apiKey: config.groq.apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+        providerName: 'groq',
+        defaultModel: config.groq.model,
+        defaultTimeout: config.groq.timeout,
+        circuitBreakerConfig: {
+          errorThresholdPercentage: 60, // More tolerant for fast provider
+          resetTimeout: 15000, // Faster recovery
+        },
+        concurrencyLimiter: null, // No concurrency limiting for Groq
       });
     },
     ['config']

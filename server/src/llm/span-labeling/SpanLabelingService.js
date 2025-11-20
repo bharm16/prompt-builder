@@ -83,6 +83,8 @@ function buildSystemPrompt() {
 
 Label spans for AI video prompt elements using our unified taxonomy system.
 
+**IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanatory text, just pure JSON.**
+
 ## Taxonomy Structure
 
 Our taxonomy has **${Object.keys(TAXONOMY).length} parent categories**, each with specific attributes:
@@ -175,7 +177,6 @@ async function labelSpansSingle(params, aiService) {
     });
 
     const task = buildTaskDescription(sanitizedOptions.maxSpans);
-    const estimatedMaxTokens = SpanLabelingConfig.estimateMaxTokens(sanitizedOptions.maxSpans);
 
     const basePayload = {
       task,
@@ -189,7 +190,6 @@ async function labelSpansSingle(params, aiService) {
       systemPrompt: BASE_SYSTEM_PROMPT,
       userPayload: buildUserPayload(basePayload),
       aiService,
-      maxTokens: estimatedMaxTokens,
     });
 
     const parsedPrimary = parseJson(primaryResponse);
@@ -271,7 +271,6 @@ async function labelSpansSingle(params, aiService) {
 If validation feedback is provided, correct the issues without altering span text.`,
       userPayload: buildUserPayload(repairPayload),
       aiService,
-      maxTokens: estimatedMaxTokens,
     });
 
     const parsedRepair = parseJson(repairResponse);

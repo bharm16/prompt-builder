@@ -225,7 +225,16 @@ export class AIModelService {
 
     try {
       const client = this.clients[fallbackClient];
-      const response = await client.complete(systemPrompt, requestOptions);
+      
+      // IMPORTANT: Don't pass the primary client's model to the fallback client
+      // Each client has its own default model configured in services.config.js
+      // Remove the model from requestOptions to let the fallback use its default
+      const fallbackOptions = {
+        ...requestOptions,
+        model: undefined, // Let fallback client use its own default model
+      };
+      
+      const response = await client.complete(systemPrompt, fallbackOptions);
 
       logger.info('Fallback succeeded', {
         operation,

@@ -103,6 +103,7 @@ export class OpenAIAPIClient extends IAIClient {
           messages: messages,
           max_tokens: options.maxTokens || 4096,
           temperature: options.temperature !== undefined ? options.temperature : 1.0,
+          response_format: { type: 'json_object' },
         }),
         signal: options.signal || controller.signal,
       });
