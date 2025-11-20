@@ -4,7 +4,6 @@
 
 import crypto from 'crypto';
 import NodeCache from 'node-cache';
-import { callOpenAI } from './openAIClient.js';
 import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.js';
 
 const cache = new NodeCache({ stdTTL: 120 });
@@ -75,9 +74,14 @@ export const ROLE_SET = VALID_CATEGORIES;
 /**
  * @param {InputSpan[]} spans
  * @param {string} templateVersion
+ * @param {Object} aiService - AI Model Service instance
  * @returns {Promise<LabeledSpan[]>}
  */
-export async function roleClassify(spans, templateVersion) {
+export async function roleClassify(spans, templateVersion, aiService) {
+  if (!aiService) {
+    throw new Error('aiService is required');
+  }
+
   const key = hashKey(spans, templateVersion);
   const cached = cache.get(key);
   if (cached) return cached;
@@ -88,13 +92,13 @@ export async function roleClassify(spans, templateVersion) {
   });
 
   try {
-    const raw = await callOpenAI({
-      system: SYSTEM_PROMPT,
-      user: userPayload,
-      temperature: 0,
-      max_tokens: 600,
+    const response = await aiService.execute('role_classification', {
+      systemPrompt: SYSTEM_PROMPT,
+      userMessage: userPayload,
+      // temperature and maxTokens are configured in modelConfig.js
     });
 
+    const raw = response.content[0]?.text || '';
     const parsed = safeParseJSON(raw);
     const labeled = validate(spans, parsed?.spans ?? []);
     cache.set(key, labeled);

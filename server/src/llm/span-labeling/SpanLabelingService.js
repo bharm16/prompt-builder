@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { callOpenAI } from '../openAIClient.js';
 import { SubstringPositionCache } from './cache/SubstringPositionCache.js';
 import SpanLabelingConfig from './config/SpanLabelingConfig.js';
 import { sanitizePolicy, sanitizeOptions, buildTaskDescription } from './utils/policyUtils.js';
@@ -104,17 +103,19 @@ ${rulesSection}
 const BASE_SYSTEM_PROMPT = buildSystemPrompt();
 
 /**
- * Call LLM with system prompt and user payload
+ * Call LLM with system prompt and user payload using AIModelService
  * @private
  */
-async function callModel({ systemPrompt, userPayload, callFn, maxTokens }) {
-  const raw = await callFn({
-    system: systemPrompt,
-    user: userPayload,
-    max_tokens: maxTokens,
-    temperature: SpanLabelingConfig.MODEL_CONFIG.temperature,
+async function callModel({ systemPrompt, userPayload, aiService, maxTokens }) {
+  const response = await aiService.execute('span_labeling', {
+    systemPrompt,
+    userMessage: userPayload,
+    maxTokens,
+    // temperature is configured in modelConfig.js
   });
-  return raw;
+  
+  // Extract text from response
+  return response.content[0]?.text || '';
 }
 
 /**
@@ -128,13 +129,16 @@ async function callModel({ systemPrompt, userPayload, callFn, maxTokens }) {
  * @param {Object} [params.policy] - Validation policy
  * @param {string} [params.templateVersion] - Template version
  * @param {boolean} [params.enableRepair] - Enable repair attempt on validation failure (default: false)
- * @param {Object} [options]
- * @param {Function} [options.callFn] - LLM call function (defaults to callOpenAI)
+ * @param {Object} aiService - AI Model Service instance for LLM calls
  * @returns {Promise<{spans: Array, meta: {version: string, notes: string}}>}
  */
-export async function labelSpans(params, options = {}) {
+export async function labelSpans(params, aiService) {
   if (!params || typeof params.text !== 'string' || !params.text.trim()) {
     throw new Error('text is required');
+  }
+
+  if (!aiService) {
+    throw new Error('aiService is required');
   }
 
   // Check if text needs chunking
@@ -143,18 +147,18 @@ export async function labelSpans(params, options = {}) {
   
   if (wordCount > maxWordsPerChunk) {
     console.log(`[SpanLabeling] Large text detected (${wordCount} words), using chunked processing`);
-    return labelSpansChunked(params, options);
+    return labelSpansChunked(params, aiService);
   }
   
   // For smaller texts, use single-pass processing
-  return labelSpansSingle(params, options);
+  return labelSpansSingle(params, aiService);
 }
 
 /**
  * Label spans for a single chunk of text (original implementation)
  * @private
  */
-async function labelSpansSingle(params, options = {}) {
+async function labelSpansSingle(params, aiService) {
   if (!params || typeof params.text !== 'string' || !params.text.trim()) {
     throw new Error('text is required');
   }
@@ -180,13 +184,11 @@ async function labelSpansSingle(params, options = {}) {
       templateVersion: sanitizedOptions.templateVersion,
     };
 
-    const callFn = typeof options.callFn === 'function' ? options.callFn : callOpenAI;
-
     // Primary LLM call
     const primaryResponse = await callModel({
       systemPrompt: BASE_SYSTEM_PROMPT,
       userPayload: buildUserPayload(basePayload),
-      callFn,
+      aiService,
       maxTokens: estimatedMaxTokens,
     });
 
@@ -268,7 +270,7 @@ async function labelSpansSingle(params, options = {}) {
 
 If validation feedback is provided, correct the issues without altering span text.`,
       userPayload: buildUserPayload(repairPayload),
-      callFn,
+      aiService,
       maxTokens: estimatedMaxTokens,
     });
 
@@ -309,7 +311,7 @@ If validation feedback is provided, correct the issues without altering span tex
  * Splits text into processable chunks, processes them, then merges results
  * @private
  */
-async function labelSpansChunked(params, options = {}) {
+async function labelSpansChunked(params, aiService) {
   const chunker = new TextChunker(SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK);
   const chunks = chunker.chunkText(params.text);
   
@@ -322,7 +324,7 @@ async function labelSpansChunked(params, options = {}) {
       const result = await labelSpansSingle({
         ...params,
         text: chunk.text,
-      }, options);
+      }, aiService);
       
       return {
         spans: result.spans || [],

@@ -19,8 +19,8 @@ import { createBatchMiddleware } from '../middleware/requestBatching.js';
 // Import routes
 import { createAPIRoutes } from '../routes/api.routes.js';
 import { createHealthRoutes } from '../routes/health.routes.js';
-import { roleClassifyRoute } from '../routes/roleClassifyRoute.js';
-import { labelSpansRoute } from '../routes/labelSpansRoute.js';
+import { createRoleClassifyRoute } from '../routes/roleClassifyRoute.js';
+import { createLabelSpansRoute } from '../routes/labelSpansRoute.js';
 
 /**
  * Register all application routes
@@ -62,7 +62,8 @@ export function registerRoutes(app, container) {
   // LLM Routes (specialized endpoints with auth)
   // ============================================================================
 
-  // Span labeling endpoint
+  // Span labeling endpoint (with DI)
+  const labelSpansRoute = createLabelSpansRoute(container.resolve('aiService'));
   app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
 
   // Batch endpoint for processing multiple span labeling requests
@@ -70,9 +71,10 @@ export function registerRoutes(app, container) {
   app.post('/llm/label-spans-batch', apiAuthMiddleware, createBatchMiddleware());
 
   // ============================================================================
-  // Role Classification Route (with auth)
+  // Role Classification Route (with auth and DI)
   // ============================================================================
 
+  const roleClassifyRoute = createRoleClassifyRoute(container.resolve('aiService'));
   app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
 
   // ============================================================================

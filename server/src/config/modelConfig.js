@@ -278,11 +278,23 @@ export const ModelConfig = {
    * Label spans in video prompts (technical, style, subject, etc.)
    */
   span_labeling: {
-    client: process.env.SPAN_PROVIDER || 'openai',
-    model: process.env.SPAN_MODEL || 'gpt-4o-mini',
+    client: process.env.SPAN_PROVIDER || 'groq',
+    model: process.env.SPAN_MODEL || 'llama-3.1-8b-instant',
     temperature: 0.2, // Very low for accurate labeling
     maxTokens: 4096, // Larger for detailed span data
     timeout: 30000,
+    fallbackTo: 'openai',
+  },
+
+  /**
+   * Role classification for spans (categorize into taxonomy)
+   */
+  role_classification: {
+    client: process.env.ROLE_PROVIDER || 'openai',
+    model: process.env.ROLE_MODEL || 'gpt-4o-mini',
+    temperature: 0, // Zero temp for deterministic classification
+    maxTokens: 600,
+    timeout: 20000,
     fallbackTo: 'groq',
   },
 };
