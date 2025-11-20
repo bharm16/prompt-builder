@@ -7,8 +7,8 @@ import { compatibilityOutputSchema } from '../../../../utils/validation.js';
  * between video elements.
  */
 export class CompatibilityService {
-  constructor(claudeClient, cacheService) {
-    this.claudeClient = claudeClient;
+  constructor(aiService, cacheService) {
+    this.ai = aiService;
     this.cacheService = cacheService;
     this.semanticCache = new Map(); // In-memory cache for compatibility scores
   }
@@ -48,7 +48,8 @@ Respond with ONLY a decimal number between 0 and 1, where:
 Score:`;
 
     try {
-      const response = await this.claudeClient.complete(compatibilityPrompt, {
+      const response = await this.ai.execute('video_compatibility', {
+        systemPrompt: compatibilityPrompt,
         maxTokens: 10,
         temperature: 0.1,
       });

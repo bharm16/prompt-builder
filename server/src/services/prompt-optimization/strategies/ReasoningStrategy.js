@@ -7,8 +7,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Optimized for o1, o1-pro, o3, and Claude Sonnet reasoning models
  */
 export class ReasoningStrategy extends BaseStrategy {
-  constructor(claudeClient, templateService) {
-    super('reasoning', claudeClient, templateService);
+  constructor(aiService, templateService) {
+    super('reasoning', aiService, templateService);
   }
 
   /**
@@ -21,7 +21,8 @@ export class ReasoningStrategy extends BaseStrategy {
     try {
       const domainPrompt = this.buildDomainContentPrompt(prompt);
 
-      const response = await this.claudeClient.complete(domainPrompt, {
+      const response = await this.ai.execute('optimize_context_inference', {
+        systemPrompt: domainPrompt,
         maxTokens: OptimizationConfig.tokens.domainContent,
         temperature: OptimizationConfig.temperatures.domainContent,
         timeout: OptimizationConfig.timeouts.optimization.reasoning,
@@ -64,9 +65,10 @@ export class ReasoningStrategy extends BaseStrategy {
       transformationSteps
     });
 
-    // Call Claude to optimize
+    // Call AI service to optimize
     const config = this.getConfig();
-    const response = await this.claudeClient.complete(systemPrompt, {
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       timeout: config.timeout,

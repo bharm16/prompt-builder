@@ -22,8 +22,7 @@ import { GRAMMATICAL_CONFIG } from './config/grammaticalAnalysis.js';
  */
 export class EnhancementService {
   constructor(
-    claudeClient,
-    groqClient,
+    aiService,
     placeholderDetector,
     videoService,
     brainstormBuilder,
@@ -33,8 +32,7 @@ export class EnhancementService {
     categoryAligner,
     metricsService = null
   ) {
-    this.claudeClient = claudeClient;
-    this.groqClient = groqClient;
+    this.ai = aiService;
     this.placeholderDetector = placeholderDetector;
     this.videoService = videoService;
     this.brainstormBuilder = brainstormBuilder;
@@ -53,13 +51,13 @@ export class EnhancementService {
       diversityEnforcer
     );
     this.suggestionProcessor = new SuggestionProcessor(validationService);
-    this.styleTransfer = new StyleTransferService(claudeClient);
+    this.styleTransfer = new StyleTransferService(aiService);
     this.dependencyAnalyzer = new SemanticDependencyAnalyzer();
 
     // Initialize grammatical analysis services
     this.grammaticalAnalyzer = new GrammaticalAnalysisService(GRAMMATICAL_CONFIG);
     this.resilientGenerator = new ResilientGenerationService(
-      this.groqClient || this.claudeClient,
+      this.ai,
       this.promptBuilder
     );
     this.fallbackStrategy = new FallbackStrategyService();
@@ -324,7 +322,7 @@ export class EnhancementService {
 
       const groqStart = Date.now();
       const suggestions = await StructuredOutputEnforcer.enforceJSON(
-        this.groqClient || this.claudeClient,
+        this.ai,
         systemPrompt,
         {
           schema,
@@ -332,6 +330,7 @@ export class EnhancementService {
           maxTokens: 2048,
           maxRetries: 2,
           temperature,
+          operation: 'enhance_suggestions', // Route through aiService
         }
       );
       metrics.groqCall = Date.now() - groqStart;

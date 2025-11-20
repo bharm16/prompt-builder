@@ -12,8 +12,8 @@ import { TemperatureOptimizer } from '../../../../utils/TemperatureOptimizer.js'
  * ConflictDetectionService).
  */
 export class SceneChangeDetectionService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
     this.cacheConfig = cacheService.getConfig('sceneDetection');
   }
 

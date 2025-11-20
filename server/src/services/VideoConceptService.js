@@ -47,8 +47,8 @@ import {
  * ✅ Prompt logic scattered → Centralized in PromptBuilderService
  */
 export class VideoConceptService {
-  constructor(claudeClient, options = {}) {
-    this.claudeClient = claudeClient;
+  constructor(aiService, options = {}) {
+    this.ai = aiService;
 
     // Initialize repository with optional storage adapter
     this.preferenceRepository = options.preferenceRepository ||
@@ -58,28 +58,28 @@ export class VideoConceptService {
       new VideoTemplateRepository(options.templateRepositoryOptions);
 
     // Initialize compatibility service (needs cache for semantic scoring)
-    this.compatibilityService = new CompatibilityService(claudeClient, cacheService);
+    this.compatibilityService = new CompatibilityService(aiService, cacheService);
 
     // Initialize suggestion generator (depends on preference repository and compatibility service)
     this.suggestionGenerator = new SuggestionGeneratorService(
-      claudeClient,
+      aiService,
       cacheService,
       this.preferenceRepository,
       this.compatibilityService
     );
 
     // Initialize scene analysis services
-    this.sceneCompletion = new SceneCompletionService(claudeClient);
-    this.sceneVariation = new SceneVariationService(claudeClient);
-    this.conceptParsing = new ConceptParsingService(claudeClient);
-    this.refinement = new RefinementService(claudeClient);
+    this.sceneCompletion = new SceneCompletionService(aiService);
+    this.sceneVariation = new SceneVariationService(aiService);
+    this.conceptParsing = new ConceptParsingService(aiService);
+    this.refinement = new RefinementService(aiService);
 
     // Initialize technical parameter and validation services
-    this.technicalParameter = new TechnicalParameterService(claudeClient);
-    this.promptValidation = new PromptValidationService(claudeClient);
+    this.technicalParameter = new TechnicalParameterService(aiService);
+    this.promptValidation = new PromptValidationService(aiService);
 
     // Initialize conflict detection
-    this.conflictDetection = new ConflictDetectionService(claudeClient);
+    this.conflictDetection = new ConflictDetectionService(aiService);
 
     logger.info('VideoConceptService initialized with orchestrator pattern');
   }

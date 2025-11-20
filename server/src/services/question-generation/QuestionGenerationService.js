@@ -18,8 +18,8 @@ import {
  * Coordinates prompt analysis, question generation, and relevance scoring.
  */
 export class QuestionGenerationService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
     this.cacheConfig = cacheService.getConfig('questionGeneration');
     
     // Initialize specialized services
@@ -65,9 +65,9 @@ export class QuestionGenerationService {
       precision: 'medium',
     });
 
-    // Call Claude API with structured output enforcement
+    // Call AI service with structured output enforcement
     const questionsData = await StructuredOutputEnforcer.enforceJSON(
-      this.claudeClient,
+      this.ai,
       systemPrompt,
       {
         schema: QUESTION_SCHEMA,
@@ -75,6 +75,7 @@ export class QuestionGenerationService {
         maxTokens: 2048,
         maxRetries: 2,
         temperature,
+        operation: 'question_generation', // Route through aiService
       }
     );
 
@@ -108,7 +109,8 @@ export class QuestionGenerationService {
     const followUpPrompt = buildFollowUpPrompt(prompt, previousAnswers);
 
     try {
-      const response = await this.claudeClient.complete(followUpPrompt, {
+      const response = await this.ai.execute('question_generation', {
+        systemPrompt: followUpPrompt,
         maxTokens: 1024,
         temperature: 0.7,
       });

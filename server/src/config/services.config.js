@@ -17,6 +17,9 @@ import { metricsService } from '../infrastructure/MetricsService.js';
 import { OpenAIAPIClient } from '../clients/OpenAIAPIClient.js';
 import { GroqAPIClient } from '../clients/GroqAPIClient.js';
 
+// Import AI Model Service
+import { AIModelService } from '../services/ai-model/index.js';
+
 // Import services
 import { cacheService } from '../services/cache/CacheService.js';
 import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
@@ -119,6 +122,23 @@ export function configureServices() {
   );
 
   // ============================================================================
+  // AI Model Service (Router Layer)
+  // ============================================================================
+
+  // AIModelService - Unified router for all LLM operations
+  // Decouples business logic from specific providers
+  container.register(
+    'aiService',
+    (claudeClient, groqClient) => new AIModelService({
+      clients: {
+        openai: claudeClient,
+        groq: groqClient,
+      },
+    }),
+    ['claudeClient', 'groqClient']
+  );
+
+  // ============================================================================
   // Redis and Caching
   // ============================================================================
 
@@ -182,8 +202,8 @@ export function configureServices() {
 
   container.register(
     'diversityEnforcer',
-    (claudeClient) => new SuggestionDiversityEnforcer(claudeClient),
-    ['claudeClient']
+    (aiService) => new SuggestionDiversityEnforcer(aiService),
+    ['aiService']
   );
 
   container.register(
@@ -198,22 +218,21 @@ export function configureServices() {
 
   container.register(
     'promptOptimizationService',
-    (claudeClient, groqClient) =>
-      new PromptOptimizationService(claudeClient, groqClient),
-    ['claudeClient', 'groqClient']
+    (aiService) =>
+      new PromptOptimizationService(aiService),
+    ['aiService']
   );
 
   container.register(
     'questionGenerationService',
-    (claudeClient) => new QuestionGenerationService(claudeClient),
-    ['claudeClient']
+    (aiService) => new QuestionGenerationService(aiService),
+    ['aiService']
   );
 
   container.register(
     'enhancementService',
     (
-      claudeClient,
-      groqClient,
+      aiService,
       placeholderDetector,
       videoService,
       brainstormBuilder,
@@ -224,8 +243,7 @@ export function configureServices() {
       metricsService
     ) =>
       new EnhancementService(
-        claudeClient,
-        groqClient,
+        aiService,
         placeholderDetector,
         videoService,
         brainstormBuilder,
@@ -236,8 +254,7 @@ export function configureServices() {
         metricsService
       ),
     [
-      'claudeClient',
-      'groqClient',
+      'aiService',
       'placeholderDetector',
       'videoService',
       'brainstormBuilder',
@@ -251,20 +268,20 @@ export function configureServices() {
 
   container.register(
     'sceneDetectionService',
-    (claudeClient) => new SceneChangeDetectionService(claudeClient),
-    ['claudeClient']
+    (aiService) => new SceneChangeDetectionService(aiService),
+    ['aiService']
   );
 
   container.register(
     'videoConceptService',
-    (claudeClient) => new VideoConceptService(claudeClient),
-    ['claudeClient']
+    (aiService) => new VideoConceptService(aiService),
+    ['aiService']
   );
 
   container.register(
     'textCategorizerService',
-    (claudeClient) => new TextCategorizerService(claudeClient),
-    ['claudeClient']
+    (aiService) => new TextCategorizerService(aiService),
+    ['aiService']
   );
 
   return container;

@@ -9,8 +9,8 @@ import { completeSceneOutputSchema } from '../../../../utils/validation.js';
  * Extracted from SceneAnalysisService to follow single responsibility principle.
  */
 export class SceneCompletionService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**

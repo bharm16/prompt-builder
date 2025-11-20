@@ -6,8 +6,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Analyzes prompts to determine domain, expertise level, and intended use
  */
 export class ContextInferenceService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**
@@ -21,7 +21,8 @@ export class ContextInferenceService {
     try {
       const inferencePrompt = this.buildInferencePrompt(prompt);
 
-      const response = await this.claudeClient.complete(inferencePrompt, {
+      const response = await this.ai.execute('optimize_context_inference', {
+        systemPrompt: inferencePrompt,
         maxTokens: OptimizationConfig.tokens.contextInference,
         temperature: OptimizationConfig.temperatures.contextInference,
         timeout: OptimizationConfig.timeouts.contextInference,

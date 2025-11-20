@@ -12,8 +12,8 @@ import {
  * Extracted from SceneAnalysisService to follow single responsibility principle.
  */
 export class PromptValidationService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**

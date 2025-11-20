@@ -7,8 +7,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Specializes in comprehensive research planning with source validation
  */
 export class ResearchStrategy extends BaseStrategy {
-  constructor(claudeClient, templateService) {
-    super('research', claudeClient, templateService);
+  constructor(aiService, templateService) {
+    super('research', aiService, templateService);
   }
 
   /**
@@ -21,7 +21,8 @@ export class ResearchStrategy extends BaseStrategy {
     try {
       const domainPrompt = this.buildDomainContentPrompt(prompt);
 
-      const response = await this.claudeClient.complete(domainPrompt, {
+      const response = await this.ai.execute('optimize_context_inference', {
+        systemPrompt: domainPrompt,
         maxTokens: OptimizationConfig.tokens.domainContent,
         temperature: OptimizationConfig.temperatures.domainContent,
         timeout: OptimizationConfig.timeouts.optimization.research,
@@ -60,7 +61,8 @@ export class ResearchStrategy extends BaseStrategy {
     const systemPrompt = this.buildResearchPrompt(prompt, domainSection);
 
     const config = this.getConfig();
-    const response = await this.claudeClient.complete(systemPrompt, {
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       timeout: config.timeout,

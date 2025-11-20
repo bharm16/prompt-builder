@@ -7,8 +7,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Specializes in inquiry-based education with progressive questioning
  */
 export class SocraticStrategy extends BaseStrategy {
-  constructor(claudeClient, templateService) {
-    super('socratic', claudeClient, templateService);
+  constructor(aiService, templateService) {
+    super('socratic', aiService, templateService);
   }
 
   /**
@@ -21,7 +21,8 @@ export class SocraticStrategy extends BaseStrategy {
     try {
       const domainPrompt = this.buildDomainContentPrompt(prompt);
 
-      const response = await this.claudeClient.complete(domainPrompt, {
+      const response = await this.ai.execute('optimize_context_inference', {
+        systemPrompt: domainPrompt,
         maxTokens: OptimizationConfig.tokens.domainContent,
         temperature: OptimizationConfig.temperatures.domainContent,
         timeout: OptimizationConfig.timeouts.optimization.socratic,
@@ -59,7 +60,8 @@ export class SocraticStrategy extends BaseStrategy {
     const systemPrompt = this.buildSocraticPrompt(prompt, domainSection);
 
     const config = this.getConfig();
-    const response = await this.claudeClient.complete(systemPrompt, {
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       timeout: config.timeout,

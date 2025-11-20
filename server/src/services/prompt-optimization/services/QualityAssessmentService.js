@@ -6,8 +6,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Evaluates clarity, specificity, structure, completeness, and actionability
  */
 export class QualityAssessmentService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**
@@ -22,7 +22,8 @@ export class QualityAssessmentService {
     try {
       const assessmentPrompt = this.buildAssessmentPrompt(prompt, mode);
 
-      const response = await this.claudeClient.complete(assessmentPrompt, {
+      const response = await this.ai.execute('optimize_quality_assessment', {
+        systemPrompt: assessmentPrompt,
         maxTokens: OptimizationConfig.tokens.qualityAssessment,
         temperature: OptimizationConfig.temperatures.qualityAssessment,
         timeout: OptimizationConfig.timeouts.qualityAssessment,

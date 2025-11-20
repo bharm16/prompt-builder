@@ -9,8 +9,8 @@ import { logger } from '../../../infrastructure/Logger.js';
  * Single Responsibility: Suggestion diversity and deduplication
  */
 export class SuggestionDiversityEnforcer {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**
@@ -179,7 +179,8 @@ Provide a JSON object with the new suggestion:
 {"text": "your diverse alternative", "explanation": "why this is different"}`;
 
     try {
-      const response = await this.claudeClient.complete(diversityPrompt, {
+      const response = await this.ai.execute('enhance_diversity', {
+        systemPrompt: diversityPrompt,
         maxTokens: 256,
         temperature: 0.9, // Higher temperature for diversity
       });

@@ -12,8 +12,8 @@ const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'su
  * between video elements, including descriptor category conflicts.
  */
 export class ConflictDetectionService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**

@@ -30,15 +30,14 @@ import { templateService } from './services/TemplateService.js';
  * - Configuration centralized in OptimizationConfig
  */
 export class PromptOptimizationService {
-  constructor(claudeClient, groqClient = null) {
-    this.claudeClient = claudeClient;
-    this.groqClient = groqClient;
+  constructor(aiService) {
+    this.ai = aiService;
 
     // Initialize specialized services
-    this.contextInference = new ContextInferenceService(claudeClient);
-    this.modeDetection = new ModeDetectionService(claudeClient);
-    this.qualityAssessment = new QualityAssessmentService(claudeClient);
-    this.strategyFactory = new StrategyFactory(claudeClient, templateService);
+    this.contextInference = new ContextInferenceService(aiService);
+    this.modeDetection = new ModeDetectionService(aiService);
+    this.qualityAssessment = new QualityAssessmentService(aiService);
+    this.strategyFactory = new StrategyFactory(aiService, templateService);
 
     // Cache configuration
     this.cacheConfig = cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
@@ -47,7 +46,7 @@ export class PromptOptimizationService {
     this.templateVersions = OptimizationConfig.templateVersions;
 
     logger.info('PromptOptimizationService initialized with refactored architecture', {
-      hasGroq: !!groqClient,
+      availableClients: this.ai.getAvailableClients(),
       strategies: this.strategyFactory.getSupportedModes()
     });
   }
@@ -67,11 +66,11 @@ export class PromptOptimizationService {
    * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
    */
   async optimizeTwoStage({ prompt, mode, context = null, brainstormContext = null, onDraft = null }) {
-    logger.info('Starting two-stage optimization', { mode, hasGroq: !!this.groqClient });
+    logger.info('Starting two-stage optimization', { mode });
 
-    // Fallback to single-stage if Groq unavailable
-    if (!this.groqClient) {
-      logger.warn('Groq client not available, falling back to single-stage optimization');
+    // Check if draft operation supports streaming (Groq available)
+    if (!this.ai.supportsStreaming('optimize_draft')) {
+      logger.warn('Draft streaming not available, falling back to single-stage optimization');
       const result = await this.optimize({ prompt, mode, context, brainstormContext });
       return { draft: result, refined: result, usedFallback: true };
     }
@@ -86,7 +85,8 @@ export class PromptOptimizationService {
 
       // Start operations in parallel
       const operations = [
-        this.groqClient.complete(draftSystemPrompt, {
+        this.ai.execute('optimize_draft', {
+          systemPrompt: draftSystemPrompt,
           userMessage: prompt,
           maxTokens: OptimizationConfig.tokens.draft[mode] || OptimizationConfig.tokens.draft.default,
           temperature: OptimizationConfig.temperatures.draft,
@@ -341,7 +341,7 @@ export class PromptOptimizationService {
     logger.debug('Applying constitutional AI review', { mode });
 
     try {
-      const constitutionalAI = new ConstitutionalAI(this.claudeClient);
+      const constitutionalAI = new ConstitutionalAI(this.ai);
       const reviewResult = await constitutionalAI.review(prompt);
 
       if (reviewResult.revised) {

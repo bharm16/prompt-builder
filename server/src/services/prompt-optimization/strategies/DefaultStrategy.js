@@ -7,8 +7,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Used when no specific mode is detected or for 'optimize' mode
  */
 export class DefaultStrategy extends BaseStrategy {
-  constructor(claudeClient, templateService) {
-    super('default', claudeClient, templateService);
+  constructor(aiService, templateService) {
+    super('default', aiService, templateService);
   }
 
   /**
@@ -21,7 +21,8 @@ export class DefaultStrategy extends BaseStrategy {
     try {
       const domainPrompt = this.buildDomainContentPrompt(prompt);
 
-      const response = await this.claudeClient.complete(domainPrompt, {
+      const response = await this.ai.execute('optimize_context_inference', {
+        systemPrompt: domainPrompt,
         maxTokens: OptimizationConfig.tokens.domainContent,
         temperature: OptimizationConfig.temperatures.domainContent,
         timeout: OptimizationConfig.timeouts.optimization.default,
@@ -59,7 +60,8 @@ export class DefaultStrategy extends BaseStrategy {
     const systemPrompt = this.buildDefaultPrompt(prompt, domainSection);
 
     const config = this.getConfig();
-    const response = await this.claudeClient.complete(systemPrompt, {
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       timeout: config.timeout,

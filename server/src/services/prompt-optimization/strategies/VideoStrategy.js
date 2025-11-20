@@ -8,8 +8,8 @@ import { generateVideoPrompt } from './videoPromptOptimizationTemplate.js';
  * Uses specialized video prompt template
  */
 export class VideoStrategy extends BaseStrategy {
-  constructor(claudeClient, templateService) {
-    super('video', claudeClient, templateService);
+  constructor(aiService, templateService) {
+    super('video', aiService, templateService);
   }
 
   /**
@@ -23,9 +23,10 @@ export class VideoStrategy extends BaseStrategy {
     // Generate the system prompt with instructions
     const systemPrompt = generateVideoPrompt(prompt);
 
-    // Call Claude to process the prompt and generate the optimized video prompt
+    // Call AI service to process the prompt and generate the optimized video prompt
     const config = this.getConfig();
-    const response = await this.claudeClient.complete(systemPrompt, {
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt,
       maxTokens: config.maxTokens,
       temperature: config.temperature,
       timeout: config.timeout,

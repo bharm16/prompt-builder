@@ -25,8 +25,8 @@ const FIELD_CATEGORY_MAP = {
  * Handles suggestion generation, filtering, and ranking.
  */
 export class SuggestionGeneratorService {
-  constructor(claudeClient, cacheService, preferenceRepository, compatibilityService) {
-    this.claudeClient = claudeClient;
+  constructor(aiService, cacheService, preferenceRepository, compatibilityService) {
+    this.ai = aiService;
     this.cacheService = cacheService;
     this.preferenceRepository = preferenceRepository;
     this.compatibilityService = compatibilityService;

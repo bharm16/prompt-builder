@@ -5,9 +5,9 @@ import { logger } from '../../../infrastructure/Logger.js';
  * Defines the common interface and shared functionality
  */
 export class BaseStrategy {
-  constructor(name, claudeClient, templateService) {
+  constructor(name, aiService, templateService) {
     this.name = name;
-    this.claudeClient = claudeClient;
+    this.ai = aiService;
     this.templateService = templateService;
   }
 

@@ -6,8 +6,8 @@ import OptimizationConfig from '../../../config/OptimizationConfig.js';
  * Uses keyword matching and Claude analysis
  */
 export class ModeDetectionService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**
@@ -120,7 +120,8 @@ Modes:
 
 Output ONLY the mode name (one word): reasoning, research, socratic, video, or optimize.`;
 
-    const response = await this.claudeClient.complete(analysisPrompt, {
+    const response = await this.ai.execute('optimize_mode_detection', {
+      systemPrompt: analysisPrompt,
       maxTokens: OptimizationConfig.tokens.modeDetection,
       temperature: OptimizationConfig.temperatures.modeDetection,
       timeout: OptimizationConfig.timeouts.modeDetection,

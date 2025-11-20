@@ -10,8 +10,8 @@ import { logger } from '../../../infrastructure/Logger.js';
  * Implements the Factory pattern for strategy instantiation
  */
 export class StrategyFactory {
-  constructor(claudeClient, templateService) {
-    this.claudeClient = claudeClient;
+  constructor(aiService, templateService) {
+    this.ai = aiService;
     this.templateService = templateService;
     this.strategies = this.createStrategies();
   }
@@ -22,12 +22,12 @@ export class StrategyFactory {
    */
   createStrategies() {
     const strategies = {
-      reasoning: new ReasoningStrategy(this.claudeClient, this.templateService),
-      research: new ResearchStrategy(this.claudeClient, this.templateService),
-      socratic: new SocraticStrategy(this.claudeClient, this.templateService),
-      video: new VideoStrategy(this.claudeClient, this.templateService),
-      default: new DefaultStrategy(this.claudeClient, this.templateService),
-      optimize: new DefaultStrategy(this.claudeClient, this.templateService), // Alias
+      reasoning: new ReasoningStrategy(this.ai, this.templateService),
+      research: new ResearchStrategy(this.ai, this.templateService),
+      socratic: new SocraticStrategy(this.ai, this.templateService),
+      video: new VideoStrategy(this.ai, this.templateService),
+      default: new DefaultStrategy(this.ai, this.templateService),
+      optimize: new DefaultStrategy(this.ai, this.templateService), // Alias
     };
 
     logger.info('Strategy factory initialized', {

@@ -101,8 +101,8 @@ const computeSpans = (text, tags, categories) => {
 };
 
 export class TextCategorizerService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
     this.cacheTTL = cacheService.getConfig('creative')?.ttl ?? 3600;
   }
 
@@ -209,13 +209,14 @@ ${toDeterministicJSON(promptPayload)}`;
     let llmResult;
     try {
       llmResult = await StructuredOutputEnforcer.enforceJSON(
-        this.claudeClient,
+        this.ai,
         systemPrompt,
         {
           schema,
           maxTokens: MAX_TOKENS,
           temperature: MODEL_TEMPERATURE,
           maxRetries: 2,
+          operation: 'text_categorization', // Route through aiService
         }
       );
     } catch (error) {
