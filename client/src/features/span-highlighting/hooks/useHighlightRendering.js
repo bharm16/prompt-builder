@@ -2,7 +2,17 @@
  * useHighlightRendering Hook
  * 
  * Manages DOM manipulation for applying highlight spans in the editor.
- * Refactored to separate concerns and extract pure functions.
+ * Uses DIFF-BASED RENDERING to eliminate DOM thrashing.
+ * 
+ * PERFORMANCE OPTIMIZATION:
+ * Instead of clearing all highlights and rebuilding on every change,
+ * this implementation:
+ * 1. Tracks spans by stable ID (from backend)
+ * 2. Only removes deleted spans
+ * 3. Only adds new spans
+ * 4. Only updates changed spans (position/text changes)
+ * 
+ * This eliminates flickering and improves performance with 50+ highlights.
  */
 
 import { useEffect, useRef } from 'react';
@@ -38,34 +48,53 @@ export function useHighlightRendering({
   fingerprint,
 }) {
   const highlightStateRef = useRef({
-    wrappers: [],
+    spanMap: new Map(), // Maps span.id -> { span, wrappers: [] }
     nodeIndex: null,
     fingerprint: null,
   });
 
   /**
-   * Clears all existing highlights
+   * Helper: Check if a span has changed (position or text)
    */
-  const clearHighlights = () => {
-    const { wrappers } = highlightStateRef.current;
-    if (wrappers?.length) {
-      wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+  const hasSpanChanged = (existingSpan, newSpan) => {
+    return (
+      existingSpan.start !== newSpan.start ||
+      existingSpan.end !== newSpan.end ||
+      existingSpan.text !== newSpan.text ||
+      existingSpan.quote !== newSpan.quote ||
+      existingSpan.displayQuote !== newSpan.displayQuote
+    );
+  };
+
+  /**
+   * Clear all highlights (used only on unmount or disable)
+   */
+  const clearAllHighlights = () => {
+    const { spanMap } = highlightStateRef.current;
+    for (const { wrappers } of spanMap.values()) {
+      if (wrappers?.length) {
+        wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+      }
     }
-    highlightStateRef.current = { wrappers: [], nodeIndex: null, fingerprint: null };
+    highlightStateRef.current = { 
+      spanMap: new Map(), 
+      nodeIndex: null, 
+      fingerprint: null 
+    };
   };
 
   // Clean up on unmount
-  useEffect(() => () => clearHighlights(), []);
+  useEffect(() => () => clearAllHighlights(), []);
 
-  // Main highlighting effect
+  // Main highlighting effect - DIFF-BASED RENDERING
   useEffect(() => {
     const root = editorRef.current;
     if (!root) return;
 
     // Handle disabled state
     if (!enabled) {
-      if (highlightStateRef.current.wrappers.length) {
-        clearHighlights();
+      if (highlightStateRef.current.spanMap.size > 0) {
+        clearAllHighlights();
       } else {
         highlightStateRef.current.fingerprint = null;
       }
@@ -78,8 +107,8 @@ export function useHighlightRendering({
 
     // Handle empty spans
     if (!spans.length) {
-      if (highlightStateRef.current.wrappers.length) {
-        clearHighlights();
+      if (highlightStateRef.current.spanMap.size > 0) {
+        clearAllHighlights();
       }
       highlightStateRef.current.fingerprint = fingerprint ?? null;
       return;
@@ -93,8 +122,8 @@ export function useHighlightRendering({
     // Validate display text
     const displayText = parseResult?.displayText ?? root.textContent ?? '';
     if (!displayText) {
-      if (highlightStateRef.current.wrappers.length) {
-        clearHighlights();
+      if (highlightStateRef.current.spanMap.size > 0) {
+        clearAllHighlights();
       }
       highlightStateRef.current.fingerprint = fingerprint ?? null;
       return;
@@ -103,19 +132,42 @@ export function useHighlightRendering({
     // ⏱️ PERFORMANCE TIMER: Highlight rendering starts
     const highlightRenderStart = performance.now();
 
-    // Clear existing highlights
-    clearHighlights();
+    // Get current state
+    const { spanMap } = highlightStateRef.current;
+    
+    // Process and sort incoming spans
+    const sortedSpans = processAndSortSpans(spans, displayText);
+    
+    // Create a set of new span IDs
+    const newSpanIds = new Set();
+    const newSpansBySpanId = new Map();
+    
+    sortedSpans.forEach(({ span }) => {
+      // Use span.id if available (from backend), or fall back to composite key
+      const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role}`;
+      newSpanIds.add(spanId);
+      newSpansBySpanId.set(spanId, span);
+    });
 
-    // Initialize tracking
-    const wrappers = [];
+    // PHASE 1: Remove deleted spans
+    for (const [spanId, { wrappers }] of spanMap.entries()) {
+      if (!newSpanIds.has(spanId)) {
+        // Span was deleted - unwrap it
+        if (wrappers?.length) {
+          wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+        }
+        spanMap.delete(spanId);
+      }
+    }
+
+    // PHASE 2 & 3: Add new spans and update changed spans
     const coverage = [];
     let nodeIndex = buildTextNodeIndex(root);
 
-    // Process and sort spans
-    const sortedSpans = processAndSortSpans(spans, displayText);
-
-    // Apply highlights to each span
     sortedSpans.forEach(({ span, highlightStart, highlightEnd }) => {
+      const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role}`;
+      const existingEntry = spanMap.get(spanId);
+
       // Skip overlapping spans
       if (hasOverlap(coverage, highlightStart, highlightEnd)) {
         return;
@@ -129,38 +181,58 @@ export function useHighlightRendering({
         return;
       }
 
-      // Create wrapper elements
-      const segmentWrappers = wrapRangeSegments({
-        root,
-        start: highlightStart,
-        end: highlightEnd,
-        nodeIndex,
-        createWrapper: () => createHighlightWrapper(root, span, highlightStart, highlightEnd, PromptContext.getCategoryColor),
-      });
-
-      // Handle empty wrappers
-      if (!segmentWrappers.length) {
-        logEmptyWrappers(span, highlightStart, highlightEnd, nodeIndex, root);
-        return;
+      // Determine if we need to render/re-render
+      let shouldRender = false;
+      
+      if (!existingEntry) {
+        // New span - needs rendering
+        shouldRender = true;
+      } else if (hasSpanChanged(existingEntry.span, span)) {
+        // Span changed - unwrap old, render new
+        if (existingEntry.wrappers?.length) {
+          existingEntry.wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+        }
+        shouldRender = true;
       }
 
-      // Enhance wrappers with metadata
-      segmentWrappers.forEach((wrapper) => {
-        enhanceWrapperWithMetadata(wrapper, span);
-        wrappers.push(wrapper);
-      });
+      if (shouldRender) {
+        // Create wrapper elements
+        const segmentWrappers = wrapRangeSegments({
+          root,
+          start: highlightStart,
+          end: highlightEnd,
+          nodeIndex,
+          createWrapper: () => createHighlightWrapper(root, span, highlightStart, highlightEnd, PromptContext.getCategoryColor),
+        });
 
-      // Track coverage and rebuild index
+        // Handle empty wrappers
+        if (!segmentWrappers.length) {
+          logEmptyWrappers(span, highlightStart, highlightEnd, nodeIndex, root);
+          spanMap.delete(spanId);
+          return;
+        }
+
+        // Enhance wrappers with metadata
+        segmentWrappers.forEach((wrapper) => {
+          enhanceWrapperWithMetadata(wrapper, span);
+        });
+
+        // Store in spanMap
+        spanMap.set(spanId, {
+          span,
+          wrappers: segmentWrappers,
+        });
+
+        // Rebuild node index after DOM changes
+        nodeIndex = buildTextNodeIndex(root);
+      }
+
+      // Track coverage
       addToCoverage(coverage, highlightStart, highlightEnd);
-      nodeIndex = buildTextNodeIndex(root);
     });
 
-    // Update state
-    highlightStateRef.current = { 
-      wrappers, 
-      nodeIndex: null, 
-      fingerprint: fingerprint ?? null,
-    };
+    // Update fingerprint
+    highlightStateRef.current.fingerprint = fingerprint ?? null;
 
     // ⏱️ CRITICAL PERFORMANCE TIMER: Highlights are now visible on screen!
     const highlightRenderEnd = performance.now();

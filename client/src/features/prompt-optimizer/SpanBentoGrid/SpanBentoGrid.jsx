@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { useSpanGrouping } from './hooks/useSpanGrouping.js';
 import { BentoBox } from './components/BentoBox.jsx';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from './config/bentoConfig.js';
@@ -9,6 +9,15 @@ import './SpanBentoGrid.css';
  * Main orchestrator component for Span Bento Grid
  * Displays spans grouped by category in collapsible bento boxes
  * Replaces "Your Input" panel
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - All components (BentoBox, SpanItem) are memoized
+ * - Only expanded categories render their contents
+ * - Stable keys (span.id) prevent unnecessary re-renders
+ * - useCallback ensures handler stability
+ * 
+ * Virtual scrolling is NOT needed with only 7 categories.
+ * The current implementation is already optimal for this scale.
  * 
  * Desktop: Left sidebar (288px wide)
  * Mobile: Bottom drawer (40vh height)
@@ -24,13 +33,14 @@ export const SpanBentoGrid = memo(({
 }) => {
   const { groups, totalSpans, categoryCount } = useSpanGrouping(spans);
   
-  const handleSpanClick = (span) => {
+  // Memoize click handler to prevent BentoBox re-renders
+  const handleSpanClick = useCallback((span) => {
     // 1. Scroll to span in editor with pulse animation
     scrollToSpan(editorRef, span);
     
     // 2. Trigger suggestions panel
     onSpanClick?.(span);
-  };
+  }, [editorRef, onSpanClick]);
   
   return (
     <div className="span-bento-grid">

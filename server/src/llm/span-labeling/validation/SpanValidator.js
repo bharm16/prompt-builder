@@ -90,8 +90,8 @@ export function validateSpans({
       end: corrected.end,
     };
 
-    // Normalize role and confidence
-    const normalized = normalizeSpan(correctedSpan, lenient);
+    // Normalize role and confidence (includes ID generation)
+    const normalized = normalizeSpan(correctedSpan, text, lenient);
     if (!normalized || !normalized.role) {
       if (!lenient) {
         errors.push(

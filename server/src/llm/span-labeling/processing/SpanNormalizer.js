@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ROLE_SET } from '../config/roles.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { clamp01 } from '../utils/textUtils.js';
@@ -8,6 +9,25 @@ import { clamp01 } from '../utils/textUtils.js';
  * Responsible for normalizing role values and confidence scores.
  * Applies validation rules and defaults for invalid values.
  */
+
+/**
+ * Generate a stable ID for a span
+ * IDs are deterministic and based on text content and position
+ * 
+ * @param {Object} span - The span to generate ID for
+ * @param {string} sourceText - The full source text (for hashing)
+ * @returns {string} Stable span ID
+ */
+function generateSpanId(span, sourceText) {
+  // Hash the source text to create a deterministic prefix
+  const textHash = createHash('sha256')
+    .update(sourceText)
+    .digest('hex')
+    .substring(0, 8); // Use first 8 chars for brevity
+  
+  // Combine hash with span coordinates and role for uniqueness
+  return `${textHash}-${span.start}-${span.end}-${span.role}`;
+}
 
 /**
  * Normalize a single span's role and confidence
@@ -21,10 +41,11 @@ import { clamp01 } from '../utils/textUtils.js';
  * @param {number} span.end - End position
  * @param {string} span.role - Role to validate (taxonomy ID)
  * @param {number} span.confidence - Confidence to clamp
+ * @param {string} sourceText - The full source text (for ID generation)
  * @param {boolean} lenient - If true, assigns 'subject' for invalid roles; if false, returns null
- * @returns {Object|null} Normalized span with role and confidence, or null if invalid
+ * @returns {Object|null} Normalized span with role, confidence, and stable ID, or null if invalid
  */
-export function normalizeSpan(span, lenient = false) {
+export function normalizeSpan(span, sourceText, lenient = false) {
   const confidence = clamp01(span.confidence);
 
   // Validate role against taxonomy
@@ -40,11 +61,17 @@ export function normalizeSpan(span, lenient = false) {
     return null;
   }
 
-  return {
+  // Create normalized span with role (needed for ID generation)
+  const normalizedSpan = {
     text: span.text,
     start: span.start,
     end: span.end,
     role,
     confidence,
   };
+
+  // Generate stable ID
+  normalizedSpan.id = generateSpanId(normalizedSpan, sourceText);
+
+  return normalizedSpan;
 }

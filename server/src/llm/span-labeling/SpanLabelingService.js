@@ -9,6 +9,7 @@ import { parseJson, buildUserPayload } from './utils/jsonUtils.js';
 import { formatValidationErrors } from './utils/textUtils.js';
 import { validateSchemaOrThrow } from './validation/SchemaValidator.js';
 import { validateSpans } from './validation/SpanValidator.js';
+import { TAXONOMY } from '#shared/taxonomy.js';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -20,19 +21,86 @@ import { validateSpans } from './validation/SpanValidator.js';
  * - Cache: Performance-optimized substring position caching
  * - Validation: Schema and span validation
  * - Processing: Pipeline of span transformations (dedupe, overlap, filter, truncate)
+ * 
+ * DYNAMIC TAXONOMY GENERATION:
+ * The system prompt is now generated from taxonomy.js at runtime to prevent drift.
+ * Changes to the taxonomy automatically propagate to the LLM's instructions.
  */
 
-// Load system prompt template
+// Load detection patterns and rules from template file
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const promptTemplatePath = join(__dirname, 'templates', 'span-labeling-prompt.md');
-const BASE_SYSTEM_PROMPT = readFileSync(promptTemplatePath, 'utf-8')
-  .replace(/^# .*$/gm, '') // Remove markdown headers
-  .replace(/^##+ /gm, '')  // Remove heading markers
-  .replace(/\*\*/g, '')    // Remove bold markers
-  .replace(/```json[\s\S]*?```/gm, '') // Remove code blocks
-  .trim()
-  .replace(/\n{3,}/g, '\n\n'); // Collapse multiple newlines
+const PROMPT_TEMPLATE = readFileSync(promptTemplatePath, 'utf-8');
+
+/**
+ * Extract the detection patterns section from the template
+ * This keeps the detailed role definitions and examples from the template file
+ */
+function extractDetectionPatterns(template) {
+  // Extract everything from "## Role Definitions" to "## Rules"
+  const match = template.match(/## Role Definitions with Detection Patterns([\s\S]*?)## Critical Instructions/);
+  return match ? match[1].trim() : '';
+}
+
+/**
+ * Extract the rules and examples section from the template
+ * This keeps the operational guidelines from the template file
+ */
+function extractRulesSection(template) {
+  // Extract everything from "## Critical Instructions" onwards
+  const match = template.match(/## Critical Instructions([\s\S]*)/);
+  return match ? match[0].trim() : '';
+}
+
+/**
+ * Build system prompt dynamically from taxonomy.js
+ * Generates the taxonomy structure section while preserving detection patterns from template
+ */
+function buildSystemPrompt() {
+  // Generate taxonomy structure from shared/taxonomy.js
+  const parentCategories = Object.values(TAXONOMY)
+    .map(cat => `- \`${cat.id}\` - ${cat.description}`)
+    .join('\n');
+
+  const attributeSections = Object.values(TAXONOMY)
+    .map(cat => {
+      if (!cat.attributes || Object.keys(cat.attributes).length === 0) {
+        return null;
+      }
+      const attrs = Object.values(cat.attributes).map(id => `\`${id}\``).join(', ');
+      return `- ${cat.label}: ${attrs}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  // Load detection patterns from template
+  const detectionPatterns = extractDetectionPatterns(PROMPT_TEMPLATE);
+  const rulesSection = extractRulesSection(PROMPT_TEMPLATE);
+
+  // Build complete system prompt
+  return `# Span Labeling System Prompt
+
+Label spans for AI video prompt elements using our unified taxonomy system.
+
+## Taxonomy Structure
+
+Our taxonomy has **${Object.keys(TAXONOMY).length} parent categories**, each with specific attributes:
+
+**PARENT CATEGORIES (use when general):**
+${parentCategories}
+
+**ATTRIBUTES (use when specific):**
+${attributeSections}
+
+${detectionPatterns}
+
+${rulesSection}
+`.trim();
+}
+
+// Generate system prompt at service initialization
+const BASE_SYSTEM_PROMPT = buildSystemPrompt();
 
 /**
  * Call LLM with system prompt and user payload
