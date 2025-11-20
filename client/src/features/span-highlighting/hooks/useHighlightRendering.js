@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { PromptContext } from '../../../utils/PromptContext';
 import {
   buildTextNodeIndex,
   wrapRangeSegments,
@@ -134,7 +135,7 @@ export function useHighlightRendering({
         start: highlightStart,
         end: highlightEnd,
         nodeIndex,
-        createWrapper: () => createHighlightWrapper(root, span, highlightStart, highlightEnd),
+        createWrapper: () => createHighlightWrapper(root, span, highlightStart, highlightEnd, PromptContext.getCategoryColor),
       });
 
       // Handle empty wrappers

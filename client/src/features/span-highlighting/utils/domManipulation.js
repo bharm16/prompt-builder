@@ -4,14 +4,20 @@
  * Functions for creating and manipulating highlight wrapper elements.
  */
 
-import { PromptContext } from '../../../utils/PromptContext';
 import { getHighlightClassName, applyHighlightStyles } from '../config/highlightStyles.js';
 import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.js';
 
 /**
  * Create a highlight wrapper element for a span
+ * 
+ * @param {HTMLElement} root - Root element
+ * @param {Object} span - Span data
+ * @param {number} highlightStart - Start offset
+ * @param {number} highlightEnd - End offset
+ * @param {Function} getCategoryColor - Function to resolve category colors
+ * @returns {HTMLSpanElement} Wrapper element
  */
-export function createHighlightWrapper(root, span, highlightStart, highlightEnd) {
+export function createHighlightWrapper(root, span, highlightStart, highlightEnd, getCategoryColor) {
   const el = root.ownerDocument.createElement('span');
   
   // Set CSS class
@@ -30,8 +36,8 @@ export function createHighlightWrapper(root, span, highlightStart, highlightEnd)
   el.dataset[DATASET_KEYS.VALIDATOR_PASS] = span.validatorPass === false ? 'false' : 'true';
   el.dataset[DATASET_KEYS.IDEMPOTENCY_KEY] = span.idempotencyKey ?? '';
   
-  // Apply color styles
-  const color = PromptContext.getCategoryColor?.(span.category);
+  // Apply color styles using injected resolver
+  const color = getCategoryColor?.(span.category);
   applyHighlightStyles(el, color);
   
   return el;
