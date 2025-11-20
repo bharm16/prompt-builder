@@ -137,6 +137,62 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - Examples: "footsteps", "wind", "traffic noise", "city sounds"
 - Pattern: Sound effect descriptions
 
+## Special Handling: Structured Metadata Sections
+
+When you encounter structured sections like `**TECHNICAL SPECS**` or `**ALTERNATIVE APPROACHES**`:
+
+**MARKDOWN-FORMATTED SPECS (Common Pattern):**
+
+```
+**TECHNICAL SPECS**
+- **Duration:** 4-8s
+- **Aspect Ratio:** 16:9  
+- **Frame Rate:** 24fps
+- **Audio:** Natural ambience
+```
+
+**EXTRACTION RULES:**
+
+1. **Extract VALUES only, not labels or markdown**
+   - From `**Frame Rate:** 24fps` → extract `"24fps"` as `technical.frameRate`
+   - From `**Aspect Ratio:** 16:9` → extract `"16:9"` as `technical.aspectRatio`
+   - From `**Duration:** 4-8s` → extract `"4-8s"` as `technical`
+   - From `**Audio:** Natural ambience` → extract `"Natural ambience"` as `audio`
+
+2. **Section headers are not spans**
+   - `**TECHNICAL SPECS**` - Skip this, it's not a span
+   - `**ALTERNATIVE APPROACHES**` - Skip this, it's not a span
+
+3. **Bullet points and markdown are not part of the text**
+   - The bullet `-` is not part of the span
+   - The asterisks `**` are not part of the span
+   - The colon `:` after the label is not part of the span
+
+**EXAMPLE STRUCTURED SECTION:**
+
+Input text:
+```
+**TECHNICAL SPECS**
+- **Duration:** 4-8s
+- **Aspect Ratio:** 16:9
+- **Frame Rate:** 24fps
+```
+
+Correct extraction:
+```json
+{
+  "spans": [
+    {"text": "4-8s", "role": "technical", ...},
+    {"text": "16:9", "role": "technical.aspectRatio", ...},
+    {"text": "24fps", "role": "technical.frameRate", ...}
+  ]
+}
+```
+
+4. **Technical specs can be short (1-2 words) - word limit doesn't apply**
+   - "24fps", "16:9", "4K" are valid standalone spans
+   - The "≤6 words" rule applies to descriptive prose, not technical metadata
+
 ## Critical Instructions
 
 **CATEGORIZATION PRIORITY - CHECK IN THIS ORDER:**
@@ -172,7 +228,7 @@ CRITICAL: Analyze ENTIRE text. Don't skip sections (TECHNICAL SPECS, ALTERNATIVE
 - Use exact substrings from text (no paraphrasing)
 - start/end = 0-based character offsets
 - No overlaps unless explicitly allowed
-- Non-Technical spans ≤6 words
+- Descriptive spans ≤6 words (technical metadata like "24fps" or "16:9" can be shorter)
 - Confidence in [0,1], use 0.7 if unsure
 - Fewer meaningful spans > many trivial ones
 - Use taxonomy IDs exactly as specified (e.g., "subject.wardrobe" not "wardrobe")
@@ -194,6 +250,13 @@ CRITICAL: Analyze ENTIRE text. Don't skip sections (TECHNICAL SPECS, ALTERNATIVE
       "end": 28,
       "role": "subject.appearance",
       "confidence": 0.9
+    },
+    {
+      "text": "24fps",
+      "start": 520,
+      "end": 525,
+      "role": "technical.frameRate",
+      "confidence": 0.95
     },
     {
       "text": "weathered and calloused",

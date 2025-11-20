@@ -101,10 +101,19 @@ export function validateSpans({
       return;
     }
 
-    // Check word limit for non-technical spans
+    // Check if role is a technical category (should be exempt from word limit)
+    const isExemptCategory = 
+      normalized.role.startsWith('technical') || 
+      normalized.role.startsWith('style') || 
+      normalized.role.startsWith('camera') ||
+      normalized.role.startsWith('audio') ||
+      normalized.role.startsWith('lighting') ||
+      normalized.role === 'Specs' || // Keep legacy for safety
+      normalized.role === 'Style';
+
+    // Check word limit for non-exempt spans only
     if (
-      normalized.role !== 'Specs' &&
-      normalized.role !== 'Style' &&
+      !isExemptCategory &&
       policy.nonTechnicalWordLimit > 0 &&
       wordCount(normalized.text) > policy.nonTechnicalWordLimit
     ) {

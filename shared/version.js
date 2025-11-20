@@ -15,7 +15,7 @@ export const VERSIONS = {
   
   // Increment when LLM prompt changes significantly
   // Examples: Changing instructions, detection patterns, or output format
-  PROMPT: '1.0.0',
+  PROMPT: '1.1.0', // Updated: Added special handling for structured metadata sections
   
   // Increment when cache format changes
   // Examples: Adding new fields, changing key structure
