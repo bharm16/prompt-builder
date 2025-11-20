@@ -162,7 +162,10 @@ export const TAXONOMY = {
       FPS: 'technical.frameRate',
       
       /** Resolution: "4K", "1080p", "8K" */
-      RESOLUTION: 'technical.resolution'
+      RESOLUTION: 'technical.resolution',
+      
+      /** Duration: "4-8s", "10s", "30 seconds" */
+      DURATION: 'technical.duration'
     }
   },
 
@@ -278,6 +281,7 @@ export const LEGACY_ID_MAP = {
   'fps': 'technical.frameRate',
   'resolution': 'technical.resolution',
   'specs': 'technical.resolution',
+  'duration': 'technical.duration',
   
   // Audio attributes
   'score': 'audio.score',

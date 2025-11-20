@@ -116,10 +116,10 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - Pattern: Film stock names, medium specifications
 
 **technical** or **technical.frameRate**: Technical parameters
-- MUST specify: technical specs, resolutions, aspect ratios, frame rates
-- Examples: "4k", "8k", "16:9", "24fps", "30fps", "shallow depth of field"
-- Pattern: Resolution numbers, aspect ratios, format technicalities, fps
-- Use `technical.frameRate` for fps, `technical.aspectRatio` for ratios, `technical` for general specs
+- MUST specify: technical specs, durations, resolutions, aspect ratios, frame rates
+- Examples: "4-8s", "4k", "8k", "16:9", "24fps", "30fps", "shallow depth of field"
+- Pattern: Duration measurements, resolution numbers, aspect ratios, format technicalities, fps
+- Use `technical.frameRate` for fps, `technical.aspectRatio` for ratios, `technical.duration` for durations, `technical` for general specs
 
 **technical.aspectRatio**: Aspect ratio specifications
 - Examples: "16:9", "2.39:1", "9:16", "4:3"
@@ -129,9 +129,14 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - Examples: "4K", "8K", "1080p", "720p"
 - Pattern: Resolution numbers
 
+**technical.duration**: Duration specifications
+- Examples: "4-8s", "10s", "30 seconds", "2-3 seconds"
+- Pattern: Time measurements with seconds/s
+
 **audio.score**: Music and musical score
-- Examples: "orchestral score", "ambient music", "soundtrack", "natural ambience"
-- Pattern: Music references, score descriptions
+- Examples: "orchestral score", "ambient music", "soundtrack", "Natural ambience", "Natural ambience with emphasis on barking sounds"
+- Pattern: Music references, score descriptions, ambient sound descriptions
+- Includes: "Natural ambience" from TECHNICAL SPECS sections
 
 **audio.soundEffect**: Sound effects
 - Examples: "footsteps", "wind", "traffic noise", "city sounds"
@@ -156,8 +161,8 @@ When you encounter structured sections like `**TECHNICAL SPECS**` or `**ALTERNAT
 1. **Extract VALUES only, not labels or markdown**
    - From `**Frame Rate:** 24fps` → extract `"24fps"` as `technical.frameRate`
    - From `**Aspect Ratio:** 16:9` → extract `"16:9"` as `technical.aspectRatio`
-   - From `**Duration:** 4-8s` → extract `"4-8s"` as `technical`
-   - From `**Audio:** Natural ambience` → extract `"Natural ambience"` as `audio`
+   - From `**Duration:** 4-8s` → extract `"4-8s"` as `technical.duration`
+   - From `**Audio:** Natural ambience` → extract `"Natural ambience"` as `audio.score`
 
 2. **Section headers are not spans**
    - `**TECHNICAL SPECS**` - Skip this, it's not a span
@@ -182,7 +187,7 @@ Correct extraction:
 ```json
 {
   "spans": [
-    {"text": "4-8s", "role": "technical", ...},
+    {"text": "4-8s", "role": "technical.duration", ...},
     {"text": "16:9", "role": "technical.aspectRatio", ...},
     {"text": "24fps", "role": "technical.frameRate", ...}
   ]
@@ -220,7 +225,13 @@ Correct extraction:
 3. Response MUST include "meta" object with "version" and "notes" fields
 4. Never omit ANY required field - validation will reject incomplete responses
 
-CRITICAL: Analyze ENTIRE text. Don't skip sections (TECHNICAL SPECS, ALTERNATIVES, etc.). Label ALL camera/lighting/technical terms throughout.
+CRITICAL: **ANALYZE THE ENTIRE TEXT - DO NOT SKIP SECTIONS**
+- Process EVERY section including **TECHNICAL SPECS** and **ALTERNATIVE APPROACHES**
+- Extract ALL values from markdown lists: Duration, Aspect Ratio, Frame Rate, Audio
+- Structured metadata sections contain the most important technical information
+- Section headers like "**TECHNICAL SPECS**" are NOT spans - only extract the VALUES
+
+MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "24fps" as technical.frameRate
 
 ## Rules
 
