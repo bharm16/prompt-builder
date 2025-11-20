@@ -2,10 +2,12 @@ import { BaseStrategy } from './BaseStrategy.js';
 import { logger } from '../../../infrastructure/Logger.js';
 import OptimizationConfig from '../../../config/OptimizationConfig.js';
 import { generateVideoPrompt } from './videoPromptOptimizationTemplate.js';
+import { StructuredOutputEnforcer } from '../../../utils/StructuredOutputEnforcer.js';
 
 /**
  * Strategy for optimizing video generation prompts
- * Uses specialized video prompt template
+ * Uses specialized video prompt template with Chain-of-Thought reasoning
+ * Returns structured JSON internally but assembles to text for backward compatibility
  */
 export class VideoStrategy extends BaseStrategy {
   constructor(aiService, templateService) {
@@ -14,32 +16,98 @@ export class VideoStrategy extends BaseStrategy {
 
   /**
    * Optimize prompt for video generation
-   * Delegates to specialized video prompt template
+   * Uses StructuredOutputEnforcer to get JSON with cinematographic analysis
    * @override
    */
   async optimize({ prompt }) {
-    logger.info('Optimizing prompt with video strategy');
+    logger.info('Optimizing prompt with video strategy (CoT + structured output)');
 
-    // Generate the system prompt with instructions
+    // Generate the system prompt with Chain-of-Thought instructions
     const systemPrompt = generateVideoPrompt(prompt);
 
-    // Call AI service to process the prompt and generate the optimized video prompt
+    // Define the expected JSON schema
+    const schema = {
+      type: 'object',
+      required: ['_hidden_reasoning', 'shot_type', 'main_prompt', 'technical_specs', 'variations']
+    };
+
+    // Get configuration
     const config = this.getConfig();
-    const response = await this.ai.execute('optimize_standard', {
-      systemPrompt,
-      maxTokens: config.maxTokens,
-      temperature: config.temperature,
-      timeout: config.timeout,
-    });
 
-    const optimized = response.content[0].text.trim();
+    try {
+      // Use StructuredOutputEnforcer to get validated JSON response
+      const parsedResponse = await StructuredOutputEnforcer.enforceJSON(
+        this.ai,
+        systemPrompt,
+        {
+          operation: 'optimize_standard',
+          schema,
+          isArray: false,
+          maxRetries: 2,
+          maxTokens: config.maxTokens,
+          temperature: config.temperature,
+          timeout: config.timeout,
+        }
+      );
 
-    logger.info('Video optimization complete', {
-      originalLength: prompt.length,
-      optimizedLength: optimized.length
-    });
+      // Log the cinematographic reasoning and shot type for debugging/monitoring
+      logger.info('Video optimization complete with CoT reasoning', {
+        originalLength: prompt.length,
+        shotType: parsedResponse.shot_type,
+        reasoning: parsedResponse._hidden_reasoning,
+        mainPromptLength: parsedResponse.main_prompt?.length || 0
+      });
 
-    return optimized;
+      // Reassemble into the expected text format for backward compatibility
+      const reassembled = this._reassembleOutput(parsedResponse);
+
+      logger.debug('Output reassembled for backward compatibility', {
+        reassembledLength: reassembled.length
+      });
+
+      return reassembled;
+
+    } catch (error) {
+      logger.error('Failed to generate structured video prompt', {
+        error: error.message,
+        originalPrompt: prompt.substring(0, 100)
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Reassemble structured JSON into text format for backward compatibility
+   * @private
+   */
+  _reassembleOutput(parsed) {
+    const {
+      main_prompt,
+      technical_specs,
+      variations
+    } = parsed;
+
+    let output = main_prompt;
+
+    // Add technical specs section
+    if (technical_specs) {
+      output += '\n\n**TECHNICAL SPECS**';
+      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
+      output += `\n- **Aspect Ratio:** ${technical_specs.aspect_ratio || '16:9'}`;
+      output += `\n- **Frame Rate:** ${technical_specs.frame_rate || '24fps'}`;
+      output += `\n- **Audio:** ${technical_specs.audio || 'mute'}`;
+    }
+
+    // Add variations section
+    if (variations && Array.isArray(variations) && variations.length > 0) {
+      output += '\n\n**ALTERNATIVE APPROACHES**';
+      variations.forEach((variation, index) => {
+        const varNum = index + 1;
+        output += `\n- **Variation ${varNum} (${variation.type}):** ${variation.prompt}`;
+      });
+    }
+
+    return output;
   }
 
   /**
