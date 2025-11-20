@@ -6,10 +6,13 @@ import { metricsService } from '../infrastructure/MetricsService.js';
  * Custom error classes for better error handling
  */
 export class APIError extends Error {
-  constructor(message, statusCode) {
+  constructor(message, statusCode, isRetryable = true) {
     super(message);
     this.name = 'APIError';
     this.statusCode = statusCode;
+    // 400/401/403 are NOT retryable (bad request, auth errors)
+    // 429/5xx ARE retryable (rate limits, server errors)
+    this.isRetryable = isRetryable;
   }
 }
 
@@ -188,18 +191,56 @@ export class LLMClient {
    * @param {Object} options - Additional options
    * @param {Function} options.onChunk - Callback for each streamed chunk
    * @param {string} options.userMessage - User message
+   * @param {Array} options.messages - Full messages array (alternative to systemPrompt)
    * @param {number} options.maxTokens - Max tokens to generate
    * @param {number} options.temperature - Temperature (0-2)
+   * @param {boolean} options.jsonMode - Enable JSON mode
+   * @param {boolean} options.priority - Priority flag for queue management
+   * @param {AbortSignal} options.signal - Abort signal for cancellation
    * @returns {Promise<string>} Complete generated text
    */
   async streamComplete(systemPrompt, options = {}) {
     const startTime = Date.now();
-    const { onChunk, userMessage, maxTokens, temperature } = options;
 
-    if (!onChunk || typeof onChunk !== 'function') {
+    if (!options.onChunk || typeof options.onChunk !== 'function') {
       throw new Error('onChunk callback is required for streaming');
     }
 
+    // Execute with optional concurrency limiting (critical fix!)
+    const executeStream = async () => {
+      return await this._executeStream(systemPrompt, options, startTime);
+    };
+
+    try {
+      return this.concurrencyLimiter
+        ? await this.concurrencyLimiter.execute(executeStream, {
+            signal: options.signal,
+            priority: options.priority,
+          })
+        : await executeStream();
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, false);
+
+      // Handle concurrency limiter errors
+      if (error.code === 'QUEUE_TIMEOUT') {
+        throw new TimeoutError(`${this.providerName} streaming request timed out in queue - system overloaded`);
+      }
+
+      if (error.code === 'CANCELLED') {
+        logger.debug(`${this.providerName} streaming request cancelled`);
+        throw error;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Internal streaming execution with robust SSE parsing
+   * @private
+   */
+  async _executeStream(systemPrompt, options, startTime) {
     const controller = new AbortController();
     const timeout = options.timeout || this.defaultTimeout;
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -207,10 +248,25 @@ export class LLMClient {
     let fullText = '';
 
     try {
-      const messages = [
+      // Support full messages array or system + user pattern
+      const messages = options.messages || [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage || 'Please proceed.' }
+        { role: 'user', content: options.userMessage || 'Please proceed.' }
       ];
+
+      // Build request payload
+      const payload = {
+        model: options.model || this.model,
+        messages: messages,
+        max_tokens: options.maxTokens || 2048,
+        temperature: options.temperature !== undefined ? options.temperature : 0.7,
+        stream: true,
+      };
+
+      // Conditionally add JSON mode
+      if (options.jsonMode) {
+        payload.response_format = { type: 'json_object' };
+      }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
@@ -218,44 +274,49 @@ export class LLMClient {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: options.model || this.model,
-          messages: messages,
-          max_tokens: maxTokens || 2048,
-          temperature: temperature !== undefined ? temperature : 0.7,
-          stream: true,
-        }),
-        signal: controller.signal,
+        body: JSON.stringify(payload),
+        signal: options.signal || controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorBody = await response.text();
+        // Determine if error is retryable
+        const isRetryable = response.status >= 500 || response.status === 429;
         throw new APIError(
           `${this.providerName} API error: ${response.status} - ${errorBody}`,
-          response.status
+          response.status,
+          isRetryable
         );
       }
 
-      // Parse SSE stream
+      // Robust SSE parsing with buffer handling
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        // Append to buffer (handles partial chunks)
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep last line in buffer if incomplete (no trailing newline)
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
+          const trimmed = line.trim();
+          
+          // Skip empty lines and comments (keep-alive)
+          if (!trimmed || trimmed.startsWith(':')) continue;
+          
+          if (trimmed.startsWith('data: ')) {
+            const data = trimmed.slice(6);
 
-            if (data === '[DONE]') {
-              continue;
-            }
+            if (data === '[DONE]') continue;
 
             try {
               const parsed = JSON.parse(data);
@@ -263,10 +324,11 @@ export class LLMClient {
 
               if (content) {
                 fullText += content;
-                onChunk(content);
+                options.onChunk(content);
               }
             } catch (e) {
-              logger.debug('Skipping malformed SSE chunk', { chunk: data });
+              // Ignore malformed chunks - don't break the stream
+              logger.debug('Skipping malformed SSE chunk', { chunk: data.substring(0, 100) });
             }
           }
         }
@@ -284,11 +346,8 @@ export class LLMClient {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      const duration = Date.now() - startTime;
-      metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, false);
-
       if (error.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
       }
 
       logger.error(`${this.providerName} streaming failed`, { error: error.message });
@@ -306,10 +365,24 @@ export class LLMClient {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const messages = [
+      // Support full messages array or system + user pattern
+      const messages = options.messages || [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: options.userMessage || 'Please proceed.' }
       ];
+
+      // Build request payload
+      const payload = {
+        model: options.model || this.model,
+        messages: messages,
+        max_tokens: options.maxTokens || 2048,
+        temperature: options.temperature !== undefined ? options.temperature : 0.7,
+      };
+
+      // Conditionally add JSON mode only when requested
+      if (options.jsonMode) {
+        payload.response_format = { type: 'json_object' };
+      }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
@@ -317,13 +390,7 @@ export class LLMClient {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: options.model || this.model,
-          messages: messages,
-          max_tokens: options.maxTokens || 2048,
-          temperature: options.temperature !== undefined ? options.temperature : 0.7,
-          response_format: { type: 'json_object' },
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
@@ -331,9 +398,13 @@ export class LLMClient {
 
       if (!response.ok) {
         const errorBody = await response.text();
+        // Determine if error is retryable
+        // 400/401/403 are NOT retryable, 429/5xx ARE retryable
+        const isRetryable = response.status >= 500 || response.status === 429;
         throw new APIError(
           `${this.providerName} API error: ${response.status} - ${errorBody}`,
-          response.status
+          response.status,
+          isRetryable
         );
       }
 
@@ -369,6 +440,7 @@ export class LLMClient {
       await this.complete('Respond with valid JSON containing: {"status": "healthy"}', {
         maxTokens: 50,
         timeout: 5000,
+        jsonMode: true, // Enable JSON mode for health check
       });
       const duration = Date.now() - startTime;
 

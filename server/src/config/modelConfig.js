@@ -99,6 +99,7 @@ export const ModelConfig = {
     temperature: 0.8, // Higher creativity for suggestions
     maxTokens: 1024,
     timeout: 8000,
+    responseFormat: 'json_object', // Requires JSON for structured output
     fallbackTo: 'openai',
   },
 
@@ -171,6 +172,7 @@ export const ModelConfig = {
     temperature: 0.3, // Low temp for accurate parsing
     maxTokens: 1024,
     timeout: 25000,
+    responseFormat: 'json_object', // Requires JSON for structured data
   },
 
   /**
@@ -252,6 +254,7 @@ export const ModelConfig = {
     temperature: 0.7,
     maxTokens: 2048,
     timeout: 30000,
+    responseFormat: 'json_object', // Requires JSON for question array
     fallbackTo: 'groq',
   },
 
@@ -268,6 +271,7 @@ export const ModelConfig = {
     temperature: 0.2, // Very low for consistent categorization
     maxTokens: 1024,
     timeout: 25000,
+    responseFormat: 'json_object', // Requires JSON for deterministic output
   },
 
   // ============================================================================
@@ -283,6 +287,7 @@ export const ModelConfig = {
     temperature: 0.2, // Very low for accurate labeling
     maxTokens: 4096, // Larger for detailed span data
     timeout: 30000,
+    responseFormat: 'json_object', // Requires JSON for span offsets/labels
     fallbackTo: 'openai',
   },
 

@@ -73,6 +73,7 @@ export class AIModelService {
    * @param {number} [params.temperature] - Override config temperature
    * @param {number} [params.maxTokens] - Override config maxTokens
    * @param {number} [params.timeout] - Override config timeout
+   * @param {boolean} [params.jsonMode] - Override config JSON mode
    * @param {AbortSignal} [params.signal] - Abort signal for cancellation
    * @param {boolean} [params.priority] - Priority flag for queue management
    * @returns {Promise<Object>} LLM response in normalized format
@@ -95,6 +96,8 @@ export class AIModelService {
       temperature: params.temperature !== undefined ? params.temperature : config.temperature,
       maxTokens: params.maxTokens || config.maxTokens,
       timeout: params.timeout || config.timeout,
+      // Pass jsonMode from config (critical fix!)
+      jsonMode: config.responseFormat === 'json_object' || params.jsonMode,
     };
 
     try {
@@ -102,6 +105,7 @@ export class AIModelService {
         operation,
         client: config.client,
         model: requestOptions.model,
+        jsonMode: requestOptions.jsonMode,
       });
 
       // Execute the request through the selected client
@@ -120,18 +124,29 @@ export class AIModelService {
         operation,
         client: config.client,
         error: error.message,
+        statusCode: error.statusCode,
       });
 
-      // Attempt fallback if configured
-      if (config.fallbackTo && this.clients[config.fallbackTo]) {
+      // INTELLIGENT FALLBACK: Only retry if error is retryable
+      // Don't fallback on 400 (Bad Request) as the same invalid request will fail again
+      const shouldFallback = config.fallbackTo && 
+                            this.clients[config.fallbackTo] && 
+                            (error.isRetryable !== false); // Default to true if undefined
+
+      if (shouldFallback) {
+        logger.info('Error is retryable, attempting fallback', {
+          operation,
+          fallbackTo: config.fallbackTo,
+        });
         return await this._executeFallback(config.fallbackTo, operation, params.systemPrompt, requestOptions);
       }
 
-      // No fallback available, propagate error
+      // No fallback available or error is not retryable
       logger.error('AI operation failed with no fallback', {
         operation,
         client: config.client,
         error: error.message,
+        isRetryable: error.isRetryable,
       });
       throw error;
     }
@@ -144,10 +159,14 @@ export class AIModelService {
    * @param {Object} params - Request parameters
    * @param {string} params.systemPrompt - System prompt for the LLM
    * @param {string} [params.userMessage] - User message
+   * @param {Array} [params.messages] - Full message array (alternative to systemPrompt)
    * @param {Function} params.onChunk - Callback for each streamed chunk
    * @param {number} [params.temperature] - Override config temperature
    * @param {number} [params.maxTokens] - Override config maxTokens
    * @param {number} [params.timeout] - Override config timeout
+   * @param {boolean} [params.jsonMode] - Override config JSON mode
+   * @param {AbortSignal} [params.signal] - Abort signal for cancellation
+   * @param {boolean} [params.priority] - Priority flag for queue management
    * @returns {Promise<string>} Complete generated text
    * 
    * @example
@@ -181,6 +200,8 @@ export class AIModelService {
       temperature: params.temperature !== undefined ? params.temperature : config.temperature,
       maxTokens: params.maxTokens || config.maxTokens,
       timeout: params.timeout || config.timeout,
+      // Pass jsonMode from config
+      jsonMode: config.responseFormat === 'json_object' || params.jsonMode,
     };
 
     try {
@@ -188,6 +209,7 @@ export class AIModelService {
         operation,
         client: config.client,
         model: requestOptions.model,
+        jsonMode: requestOptions.jsonMode,
       });
 
       const text = await client.streamComplete(params.systemPrompt, requestOptions);
@@ -233,6 +255,9 @@ export class AIModelService {
         ...requestOptions,
         model: undefined, // Let fallback client use its own default model
       };
+      
+      // Remove model to use fallback client's default
+      delete fallbackOptions.model;
       
       const response = await client.complete(systemPrompt, fallbackOptions);
 
