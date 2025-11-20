@@ -39,6 +39,7 @@ import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES } from '../config/index.js';
  * @param {Object} params.parseResult - Parsed result containing spans to highlight
  * @param {boolean} params.enabled - Whether highlighting is enabled
  * @param {string} params.fingerprint - Unique fingerprint for current highlight state
+ * @param {string} params.text - Text content to highlight (passed as prop to avoid DOM reads)
  * @returns {React.RefObject} Reference to highlight state
  */
 export function useHighlightRendering({
@@ -46,6 +47,7 @@ export function useHighlightRendering({
   parseResult,
   enabled,
   fingerprint,
+  text,
 }) {
   const highlightStateRef = useRef({
     spanMap: new Map(), // Maps span.id -> { span, wrappers: [] }
@@ -119,8 +121,8 @@ export function useHighlightRendering({
       return;
     }
 
-    // Validate display text
-    const displayText = parseResult?.displayText ?? root.textContent ?? '';
+    // Validate display text - use passed text prop to avoid DOM reads
+    const displayText = parseResult?.displayText ?? text ?? '';
     if (!displayText) {
       if (highlightStateRef.current.spanMap.size > 0) {
         clearAllHighlights();
@@ -248,7 +250,7 @@ export function useHighlightRendering({
     } catch (err) {
       // Mark may not exist if prompt wasn't displayed yet
     }
-  }, [parseResult, enabled, fingerprint, editorRef]);
+  }, [parseResult, enabled, fingerprint, editorRef, text]);
 
   return highlightStateRef;
 }

@@ -29,6 +29,7 @@ import { CategoryLegend } from './components/CategoryLegend.jsx';
 import { FloatingToolbar } from './components/FloatingToolbar.jsx';
 import { PromptEditor } from './components/PromptEditor.jsx';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid.jsx';
+import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary.jsx';
 
 // Configuration
 import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '../../config/performance.config';
@@ -150,6 +151,7 @@ export const PromptCanvas = ({
     parseResult,
     enabled: enableMLHighlighting,
     fingerprint: highlightFingerprint,
+    text: displayedPrompt,
   });
 
   // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
@@ -514,17 +516,20 @@ export const PromptCanvas = ({
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Span Bento Grid (Desktop) / Bottom Drawer (Mobile) */}
         <div className="w-72 h-full flex-shrink-0 max-md:w-full max-md:h-auto">
-          <SpanBentoGrid
-            spans={parseResult.spans}
-            onSpanClick={handleSpanClickFromBento}
-            editorRef={editorRef}
-          />
+          <HighlightingErrorBoundary>
+            <SpanBentoGrid
+              spans={parseResult.spans}
+              onSpanClick={handleSpanClickFromBento}
+              editorRef={editorRef}
+            />
+          </HighlightingErrorBoundary>
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-12 py-16">
+              {/* PromptEditor continues working even if highlighting fails */}
               <PromptEditor
                 ref={editorRef}
                 onTextSelection={handleTextSelection}

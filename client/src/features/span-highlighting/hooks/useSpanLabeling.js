@@ -44,6 +44,7 @@ export function useSpanLabeling({
   const abortRef = useRef(null);
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
+  const requestVersionRef = useRef(0); // Track request versions for race condition prevention
   const lastPayloadRef = useRef(null);
   const onResultRef = useRef(onResult);
   const lastEmitKeyRef = useRef(null);
@@ -72,6 +73,8 @@ export function useSpanLabeling({
       abortRef.current.abort();
       abortRef.current = null;
     }
+    // Increment version to invalidate any in-flight requests
+    requestVersionRef.current += 1;
   }, []);
 
 const performRequest = useCallback(async (payload, signal) => {
@@ -153,6 +156,9 @@ const performRequest = useCallback(async (payload, signal) => {
 
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
+      
+      // Capture current version for this request
+      const requestVersion = requestVersionRef.current;
 
       setState((prev) => {
         const preservingPrevious = immediate && prev.status === 'success';
@@ -182,7 +188,10 @@ const performRequest = useCallback(async (payload, signal) => {
           performance.measure('span-api-duration', 'span-api-start', 'span-api-complete');
           performance.measure('span-labeling-total', 'span-labeling-start', 'span-api-complete');
 
-          if (requestId !== requestIdRef.current) {
+          // CRITICAL: Check both requestId and version to prevent race conditions
+          // requestId prevents processing old responses
+          // requestVersion prevents processing if request was cancelled
+          if (requestId !== requestIdRef.current || requestVersion !== requestVersionRef.current) {
             return;
           }
           const signature = hashString(payload.text ?? '');
@@ -213,7 +222,8 @@ const performRequest = useCallback(async (payload, signal) => {
           if (controller.signal.aborted) {
             return;
           }
-          if (requestId !== requestIdRef.current) {
+          // Check both requestId and version to prevent stale updates
+          if (requestId !== requestIdRef.current || requestVersion !== requestVersionRef.current) {
             return;
           }
 

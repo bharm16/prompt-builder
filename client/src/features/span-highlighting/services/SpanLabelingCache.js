@@ -12,10 +12,14 @@ import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.co
 import { hashString } from '../utils/hashing.js';
 import { buildCacheKey as buildCacheKeyUtil } from '../utils/cacheKey.js';
 import { getCacheStorage } from './storageAdapter.js';
+import { getVersionString } from '#shared/version.js';
 
-// Cache version - increment when highlight format changes
-// v3: Added mergeFragmentedSpans to combine adjacent spans of same category
-const CURRENT_CACHE_VERSION = 3;
+// Cache version - includes system versions from shared/version.js
+// This ensures cache invalidation when taxonomy, prompts, or API changes
+const CURRENT_CACHE_VERSION = getVersionString();
+
+// Cache entry max age (24 hours)
+const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Cache service for span labeling results
@@ -26,7 +30,31 @@ class SpanLabelingCache {
     this.cache = new Map();
     this.hydrated = false;
     this.storageKey = STORAGE_KEYS.SPAN_LABELING_CACHE;
+    this.versionKey = 'span_cache_version';
     this.limit = PERFORMANCE_CONFIG.SPAN_LABELING_CACHE_LIMIT;
+    this.version = CURRENT_CACHE_VERSION;
+    
+    // Validate version on initialization
+    this.validateVersion();
+  }
+  
+  /**
+   * Validate cache version and clear if mismatched
+   */
+  validateVersion() {
+    const storage = getCacheStorage();
+    if (!storage) return;
+    
+    try {
+      const storedVersion = storage.getItem(this.versionKey);
+      if (storedVersion !== this.version) {
+        console.log(`[SpanLabelingCache] Version changed from ${storedVersion} to ${this.version}, clearing cache`);
+        this.clear();
+        storage.setItem(this.versionKey, this.version);
+      }
+    } catch (error) {
+      console.warn('[SpanLabelingCache] Failed to validate version:', error);
+    }
   }
 
   /**
@@ -70,9 +98,17 @@ class SpanLabelingCache {
           }
 
           // CACHE VERSION CHECK: Skip outdated entries during hydration
-          const cacheVersion = value.meta?.cacheVersion || 1;
-          if (cacheVersion < CURRENT_CACHE_VERSION) {
-            // Silently skip - will be logged when user tries to access
+          const entryVersion = value.version || value.meta?.cacheVersion || '';
+          if (entryVersion !== CURRENT_CACHE_VERSION) {
+            // Skip outdated entries - different version
+            return;
+          }
+          
+          // CACHE AGE CHECK: Skip expired entries (older than 24 hours)
+          const timestamp = value.timestamp || 0;
+          const age = Date.now() - timestamp;
+          if (age > MAX_CACHE_AGE_MS) {
+            // Skip expired entries
             return;
           }
 
@@ -129,6 +165,7 @@ class SpanLabelingCache {
         {
           spans: Array.isArray(value.spans) ? value.spans : [],
           meta: value.meta ?? null,
+          version: value.version || CURRENT_CACHE_VERSION,
           timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
           text: typeof value.text === 'string' ? value.text : '',
           cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
@@ -158,10 +195,19 @@ class SpanLabelingCache {
       return null;
     }
 
-    // CACHE VERSION CHECK: Invalidate old format highlights
-    const cacheVersion = cached.meta?.cacheVersion || 1;
-    if (cacheVersion < CURRENT_CACHE_VERSION) {
-      console.log('[CACHE] Invalidating outdated cache entry (v' + cacheVersion + ' < v' + CURRENT_CACHE_VERSION + ')');
+    // CACHE VERSION CHECK: Invalidate entries with different version
+    const entryVersion = cached.version || cached.meta?.cacheVersion || '';
+    if (entryVersion !== CURRENT_CACHE_VERSION) {
+      console.log('[SpanLabelingCache] Invalidating outdated cache entry (version mismatch)');
+      this.cache.delete(key);
+      return null;
+    }
+    
+    // CACHE AGE CHECK: Invalidate expired entries
+    const timestamp = cached.timestamp || 0;
+    const age = Date.now() - timestamp;
+    if (age > MAX_CACHE_AGE_MS) {
+      console.log(`[SpanLabelingCache] Invalidating expired cache entry (age: ${Math.round(age / 3600000)}h)`);
       this.cache.delete(key);
       return null;
     }
@@ -188,8 +234,9 @@ class SpanLabelingCache {
       spans: Array.isArray(data?.spans) ? data.spans : [],
       meta: {
         ...(data?.meta ?? {}),
-        cacheVersion: CURRENT_CACHE_VERSION, // Add version stamp
+        cacheVersion: CURRENT_CACHE_VERSION, // Legacy field for backwards compatibility
       },
+      version: CURRENT_CACHE_VERSION, // Primary version field
       timestamp: Date.now(),
       text: payload.text ?? '',
       cacheId: payload.cacheId ?? null,

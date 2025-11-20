@@ -10,6 +10,7 @@ import { formatValidationErrors } from './utils/textUtils.js';
 import { validateSchemaOrThrow } from './validation/SchemaValidator.js';
 import { validateSpans } from './validation/SpanValidator.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
+import { TextChunker, countWords } from './utils/chunkingUtils.js';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -118,6 +119,7 @@ async function callModel({ systemPrompt, userPayload, callFn, maxTokens }) {
 
 /**
  * Label spans using an LLM with validation and optional repair attempt.
+ * Routes to chunked processing for large texts.
  *
  * @param {Object} params
  * @param {string} params.text - Source text to label
@@ -131,6 +133,28 @@ async function callModel({ systemPrompt, userPayload, callFn, maxTokens }) {
  * @returns {Promise<{spans: Array, meta: {version: string, notes: string}}>}
  */
 export async function labelSpans(params, options = {}) {
+  if (!params || typeof params.text !== 'string' || !params.text.trim()) {
+    throw new Error('text is required');
+  }
+
+  // Check if text needs chunking
+  const wordCount = countWords(params.text);
+  const maxWordsPerChunk = SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK;
+  
+  if (wordCount > maxWordsPerChunk) {
+    console.log(`[SpanLabeling] Large text detected (${wordCount} words), using chunked processing`);
+    return labelSpansChunked(params, options);
+  }
+  
+  // For smaller texts, use single-pass processing
+  return labelSpansSingle(params, options);
+}
+
+/**
+ * Label spans for a single chunk of text (original implementation)
+ * @private
+ */
+async function labelSpansSingle(params, options = {}) {
   if (!params || typeof params.text !== 'string' || !params.text.trim()) {
     throw new Error('text is required');
   }
@@ -278,4 +302,85 @@ If validation feedback is provided, correct the issues without altering span tex
     throw error;
   }
   // Cache is automatically garbage collected when function returns
+}
+
+/**
+ * Label spans for large texts using chunking strategy
+ * Splits text into processable chunks, processes them, then merges results
+ * @private
+ */
+async function labelSpansChunked(params, options = {}) {
+  const chunker = new TextChunker(SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK);
+  const chunks = chunker.chunkText(params.text);
+  
+  const wordCount = countWords(params.text);
+  console.log(`[SpanLabeling] Processing ${wordCount} words in ${chunks.length} chunks`);
+  
+  // Process chunks (parallel or serial based on config)
+  const processChunk = async (chunk) => {
+    try {
+      const result = await labelSpansSingle({
+        ...params,
+        text: chunk.text,
+      }, options);
+      
+      return {
+        spans: result.spans || [],
+        chunkOffset: chunk.startOffset,
+        meta: result.meta,
+      };
+    } catch (error) {
+      console.error(`[SpanLabeling] Error processing chunk at offset ${chunk.startOffset}:`, error.message);
+      // Return empty spans for failed chunks to avoid blocking entire request
+      return {
+        spans: [],
+        chunkOffset: chunk.startOffset,
+        meta: null,
+      };
+    }
+  };
+  
+  let chunkResults;
+  
+  if (SpanLabelingConfig.CHUNKING.PROCESS_CHUNKS_IN_PARALLEL) {
+    // Process chunks in parallel with concurrency limit
+    const maxConcurrent = SpanLabelingConfig.CHUNKING.MAX_CONCURRENT_CHUNKS;
+    chunkResults = [];
+    
+    for (let i = 0; i < chunks.length; i += maxConcurrent) {
+      const batch = chunks.slice(i, i + maxConcurrent);
+      const batchResults = await Promise.all(batch.map(processChunk));
+      chunkResults.push(...batchResults);
+    }
+  } else {
+    // Process chunks serially
+    chunkResults = [];
+    for (const chunk of chunks) {
+      const result = await processChunk(chunk);
+      chunkResults.push(result);
+    }
+  }
+  
+  // Merge spans from all chunks
+  const mergedSpans = chunker.mergeChunkedSpans(chunkResults);
+  
+  // Collect metadata from successful chunks
+  const successfulMetas = chunkResults
+    .map(r => r.meta)
+    .filter(m => m !== null);
+  
+  const combinedMeta = {
+    version: params.templateVersion || 'v1',
+    notes: `Processed ${chunks.length} chunks, ${mergedSpans.length} total spans`,
+    chunked: true,
+    chunkCount: chunks.length,
+    totalWords: wordCount,
+  };
+  
+  console.log(`[SpanLabeling] Chunked processing complete: ${mergedSpans.length} spans from ${chunks.length} chunks`);
+  
+  return {
+    spans: mergedSpans,
+    meta: combinedMeta,
+  };
 }

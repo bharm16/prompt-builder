@@ -136,7 +136,7 @@ function processSpans(spans, text, options = {}) {
 
 // Worker message handler
 self.onmessage = function (e) {
-  const { type, spans, text, options } = e.data;
+  const { id, type, spans, text, options } = e.data;
   
   try {
     if (type === 'process') {
@@ -148,6 +148,7 @@ self.onmessage = function (e) {
       const processingTime = endTime - startTime;
       
       self.postMessage({
+        id, // Include ID for callback tracking
         type: 'result',
         processedSpans,
         meta: {
@@ -158,12 +159,14 @@ self.onmessage = function (e) {
       });
     } else {
       self.postMessage({
+        id, // Include ID even for errors
         type: 'error',
         error: `Unknown message type: ${type}`,
       });
     }
   } catch (error) {
     self.postMessage({
+      id, // Include ID for error handling
       type: 'error',
       error: error.message || 'Unknown error in worker',
     });

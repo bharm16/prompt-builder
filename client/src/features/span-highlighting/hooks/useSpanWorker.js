@@ -31,6 +31,8 @@ import { useRef, useCallback, useEffect } from 'react';
 export function useSpanWorker() {
   const workerRef = useRef(null);
   const isProcessingRef = useRef(false);
+  const callbacksRef = useRef(new Map()); // Track pending callbacks for cleanup
+  const messageIdRef = useRef(0); // Unique ID for each message
 
   // Initialize worker
   useEffect(() => {
@@ -45,25 +47,70 @@ export function useSpanWorker() {
       workerRef.current.onerror = (error) => {
         console.error('[SpanWorker] Worker error:', error);
         isProcessingRef.current = false;
+        
+        // Reject all pending callbacks
+        callbacksRef.current.forEach(callback => {
+          callback.reject(new Error('Worker crashed'));
+        });
+        callbacksRef.current.clear();
       };
 
-      // Log when worker is ready
+      // Handle messages from worker
       workerRef.current.onmessage = (e) => {
         if (e.data.type === 'ready') {
           console.log('[SpanWorker] Worker initialized and ready');
+          return;
         }
+        
+        const { id, type } = e.data;
+        const callback = callbacksRef.current.get(id);
+        
+        if (!callback) return;
+        
+        // Clear timeout for this callback
+        if (callback.timeoutId) {
+          clearTimeout(callback.timeoutId);
+        }
+        
+        isProcessingRef.current = false;
+        
+        if (type === 'result') {
+          callback.resolve({
+            processedSpans: e.data.processedSpans,
+            meta: {
+              ...e.data.meta,
+              usedWorker: true,
+            },
+          });
+        } else if (type === 'error') {
+          callback.reject(new Error(e.data.error));
+        } else {
+          callback.reject(new Error(`Unknown worker response type: ${type}`));
+        }
+        
+        // Remove callback from map
+        callbacksRef.current.delete(id);
       };
     } catch (error) {
       console.warn('[SpanWorker] Failed to initialize worker:', error);
       workerRef.current = null;
     }
 
-    // Cleanup worker on unmount
+    // CRITICAL: Cleanup worker on unmount and reject pending callbacks
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
       }
+      
+      // Reject any pending callbacks
+      callbacksRef.current.forEach(callback => {
+        if (callback.timeoutId) {
+          clearTimeout(callback.timeoutId);
+        }
+        callback.reject(new Error('Component unmounted'));
+      });
+      callbacksRef.current.clear();
     };
   }, []);
 
@@ -93,33 +140,22 @@ export function useSpanWorker() {
     isProcessingRef.current = true;
 
     return new Promise((resolve, reject) => {
+      // Generate unique ID for this request
+      const id = ++messageIdRef.current;
+      
+      // Set up timeout that will clean up the callback
       const timeoutId = setTimeout(() => {
         isProcessingRef.current = false;
+        callbacksRef.current.delete(id);
         reject(new Error('Worker processing timeout'));
       }, 5000); // 5 second timeout
+      
+      // Store callback with timeout ID for cleanup
+      callbacksRef.current.set(id, { resolve, reject, timeoutId });
 
-      workerRef.current.onmessage = (e) => {
-        clearTimeout(timeoutId);
-        isProcessingRef.current = false;
-
-        if (e.data.type === 'result') {
-          resolve({
-            processedSpans: e.data.processedSpans,
-            meta: {
-              ...e.data.meta,
-              usedWorker: true,
-            },
-          });
-        } else if (e.data.type === 'error') {
-          reject(new Error(e.data.error));
-        } else if (e.data.type !== 'ready') {
-          // Ignore 'ready' messages, reject unknown types
-          reject(new Error(`Unknown worker response type: ${e.data.type}`));
-        }
-      };
-
-      // Send processing request to worker
+      // Send processing request to worker with unique ID
       workerRef.current.postMessage({
+        id,
         type: 'process',
         spans,
         text,
