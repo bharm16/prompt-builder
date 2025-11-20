@@ -7,25 +7,31 @@ import { logger } from '../infrastructure/Logger.js';
  */
 export class StructuredOutputEnforcer {
   /**
-   * Enforce structured JSON output from Claude API
-   * @param {Object} claudeClient - Claude API client instance
+   * Enforce structured JSON output from an AI service
+   * @param {Object} aiService - AIModelService instance
    * @param {string} systemPrompt - System prompt
    * @param {Object} options - Options
+   * @param {string} options.operation - The operation name for AIModelService
    * @param {Object} options.schema - Expected JSON schema (optional, for validation)
    * @param {boolean} options.isArray - Whether output should be array (default: false)
    * @param {number} options.maxRetries - Max retry attempts (default: 2)
    * @returns {Promise<Object|Array>} Parsed and validated JSON
    */
-  static async enforceJSON(claudeClient, systemPrompt, options = {}) {
+  static async enforceJSON(aiService, systemPrompt, options = {}) {
     const {
       schema = null,
       isArray = false,
       maxRetries = 2,
-      ...claudeOptions
+      operation, // Extract operation for AIModelService
+      ...restOptions
     } = options;
 
+    if (!operation) {
+      throw new Error('StructuredOutputEnforcer.enforceJSON requires an "operation" option.');
+    }
+
     // Add structured output enforcement to system prompt
-    const enhancedPrompt = this._enhancePromptForJSON(systemPrompt, isArray);
+    let currentSystemPrompt = this._enhancePromptForJSON(systemPrompt, isArray);
 
     let lastError = null;
     let attempt = 0;
@@ -37,12 +43,12 @@ export class StructuredOutputEnforcer {
           maxRetries: maxRetries + 1,
         });
 
-        // Make API call with prefill for JSON
-        const response = await this._callWithPrefill(
-          claudeClient,
-          enhancedPrompt,
-          isArray,
-          claudeOptions
+        // Make API call through AIModelService
+        const response = await this._callAIService(
+          aiService,
+          operation,
+          currentSystemPrompt,
+          restOptions
         );
 
         // Extract and clean JSON from response
@@ -87,8 +93,8 @@ export class StructuredOutputEnforcer {
 
         // If not last attempt, enhance prompt with error feedback
         if (attempt <= maxRetries) {
-          systemPrompt = this._enhancePromptWithErrorFeedback(
-            systemPrompt,
+          currentSystemPrompt = this._enhancePromptWithErrorFeedback(
+            systemPrompt, // Use original system prompt
             error.message,
             isArray
           );
@@ -121,19 +127,18 @@ export class StructuredOutputEnforcer {
    */
   static _enhancePromptForJSON(systemPrompt, isArray) {
     const jsonType = isArray ? 'JSON array' : 'JSON object';
-    const example = isArray ? '[...]' : '{...}';
+    const example = isArray ? '[...]': '{...}';
 
-    return `${systemPrompt}
-
-**CRITICAL OUTPUT REQUIREMENT:**
-You MUST respond with ONLY a valid ${jsonType}. No other text, no markdown code blocks, no explanations, no preamble.
-
-❌ INVALID: \`\`\`json\\n${example}\\n\`\`\`
-❌ INVALID: "Here is the ${jsonType}:" followed by ${jsonType}
-❌ INVALID: Any text before or after the ${jsonType}
-✅ VALID: Start immediately with ${isArray ? '[' : '{'} and end with ${isArray ? ']' : '}'}
-
-Your response MUST begin with the opening ${isArray ? 'bracket [' : 'brace {'} character.`;
+    return `${systemPrompt}` +
+           `\n**CRITICAL OUTPUT REQUIREMENT:**\n` +
+           `You MUST respond with ONLY a valid ${jsonType}. No other text, no markdown code blocks, no explanations, no preamble.\n\n` +
+           `❌ INVALID: 
+${example}
+` +
+           `❌ INVALID: "Here is the ${jsonType}:" followed by ${jsonType}` +
+           `❌ INVALID: Any text before or after the ${jsonType}` +
+           `✅ VALID: Start immediately with ${isArray ? '[' : '{'} and end with ${isArray ? ']' : '}'}` +
+           `\nYour response MUST begin with the opening ${isArray ? 'bracket [' : 'brace {'} character.`;
   }
 
   /**
@@ -141,37 +146,34 @@ Your response MUST begin with the opening ${isArray ? 'bracket [' : 'brace {'} c
    * @private
    */
   static _enhancePromptWithErrorFeedback(systemPrompt, errorMessage, isArray) {
-    return `${systemPrompt}
-
-**IMPORTANT - PREVIOUS ATTEMPT FAILED:**
-The previous response failed to parse with error: "${errorMessage}"
-
-Common issues to avoid:
-- Including markdown code blocks (\`\`\`json)
-- Adding explanatory text before or after the JSON
-- Using single quotes instead of double quotes
-- Including trailing commas
-- Missing required closing ${isArray ? 'brackets ]' : 'braces }'}
-- Improperly escaped strings
-
-Please try again, ensuring you return ONLY valid ${isArray ? 'JSON array starting with [' : 'JSON object starting with {'}.`;
+    return `${systemPrompt}` +
+           `\n**IMPORTANT - PREVIOUS ATTEMPT FAILED:**\n` +
+           `The previous response failed to parse with error: "${errorMessage}"` +
+           `\nCommon issues to avoid:` +
+           `\n- Including markdown code blocks (
+` +
+           `- Adding explanatory text before or after the JSON` +
+           `- Using single quotes instead of double quotes` +
+           `- Including trailing commas` +
+           `- Missing required closing ${isArray ? 'brackets ]' : 'braces }'}` +
+           `- Improperly escaped strings` +
+           `\nPlease try again, ensuring you return ONLY valid ${isArray ? 'JSON array starting with [' : 'JSON object starting with {'}.`;
   }
 
   /**
-   * Call Claude API with prefill technique for JSON
+   * Call AI Service to get a completion
    * @private
    */
-  static async _callWithPrefill(
-    claudeClient,
+  static async _callAIService(
+    aiService,
+    operation,
     systemPrompt,
-    isArray,
-    claudeOptions
+    options
   ) {
-    // Route through the circuit breaker by using the public client method
-    // Keep userMessage to guide the model output format
-    const response = await claudeClient.complete(systemPrompt, {
-      ...claudeOptions,
+    const response = await aiService.execute(operation, {
+      systemPrompt,
       userMessage: 'Please provide the output as specified.',
+      ...options,
     });
 
     return response;
