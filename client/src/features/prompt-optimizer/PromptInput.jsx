@@ -271,18 +271,6 @@ export const PromptInput = ({
                 selectedMode={selectedMode}
                 onModeChange={onModeChange}
               />
-              {selectedMode === 'video' && (
-                <button
-                  onClick={onShowBrainstorm}
-                  disabled={isProcessing}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 rounded-lg hover:bg-white transition-colors"
-                  aria-label="Build video concept"
-                  title="Build concept"
-                >
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  <span>Build Concept</span>
-                </button>
-              )}
             </div>
 
             <button

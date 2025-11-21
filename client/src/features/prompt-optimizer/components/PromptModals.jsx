@@ -10,10 +10,9 @@ import { X } from 'lucide-react';
 import Settings, { useSettings } from '../../../components/Settings';
 import KeyboardShortcuts from '../../../components/KeyboardShortcuts';
 import PromptImprovementForm from '../../../PromptImprovementForm';
-import WizardVideoBuilder from '../../../components/wizard/WizardVideoBuilder';
 import { usePromptState } from '../context/PromptStateContext';
 
-export const PromptModals = ({ onImprovementComplete, onConceptComplete, onSkipBrainstorm }) => {
+export const PromptModals = ({ onImprovementComplete, onConceptComplete }) => {
   const {
     showSettings,
     setShowSettings,
@@ -21,7 +20,6 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete, onSkipB
     setShowShortcuts,
     showImprover,
     setShowImprover,
-    showBrainstorm,
     promptOptimizer,
     promptHistory,
   } = usePromptState();
@@ -45,29 +43,6 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete, onSkipB
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
-
-      {/* Creative Brainstorm - Full Page Wizard UI */}
-      {showBrainstorm && (
-        <div
-          className="fixed inset-0 z-[100] bg-gray-50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="wizard-title"
-        >
-          <button
-            onClick={onSkipBrainstorm}
-            className="fixed right-6 top-6 z-[110] rounded-lg p-2 text-gray-500 hover:text-gray-700 hover:bg-white hover:shadow-md transition-all duration-200"
-            aria-label="Close wizard"
-            title="Close (Esc)"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <WizardVideoBuilder
-            onConceptComplete={onConceptComplete}
-            initialConcept={promptOptimizer.inputPrompt}
-          />
-        </div>
-      )}
 
       {/* Improvement Form Modal */}
       {showImprover && (
