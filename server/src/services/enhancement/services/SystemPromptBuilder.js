@@ -1,5 +1,6 @@
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
+import { logger } from '../../../infrastructure/Logger.js';
 
 /**
  * PromptBuilderService
@@ -321,6 +322,24 @@ export class PromptBuilderService {
     modelTarget = null,  // NEW: Target AI model
     promptSection = null,  // NEW: Template section
   }) {
+    // Log zero-shot prompt generation
+    logger.info('Building zero-shot placeholder prompt', {
+      highlightedText: highlightedText.substring(0, 50),
+      highlightedCategory,
+      hasBrainstorm: Boolean(brainstormContext?.elements),
+      hasEditHistory: editHistory?.length > 0,
+      hasSpanContext: allLabeledSpans?.length > 0,
+      modelTarget: modelTarget || 'none',
+      promptSection: promptSection || 'main_prompt',
+      promptingMode: 'zero-shot', // Explicit marker that we're not using examples
+      contextRichness: {
+        brainstormElements: Object.keys(brainstormContext?.elements || {}).length,
+        editHistoryCount: editHistory?.length || 0,
+        labeledSpansCount: allLabeledSpans?.length || 0,
+        nearbySpansCount: nearbySpans?.length || 0,
+      }
+    });
+
     // Get specific constraints for this category if available
     const subcategory = detectSubcategory(highlightedText, highlightedCategory);
     let constraintInstruction = '';

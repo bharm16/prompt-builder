@@ -183,6 +183,7 @@ export class EnhancementService {
       if (cached) {
         metrics.cache = true;
         metrics.total = Date.now() - startTotal;
+        metrics.promptMode = process.env.USE_SIMPLE_PROMPT === 'true' ? 'simple' : 'complex';
         this._logMetrics(metrics, {
           highlightedCategory,
           isVideoPrompt,
@@ -192,6 +193,7 @@ export class EnhancementService {
         logger.debug('Cache hit for enhancement suggestions', {
           cacheCheckTime: metrics.cacheCheck,
           totalTime: metrics.total,
+          promptMode: metrics.promptMode,
         });
         return cached;
       }
@@ -292,28 +294,47 @@ export class EnhancementService {
       complexity: grammaticalAnalysis.complexity.toFixed(3),
     });
 
-    // Build prompt
-    const systemPrompt = this._buildSystemPrompt({
+    // Build prompt - use simple mode if feature flag is enabled
+    const useSimplePrompt = process.env.USE_SIMPLE_PROMPT === 'true';
+    
+    const systemPrompt = useSimplePrompt
+      ? this._generateSimplePrompt({
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          brainstormContext,
+          isPlaceholder,
+          isVideoPrompt,
+        })
+      : this._buildSystemPrompt({
+          isPlaceholder,
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          fullPrompt,
+          originalUserPrompt,
+          isVideoPrompt,
+          brainstormContext,
+          highlightedCategory,
+          highlightedCategoryConfidence,
+          phraseRole,
+          highlightWordCount,
+          videoConstraints,
+          dependencyContext,
+          elementDependencies,
+          allLabeledSpans, // Complete composition
+          nearbySpans, // Proximate context
+          editHistory, // Edit history for consistency
+          modelTarget, // NEW: Target AI model
+          promptSection, // NEW: Template section
+        });
+
+    // Log which prompt mode is being used
+    logger.info('Prompt mode selection', {
+      mode: useSimplePrompt ? 'simple' : 'complex',
+      highlightedText: highlightedText.substring(0, 50),
       isPlaceholder,
-      highlightedText,
-      contextBefore,
-      contextAfter,
-      fullPrompt,
-      originalUserPrompt,
       isVideoPrompt,
-      brainstormContext,
-      highlightedCategory,
-      highlightedCategoryConfidence,
-      phraseRole,
-      highlightWordCount,
-      videoConstraints,
-      dependencyContext,
-      elementDependencies,
-      allLabeledSpans, // Complete composition
-      nearbySpans, // Proximate context
-      editHistory, // Edit history for consistency
-      modelTarget, // NEW: Target AI model
-      promptSection, // NEW: Template section
     });
 
       // Generate initial suggestions
@@ -338,6 +359,30 @@ export class EnhancementService {
       );
       metrics.groqCall = Date.now() - groqStart;
 
+    // Detect poisonous patterns (shouldn't happen with zero-shot)
+    const poisonousPatterns = [
+      'specific element detail',
+      'alternative aspect feature',
+      'varied choice showcasing',
+      'different variant featuring',
+      'alternative option with specific',
+      'distinctive',
+      'remarkable',
+      'notable'
+    ];
+    
+    const hasPoisonousText = Array.isArray(suggestions) && suggestions.some(s => 
+      poisonousPatterns.some(pattern => 
+        s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
+        s.text?.toLowerCase() === pattern.toLowerCase()
+      )
+    );
+
+    // Log first few suggestions for manual inspection
+    const sampleSuggestions = Array.isArray(suggestions) 
+      ? suggestions.slice(0, 3).map(s => s.text) 
+      : [];
+
     logger.info('Raw suggestions from Claude', {
       isPlaceholder,
       suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
@@ -345,7 +390,19 @@ export class EnhancementService {
       phraseRole,
       videoConstraintMode: videoConstraints?.mode || null,
       highlightWordCount,
+      zeroShotActive: true, // Explicit marker
+      hasPoisonousText, // Alert if old patterns detected
+      sampleSuggestions, // Show actual suggestions for verification
     });
+
+    // Alert if poisonous patterns detected (should never happen)
+    if (hasPoisonousText) {
+      logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
+        highlightedText,
+        highlightedCategory,
+        suggestions: suggestions.map(s => s.text),
+      });
+    }
 
       // Process suggestions
       const postStart = Date.now();
@@ -463,6 +520,7 @@ export class EnhancementService {
 
       // Complete metrics tracking
       metrics.total = Date.now() - startTotal;
+      metrics.promptMode = useSimplePrompt ? 'simple' : 'complex';
       this._logMetrics(metrics, {
         highlightedCategory,
         isVideoPrompt,
@@ -475,6 +533,7 @@ export class EnhancementService {
     } catch (error) {
       // Track error metrics
       metrics.total = Date.now() - startTotal;
+      metrics.promptMode = process.env.USE_SIMPLE_PROMPT === 'true' ? 'simple' : 'complex';
       this._logMetrics(metrics, {
         highlightedCategory,
         isVideoPrompt,
@@ -641,6 +700,58 @@ export class EnhancementService {
   }
 
   /**
+   * Generate simple, clean prompt without complex context
+   * Inspired by direct API testing showing better results with minimal prompts
+   * @private
+   */
+  _generateSimplePrompt(params) {
+    const {
+      highlightedText,
+      contextBefore,
+      contextAfter,
+      brainstormContext,
+      isPlaceholder,
+      isVideoPrompt,
+    } = params;
+
+    // Build minimal brainstorm context if present
+    let brainstormLine = '';
+    if (brainstormContext?.elements) {
+      const activeElements = Object.entries(brainstormContext.elements)
+        .filter(([, value]) => value)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+      
+      if (activeElements) {
+        brainstormLine = `\nRespecting these creative anchors: ${activeElements}`;
+      }
+    }
+
+    // Build context line
+    const contextLine = contextBefore || contextAfter
+      ? `\nContext: ${contextBefore} [${highlightedText}] ${contextAfter}`
+      : '';
+
+    // Different prompts for placeholders vs rewrites
+    if (isPlaceholder) {
+      return `Replace "${highlightedText}" with 12 visually distinct alternatives${isVideoPrompt ? ' for video generation' : ''}.${contextLine}${brainstormLine}
+
+Each must create a different${isVideoPrompt ? ' visual look on camera' : ' approach or style'}.
+Organize into 4 categories with 3 suggestions each.
+
+Return JSON array: [{"text": "suggestion", "category": "category name", "explanation": "how it's different"}]`;
+    }
+
+    // Rewrite prompt
+    return `Replace "${highlightedText}" with 12 visually distinct alternatives${isVideoPrompt ? ' for video generation' : ''}.${contextLine}${brainstormLine}
+
+Each must create a different${isVideoPrompt ? ' visual look on camera' : ' approach'}.
+Organize into 4 categories with 3 suggestions each.
+
+Return JSON array: [{"text": "suggestion", "category": "category name", "explanation": "how it's different"}]`;
+  }
+
+  /**
    * Apply category alignment if needed
    * @private
    */
@@ -677,6 +788,7 @@ export class EnhancementService {
     if (isDev) {
       console.log('\n=== Enhancement Service Performance ===');
       console.log(`Total: ${metrics.total}ms`);
+      console.log(`Prompt Mode: ${metrics.promptMode || 'complex'} (${metrics.promptMode === 'simple' ? '⚡ SIMPLE' : '🔧 COMPLEX'})`);
       console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
       
       if (metrics.semanticDeps > 0) {
@@ -717,6 +829,7 @@ export class EnhancementService {
         isVideo: params.isVideoPrompt,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
+        promptMode: metrics.promptMode || 'complex',
         error: error?.message,
       });
     }
@@ -728,6 +841,7 @@ export class EnhancementService {
       isVideo: params.isVideoPrompt,
       modelTarget: params.modelTarget,
       promptSection: params.promptSection,
+      promptMode: metrics.promptMode || 'complex',
       error: error?.message,
     });
   }
