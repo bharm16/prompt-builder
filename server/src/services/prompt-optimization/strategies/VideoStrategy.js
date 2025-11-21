@@ -1,4 +1,3 @@
-import { BaseStrategy } from './BaseStrategy.js';
 import { logger } from '../../../infrastructure/Logger.js';
 import OptimizationConfig from '../../../config/OptimizationConfig.js';
 import { generateUniversalVideoPrompt } from './videoPromptOptimizationTemplate.js';
@@ -9,9 +8,11 @@ import { StructuredOutputEnforcer } from '../../../utils/StructuredOutputEnforce
  * Uses specialized video prompt template with Chain-of-Thought reasoning
  * Returns structured JSON internally but assembles to text for backward compatibility
  */
-export class VideoStrategy extends BaseStrategy {
+export class VideoStrategy {
   constructor(aiService, templateService) {
-    super('video', aiService, templateService);
+    this.name = 'video';
+    this.ai = aiService;
+    this.templateService = templateService;
   }
 
   /**

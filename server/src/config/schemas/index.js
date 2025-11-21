@@ -8,7 +8,6 @@
 // Prompt schemas
 export {
   promptSchema,
-  generateQuestionsSchema,
   semanticParseSchema,
 } from './promptSchemas.js';
 

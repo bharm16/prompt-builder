@@ -23,7 +23,6 @@ import { AIModelService } from '../services/ai-model/index.js';
 // Import services
 import { cacheService } from '../services/cache/CacheService.js';
 import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
-import { QuestionGenerationService } from '../services/question-generation/index.js';
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
@@ -231,12 +230,6 @@ export function configureServices() {
   );
 
   container.register(
-    'questionGenerationService',
-    (aiService) => new QuestionGenerationService(aiService),
-    ['aiService']
-  );
-
-  container.register(
     'enhancementService',
     (
       aiService,
@@ -361,7 +354,6 @@ export async function initializeServices(container) {
   // This catches configuration errors early
   const serviceNames = [
     'promptOptimizationService',
-    'questionGenerationService',
     'enhancementService',
     'sceneDetectionService',
     'videoConceptService',

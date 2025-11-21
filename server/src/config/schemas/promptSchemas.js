@@ -13,21 +13,11 @@ export const promptSchema = Joi.object({
     'any.required': 'Prompt is required',
   }),
   mode: Joi.string()
-    .valid(
-      'code',
-      'text',
-      'learning',
-      'video',
-      'reasoning',
-      'research',
-      'socratic',
-      'optimize'
-    )
-    .required()
+    .valid('video')
+    .optional()
+    .default('video')
     .messages({
-      'any.only':
-        'Mode must be one of: code, text, learning, video, reasoning, research, socratic, optimize',
-      'any.required': 'Mode is required',
+      'any.only': 'Mode must be video',
     }),
   context: Joi.object({
     specificAspects: Joi.string().allow('').max(5000),
@@ -44,13 +34,6 @@ export const promptSchema = Joi.object({
   })
     .optional()
     .allow(null),
-});
-
-export const generateQuestionsSchema = Joi.object({
-  prompt: Joi.string().required().max(10000).messages({
-    'string.empty': 'Prompt is required',
-    'any.required': 'Prompt is required',
-  }),
 });
 
 export const semanticParseSchema = Joi.object({

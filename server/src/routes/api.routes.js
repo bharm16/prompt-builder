@@ -9,7 +9,6 @@ import {
   customSuggestionSchema,
   sceneChangeSchema,
   creativeSuggestionSchema,
-  generateQuestionsSchema,
   completeSceneSchema,
   variationsSchema,
   parseConceptSchema,
@@ -27,7 +26,6 @@ export function createAPIRoutes(services) {
 
   const {
     promptOptimizationService,
-    questionGenerationService,
     enhancementService,
     sceneDetectionService,
     videoConceptService,
@@ -139,21 +137,6 @@ export function createAPIRoutes(services) {
 
         res.end();
       }
-    })
-  );
-
-  // POST /api/generate-questions - Generate context questions
-  router.post(
-    '/generate-questions',
-    validateRequest(generateQuestionsSchema),
-    asyncHandler(async (req, res) => {
-      const { prompt } = req.body;
-
-      const questions = await questionGenerationService.generateQuestions(
-        prompt
-      );
-
-      res.json(questions);
     })
   );
 

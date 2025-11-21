@@ -66,6 +66,14 @@ export class PromptOptimizationService {
    * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
    */
   async optimizeTwoStage({ prompt, mode, context = null, brainstormContext = null, onDraft = null }) {
+    // Default to video mode (only mode supported)
+    if (!mode) {
+      mode = 'video';
+    } else if (mode !== 'video') {
+      logger.warn('Non-video mode specified, defaulting to video', { requestedMode: mode });
+      mode = 'video';
+    }
+
     logger.info('Starting two-stage optimization', { mode });
 
     // Check if draft operation supports streaming (Groq available)
@@ -179,7 +187,7 @@ export class PromptOptimizationService {
    *
    * @param {Object} params - Optimization parameters
    * @param {string} params.prompt - User's prompt to optimize
-   * @param {string} params.mode - Optimization mode (reasoning|research|socratic|video|optimize)
+   * @param {string} params.mode - Optimization mode (always defaults to 'video')
    * @param {Object} params.context - Optional user-provided context
    * @param {Object} params.brainstormContext - Optional brainstorm context
    * @param {boolean} params.useConstitutionalAI - Optional constitutional AI review
@@ -194,19 +202,16 @@ export class PromptOptimizationService {
     useConstitutionalAI = false,
     useIterativeRefinement = false
   }) {
-    logger.info('Starting optimization', { mode, hasContext: !!context });
-
-    // Auto-detect mode if not provided
+    // Default to video mode (only mode supported)
     if (!mode) {
-      mode = await this.modeDetection.detectMode(prompt);
-      logger.info('Mode auto-detected', { mode });
+      mode = 'video';
+      logger.debug('Mode not specified, defaulting to video');
+    } else if (mode !== 'video') {
+      logger.warn('Non-video mode specified, defaulting to video', { requestedMode: mode });
+      mode = 'video';
     }
 
-    // Infer context if not provided and mode is reasoning
-    if (mode === 'reasoning' && !context) {
-      logger.debug('Inferring context for reasoning mode');
-      context = await this.contextInference.inferContext(prompt);
-    }
+    logger.info('Starting optimization', { mode, hasContext: !!context });
 
     // Check cache
     const cacheKey = this.buildCacheKey(prompt, mode, context, brainstormContext);

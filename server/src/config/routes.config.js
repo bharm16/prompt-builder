@@ -49,7 +49,6 @@ export function registerRoutes(app, container) {
   // Main API routes
   const apiRoutes = createAPIRoutes({
     promptOptimizationService: container.resolve('promptOptimizationService'),
-    questionGenerationService: container.resolve('questionGenerationService'),
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
     videoConceptService: container.resolve('videoConceptService'),

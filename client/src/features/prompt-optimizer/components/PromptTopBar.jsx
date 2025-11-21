@@ -16,7 +16,7 @@ export const PromptTopBar = () => {
     showBrainstorm,
   } = usePromptState();
 
-  // Hide when brainstorm wizard is open or when sidebar is visible
+  // Hide when brainstorm modal is open or when sidebar is visible
   if (showBrainstorm || showHistory) {
     return null;
   }

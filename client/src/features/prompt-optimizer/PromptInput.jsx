@@ -1,30 +1,8 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
 import {
-  Lightbulb,
-  Search,
-  FileText,
-  Shuffle,
-  GraduationCap,
   ChevronDown,
   Check,
 } from 'lucide-react';
-
-// Quick Action Button Component
-const QuickActionButton = memo(({ action, onClick }) => {
-  const Icon = action.icon;
-  return (
-    <button
-      onClick={() => onClick(action)}
-      className="btn-ghost btn-sm border border-neutral-300 hover:border-neutral-400 hover:bg-white hover-scale stagger-item"
-      aria-label={`Use ${action.label} template`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="text-xs font-medium">{action.label}</span>
-    </button>
-  );
-});
-
-QuickActionButton.displayName = 'QuickActionButton';
 
 // Mode Dropdown Component
 const ModeDropdown = memo(({ modes, selectedMode, onModeChange }) => {
@@ -125,89 +103,6 @@ export const PromptInput = ({
   aiNames,
   currentAIIndex,
 }) => {
-  const quickActions = [
-    {
-      label: 'Research Topic',
-      icon: Search,
-      mode: 'research',
-      prompt: 'Research [your topic here]',
-      category: 'research',
-      description: 'Deep dive into any subject',
-    },
-    {
-      label: 'Analyze Data',
-      icon: FileText,
-      mode: 'optimize',
-      prompt: 'Analyze data about [paste or describe your data]',
-      category: 'research',
-      description: 'Extract insights from data',
-    },
-    {
-      label: 'Draft Document',
-      icon: FileText,
-      mode: 'optimize',
-      prompt: 'Draft a [type of document] about [topic]',
-      category: 'writing',
-      description: 'Create professional documents',
-    },
-    {
-      label: 'Brainstorm Ideas',
-      icon: Lightbulb,
-      mode: 'optimize',
-      prompt: 'Brainstorm ideas for [your project or challenge]',
-      category: 'creative',
-      description: 'Generate creative concepts',
-    },
-    {
-      label: 'Learn Something',
-      icon: GraduationCap,
-      mode: 'socratic',
-      prompt: 'quantum computing basics',
-      category: 'learning',
-      description: 'Interactive learning journey',
-    },
-    {
-      label: 'Random Prompt',
-      icon: Shuffle,
-      mode: 'optimize',
-      prompt: 'random',
-      category: 'creative',
-      description: 'Try a surprise prompt',
-    },
-  ];
-
-  const randomPrompts = [
-    'explain how blockchain technology works',
-    'write a marketing strategy for a new mobile app',
-    'compare different project management methodologies',
-    'create a step-by-step guide for making sourdough bread',
-    'analyze the impact of remote work on productivity',
-    'design a workout plan for beginners',
-    'explain the basics of investing in stocks',
-    'write a product description for wireless headphones',
-    'create a social media content calendar',
-    'explain machine learning in simple terms',
-    'write a proposal for a sustainability initiative',
-    'analyze customer retention strategies',
-    'create a lesson plan for teaching coding to kids',
-    'write an email newsletter about tech trends',
-    'explain how search engines rank websites',
-    'create a budget plan for small businesses',
-    'analyze different leadership styles',
-    'write a guide for starting a podcast',
-    'explain the psychology of habit formation',
-    'create a content strategy for a blog',
-  ];
-
-  const handleQuickAction = (action) => {
-    onModeChange(action.mode);
-    if (action.prompt === 'random') {
-      const randomIndex = Math.floor(Math.random() * randomPrompts.length);
-      onInputChange(randomPrompts[randomIndex]);
-    } else {
-      onInputChange(action.prompt);
-    }
-  };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -284,21 +179,6 @@ export const PromptInput = ({
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Quick Actions - Simplified */}
-      <div className="flex items-center justify-center gap-2 flex-wrap">
-        <span className="text-xs text-neutral-500 mr-1">Try:</span>
-        {quickActions.slice(0, 4).map((action, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleQuickAction(action)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-600 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
-          >
-            <action.icon className="h-3 w-3" />
-            {action.label}
-          </button>
-        ))}
       </div>
     </div>
   );

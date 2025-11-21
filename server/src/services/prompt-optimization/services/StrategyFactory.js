@@ -1,8 +1,4 @@
-import { ReasoningStrategy } from '../strategies/ReasoningStrategy.js';
-import { ResearchStrategy } from '../strategies/ResearchStrategy.js';
-import { SocraticStrategy } from '../strategies/SocraticStrategy.js';
 import { VideoStrategy } from '../strategies/VideoStrategy.js';
-import { DefaultStrategy } from '../strategies/DefaultStrategy.js';
 import { logger } from '../../../infrastructure/Logger.js';
 
 /**
@@ -22,12 +18,7 @@ export class StrategyFactory {
    */
   createStrategies() {
     const strategies = {
-      reasoning: new ReasoningStrategy(this.ai, this.templateService),
-      research: new ResearchStrategy(this.ai, this.templateService),
-      socratic: new SocraticStrategy(this.ai, this.templateService),
       video: new VideoStrategy(this.ai, this.templateService),
-      default: new DefaultStrategy(this.ai, this.templateService),
-      optimize: new DefaultStrategy(this.ai, this.templateService), // Alias
     };
 
     logger.info('Strategy factory initialized', {
@@ -39,18 +30,18 @@ export class StrategyFactory {
 
   /**
    * Get strategy for a specific mode
-   * @param {string} mode - The optimization mode
-   * @returns {BaseStrategy} Strategy instance
+   * @param {string} mode - The optimization mode (always defaults to video)
+   * @returns {VideoStrategy} Strategy instance
    */
   getStrategy(mode) {
-    const strategy = this.strategies[mode];
+    // Always return video strategy (only mode supported)
+    const strategy = this.strategies.video;
 
-    if (!strategy) {
-      logger.warn('Unknown optimization mode, using default', { mode });
-      return this.strategies.default;
+    if (mode && mode !== 'video') {
+      logger.warn('Unknown optimization mode, using video', { mode });
     }
 
-    logger.debug('Strategy selected', { mode, strategyName: strategy.name });
+    logger.debug('Strategy selected', { mode: mode || 'video', strategyName: strategy.name });
     return strategy;
   }
 

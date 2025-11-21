@@ -20,7 +20,7 @@ export const PromptSidebar = ({ user }) => {
     handleCreateNew,
   } = usePromptState();
 
-  // Hide when brainstorm wizard is open
+  // Hide when brainstorm modal is open
   if (showBrainstorm) {
     return null;
   }
