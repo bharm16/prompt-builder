@@ -6,11 +6,6 @@ import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schema
 import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';
 import { StyleTransferService } from './services/StyleTransferService.js';
-import { SemanticDependencyAnalyzer } from './services/SemanticDependencyAnalyzer.js';
-import { GrammaticalAnalysisService } from './services/GrammaticalAnalysisService.js';
-import { ResilientGenerationService } from './services/ResilientGenerationService.js';
-import { FallbackStrategyService } from './services/FallbackStrategyService.js';
-import { GRAMMATICAL_CONFIG } from './config/grammaticalAnalysis.js';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -41,7 +36,10 @@ export class EnhancementService {
     this.diversityEnforcer = diversityEnforcer;
     this.categoryAligner = categoryAligner;
     this.metricsService = metricsService;
-    this.cacheConfig = cacheService.getConfig('enhancement');
+    this.cacheConfig = cacheService.getConfig('enhancement') || {
+      ttl: 3600,
+      namespace: 'enhancement',
+    };
 
     // Initialize specialized services
     this.fallbackRegeneration = new FallbackRegenerationService(
@@ -52,15 +50,6 @@ export class EnhancementService {
     );
     this.suggestionProcessor = new SuggestionProcessor(validationService);
     this.styleTransfer = new StyleTransferService(aiService);
-    this.dependencyAnalyzer = new SemanticDependencyAnalyzer();
-
-    // Initialize grammatical analysis services
-    this.grammaticalAnalyzer = new GrammaticalAnalysisService(GRAMMATICAL_CONFIG);
-    this.resilientGenerator = new ResilientGenerationService(
-      this.ai,
-      this.promptBuilder
-    );
-    this.fallbackStrategy = new FallbackStrategyService();
   }
 
   /**
@@ -78,28 +67,20 @@ export class EnhancementService {
     highlightedCategory,
     highlightedCategoryConfidence,
     highlightedPhrase,
-    allLabeledSpans = [], // Complete span composition
-    nearbySpans = [], // Proximate context
     editHistory = [], // NEW: Edit history for consistency
   }) {
-    // Initialize metrics tracking
     const metrics = {
       total: 0,
       cache: false,
       cacheCheck: 0,
-      semanticDeps: 0,
       modelDetection: 0,
       sectionDetection: 0,
+      promptBuild: 0,
       groqCall: 0,
       postProcessing: 0,
-      grammaticalAnalysis: 0, // NEW: Grammatical complexity analysis time
-      complexHandling: 0, // NEW: Complex span handling time
-      retryAttempts: 0, // NEW: Number of retry attempts
-      fallbackUsed: false, // NEW: Whether algorithmic fallback was used
     };
     const startTotal = Date.now();
 
-    // Declare variables outside try block so they're accessible in catch
     let isVideoPrompt = false;
     let modelTarget = null;
     let promptSection = null;
@@ -114,37 +95,38 @@ export class EnhancementService {
           : undefined,
       });
 
-      // Detect video prompt and compute metadata
       isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
-    const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext);
-    const highlightWordCount = this.videoService.countWords(highlightedText);
-    const phraseRole = isVideoPrompt
-      ? this.videoService.detectVideoPhraseRole(
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          highlightedCategory
-        )
-      : null;
-    const videoConstraints = isVideoPrompt
-      ? this.videoService.getVideoReplacementConstraints({
-          highlightWordCount,
-          phraseRole,
-          highlightedText,
-          highlightedCategory,
-          highlightedCategoryConfidence,
-        })
-      : null;
+      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext);
+      const highlightWordCount = this.videoService.countWords(highlightedText);
+      const phraseRole = isVideoPrompt
+        ? this.videoService.detectVideoPhraseRole(
+            highlightedText,
+            contextBefore,
+            contextAfter,
+            highlightedCategory
+          )
+        : null;
+      const videoConstraints = isVideoPrompt
+        ? this.videoService.getVideoReplacementConstraints({
+            highlightWordCount,
+            phraseRole,
+            highlightedText,
+            highlightedCategory,
+            highlightedCategoryConfidence,
+          })
+        : null;
 
-      // Detect model target and prompt section for video prompts
-      
       if (isVideoPrompt) {
         const modelStart = Date.now();
         modelTarget = this.videoService.detectTargetModel(fullPrompt);
         metrics.modelDetection = Date.now() - modelStart;
 
         const sectionStart = Date.now();
-        promptSection = this.videoService.detectPromptSection(highlightedText, fullPrompt, contextBefore);
+        promptSection = this.videoService.detectPromptSection(
+          highlightedText,
+          fullPrompt,
+          contextBefore
+        );
         metrics.sectionDetection = Date.now() - sectionStart;
       }
 
@@ -156,34 +138,31 @@ export class EnhancementService {
         sectionDetectionTime: metrics.sectionDetection,
       });
 
-      // Check cache
       const cacheStart = Date.now();
       const cacheKey = this._generateCacheKey({
-      highlightedText,
-      contextBefore,
-      contextAfter,
-      fullPrompt,
-      originalUserPrompt,
-      isVideoPrompt,
-      brainstormSignature,
-      highlightedCategory,
-      highlightWordCount,
-      phraseRole,
-      videoConstraints,
-      allLabeledSpans,
-      nearbySpans,
-      editHistory,
-      modelTarget,
-      promptSection,
-    });
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        isVideoPrompt,
+        brainstormSignature,
+        highlightedCategory,
+        highlightWordCount,
+        phraseRole,
+        videoConstraints,
+        editHistory,
+        modelTarget,
+        promptSection,
+      });
 
       const cached = await cacheService.get(cacheKey, 'enhancement');
       metrics.cacheCheck = Date.now() - cacheStart;
-      
+
       if (cached) {
         metrics.cache = true;
         metrics.total = Date.now() - startTotal;
-        metrics.promptMode = process.env.USE_SIMPLE_PROMPT === 'true' ? 'simple' : 'complex';
+        metrics.promptMode = 'clean';
         this._logMetrics(metrics, {
           highlightedCategory,
           isVideoPrompt,
@@ -198,146 +177,25 @@ export class EnhancementService {
         return cached;
       }
 
-      // Detect placeholder
       const isPlaceholder = this.placeholderDetector.detectPlaceholder(
-      highlightedText,
-      contextBefore,
-      contextAfter,
-      fullPrompt
-    );
-
-      // Analyze semantic dependencies
-      const semanticStart = Date.now();
-      const elementDependencies = this.dependencyAnalyzer.detectElementDependencies(
-        highlightedCategory,
-        brainstormContext
-      );
-      const dependencyContext = this.dependencyAnalyzer.buildDependencyContext(
-        highlightedCategory,
-        elementDependencies
-      );
-      metrics.semanticDeps = Date.now() - semanticStart;
-
-      logger.debug('Semantic dependency analysis', {
-        highlightedCategory,
-        dependencyCount: Object.keys(elementDependencies).length,
-        hasDependencyContext: Boolean(dependencyContext),
-        analysisTime: metrics.semanticDeps,
-      });
-
-    // Log span context for debugging
-    logger.debug('Span context analysis', {
-      totalSpans: allLabeledSpans.length,
-      nearbySpansCount: nearbySpans.length,
-      hasSpanContext: allLabeledSpans.length > 0,
-    });
-
-    // Log edit history for debugging
-    logger.debug('Edit history analysis', {
-      editCount: editHistory.length,
-      hasEditHistory: editHistory.length > 0,
-    });
-
-    // Analyze grammatical complexity
-    const grammaticalStart = Date.now();
-    const grammaticalAnalysis = this.grammaticalAnalyzer.analyzeSpan(
-      highlightedText,
-      { contextBefore, contextAfter }
-    );
-    metrics.grammaticalAnalysis = Date.now() - grammaticalStart;
-
-    logger.debug('Grammatical complexity analysis', {
-      structure: grammaticalAnalysis.structure,
-      complexity: grammaticalAnalysis.complexity.toFixed(3),
-      tense: grammaticalAnalysis.tense,
-      requiresComplexHandling: this._requiresComplexHandling(grammaticalAnalysis),
-      analysisTime: metrics.grammaticalAnalysis,
-    });
-
-    // Route to complex handling if needed
-    if (this._requiresComplexHandling(grammaticalAnalysis)) {
-      logger.info('Routing to complex span handler', {
-        structure: grammaticalAnalysis.structure,
-        complexity: grammaticalAnalysis.complexity.toFixed(3),
-      });
-
-      return this._handleComplexSpan({
         highlightedText,
         contextBefore,
         contextAfter,
-        fullPrompt,
-        originalUserPrompt,
+        fullPrompt
+      );
+
+      const promptBuildStart = Date.now();
+      const systemPrompt = this.promptBuilder.buildPrompt({
+        highlightedText,
+        contextBefore,
+        contextAfter,
         brainstormContext,
-        highlightedCategory,
-        highlightedCategoryConfidence,
-        highlightedPhrase,
-        allLabeledSpans,
-        nearbySpans,
         editHistory,
-        isVideoPrompt,
-        phraseRole,
-        highlightWordCount,
-        videoConstraints,
-        dependencyContext,
-        elementDependencies,
         modelTarget,
-        promptSection,
-        grammaticalAnalysis,
-        metrics,
-        startTotal,
+        isVideoPrompt,
       });
-    }
+      metrics.promptBuild = Date.now() - promptBuildStart;
 
-    // Continue with existing simple path for non-complex spans
-    logger.debug('Using standard enhancement path', {
-      structure: grammaticalAnalysis.structure,
-      complexity: grammaticalAnalysis.complexity.toFixed(3),
-    });
-
-    // Build prompt - use simple mode if feature flag is enabled
-    const useSimplePrompt = process.env.USE_SIMPLE_PROMPT === 'true';
-    
-    const systemPrompt = useSimplePrompt
-      ? this._generateSimplePrompt({
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          brainstormContext,
-          isPlaceholder,
-          isVideoPrompt,
-        })
-      : this._buildSystemPrompt({
-          isPlaceholder,
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          originalUserPrompt,
-          isVideoPrompt,
-          brainstormContext,
-          highlightedCategory,
-          highlightedCategoryConfidence,
-          phraseRole,
-          highlightWordCount,
-          videoConstraints,
-          dependencyContext,
-          elementDependencies,
-          allLabeledSpans, // Complete composition
-          nearbySpans, // Proximate context
-          editHistory, // Edit history for consistency
-          modelTarget, // NEW: Target AI model
-          promptSection, // NEW: Template section
-        });
-
-    // Log which prompt mode is being used
-    logger.info('Prompt mode selection', {
-      mode: useSimplePrompt ? 'simple' : 'complex',
-      highlightedText: highlightedText.substring(0, 50),
-      isPlaceholder,
-      isVideoPrompt,
-    });
-
-      // Generate initial suggestions
       const schema = getEnhancementSchema(isPlaceholder);
       const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
         diversity: 'high',
@@ -354,61 +212,56 @@ export class EnhancementService {
           maxTokens: 2048,
           maxRetries: 2,
           temperature,
-          operation: 'enhance_suggestions', // Route through aiService
+          operation: 'enhance_suggestions',
         }
       );
       metrics.groqCall = Date.now() - groqStart;
 
-    // Detect poisonous patterns (shouldn't happen with zero-shot)
-    const poisonousPatterns = [
-      'specific element detail',
-      'alternative aspect feature',
-      'varied choice showcasing',
-      'different variant featuring',
-      'alternative option with specific',
-      'distinctive',
-      'remarkable',
-      'notable'
-    ];
-    
-    const hasPoisonousText = Array.isArray(suggestions) && suggestions.some(s => 
-      poisonousPatterns.some(pattern => 
-        s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
-        s.text?.toLowerCase() === pattern.toLowerCase()
-      )
-    );
+      const poisonousPatterns = [
+        'specific element detail',
+        'alternative aspect feature',
+        'varied choice showcasing',
+        'different variant featuring',
+        'alternative option with specific',
+        'distinctive',
+        'remarkable',
+        'notable'
+      ];
 
-    // Log first few suggestions for manual inspection
-    const sampleSuggestions = Array.isArray(suggestions) 
-      ? suggestions.slice(0, 3).map(s => s.text) 
-      : [];
+      const hasPoisonousText = Array.isArray(suggestions) && suggestions.some((s) =>
+        poisonousPatterns.some((pattern) =>
+          s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
+          s.text?.toLowerCase() === pattern.toLowerCase()
+        )
+      );
 
-    logger.info('Raw suggestions from Claude', {
-      isPlaceholder,
-      suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
-      hasCategory: suggestions?.[0]?.category !== undefined,
-      phraseRole,
-      videoConstraintMode: videoConstraints?.mode || null,
-      highlightWordCount,
-      zeroShotActive: true, // Explicit marker
-      hasPoisonousText, // Alert if old patterns detected
-      sampleSuggestions, // Show actual suggestions for verification
-    });
+      const sampleSuggestions = Array.isArray(suggestions)
+        ? suggestions.slice(0, 3).map((s) => s.text)
+        : [];
 
-    // Alert if poisonous patterns detected (should never happen)
-    if (hasPoisonousText) {
-      logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
-        highlightedText,
-        highlightedCategory,
-        suggestions: suggestions.map(s => s.text),
+      logger.info('Raw suggestions from Claude', {
+        isPlaceholder,
+        suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
+        hasCategory: suggestions?.[0]?.category !== undefined,
+        phraseRole,
+        videoConstraintMode: videoConstraints?.mode || null,
+        highlightWordCount,
+        zeroShotActive: true,
+        hasPoisonousText,
+        sampleSuggestions,
       });
-    }
 
-      // Process suggestions
+      if (hasPoisonousText) {
+        logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
+          highlightedText,
+          highlightedCategory,
+          suggestions: suggestions.map((s) => s.text),
+        });
+      }
+
       const postStart = Date.now();
       const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions);
 
-      // Apply category alignment if needed
       const alignmentResult = this._applyCategoryAlignment(
         diverseSuggestions,
         highlightedCategory,
@@ -416,7 +269,6 @@ export class EnhancementService {
         highlightedCategoryConfidence
       );
 
-      // Sanitize suggestions
       const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
         alignmentResult.suggestions,
         {
@@ -427,71 +279,68 @@ export class EnhancementService {
         }
       );
 
-    // Attempt fallback regeneration if needed
-    const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration({
-      sanitizedSuggestions,
-      isVideoPrompt,
-      isPlaceholder,
-      videoConstraints,
-      regenerationDetails: {
-        highlightWordCount,
-        phraseRole,
-        highlightedText,
-        highlightedCategory,
-        highlightedCategoryConfidence,
-      },
-      requestParams: {
-        highlightedText,
-        contextBefore,
-        contextAfter,
-        fullPrompt,
-        originalUserPrompt,
+      const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration({
+        sanitizedSuggestions,
         isVideoPrompt,
-        brainstormContext,
-        phraseRole,
-        highlightWordCount,
-        highlightedCategory,
-        highlightedCategoryConfidence,
-      },
-      aiService: this.ai,
-      schema,
-      temperature,
-    });
+        isPlaceholder,
+        videoConstraints,
+        regenerationDetails: {
+          highlightWordCount,
+          phraseRole,
+          highlightedText,
+          highlightedCategory,
+          highlightedCategoryConfidence,
+        },
+        requestParams: {
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          fullPrompt,
+          originalUserPrompt,
+          isVideoPrompt,
+          brainstormContext,
+          phraseRole,
+          highlightWordCount,
+          highlightedCategory,
+          highlightedCategoryConfidence,
+          editHistory,
+          modelTarget,
+        },
+        aiService: this.ai,
+        schema,
+        temperature,
+      });
 
-    let suggestionsToUse = fallbackResult.suggestions;
-    const activeConstraints = fallbackResult.constraints;
-    const usedFallback = fallbackResult.usedFallback;
-    const fallbackSourceCount = fallbackResult.sourceCount;
+      let suggestionsToUse = fallbackResult.suggestions;
+      const activeConstraints = fallbackResult.constraints;
+      let usedFallback = fallbackResult.usedFallback;
+      const fallbackSourceCount = fallbackResult.sourceCount;
 
-    // Try descriptor fallbacks if still no suggestions
-    if (suggestionsToUse.length === 0) {
-      const descriptorResult = this.suggestionProcessor.applyDescriptorFallbacks(
-        suggestionsToUse,
-        highlightedText
-      );
-      suggestionsToUse = descriptorResult.suggestions;
-      if (descriptorResult.usedFallback) {
-        usedFallback || (usedFallback = true);
+      if (suggestionsToUse.length === 0) {
+        const descriptorResult = this.suggestionProcessor.applyDescriptorFallbacks(
+          suggestionsToUse,
+          highlightedText
+        );
+        suggestionsToUse = descriptorResult.suggestions;
+        if (descriptorResult.usedFallback) {
+          usedFallback = true;
+        }
       }
-    }
 
-    // Debug logging
-    logger.info('Processing suggestions for categorization', {
-      isPlaceholder,
-      hasCategoryField: suggestionsToUse[0]?.category !== undefined,
-      totalSuggestions: suggestionsToUse.length,
-      sanitizedCount: sanitizedSuggestions.length,
-      appliedConstraintMode: activeConstraints?.mode || null,
-      usedFallback,
-    });
+      logger.info('Processing suggestions for categorization', {
+        isPlaceholder,
+        hasCategoryField: suggestionsToUse[0]?.category !== undefined,
+        totalSuggestions: suggestionsToUse.length,
+        sanitizedCount: sanitizedSuggestions.length,
+        appliedConstraintMode: activeConstraints?.mode || null,
+        usedFallback,
+      });
 
-    // Group suggestions
-    const groupedSuggestions = this.suggestionProcessor.groupSuggestions(
-      suggestionsToUse,
-      isPlaceholder
-    );
+      const groupedSuggestions = this.suggestionProcessor.groupSuggestions(
+        suggestionsToUse,
+        isPlaceholder
+      );
 
-      // Build final result
       const result = this.suggestionProcessor.buildResult({
         groupedSuggestions,
         isPlaceholder,
@@ -504,7 +353,6 @@ export class EnhancementService {
 
       metrics.postProcessing = Date.now() - postStart;
 
-      // Log result
       this.suggestionProcessor.logResult(
         result,
         sanitizedSuggestions,
@@ -513,14 +361,12 @@ export class EnhancementService {
         suggestions
       );
 
-      // Cache result
       await cacheService.set(cacheKey, result, {
         ttl: this.cacheConfig.ttl,
       });
 
-      // Complete metrics tracking
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = useSimplePrompt ? 'simple' : 'complex';
+      metrics.promptMode = 'clean';
       this._logMetrics(metrics, {
         highlightedCategory,
         isVideoPrompt,
@@ -531,15 +377,18 @@ export class EnhancementService {
 
       return result;
     } catch (error) {
-      // Track error metrics
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = process.env.USE_SIMPLE_PROMPT === 'true' ? 'simple' : 'complex';
-      this._logMetrics(metrics, {
-        highlightedCategory,
-        isVideoPrompt,
-        modelTarget: null,
-        promptSection: null,
-      }, error);
+      metrics.promptMode = 'clean';
+      this._logMetrics(
+        metrics,
+        {
+          highlightedCategory,
+          isVideoPrompt,
+          modelTarget,
+          promptSection,
+        },
+        error
+      );
       throw error;
     }
   }
@@ -629,43 +478,16 @@ export class EnhancementService {
 
   /**
    * Generate cache key for enhancement request
-   * Includes semantic fingerprint for dependency-aware caching
+   * Includes edit/model context for cache separation
    * @private
    */
   _generateCacheKey(params) {
-    // Build semantic fingerprint from element dependencies
-    let semanticFingerprint = null;
-    if (params.highlightedCategory && params.brainstormContext) {
-      const deps = this.dependencyAnalyzer.detectElementDependencies(
-        params.highlightedCategory,
-        params.brainstormContext
-      );
-      if (Object.keys(deps).length > 0) {
-        // Create stable fingerprint from sorted dependency values
-        semanticFingerprint = Object.keys(deps)
-          .sort()
-          .map((key) => `${key}:${deps[key]}`)
-          .join('|');
-      }
-    }
-
-    // Build span context fingerprint
-    let spanFingerprint = null;
-    if (Array.isArray(params.allLabeledSpans) && params.allLabeledSpans.length > 0) {
-      // Create compact fingerprint from span categories and positions
-      spanFingerprint = params.allLabeledSpans
-        .slice(0, 10) // Limit to first 10 spans for cache key
-        .map((span) => `${span.category}@${span.start}`)
-        .join(',');
-    }
-
-    // Build edit history fingerprint
     let editFingerprint = null;
     if (Array.isArray(params.editHistory) && params.editHistory.length > 0) {
       // Create compact fingerprint from recent edit patterns
       editFingerprint = params.editHistory
         .slice(-5) // Last 5 edits only
-        .map((edit) => `${edit.category || 'n'}:${edit.original.substring(0, 10)}`)
+        .map((edit) => `${edit.category || 'n'}:${(edit.original || '').substring(0, 10)}`)
         .join('|');
     }
 
@@ -673,7 +495,7 @@ export class EnhancementService {
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
-      fullPrompt: params.fullPrompt.substring(0, 500),
+      fullPrompt: (params.fullPrompt || '').substring(0, 500),
       originalUserPrompt: (params.originalUserPrompt || '').substring(0, 500),
       isVideoPrompt: params.isVideoPrompt,
       brainstormSignature: params.brainstormSignature,
@@ -681,74 +503,10 @@ export class EnhancementService {
       highlightWordCount: params.highlightWordCount,
       phraseRole: params.phraseRole,
       videoConstraintMode: params.videoConstraints?.mode || null,
-      semanticFingerprint: semanticFingerprint || null,
-      spanFingerprint: spanFingerprint || null,
       editFingerprint: editFingerprint || null,
       modelTarget: params.modelTarget || null,
       promptSection: params.promptSection || null,
     });
-  }
-
-  /**
-   * Build system prompt based on context
-   * @private
-   */
-  _buildSystemPrompt(params) {
-    return params.isPlaceholder
-      ? this.promptBuilder.buildPlaceholderPrompt(params)
-      : this.promptBuilder.buildRewritePrompt(params);
-  }
-
-  /**
-   * Generate simple, clean prompt without complex context
-   * Inspired by direct API testing showing better results with minimal prompts
-   * @private
-   */
-  _generateSimplePrompt(params) {
-    const {
-      highlightedText,
-      contextBefore,
-      contextAfter,
-      brainstormContext,
-      isPlaceholder,
-      isVideoPrompt,
-    } = params;
-
-    // Build minimal brainstorm context if present
-    let brainstormLine = '';
-    if (brainstormContext?.elements) {
-      const activeElements = Object.entries(brainstormContext.elements)
-        .filter(([, value]) => value)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(', ');
-      
-      if (activeElements) {
-        brainstormLine = `\nRespecting these creative anchors: ${activeElements}`;
-      }
-    }
-
-    // Build context line
-    const contextLine = contextBefore || contextAfter
-      ? `\nContext: ${contextBefore} [${highlightedText}] ${contextAfter}`
-      : '';
-
-    // Different prompts for placeholders vs rewrites
-    if (isPlaceholder) {
-      return `Replace "${highlightedText}" with 12 visually distinct alternatives${isVideoPrompt ? ' for video generation' : ''}.${contextLine}${brainstormLine}
-
-Each must create a different${isVideoPrompt ? ' visual look on camera' : ' approach or style'}.
-Organize into 4 categories with 3 suggestions each.
-
-Return JSON array: [{"text": "suggestion", "category": "category name", "explanation": "how it's different"}]`;
-    }
-
-    // Rewrite prompt
-    return `Replace "${highlightedText}" with 12 visually distinct alternatives${isVideoPrompt ? ' for video generation' : ''}.${contextLine}${brainstormLine}
-
-Each must create a different${isVideoPrompt ? ' visual look on camera' : ' approach'}.
-Organize into 4 categories with 3 suggestions each.
-
-Return JSON array: [{"text": "suggestion", "category": "category name", "explanation": "how it's different"}]`;
   }
 
   /**
@@ -788,29 +546,17 @@ Return JSON array: [{"text": "suggestion", "category": "category name", "explana
     if (isDev) {
       console.log('\n=== Enhancement Service Performance ===');
       console.log(`Total: ${metrics.total}ms`);
-      console.log(`Prompt Mode: ${metrics.promptMode || 'complex'} (${metrics.promptMode === 'simple' ? '⚡ SIMPLE' : '🔧 COMPLEX'})`);
+      console.log(`Prompt Mode: ${metrics.promptMode || 'clean'}`);
       console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
-      
-      if (metrics.semanticDeps > 0) {
-        console.log(`Semantic Analysis: ${metrics.semanticDeps}ms`);
-      }
-      if (metrics.grammaticalAnalysis > 0) {
-        console.log(`Grammatical Analysis: ${metrics.grammaticalAnalysis}ms`);
-      }
-      if (metrics.complexHandling > 0) {
-        console.log(`Complex Handling: ${metrics.complexHandling}ms`);
-      }
-      if (metrics.retryAttempts > 0) {
-        console.log(`Retry Attempts: ${metrics.retryAttempts}`);
-      }
-      if (metrics.fallbackUsed) {
-        console.log(`Fallback: Algorithmic transformation used`);
-      }
+
       if (metrics.modelDetection > 0) {
         console.log(`Model Detection: ${metrics.modelDetection}ms`);
       }
       if (metrics.sectionDetection > 0) {
         console.log(`Section Detection: ${metrics.sectionDetection}ms`);
+      }
+      if (metrics.promptBuild > 0) {
+        console.log(`Prompt Build: ${metrics.promptBuild}ms`);
       }
       if (metrics.groqCall > 0) {
         console.log(`Groq Call: ${metrics.groqCall}ms`);
@@ -829,7 +575,7 @@ Return JSON array: [{"text": "suggestion", "category": "category name", "explana
         isVideo: params.isVideoPrompt,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
-        promptMode: metrics.promptMode || 'complex',
+        promptMode: metrics.promptMode || 'clean',
         error: error?.message,
       });
     }
@@ -841,7 +587,7 @@ Return JSON array: [{"text": "suggestion", "category": "category name", "explana
       isVideo: params.isVideoPrompt,
       modelTarget: params.modelTarget,
       promptSection: params.promptSection,
-      promptMode: metrics.promptMode || 'complex',
+      promptMode: metrics.promptMode || 'clean',
       error: error?.message,
     });
   }
@@ -857,9 +603,9 @@ Return JSON array: [{"text": "suggestion", "category": "category name", "explana
         threshold: 2000,
         breakdown: {
           cacheCheck: metrics.cacheCheck,
-          semanticDeps: metrics.semanticDeps,
           modelDetection: metrics.modelDetection,
           sectionDetection: metrics.sectionDetection,
+          promptBuild: metrics.promptBuild,
           groq: metrics.groqCall,
           postProcessing: metrics.postProcessing,
         },
@@ -874,119 +620,4 @@ Return JSON array: [{"text": "suggestion", "category": "category name", "explana
       }
     }
   }
-
-  /**
-   * Check if grammatical analysis indicates complex handling is needed
-   * @param {Object} analysis - Grammatical analysis result
-   * @returns {boolean} True if complex handling required
-   * @private
-   */
-  _requiresComplexHandling(analysis) {
-    return (
-      analysis.complexity > GRAMMATICAL_CONFIG.complexityThreshold ||
-      GRAMMATICAL_CONFIG.complexStructures.includes(analysis.structure)
-    );
-  }
-
-  /**
-   * Handle complex span enhancement with resilient generation and fallback
-   * @param {Object} params - All enhancement parameters plus grammatical analysis
-   * @returns {Promise<Object>} Enhancement result
-   * @private
-   */
-  async _handleComplexSpan(params) {
-    const { grammaticalAnalysis, highlightedText, metrics, startTotal } = params;
-    const complexStart = Date.now();
-
-    try {
-      logger.info('Handling complex span', {
-        text: highlightedText.substring(0, 50),
-        structure: grammaticalAnalysis.structure,
-        complexity: grammaticalAnalysis.complexity.toFixed(3),
-      });
-
-      // Attempt resilient generation with retry-validation loop
-      const suggestions = await this.resilientGenerator.generate(
-        params,
-        grammaticalAnalysis
-      );
-
-      if (suggestions && suggestions.length > 0) {
-        metrics.complexHandling = Date.now() - complexStart;
-        metrics.retryAttempts = 0; // Tracked internally by resilient generator
-        metrics.fallbackUsed = false;
-        metrics.total = Date.now() - startTotal;
-
-        this._logMetrics(metrics, params);
-
-        logger.info('Complex span enhancement succeeded via AI', {
-          suggestionsCount: suggestions.length,
-          handleTime: metrics.complexHandling,
-        });
-
-        return this._formatComplexResult(suggestions, 'ai_enhanced');
-      }
-
-      // AI generation failed after retries - use algorithmic fallback
-      logger.warn('Resilient generation failed, applying algorithmic fallback');
-
-      const fallbackText = this.fallbackStrategy.generateFallback(
-        highlightedText,
-        grammaticalAnalysis
-      );
-
-      metrics.complexHandling = Date.now() - complexStart;
-      metrics.fallbackUsed = true;
-      metrics.total = Date.now() - startTotal;
-
-      this._logMetrics(metrics, params);
-
-      logger.info('Complex span enhancement succeeded via fallback', {
-        originalText: highlightedText,
-        fallbackText,
-        handleTime: metrics.complexHandling,
-      });
-
-      return this._formatComplexResult(
-        [{ text: fallbackText, explanation: 'Enhanced using algorithmic transformation' }],
-        'algorithmic_fallback'
-      );
-    } catch (error) {
-      logger.error('Complex span handling failed completely', {
-        error: error.message,
-        stack: error.stack,
-      });
-
-      metrics.complexHandling = Date.now() - complexStart;
-      metrics.total = Date.now() - startTotal;
-
-      this._logMetrics(metrics, params, error);
-
-      // Return null to signal failure - caller can fall back to simple path
-      return null;
-    }
-  }
-
-  /**
-   * Format complex span result with proper structure
-   * @param {Array} suggestions - Array of suggestion objects
-   * @param {string} source - Source of suggestions ('ai_enhanced' or 'algorithmic_fallback')
-   * @returns {Object} Formatted result
-   * @private
-   */
-  _formatComplexResult(suggestions, source) {
-    return {
-      suggestions: suggestions.map(s => ({
-        text: s.text,
-        explanation: s.explanation || `Enhanced via ${source.replace('_', ' ')}`,
-        category: 'enhancement',
-      })),
-      metadata: {
-        method: 'grammatical_analysis',
-        source,
-        timestamp: Date.now(),
-      },
-    };
-  }
 }
-

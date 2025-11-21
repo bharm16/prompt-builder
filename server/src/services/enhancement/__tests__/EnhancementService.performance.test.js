@@ -70,6 +70,7 @@ describe('EnhancementService - Performance Monitoring', () => {
     };
 
     mockPromptBuilder = {
+      buildPrompt: vi.fn().mockReturnValue('prompt'),
       buildPlaceholderPrompt: vi.fn().mockReturnValue('prompt'),
       buildRewritePrompt: vi.fn().mockReturnValue('prompt'),
     };
@@ -131,6 +132,9 @@ describe('EnhancementService - Performance Monitoring', () => {
       const { cacheService } = await import('../../cache/CacheService.js');
       cacheService.get.mockResolvedValueOnce({ suggestions: [] });
 
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+
       await enhancementService.getEnhancementSuggestions({
         highlightedText: 'golden hour',
         contextBefore: 'A scene with',
@@ -148,11 +152,61 @@ describe('EnhancementService - Performance Monitoring', () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Cache: HIT')
       );
+
+      process.env.NODE_ENV = originalEnv;
     });
 
     it('should track all timing metrics for cache miss', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
+
+      mockVideoService.detectTargetModel.mockImplementation(() => {
+        const start = Date.now();
+        while (Date.now() - start < 5) {
+          // busy wait to register timing
+        }
+        return 'sora';
+      });
+
+      mockVideoService.detectPromptSection.mockImplementation(() => {
+        const start = Date.now();
+        while (Date.now() - start < 5) {
+          // busy wait to register timing
+        }
+        return 'main_prompt';
+      });
+
+      mockPromptBuilder.buildPrompt.mockImplementation(() => {
+        const start = Date.now();
+        while (Date.now() - start < 5) {
+          // busy wait to register timing
+        }
+        return 'prompt';
+      });
+
+      mockDiversityEnforcer.ensureDiverseSuggestions.mockImplementation(
+        (suggestions) =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve(suggestions), 5)
+          )
+      );
+
+      const { StructuredOutputEnforcer } = await import(
+        '../../../utils/StructuredOutputEnforcer.js'
+      );
+      StructuredOutputEnforcer.enforceJSON.mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve([
+                  { value: 'suggestion 1', category: 'lighting' },
+                  { value: 'suggestion 2', category: 'lighting' },
+                ]),
+              5
+            )
+          )
+      );
 
       await enhancementService.getEnhancementSuggestions({
         highlightedText: 'golden hour',
@@ -178,13 +232,13 @@ describe('EnhancementService - Performance Monitoring', () => {
         expect.stringContaining('Cache: MISS')
       );
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Semantic Analysis:')
-      );
-      expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Model Detection:')
       );
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Section Detection:')
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Prompt Build:')
       );
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Groq Call:')
@@ -216,9 +270,9 @@ describe('EnhancementService - Performance Monitoring', () => {
           total: expect.any(Number),
           cache: false,
           cacheCheck: expect.any(Number),
-          semanticDeps: expect.any(Number),
           modelDetection: expect.any(Number),
           sectionDetection: expect.any(Number),
+          promptBuild: expect.any(Number),
           groqCall: expect.any(Number),
           postProcessing: expect.any(Number),
         }),
@@ -400,9 +454,17 @@ describe('EnhancementService - Performance Monitoring', () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it('should track semantic analysis timing', async () => {
+    it('should track prompt build timing', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
+
+      mockPromptBuilder.buildPrompt.mockImplementation(() => {
+        const start = Date.now();
+        while (Date.now() - start < 5) {
+          // busy wait
+        }
+        return 'prompt';
+      });
 
       await enhancementService.getEnhancementSuggestions({
         highlightedText: 'golden hour',
@@ -414,13 +476,12 @@ describe('EnhancementService - Performance Monitoring', () => {
         highlightedCategory: 'lighting',
       });
 
-      // Verify semantic analysis was timed
+      // Verify prompt build was timed
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Semantic Analysis:')
+        expect.stringContaining('Prompt Build:')
       );
 
       process.env.NODE_ENV = originalEnv;
     });
   });
 });
-

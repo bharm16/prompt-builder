@@ -9,18 +9,15 @@ export { EnhancementService } from './EnhancementService.js';
 export { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 export { SuggestionProcessor } from './services/SuggestionProcessor.js';
 export { StyleTransferService } from './services/StyleTransferService.js';
-export { SemanticDependencyAnalyzer } from './services/SemanticDependencyAnalyzer.js';
 
 // Export moved services
 export { BrainstormContextBuilder } from './services/BrainstormContextBuilder.js';
 export { CategoryAlignmentService } from './services/CategoryAlignmentService.js';
 export { PlaceholderDetectionService } from './services/PlaceholderDetectionService.js';
-export { PromptBuilderService } from './services/SystemPromptBuilder.js';
-export { AlgorithmicPromptBuilder } from './services/AlgorithmicPromptBuilder.js';
+export { CleanPromptBuilder } from './services/CleanPromptBuilder.js';
 export { SuggestionDiversityEnforcer } from './services/SuggestionDeduplicator.js';
 export { SuggestionValidationService } from './services/SuggestionValidationService.js';
 
 // Export configuration
 export * from './config/schemas.js';
 export * from './config/styleDefinitions.js';
-
