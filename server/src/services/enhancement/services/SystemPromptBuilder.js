@@ -1,6 +1,5 @@
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
-import { ContextAwareExamples } from '../utils/ContextAwareExamples.js';
 
 /**
  * PromptBuilderService
@@ -351,16 +350,6 @@ ${constraint.forbidden || ''}
       ? detectPlaceholderTypeFunc(highlightedText, contextBefore, contextAfter)
       : 'general';
     
-    // Generate contextually appropriate examples based on part of speech
-    const examples = ContextAwareExamples.generateExamples(
-      highlightedText,
-      highlightedCategory,
-      placeholderType,
-      contextBefore,  // Add context before for POS detection
-      contextAfter,   // Context after for grammatical analysis
-      null            // videoConstraints not available in placeholder context
-    );
-    
     const brainstormSection = this.brainstormBuilder.buildBrainstormContextSection(brainstormContext, {
       includeCategoryGuidance: true,
       isVideoPrompt,
@@ -446,7 +435,10 @@ ${brainstormRequirement}${modeRequirement}
 **Output Format:**
 Return ONLY a JSON array with categorized suggestions (2-4 per category):
 
-${JSON.stringify(examples, null, 2)}`;
+[
+  {"text": "replacement phrase", "category": "Category Name", "explanation": "Why this is different"},
+  ...12-15 total suggestions across 4-5 categories
+]`;
   }
 
   /**
