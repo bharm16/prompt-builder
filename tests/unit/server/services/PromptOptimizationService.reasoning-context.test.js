@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PromptOptimizationService } from '../../../../server/src/services/PromptOptimizationService.js';
+import { PromptOptimizationService } from '../../../../server/src/services/prompt-optimization/PromptOptimizationService.js';
 
 // Mock dependencies
 vi.mock('../../../../server/src/infrastructure/Logger.js', () => ({

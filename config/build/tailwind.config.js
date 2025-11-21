@@ -340,6 +340,8 @@ export default {
         'scale-in-bounce': 'scaleInBounce 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         'slide-from-right': 'slideFromRight 250ms cubic-bezier(0.4, 0, 0.2, 1)',
         'slide-from-bottom': 'slideFromBottom 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+        // Mesh gradient blob animation
+        'blob': 'blob 20s infinite',
       },
       keyframes: {
         fadeIn: {
@@ -387,6 +389,13 @@ export default {
         slideFromBottom: {
           '0%': { opacity: '0', transform: 'translateY(15px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        // Blob animation for mesh gradient background
+        blob: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '25%': { transform: 'translate(20px, -50px) scale(1.1)' },
+          '50%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+          '75%': { transform: 'translate(50px, 50px) scale(1.05)' },
         },
       },
 

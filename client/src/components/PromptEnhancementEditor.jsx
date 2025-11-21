@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { detectAndApplySceneChange } from '../utils/detectSceneChange';
+import { detectAndApplySceneChange } from '../utils/sceneChange';
 import { API_CONFIG } from '../config/api.config';
 
 export default function PromptEnhancementEditor({

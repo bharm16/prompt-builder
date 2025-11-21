@@ -24,7 +24,7 @@ SHOW STRUCTURE FIRST
 Add [service name]
 ARCHITECTURE: PromptOptimizationService pattern
 - Orchestrator max 500 lines, specialized services max 300 lines
-REFERENCE: server/src/services/PromptOptimizationService.js
+REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 ```
 
@@ -69,7 +69,7 @@ find client/src server/src -name "*.js" -o -name "*.jsx" | xargs wc -l | sort -r
 ## Reference Examples
 
 **Frontend:** `client/src/components/VideoConceptBuilder/`
-**Backend:** `server/src/services/PromptOptimizationService.js`
+**Backend:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
 
 ---
 

@@ -1,0 +1,123 @@
+/**
+ * BentoGrid Styles - REDESIGNED
+ * 
+ * 12-column grid system with proper spacing:
+ * - Desktop: 12 columns, 36px gaps
+ * - Tablet: 2 columns, 24px gaps  
+ * - Mobile: 1-2 columns, 12px gaps
+ */
+
+.bento-grid {
+  display: grid;
+  width: 100%;
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   DESKTOP: 12-column explicit grid
+   ============================================ */
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(12, 1fr);
+    gap: 36px;
+    grid-auto-rows: minmax(140px, auto);
+  }
+}
+
+/* ============================================
+   TABLET: Simplified 2-column
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    grid-auto-rows: auto;
+  }
+}
+
+/* ============================================
+   MOBILE: Strategic breakpoints
+   ============================================ */
+
+/* Very small screens: pure stack */
+@media (max-width: 480px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    grid-auto-rows: auto;
+  }
+}
+
+/* Medium phones: 2-column for related pairs */
+@media (min-width: 481px) and (max-width: 767px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    grid-auto-rows: auto;
+  }
+}
+
+/* ============================================
+   VISUAL GROUPING (Optional)
+   ============================================ */
+
+/* Add extra spacing between field groups */
+@media (min-width: 1024px) {
+  /* Add margin to create visual groups */
+  .bento-field[data-group="location-time"],
+  .bento-field[data-group="mood-style"] {
+    /* First field in group gets extra top margin */
+  }
+  
+  .bento-field[data-group="location-time"]:first-of-type,
+  .bento-field[data-group="mood-style"]:first-of-type {
+    margin-top: 12px; /* Extra spacing between groups */
+  }
+}
+
+/* ============================================
+   ENTRANCE ANIMATIONS (Optional)
+   ============================================ */
+
+/* Stagger entrance animation for fields */
+.bento-field {
+  animation: bentoEntrance 400ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.bento-field:nth-child(1) { animation-delay: 0ms; }
+.bento-field:nth-child(2) { animation-delay: 50ms; }
+.bento-field:nth-child(3) { animation-delay: 100ms; }
+.bento-field:nth-child(4) { animation-delay: 150ms; }
+.bento-field:nth-child(5) { animation-delay: 200ms; }
+.bento-field:nth-child(6) { animation-delay: 250ms; }
+.bento-field:nth-child(7) { animation-delay: 300ms; }
+.bento-field:nth-child(8) { animation-delay: 350ms; }
+
+@keyframes bentoEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Disable animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bento-field {
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   EXPANDED FIELD BEHAVIOR
+   ============================================ */
+
+/* When a field is expanded, it spans full width on mobile */
+@media (max-width: 767px) {
+  .bento-field--expanded {
+    grid-column: 1 / -1;
+  }
+}

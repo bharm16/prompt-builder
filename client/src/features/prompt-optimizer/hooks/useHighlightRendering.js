@@ -1,10 +1,19 @@
 /**
- * useHighlightRendering - Backward Compatibility Shim
+ * DEPRECATED: This hook has moved to features/span-highlighting/hooks/useHighlightRendering.js
  * 
- * This file provides backward compatibility by re-exporting from the refactored folder structure.
- * The actual implementation has been moved to useHighlightRendering/ for better organization.
+ * This re-export will be removed in a future version.
+ * Please update your imports to use the new location:
  * 
- * Original file backed up as: useHighlightRendering.original.js
+ * import { useHighlightRendering, useHighlightFingerprint } from '@/features/span-highlighting';
  */
 
-export { useHighlightRendering, useHighlightFingerprint } from './useHighlightRendering/index.js';
+if (process.env.NODE_ENV === 'development') {
+  console.warn(
+    '[DEPRECATION] Importing useHighlightRendering from prompt-optimizer/hooks is deprecated. ' +
+    'Please import from @/features/span-highlighting instead.'
+  );
+}
+
+export * from '../../span-highlighting/hooks/useHighlightRendering.js';
+export * from '../../span-highlighting/hooks/useHighlightFingerprint.js';
+

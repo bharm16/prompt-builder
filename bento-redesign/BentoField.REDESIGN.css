@@ -1,0 +1,571 @@
+/**
+ * BentoField Styles - REDESIGNED
+ * 
+ * Visual improvements:
+ * - Layered shadows for depth
+ * - Visible borders (40% opacity)
+ * - Off-white backgrounds
+ * - Semibold typography
+ * - Varied corner radii
+ * - Larger icons with drop-shadow
+ * - Reduced vertical padding
+ * - Proper hover states
+ */
+
+/* ============================================
+   BASE FIELD CONTAINER
+   ============================================ */
+.bento-field {
+  position: relative;
+  transition: all 200ms ease-out;
+}
+
+/* Size variants (Desktop 12-column grid) */
+@media (min-width: 1024px) {
+  .bento-field--hero {
+    grid-column: span 7;  /* 58% - HERO dominates */
+    grid-row: span 2;
+  }
+  
+  .bento-field--large {
+    grid-column: span 5;  /* 42% - Secondary */
+    grid-row: span 2;
+  }
+  
+  .bento-field--medium {
+    grid-column: span 3;  /* 25% */
+    grid-row: span 1;
+  }
+  
+  .bento-field--wide {
+    grid-column: span 8;  /* 67% */
+    grid-row: span 1;
+  }
+  
+  .bento-field--small {
+    grid-column: span 4;  /* 33% */
+    grid-row: span 1;
+  }
+}
+
+/* Tablet: Simplified 2-column */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-field--hero,
+  .bento-field--large {
+    grid-column: span 2;  /* Full width, stacked */
+    grid-row: span 1;
+  }
+  
+  .bento-field--medium,
+  .bento-field--wide,
+  .bento-field--small {
+    grid-column: span 1;  /* 50% each, paired */
+  }
+}
+
+/* Mobile: Strategic breakpoints */
+@media (max-width: 480px) {
+  /* Very small screens: pure stack */
+  .bento-field--hero,
+  .bento-field--large,
+  .bento-field--medium,
+  .bento-field--wide,
+  .bento-field--small {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  /* Medium phones: 2-column for related pairs */
+  .bento-field--hero,
+  .bento-field--large,
+  .bento-field--wide {
+    grid-column: span 2;  /* Important fields full width */
+  }
+  
+  .bento-field--medium,
+  .bento-field--small {
+    grid-column: span 1;  /* Pairs side by side */
+  }
+}
+
+/* ============================================
+   COLLAPSED STATE - RESTING
+   ============================================ */
+.bento-field__collapsed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 160px;
+  
+  /* Visual polish */
+  background: #FAFBFC; /* Off-white, not pure white */
+  border: 1px solid;
+  border-color: rgba(0, 0, 0, 0.12); /* Default for optional fields */
+  border-radius: 12px; /* Default, overridden by variants */
+  cursor: pointer;
+  
+  /* Layered shadows for depth */
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  
+  transition: all 200ms ease-out;
+  text-align: center;
+  padding: 32px 24px;
+}
+
+/* Hero and Large variants - more prominent */
+.bento-field--hero .bento-field__collapsed,
+.bento-field--large .bento-field__collapsed {
+  border-radius: 16px;
+  padding: 40px 32px;
+  min-height: 280px; /* Taller for 2-row fields */
+  
+  /* Required fields: visible indigo border */
+  border-color: rgba(91, 91, 214, 0.4);
+  border-width: 2px; /* Heavier border for hero */
+}
+
+.bento-field--large .bento-field__collapsed {
+  border-width: 1px; /* Standard for large */
+}
+
+/* Medium variants */
+.bento-field--medium .bento-field__collapsed {
+  border-radius: 12px;
+  padding: 32px 24px;
+  min-height: 140px;
+}
+
+/* Small variants */
+.bento-field--small .bento-field__collapsed {
+  border-radius: 8px;
+  padding: 28px 20px;
+  min-height: 140px;
+}
+
+/* Wide variants */
+.bento-field--wide .bento-field__collapsed {
+  border-radius: 12px;
+  padding: 32px 28px;
+  min-height: 140px;
+}
+
+/* ============================================
+   COLLAPSED STATE - HOVER
+   ============================================ */
+.bento-field__collapsed:hover {
+  /* Dramatic lift */
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 12px 28px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+  
+  /* Border darkens */
+  border-color: #D0D0D0;
+}
+
+/* Required fields hover - indigo darkens */
+.bento-field--hero .bento-field__collapsed:hover,
+.bento-field--large .bento-field__collapsed:hover {
+  border-color: rgba(91, 91, 214, 0.6);
+}
+
+/* Touch devices: no hover effect */
+@media (hover: none) {
+  .bento-field__collapsed:hover {
+    transform: none;
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.12),
+      0 1px 2px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  
+  .bento-field--hero .bento-field__collapsed:hover,
+  .bento-field--large .bento-field__collapsed:hover {
+    border-color: rgba(91, 91, 214, 0.4);
+  }
+}
+
+/* Active state (tap feedback) */
+.bento-field__collapsed:active {
+  transform: translateY(0) scale(1);
+}
+
+/* ============================================
+   COLLAPSED STATE - FILLED
+   ============================================ */
+.bento-field--filled .bento-field__collapsed {
+  /* Green border when filled */
+  border-color: #10B981;
+  
+  /* Very subtle green tint */
+  background: rgba(16, 185, 129, 0.03);
+  
+  /* Green-tinted shadow (NOT inset - still elevated!) */
+  box-shadow: 
+    0 1px 3px rgba(16, 185, 129, 0.15),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.bento-field--filled .bento-field__collapsed:hover {
+  border-color: #059669; /* Darker green on hover */
+  box-shadow: 
+    0 8px 20px rgba(16, 185, 129, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   ICON
+   ============================================ */
+.bento-field__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+/* Icon sizing by field type */
+.bento-field--hero .bento-field__icon svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.5px;
+  color: #5B5BD6;
+  
+  /* Subtle glow for hero icons */
+  filter: drop-shadow(0 2px 4px rgba(91, 91, 214, 0.15));
+}
+
+.bento-field--large .bento-field__icon svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.5px;
+  color: #5B5BD6;
+  filter: drop-shadow(0 2px 4px rgba(91, 91, 214, 0.15));
+}
+
+.bento-field--medium .bento-field__icon svg,
+.bento-field--wide .bento-field__icon svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.5px;
+  color: #6B6B6B;
+}
+
+.bento-field--small .bento-field__icon svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.5px;
+  color: #6B6B6B;
+}
+
+/* ============================================
+   CONTENT
+   ============================================ */
+.bento-field__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.bento-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Label typography - SEMIBOLD */
+.bento-field__label {
+  font-size: 15px;
+  font-weight: 600; /* Semibold, not medium! */
+  color: #1A1A1A;
+  line-height: 1.3;
+  text-align: center;
+  letter-spacing: -0.01em; /* Tighter */
+}
+
+.bento-field__required {
+  font-weight: 700;
+  color: #5B5BD6;
+}
+
+/* Check mark animation */
+.bento-field__check {
+  flex-shrink: 0;
+  color: #10B981;
+  animation: checkBounce 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes checkBounce {
+  0% { 
+    transform: scale(0); 
+    opacity: 0;
+  }
+  50% { 
+    transform: scale(1.2); 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+}
+
+/* Preview text */
+.bento-field__preview {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6B6B6B;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Placeholder text */
+.bento-field__placeholder {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #9CA3AF; /* Slightly darker than original */
+  line-height: 1.4;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Chevron indicator */
+.bento-field__chevron {
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: all 200ms ease-out;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  color: currentColor;
+}
+
+.bento-field__collapsed:hover .bento-field__chevron {
+  opacity: 0.6;
+  transform: translateY(2px);
+}
+
+/* ============================================
+   EXPANDED STATE
+   ============================================ */
+.bento-field__expanded {
+  padding: 36px;
+  background: #FFFFFF; /* Pure white when expanded */
+  border: 2px solid;
+  border-radius: 16px; /* Larger corners when expanded */
+  
+  /* Strong elevation when expanded */
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.08);
+  
+  animation: expandIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Expanded state uses field-specific border colors */
+.bento-field--hero .bento-field__expanded,
+.bento-field--large .bento-field__expanded {
+  border-color: #5B5BD6;
+}
+
+.bento-field--medium .bento-field__expanded,
+.bento-field--wide .bento-field__expanded,
+.bento-field--small .bento-field__expanded {
+  border-color: #D0D0D0;
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.bento-field__expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.bento-field__expanded-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bento-field__expanded-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.bento-field__expanded-icon svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.5px;
+}
+
+.bento-field--hero .bento-field__expanded-icon svg,
+.bento-field--large .bento-field__expanded-icon svg {
+  color: #5B5BD6;
+}
+
+.bento-field--medium .bento-field__expanded-icon svg,
+.bento-field--wide .bento-field__expanded-icon svg,
+.bento-field--small .bento-field__expanded-icon svg {
+  color: #6B6B6B;
+}
+
+.bento-field__expanded-label {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A;
+  letter-spacing: -0.01em;
+}
+
+.bento-field__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: #F5F5F5;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+  color: #5A5A5A;
+}
+
+.bento-field__close:hover {
+  background: #E8E8E8;
+  color: #2D2D2D;
+  transform: scale(1.05);
+}
+
+.bento-field__close:active {
+  transform: scale(0.95);
+}
+
+/* ============================================
+   MOBILE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 767px) {
+  .bento-field__collapsed {
+    padding: 20px 16px;
+    min-height: 120px;
+  }
+  
+  .bento-field--hero .bento-field__collapsed,
+  .bento-field--large .bento-field__collapsed {
+    min-height: 140px;
+    padding: 28px 20px;
+  }
+  
+  /* Smaller icons on mobile */
+  .bento-field__icon svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
+  .bento-field__label {
+    font-size: 14px;
+  }
+  
+  .bento-field__preview,
+  .bento-field__placeholder {
+    font-size: 12px;
+  }
+  
+  .bento-field__expanded {
+    padding: 24px;
+    border-radius: 12px;
+  }
+  
+  .bento-field__expanded-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
+  .bento-field__expanded-label {
+    font-size: 16px;
+  }
+  
+  .bento-field__close {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Tablet specific adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-field__collapsed {
+    min-height: 140px;
+    padding: 28px 20px;
+  }
+  
+  .bento-field--hero .bento-field__collapsed,
+  .bento-field--large .bento-field__collapsed {
+    min-height: 160px; /* Single height on tablet */
+  }
+  
+  .bento-field__icon svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+.bento-field__collapsed:focus-visible {
+  outline: 2px solid #5B5BD6;
+  outline-offset: 2px;
+}
+
+.bento-field__close:focus-visible {
+  outline: 2px solid #5B5BD6;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users with vestibular disorders */
+@media (prefers-reduced-motion: reduce) {
+  .bento-field,
+  .bento-field__collapsed,
+  .bento-field__check,
+  .bento-field__chevron,
+  .bento-field__close {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

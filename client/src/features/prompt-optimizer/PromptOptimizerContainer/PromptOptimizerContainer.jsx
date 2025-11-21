@@ -63,6 +63,8 @@ function PromptOptimizerContent({ user }) {
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setShowResults,
+    setCanUndo,
+    setCanRedo,
 
     // Refs
     latestHighlightRef,
@@ -147,6 +149,8 @@ function PromptOptimizerContent({ user }) {
     redoStackRef,
     latestHighlightRef,
     isApplyingHistoryRef,
+    setCanUndo,
+    setCanRedo,
   });
 
   // Prompt optimization
@@ -200,7 +204,7 @@ function PromptOptimizerContent({ user }) {
     selectedMode,
     suggestionsData,
     setSuggestionsData,
-    setDisplayedPromptSilently,
+    handleDisplayedPromptChange,
     stablePromptContext,
     toast,
   });
@@ -282,6 +286,7 @@ function PromptOptimizerContent({ user }) {
         <PromptResultsSection
           onDisplayedPromptChange={handleDisplayedPromptChange}
           onFetchSuggestions={fetchEnhancementSuggestions}
+          onSuggestionClick={handleSuggestionClick}
           onHighlightsPersist={handleHighlightsPersist}
           onUndo={handleUndo}
           onRedo={handleRedo}
@@ -301,8 +306,8 @@ function PromptOptimizerContent({ user }) {
         )}
       </main>
 
-      {/* Debug Button */}
-      {(process.env.NODE_ENV === 'development' ||
+      {/* Debug Button - Hidden */}
+      {false && (process.env.NODE_ENV === 'development' ||
         new URLSearchParams(window.location.search).get('debug') === 'true') && (
         <DebugButton
           inputPrompt={promptOptimizer.inputPrompt}

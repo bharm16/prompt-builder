@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { generateVideoPrompt } from '../VideoPromptTemplates';
+import { generateVideoPrompt } from '../../../../server/src/services/prompt-optimization/strategies/videoPromptOptimizationTemplate.js';
 
-describe('VideoPromptTemplates - Research-Based Single Template', () => {
+describe('VideoPromptTemplates - Chain-of-Thought + Structured JSON Output', () => {
   const testPrompt = 'A cat jumping over a fence';
 
   describe('generateVideoPrompt', () => {
@@ -39,7 +39,7 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
     it('should emphasize single action per clip', () => {
       const result = generateVideoPrompt(testPrompt);
       expect(result).toContain('ONE clear, specific');
-      expect(result).toContain('severely degrade quality');
+      expect(result).toContain('degrade quality');
     });
 
     it('should include film language guidance', () => {
@@ -49,24 +49,21 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
       expect(hasFilmLanguage).toBe(true);
     });
 
-    it('should include technical specs section', () => {
+    it('should mention technical specs in guidance', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('**TECHNICAL SPECS**');
-      expect(result).toContain('Duration');
-      expect(result).toContain('Aspect Ratio');
-      expect(result).toContain('Frame Rate');
+      expect(result).toContain('duration');
+      expect(result).toContain('aspect_ratio');
+      expect(result).toContain('frame_rate');
     });
 
-    it('should include alternative approaches section', () => {
+    it('should mention alternative approaches in guidance', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('ALTERNATIVE APPROACHES');
       expect(result).toContain('40-50 words');
     });
 
     it('should recommend 4-8 second duration (research-based)', () => {
       const result = generateVideoPrompt(testPrompt);
       expect(result).toContain('4-8s');
-      expect(result).toContain('Optimal');
     });
 
     it('should warn against prompts over 150 words', () => {
@@ -75,17 +72,107 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
     });
   });
 
-  describe('Research-Based Best Practices Validation', () => {
-    it('should emphasize priority ordering (first element = most important)', () => {
+  describe('Chain-of-Thought Analysis Structure', () => {
+    it('should include STEP 1: INTERNAL CINEMATOGRAPHIC ANALYSIS', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('order of importance');
-      expect(result).toContain('FIRST');
+      expect(result).toContain('STEP 1: INTERNAL CINEMATOGRAPHIC ANALYSIS');
+    });
+
+    it('should require analysis of Subject Scale', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Subject Scale');
+      expect(result).toContain('landscape');
+      expect(result).toContain('detail');
+    });
+
+    it('should require analysis of Motion', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Motion');
+      expect(result).toContain('static');
+      expect(result).toContain('dynamic');
+    });
+
+    it('should require analysis of Emotional Tone', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Emotional Tone');
+    });
+
+    it('should include shot selection logic', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Shot Selection Reference');
+      expect(result).toContain('Intimacy/Emotion');
+      expect(result).toContain('Context/Scale');
+      expect(result).toContain('Power/Dominance');
+      expect(result).toContain('Low Angle');
+      expect(result).toContain('High Angle');
+      expect(result).toContain('Close-up');
+      expect(result).toContain('Wide Shot');
+    });
+
+    it('should include STEP 2: GENERATE COMPONENTS', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('STEP 2: GENERATE COMPONENTS');
+    });
+  });
+
+  describe('JSON Output Format Requirements', () => {
+    it('should require JSON output format', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('OUTPUT FORMAT');
+      expect(result).toContain('JSON');
+    });
+
+    it('should specify _hidden_reasoning field', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('_hidden_reasoning');
+      expect(result).toContain('why you chose this specific shot type');
+    });
+
+    it('should specify shot_type field', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('shot_type');
+    });
+
+    it('should specify main_prompt field', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('main_prompt');
+    });
+
+    it('should specify technical_specs object', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('technical_specs');
+      expect(result).toContain('duration');
+      expect(result).toContain('aspect_ratio');
+      expect(result).toContain('frame_rate');
+      expect(result).toContain('audio');
+    });
+
+    it('should specify variations array', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('variations');
+      expect(result).toContain('Different Camera');
+      expect(result).toContain('Different Lighting/Mood');
+    });
+
+    it('should enforce valid JSON only (no markdown)', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('valid JSON only');
+      expect(result).toContain('No markdown');
+      expect(result).toContain('no code blocks');
+    });
+  });
+
+  describe('Research-Based Best Practices Validation', () => {
+    it('should emphasize shot type selection first', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Start with the framing');
+      expect(result).toContain('CRITICAL: Start the prompt with your selected shot type');
     });
 
     it('should discourage multiple simultaneous actions', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('multiple simultaneous actions');
-      expect(result).toMatch(/multiple.*actions.*degrade/i);
+      expect(result).toContain('Multiple actions');
+      expect(result).toMatch(/degrade quality/i);
     });
 
     it('should include example showing proper structure', () => {
@@ -103,11 +190,10 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
       expect(result).toContain('✗'); // X marks for don'ts
     });
 
-    it('should specify output format expectations', () => {
+    it('should specify JSON output format expectations', () => {
       const result = generateVideoPrompt(testPrompt);
       expect(result).toContain('OUTPUT FORMAT');
-      expect(result).toContain('Begin directly');
-      expect(result).toContain('Do not include any preamble');
+      expect(result).toContain('valid JSON');
     });
   });
 
@@ -152,12 +238,12 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
     it('should include all required structural elements', () => {
       const result = generateVideoPrompt(testPrompt);
       const requiredElements = [
+        'STEP 1: INTERNAL CINEMATOGRAPHIC ANALYSIS',
+        'STEP 2: GENERATE COMPONENTS',
         'GUIDING PRINCIPLES',
         'WRITING RULES',
         'AVOID',
         'EXAMPLE',
-        'TECHNICAL SPECS',
-        'ALTERNATIVE APPROACHES',
         'OUTPUT FORMAT'
       ];
 
@@ -193,30 +279,34 @@ describe('VideoPromptTemplates - Research-Based Single Template', () => {
   });
 
   describe('Quality Assurance', () => {
-    it('should be instructional for Claude (not for end user)', () => {
+    it('should be instructional for AI (not for end user)', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toContain('Transform the following');
-      // Should be instructions TO Claude, not the final output itself
+      expect(result).toContain('You are an expert Director of Photography');
+      // Should be instructions TO AI, not the final output itself
     });
 
     it('should emphasize conciseness throughout', () => {
       const result = generateVideoPrompt(testPrompt);
-      const conciseReferences = result.match(/100-150 words|concise|brief|short/gi);
+      const conciseReferences = result.match(/100-150 words|concise/gi);
       expect(conciseReferences).toBeTruthy();
-      expect(conciseReferences.length).toBeGreaterThanOrEqual(3);
+      expect(conciseReferences.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should discourage verbose output', () => {
       const result = generateVideoPrompt(testPrompt);
       expect(result).toContain('longer than 150 words');
-      expect(result).toContain('sequence of events');
-      expect(result).toContain('Use multiple clips');
     });
 
     it('should encourage specific visual language', () => {
       const result = generateVideoPrompt(testPrompt);
-      expect(result).toMatch(/specific.*generic|specific over generic/i);
+      expect(result).toMatch(/specific over generic/i);
       expect(result).toContain('weathered oak');
+    });
+
+    it('should force Chain-of-Thought analysis before generation', () => {
+      const result = generateVideoPrompt(testPrompt);
+      expect(result).toContain('Perform this analysis');
+      expect(result).toContain('Based on your analysis');
     });
   });
 });

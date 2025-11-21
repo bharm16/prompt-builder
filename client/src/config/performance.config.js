@@ -73,14 +73,15 @@ export const PERFORMANCE_CONFIG = {
  * Storage keys used throughout the application
  */
 export const STORAGE_KEYS = {
-  SPAN_LABELING_CACHE: 'promptBuilder.spanLabelingCache.v1',
+  SPAN_LABELING_CACHE: 'promptBuilder.spanLabelingCache.v2', // Updated to v2 for new role taxonomy
 };
 
 /**
  * Template versions for backward compatibility
+ * v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
  */
 export const TEMPLATE_VERSIONS = {
-  SPAN_LABELING_V1: 'v1',
+  SPAN_LABELING_V1: 'v2', // Updated to v2 for new role taxonomy
 };
 
 /**

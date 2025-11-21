@@ -13,7 +13,8 @@ import { STORAGE_KEY, MAX_STORAGE_AGE, AUTO_SAVE_DELAY } from '../config/constan
  * @param {Object} formData - Current form data
  * @param {number} currentStep - Current step index
  * @param {number} currentMobileFieldIndex - Current mobile field index
- * @param {Function} onRestore - Callback when data is restored
+ * @param {Function} onRestore - Callback when data is restored (deprecated, use onDraftFound)
+ * @param {Function} onDraftFound - Callback when a draft is found, receives draft data
  * @param {Function} onSave - Optional callback when data is auto-saved
  */
 export function useWizardPersistence({
@@ -21,6 +22,7 @@ export function useWizardPersistence({
   currentStep,
   currentMobileFieldIndex,
   onRestore,
+  onDraftFound = null,
   onSave = null,
 }) {
   const autoSaveTimer = useRef(null);
@@ -89,16 +91,22 @@ export function useWizardPersistence({
    */
   useEffect(() => {
     const restored = restoreFromLocalStorage();
-    if (restored && onRestore) {
-      // Prompt user to continue
-      const shouldContinue = window.confirm(
-        'We found a saved draft from your previous session. Would you like to continue where you left off?'
-      );
-      
-      if (shouldContinue) {
-        onRestore(restored);
-      } else {
-        clearLocalStorage();
+    if (restored) {
+      // If new onDraftFound callback is provided, use it
+      if (onDraftFound) {
+        onDraftFound(restored);
+      } 
+      // Fallback to legacy onRestore with window.confirm (for backward compatibility)
+      else if (onRestore) {
+        const shouldContinue = window.confirm(
+          'We found a saved draft from your previous session. Would you like to continue where you left off?'
+        );
+        
+        if (shouldContinue) {
+          onRestore(restored);
+        } else {
+          clearLocalStorage();
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

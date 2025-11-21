@@ -113,7 +113,7 @@ export default [
   },
   // Prompt template files - disable secrets detection for false positives
   {
-    files: ['src/services/PromptOptimizationService.js', 'src/services/EnhancementService.js'],
+    files: ['src/services/prompt-optimization/PromptOptimizationService.js', 'src/services/EnhancementService.js'],
     rules: {
       'no-secrets/no-secrets': 'off', // Templates contain high-entropy strings
     },

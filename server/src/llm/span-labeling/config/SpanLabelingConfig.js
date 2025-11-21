@@ -47,8 +47,8 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier
-  templateVersion: 'v1',
+  // Template version identifier - v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
+  templateVersion: 'v2',
 };
 
 /**
@@ -79,6 +79,23 @@ export const VALIDATION_MODES = {
 };
 
 /**
+ * Text chunking configuration for large prompts
+ */
+export const CHUNKING = {
+  // Max words before chunking is triggered
+  MAX_WORDS_PER_CHUNK: 400,
+  
+  // Max tokens to reserve for output (used in token estimation)
+  OUTPUT_TOKEN_BUFFER: 2000,
+  
+  // Whether to process chunks in parallel
+  PROCESS_CHUNKS_IN_PARALLEL: true,
+  
+  // Max concurrent chunk requests
+  MAX_CONCURRENT_CHUNKS: 3,
+};
+
+/**
  * Get estimated max tokens for a given number of spans
  * @param {number} maxSpans - Maximum spans requested
  * @returns {number} Estimated max tokens needed
@@ -99,6 +116,7 @@ const SpanLabelingConfig = {
   DEFAULT_CONFIDENCE,
   MODEL_CONFIG,
   VALIDATION_MODES,
+  CHUNKING,
   estimateMaxTokens,
 };
 

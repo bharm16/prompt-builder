@@ -1,9 +1,10 @@
 /**
  * StepQuickFill - Quick Fill mode orchestrator
  *
- * All-in-one form for faster video prompt creation:
- * - Two-column layout (Core Concept | Atmosphere & Style)
- * - 10 form fields with AI suggestions
+ * Bento box grid layout for faster video prompt creation:
+ * - Asymmetric grid with large required fields, small optional fields
+ * - Tap to expand inline for editing
+ * - AI suggestions appear inside expanded boxes
  * - Staggered entrance animations
  * - Progress tracking
  * - Mode toggle (Quick Fill ↔ Step-by-Step)
@@ -14,25 +15,27 @@
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { ChevronRight } from 'lucide-react';
-import InlineSuggestions from '../InlineSuggestions';
 import { wizardTheme } from '../../../styles/wizardTheme';
 
 // Reuse from StepCoreConcept
 import { useResponsiveLayout } from '../StepCoreConcept/hooks/useResponsiveLayout';
 
 // Config
-import { FIELD_CONFIG, CORE_CONCEPT_FIELDS, ATMOSPHERE_FIELDS, SECTIONS } from './config/fieldConfig';
+import { FIELD_CONFIG } from './config/fieldConfig';
+import { BENTO_FIELD_CONFIG, getBentoFieldOrder } from './config/bentoLayout';
 import { injectAnimations } from './config/animations';
 
 // Hooks
 import { useStaggeredAnimation } from './hooks/useStaggeredAnimation';
 import { useQuickFillForm } from './hooks/useQuickFillForm';
+import { useBentoExpansion } from './hooks/useBentoExpansion';
 
 // Components
-import { FloatingTextField } from './components/FloatingTextField';
-import { ProgressBadge } from './components/ProgressBadge';
-import { SectionHeader } from './components/SectionHeader';
-import { ModeToggle } from './components/ModeToggle';
+import { BentoGrid } from './components/BentoGrid';
+import BentoField from './components/BentoField';
+import { ContinueButton } from './components/ContinueButton';
+import './components/ContinueButton.css';
+import { MeshGradientBackground } from '../MeshGradientBackground';
 
 /**
  * StepQuickFill component
@@ -41,7 +44,6 @@ export function StepQuickFill({
   formData,
   onChange,
   onContinue,
-  onSwitchToStepByStep,
   suggestions = {},
   isLoadingSuggestions = {},
   onRequestSuggestions,
@@ -59,10 +61,27 @@ export function StepQuickFill({
     onRequestSuggestions
   );
   const { isDesktop, containerPadding, cardPadding } = useResponsiveLayout();
+  const {
+    expandedField,
+    handleExpand,
+    handleCollapse,
+    isExpanded,
+    registerInputRef,
+  } = useBentoExpansion();
 
   const { canContinue } = validation;
   const { filledFields, totalFields, completionPercentage } = progress;
   const { handleFieldChange, handleSuggestionSelect, handleFocus, handleBlur } = handlers;
+
+  // Get field order from bento config
+  const fieldOrder = getBentoFieldOrder();
+  
+  // Merge field config with bento config
+  const fieldsWithBentoConfig = fieldOrder.map(fieldId => {
+    const field = FIELD_CONFIG.find(f => f.id === fieldId);
+    const bentoConfig = BENTO_FIELD_CONFIG[fieldId];
+    return { ...field, bentoConfig };
+  });
 
   return (
     <main
@@ -77,8 +96,12 @@ export function StepQuickFill({
         justifyContent: 'center',
         minHeight: 'calc(100vh - 4px)',
         background: 'linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%)',
+        position: 'relative',
       }}
     >
+      {/* Animated Mesh Gradient Background */}
+      <MeshGradientBackground />
+      
       <div
         style={{
           display: 'flex',
@@ -86,8 +109,10 @@ export function StepQuickFill({
           justifyContent: 'center',
           alignItems: 'center',
           gap: '32px',
-          maxWidth: '1200px',
+          maxWidth: '1600px',
           width: '100%',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Heading Section */}
@@ -110,7 +135,7 @@ export function StepQuickFill({
               animation: mounted ? 'none' : 'shimmer 3s linear infinite',
             }}
           >
-            Quick Fill Mode
+            Create Your Prompt
           </h1>
           <p
             style={{
@@ -123,15 +148,8 @@ export function StepQuickFill({
               color: wizardTheme.colors.neutral[600],
             }}
           >
-            Complete all fields at once for faster creation
+            Fill in the details to generate your video prompt
           </p>
-
-          {/* Progress Indicator */}
-          <ProgressBadge
-            filledFields={filledFields}
-            totalFields={totalFields}
-            completionPercentage={completionPercentage}
-          />
         </section>
 
         {/* Form Card */}
@@ -149,193 +167,37 @@ export function StepQuickFill({
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            {/* Mode Toggle */}
-            <div
-              style={{
-                position: 'absolute',
-                top: cardPadding,
-                right: cardPadding,
-              }}
-            >
-              <ModeToggle onSwitchToStepByStep={onSwitchToStepByStep} />
-            </div>
-
-            {/* Two-Column Layout */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr',
-                gap: isDesktop ? '40px' : '0',
-                paddingTop: '64px',
-              }}
-            >
-              {/* LEFT COLUMN - Core Concept */}
-              <div>
-                <SectionHeader
-                  icon={SECTIONS.core.icon}
-                  iconBg={SECTIONS.core.iconBg}
-                  iconShadow={SECTIONS.core.iconShadow}
-                  title={SECTIONS.core.title}
-                  subtitle={SECTIONS.core.subtitle}
+            {/* Bento Grid Layout */}
+            <div>
+              <BentoGrid mounted={mounted}>
+                {fieldsWithBentoConfig.map((field) => (
+                  <BentoField
+                    key={field.id}
+                    field={field}
+                    config={field.bentoConfig}
+                    value={formData[field.id]}
+                    isExpanded={isExpanded(field.id)}
+                    onExpand={handleExpand}
+                    onCollapse={handleCollapse}
+                    onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                    onFocus={() => handleFocus(field.id)}
+                    suggestions={suggestions?.[field.id]}
+                    isLoadingSuggestions={Boolean(isLoadingSuggestions?.[field.id])}
+                    onRequestSuggestions={onRequestSuggestions}
+                    onSuggestionSelect={handleSuggestionSelect}
+                    registerInputRef={registerInputRef}
+                    mounted={mounted}
+                  />
+                ))}
+                
+                {/* Continue Button as Bento Box */}
+                <ContinueButton
+                  onClick={onContinue}
+                  disabled={!canContinue}
+                  mounted={mounted}
                 />
-
-                <div>
-                  {CORE_CONCEPT_FIELDS.map((field) => (
-                    <div key={field.id}>
-                      <FloatingTextField
-                        id={field.id}
-                        label={field.label}
-                        description={field.description}
-                        value={formData[field.id]}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        delay={field.delay}
-                        onChange={(e) =>
-                          handleFieldChange(field.id, e.target.value)
-                        }
-                        onFocus={() => handleFocus(field.id)}
-                        onBlur={handleBlur}
-                        mounted={mounted}
-                      />
-                      {activeField === field.id && (
-                        <InlineSuggestions
-                          innerRef={suggestionsRef}
-                          suggestions={suggestions?.[field.id] || []}
-                          isLoading={Boolean(isLoadingSuggestions?.[field.id])}
-                          onSelect={(text) =>
-                            handleSuggestionSelect(field.id, text)
-                          }
-                          fieldName={field.id}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN - Atmosphere & Style */}
-              <div>
-                <SectionHeader
-                  icon={SECTIONS.atmosphere.icon}
-                  iconBg={SECTIONS.atmosphere.iconBg}
-                  iconShadow={SECTIONS.atmosphere.iconShadow}
-                  title={SECTIONS.atmosphere.title}
-                  subtitle={SECTIONS.atmosphere.subtitle}
-                />
-
-                <div>
-                  {ATMOSPHERE_FIELDS.map((field) => (
-                    <div key={field.id}>
-                      <FloatingTextField
-                        id={field.id}
-                        label={field.label}
-                        description={field.description}
-                        value={formData[field.id]}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        delay={field.delay}
-                        onChange={(e) =>
-                          handleFieldChange(field.id, e.target.value)
-                        }
-                        onFocus={() => handleFocus(field.id)}
-                        onBlur={handleBlur}
-                        mounted={mounted}
-                      />
-                      {activeField === field.id && (
-                        <InlineSuggestions
-                          innerRef={suggestionsRef}
-                          suggestions={suggestions?.[field.id] || []}
-                          isLoading={Boolean(isLoadingSuggestions?.[field.id])}
-                          onSelect={(text) =>
-                            handleSuggestionSelect(field.id, text)
-                          }
-                          fieldName={field.id}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </BentoGrid>
             </div>
-
-            {/* CTA Button */}
-            <div
-              style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '40px' }}
-            >
-              <button
-                onClick={onContinue}
-                disabled={!canContinue}
-                style={{
-                  position: 'relative',
-                  padding: '16px 40px',
-                  fontFamily: wizardTheme.fontFamily.primary,
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  letterSpacing: '-0.01em',
-                  color: '#FFFFFF',
-                  background: canContinue
-                    ? `linear-gradient(135deg, ${wizardTheme.colors.accent.base} 0%, ${wizardTheme.colors.accent.hover} 100%)`
-                    : wizardTheme.colors.neutral[200],
-                  borderRadius: '14px',
-                  border: 'none',
-                  cursor: canContinue ? 'pointer' : 'not-allowed',
-                  boxShadow: canContinue
-                    ? '0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06)'
-                    : 'none',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  overflow: 'hidden',
-                }}
-                onMouseEnter={(e) => {
-                  if (canContinue) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow =
-                      '0 12px 28px rgba(255, 56, 92, 0.4), 0 4px 12px rgba(0, 0, 0, 0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (canContinue) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow =
-                      '0 8px 20px rgba(255, 56, 92, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06)';
-                  }
-                }}
-              >
-                Continue to Summary
-                <ChevronRight size={20} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            {/* Keyboard Shortcut Hint */}
-            {canContinue && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  textAlign: 'right',
-                  fontFamily: wizardTheme.fontFamily.primary,
-                  fontSize: '12px',
-                  color: wizardTheme.colors.neutral[400],
-                  animation: 'slideDown 0.3s ease-out',
-                }}
-              >
-                Press{' '}
-                <kbd
-                  style={{
-                    padding: '2px 6px',
-                    background: wizardTheme.colors.neutral[100],
-                    border: `1px solid ${wizardTheme.colors.neutral[200]}`,
-                    borderRadius: '4px',
-                    fontFamily: wizardTheme.fontFamily.mono,
-                    fontSize: '11px',
-                  }}
-                >
-                  Enter
-                </kbd>{' '}
-                to continue
-              </div>
-            )}
           </div>
         </section>
       </div>
@@ -358,7 +220,6 @@ StepQuickFill.propTypes = {
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onContinue: PropTypes.func.isRequired,
-  onSwitchToStepByStep: PropTypes.func.isRequired,
   suggestions: PropTypes.object,
   isLoadingSuggestions: PropTypes.object,
   onRequestSuggestions: PropTypes.func.isRequired,

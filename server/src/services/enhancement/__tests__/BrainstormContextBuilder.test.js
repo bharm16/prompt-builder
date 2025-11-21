@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { BrainstormContextBuilder } from '../BrainstormContextBuilder.js';
+import { BrainstormContextBuilder } from '../services/BrainstormContextBuilder.js';
 
 describe('BrainstormContextBuilder', () => {
   let builder;

@@ -254,7 +254,7 @@ router.post('/optimize', async (req, res, next) => {
 ### Example 2: Service Layer Error Tracking
 
 ```javascript
-// server/src/services/PromptOptimizationService.js
+// server/src/services/prompt-optimization/PromptOptimizationService.js
 import { captureException, startTransaction } from '../config/sentry.js';
 
 class PromptOptimizationService {

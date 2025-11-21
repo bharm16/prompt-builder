@@ -50,4 +50,4 @@ This directory contains the architectural standards and patterns for the Prompt 
 
 Successful refactorings following these patterns:
 - `client/src/features/video-concept-builder/` (Frontend)
-- `server/src/services/optimization/` (Backend)
+- `server/src/services/prompt-optimization/` (Backend)

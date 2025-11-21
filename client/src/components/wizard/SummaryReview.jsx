@@ -19,6 +19,7 @@ const SummaryReview = ({
   formData,
   onEdit,
   onGenerate,
+  isGenerating = false,
   onBack,
   isMobile = false
 }) => {
@@ -78,9 +79,7 @@ const SummaryReview = ({
       fields: [
         { key: 'subject', label: 'Subject', required: true },
         { key: 'action', label: 'Action', required: true },
-        { key: 'descriptor1', label: 'Descriptor 1', required: false },
-        { key: 'descriptor2', label: 'Descriptor 2', required: false },
-        { key: 'descriptor3', label: 'Descriptor 3', required: false }
+        { key: 'descriptors', label: 'Descriptors', required: false }
       ],
       step: 1 // Core Concept is now step 1
     },
@@ -309,19 +308,28 @@ const SummaryReview = ({
 
           <button
             onClick={onGenerate}
-            disabled={!formData.subject || !formData.action || !formData.location}
+            disabled={!formData.subject || !formData.action || !formData.location || isGenerating}
             className={`
               ${isMobile ? 'w-full' : 'px-12'}
               py-5 rounded-xl font-bold text-lg shadow-xl
               transition-all duration-200 flex items-center justify-center space-x-3
-              ${formData.subject && formData.action && formData.location
+              ${formData.subject && formData.action && formData.location && !isGenerating
                 ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]'
                 : 'bg-neutral-300 text-neutral-500 cursor-not-allowed shadow-none'
               }
             `}
           >
-            <Sparkles className="w-6 h-6" />
-            <span>Generate Your Optimized Prompt</span>
+            {isGenerating ? (
+              <>
+                <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-6 h-6" />
+                <span>Generate Your Optimized Prompt</span>
+              </>
+            )}
           </button>
         </div>
         {formData.subject && formData.action && formData.location && (
@@ -348,6 +356,7 @@ SummaryReview.propTypes = {
   formData: PropTypes.object.isRequired,
   onEdit: PropTypes.func.isRequired,
   onGenerate: PropTypes.func.isRequired,
+  isGenerating: PropTypes.bool,
   onBack: PropTypes.func.isRequired,
   isMobile: PropTypes.bool
 };

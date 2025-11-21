@@ -168,7 +168,7 @@ constructor(apiKey, config = {}, dependencies = {}) {
 
 These tests serve as good examples:
 
-✅ **server/src/services/optimization/strategies/__tests__/VideoStrategy.test.js**
+✅ **server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js**
 - Constructor dependency injection
 - No module-level mocks
 - Comprehensive edge case coverage

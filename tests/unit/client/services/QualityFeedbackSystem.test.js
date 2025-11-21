@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { QualityFeedbackSystem } from '../QualityFeedbackSystem.js';
+import { QualityFeedbackSystem } from '../../../../server/src/services/quality-feedback/QualityFeedbackSystem.js';
 
 vi.mock('../../infrastructure/Logger.js', () => ({
   logger: {

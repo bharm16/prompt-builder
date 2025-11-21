@@ -404,9 +404,8 @@ const testSpecs = [
 
   // Services (0% coverage)
   { file: 'src/services/CacheServiceV2.js', type: 'service', name: 'CacheServiceV2' },
-  { file: 'src/services/PromptContextManager.js', type: 'service', name: 'PromptContextManager' },
   { file: 'src/services/QualityFeedbackSystem.js', type: 'service', name: 'QualityFeedbackSystem' },
-  { file: 'src/services/SceneDetectionService.js', type: 'service', name: 'SceneDetectionService' },
+  { file: 'src/services/video-concept/SceneChangeDetectionService.js', type: 'service', name: 'SceneChangeDetectionService' },
 
   // Infrastructure
   { file: 'src/infrastructure/TracingService.js', type: 'service', name: 'TracingService' },

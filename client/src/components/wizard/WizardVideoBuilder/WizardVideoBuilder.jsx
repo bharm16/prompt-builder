@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useToast } from '../../../components/Toast';
 
 // Components
-import WizardProgress from '../WizardProgress';
 import MobileFieldView from '../MobileFieldView';
 import { StepQuickFill } from '../StepQuickFill';
 import { CoreConceptAccordion } from '../StepCoreConcept';
 import StepAtmosphere from '../StepAtmosphere';
 import SummaryReview from '../SummaryReview';
 import WizardEntryPage from '../WizardEntryPage';
+import SavedDraftBanner from '../SavedDraftBanner';
 
 // Services
 import { aiWizardService } from '../../../services/aiWizardService';
@@ -60,6 +61,13 @@ export const WizardVideoBuilder = ({
   // Responsive detection
   const { isMobile, isTablet, isDesktop } = useResponsive();
 
+  // Toast notifications and loading state
+  const toast = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Saved draft state
+  const [savedDraft, setSavedDraft] = useState(null);
+
   // Parse initial concept if provided
   const initialFormData = initialConcept && typeof initialConcept === 'string' && initialConcept.trim()
     ? { ...INITIAL_FORM_DATA, subject: initialConcept }
@@ -91,17 +99,38 @@ export const WizardVideoBuilder = ({
     currentStep,
     currentMobileFieldIndex,
     onSave,
-    onRestore: (restored) => {
-      actions.setFormData(restored.formData);
-      actions.setCurrentStep(restored.currentStep || 0);
-      actions.setMobileFieldIndex(restored.currentMobileFieldIndex || 0);
-      actions.setShowEntryPage(false);
+    onDraftFound: (restored) => {
+      // Store the draft and show banner instead of immediately restoring
+      setSavedDraft(restored);
     },
   });
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
+
+  /**
+   * Handle continuing with saved draft
+   */
+  const handleContinueDraft = useCallback(() => {
+    if (savedDraft) {
+      actions.setFormData(savedDraft.formData);
+      actions.setCurrentStep(savedDraft.currentStep || 0);
+      actions.setMobileFieldIndex(savedDraft.currentMobileFieldIndex || 0);
+      actions.setShowEntryPage(false);
+      setSavedDraft(null);
+      toast.success('Your saved draft has been restored');
+    }
+  }, [savedDraft, actions, toast]);
+
+  /**
+   * Handle starting fresh (discarding saved draft)
+   */
+  const handleStartFresh = useCallback(() => {
+    clearLocalStorage();
+    setSavedDraft(null);
+    toast.info('Starting with a fresh draft');
+  }, [clearLocalStorage, toast]);
 
   /**
    * Handle field change
@@ -273,6 +302,57 @@ export const WizardVideoBuilder = ({
     }
   }, [formData, validateRequiredFields, clearLocalStorage, onConceptComplete, actions]);
 
+  /**
+   * Generate wizard prompt and close modal
+   * This calls onConceptComplete which closes the wizard modal
+   * and automatically optimizes the prompt
+   */
+  const handleGenerate = useCallback(async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Validate required fields
+      if (!validateRequiredFields()) {
+        toast.error('Please fill in all required fields before generating');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Generate final prompt
+      const finalPrompt = aiWizardService.generatePrompt(formData);
+      
+      // Validate prompt isn't empty
+      if (!finalPrompt || finalPrompt.trim().length === 0) {
+        toast.error('Unable to generate prompt. Please check your inputs.');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Format elements and metadata for the concept complete callback
+      const elements = formatElements(formData);
+      const metadata = {
+        ...formatMetadata(formData),
+        validationScore: aiWizardService.getCompletionPercentage(formData),
+        history: [],
+        subjectDescriptors: [],
+      };
+      
+      // Call onConceptComplete callback
+      // This will close the wizard modal and automatically optimize the prompt
+      if (onConceptComplete) {
+        onConceptComplete(finalPrompt, elements, metadata);
+      }
+      
+      // Clear saved draft
+      clearLocalStorage();
+      
+    } catch (error) {
+      console.error('Failed to generate prompt:', error);
+      toast.error('Failed to generate prompt. Please try again.');
+      setIsGenerating(false);
+    }
+  }, [formData, validateRequiredFields, clearLocalStorage, onConceptComplete, toast]);
+
   // ============================================================================
   // Keyboard Shortcuts (Desktop only)
   // ============================================================================
@@ -314,40 +394,50 @@ export const WizardVideoBuilder = ({
     const currentValue = formData[currentField.name] || '';
 
     return (
-      <MobileFieldView
-        field={currentField}
-        value={currentValue}
-        onChange={(value) => handleFieldChange(currentField.name, value)}
-        onNext={handleMobileNextField}
-        onPrevious={handleMobilePreviousField}
-        onComplete={handleMobileComplete}
-        suggestions={suggestions[currentField.name] || []}
-        isLoadingSuggestions={isLoadingSuggestions[currentField.name] || false}
-        onRequestSuggestions={handleRequestSuggestions}
-        currentFieldIndex={currentMobileFieldIndex}
-        totalFields={MOBILE_FIELDS.length}
-        isLastField={currentMobileFieldIndex === MOBILE_FIELDS.length - 1}
-        canGoBack={currentMobileFieldIndex > 0}
-        canGoNext={canGoNext}
-        validationError={validationErrors[currentField.name]}
-        isValid={isCurrentMobileFieldValid}
-      />
+      <div className="h-screen flex flex-col overflow-hidden">
+        {/* Saved Draft Banner */}
+        {savedDraft && (
+          <SavedDraftBanner
+            onContinue={handleContinueDraft}
+            onStartFresh={handleStartFresh}
+          />
+        )}
+
+        {/* Mobile Field View */}
+        <div className="flex-1 overflow-hidden">
+          <MobileFieldView
+            field={currentField}
+            value={currentValue}
+            onChange={(value) => handleFieldChange(currentField.name, value)}
+            onNext={handleMobileNextField}
+            onPrevious={handleMobilePreviousField}
+            onComplete={handleMobileComplete}
+            suggestions={suggestions[currentField.name] || []}
+            isLoadingSuggestions={isLoadingSuggestions[currentField.name] || false}
+            onRequestSuggestions={handleRequestSuggestions}
+            currentFieldIndex={currentMobileFieldIndex}
+            totalFields={MOBILE_FIELDS.length}
+            isLastField={currentMobileFieldIndex === MOBILE_FIELDS.length - 1}
+            canGoBack={currentMobileFieldIndex > 0}
+            canGoNext={canGoNext}
+            validationError={validationErrors[currentField.name]}
+            isValid={isCurrentMobileFieldValid}
+          />
+        </div>
+      </div>
     );
   }
 
   // Render desktop view
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-      {/* Progress Indicator */}
-      <WizardProgress
-        currentStep={currentStep}
-        totalSteps={STEP_LABELS.length}
-        stepLabels={STEP_LABELS}
-        completedSteps={completedSteps}
-        isMobile={isMobile}
-        onStepClick={handleGoToStep}
-        minimal={true}
-      />
+      {/* Saved Draft Banner */}
+      {savedDraft && (
+        <SavedDraftBanner
+          onContinue={handleContinueDraft}
+          onStartFresh={handleStartFresh}
+        />
+      )}
 
       {/* Step Content */}
       <div className="flex-1 overflow-y-auto pb-8">
@@ -390,7 +480,8 @@ export const WizardVideoBuilder = ({
           <SummaryReview
             formData={formData}
             onEdit={handleEdit}
-            onComplete={handleComplete}
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
             onBack={handlePreviousStep}
           />
         )}

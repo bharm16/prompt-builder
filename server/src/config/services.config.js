@@ -13,28 +13,31 @@ import { createContainer } from '../infrastructure/DIContainer.js';
 import { logger } from '../infrastructure/Logger.js';
 import { metricsService } from '../infrastructure/MetricsService.js';
 
-// Import clients
-import { OpenAIAPIClient } from '../clients/OpenAIAPIClient.js';
-import { GroqAPIClient } from '../clients/GroqAPIClient.js';
+// Import generic LLM client
+import { LLMClient } from '../clients/LLMClient.js';
+import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
+
+// Import AI Model Service
+import { AIModelService } from '../services/ai-model/index.js';
 
 // Import services
-import { cacheService } from '../services/CacheService.js';
-import { PromptOptimizationService } from '../services/PromptOptimizationService.js';
-import { QuestionGenerationService } from '../services/QuestionGenerationService.js';
+import { cacheService } from '../services/cache/CacheService.js';
+import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
+import { QuestionGenerationService } from '../services/question-generation/index.js';
 import { EnhancementService } from '../services/EnhancementService.js';
-import { SceneDetectionService } from '../services/SceneDetectionService.js';
+import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.js';
-import { TextCategorizerService } from '../services/TextCategorizerService.js';
-import { initSpanLabelingCache } from '../services/SpanLabelingCacheService.js';
+import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
+import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 
 // Import enhancement sub-services
-import { PlaceholderDetectionService } from '../services/enhancement/PlaceholderDetectionService.js';
-import { VideoPromptService } from '../services/enhancement/VideoPromptService.js';
-import { BrainstormContextBuilder } from '../services/enhancement/BrainstormContextBuilder.js';
-import { PromptBuilderService } from '../services/enhancement/PromptBuilderService.js';
-import { SuggestionValidationService } from '../services/enhancement/SuggestionValidationService.js';
-import { SuggestionDiversityEnforcer } from '../services/enhancement/SuggestionDiversityEnforcer.js';
-import { CategoryAlignmentService } from '../services/enhancement/CategoryAlignmentService.js';
+import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.js';
+import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
+import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.js';
+import { CleanPromptBuilder } from '../services/enhancement/services/CleanPromptBuilder.js';
+import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.js';
+import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.js';
+import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.js';
 
 // Import config
 import { createRedisClient } from './redis.js';
@@ -88,16 +91,26 @@ export function configureServices() {
   // ============================================================================
 
   // OpenAI client (CRITICAL - required)
+  // Using generic LLMClient configured for OpenAI
   container.register(
     'claudeClient',
-    (config) => new OpenAIAPIClient(config.openai.apiKey, {
-      timeout: config.openai.timeout,
-      model: config.openai.model,
+    (config) => new LLMClient({
+      apiKey: config.openai.apiKey,
+      baseURL: 'https://api.openai.com/v1',
+      providerName: 'openai',
+      defaultModel: config.openai.model,
+      defaultTimeout: config.openai.timeout,
+      circuitBreakerConfig: {
+        errorThresholdPercentage: 50,
+        resetTimeout: 30000,
+      },
+      concurrencyLimiter: openAILimiter, // Limit concurrent requests
     }),
     ['config']
   );
 
   // Groq client (OPTIONAL - for two-stage optimization)
+  // Using generic LLMClient configured for Groq
   // Factory returns null if not configured
   container.register(
     'groqClient',
@@ -106,12 +119,37 @@ export function configureServices() {
         logger.warn('GROQ_API_KEY not provided, two-stage optimization disabled');
         return null;
       }
-      return new GroqAPIClient(config.groq.apiKey, {
-        timeout: config.groq.timeout,
-        model: config.groq.model,
+      return new LLMClient({
+        apiKey: config.groq.apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+        providerName: 'groq',
+        defaultModel: config.groq.model,
+        defaultTimeout: config.groq.timeout,
+        circuitBreakerConfig: {
+          errorThresholdPercentage: 60, // More tolerant for fast provider
+          resetTimeout: 15000, // Faster recovery
+        },
+        concurrencyLimiter: null, // No concurrency limiting for Groq
       });
     },
     ['config']
+  );
+
+  // ============================================================================
+  // AI Model Service (Router Layer)
+  // ============================================================================
+
+  // AIModelService - Unified router for all LLM operations
+  // Decouples business logic from specific providers
+  container.register(
+    'aiService',
+    (claudeClient, groqClient) => new AIModelService({
+      clients: {
+        openai: claudeClient,
+        groq: groqClient,
+      },
+    }),
+    ['claudeClient', 'groqClient']
   );
 
   // ============================================================================
@@ -159,9 +197,8 @@ export function configureServices() {
 
   container.register(
     'promptBuilder',
-    (brainstormBuilder, videoService) =>
-      new PromptBuilderService(brainstormBuilder, videoService),
-    ['brainstormBuilder', 'videoService']
+    () => new CleanPromptBuilder(),
+    []
   );
 
   container.register(
@@ -172,8 +209,8 @@ export function configureServices() {
 
   container.register(
     'diversityEnforcer',
-    (claudeClient) => new SuggestionDiversityEnforcer(claudeClient),
-    ['claudeClient']
+    (aiService) => new SuggestionDiversityEnforcer(aiService),
+    ['aiService']
   );
 
   container.register(
@@ -188,22 +225,21 @@ export function configureServices() {
 
   container.register(
     'promptOptimizationService',
-    (claudeClient, groqClient) =>
-      new PromptOptimizationService(claudeClient, groqClient),
-    ['claudeClient', 'groqClient']
+    (aiService) =>
+      new PromptOptimizationService(aiService),
+    ['aiService']
   );
 
   container.register(
     'questionGenerationService',
-    (claudeClient) => new QuestionGenerationService(claudeClient),
-    ['claudeClient']
+    (aiService) => new QuestionGenerationService(aiService),
+    ['aiService']
   );
 
   container.register(
     'enhancementService',
     (
-      claudeClient,
-      groqClient,
+      aiService,
       placeholderDetector,
       videoService,
       brainstormBuilder,
@@ -214,8 +250,7 @@ export function configureServices() {
       metricsService
     ) =>
       new EnhancementService(
-        claudeClient,
-        groqClient,
+        aiService,
         placeholderDetector,
         videoService,
         brainstormBuilder,
@@ -226,8 +261,7 @@ export function configureServices() {
         metricsService
       ),
     [
-      'claudeClient',
-      'groqClient',
+      'aiService',
       'placeholderDetector',
       'videoService',
       'brainstormBuilder',
@@ -241,20 +275,20 @@ export function configureServices() {
 
   container.register(
     'sceneDetectionService',
-    (claudeClient) => new SceneDetectionService(claudeClient),
-    ['claudeClient']
+    (aiService) => new SceneChangeDetectionService(aiService),
+    ['aiService']
   );
 
   container.register(
     'videoConceptService',
-    (claudeClient) => new VideoConceptService(claudeClient),
-    ['claudeClient']
+    (aiService) => new VideoConceptService(aiService),
+    ['aiService']
   );
 
   container.register(
     'textCategorizerService',
-    (claudeClient) => new TextCategorizerService(claudeClient),
-    ['claudeClient']
+    (aiService) => new TextCategorizerService(aiService),
+    ['aiService']
   );
 
   return container;

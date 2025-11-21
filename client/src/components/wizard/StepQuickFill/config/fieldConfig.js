@@ -18,9 +18,9 @@
  */
 
 /**
- * Core Concept Fields (Left Column)
+ * Core Concept Fields
  * Required: subject, action
- * Optional: descriptor1, descriptor2, descriptor3
+ * Optional: descriptors
  */
 export const CORE_CONCEPT_FIELDS = [
   {
@@ -33,39 +33,22 @@ export const CORE_CONCEPT_FIELDS = [
     section: 'core',
   },
   {
-    id: 'descriptor1',
-    label: 'Descriptor 1',
-    description: 'Physical appearance (optional)',
-    placeholder: 'e.g., muscular and toned',
-    required: false,
-    delay: 50,
-    section: 'core',
-  },
-  {
-    id: 'descriptor2',
-    label: 'Descriptor 2',
-    description: 'Visual details (optional)',
-    placeholder: 'e.g., wearing a red jersey',
-    required: false,
-    delay: 100,
-    section: 'core',
-  },
-  {
-    id: 'descriptor3',
-    label: 'Descriptor 3',
-    description: 'Physical state (optional)',
-    placeholder: 'e.g., in mid-stride',
-    required: false,
-    delay: 150,
-    section: 'core',
-  },
-  {
     id: 'action',
     label: 'Action',
     description: "What's happening?",
     placeholder: 'e.g., running through',
     required: true,
-    delay: 200,
+    delay: 50,
+    section: 'core',
+  },
+  {
+    id: 'descriptors',
+    label: 'Descriptors',
+    description: 'Visual details about the subject (appearance, clothing, physical state)',
+    placeholder: 'e.g., muscular and toned, wearing red jersey, in mid-stride',
+    required: false,
+    inputType: 'textarea',
+    delay: 100,
     section: 'core',
   },
 ];

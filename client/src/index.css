@@ -548,6 +548,37 @@
     }
   }
 
+  /* ===== BANNER ANIMATIONS ===== */
+  .banner-slide-down {
+    animation: bannerSlideDown 300ms ease-out;
+  }
+
+  .banner-slide-up {
+    animation: bannerSlideUp 200ms ease-in forwards;
+  }
+
+  @keyframes bannerSlideDown {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bannerSlideUp {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+  }
+
   /* ===== FONT SIZE VARIANTS ===== */
   [data-font-size='small'] {
     font-size: 14px;

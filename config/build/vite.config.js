@@ -17,6 +17,12 @@ export default defineConfig({
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
   },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '../../client/src'),
+      '@shared': path.resolve(__dirname, '../../shared')
+    }
+  },
   plugins: [
     react(),
     

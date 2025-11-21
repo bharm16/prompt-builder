@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#shared/*": "./shared/*"
+  },
   "dependencies": {
     "@sentry/node": "^10.22.0",
     "@sentry/profiling-node": "^10.22.0",
     "@sentry/react": "^10.22.0",
     "@sentry/vite-plugin": "^4.5.0",
     "compression": "^1.8.1",
+    "compromise": "^14.14.4",
     "cors": "^2.8.5",
     "dompurify": "^3.3.0",
     "dotenv": "^16.6.1",
@@ -94,6 +98,11 @@
     "perf:monitor:stop": "docker-compose -f infrastructure/docker/docker-compose.monitoring.yml down",
     "perf:monitor:logs": "docker-compose -f infrastructure/docker/docker-compose.monitoring.yml logs -f",
     "perf:stats": "curl -s http://localhost:3001/stats | jq",
-    "perf:metrics": "curl -s http://localhost:3001/metrics"
+    "perf:metrics": "curl -s http://localhost:3001/metrics",
+    "migrate:rerender": "node scripts/migrations/force-highlight-rerender.js --mode=clear",
+    "migrate:rerender:regenerate": "node scripts/migrations/force-highlight-rerender.js --mode=regenerate",
+    "migrate:rerender:dry": "node scripts/migrations/force-highlight-rerender.js --mode=clear --dry-run",
+    "migrate:backfill": "node scripts/migrations/backfill-highlight-cache.js",
+    "migrate:backfill:dry": "node scripts/migrations/backfill-highlight-cache.js --dry-run"
   }
 }

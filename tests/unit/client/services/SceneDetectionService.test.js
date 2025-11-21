@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SceneDetectionService } from '../SceneDetectionService.js';
+import { SceneChangeDetectionService } from '../../../../server/src/services/video-concept/SceneChangeDetectionService.js';
 
 // Mock dependencies
 vi.mock('../../infrastructure/Logger.js', () => ({
@@ -32,14 +32,14 @@ vi.mock('../../utils/TemperatureOptimizer.js', () => ({
   },
 }));
 
-describe('SceneDetectionService', () => {
+describe('SceneChangeDetectionService', () => {
   let service;
   let fakeClaude;
 
   beforeEach(() => {
     vi.clearAllMocks();
     fakeClaude = { _makeRequest: vi.fn() };
-    service = new SceneDetectionService(fakeClaude);
+    service = new SceneChangeDetectionService(fakeClaude);
   });
 
   afterEach(() => {

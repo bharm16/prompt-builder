@@ -5,8 +5,8 @@ import { STYLE_DEFINITIONS, DEFAULT_STYLE } from '../config/styleDefinitions.js'
  * Service responsible for transferring text between different writing styles
  */
 export class StyleTransferService {
-  constructor(claudeClient) {
-    this.claudeClient = claudeClient;
+  constructor(aiService) {
+    this.ai = aiService;
   }
 
   /**
@@ -21,7 +21,8 @@ export class StyleTransferService {
     const styleTransferPrompt = this._buildStyleTransferPrompt(text, targetStyle, styleConfig);
 
     try {
-      const response = await this.claudeClient.complete(styleTransferPrompt, {
+      const response = await this.ai.execute('enhance_style_transfer', {
+        systemPrompt: styleTransferPrompt,
         maxTokens: 1024,
         temperature: 0.7,
       });

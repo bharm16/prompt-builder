@@ -35,7 +35,7 @@ ARCHITECTURE: PromptOptimizationService pattern
 - services/feature-name/ (specialized services < 300 lines)
 - templates/ (.md files for prompts)
 
-REFERENCE: server/src/services/PromptOptimizationService.js
+REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.js
 SHOW STRUCTURE FIRST
 ```
 
@@ -82,7 +82,7 @@ SHOW COMPLETE STRUCTURE FIRST
 | Working On | Pattern | Reference File |
 |------------|---------|----------------|
 | **Frontend** (client/src/) | VideoConceptBuilder | `client/src/components/VideoConceptBuilder/` |
-| **Backend** (server/src/) | PromptOptimizationService | `server/src/services/PromptOptimizationService.js` |
+| **Backend** (server/src/) | PromptOptimizationService | `server/src/services/prompt-optimization/PromptOptimizationService.js` |
 
 ### Frontend Structure
 ```
@@ -146,7 +146,7 @@ wc -l [file-path]
 - Docs: `client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md`
 
 **Backend:**
-- Pattern: `server/src/services/PromptOptimizationService.js`
+- Pattern: `server/src/services/prompt-optimization/PromptOptimizationService.js`
 - Alt: `server/src/services/VideoConceptService.js`
 
 ---
