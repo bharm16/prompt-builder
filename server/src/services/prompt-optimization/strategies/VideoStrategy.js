@@ -1,7 +1,7 @@
 import { BaseStrategy } from './BaseStrategy.js';
 import { logger } from '../../../infrastructure/Logger.js';
 import OptimizationConfig from '../../../config/OptimizationConfig.js';
-import { generateVideoPrompt } from './videoPromptOptimizationTemplate.js';
+import { generateUniversalVideoPrompt } from './videoPromptOptimizationTemplate.js';
 import { StructuredOutputEnforcer } from '../../../utils/StructuredOutputEnforcer.js';
 
 /**
@@ -23,12 +23,12 @@ export class VideoStrategy extends BaseStrategy {
     logger.info('Optimizing prompt with video strategy (CoT + structured output)');
 
     // Generate the system prompt with Chain-of-Thought instructions
-    const systemPrompt = generateVideoPrompt(prompt);
+    const systemPrompt = generateUniversalVideoPrompt(prompt);
 
     // Define the expected JSON schema
     const schema = {
       type: 'object',
-      required: ['_hidden_reasoning', 'shot_type', 'main_prompt', 'technical_specs', 'variations']
+      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations']
     };
 
     // Get configuration
@@ -54,8 +54,8 @@ export class VideoStrategy extends BaseStrategy {
       logger.info('Video optimization complete with CoT reasoning', {
         originalLength: prompt.length,
         shotType: parsedResponse.shot_type,
-        reasoning: parsedResponse._hidden_reasoning,
-        mainPromptLength: parsedResponse.main_prompt?.length || 0
+        strategy: parsedResponse._creative_strategy,
+        promptLength: parsedResponse.prompt?.length || 0
       });
 
       // Reassemble into the expected text format for backward compatibility
@@ -82,19 +82,32 @@ export class VideoStrategy extends BaseStrategy {
    */
   _reassembleOutput(parsed) {
     const {
-      main_prompt,
+      prompt,
       technical_specs,
       variations
     } = parsed;
 
-    let output = main_prompt;
+    let output = prompt;
 
-    // Add technical specs section
+    // Add technical specs section with merged creative and output specs
     if (technical_specs) {
       output += '\n\n**TECHNICAL SPECS**';
-      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
+      
+      // Creative specs (used in prompt generation)
+      if (technical_specs.lighting) {
+        output += `\n- **Lighting:** ${technical_specs.lighting}`;
+      }
+      if (technical_specs.camera) {
+        output += `\n- **Camera:** ${technical_specs.camera}`;
+      }
+      if (technical_specs.style) {
+        output += `\n- **Style:** ${technical_specs.style}`;
+      }
+      
+      // Output specs (used for generator settings)
       output += `\n- **Aspect Ratio:** ${technical_specs.aspect_ratio || '16:9'}`;
       output += `\n- **Frame Rate:** ${technical_specs.frame_rate || '24fps'}`;
+      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
       output += `\n- **Audio:** ${technical_specs.audio || 'mute'}`;
     }
 
@@ -103,7 +116,7 @@ export class VideoStrategy extends BaseStrategy {
       output += '\n\n**ALTERNATIVE APPROACHES**';
       variations.forEach((variation, index) => {
         const varNum = index + 1;
-        output += `\n- **Variation ${varNum} (${variation.type}):** ${variation.prompt}`;
+        output += `\n- **Variation ${varNum} (${variation.label}):** ${variation.prompt}`;
       });
     }
 
