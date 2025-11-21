@@ -10,6 +10,7 @@ import { ContextInferenceService } from './services/ContextInferenceService.js';
 import { ModeDetectionService } from './services/ModeDetectionService.js';
 import { QualityAssessmentService } from './services/QualityAssessmentService.js';
 import { StrategyFactory } from './services/StrategyFactory.js';
+import { ShotInterpreterService } from './services/ShotInterpreterService.js';
 import { templateService } from './services/TemplateService.js';
 
 /**
@@ -38,6 +39,7 @@ export class PromptOptimizationService {
     this.modeDetection = new ModeDetectionService(aiService);
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, templateService);
+    this.shotInterpreter = new ShotInterpreterService(aiService);
 
     // Cache configuration
     this.cacheConfig = cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
@@ -76,6 +78,14 @@ export class PromptOptimizationService {
 
     logger.info('Starting two-stage optimization', { mode });
 
+    // Pre-interpret the raw concept into a flexible shot plan (no hard validation on user input)
+    let shotPlan = null;
+    try {
+      shotPlan = await this.shotInterpreter.interpret(prompt);
+    } catch (interpError) {
+      logger.warn('Shot interpretation failed, proceeding without shot plan', { error: interpError.message });
+    }
+
     // Check if draft operation supports streaming (Groq available)
     if (!this.ai.supportsStreaming('optimize_draft')) {
       logger.warn('Draft streaming not available, falling back to single-stage optimization');
@@ -87,7 +97,7 @@ export class PromptOptimizationService {
 
     try {
       // STAGE 1: Generate fast draft with Groq + parallel span labeling (200-500ms)
-      const draftSystemPrompt = this.getDraftSystemPrompt(mode);
+      const draftSystemPrompt = this.getDraftSystemPrompt(mode, shotPlan);
       logger.debug('Generating draft with Groq', { mode });
       const draftStartTime = Date.now();
 
@@ -139,6 +149,7 @@ export class PromptOptimizationService {
         mode,
         context,
         brainstormContext,
+        shotPlan,
       });
 
       const refinementDuration = Date.now() - refinementStartTime;
@@ -163,6 +174,7 @@ export class PromptOptimizationService {
           totalDuration,
           mode,
           usedTwoStage: true,
+          shotPlan,
         }
       };
 
@@ -172,12 +184,17 @@ export class PromptOptimizationService {
         mode
       });
 
-      const result = await this.optimize({ prompt, mode, context, brainstormContext });
+      const result = await this.optimize({ prompt, mode, context, brainstormContext, shotPlan });
       return {
         draft: result,
         refined: result,
         usedFallback: true,
-        error: error.message
+        error: error.message,
+        metadata: {
+          mode,
+          usedFallback: true,
+          shotPlan,
+        }
       };
     }
   }
@@ -190,6 +207,7 @@ export class PromptOptimizationService {
    * @param {string} params.mode - Optimization mode (always defaults to 'video')
    * @param {Object} params.context - Optional user-provided context
    * @param {Object} params.brainstormContext - Optional brainstorm context
+   * @param {Object} params.shotPlan - Optional interpreted shot plan from ShotInterpreterService
    * @param {boolean} params.useConstitutionalAI - Optional constitutional AI review
    * @param {boolean} params.useIterativeRefinement - Optional iterative refinement
    * @returns {Promise<string>} Optimized prompt
@@ -199,6 +217,7 @@ export class PromptOptimizationService {
     mode,
     context = null,
     brainstormContext = null,
+    shotPlan = null,
     useConstitutionalAI = false,
     useIterativeRefinement = false
   }) {
@@ -212,6 +231,18 @@ export class PromptOptimizationService {
     }
 
     logger.info('Starting optimization', { mode, hasContext: !!context });
+
+    // Interpret shot plan if not already provided
+    let interpretedShotPlan = shotPlan;
+    if (!interpretedShotPlan) {
+      try {
+        interpretedShotPlan = await this.shotInterpreter.interpret(prompt);
+      } catch (interpError) {
+        logger.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
+          error: interpError.message,
+        });
+      }
+    }
 
     // Check cache
     const cacheKey = this.buildCacheKey(prompt, mode, context, brainstormContext);
@@ -238,14 +269,15 @@ export class PromptOptimizationService {
         const strategy = this.strategyFactory.getStrategy(mode);
 
         // Generate domain content if strategy supports it
-        const domainContent = await strategy.generateDomainContent(prompt, context);
+        const domainContent = await strategy.generateDomainContent(prompt, context, interpretedShotPlan);
 
         // Optimize using strategy
         optimizedPrompt = await strategy.optimize({
           prompt,
           context,
           brainstormContext,
-          domainContent
+          domainContent,
+          shotPlan: interpretedShotPlan,
         });
 
         // Apply constitutional AI review if requested
@@ -367,14 +399,32 @@ export class PromptOptimizationService {
    * Get draft system prompt for Groq generation
    * @private
    */
-  getDraftSystemPrompt(mode) {
+  getDraftSystemPrompt(mode, shotPlan = null) {
+    const planSummary = shotPlan
+      ? `Respect this interpreted shot plan (do not force missing fields):
+- shot_type: ${shotPlan.shot_type || 'unknown'}
+- core_intent: ${shotPlan.core_intent || 'n/a'}
+- subject: ${shotPlan.subject || 'null'}
+- action: ${shotPlan.action || 'null'}
+- visual_focus: ${shotPlan.visual_focus || 'null'}
+- setting: ${shotPlan.setting || 'null'}
+- camera_move: ${shotPlan.camera_move || 'null'}
+- camera_angle: ${shotPlan.camera_angle || 'null'}
+- lighting: ${shotPlan.lighting || 'null'}
+- style: ${shotPlan.style || 'null'}
+Keep ONE action and 75-125 words.`
+      : 'Honor ONE action, camera-visible details, 75-125 words. Do not invent subjects or actions if absent.';
+
     const draftInstructions = {
       video: `You are a video prompt draft generator. Create a concise video prompt (75-125 words).
 
 Focus on:
-- Clear subject and primary action
+- Clear subject and primary action when present (otherwise lean on camera move + visual focus)
 - Essential visual details (lighting, camera angle)
 - Specific cinematographic style
+- Avoid negative phrasing; describe what to show
+
+${planSummary}
 
 Output ONLY the draft prompt, no explanations or meta-commentary.`,
 
@@ -477,4 +527,3 @@ Output ONLY the draft prompt, no explanations.`
 }
 
 export default PromptOptimizationService;
-

@@ -85,6 +85,18 @@ export const ModelConfig = {
     timeout: 30000,
   },
 
+  /**
+   * Shot interpretation (maps raw concept to flexible shot plan)
+   */
+  optimize_shot_interpreter: {
+    client: 'openai',
+    model: 'gpt-4o-mini',
+    temperature: 0.0, // deterministic mapping
+    maxTokens: 600,
+    timeout: 15000,
+    responseFormat: 'json_object',
+  },
+
   // ============================================================================
   // Enhancement Operations (Suggestion Generation)
   // ============================================================================
@@ -331,4 +343,3 @@ export function getModelConfig(operation) {
 export function listOperations() {
   return Object.keys(ModelConfig);
 }
-

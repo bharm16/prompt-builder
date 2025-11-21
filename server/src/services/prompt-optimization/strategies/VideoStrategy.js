@@ -20,16 +20,16 @@ export class VideoStrategy {
    * Uses StructuredOutputEnforcer to get JSON with cinematographic analysis
    * @override
    */
-  async optimize({ prompt }) {
+  async optimize({ prompt, shotPlan = null }) {
     logger.info('Optimizing prompt with video strategy (CoT + structured output)');
 
     // Generate the system prompt with Chain-of-Thought instructions
-    const systemPrompt = generateUniversalVideoPrompt(prompt);
+    const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan);
 
     // Define the expected JSON schema
     const schema = {
       type: 'object',
-      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations']
+      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations'],
     };
 
     // Get configuration
@@ -90,26 +90,26 @@ export class VideoStrategy {
 
     let output = prompt;
 
-    // Add technical specs section with merged creative and output specs
+    // Add technical specs section with merged creative and output specs (aligned with research template)
     if (technical_specs) {
       output += '\n\n**TECHNICAL SPECS**';
-      
+
+      // Output specs (generator-facing)
+      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
+      output += `\n- **Aspect Ratio:** ${technical_specs.aspect_ratio || '16:9'}`;
+      output += `\n- **Frame Rate:** ${technical_specs.frame_rate || '24fps'}`;
+      output += `\n- **Audio:** ${technical_specs.audio || 'mute'}`;
+
       // Creative specs (used in prompt generation)
-      if (technical_specs.lighting) {
-        output += `\n- **Lighting:** ${technical_specs.lighting}`;
-      }
       if (technical_specs.camera) {
         output += `\n- **Camera:** ${technical_specs.camera}`;
+      }
+      if (technical_specs.lighting) {
+        output += `\n- **Lighting:** ${technical_specs.lighting}`;
       }
       if (technical_specs.style) {
         output += `\n- **Style:** ${technical_specs.style}`;
       }
-      
-      // Output specs (used for generator settings)
-      output += `\n- **Aspect Ratio:** ${technical_specs.aspect_ratio || '16:9'}`;
-      output += `\n- **Frame Rate:** ${technical_specs.frame_rate || '24fps'}`;
-      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
-      output += `\n- **Audio:** ${technical_specs.audio || 'mute'}`;
     }
 
     // Add variations section
@@ -146,4 +146,3 @@ export class VideoStrategy {
 }
 
 export default VideoStrategy;
-
