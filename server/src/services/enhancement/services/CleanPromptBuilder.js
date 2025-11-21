@@ -15,40 +15,65 @@ export class CleanPromptBuilder {
 
     if (brainstormContext?.elements) {
       const anchors = Object.entries(brainstormContext.elements)
-        .filter(([, value]) => value)
-        .map(([key, value]) => `${key}: ${value}`)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
       if (anchors) {
-        contextParts.push(`Respect these creative choices: ${anchors}`);
+        contextParts.push(`Creative anchors: ${anchors}`);
       }
     }
 
-    if (Array.isArray(editHistory) && editHistory.length > 0) {
+    if (editHistory?.length > 0) {
       const rejected = editHistory
         .slice(-3)
-        .map((edit) => edit?.original)
+        .map((e) => e.original)
         .filter(Boolean)
         .join(', ');
       if (rejected) {
-        contextParts.push(`User already rejected: ${rejected}`);
+        contextParts.push(`Already rejected: ${rejected}`);
       }
     }
 
-    if (modelTarget === 'sora') {
-      contextParts.push('Optimize for complex motion and physics');
-    } else if (modelTarget === 'runway') {
-      contextParts.push('Optimize for visual style and aesthetics');
-    }
-
     const contextSection = contextParts.length > 0
-      ? `\n${contextParts.join('\n')}\n`
+      ? '\n' + contextParts.join('\n') + '\n'
       : '';
 
-    return `Replace "${highlightedText}" with 12 visually distinct alternatives${isVideoPrompt ? ' for video generation' : ''}.
-Context: ${contextBefore || ''} [HERE] ${contextAfter || ''}${contextSection}
-Each must create a DIFFERENT VISUAL when filmed.
-Think like a cinematographer: How would each option require different camera/lighting/framing?
-Return JSON array: [{text: "suggestion", category: "approach", explanation: "visual difference"}]`;
+    // MORE EXPLICIT prompt that ensures valid JSON and context respect
+    return `Generate 12 alternatives for "${highlightedText}" that could replace it in this exact sentence:
+
+"${contextBefore}${highlightedText}${contextAfter}"
+
+
+
+Requirements:
+
+- Each alternative must make grammatical and narrative sense when substituted
+
+- Each must create a different visual composition when filmed
+
+- Maintain the emotional tone and story purpose
+
+${contextSection}
+
+
+
+Return ONLY valid JSON array, no other text:
+
+[{"text":"alternative","category":"approach","explanation":"how it looks different"}]
+
+
+
+Example structure (use exactly this format):
+
+[
+
+  {"text":"first option","category":"category1","explanation":"visual difference"},
+
+  {"text":"second option","category":"category1","explanation":"visual difference"},
+
+  {"text":"third option","category":"category2","explanation":"visual difference"}
+
+]`;
   }
 
   buildPlaceholderPrompt = this.buildPrompt;

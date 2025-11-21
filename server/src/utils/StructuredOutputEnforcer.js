@@ -58,7 +58,18 @@ export class StructuredOutputEnforcer {
         );
 
         // Parse JSON
-        const parsedJSON = JSON.parse(cleanedText);
+        let parsedJSON;
+        try {
+          parsedJSON = JSON.parse(cleanedText);
+        } catch (parseError) {
+          // Log the actual response to debug
+          logger.error('Failed to parse JSON response', {
+            error: parseError.message,
+            cleanedResponse: cleanedText.substring(0, 200),
+            fullLength: cleanedText.length,
+          });
+          throw parseError;
+        }
 
         // Validate against schema if provided
         if (schema) {
@@ -184,24 +195,32 @@ ${example}
    * @private
    */
   static _cleanJSONResponse(text, isArray) {
-    // Remove markdown code blocks
-    let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    // Add more aggressive cleaning before parsing
+    let cleanedResponse = text
+      .replace(/```json\n?/gi, '')  // Case-insensitive markdown removal
+      .replace(/```\n?/gi, '')       // Case-insensitive markdown removal
+      .trim();
 
     // Remove common preambles
-    cleaned = cleaned.replace(
+    cleanedResponse = cleanedResponse.replace(
       /^(Here is|Here's|This is|The|Output:|Response:)\s*/i,
       ''
     );
 
-    // Trim whitespace
-    cleaned = cleaned.trim();
+    // If it starts with explanation text, find the array/object
+    const startChar = isArray ? '[' : '{';
+    if (!cleanedResponse.startsWith(startChar)) {
+      const arrayStart = cleanedResponse.indexOf(startChar);
+      if (arrayStart !== -1) {
+        cleanedResponse = cleanedResponse.substring(arrayStart);
+      }
+    }
 
     // Find the actual JSON start and end
-    const startChar = isArray ? '[' : '{';
     const endChar = isArray ? ']' : '}';
 
-    const startIndex = cleaned.indexOf(startChar);
-    const lastIndex = cleaned.lastIndexOf(endChar);
+    const startIndex = cleanedResponse.indexOf(startChar);
+    const lastIndex = cleanedResponse.lastIndexOf(endChar);
 
     if (startIndex === -1 || lastIndex === -1 || lastIndex < startIndex) {
       throw new Error(
@@ -210,9 +229,9 @@ ${example}
     }
 
     // Extract only the JSON portion
-    cleaned = cleaned.substring(startIndex, lastIndex + 1);
+    cleanedResponse = cleanedResponse.substring(startIndex, lastIndex + 1);
 
-    return cleaned;
+    return cleanedResponse;
   }
 
   /**
