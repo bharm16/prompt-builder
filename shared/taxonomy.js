@@ -3,19 +3,40 @@
  * The single source of truth for all Video Prompt Builder categories.
  * 
  * HIERARCHY PRINCIPLE:
- * 1. ENTITIES (Subject) - Have attributes (Wardrobe, Action)
- * 2. SETTING (Environment, Lighting) - Global scene context
- * 3. TECHNICAL (Camera, Style) - Production parameters
+ * 1. SHOT & CAMERA (framing + movement) - What the camera sees and how it moves
+ * 2. ENTITY & ACTION (Subject, appearance, wardrobe, emotion, action)
+ * 3. SETTING (Environment, Lighting) - Global scene context
+ * 4. STYLE & TECHNICAL (Style, Specs, Audio) - Aesthetic and delivery
  * 
  * This taxonomy structurally enforces parent-child relationships,
  * preventing "orphaned attributes" (e.g., wardrobe without subject).
  * 
- * VERSION 2.0: Namespaced IDs and camelCase consistency
- * - All IDs are namespaced: 'subject.wardrobe' instead of 'wardrobe'
- * - All attributes use camelCase: 'filmStock' instead of 'film_stock'
+ * VERSION 3.0: Universal Prompt Framework alignment (PDF)
+ * - Shot Type separated from camera ops
+ * - Action promoted to its own slot (One Clip, One Action)
+ * - Namespaced IDs preserved with camelCase attributes
  */
 
 export const TAXONOMY = {
+  // ============================================================================
+  // GROUP 0: THE SHOT (FRAMING)
+  // ============================================================================
+
+  /**
+   * SHOT - The framing and shot type (priority slot #1)
+   */
+  SHOT: {
+    id: 'shot',
+    label: 'Shot Type',
+    description: 'Framing and vantage of the camera',
+    group: 'technical',
+    color: 'teal',
+    attributes: {
+      /** Shot type / framing: "Wide shot", "Close-up", "Bird\'s eye", "Dutch angle" */
+      TYPE: 'shot.type',
+    },
+  },
+
   // ============================================================================
   // GROUP 1: THE SUBJECT (ENTITIES)
   // ============================================================================
@@ -40,12 +61,35 @@ export const TAXONOMY = {
       /** Clothing: "Leather jacket", "Space suit", "Vintage attire" */
       WARDROBE: 'subject.wardrobe',
       
-      /** Movement/Activity: "Running", "Sitting", "Leaning against wall" */
-      ACTION: 'subject.action',
+      /** Movement/Activity (maps to action slot for compatibility): "Running", "Sitting", "Leaning against wall" */
+      ACTION: 'action.movement',
       
       /** Emotional state: "Stoic expression", "Joyful demeanor" */
       EMOTION: 'subject.emotion',
     }
+  },
+
+  // ============================================================================
+  // GROUP 1B: ACTION (ONE CLIP, ONE ACTION)
+  // ============================================================================
+
+  /**
+   * ACTION - Physical action/state for the subject (priority slot #3)
+   */
+  ACTION: {
+    id: 'action',
+    label: 'Action & Motion',
+    description: 'What the subject is doing (one continuous action)',
+    group: 'entity',
+    color: 'red',
+    attributes: {
+      /** Movement / verb phrase: "running", "floating", "leaning" */
+      MOVEMENT: 'action.movement',
+      /** Static pose/state: "standing", "sitting", "kneeling" */
+      STATE: 'action.state',
+      /** Gestures/micro-actions: "raising hand", "smiling softly" */
+      GESTURE: 'action.gesture',
+    },
   },
 
   // ============================================================================
@@ -122,6 +166,9 @@ export const TAXONOMY = {
       
       /** Camera angle: "Low angle", "Overhead", "Eye level" */
       ANGLE: 'camera.angle',
+
+      /** Legacy framing alias mapped to shot.type */
+      FRAMING: 'shot.type',
     }
   },
 
@@ -213,7 +260,7 @@ Object.values(TAXONOMY).forEach(category => {
 /**
  * Taxonomy Version - Used for cache invalidation and debugging
  */
-export const TAXONOMY_VERSION = '2.0.0';
+export const TAXONOMY_VERSION = '3.0.0';
 
 /**
  * Check if a category ID is valid
@@ -242,8 +289,9 @@ export const LEGACY_ID_MAP = {
   'identity': 'subject.identity',
   'appearance': 'subject.appearance',
   'wardrobe': 'subject.wardrobe',
-  'action': 'subject.action',
+  'action': 'action.movement',
   'emotion': 'subject.emotion',
+  'subject.action': 'action.movement',
   
   // Environment attributes
   'location': 'environment.location',
@@ -261,7 +309,9 @@ export const LEGACY_ID_MAP = {
   'timeday': 'lighting.timeOfDay',
   
   // Camera attributes
-  'framing': 'camera.framing',
+  'framing': 'shot.type',
+  'camera.framing': 'shot.type',
+  'shot': 'shot.type',
   'camera_move': 'camera.movement',
   'cameraMove': 'camera.movement',
   'movement': 'camera.movement',

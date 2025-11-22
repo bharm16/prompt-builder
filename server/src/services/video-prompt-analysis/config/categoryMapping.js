@@ -6,15 +6,15 @@ import { TAXONOMY } from '#shared/taxonomy.js';
  */
 
 export const CATEGORY_PATTERNS = {
-  // ============================================================================
-  // SUBJECT GROUP (Entity)
-  // ============================================================================
-  
-  // Main subject entity
-  [TAXONOMY.SUBJECT.id]: {
-    pattern: /subject|character|figure|talent|person|performer|actor|protagonist/i,
-    role: 'subject or character detail',
-  },
+// ============================================================================
+// SUBJECT GROUP (Entity)
+// ============================================================================
+
+// Main subject entity
+[TAXONOMY.SUBJECT.id]: {
+  pattern: /subject|character|figure|talent|person|performer|actor|protagonist/i,
+  role: 'subject or character detail',
+},
 
   // Subject attributes
   [TAXONOMY.SUBJECT.attributes.APPEARANCE]: {
@@ -27,15 +27,34 @@ export const CATEGORY_PATTERNS = {
     role: 'wardrobe and costume detail',
   },
 
-  [TAXONOMY.SUBJECT.attributes.ACTION]: {
-    pattern: /action|movement|motion|activity|moving|running|walking|standing|sitting|gesture/i,
-    role: 'subject movement or activity',
-  },
+[TAXONOMY.SUBJECT.attributes.EMOTION]: {
+  pattern: /emotion|mood|expression|demeanor|countenance|feeling/i,
+  role: 'subject emotional state',
+},
 
-  [TAXONOMY.SUBJECT.attributes.EMOTION]: {
-    pattern: /emotion|mood|expression|demeanor|countenance|feeling/i,
-    role: 'subject emotional state',
-  },
+// ============================================================================
+// ACTION GROUP (One Clip, One Action)
+// ============================================================================
+
+[TAXONOMY.ACTION.id]: {
+  pattern: /action|movement|motion|activity|gesture|pose/i,
+  role: 'subject movement or activity',
+},
+
+[TAXONOMY.ACTION.attributes.MOVEMENT]: {
+  pattern: /running|walking|floating|drifting|leaping|jumping|spinning|turning|rotating|leaning|holding|lifting|gripping|pushing|pulling|gesturing|smiling|gazing/i,
+  role: 'subject movement or activity',
+},
+
+[TAXONOMY.ACTION.attributes.STATE]: {
+  pattern: /standing|sitting|kneeling|lying|crouching|perched|resting|poised/i,
+  role: 'subject static pose or state',
+},
+
+[TAXONOMY.ACTION.attributes.GESTURE]: {
+  pattern: /raising|pointing|waving|nodding|shaking head|smiling|looking/i,
+  role: 'subject gesture or micro-action',
+},
 
   // ============================================================================
   // SETTING GROUP
@@ -83,20 +102,26 @@ export const CATEGORY_PATTERNS = {
     role: 'time of day',
   },
 
-  // ============================================================================
-  // TECHNICAL GROUP
-  // ============================================================================
-  
-  // Camera
-  [TAXONOMY.CAMERA.id]: {
-    pattern: /camera|cinematography|shot/i,
-    role: 'camera description',
-  },
+// ============================================================================
+// TECHNICAL GROUP
+// ============================================================================
 
-  [TAXONOMY.CAMERA.attributes.FRAMING]: {
-    pattern: /framing|shot|close-up|wide|medium|extreme|angle|viewpoint/i,
-    role: 'camera framing',
-  },
+// Shot (framing)
+[TAXONOMY.SHOT.id]: {
+  pattern: /shot|framing|close[- ]?up|wide|medium|extreme|bird'?s eye|overhead|dutch|angle|viewpoint/i,
+  role: 'shot type or framing',
+},
+
+[TAXONOMY.SHOT.attributes.TYPE]: {
+  pattern: /shot|framing|close[- ]?up|wide|medium|extreme|bird'?s eye|overhead|dutch|angle|viewpoint/i,
+  role: 'shot type or framing',
+},
+
+// Camera
+[TAXONOMY.CAMERA.id]: {
+  pattern: /camera|cinematography|lens|focus/i,
+  role: 'camera description',
+},
 
   [TAXONOMY.CAMERA.attributes.MOVEMENT]: {
     pattern: /pan|dolly|tracking|crane|zoom|tilt|handheld|static|steadicam/i,
@@ -108,10 +133,10 @@ export const CATEGORY_PATTERNS = {
     role: 'lens specification',
   },
 
-  [TAXONOMY.CAMERA.attributes.ANGLE]: {
-    pattern: /\b(low angle|high angle|dutch angle|overhead|eye level|bird's eye)\b/i,
-    role: 'camera angle',
-  },
+[TAXONOMY.CAMERA.attributes.ANGLE]: {
+  pattern: /\b(low angle|high angle|dutch angle|overhead|eye level)\b/i,
+  role: 'camera angle',
+},
 
   // Style
   [TAXONOMY.STYLE.id]: {
@@ -187,6 +212,8 @@ export const CATEGORY_PATTERNS = {
 export const CONTEXT_PATTERNS = {
   location: /\b(location|setting|background|environment|interior|exterior|room|space|chamber|landscape|street)\b/,
   camera: /\b(camera|shot|angle|frame|lens|dolly|pan|tilt|tracking|handheld|static)\b/,
+  shot: /\b(close[- ]?up|wide|medium|extreme|bird'?s eye|overhead|dutch|angle|viewpoint|shot)\b/,
+  action: /\b(run|walk|walking|running|float|drift|jump|leap|spin|turn|lean|sit|stand|gesture|pose|smile|gaze)\b/,
   lighting: /\b(light|lighting|illuminated|glow|shadow|contrast|exposure|flare)\b/,
   character: /\bcharacter|figure|subject|person|leader|speaker|performer|actor|portrait\b/,
   style: /\bstyle|aesthetic|tone|mood|vibe|genre|inspired\b/,
@@ -197,4 +224,3 @@ export const CONTEXT_PATTERNS = {
  * Default role when no category matches
  */
 export const DEFAULT_ROLE = 'general visual detail';
-

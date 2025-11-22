@@ -4,27 +4,36 @@ Label spans for AI video prompt elements using our unified taxonomy system.
 
 ## Taxonomy Structure
 
-Our taxonomy has **7 parent categories**, each with specific attributes:
+Our taxonomy aligns to the Universal Prompt Framework with priority slots (Shot > Subject > Action > Setting > Camera Behavior > Lighting > Style > Technical > Audio).
 
 **PARENT CATEGORIES (use when general):**
+- `shot` - Framing / shot type
 - `subject` - The focal point (person, object, animal)
+- `action` - Subject action/pose (ONE action)
 - `environment` - Location and spatial context
 - `lighting` - Illumination and atmosphere
-- `camera` - Cinematography operations
+- `camera` - Camera motion, angle, lens
 - `style` - Visual treatment and aesthetic
 - `technical` - Technical specifications
 - `audio` - Sound and music elements
 
 **ATTRIBUTES (use when specific):**
-- Subject: `subject.identity`, `subject.appearance`, `subject.wardrobe`, `subject.action`, `subject.emotion`
+- Shot: `shot.type`
+- Subject: `subject.identity`, `subject.appearance`, `subject.wardrobe`, `subject.emotion`
+- Action: `action.movement`, `action.state`, `action.gesture`
 - Environment: `environment.location`, `environment.weather`, `environment.context`
 - Lighting: `lighting.source`, `lighting.quality`, `lighting.timeOfDay`
-- Camera: `camera.framing`, `camera.movement`, `camera.lens`, `camera.angle`
+- Camera: `camera.movement`, `camera.lens`, `camera.angle`
 - Style: `style.aesthetic`, `style.filmStock`
-- Technical: `technical.aspectRatio`, `technical.frameRate`, `technical.resolution`
+- Technical: `technical.aspectRatio`, `technical.frameRate`, `technical.resolution`, `technical.duration`
 - Audio: `audio.score`, `audio.soundEffect`
 
 ## Role Definitions with Detection Patterns
+
+**shot.type**: Shot type / framing and vantage
+- MUST specify: shot types, framing, or angle position
+- Examples: "wide shot", "medium shot", "close-up", "bird's eye", "dutch angle"
+- Pattern: shot/angle/framing terminology
 
 **subject** or **subject.identity**: Main person/object/character being filmed (WHO or WHAT)
 - MUST identify: person type, occupation, character, animal, or main object
@@ -36,7 +45,7 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - MUST describe: facial features, body type, physical details, expressions
 - Examples: "weathered hands", "focused expression", "athletic build", "piercing eyes", "gnarled hands", "weathered and calloused"
 - Pattern: Physical descriptors, body parts, facial features, visible traits
-- NOT: clothing (use subject.wardrobe) or held objects (part of subject.action context)
+- NOT: clothing (use subject.wardrobe) or held objects (use action.* context)
 
 **subject.wardrobe**: Clothing and costume worn by subject
 - MUST describe: garments, accessories, clothing items
@@ -44,11 +53,10 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - Pattern: Clothing nouns, garment names, worn items, accessories
 - Can include tools/objects when part of character definition
 
-**subject.action**: Subject's motion or activity (NOT camera motion)
-- MUST use: verbs describing what subject is DOING
-- Examples: "running fast", "turning pages", "looking up", "dancing slowly", "holding a vibrant brush", "walking slowly", "dip the brush"
-- Pattern: -ing verbs (present participle), action phrases with subject doing something
-- Check for: holding, gripping, walking, running, turning, reaching, standing, sitting, dancing, looking, poised
+**action.movement / action.state / action.gesture**: Subject's motion or pose (NOT camera motion)
+- MUST use: one continuous action/state; avoid sequences ("and then")
+- Examples: "running fast", "turning pages", "looking up", "floating weightlessly", "standing still", "raising a hand"
+- Pattern: -ing verbs (present participle) for movement; nouns/verbs for poses/gestures
 - NOT: camera actions like "panning", "tracking", "dollying"
 
 **subject.emotion**: Emotional state and expression
@@ -91,11 +99,14 @@ Our taxonomy has **7 parent categories**, each with specific attributes:
 - Use `camera.movement` for camera motion, `camera` for general camera references
 - NOT: subject movements like "walking" or "turning"
 
-**camera.framing**: Shot composition and camera angles
-- MUST specify: shot types, camera angles, composition
-- Examples: "Close-up", "wide shot", "medium shot", "low angle", "eye-level", "Medium shot", "Close-up"
-- Pattern: Shot type words, angle descriptions, framing terminology
-- Check for: close-up, wide, medium, angle, shot, frame
+**camera.angle**: Camera angle description
+- Examples: "low angle", "overhead", "eye level", "Dutch tilt", "slight tilt-up"
+- Pattern: Angle descriptors
+
+**shot.type**: Shot composition and vantage
+- MUST specify: shot types or framing
+- Examples: "Close-up", "wide shot", "medium shot", "bird's eye", "Dutch angle"
+- Pattern: Shot type words, framing terminology
 
 **camera.lens**: Lens specifications
 - Examples: "35mm lens", "anamorphic", "wide angle", "shallow depth of field"
@@ -202,11 +213,11 @@ Correct extraction:
 
 **CATEGORIZATION PRIORITY - CHECK IN THIS ORDER:**
 1. Check if text contains camera verbs (pan, dolly, track, zoom, crane) → `camera.movement`
-2. Check if text contains shot types (close-up, wide, medium) or angles → `camera.framing`
+2. Check if text contains shot types (close-up, wide, medium) or angles → `shot.type` (angles → `camera.angle` if explicitly angle)
 3. Check if text contains FPS numbers, resolution (4k, 8k), aspect ratios (16:9) → use appropriate `technical.*` attribute
 4. Check if text contains film stock references (35mm, 16mm) → `style.filmStock`
 5. Check if text contains time of day (golden hour, dusk, dawn) → `lighting.timeOfDay`
-6. Check if text contains -ing verbs describing subject action → `subject.action`
+6. Check if text contains -ing verbs describing subject action → `action.movement` (or `action.state`/`action.gesture`)
 7. Check if text contains clothing/garments → `subject.wardrobe`
 8. Check if text contains physical traits → `subject.appearance`
 9. Check if text contains location/place descriptions → `environment.location`
@@ -215,7 +226,7 @@ Correct extraction:
 
 **PREFER SPECIFIC ATTRIBUTES OVER PARENT CATEGORIES:**
 - Use `subject.wardrobe` instead of just `subject` for clothing
-- Use `camera.framing` instead of just `camera` for shot types
+- Use `shot.type` instead of just `camera` for shot types
 - Use `lighting.timeOfDay` instead of just `lighting` for time references
 - Use parent categories only when the attribute is unclear or general
 
@@ -252,7 +263,7 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
       "text": "Close-up",
       "start": 0,
       "end": 8,
-      "role": "camera.framing",
+      "role": "shot.type",
       "confidence": 0.95
     },
     {
@@ -280,7 +291,7 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
       "text": "holding a vibrant brush",
       "start": 58,
       "end": 81,
-      "role": "subject.action",
+      "role": "action.movement",
       "confidence": 0.88
     },
     {
