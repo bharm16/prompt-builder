@@ -58,5 +58,15 @@ export function snapSpanToTokenBoundaries(text, start, end) {
  * @returns {boolean} True if there's an overlap
  */
 export function rangeOverlaps(ranges, start, end) {
-  return ranges.some((range) => !(end <= range.start || start >= range.end));
+  if (!Array.isArray(ranges) || !ranges.length) return false;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return false;
+
+  return ranges.some((range) => {
+    if (!range || !Number.isFinite(range.start) || !Number.isFinite(range.end)) {
+      return false;
+    }
+    // Zero-width ranges are treated as non-overlapping markers
+    if (range.end <= range.start) return false;
+    return !(end <= range.start || start >= range.end);
+  });
 }

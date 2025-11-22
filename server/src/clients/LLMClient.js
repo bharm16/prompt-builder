@@ -31,52 +31,39 @@ export class ServiceUnavailableError extends Error {
 }
 
 /**
- * Generic LLM Client for OpenAI-compatible APIs
- * 
- * Works with any provider that follows the OpenAI chat completions API format:
- * - OpenAI (api.openai.com)
- * - Groq (api.groq.com/openai/v1)
- * - Together AI (api.together.xyz/v1)
- * - Any other OpenAI-compatible endpoint
- * 
- * Features:
- * - Circuit breaker pattern for resilience
- * - Optional concurrency limiting
- * - Automatic response normalization
- * - JSON mode support
- * - Streaming support
- * - Health checks
+ * Generic LLM Client powered by provider adapters
+ *
+ * The client owns cross-cutting concerns (circuit breaker, concurrency limiting,
+ * metrics) and delegates protocol-specific work to an adapter.
  */
 export class LLMClient {
-  constructor({ 
-    apiKey, 
-    baseURL,
+  constructor({
+    adapter,
     providerName,
-    defaultModel,
     defaultTimeout = 60000,
     circuitBreakerConfig = {},
     concurrencyLimiter = null,
   }) {
-    if (!apiKey) {
-      throw new Error(`API key required for ${providerName || 'LLM client'}`);
-    }
-    if (!baseURL) {
-      throw new Error(`Base URL required for ${providerName || 'LLM client'}`);
-    }
-    if (!defaultModel) {
-      throw new Error(`Default model required for ${providerName || 'LLM client'}`);
+    if (!adapter || typeof adapter.complete !== 'function') {
+      throw new Error('LLMClient requires an adapter with a complete() method');
     }
 
-    this.apiKey = apiKey;
-    this.baseURL = baseURL;
-    this.providerName = providerName || 'llm';
-    this.model = defaultModel;
-    this.defaultTimeout = defaultTimeout;
+    this.adapter = adapter;
+    this.providerName = providerName || adapter.providerName || 'llm';
+    this.defaultModel = adapter.defaultModel;
+    this.defaultTimeout = defaultTimeout || adapter.defaultTimeout || 60000;
     this.concurrencyLimiter = concurrencyLimiter;
+    this.capabilities = adapter.capabilities || {
+      streaming: typeof adapter.streamComplete === 'function',
+    };
+
+    if (!this.defaultModel) {
+      throw new Error(`Default model required for ${this.providerName} adapter`);
+    }
 
     // Merge default circuit breaker options with provider-specific config
     const breakerOptions = {
-      timeout: defaultTimeout,
+      timeout: this.defaultTimeout,
       errorThresholdPercentage: 50,
       resetTimeout: 30000,
       rollingCountTimeout: 10000,
@@ -126,11 +113,12 @@ export class LLMClient {
   async complete(systemPrompt, options = {}) {
     const startTime = Date.now();
     const endpoint = 'chat/completions';
+    const requestOptions = this._applyDefaults(options);
 
     try {
       // Execute with optional concurrency limiting
       const executeRequest = async () => {
-        return await this.breaker.fire(systemPrompt, options);
+        return await this.breaker.fire(systemPrompt, requestOptions);
       };
 
       const result = this.concurrencyLimiter
@@ -147,7 +135,7 @@ export class LLMClient {
       logger.debug(`${this.providerName} API call succeeded`, {
         endpoint,
         duration,
-        model: options.model || this.model,
+        model: requestOptions.model,
       });
 
       return result;
@@ -241,98 +229,15 @@ export class LLMClient {
    * @private
    */
   async _executeStream(systemPrompt, options, startTime) {
-    const controller = new AbortController();
-    const timeout = options.timeout || this.defaultTimeout;
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    if (!this.capabilities.streaming || typeof this.adapter.streamComplete !== 'function') {
+      throw new Error(`${this.providerName} adapter does not support streaming`);
+    }
 
     let fullText = '';
 
     try {
-      // Support full messages array or system + user pattern
-      const messages = options.messages || [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: options.userMessage || 'Please proceed.' }
-      ];
-
-      // Build request payload
-      const payload = {
-        model: options.model || this.model,
-        messages: messages,
-        max_tokens: options.maxTokens || 2048,
-        temperature: options.temperature !== undefined ? options.temperature : 0.7,
-        stream: true,
-      };
-
-      // Don't set json_object mode for arrays - Groq doesn't support it
-      if (options.jsonMode && !options.isArray) {
-        payload.response_format = { type: 'json_object' };
-      }
-
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: options.signal || controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        // Determine if error is retryable
-        const isRetryable = response.status >= 500 || response.status === 429;
-        throw new APIError(
-          `${this.providerName} API error: ${response.status} - ${errorBody}`,
-          response.status,
-          isRetryable
-        );
-      }
-
-      // Robust SSE parsing with buffer handling
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // Append to buffer (handles partial chunks)
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-
-        // Keep last line in buffer if incomplete (no trailing newline)
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          
-          // Skip empty lines and comments (keep-alive)
-          if (!trimmed || trimmed.startsWith(':')) continue;
-          
-          if (trimmed.startsWith('data: ')) {
-            const data = trimmed.slice(6);
-
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-
-              if (content) {
-                fullText += content;
-                options.onChunk(content);
-              }
-            } catch (e) {
-              // Ignore malformed chunks - don't break the stream
-              logger.debug('Skipping malformed SSE chunk', { chunk: data.substring(0, 100) });
-            }
-          }
-        }
-      }
+      const requestOptions = this._applyDefaults(options);
+      fullText = await this.adapter.streamComplete(systemPrompt, requestOptions);
 
       const duration = Date.now() - startTime;
       metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, true);
@@ -344,9 +249,8 @@ export class LLMClient {
 
       return fullText;
     } catch (error) {
-      clearTimeout(timeoutId);
-
       if (error.name === 'AbortError') {
+        const timeout = options.timeout || this.defaultTimeout;
         throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
       }
 
@@ -360,74 +264,8 @@ export class LLMClient {
    * @private
    */
   async _makeRequest(systemPrompt, options = {}) {
-    const controller = new AbortController();
-    const timeout = options.timeout || this.defaultTimeout;
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      // Support full messages array or system + user pattern
-      const messages = options.messages || [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: options.userMessage || 'Please proceed.' }
-      ];
-
-      // Build request payload
-      const payload = {
-        model: options.model || this.model,
-        messages: messages,
-        max_tokens: options.maxTokens || 2048,
-        temperature: options.temperature !== undefined ? options.temperature : 0.7,
-      };
-
-      // Don't set json_object mode for arrays - Groq doesn't support it
-      if (options.jsonMode && !options.isArray) {
-        payload.response_format = { type: 'json_object' };
-      }
-
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        // Determine if error is retryable
-        // 400/401/403 are NOT retryable, 429/5xx ARE retryable
-        const isRetryable = response.status >= 500 || response.status === 429;
-        throw new APIError(
-          `${this.providerName} API error: ${response.status} - ${errorBody}`,
-          response.status,
-          isRetryable
-        );
-      }
-
-      const data = await response.json();
-
-      // Normalize to Claude-compatible format
-      return {
-        content: [
-          {
-            text: data.choices[0]?.message?.content || ''
-          }
-        ],
-        _original: data
-      };
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
-      }
-
-      throw error;
-    }
+    const requestOptions = this._applyDefaults(options);
+    return await this.adapter.complete(systemPrompt, requestOptions);
   }
 
   /**
@@ -435,18 +273,28 @@ export class LLMClient {
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
+    const startTime = Date.now();
+
     try {
-      const startTime = Date.now();
-      await this.complete('Respond with valid JSON containing: {"status": "healthy"}', {
-        maxTokens: 50,
-        timeout: 5000,
-        jsonMode: true, // Enable JSON mode for health check
-      });
+      let result;
+
+      if (typeof this.adapter.healthCheck === 'function') {
+        result = await this.adapter.healthCheck();
+      } else {
+        await this.complete('Respond with valid JSON containing: {"status": "healthy"}', {
+          maxTokens: 50,
+          timeout: 30000,
+          jsonMode: true,
+        });
+        result = { healthy: true };
+      }
+
       const duration = Date.now() - startTime;
 
       return {
-        healthy: true,
-        responseTime: duration,
+        ...result,
+        healthy: result.healthy !== false,
+        responseTime: result.responseTime || duration,
         circuitBreakerState: this.getCircuitBreakerState(),
       };
     } catch (error) {
@@ -490,5 +338,16 @@ export class LLMClient {
   getQueueStatus() {
     return this.concurrencyLimiter ? this.concurrencyLimiter.getQueueStatus() : null;
   }
-}
 
+  /**
+   * Apply defaults to request options without mutating the original
+   * @private
+   */
+  _applyDefaults(options = {}) {
+    return {
+      ...options,
+      model: options.model || this.defaultModel,
+      timeout: options.timeout || this.defaultTimeout,
+    };
+  }
+}

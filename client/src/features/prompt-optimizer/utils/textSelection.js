@@ -44,8 +44,13 @@ export const restoreSelectionFromOffsets = (element, startOffset, endOffset) => 
     return;
   }
 
-  const selection = window.getSelection();
-  if (!selection) {
+  const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+  if (typeof getSelectionFn !== 'function') {
+    return;
+  }
+
+  const selection = getSelectionFn.call(window);
+  if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') {
     return;
   }
 
@@ -102,8 +107,12 @@ export const restoreSelectionFromOffsets = (element, startOffset, endOffset) => 
     return;
   }
 
-  selection.removeAllRanges();
-  selection.addRange(range);
+  try {
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } catch (error) {
+    console.error('Error applying selection range:', error);
+  }
 };
 
 /**
@@ -139,7 +148,9 @@ export class TextSelectionManager {
    * Gets the current selection range
    */
   getCurrentRange() {
-    const selection = window.getSelection();
+    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+    if (typeof getSelectionFn !== 'function') return null;
+    const selection = getSelectionFn.call(window);
     if (!selection || selection.rangeCount === 0) {
       return null;
     }
@@ -150,7 +161,9 @@ export class TextSelectionManager {
    * Gets the currently selected text
    */
   getSelectedText() {
-    const selection = window.getSelection();
+    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+    if (typeof getSelectionFn !== 'function') return '';
+    const selection = getSelectionFn.call(window);
     return selection ? selection.toString() : '';
   }
 
@@ -158,18 +171,21 @@ export class TextSelectionManager {
    * Clears the current selection
    */
   clearSelection() {
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-    }
+    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+    if (typeof getSelectionFn !== 'function') return;
+    const selection = getSelectionFn.call(window);
+    if (!selection || typeof selection.removeAllRanges !== 'function') return;
+    selection.removeAllRanges();
   }
 
   /**
    * Selects the contents of a specific node
    */
   selectNode(node) {
-    const selection = window.getSelection();
-    if (!selection) return;
+    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+    if (typeof getSelectionFn !== 'function') return;
+    const selection = getSelectionFn.call(window);
+    if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') return;
 
     const range = document.createRange();
     range.selectNodeContents(node);

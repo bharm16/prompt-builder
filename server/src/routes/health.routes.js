@@ -9,7 +9,7 @@ import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
  */
 export function createHealthRoutes(dependencies) {
   const router = express.Router();
-  const { claudeClient, groqClient, cacheService, metricsService } = dependencies;
+  const { claudeClient, groqClient, geminiClient, cacheService, metricsService } = dependencies;
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
@@ -29,6 +29,7 @@ export function createHealthRoutes(dependencies) {
       const cacheHealth = cacheService.isHealthy();
       const claudeStats = claudeClient.getStats();
       const groqStats = groqClient ? groqClient.getStats() : null;
+      const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
       const checks = {
         cache: cacheHealth,
@@ -44,6 +45,15 @@ export function createHealthRoutes(dependencies) {
           healthy: true, // Not required, so consider it healthy
           enabled: false,
           message: 'Groq API not configured (two-stage optimization disabled)',
+        },
+        gemini: geminiClient ? {
+          healthy: geminiStats.state === 'CLOSED',
+          circuitBreakerState: geminiStats.state,
+          enabled: true,
+        } : {
+          healthy: true,
+          enabled: false,
+          message: 'Gemini API not configured',
         },
       };
 
@@ -83,6 +93,7 @@ export function createHealthRoutes(dependencies) {
     const cacheStats = cacheService.getCacheStats();
     const claudeStats = claudeClient.getStats();
     const groqStats = groqClient ? groqClient.getStats() : null;
+    const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
     res.json({
       timestamp: new Date().toISOString(),
@@ -91,6 +102,7 @@ export function createHealthRoutes(dependencies) {
       apis: {
         openAI: claudeStats,
         groq: groqStats || { message: 'Groq API not configured' },
+        gemini: geminiStats || { message: 'Gemini API not configured' },
       },
       twoStageOptimization: {
         enabled: !!groqClient,

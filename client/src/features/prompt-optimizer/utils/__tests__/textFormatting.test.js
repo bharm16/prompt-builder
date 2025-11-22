@@ -266,7 +266,7 @@ describe('textFormatting', () => {
       // Would fail if /^>\s*/ regex is broken
       const result = formatTextToHTML('> Quoted text');
       expect(result.html).toContain('Quoted text');
-      expect(result.html).not.toContain('>');
+      expect(result.html).not.toContain('&gt;'); // blockquote marker should be removed, not encoded
     });
   });
 

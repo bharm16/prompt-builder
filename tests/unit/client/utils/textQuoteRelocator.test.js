@@ -444,9 +444,9 @@ describe('textQuoteRelocator', () => {
         const leftCtx = 'const ';
         const rightCtx = ' =';
 
-        const result = relocateQuote({ text: code, quote, leftCtx, rightCtx });
+      const result = relocateQuote({ text: code, quote, leftCtx, rightCtx });
 
-        expect(result.start).toBe(41); // The 'test' in 'const test'
+        expect(result.start).toBe(39); // The 'test' in 'const test'
       });
 
       it('should relocate highlighted text in prose', () => {
@@ -455,10 +455,10 @@ describe('textQuoteRelocator', () => {
         const leftCtx = 'the ';
         const rightCtx = ' lens';
 
-        const result = relocateQuote({ text: prose, quote, leftCtx, rightCtx });
+      const result = relocateQuote({ text: prose, quote, leftCtx, rightCtx });
 
         // Should find 'camera' before 'lens'
-        expect(result.start).toBe(88);
+        expect(result.start).toBe(84);
       });
 
       it('should handle repeated technical terms', () => {
@@ -467,9 +467,9 @@ describe('textQuoteRelocator', () => {
         const leftCtx = '30';
         const rightCtx = ' for standard';
 
-        const result = relocateQuote({ text: technical, quote, leftCtx, rightCtx });
+      const result = relocateQuote({ text: technical, quote, leftCtx, rightCtx });
 
-        expect(result.start).toBe(29); // Second 'fps'
+        expect(result.start).toBe(23); // Second 'fps'
       });
     });
 

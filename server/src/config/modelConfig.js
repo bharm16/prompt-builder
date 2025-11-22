@@ -14,7 +14,7 @@
  * Model Configuration Object
  * 
  * Each operation defines:
- * - client: Which API client to use ('openai' or 'groq')
+ * - client: Which API client to use ('openai', 'groq', or 'gemini')
  * - model: Specific model identifier
  * - temperature: Sampling temperature (0-2)
  * - maxTokens: Maximum tokens to generate

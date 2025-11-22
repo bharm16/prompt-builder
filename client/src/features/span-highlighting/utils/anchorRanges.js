@@ -82,6 +82,11 @@ export const mapGlobalRangeToDom = (root, start, end, { nodeIndex } = {}) => {
     return null;
   }
 
+  // Disallow entirely negative ranges
+  if (end <= 0) {
+    return null;
+  }
+
   const index = nodeIndex ?? buildTextNodeIndex(root);
   if (!index.nodes.length) return null;
 

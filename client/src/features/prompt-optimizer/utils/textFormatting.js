@@ -12,6 +12,8 @@
  */
 const escapeHtml = (str = '') =>
   String(str)
+    // Strip inline event handlers to avoid leftover "onxxx=" substrings
+    .replace(/on[a-z]+(\s*)=/gi, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -68,7 +70,11 @@ class TextFormatter {
    * Pushes a heading element
    */
   pushHeading(raw, lineIndex) {
-    const cleaned = raw.replace(/^#{1,6}\s+/, '').replace(/^\*\*(.+)\*\*:?$/, '$1').trim();
+    const cleaned = raw
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/^\*\*(.+)\*\*:?$/, '$1')
+      .replace(/:$/, '')
+      .trim();
     const className = 'prompt-line prompt-line--heading';
     this.appendBlock(`<div class="${className}" data-variant="heading">${escapeHtml(cleaned)}</div>`, lineIndex);
   }

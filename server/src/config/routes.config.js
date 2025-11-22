@@ -36,6 +36,7 @@ export function registerRoutes(app, container) {
   const healthRoutes = createHealthRoutes({
     claudeClient: container.resolve('claudeClient'),
     groqClient: container.resolve('groqClient'),
+    geminiClient: container.resolve('geminiClient'),
     cacheService: container.resolve('cacheService'),
     metricsService: container.resolve('metricsService'),
   });
