@@ -7,6 +7,20 @@ import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
 
 /**
+ * Lightly sanitize span text before alignment to improve hit rate on
+ * minor formatting differences (quotes, markdown emphasis, extra spaces).
+ */
+function normalizeSpanTextForLookup(value) {
+  if (typeof value !== 'string') return '';
+
+  return value
+    .replace(/[`"'“”]/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Comprehensive span validation and processing
  *
  * This is the core validation orchestrator that:
@@ -65,7 +79,25 @@ export function validateSpans({
 
     // Find correct indices in source text
     const preferredStart = Number.isInteger(span.start) ? span.start : 0;
-    const corrected = cache.findBestMatch(text, span.text, preferredStart);
+    let corrected = cache.findBestMatch(text, span.text, preferredStart);
+
+    // Retry with normalized text (remove quotes/markdown, collapse spaces) if no direct hit
+    if (!corrected) {
+      const cleanedText = normalizeSpanTextForLookup(span.text);
+      if (cleanedText && cleanedText !== span.text) {
+        corrected = cache.findBestMatch(text, cleanedText, preferredStart);
+      }
+    }
+
+    // Last-resort case-insensitive search to catch minor casing mismatches
+    if (!corrected) {
+      const loweredSource = text.toLowerCase();
+      const loweredTarget = normalizeSpanTextForLookup(span.text).toLowerCase();
+      const idx = loweredTarget ? loweredSource.indexOf(loweredTarget) : -1;
+      if (idx !== -1) {
+        corrected = { start: idx, end: idx + loweredTarget.length };
+      }
+    }
 
     if (!corrected) {
       if (!lenient) {

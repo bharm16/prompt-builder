@@ -9,7 +9,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["text", "start", "end"],
+        "required": ["text"],
         "properties": {
           "text": {
             "type": "string"

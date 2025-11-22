@@ -81,8 +81,24 @@ export function sanitizeOptions(options = {}) {
 /**
  * Build task description for LLM
  * @param {number} maxSpans - Maximum spans to identify
+ * @param {Object} policy - Validation policy
  * @returns {string} Task description
  */
-export function buildTaskDescription(maxSpans) {
-  return `Identify up to ${maxSpans} spans and assign roles.`;
+export function buildTaskDescription(maxSpans, policy = DEFAULT_POLICY) {
+  const parts = [`Identify up to ${maxSpans} spans and assign roles.`];
+
+  if (policy) {
+    parts.push(
+      policy.allowOverlap === true
+        ? 'Overlapping spans are permitted.'
+        : 'Do not return overlapping spans.'
+    );
+
+    const limit = Number(policy.nonTechnicalWordLimit);
+    if (Number.isFinite(limit) && limit > 0) {
+      parts.push(`Non-technical spans must be ${limit} words or fewer.`);
+    }
+  }
+
+  return parts.join(' ');
 }

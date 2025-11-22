@@ -2,6 +2,8 @@
 
 Label spans for AI video prompt elements using our unified taxonomy system.
 
+Return only the exact substring text for each span, its role, and confidence. **Do not calculate start/end indices**—the backend will align offsets. If unsure, keep confidence at 0.7.
+
 ## Taxonomy Structure
 
 Our taxonomy aligns to the Universal Prompt Framework with priority slots (Shot > Subject > Action > Setting > Camera Behavior > Lighting > Style > Technical > Audio).
@@ -231,10 +233,11 @@ Correct extraction:
 - Use parent categories only when the attribute is unclear or general
 
 **MANDATORY FIELDS - ALL REQUIRED OR VALIDATION FAILS:**
-1. Every span MUST include the "text" field with EXACT substring from input
+1. Every span MUST include the "text" field with EXACT substring from input (no paraphrasing)
 2. Every span MUST include "role" field with valid taxonomy ID
-3. Response MUST include "meta" object with "version" and "notes" fields
-4. Never omit ANY required field - validation will reject incomplete responses
+3. Include "confidence" (0-1, use 0.7 if unsure)
+4. Response MUST include "meta" object with "version" and "notes" fields
+5. Do NOT attempt to compute start/end indices—the service will compute offsets from the returned text
 
 CRITICAL: **ANALYZE THE ENTIRE TEXT - DO NOT SKIP SECTIONS**
 - Process EVERY section including **TECHNICAL SPECS** and **ALTERNATIVE APPROACHES**
@@ -248,8 +251,8 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
 
 - **REQUIRED: "text" field must contain exact substring (character-for-character match)**
 - Use exact substrings from text (no paraphrasing)
-- start/end = 0-based character offsets
-- No overlaps unless explicitly allowed
+- Do NOT guess or output start/end offsets—the backend computes 0-based indices from your exact substring
+- No overlaps unless explicitly allowed by policy
 - Descriptive spans ≤6 words (technical metadata like "24fps" or "16:9" can be shorter)
 - Confidence in [0,1], use 0.7 if unsure
 - Fewer meaningful spans > many trivial ones
@@ -261,85 +264,51 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
   "spans": [
     {
       "text": "Close-up",
-      "start": 0,
-      "end": 8,
       "role": "shot.type",
       "confidence": 0.95
     },
     {
       "text": "gnarled hands",
-      "start": 15,
-      "end": 28,
       "role": "subject.appearance",
       "confidence": 0.9
     },
     {
       "text": "24fps",
-      "start": 520,
-      "end": 525,
       "role": "technical.frameRate",
       "confidence": 0.95
     },
     {
-      "text": "weathered and calloused",
-      "start": 32,
-      "end": 55,
-      "role": "subject.appearance",
-      "confidence": 0.9
-    },
-    {
       "text": "holding a vibrant brush",
-      "start": 58,
-      "end": 81,
       "role": "action.movement",
       "confidence": 0.88
     },
     {
       "text": "palette of bold colors",
-      "start": 95,
-      "end": 117,
       "role": "environment.location",
       "confidence": 0.85
     },
     {
       "text": "The camera slowly pans back",
-      "start": 120,
-      "end": 147,
       "role": "camera.movement",
       "confidence": 0.92
     },
     {
       "text": "illuminated by the warm glow of a setting sun",
-      "start": 160,
-      "end": 206,
       "role": "lighting",
       "confidence": 0.9
     },
     {
       "text": "setting sun",
-      "start": 195,
-      "end": 206,
       "role": "lighting.timeOfDay",
       "confidence": 0.93
     },
     {
       "text": "reminiscent of a high-contrast urban documentary",
-      "start": 220,
-      "end": 269,
       "role": "style.aesthetic",
       "confidence": 0.88
     },
     {
-      "text": "24fps",
-      "start": 285,
-      "end": 290,
-      "role": "technical.frameRate",
-      "confidence": 0.98
-    },
-    {
       "text": "16:9",
-      "start": 305,
-      "end": 309,
       "role": "technical.aspectRatio",
       "confidence": 0.98
     }
@@ -353,7 +322,7 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
 
 **VALIDATION REQUIREMENTS - STRICTLY ENFORCED:**
 - Response MUST have TWO top-level keys: "spans" and "meta"
-- Every span MUST have: text, start, end, role, confidence
+- Every span MUST have: text, role, confidence (start/end are optional and will be computed server-side if omitted)
 - The "role" field MUST be a valid taxonomy ID (parent or attribute)
 - The "meta" object MUST have: version, notes
 - Missing ANY required field = validation error = request fails

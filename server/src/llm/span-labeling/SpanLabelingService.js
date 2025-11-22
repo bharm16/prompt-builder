@@ -176,7 +176,7 @@ async function labelSpansSingle(params, aiService) {
       templateVersion: params.templateVersion,
     });
 
-    const task = buildTaskDescription(sanitizedOptions.maxSpans);
+    const task = buildTaskDescription(sanitizedOptions.maxSpans, policy);
 
     const basePayload = {
       task,
