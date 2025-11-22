@@ -78,6 +78,7 @@ export class EnhancementService {
       promptBuild: 0,
       groqCall: 0,
       postProcessing: 0,
+      promptMode: 'pdf_router',
     };
     const startTotal = Date.now();
 
@@ -162,7 +163,7 @@ export class EnhancementService {
       if (cached) {
         metrics.cache = true;
         metrics.total = Date.now() - startTotal;
-        metrics.promptMode = 'clean';
+        metrics.promptMode = 'pdf_router';
         this._logMetrics(metrics, {
           highlightedCategory,
           isVideoPrompt,
@@ -185,15 +186,25 @@ export class EnhancementService {
       );
 
       const promptBuildStart = Date.now();
-      const systemPrompt = this.promptBuilder.buildPrompt({
+      const promptBuilderInput = {
         highlightedText,
         contextBefore,
         contextAfter,
+        fullPrompt,
         brainstormContext,
         editHistory,
         modelTarget,
         isVideoPrompt,
-      });
+        phraseRole,
+        highlightedCategory,
+        promptSection,
+        videoConstraints,
+        highlightWordCount,
+        isPlaceholder,
+      };
+      const systemPrompt = isPlaceholder
+        ? this.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
+        : this.promptBuilder.buildRewritePrompt(promptBuilderInput);
       metrics.promptBuild = Date.now() - promptBuildStart;
 
       const schema = getEnhancementSchema(isPlaceholder);
@@ -298,6 +309,7 @@ export class EnhancementService {
           fullPrompt,
           originalUserPrompt,
           isVideoPrompt,
+          isPlaceholder,
           brainstormContext,
           phraseRole,
           highlightWordCount,
@@ -305,6 +317,7 @@ export class EnhancementService {
           highlightedCategoryConfidence,
           editHistory,
           modelTarget,
+          promptSection,
         },
         aiService: this.ai,
         schema,
@@ -366,7 +379,7 @@ export class EnhancementService {
       });
 
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = 'clean';
+      metrics.promptMode = 'pdf_router';
       this._logMetrics(metrics, {
         highlightedCategory,
         isVideoPrompt,
@@ -378,7 +391,7 @@ export class EnhancementService {
       return result;
     } catch (error) {
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = 'clean';
+      metrics.promptMode = 'pdf_router';
       this._logMetrics(
         metrics,
         {
@@ -546,7 +559,7 @@ export class EnhancementService {
     if (isDev) {
       console.log('\n=== Enhancement Service Performance ===');
       console.log(`Total: ${metrics.total}ms`);
-      console.log(`Prompt Mode: ${metrics.promptMode || 'clean'}`);
+      console.log(`Prompt Mode: ${metrics.promptMode || 'pdf_router'}`);
       console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
 
       if (metrics.modelDetection > 0) {
@@ -575,7 +588,7 @@ export class EnhancementService {
         isVideo: params.isVideoPrompt,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
-        promptMode: metrics.promptMode || 'clean',
+        promptMode: metrics.promptMode || 'pdf_router',
         error: error?.message,
       });
     }
@@ -587,7 +600,7 @@ export class EnhancementService {
       isVideo: params.isVideoPrompt,
       modelTarget: params.modelTarget,
       promptSection: params.promptSection,
-      promptMode: metrics.promptMode || 'clean',
+      promptMode: metrics.promptMode || 'pdf_router',
       error: error?.message,
     });
   }

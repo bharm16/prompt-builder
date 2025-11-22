@@ -45,6 +45,14 @@ export class SuggestionValidationService {
       'suggest',
       'recommend',
     ];
+    const oneClipPatterns = [
+      /\band then\b/i,
+      /\bafter\b/i,
+      /\bbefore\b/i,
+      /\bstarts?\s+to\b/i,
+      /\bbegins?\s+to\b/i,
+      /\bnext\b/i,
+    ];
 
     suggestions.forEach((suggestion) => {
       if (!suggestion) {
@@ -82,6 +90,10 @@ export class SuggestionValidationService {
       const lowerText = text.toLowerCase();
       if (disallowedPrefixes.some((prefix) => lowerText.startsWith(prefix))) {
         return;
+      }
+
+      if (isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
+        return; // violates One Clip, One Action guidance
       }
 
       const wordCount = this.videoService.countWords(text);

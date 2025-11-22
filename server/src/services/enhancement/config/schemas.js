@@ -8,10 +8,20 @@
  * @returns {Object} Validation schema
  */
 export function getEnhancementSchema(isPlaceholder) {
+  const required = ['text', 'explanation', ...(isPlaceholder ? ['category'] : [])];
+
   return {
     type: 'array',
     items: {
-      required: ['text', 'explanation', ...(isPlaceholder ? ['category'] : [])],
+      type: 'object',
+      required,
+      properties: {
+        text: { type: 'string' },
+        category: { type: 'string' },
+        explanation: { type: 'string' },
+        slot: { type: 'string' },
+        visual_focus: { type: 'string' },
+      },
     },
   };
 }
@@ -28,4 +38,3 @@ export function getCustomSuggestionSchema() {
     },
   };
 }
-
