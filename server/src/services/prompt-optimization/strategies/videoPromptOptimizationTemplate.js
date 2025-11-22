@@ -41,12 +41,14 @@ ${interpretedPlan}
 5) Lock style/aesthetic with concrete references (film stock/genre/medium), not vague words.
 
 ## PRODUCTION ASSEMBLY (write the output)
-Write ONE paragraph (100-150 words) that strictly follows:
-**[Shot Type] → [Subject with 2-3 visible details] → [Action (one only)] → [Setting/time] → [Camera behavior] → [Lighting] → [Style]**
-- If subject/action are null, pivot to camera move + visual focus instead of inventing characters.
-- Describe only what the camera can SEE. Translate emotions into visible cues.
-- Avoid negative phrasing (“don’t show”). State what to show.
-- Keep language professional: dolly, truck, rack focus, shallow DOF, f/1.8, Rembrandt lighting.
+Write ONE paragraph (STRICT 100-150 words) that strictly follows:
+**[Shot Type] → [Subject with 2-3 visible details] → [Action (ONE ONLY)] → [Setting/time] → [Camera behavior] → [Lighting] → [Style]**
+- If subject or action is null, OMIT it. Do not invent a subject/action; lean on camera move + visual focus instead.
+- HARD RULE: ONE ACTION ONLY. If multiple actions appear, rewrite to one.
+- Describe only what the camera can SEE. Translate mood/emotion into visible cues (lighting, pose, texture, environment).
+- ABSOLUTELY NO negative phrasing (“don’t show/avoid/no people”). State what to show instead.
+- Keep language professional: dolly, truck, rack focus, shallow DOF, f/1.8, Rembrandt lighting, etc.
+- If any required component is missing from concept and shotPlan, leave it out rather than hallucinating.
 
 ## OUTPUT FORMAT (STRICT JSON)
 Return ONLY JSON (no markdown, no prose):
@@ -54,9 +56,9 @@ Return ONLY JSON (no markdown, no prose):
   "_creative_strategy": "Brief summary of the director's treatment and why these choices serve the intent",
   "shot_type": "Shot/framing chosen (e.g., 'Low-angle wide shot', 'Overhead establishing', 'Tracking pan')",
   "technical_specs": {
-    "lighting": "Precise setup with direction/quality",
-    "camera": "Camera behavior + lens (e.g., 'Handheld 35mm tracking', 'Slow dolly in on 24mm')",
-    "style": "Film stock/genre/medium reference (e.g., 'Shot on 35mm, film noir aesthetic')",
+    "lighting": "Precise setup with source, direction, quality, and color temp",
+    "camera": "Camera behavior + angle + lens/DOF (e.g., 'Handheld eye-level tracking on 35mm, shallow DOF f/1.8')",
+    "style": "Film stock/genre/medium reference (e.g., 'Shot on 35mm, film noir aesthetic', 'Pencil storyboard panel')",
     "aspect_ratio": "16:9 | 9:16 | 2.39:1 (pick best fit)",
     "frame_rate": "24fps (cinematic) or 30fps (standard)",
     "duration": "4-8s",
@@ -64,8 +66,8 @@ Return ONLY JSON (no markdown, no prose):
   },
   "prompt": "Main paragraph, 100-150 words, following the exact structure above and honoring any null fields by omitting them",
   "variations": [
-    {"label": "Alternative Camera", "prompt": "40-50 words, same concept, different camera angle/move"},
-    {"label": "Alternative Lighting", "prompt": "40-50 words, same concept, different lighting/mood"}
+    {"label": "Alternative Camera", "prompt": "40-50 words, same concept, different camera angle/move; keep core identifiers"},
+    {"label": "Alternative Lighting", "prompt": "40-50 words, same concept, different lighting/mood; keep core identifiers"}
   ],
   "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : 'null'}
 }
