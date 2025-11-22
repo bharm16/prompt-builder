@@ -300,7 +300,11 @@ export const ModelConfig = {
     maxTokens: 4096, // Larger for detailed span data
     timeout: 30000,
     responseFormat: 'json_object', // Requires JSON for span offsets/labels
-    fallbackTo: 'openai',
+    fallbackTo: 'gemini',
+    fallbackConfig: {
+      model: 'gemini-2.5-flash',
+      timeout: 45000,  // Gemini needs more time than Groq but less than OpenAI
+    }
   },
 
   /**
