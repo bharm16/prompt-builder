@@ -1,12 +1,17 @@
 import express from 'express';
 import { logger } from '../infrastructure/Logger.js';
 import { LLMJudgeService } from '../services/quality-feedback/services/LLMJudgeService.js';
-import { aiModelService } from '../services/ai-model/AIModelService.js';
 
-const router = express.Router();
+/**
+ * Create suggestions route with dependency injection
+ * @param {Object} aiService - AI Model Service instance
+ * @returns {Router} Express router
+ */
+export function createSuggestionsRoute(aiService) {
+  const router = express.Router();
 
-// Initialize LLM Judge Service
-const llmJudge = new LLMJudgeService(aiModelService);
+  // Initialize LLM Judge Service
+  const llmJudge = new LLMJudgeService(aiService);
 
 /**
  * POST /api/suggestions/evaluate
@@ -266,5 +271,6 @@ router.get('/rubrics', (req, res) => {
   });
 });
 
-export default router;
+  return router;
+}
 
