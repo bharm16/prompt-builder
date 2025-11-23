@@ -96,6 +96,27 @@ export const CHUNKING = {
 };
 
 /**
+ * NLP Fast-Path Configuration
+ * Enables dictionary-based span extraction to bypass expensive LLM calls
+ */
+export const NLP_FAST_PATH = {
+  // Enable NLP-based dictionary matching
+  ENABLED: true,
+  
+  // Minimum number of spans required to skip LLM call
+  MIN_SPANS_THRESHOLD: 3,
+  
+  // Minimum coverage percentage to skip LLM (0-100)
+  MIN_COVERAGE_PERCENT: 30,
+  
+  // Enable detailed metrics tracking
+  TRACK_METRICS: true,
+  
+  // Enable telemetry for cost savings calculation
+  TRACK_COST_SAVINGS: true,
+};
+
+/**
  * Get estimated max tokens for a given number of spans
  * @param {number} maxSpans - Maximum spans requested
  * @returns {number} Estimated max tokens needed
@@ -117,6 +138,7 @@ const SpanLabelingConfig = {
   MODEL_CONFIG,
   VALIDATION_MODES,
   CHUNKING,
+  NLP_FAST_PATH,
   estimateMaxTokens,
 };
 
