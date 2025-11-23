@@ -53,6 +53,8 @@ export function parseJson(raw) {
  *
  * Constructs a JSON payload with task, policy, text, and optional validation feedback.
  * Used for both initial labeling and repair attempts.
+ * 
+ * SECURITY (PDF Section 1.6): Wraps user text in XML tags to prevent prompt injection
  *
  * @param {Object} params
  * @param {string} params.task - Task description
@@ -66,7 +68,8 @@ export function buildUserPayload({ task, policy, text, templateVersion, validati
   const payload = {
     task,
     policy,
-    text,
+    // Wrap user input in XML tags for adversarial safety (PDF Design A, Section 1.6)
+    text: `<user_input>\n${text}\n</user_input>`,
     templateVersion,
   };
 

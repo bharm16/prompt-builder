@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "name": "Technical Prompts - Golden Set",
+    "description": "Director's Lexicon heavy prompts (20% of golden set)",
+    "category": "technical",
+    "version": "1.0.0",
+    "created": "2025-11-23"
+  },
+  "prompts": [
+    {
+      "id": "tech-001",
+      "text": "The camera dollies back as the astronaut floats weightlessly through the ISS corridor. 35mm anamorphic, golden hour lighting.",
+      "groundTruth": {
+        "spans": [
+          { "text": "camera dollies back", "start": 4, "end": 23, "role": "camera.movement" },
+          { "text": "astronaut", "start": 31, "end": 40, "role": "subject.identity" },
+          { "text": "floats weightlessly", "start": 41, "end": 60, "role": "action.movement" },
+          { "text": "ISS corridor", "start": 73, "end": 85, "role": "environment.location" },
+          { "text": "35mm anamorphic", "start": 87, "end": 102, "role": "style.filmStock" },
+          { "text": "golden hour", "start": 104, "end": 115, "role": "lighting.timeOfDay" }
+        ]
+      }
+    },
+    {
+      "id": "tech-002",
+      "text": "Wide shot of a chef pans vegetables in a hot pan. Camera pans left following the motion. 16mm Kodak Portra.",
+      "groundTruth": {
+        "spans": [
+          { "text": "Wide shot", "start": 0, "end": 9, "role": "shot.type" },
+          { "text": "chef", "start": 15, "end": 19, "role": "subject.identity" },
+          { "text": "pans vegetables", "start": 20, "end": 35, "role": "action.movement" },
+          { "text": "hot pan", "start": 41, "end": 48, "role": "environment.context" },
+          { "text": "Camera pans left", "start": 50, "end": 66, "role": "camera.movement" },
+          { "text": "16mm Kodak Portra", "start": 90, "end": 107, "role": "style.filmStock" }
+        ]
+      }
+    },
+    {
+      "id": "tech-003",
+      "text": "Tracking shot: camera trucks laterally alongside a cyclist. Chiaroscuro lighting creates dramatic shadows. Low key.",
+      "groundTruth": {
+        "spans": [
+          { "text": "Tracking shot", "start": 0, "end": 13, "role": "camera.movement" },
+          { "text": "camera trucks laterally", "start": 15, "end": 38, "role": "camera.movement" },
+          { "text": "cyclist", "start": 51, "end": 58, "role": "subject.identity" },
+          { "text": "Chiaroscuro lighting", "start": 60, "end": 80, "role": "lighting.quality" },
+          { "text": "dramatic shadows", "start": 89, "end": 105, "role": "lighting.quality" },
+          { "text": "Low key", "start": 107, "end": 114, "role": "lighting.quality" }
+        ]
+      }
+    },
+    {
+      "id": "tech-004",
+      "text": "The camera cranes up revealing the cityscape. Rembrandt lighting on subject's face. Zoom into close-up.",
+      "groundTruth": {
+        "spans": [
+          { "text": "camera cranes up", "start": 4, "end": 20, "role": "camera.movement" },
+          { "text": "cityscape", "start": 35, "end": 44, "role": "environment.location" },
+          { "text": "Rembrandt lighting", "start": 46, "end": 64, "role": "lighting.quality" },
+          { "text": "subject's face", "start": 68, "end": 82, "role": "subject.appearance" },
+          { "text": "Zoom into close-up", "start": 84, "end": 102, "role": "camera.movement" }
+        ]
+      }
+    },
+    {
+      "id": "tech-005",
+      "text": "Rack focus from foreground object to subject. Practical lights visible in frame. High key lighting, shallow depth of field.",
+      "groundTruth": {
+        "spans": [
+          { "text": "Rack focus", "start": 0, "end": 10, "role": "camera.lens" },
+          { "text": "Practical lights", "start": 47, "end": 63, "role": "lighting.source" },
+          { "text": "High key lighting", "start": 82, "end": 99, "role": "lighting.quality" },
+          { "text": "shallow depth of field", "start": 101, "end": 123, "role": "camera.lens" }
+        ]
+      }
+    }
+  ]
+}
+

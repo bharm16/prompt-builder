@@ -4,33 +4,47 @@
   "additionalProperties": false,
   "required": ["spans", "meta"],
   "properties": {
+    "isAdversarial": {
+      "type": "boolean",
+      "description": "Flag set to true when the input attempts prompt injection or instruction override",
+      "default": false
+    },
+    "is_adversarial": {
+      "type": "boolean",
+      "description": "Snake_case alias for the adversarial flag (for LLM compatibility)",
+      "default": false
+    },
     "spans": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["text"],
+        "required": ["text", "role"],
         "properties": {
           "text": {
-            "type": "string"
+            "type": "string",
+            "description": "Exact substring from user input (character-for-character match)"
           },
           "start": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Optional - computed server-side if omitted"
           },
           "end": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Optional - computed server-side if omitted"
           },
           "role": {
             "type": "string",
-            "default": "Descriptive"
+            "description": "Valid taxonomy ID (parent or attribute)"
           },
           "confidence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "default": 0.7
+            "default": 0.7,
+            "description": "Confidence score (0-1)"
           }
         }
       }
@@ -41,10 +55,12 @@
       "required": ["version", "notes"],
       "properties": {
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "Template version identifier"
         },
         "notes": {
-          "type": "string"
+          "type": "string",
+          "description": "Processing notes or metadata"
         }
       }
     }

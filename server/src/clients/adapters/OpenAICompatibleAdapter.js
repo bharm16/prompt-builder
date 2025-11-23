@@ -44,8 +44,12 @@ export class OpenAICompatibleAdapter {
         temperature: options.temperature !== undefined ? options.temperature : 0.7,
       };
 
-      // Don't set json_object mode for arrays - some providers don't support it
-      if (options.jsonMode && !options.isArray) {
+      // PDF Design C: Grammar-constrained decoding with structured outputs
+      // If responseFormat is provided (e.g., json_schema), use it directly
+      // Otherwise fall back to basic json_object mode if jsonMode is true
+      if (options.responseFormat) {
+        payload.response_format = options.responseFormat;
+      } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
       }
 
@@ -99,7 +103,11 @@ export class OpenAICompatibleAdapter {
         stream: true,
       };
 
-      if (options.jsonMode && !options.isArray) {
+      // PDF Design C: Grammar-constrained decoding with structured outputs
+      // Note: Streaming with json_schema may not be supported by all providers
+      if (options.responseFormat) {
+        payload.response_format = options.responseFormat;
+      } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
       }
 

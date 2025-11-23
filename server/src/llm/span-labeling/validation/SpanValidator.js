@@ -58,6 +58,7 @@ export function validateSpans({
   options,
   attempt = 1,
   cache,
+  isAdversarial = false,
 }) {
   const errors = [];
   const validationNotes = [];
@@ -193,6 +194,7 @@ export function validateSpans({
   const combinedNotes = [
     ...(Array.isArray(meta?.notes) ? meta.notes : []),
     ...(typeof meta?.notes === 'string' && meta.notes ? [meta.notes] : []),
+    ...(isAdversarial ? ['input flagged as adversarial'] : []),
     ...validationNotes,
     ...autoFixNotes,
     ...dedupeNotes,
@@ -213,6 +215,7 @@ export function validateSpans({
             : options.templateVersion,
         notes: combinedNotes.join(' | '),
       },
+      isAdversarial: Boolean(isAdversarial),
     },
   };
 }

@@ -74,6 +74,7 @@ export class AIModelService {
    * @param {number} [params.maxTokens] - Override config maxTokens
    * @param {number} [params.timeout] - Override config timeout
    * @param {boolean} [params.jsonMode] - Override config JSON mode
+   * @param {Object} [params.responseFormat] - PDF Design C: Structured outputs schema
    * @param {AbortSignal} [params.signal] - Abort signal for cancellation
    * @param {boolean} [params.priority] - Priority flag for queue management
    * @returns {Promise<Object>} LLM response in normalized format
@@ -83,6 +84,13 @@ export class AIModelService {
    *   systemPrompt: 'You are a helpful assistant',
    *   userMessage: 'Optimize this prompt...',
    *   temperature: 0.8
+   * });
+   * 
+   * @example PDF Design C: Grammar-constrained decoding
+   * const response = await aiService.execute('span_labeling', {
+   *   systemPrompt: '...',
+   *   userMessage: '...',
+   *   responseFormat: { type: 'json_schema', json_schema: {...} }
    * });
    */
   async execute(operation, params = {}) {
@@ -96,8 +104,10 @@ export class AIModelService {
       temperature: params.temperature !== undefined ? params.temperature : config.temperature,
       maxTokens: params.maxTokens || config.maxTokens,
       timeout: params.timeout || config.timeout,
-      // Pass jsonMode from config (critical fix!)
-      jsonMode: config.responseFormat === 'json_object' || params.jsonMode,
+      // PDF Design C: Support structured outputs (response_format with json_schema)
+      // If params.responseFormat is provided, use it; otherwise fall back to config
+      jsonMode: params.responseFormat ? false : (config.responseFormat === 'json_object' || params.jsonMode),
+      responseFormat: params.responseFormat || (config.responseFormat === 'json_object' ? { type: 'json_object' } : undefined),
     };
 
     try {

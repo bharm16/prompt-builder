@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "name": "Edge Cases - Golden Set",
+    "description": "Large texts, multi-byte characters, structured sections (15% of golden set)",
+    "category": "edge_cases",
+    "version": "1.0.0",
+    "created": "2025-11-23"
+  },
+  "prompts": [
+    {
+      "id": "edge-001",
+      "text": "**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Natural ambience",
+      "groundTruth": {
+        "spans": [
+          { "text": "4-8s", "start": 36, "end": 40, "role": "technical.duration" },
+          { "text": "16:9", "start": 62, "end": 66, "role": "technical.aspectRatio" },
+          { "text": "24fps", "start": 86, "end": 91, "role": "technical.frameRate" },
+          { "text": "Natural ambience", "start": 105, "end": 121, "role": "audio.score" }
+        ]
+      },
+      "notes": "Structured metadata extraction test"
+    },
+    {
+      "id": "edge-002",
+      "text": "Un niño corriendo en la playa con una cometa 🪁 al atardecer 🌅 con música alegre 🎵",
+      "groundTruth": {
+        "spans": [
+          { "text": "niño", "start": 3, "end": 7, "role": "subject.identity" },
+          { "text": "corriendo", "start": 8, "end": 17, "role": "action.movement" },
+          { "text": "la playa", "start": 21, "end": 29, "role": "environment.location" },
+          { "text": "cometa", "start": 39, "end": 45, "role": "subject.wardrobe" },
+          { "text": "al atardecer", "start": 50, "end": 62, "role": "lighting.timeOfDay" },
+          { "text": "música alegre", "start": 72, "end": 85, "role": "audio.score" }
+        ]
+      },
+      "notes": "Multi-byte characters (Spanish + emojis) unicode test"
+    },
+    {
+      "id": "edge-003",
+      "text": "日本の庭園で着物を着た女性が桜の木の下で立っている。カメラはゆっくりと左にパンする。ソフトな自然光。",
+      "groundTruth": {
+        "spans": [
+          { "text": "日本の庭園", "start": 0, "end": 5, "role": "environment.location" },
+          { "text": "着物", "start": 6, "end": 8, "role": "subject.wardrobe" },
+          { "text": "女性", "start": 11, "end": 13, "role": "subject.identity" },
+          { "text": "桜の木の下", "start": 14, "end": 19, "role": "environment.location" },
+          { "text": "立っている", "start": 20, "end": 25, "role": "action.state" },
+          { "text": "カメラはゆっくりと左にパンする", "start": 27, "end": 43, "role": "camera.movement" },
+          { "text": "ソフトな自然光", "start": 45, "end": 52, "role": "lighting.quality" }
+        ]
+      },
+      "notes": "Japanese multi-byte characters (CJK) unicode test"
+    },
+    {
+      "id": "edge-004",
+      "text": "A cowboy in a red trench coat and fedora standing in a dusty saloon. Wide shot. The camera slowly pans back revealing the full room with its weathered bar, vintage poker table, faded wallpaper, flickering oil lamps, and crowd of patrons in period clothing. Warm, amber lighting from the setting sun filters through dirty windows creating long shadows across the wooden floor. Rembrandt lighting on the cowboy's weathered face shows deep lines and a stoic expression. 35mm film. Aspect ratio 2.39:1. 24fps. Natural ambience with emphasis on creaking floorboards and distant saloon piano.",
+      "groundTruth": {
+        "spans": [
+          { "text": "cowboy", "start": 2, "end": 8, "role": "subject.identity" },
+          { "text": "red trench coat", "start": 14, "end": 29, "role": "subject.wardrobe" },
+          { "text": "fedora", "start": 34, "end": 40, "role": "subject.wardrobe" },
+          { "text": "standing", "start": 41, "end": 49, "role": "action.state" },
+          { "text": "dusty saloon", "start": 55, "end": 67, "role": "environment.location" },
+          { "text": "Wide shot", "start": 69, "end": 78, "role": "shot.type" },
+          { "text": "camera slowly pans back", "start": 84, "end": 107, "role": "camera.movement" },
+          { "text": "weathered bar", "start": 137, "end": 150, "role": "environment.context" },
+          { "text": "vintage poker table", "start": 152, "end": 171, "role": "environment.context" },
+          { "text": "Warm, amber lighting", "start": 259, "end": 279, "role": "lighting.quality" },
+          { "text": "setting sun", "start": 289, "end": 300, "role": "lighting.timeOfDay" },
+          { "text": "Rembrandt lighting", "start": 380, "end": 398, "role": "lighting.quality" },
+          { "text": "weathered face", "start": 417, "end": 431, "role": "subject.appearance" },
+          { "text": "stoic expression", "start": 452, "end": 468, "role": "subject.emotion" },
+          { "text": "35mm film", "start": 470, "end": 479, "role": "style.filmStock" },
+          { "text": "2.39:1", "start": 494, "end": 500, "role": "technical.aspectRatio" },
+          { "text": "24fps", "start": 502, "end": 507, "role": "technical.frameRate" },
+          { "text": "Natural ambience with emphasis on creaking floorboards and distant saloon piano", "start": 509, "end": 588, "role": "audio.score" }
+        ]
+      },
+      "notes": "Large complex prompt with >60 potential spans"
+    }
+  ]
+}
+

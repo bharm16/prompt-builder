@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "name": "Core Prompts - Golden Set",
+    "description": "Standard Subject + Action + Setting prompts (50% of golden set)",
+    "category": "core",
+    "version": "1.0.0",
+    "created": "2025-11-23"
+  },
+  "prompts": [
+    {
+      "id": "core-001",
+      "text": "A young painter in a worn apron stands before a canvas in a sunlit studio, carefully blending colors with a vibrant brush.",
+      "groundTruth": {
+        "spans": [
+          { "text": "young painter", "start": 2, "end": 15, "role": "subject.identity" },
+          { "text": "worn apron", "start": 21, "end": 31, "role": "subject.wardrobe" },
+          { "text": "stands before a canvas", "start": 32, "end": 54, "role": "action.state" },
+          { "text": "sunlit studio", "start": 60, "end": 73, "role": "environment.location" },
+          { "text": "carefully blending colors", "start": 75, "end": 100, "role": "action.movement" },
+          { "text": "vibrant brush", "start": 108, "end": 121, "role": "subject.wardrobe" }
+        ]
+      }
+    },
+    {
+      "id": "core-002",
+      "text": "An elderly historian with weathered hands turning pages of an ancient manuscript in a dimly lit library.",
+      "groundTruth": {
+        "spans": [
+          { "text": "elderly historian", "start": 3, "end": 20, "role": "subject.identity" },
+          { "text": "weathered hands", "start": 26, "end": 41, "role": "subject.appearance" },
+          { "text": "turning pages", "start": 42, "end": 55, "role": "action.movement" },
+          { "text": "ancient manuscript", "start": 62, "end": 80, "role": "environment.context" },
+          { "text": "dimly lit library", "start": 86, "end": 103, "role": "environment.location" }
+        ]
+      }
+    },
+    {
+      "id": "core-003",
+      "text": "A Siberian husky running through fresh snow in a foggy forest at dawn, breath visible in cold air.",
+      "groundTruth": {
+        "spans": [
+          { "text": "Siberian husky", "start": 2, "end": 16, "role": "subject.identity" },
+          { "text": "running through fresh snow", "start": 17, "end": 43, "role": "action.movement" },
+          { "text": "foggy forest", "start": 49, "end": 61, "role": "environment.location" },
+          { "text": "foggy", "start": 49, "end": 54, "role": "environment.weather" },
+          { "text": "at dawn", "start": 62, "end": 69, "role": "lighting.timeOfDay" }
+        ]
+      }
+    },
+    {
+      "id": "core-004",
+      "text": "Close-up of gnarled hands holding a vintage compass, illuminated by warm candlelight.",
+      "groundTruth": {
+        "spans": [
+          { "text": "Close-up", "start": 0, "end": 8, "role": "shot.type" },
+          { "text": "gnarled hands", "start": 12, "end": 25, "role": "subject.appearance" },
+          { "text": "holding a vintage compass", "start": 26, "end": 51, "role": "action.state" },
+          { "text": "illuminated by warm candlelight", "start": 53, "end": 84, "role": "lighting" },
+          { "text": "candlelight", "start": 73, "end": 84, "role": "lighting.source" }
+        ]
+      }
+    },
+    {
+      "id": "core-005",
+      "text": "A man in a leather jacket leaning against a graffiti-covered wall in a gritty alleyway, rain falling.",
+      "groundTruth": {
+        "spans": [
+          { "text": "man", "start": 2, "end": 5, "role": "subject.identity" },
+          { "text": "leather jacket", "start": 11, "end": 25, "role": "subject.wardrobe" },
+          { "text": "leaning against a graffiti-covered wall", "start": 26, "end": 65, "role": "action.state" },
+          { "text": "gritty alleyway", "start": 71, "end": 86, "role": "environment.location" },
+          { "text": "rain falling", "start": 88, "end": 100, "role": "environment.weather" }
+        ]
+      }
+    }
+  ]
+}
+

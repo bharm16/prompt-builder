@@ -10,6 +10,7 @@ import { validateSchemaOrThrow } from './validation/SchemaValidator.js';
 import { validateSpans } from './validation/SpanValidator.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
+import { SemanticRouter } from './routing/SemanticRouter.js';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -21,10 +22,15 @@ import { TextChunker, countWords } from './utils/chunkingUtils.js';
  * - Cache: Performance-optimized substring position caching
  * - Validation: Schema and span validation
  * - Processing: Pipeline of span transformations (dedupe, overlap, filter, truncate)
+ * - Router: Context-aware few-shot example injection (PDF Design B)
  * 
  * DYNAMIC TAXONOMY GENERATION:
  * The system prompt is now generated from taxonomy.js at runtime to prevent drift.
  * Changes to the taxonomy automatically propagate to the LLM's instructions.
+ * 
+ * PDF DESIGN B INTEGRATION:
+ * SemanticRouter analyzes input characteristics and injects targeted few-shot examples
+ * to improve accuracy on technical terminology and ambiguous terms.
  */
 
 // Load detection patterns and rules from template file
@@ -32,6 +38,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const promptTemplatePath = join(__dirname, 'templates', 'span-labeling-prompt.md');
 const PROMPT_TEMPLATE = readFileSync(promptTemplatePath, 'utf-8');
+
+/**
+ * Wrap user input in XML tags for adversarial safety (PDF Section 1.6)
+ * This creates a clear boundary between system instructions and user data
+ */
+function wrapUserInput(text) {
+  return `<user_input>\n${text}\n</user_input>`;
+}
 
 /**
  * Extract the detection patterns section from the template
@@ -56,8 +70,10 @@ function extractRulesSection(template) {
 /**
  * Build system prompt dynamically from taxonomy.js
  * Generates the taxonomy structure section while preserving detection patterns from template
+ * 
+ * PDF Design B: Optionally injects context-aware few-shot examples via SemanticRouter
  */
-function buildSystemPrompt() {
+function buildSystemPrompt(text = '', useRouter = true) {
   // Generate taxonomy structure from shared/taxonomy.js
   const parentCategories = Object.values(TAXONOMY)
     .map(cat => `- \`${cat.id}\` - ${cat.description}`)
@@ -79,7 +95,7 @@ function buildSystemPrompt() {
   const rulesSection = extractRulesSection(PROMPT_TEMPLATE);
 
   // Build complete system prompt
-  return `# Span Labeling System Prompt
+  let systemPrompt = `# Span Labeling System Prompt
 
 Label spans for AI video prompt elements using our unified taxonomy system.
 
@@ -99,10 +115,21 @@ ${detectionPatterns}
 
 ${rulesSection}
 `.trim();
+
+  // PDF Design B: Inject context-aware few-shot examples if enabled
+  if (useRouter && text) {
+    const router = new SemanticRouter();
+    const examples = router.formatExamplesForPrompt(text);
+    if (examples) {
+      systemPrompt += examples;
+    }
+  }
+
+  return systemPrompt;
 }
 
-// Generate system prompt at service initialization
-const BASE_SYSTEM_PROMPT = buildSystemPrompt();
+// Generate base system prompt at service initialization (without context-specific examples)
+const BASE_SYSTEM_PROMPT = buildSystemPrompt('', false);
 
 /**
  * Call LLM with system prompt and user payload using AIModelService
@@ -113,6 +140,7 @@ async function callModel({ systemPrompt, userPayload, aiService, maxTokens }) {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
+    jsonMode: true, // Enforce structured output per PDF guidance
     // temperature is configured in modelConfig.js
   });
   
@@ -176,6 +204,10 @@ async function labelSpansSingle(params, aiService) {
       templateVersion: params.templateVersion,
     });
 
+    const estimatedMaxTokens = SpanLabelingConfig.estimateMaxTokens(
+      sanitizedOptions.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
+    );
+
     const task = buildTaskDescription(sanitizedOptions.maxSpans, policy);
 
     const basePayload = {
@@ -185,11 +217,15 @@ async function labelSpansSingle(params, aiService) {
       templateVersion: sanitizedOptions.templateVersion,
     };
 
+    // PDF Design B: Use context-aware system prompt with semantic routing
+    const contextAwareSystemPrompt = buildSystemPrompt(params.text, true);
+
     // Primary LLM call
     const primaryResponse = await callModel({
-      systemPrompt: BASE_SYSTEM_PROMPT,
+      systemPrompt: contextAwareSystemPrompt,
       userPayload: buildUserPayload(basePayload),
       aiService,
+      maxTokens: estimatedMaxTokens,
     });
 
     const parsedPrimary = parseJson(primaryResponse);
@@ -220,6 +256,26 @@ async function labelSpansSingle(params, aiService) {
     // Validate schema (should pass now with defensive meta injection)
     validateSchemaOrThrow(parsedPrimary.value);
 
+    const isAdversarial =
+      parsedPrimary.value?.isAdversarial === true ||
+      parsedPrimary.value?.is_adversarial === true;
+
+    if (isAdversarial) {
+      // Immediately exit with an empty set while preserving the adversarial flag
+      const validation = validateSpans({
+        spans: [],
+        meta: parsedPrimary.value.meta,
+        text: params.text,
+        policy,
+        options: sanitizedOptions,
+        attempt: 1,
+        cache,
+        isAdversarial: true,
+      });
+
+      return validation.result;
+    }
+
     // Validate spans (strict mode)
     let validation = validateSpans({
       spans: parsedPrimary.value.spans || [],
@@ -229,6 +285,7 @@ async function labelSpansSingle(params, aiService) {
       options: sanitizedOptions,
       attempt: 1,
       cache,
+      isAdversarial,
     });
 
     if (validation.ok) {
@@ -248,6 +305,7 @@ async function labelSpansSingle(params, aiService) {
         options: sanitizedOptions,
         attempt: 2, // Lenient mode
         cache,
+        isAdversarial,
       });
 
       return validation.result;
@@ -271,6 +329,7 @@ async function labelSpansSingle(params, aiService) {
 If validation feedback is provided, correct the issues without altering span text.`,
       userPayload: buildUserPayload(repairPayload),
       aiService,
+      maxTokens: estimatedMaxTokens,
     });
 
     const parsedRepair = parseJson(repairResponse);
@@ -290,6 +349,9 @@ If validation feedback is provided, correct the issues without altering span tex
       options: sanitizedOptions,
       attempt: 2,
       cache,
+      isAdversarial:
+        parsedRepair.value?.isAdversarial === true ||
+        parsedRepair.value?.is_adversarial === true,
     });
 
     if (!validation.ok) {
@@ -329,6 +391,7 @@ async function labelSpansChunked(params, aiService) {
         spans: result.spans || [],
         chunkOffset: chunk.startOffset,
         meta: result.meta,
+        isAdversarial: result.isAdversarial === true,
       };
     } catch (error) {
       console.error(`[SpanLabeling] Error processing chunk at offset ${chunk.startOffset}:`, error.message);
@@ -337,6 +400,7 @@ async function labelSpansChunked(params, aiService) {
         spans: [],
         chunkOffset: chunk.startOffset,
         meta: null,
+        isAdversarial: false,
       };
     }
   };
@@ -363,16 +427,16 @@ async function labelSpansChunked(params, aiService) {
   }
   
   // Merge spans from all chunks
-  const mergedSpans = chunker.mergeChunkedSpans(chunkResults);
-  
-  // Collect metadata from successful chunks
-  const successfulMetas = chunkResults
-    .map(r => r.meta)
-    .filter(m => m !== null);
-  
+  let mergedSpans = chunker.mergeChunkedSpans(chunkResults);
+  const isAdversarial = chunkResults.some(r => r.isAdversarial);
+
+  if (isAdversarial) {
+    mergedSpans = [];
+  }
+
   const combinedMeta = {
     version: params.templateVersion || 'v1',
-    notes: `Processed ${chunks.length} chunks, ${mergedSpans.length} total spans`,
+    notes: `Processed ${chunks.length} chunks, ${mergedSpans.length} total spans${isAdversarial ? ' | adversarial input flagged' : ''}`,
     chunked: true,
     chunkCount: chunks.length,
     totalWords: wordCount,
@@ -383,5 +447,6 @@ async function labelSpansChunked(params, aiService) {
   return {
     spans: mergedSpans,
     meta: combinedMeta,
+    isAdversarial,
   };
 }
