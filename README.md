@@ -799,6 +799,78 @@ Classify text spans by semantic role (subject, action, location, etc.).
 }
 ```
 
+#### POST /api/role-classify
+
+Classify highlighted text into taxonomy roles.
+
+**Request:**
+```json
+{
+  "text": "camera pans left",
+  "availableRoles": ["camera.movement", "action.movement"]
+}
+```
+
+**Response:**
+```json
+{
+  "role": "camera.movement",
+  "confidence": 0.92,
+  "reasoning": "Agent is 'camera' performing movement"
+}
+```
+
+#### POST /api/suggestions/evaluate
+
+**NEW**: LLM-as-a-Judge quality evaluation for suggestions (optional, for power users).
+
+Evaluates suggestion quality using research-backed rubrics. Useful for A/B testing, quality assurance, and benchmarking.
+
+**Request:**
+```json
+{
+  "suggestions": [
+    { "text": "Wide shot, 35mm anamorphic lens" },
+    { "text": "Close-up with shallow depth of field" }
+  ],
+  "context": {
+    "highlightedText": "camera shot",
+    "fullPrompt": "A cinematic scene...",
+    "isVideoPrompt": true
+  },
+  "rubric": "video"
+}
+```
+
+**Response:**
+```json
+{
+  "evaluation": {
+    "overallScore": 85,
+    "rubricScores": {
+      "cinematicQuality": 5,
+      "visualGrounding": 4,
+      "safety": 5,
+      "diversity": 3
+    },
+    "feedback": ["Good technical terminology"],
+    "strengths": ["Strong use of Director's Lexicon"],
+    "weaknesses": ["Limited diversity in shot types"],
+    "metadata": {
+      "rubricUsed": "video_prompt_evaluation",
+      "evaluationTime": 1250
+    }
+  }
+}
+```
+
+**Additional Endpoints:**
+- `POST /api/suggestions/evaluate/single` - Evaluate single suggestion
+- `POST /api/suggestions/evaluate/compare` - Compare two suggestion sets
+- `GET /api/suggestions/rubrics` - Get rubric definitions
+
+**Note**: LLM-as-a-Judge uses GPT-4o/Claude Sonnet-4 and takes 1-3 seconds. Not recommended for real-time user-facing flows.
+
 #### POST /api/video/suggestions
 
 Get creative suggestions for the video concept builder.

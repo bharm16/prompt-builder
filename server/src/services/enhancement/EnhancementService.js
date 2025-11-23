@@ -6,6 +6,7 @@ import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schema
 import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';
 import { StyleTransferService } from './services/StyleTransferService.js';
+import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -50,6 +51,7 @@ export class EnhancementService {
     );
     this.suggestionProcessor = new SuggestionProcessor(validationService);
     this.styleTransfer = new StyleTransferService(aiService);
+    this.contrastiveDiversity = new ContrastiveDiversityEnforcer(aiService);
   }
 
   /**
@@ -214,19 +216,42 @@ export class EnhancementService {
       });
 
       const groqStart = Date.now();
-      const suggestions = await StructuredOutputEnforcer.enforceJSON(
-        this.ai,
+      
+      // PDF Enhancement: Try contrastive decoding for enhanced diversity
+      let suggestions = await this.contrastiveDiversity.generateWithContrastiveDecoding({
         systemPrompt,
-        {
-          schema,
-          isArray: true,
-          maxTokens: 2048,
-          maxRetries: 2,
-          temperature,
-          operation: 'enhance_suggestions',
-        }
-      );
+        schema,
+        isVideoPrompt,
+        isPlaceholder,
+        highlightedText,
+      });
+      
+      let usedContrastiveDecoding = false;
+      
+      // Fallback to standard generation if contrastive decoding not used/failed
+      if (!suggestions) {
+        suggestions = await StructuredOutputEnforcer.enforceJSON(
+          this.ai,
+          systemPrompt,
+          {
+            schema,
+            isArray: true,
+            maxTokens: 2048,
+            maxRetries: 2,
+            temperature,
+            operation: 'enhance_suggestions',
+          }
+        );
+      } else {
+        usedContrastiveDecoding = true;
+        
+        // Calculate and log diversity metrics
+        const diversityMetrics = this.contrastiveDiversity.calculateDiversityMetrics(suggestions);
+        logger.info('Contrastive decoding diversity metrics', diversityMetrics);
+      }
+      
       metrics.groqCall = Date.now() - groqStart;
+      metrics.usedContrastiveDecoding = usedContrastiveDecoding;
 
       const poisonousPatterns = [
         'specific element detail',

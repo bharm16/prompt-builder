@@ -21,6 +21,7 @@ import { createAPIRoutes } from '../routes/api.routes.js';
 import { createHealthRoutes } from '../routes/health.routes.js';
 import { createRoleClassifyRoute } from '../routes/roleClassifyRoute.js';
 import { createLabelSpansRoute } from '../routes/labelSpansRoute.js';
+import suggestionsRoutes from '../routes/suggestions.js';
 
 /**
  * Register all application routes
@@ -76,6 +77,13 @@ export function registerRoutes(app, container) {
 
   const roleClassifyRoute = createRoleClassifyRoute(container.resolve('aiService'));
   app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
+
+  // ============================================================================
+  // Suggestions Evaluation Routes (LLM-as-a-Judge)
+  // ============================================================================
+
+  // Optional quality evaluation endpoints
+  app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)

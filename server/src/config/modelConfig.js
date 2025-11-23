@@ -318,6 +318,36 @@ export const ModelConfig = {
     timeout: 20000,
     fallbackTo: 'groq',
   },
+
+  // ============================================================================
+  // LLM-as-a-Judge Operations (PDF Enhancement)
+  // ============================================================================
+
+  /**
+   * LLM-as-a-Judge for video prompt evaluation
+   * Uses high-capability model (GPT-4o) for quality assessment
+   */
+  llm_judge_video: {
+    client: process.env.JUDGE_PROVIDER || 'openai',
+    model: process.env.JUDGE_MODEL || 'gpt-4o',
+    temperature: 0.2, // Low temp for consistent evaluation
+    maxTokens: 2048,
+    timeout: 45000,
+    fallbackTo: 'anthropic',
+  },
+
+  /**
+   * LLM-as-a-Judge for general text evaluation
+   * Can use Claude for detailed qualitative analysis
+   */
+  llm_judge_general: {
+    client: process.env.JUDGE_GENERAL_PROVIDER || 'anthropic',
+    model: process.env.JUDGE_GENERAL_MODEL || 'claude-sonnet-4',
+    temperature: 0.3, // Slightly higher for nuanced evaluation
+    maxTokens: 2048,
+    timeout: 45000,
+    fallbackTo: 'openai',
+  },
 };
 
 /**

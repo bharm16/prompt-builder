@@ -7,10 +7,20 @@
  * - Technical terminology (Director's Lexicon)
  * - Ambiguous terms that need disambiguation
  * - Context-specific patterns
+ * - Domain-specific language (academic, creative, conversational)
  * 
  * Based on these characteristics, it injects targeted few-shot examples
  * to improve model accuracy on complex inputs.
+ * 
+ * ENHANCED: Now uses domain-specific example banks and intelligent ranking
+ * for 20-30% accuracy improvement (per PDF recommendation).
  */
+
+import { ExampleRanker } from './ExampleRanker.js';
+import { technicalExamples } from './examples/technical.js';
+import { academicExamples } from './examples/academic.js';
+import { creativeExamples } from './examples/creative.js';
+import { conversationalExamples } from './examples/conversational.js';
 
 export class SemanticRouter {
   constructor() {
@@ -22,6 +32,23 @@ export class SemanticRouter {
     
     // Camera-related context
     this.cameraContext = /\b(camera|lens|focal|aperture|shutter|exposure)\b/i;
+    
+    // Initialize example ranker and banks
+    this.ranker = new ExampleRanker();
+    this.exampleBanks = {
+      technical: technicalExamples,
+      academic: academicExamples,
+      creative: creativeExamples,
+      conversational: conversationalExamples,
+    };
+    
+    // Combine all examples for comprehensive ranking
+    this.allExamples = [
+      ...technicalExamples,
+      ...academicExamples,
+      ...creativeExamples,
+      ...conversationalExamples,
+    ];
   }
 
   /**
@@ -53,88 +80,53 @@ export class SemanticRouter {
 
   /**
    * Get specialized few-shot examples based on input characteristics
+   * ENHANCED: Now uses intelligent ranking across all example banks
+   * 
    * @param {string} text - User input text
+   * @param {number} maxExamples - Maximum examples to return (default: 4)
    * @returns {Array} Array of example objects with input/output pairs
    */
-  getFewShotExamples(text) {
-    const examples = [];
-
-    // Example 1: Technical camera movement with subject action (for technical inputs)
-    if (this.isTechnical(text) || this.hasCameraContext(text)) {
-      examples.push({
-        input: "The camera dollies back as the astronaut floats weightlessly through the ISS corridor",
-        output: {
-          spans: [
-            { text: "camera dollies back", role: "camera.movement", confidence: 0.95 },
-            { text: "astronaut", role: "subject.identity", confidence: 0.9 },
-            { text: "floats weightlessly", role: "action.movement", confidence: 0.9 },
-            { text: "ISS corridor", role: "environment.location", confidence: 0.85 }
-          ],
-          meta: {
-            version: "v3.0",
-            notes: "Disambiguated camera movement from subject action"
-          }
-        }
-      });
+  getFewShotExamples(text, maxExamples = 4) {
+    if (!text) {
+      return [];
     }
 
-    // Example 2: Ambiguous "pan" term (for ambiguous inputs)
-    if (this.hasAmbiguity(text)) {
-      examples.push({
-        input: "Chef pans the vegetables in a hot pan while the camera pans left",
-        output: {
-          spans: [
-            { text: "Chef", role: "subject.identity", confidence: 0.95 },
-            { text: "pans the vegetables", role: "action.movement", confidence: 0.9 },
-            { text: "hot pan", role: "environment.context", confidence: 0.85 },
-            { text: "camera pans left", role: "camera.movement", confidence: 0.95 }
-          ],
-          meta: {
-            version: "v3.0",
-            notes: "Disambiguated 'pan' based on agent (Chef vs Camera)"
-          }
-        }
-      });
+    // Use intelligent ranking to select best examples from all banks
+    const rankedExamples = this.ranker.rankExamples(text, this.allExamples, maxExamples);
+    
+    // Extract just the example objects (remove ranking metadata)
+    return rankedExamples.map(ranked => ranked.example);
+  }
+
+  /**
+   * Get examples from a specific domain bank
+   * Useful for targeted example selection when domain is known
+   * 
+   * @param {string} domain - Domain name ('technical', 'academic', 'creative', 'conversational')
+   * @param {string} text - User input text for ranking
+   * @param {number} maxExamples - Maximum examples to return
+   * @returns {Array} Ranked examples from specified domain
+   */
+  getExamplesByDomain(domain, text, maxExamples = 4) {
+    const bank = this.exampleBanks[domain];
+    if (!bank) {
+      return [];
     }
 
-    // Example 3: Film stock and lighting terminology
-    if (this.isTechnical(text) && /\b(35mm|16mm|kodak|fuji|golden\s+hour|chiaroscuro)\b/i.test(text)) {
-      examples.push({
-        input: "35mm anamorphic lens, golden hour lighting creating chiaroscuro shadows",
-        output: {
-          spans: [
-            { text: "35mm anamorphic", role: "style.filmStock", confidence: 0.95 },
-            { text: "golden hour", role: "lighting.timeOfDay", confidence: 0.95 },
-            { text: "chiaroscuro shadows", role: "lighting.quality", confidence: 0.9 }
-          ],
-          meta: {
-            version: "v3.0",
-            notes: "Applied Director's Lexicon: 35mm→filmStock, golden hour→timeOfDay"
-          }
-        }
-      });
-    }
+    const rankedExamples = this.ranker.rankExamples(text, bank, maxExamples);
+    return rankedExamples.map(ranked => ranked.example);
+  }
 
-    // Example 4: Shot type vs camera movement
-    if (/\b(close-up|closeup|wide\s+shot|medium\s+shot|zoom)\b/i.test(text)) {
-      examples.push({
-        input: "Close-up on her face as the camera zooms out to reveal the room",
-        output: {
-          spans: [
-            { text: "Close-up", role: "shot.type", confidence: 0.95 },
-            { text: "her face", role: "subject.appearance", confidence: 0.9 },
-            { text: "camera zooms out", role: "camera.movement", confidence: 0.95 },
-            { text: "the room", role: "environment.location", confidence: 0.85 }
-          ],
-          meta: {
-            version: "v3.0",
-            notes: "Shot type (close-up) is static framing, zoom is camera movement"
-          }
-        }
-      });
-    }
-
-    return examples;
+  /**
+   * Select best examples using intelligent ranking
+   * Replaces the hardcoded example logic with PDF-recommended approach
+   * 
+   * @param {string} text - User input text
+   * @param {number} maxExamples - Maximum examples to return
+   * @returns {Array} Top-ranked examples
+   */
+  selectBestExamples(text, maxExamples = 4) {
+    return this.getFewShotExamples(text, maxExamples);
   }
 
   /**
