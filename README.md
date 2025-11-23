@@ -38,24 +38,46 @@ A production-ready, full-stack application for optimizing prompts across multipl
   - Socratic Learning - Educational question sequences
   - Video Prompt - AI video generation (Sora, Veo3, RunwayML, Kling, Luma)
 
+- **Two-Stage Optimization with Streaming**
+  - Fast draft generation (sub-second response)
+  - Parallel span labeling for immediate highlighting
+  - Refined optimization with quality improvements
+  - Server-Sent Events (SSE) for real-time updates
+  - Progressive enhancement workflow
+
+- **Intelligent Span Labeling System**
+  - Real-time text categorization and highlighting
+  - Dynamic taxonomy-based role detection
+  - Multi-provider LLM support (OpenAI, Groq, Gemini)
+  - Chunked processing for large texts
+  - Substring position caching for performance
+  - Batch processing API for concurrent requests
+  - Automatic span validation and repair
+
 - **Intelligent Enhancement System**
   - Real-time text selection suggestions
   - ML-powered phrase recognition
-  - Context-aware improvements
+  - Context-aware improvements with brainstorm context
+  - Edit history tracking for consistency
   - Scene change detection
+  - Simple prompt mode (feature flag) for faster responses
+  - Category-aligned suggestions
 
 - **Creative Brainstorm** (Video Mode)
   - Interactive concept builder
   - Element-by-element construction
   - AI-powered suggestions
   - Compatibility checking
+  - Conflict detection
   - Technical parameter generation
+  - Scene completion and variations
 
 - **Quality Assessment**
   - Automated quality scoring (0-100)
   - Expansion ratio tracking
   - Structure analysis
   - Completeness checks
+  - Quality feedback system with ML-based scoring
 
 - **History & Collaboration**
   - Last 10 optimizations per user
@@ -70,18 +92,34 @@ A production-ready, full-stack application for optimizing prompts across multipl
 - Export formats (Text, Markdown, JSON)
 - Settings persistence
 - Toast notifications
+- Real-time span highlighting
+- Interactive text selection with suggestions
 
 ### Enterprise Features
 
-- Firebase authentication
-- Multi-tier caching (in-memory + Redis)
-- Circuit breaker pattern
-- Rate limiting (global, API, route-specific)
-- Comprehensive security (Helmet, CORS, validation)
-- Structured logging (Pino)
-- Prometheus metrics
-- Health check endpoints
-- Kubernetes-ready
+- **Multi-Provider LLM Support**
+  - Generic LLMClient architecture (OpenAI-compatible)
+  - Unified AIModelService router
+  - Zero-code provider switching via configuration
+  - Automatic fallback between providers
+  - Provider-specific circuit breakers
+
+- **Dependency Injection Container**
+  - Service registration and resolution
+  - Testable architecture
+  - No module-level mutable state
+
+- **Firebase authentication**
+- **Multi-tier caching** (in-memory + Redis + Span labeling cache)
+- **Circuit breaker pattern** (per-provider configuration)
+- **Rate limiting** (global, API, route-specific)
+- **Comprehensive security** (Helmet, CORS, validation)
+- **Structured logging** (Pino with Sentry integration)
+- **Prometheus metrics**
+- **Health check endpoints** (health, ready, live)
+- **Kubernetes-ready** with HPA and PodDisruptionBudget
+- **Edge deployment** (Cloudflare Workers support)
+- **Request batching and coalescing** for performance
 
 ---
 
@@ -93,21 +131,31 @@ A production-ready, full-stack application for optimizing prompts across multipl
 ┌─────────────────┐
 │   React UI      │
 │  (Vite + React) │
+│  + Span Labels  │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
 │  Express API    │
 │  (Port 3001)    │
+│  + DI Container │
 └────────┬────────┘
          │
     ┌────┴────┐
     │         │
     ▼         ▼
-┌────────┐ ┌─────────┐
-│Firebase│ │ OpenAI  │
-│Firestore│ │   API   │
-└────────┘ └─────────┘
+┌────────┐ ┌──────────────────┐
+│Firebase│ │  AIModelService  │
+│Firestore│ │   (Router)       │
+└────────┘ └────────┬─────────┘
+                     │
+            ┌────────┴────────┐
+            │                 │
+            ▼                 ▼
+    ┌─────────────┐   ┌─────────────┐
+    │  LLMClient  │   │  LLMClient  │
+    │  (OpenAI)    │   │  (Groq)     │
+    └─────────────┘   └─────────────┘
 ```
 
 ### Request Flow
@@ -117,9 +165,9 @@ User Input
   ↓
 PromptOptimizerContainer (React State)
   ↓
-usePromptOptimizer Hook
+usePromptOptimizer Hook / useSpanLabeling Hook
   ↓
-fetch('/api/optimize')
+fetch('/api/optimize-stream') or fetch('/llm/label-spans')
   ↓
 Express Middleware Stack
   ├─ Request ID
@@ -128,60 +176,117 @@ Express Middleware Stack
   ├─ Rate Limiting
   ├─ Compression
   ├─ API Auth
+  ├─ Request Batching (for /label-spans-batch)
   └─ Validation
   ↓
-PromptOptimizationService
-  ├─ Mode Detection
-  ├─ Cache Check
-  ├─ OpenAI API (Circuit Breaker)
-  ├─ Constitutional AI
-  └─ Response Validation
+Service Layer (via DI Container)
+  ├─ PromptOptimizationService
+  │   ├─ Two-Stage Optimization
+  │   ├─ Mode Detection
+  │   ├─ Cache Check
+  │   └─ Parallel Span Labeling
+  ├─ SpanLabelingService
+  │   ├─ Chunked Processing (large texts)
+  │   ├─ Cache Check (SubstringPositionCache)
+  │   └─ Validation & Repair
+  └─ EnhancementService
+      ├─ Context Building
+      ├─ Simple/Complex Prompt Mode
+      └─ Suggestion Processing
   ↓
-Quality Assessment
+AIModelService (Unified Router)
+  ├─ Operation Routing (from ModelConfig)
+  ├─ Provider Selection
+  ├─ Fallback Logic
+  └─ Circuit Breaker
   ↓
-Firebase Storage
+LLMClient (Generic, Provider-Agnostic)
+  ├─ Adapter Pattern (OpenAI, Groq, Gemini)
+  ├─ Circuit Breaker
+  ├─ Concurrency Limiting
+  └─ Metrics Collection
   ↓
-Response with Results
+LLM Provider (OpenAI/Groq/Gemini)
+  ↓
+Response Processing
+  ├─ Quality Assessment
+  ├─ Span Validation
+  └─ Cache Storage
+  ↓
+Firebase Storage / Redis Cache
+  ↓
+Response with Results (SSE for streaming)
 ```
 
 ### Directory Structure
 
 ```
 prompt-builder/
-├── src/
-│   ├── components/          # React components (12 files)
-│   │   ├── PromptOptimizerContainer.jsx (663 lines)
-│   │   ├── PromptInput.jsx
-│   │   ├── PromptCanvas.jsx
-│   │   ├── VideoConceptBuilder.jsx
-│   │   └── ...
-│   ├── features/           # Feature modules
-│   │   ├── auth/          # Firebase authentication
-│   │   ├── history/       # Prompt history management
-│   │   └── prompt-optimizer/
-│   ├── services/          # Business logic (11 services)
-│   │   ├── PromptOptimizationService.js (1882 lines)
-│   │   ├── VideoConceptService.js
-│   │   ├── EnhancementService.js
-│   │   ├── video-concept/
-│   │   │   └── SceneChangeDetectionService.js
-│   │   ├── QuestionGenerationService.js
-│   │   ├── VideoPromptTemplates.js
-│   │   ├── CacheService.js
-│   │   └── ...
-│   ├── clients/           # API clients (OpenAI, Claude)
-│   ├── hooks/             # React custom hooks
-│   ├── infrastructure/    # Logger, Metrics, Tracing
-│   ├── middleware/        # Express middleware
-│   ├── routes/            # API route definitions
-│   └── utils/             # Utility functions
-├── server/                # Backend server code
-├── e2e/                  # Playwright E2E tests
-├── __tests__/            # Vitest unit tests (169 files)
-├── k8s/                  # Kubernetes configurations
-├── monitoring/           # Monitoring configs
-├── docs/                 # Documentation
-└── scripts/              # Build/utility scripts
+├── client/
+│   └── src/
+│       ├── components/          # React components (54 files)
+│       ├── features/           # Feature modules
+│       │   ├── auth/          # Firebase authentication
+│       │   ├── history/       # Prompt history management
+│       │   ├── prompt-optimizer/
+│       │   ├── span-highlighting/  # Span labeling UI
+│       │   └── video-concept-builder/
+│       ├── services/          # API clients and services
+│       │   ├── http/          # HTTP client infrastructure
+│       │   ├── EnhancementApi.js
+│       │   ├── PromptOptimizationApi.js
+│       │   └── VideoConceptApi.js
+│       ├── hooks/             # React custom hooks
+│       ├── config/            # Feature flags, API config
+│       └── utils/             # Utility functions
+├── server/
+│   └── src/
+│       ├── clients/           # LLM API clients
+│       │   ├── LLMClient.js   # Generic LLM client
+│       │   └── adapters/      # Provider adapters (OpenAI, Gemini)
+│       ├── services/          # Business logic services
+│       │   ├── ai-model/      # AIModelService (unified router)
+│       │   ├── prompt-optimization/  # Two-stage optimization
+│       │   ├── enhancement/   # Enhancement service + sub-services
+│       │   ├── cache/         # Multi-tier caching
+│       │   ├── video-concept/ # Video concept builder services
+│       │   ├── quality-feedback/  # Quality assessment ML
+│       │   ├── taxonomy-validation/  # Taxonomy validation
+│       │   └── text-categorization/  # Text categorization
+│       ├── llm/              # LLM-specific services
+│       │   ├── span-labeling/  # Span labeling system
+│       │   │   ├── cache/      # SubstringPositionCache
+│       │   │   ├── config/     # Configuration
+│       │   │   ├── processing/ # Span processing pipeline
+│       │   │   ├── templates/  # Prompt templates
+│       │   │   ├── utils/      # Utilities
+│       │   │   └── validation/ # Schema & span validation
+│       │   └── roleClassifier.js
+│       ├── config/           # Configuration
+│       │   ├── services.config.js  # DI container setup
+│       │   ├── modelConfig.js      # LLM operation routing
+│       │   └── routes.config.js    # Route registration
+│       ├── infrastructure/   # Cross-cutting concerns
+│       │   ├── DIContainer.js # Dependency injection
+│       │   ├── Logger.js      # Pino logger
+│       │   └── MetricsService.js  # Prometheus metrics
+│       ├── middleware/        # Express middleware
+│       │   ├── requestBatching.js  # Batch request handling
+│       │   ├── requestCoalescing.js  # Request deduplication
+│       │   └── performanceMonitor.js
+│       └── routes/           # API route definitions
+├── shared/                  # Shared code (taxonomy, constants)
+├── infrastructure/         # Deployment configs
+│   ├── kubernetes/         # K8s manifests (base + overlays)
+│   ├── docker/             # Docker configs
+│   ├── edge/               # Cloudflare Workers
+│   └── ci-cd/              # ArgoCD configs
+├── tests/                  # Test suites
+│   ├── e2e/               # Playwright E2E tests
+│   └── integration/       # Integration tests
+├── docs/                  # Documentation
+├── scripts/               # Utility scripts
+└── config/                # Build/test/lint configs
 ```
 
 ---
@@ -202,12 +307,24 @@ prompt-builder/
 - **Express 4.21.2** - Web framework
 - **Firebase 12.4.0** - Authentication & database
 - **Pino** - Structured logging
+- **Sentry** - Error tracking and performance monitoring
 - **Helmet** - Security headers
 - **express-rate-limit** - Rate limiting
 - **Opossum** - Circuit breaker
 - **prom-client** - Prometheus metrics
 - **Compromise** - NLP library
 - **Joi** - Validation schema
+- **ioredis** - Redis client (optional caching)
+- **node-cache** - In-memory caching
+
+### LLM Integration
+
+- **Generic LLMClient** - Provider-agnostic LLM client
+- **AIModelService** - Unified router for LLM operations
+- **Multi-Provider Support** - OpenAI, Groq, Gemini
+- **Adapter Pattern** - Provider-specific protocol handling
+- **Automatic Fallback** - Failover between providers
+- **Operation-Based Routing** - Configuration-driven model selection
 
 ### Testing
 
@@ -220,10 +337,12 @@ prompt-builder/
 ### Infrastructure
 
 - **Docker** - Containerization
-- **Kubernetes** - Orchestration
+- **Kubernetes** - Orchestration (with HPA, PDB)
 - **Prometheus** - Metrics collection
 - **Grafana** - Dashboards
-- **Redis** - Optional caching
+- **Redis** - Optional caching (multi-tier)
+- **Cloudflare Workers** - Edge deployment support
+- **ArgoCD** - GitOps deployment
 
 ---
 
@@ -454,17 +573,15 @@ Authorization: Bearer YOUR_API_KEY
 
 #### POST /api/optimize
 
-Main prompt optimization endpoint.
+Single-stage prompt optimization endpoint (backward compatible).
 
 **Request:**
 ```json
 {
-  "input": "Your prompt here",
+  "prompt": "Your prompt here",
   "mode": "default|reasoning|research|socratic|video",
-  "modelName": "gpt-4-turbo-preview",
-  "enableAI": true,
-  "enhancementOptions": {},
-  "previousVersion": null
+  "context": {},
+  "brainstormContext": {}
 }
 ```
 
@@ -472,50 +589,119 @@ Main prompt optimization endpoint.
 ```json
 {
   "optimizedPrompt": "Optimized version...",
-  "qualityScore": 85,
-  "expansionRatio": 3.2,
-  "suggestions": [],
   "metadata": {
     "mode": "default",
-    "modelUsed": "gpt-4-turbo-preview",
     "processingTime": 1234
   }
 }
 ```
 
-#### POST /api/generate-questions
+#### POST /api/optimize-stream
 
-Generate context questions for deeper understanding.
+Two-stage optimization with Server-Sent Events (SSE) streaming.
 
 **Request:**
 ```json
 {
-  "input": "Your prompt here",
-  "mode": "default"
+  "prompt": "Your prompt here",
+  "mode": "default|reasoning|research|socratic|video",
+  "context": {},
+  "brainstormContext": {}
+}
+```
+
+**Response:** SSE stream with events:
+- `draft` - Fast draft version (sub-second)
+- `spans` - Span labels for highlighting (parallel with draft)
+- `refined` - Final optimized version
+- `done` - Completion signal
+
+#### POST /llm/label-spans
+
+Label text spans with semantic categories for highlighting.
+
+**Request:**
+```json
+{
+  "text": "A woman walks on a beach at sunset",
+  "policy": "highlighting",
+  "options": {
+    "maxSpans": 10,
+    "minConfidence": 0.7
+  }
 }
 ```
 
 **Response:**
 ```json
 {
-  "questions": [
-    "What is the primary goal?",
-    "Who is the target audience?",
-    "What constraints exist?"
+  "spans": [
+    {
+      "id": "span-1",
+      "text": "woman",
+      "start": 2,
+      "end": 7,
+      "role": "subject",
+      "category": "subject.person",
+      "confidence": 0.95
+    }
+  ],
+  "meta": {
+    "templateVersion": "2.0",
+    "processingTime": 234
+  }
+}
+```
+
+#### POST /llm/label-spans-batch
+
+Batch endpoint for processing multiple span labeling requests (reduces API calls by 60%).
+
+**Request:**
+```json
+{
+  "requests": [
+    {
+      "text": "First text",
+      "policy": "highlighting"
+    },
+    {
+      "text": "Second text",
+      "policy": "highlighting"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    { "spans": [...], "meta": {...} },
+    { "spans": [...], "meta": {...} }
   ]
 }
 ```
 
 #### POST /api/get-enhancement-suggestions
 
-Get enhancement suggestions for selected text (video mode).
+Get enhancement suggestions for selected text.
 
 **Request:**
 ```json
 {
-  "selectedText": "a person walking",
+  "highlightedText": "a person walking",
   "fullPrompt": "a person walking on a beach",
-  "cursorPosition": 15
+  "contextBefore": "",
+  "contextAfter": "",
+  "originalUserPrompt": "beach scene",
+  "brainstormContext": {},
+  "highlightedCategory": "subject",
+  "highlightedCategoryConfidence": 0.9,
+  "highlightedPhrase": "person walking",
+  "allLabeledSpans": [],
+  "nearbySpans": [],
+  "editHistory": []
 }
 ```
 
@@ -523,9 +709,41 @@ Get enhancement suggestions for selected text (video mode).
 ```json
 {
   "suggestions": [
-    "a woman in her 30s walking",
-    "a lone figure walking",
-    "a silhouetted person walking"
+    {
+      "text": "a woman in her 30s walking",
+      "category": "subject",
+      "explanation": "Adds specific details"
+    }
+  ],
+  "fromCache": false,
+  "metadata": {
+    "promptMode": "simple",
+    "processingTime": 813
+  }
+}
+```
+
+#### POST /api/get-custom-suggestions
+
+Get custom enhancement suggestions based on user request.
+
+**Request:**
+```json
+{
+  "highlightedText": "sunset",
+  "customRequest": "make it more dramatic",
+  "fullPrompt": "beach at sunset"
+}
+```
+
+**Response:**
+```json
+{
+  "suggestions": [
+    {
+      "text": "dramatic sunset with deep orange and purple hues",
+      "category": "lighting"
+    }
   ]
 }
 ```
@@ -537,8 +755,13 @@ Detect if prompt describes a new scene (video mode).
 **Request:**
 ```json
 {
-  "newPrompt": "Current prompt text",
-  "previousPrompt": "Previous prompt text"
+  "changedField": "location",
+  "newValue": "mountain peak",
+  "oldValue": "beach",
+  "fullPrompt": "Current prompt text",
+  "affectedFields": ["location", "lighting"],
+  "sectionHeading": "Setting",
+  "sectionContext": "..."
 }
 ```
 
@@ -547,7 +770,32 @@ Detect if prompt describes a new scene (video mode).
 {
   "isSceneChange": true,
   "confidence": 0.89,
-  "reason": "Different location and subject"
+  "reason": "Different location and subject",
+  "affectedElements": ["location", "lighting"]
+}
+```
+
+#### POST /api/role-classify
+
+Classify text spans by semantic role (subject, action, location, etc.).
+
+**Request:**
+```json
+{
+  "text": "A woman walks on a beach"
+}
+```
+
+**Response:**
+```json
+{
+  "roles": [
+    {
+      "text": "woman",
+      "role": "subject",
+      "confidence": 0.95
+    }
+  ]
 }
 ```
 
@@ -840,81 +1088,229 @@ Prompt history with search and filtering.
 
 ### Backend Services
 
-#### PromptOptimizationService
+#### AIModelService
 
-Core optimization engine (1882 lines).
+Unified router for all LLM operations. Decouples business logic from specific providers.
 
-**Location:** `src/services/prompt-optimization/PromptOptimizationService.js`
+**Location:** `server/src/services/ai-model/AIModelService.js`
 
 **Key Methods:**
 
 ```javascript
-// Main optimization method
-async optimizePrompt(input, options)
+// Execute operation with automatic routing
+async execute(operation, params)
 
-// Mode-specific optimization
-async optimizeForMode(input, mode, options)
+// Stream operation for real-time updates
+async stream(operation, params, onChunk)
+```
 
-// Quality assessment
-calculateQualityScore(input, output)
+**Features:**
+- Operation-based routing (from ModelConfig)
+- Automatic fallback between providers
+- Streaming support
+- Circuit breaker awareness
+- Environment variable overrides
 
-// Constitutional AI filtering
-async applyConstitutionalAI(prompt)
+**Example:**
+```javascript
+const response = await aiService.execute('optimize_standard', {
+  systemPrompt: 'You are a helpful assistant',
+  userMessage: 'Optimize this prompt...',
+  temperature: 0.7
+});
+```
+
+#### LLMClient
+
+Generic, provider-agnostic LLM client using adapter pattern.
+
+**Location:** `server/src/clients/LLMClient.js`
+
+**Features:**
+- Works with any OpenAI-compatible API
+- Provider adapters (OpenAI, Groq, Gemini)
+- Circuit breaker per provider
+- Concurrency limiting
+- Metrics collection
+- JSON mode support
+
+#### PromptOptimizationService
+
+Core optimization engine with two-stage optimization.
+
+**Location:** `server/src/services/prompt-optimization/PromptOptimizationService.js`
+
+**Key Methods:**
+
+```javascript
+// Single-stage optimization (backward compatible)
+async optimize({ prompt, mode, context, brainstormContext })
+
+// Two-stage optimization with streaming
+async optimizeTwoStage({ prompt, mode, context, brainstormContext, onDraft })
 ```
 
 **Features:**
 - 5 optimization modes
-- Iterative refinement
+- Two-stage optimization (draft + refined)
+- Parallel span labeling
 - Template version tracking
 - Caching integration
 - Quality scoring
+
+#### SpanLabelingService
+
+Comprehensive span labeling system for text categorization and highlighting.
+
+**Location:** `server/src/llm/span-labeling/SpanLabelingService.js`
+
+**Key Methods:**
+
+```javascript
+// Label spans in text
+async labelSpans(text, policy, options)
+
+// Chunked processing for large texts
+async labelSpansChunked(text, policy, options)
+```
+
+**Features:**
+- Dynamic taxonomy generation from shared/taxonomy.js
+- Chunked processing for large texts (parallel execution)
+- Substring position caching
+- Schema validation and automatic repair
+- Multi-provider LLM support
+- Batch processing support
+
+#### EnhancementService
+
+Text enhancement suggestions with multiple sub-services.
+
+**Location:** `server/src/services/enhancement/EnhancementService.js`
+
+**Key Methods:**
+
+```javascript
+async getEnhancementSuggestions({
+  highlightedText,
+  fullPrompt,
+  brainstormContext,
+  allLabeledSpans,
+  editHistory
+})
+
+async getCustomSuggestions({ highlightedText, customRequest, fullPrompt })
+```
+
+**Features:**
+- Simple/Complex prompt modes (feature flag)
+- Context-aware suggestions
+- Edit history tracking
+- Category alignment
+- Style transfer
+- Fallback regeneration
+
+**Sub-Services:**
+- `BrainstormContextBuilder` - Builds context from brainstorm data
+- `CleanPromptBuilder` - Generates clean prompts
+- `SuggestionValidationService` - Validates suggestions
+- `SuggestionDeduplicator` - Ensures diversity
+- `CategoryAlignmentService` - Aligns suggestions with categories
+- `StyleTransferService` - Transfers style between suggestions
 
 #### VideoConceptService
 
 AI-powered creative suggestions for video prompts.
 
-**Methods:**
-```javascript
-async getSuggestions(category, context)
-async checkCompatibility(elements)
-async generateVariations(concept)
-```
-
-#### EnhancementService
-
-Text enhancement suggestions.
+**Location:** `server/src/services/VideoConceptService.js`
 
 **Methods:**
 ```javascript
-async getEnhancements(selectedText, fullPrompt, position)
-async getCustomSuggestions(request)
+async getCreativeSuggestions({ elementType, currentValue, context, concept })
+async checkCompatibility({ elementType, value, existingElements })
+async detectConflicts({ elements })
+async completeScene({ existingElements, concept })
+async generateVariations({ elements, concept })
+async parseConcept({ concept })
 ```
 
-#### SceneChangeDetectionService
+#### QualityFeedbackService
 
-Scene change detection for video prompts (located in video-concept/).
+ML-based quality assessment system.
+
+**Location:** `server/src/services/quality-feedback/QualityFeedbackService.js`
+
+**Features:**
+- Feature extraction from prompts
+- Quality scoring model
+- Feedback repository
+- Statistical analysis
+
+#### TextCategorizerService
+
+Semantic text parsing into categorized spans.
+
+**Location:** `server/src/services/text-categorization/TextCategorizerService.js`
 
 **Methods:**
 ```javascript
-async detectSceneChange(newPrompt, previousPrompt)
+async parseText({ text })
 ```
+
+#### TaxonomyValidationService
+
+Validates taxonomy structure and detects orphans.
+
+**Location:** `server/src/services/taxonomy-validation/TaxonomyValidationService.js`
+
+**Features:**
+- Hierarchy validation
+- Orphan detection
+- Validation reporting
 
 ### Custom Hooks
 
 #### usePromptOptimizer
 
-Main optimization hook.
+Main optimization hook with streaming support.
 
 **Usage:**
 ```javascript
 const {
   optimize,
+  optimizeStream,
   result,
   isLoading,
   error,
   qualityScore
 } = usePromptOptimizer();
 ```
+
+#### useSpanLabeling
+
+Span labeling hook with debouncing and caching.
+
+**Location:** `client/src/features/span-highlighting/hooks/useSpanLabeling.js`
+
+**Usage:**
+```javascript
+const {
+  spans,
+  status,
+  error,
+  refresh
+} = useSpanLabeling({
+  text: "Your text here",
+  policy: "highlighting",
+  options: {}
+});
+```
+
+**Features:**
+- Automatic debouncing
+- Client-side caching
+- Request cancellation
+- Performance tracking
 
 #### usePromptHistory
 
@@ -1066,10 +1462,10 @@ This starts:
 **Deploy:**
 ```bash
 # Apply base configurations
-kubectl apply -f k8s/base/
+kubectl apply -f infrastructure/kubernetes/base/
 
 # Apply environment overlay
-kubectl apply -k k8s/overlays/production/
+kubectl apply -k infrastructure/kubernetes/overlays/production/
 ```
 
 **Resources created:**
@@ -1081,6 +1477,7 @@ kubectl apply -k k8s/overlays/production/
 - Secret (sensitive data)
 - ServiceAccount
 - PodDisruptionBudget
+- ServiceMonitor (Prometheus)
 
 **Verify deployment:**
 ```bash
@@ -1092,6 +1489,24 @@ kubectl logs -f deployment/prompt-builder
 ```bash
 kubectl scale deployment prompt-builder --replicas=5
 ```
+
+### Edge Deployment (Cloudflare Workers)
+
+Deploy span labeling endpoint to Cloudflare edge for reduced latency.
+
+**Location:** `infrastructure/edge/`
+
+**Deploy:**
+```bash
+cd infrastructure/edge
+wrangler deploy
+```
+
+**Features:**
+- Edge caching for span labeling
+- Reduced latency for global users
+- Automatic cache invalidation
+- Origin fallback on cache miss
 
 ### Firebase Hosting
 
@@ -1396,4 +1811,47 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 **Built with ❤️ by [Your Name/Team]**
 
-Last Updated: October 2025
+---
+
+## Recent Major Changes
+
+### LLM Architecture Refactoring (November 2025)
+
+- **Generic LLMClient**: Replaced provider-specific clients (OpenAIAPIClient, GroqAPIClient) with a single generic `LLMClient` that works with any OpenAI-compatible API
+- **AIModelService Router**: Unified router for all LLM operations with operation-based routing and automatic fallback
+- **Zero-Code Provider Addition**: New providers can be added via configuration only (no code changes)
+- **Fixed Critical Bugs**: Span labeling JSON mode, fallback model switching
+
+### Span Labeling System
+
+- **Comprehensive Text Categorization**: Real-time span labeling with dynamic taxonomy
+- **Chunked Processing**: Handles large texts efficiently with parallel chunk processing
+- **Batch API**: `/llm/label-spans-batch` reduces API calls by 60% under concurrent load
+- **Substring Position Caching**: Performance-optimized caching for span positions
+- **Multi-Provider Support**: Works with OpenAI, Groq, and Gemini
+
+### Two-Stage Optimization
+
+- **Fast Draft Generation**: Sub-second draft responses using Groq
+- **Parallel Span Labeling**: Spans generated alongside draft for immediate highlighting
+- **Streaming Support**: Server-Sent Events (SSE) for real-time updates
+- **Progressive Enhancement**: Draft → Spans → Refined workflow
+
+### Enhancement Service Improvements
+
+- **Simple Prompt Mode**: Feature flag for faster, cleaner prompts
+- **Edit History Tracking**: Consistency across multiple edits
+- **Brainstorm Context**: Integration with brainstorm data for better suggestions
+- **Category Alignment**: Suggestions aligned with semantic categories
+
+### Infrastructure Improvements
+
+- **Dependency Injection Container**: Clean service registration and resolution
+- **Request Batching & Coalescing**: Performance optimizations for concurrent requests
+- **Sentry Integration**: Error tracking and performance monitoring
+- **Edge Deployment**: Cloudflare Workers support for span labeling
+- **Enhanced Monitoring**: Prometheus metrics, health checks, performance tracking
+
+---
+
+Last Updated: November 2025
