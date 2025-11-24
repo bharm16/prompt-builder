@@ -98,10 +98,16 @@ export const CHUNKING = {
 /**
  * NLP Fast-Path Configuration
  * Enables dictionary-based span extraction to bypass expensive LLM calls
+ * 
+ * NOTE: Currently DISABLED because GLiNER (open vocabulary) is not working,
+ * so only technical terms are detected. Enabling this skips semantic
+ * content like subjects, actions, environments.
+ * Re-enable once RobustGLiNER is properly configured with downloaded model.
  */
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
-  ENABLED: true,
+  // DISABLED: Only detects technical terms, misses semantic content
+  ENABLED: false,
   
   // Minimum number of spans required to skip LLM call
   MIN_SPANS_THRESHOLD: 3,

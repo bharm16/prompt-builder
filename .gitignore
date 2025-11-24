@@ -85,3 +85,5 @@ Thumbs.db
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+# Hugging Face model cache (too large for GitHub)
+server/src/services/nlp/models/
