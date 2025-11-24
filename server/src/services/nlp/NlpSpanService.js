@@ -131,7 +131,7 @@ function extractClosedVocabulary(text) {
 
 /**
  * RobustGLiNER - Zero-shot NER using ONNX Runtime directly
- * Avoids the unstable gliner wrapper package
+ * Full implementation with span enumeration for GLiNER model
  */
 class RobustGLiNER {
   constructor() {
@@ -140,6 +140,7 @@ class RobustGLiNER {
     this.initialized = false;
     this.initFailed = false;
     this.initPromise = null;
+    this.maxWidth = 12; // Max span width in tokens
   }
   
   async initialize() {
@@ -153,7 +154,6 @@ class RobustGLiNER {
   
   async _doInitialize() {
     try {
-      // Dynamic imports to avoid blocking if packages aren't available
       const [onnxModule, transformersModule] = await Promise.all([
         import('onnxruntime-node'),
         import('@huggingface/transformers')
@@ -162,23 +162,19 @@ class RobustGLiNER {
       const { InferenceSession } = onnxModule;
       const { AutoTokenizer, env } = transformersModule;
       
-      // Configure transformers.js for Node.js
       env.allowLocalModels = true;
       env.useBrowserCache = false;
       
       const modelPath = join(modelDir, 'model.onnx');
       
-      // Check if model file exists
       if (!existsSync(modelPath)) {
         console.warn('[RobustGLiNER] Model file not found at:', modelPath);
-        console.warn('[RobustGLiNER] Download from: https://huggingface.co/onnx-community/gliner_small-v2.1');
-        console.warn('[RobustGLiNER] Open vocabulary extraction will be disabled.');
         this.initFailed = true;
         return false;
       }
       
       console.log('[RobustGLiNER] Loading tokenizer...');
-      this.tokenizer = await AutoTokenizer.from_pretrained('urchade/gliner_small-v2.1');
+      this.tokenizer = await AutoTokenizer.from_pretrained('onnx-community/gliner_small-v2.1');
       
       console.log('[RobustGLiNER] Loading ONNX model...');
       this.session = await InferenceSession.create(modelPath, {
@@ -186,9 +182,7 @@ class RobustGLiNER {
         graphOptimizationLevel: 'all'
       });
       
-      this.InferenceSession = InferenceSession;
       this.Tensor = onnxModule.Tensor;
-      
       this.initialized = true;
       console.log('[RobustGLiNER] ✅ Initialized successfully');
       return true;
@@ -200,59 +194,242 @@ class RobustGLiNER {
   }
   
   /**
-   * Extract entities using GLiNER model
-   * @param {string} text - Input text
-   * @param {string[]} labels - Entity labels to detect
-   * @param {number} threshold - Confidence threshold
+   * Prepare GLiNER input with labels embedded in the prompt
+   * Format: <<ENT>>label1<<ENT>>label2<<SEP>> text
    */
-  async extract(text, labels, threshold = 0.5) {
+  _preparePrompt(text, labels) {
+    // GLiNER uses special tokens: <<ENT>> for entity markers, <<SEP>> as separator
+    const ENT_TOKEN = '<<ENT>>';
+    const SEP_TOKEN = '<<SEP>>';
+    const labelParts = labels.map(l => `${ENT_TOKEN}${l}`).join('');
+    return `${labelParts}${SEP_TOKEN} ${text}`;
+  }
+  
+  /**
+   * Create word boundaries mapping tokens to original words
+   */
+  _getWordBoundaries(text, tokens) {
+    const words = text.split(/\s+/);
+    const boundaries = [];
+    let tokenIdx = 0;
+    
+    // Skip special tokens at start ([CLS], labels, etc.)
+    // Find where actual text tokens begin
+    const textStart = tokens.findIndex(t => {
+      const decoded = t.replace('##', '').replace('Ġ', '');
+      return words.some(w => w.toLowerCase().includes(decoded.toLowerCase()));
+    });
+    
+    if (textStart === -1) return [];
+    
+    let charPos = 0;
+    for (let wordIdx = 0; wordIdx < words.length; wordIdx++) {
+      const word = words[wordIdx];
+      const wordStart = text.indexOf(word, charPos);
+      const wordEnd = wordStart + word.length;
+      charPos = wordEnd;
+      
+      boundaries.push({
+        wordIdx,
+        word,
+        start: wordStart,
+        end: wordEnd,
+        tokenStart: textStart + wordIdx,
+        tokenEnd: textStart + wordIdx + 1
+      });
+    }
+    
+    return boundaries;
+  }
+  
+  /**
+   * Generate span indices in GLiNER format: [(i, i+j) for i in range(numWords) for j in range(maxWidth)]
+   * Matches Python: span_idx = [(i, i + j) for i in range(num_tokens) for j in range(max_width)]
+   */
+  _generateSpanIndices(numWords) {
+    const spans = [];
+    // Generate ALL spans including invalid ones (filtered by span_mask)
+    for (let i = 0; i < numWords; i++) {
+      for (let j = 0; j < this.maxWidth; j++) {
+        spans.push([i, i + j]);  // 0-indexed, inclusive end
+      }
+    }
+    return spans; // Total: numWords * maxWidth spans
+  }
+  
+  /**
+   * Extract entities using GLiNER model
+   * Note: GLiNER preprocessing is complex - this is a simplified version
+   */
+  async extract(text, labels, threshold = 0.4) {
     if (!this.initialized || this.initFailed) return [];
+    if (!text || !labels.length) return [];
     
     try {
-      // Tokenize the input
-      const encoded = await this.tokenizer(text, {
+      // Split text into words
+      const words = text.split(/\s+/).filter(w => w.length > 0);
+      const numWords = words.length;
+      if (numWords === 0) return [];
+      
+      // Prepare input with labels in GLiNER format
+      const prompt = this._preparePrompt(text, labels);
+      
+      // Tokenize the full prompt
+      const encoded = await this.tokenizer(prompt, {
         padding: true,
         truncation: true,
         max_length: 512,
         return_tensors: 'np'
       });
       
-      // Prepare input tensors
-      const inputIds = new this.Tensor('int64', 
+      const seqLen = encoded.input_ids.dims[1];
+      
+      // Create words_mask: maps each token to its word index (0 for non-word tokens)
+      // GLiNER expects word indices starting from 1, with 0 for special/label tokens
+      const wordsMaskData = new BigInt64Array(seqLen).fill(BigInt(0));
+      
+      // Find where actual text starts in tokens:
+      // Format: [CLS] <<ENT>> label1 <<ENT>> label2 <<SEP>> text... [SEP]
+      // = 1 + (labels.length * 2) + 1 tokens before text
+      let textTokenStart = 1 + labels.length * 2 + 1;
+      
+      // Assign word indices to tokens (1-indexed for GLiNER)
+      for (let i = 0; i < numWords && (textTokenStart + i) < seqLen - 1; i++) {
+        wordsMaskData[textTokenStart + i] = BigInt(i + 1); // 1-indexed
+      }
+      const wordsMask = new this.Tensor('int64', wordsMaskData, [1, seqLen]);
+      
+      // Generate span indices (0-indexed word positions)
+      const spanIndices = this._generateSpanIndices(numWords);
+      const numSpans = spanIndices.length;
+      
+      // Create tensors
+      const inputIds = new this.Tensor('int64',
         BigInt64Array.from(encoded.input_ids.data.map(x => BigInt(x))),
-        encoded.input_ids.dims
+        [1, seqLen]
       );
       
       const attentionMask = new this.Tensor('int64',
         BigInt64Array.from(encoded.attention_mask.data.map(x => BigInt(x))),
-        encoded.attention_mask.dims
+        [1, seqLen]
       );
+      
+      // Text lengths [batch, 1]
+      const textLengths = new this.Tensor('int64', BigInt64Array.from([BigInt(numWords)]), [1, 1]);
+      
+      // Span indices tensor [batch, num_spans, 2] - 0-indexed word positions
+      const spanIdxData = new BigInt64Array(numSpans * 2);
+      for (let i = 0; i < numSpans; i++) {
+        spanIdxData[i * 2] = BigInt(spanIndices[i][0]);     // start (0-indexed)
+        spanIdxData[i * 2 + 1] = BigInt(spanIndices[i][1]); // end (0-indexed, inclusive)
+      }
+      const spanIdx = new this.Tensor('int64', spanIdxData, [1, numSpans, 2]);
+      
+      // Span mask [batch, num_spans] - only valid if end < numWords
+      const spanMaskData = new Uint8Array(numSpans);
+      for (let i = 0; i < numSpans; i++) {
+        const end = spanIndices[i][1];
+        spanMaskData[i] = end < numWords ? 1 : 0;
+      }
+      const spanMask = new this.Tensor('bool', spanMaskData, [1, numSpans]);
       
       // Run inference
       const feeds = {
         input_ids: inputIds,
-        attention_mask: attentionMask
+        attention_mask: attentionMask,
+        words_mask: wordsMask,
+        text_lengths: textLengths,
+        span_idx: spanIdx,
+        span_mask: spanMask
       };
       
       const results = await this.session.run(feeds);
       
-      // Decode outputs to entities
-      return this._decodeOutput(results, text, labels, threshold);
+      // Decode output
+      return this._decodeOutput(results, text, words, spanIndices, labels, threshold);
     } catch (error) {
       console.warn('[RobustGLiNER] Extraction error:', error.message);
       return [];
     }
   }
   
-  _decodeOutput(results, text, labels, threshold) {
-    // GLiNER output decoding - this is simplified
-    // Full implementation requires span enumeration logic
+  _decodeOutput(results, text, words, spanIndices, labels, threshold) {
     const entities = [];
+    const logits = results.logits;
+    const numWords = words.length;
     
-    // For now, return empty - model needs proper span decoding
-    // This is a placeholder for when the model is properly configured
+    if (!logits || !logits.data || logits.data.length === 0) return entities;
     
-    return entities;
+    // Logits shape: [batch, numWords, maxWidth, numLabels]
+    const numLabels = labels.length;
+    const maxWidth = this.maxWidth;
+    
+    // Apply sigmoid to get probabilities
+    const sigmoid = x => 1 / (1 + Math.exp(-x));
+    
+    // Iterate over valid spans
+    for (let wordIdx = 0; wordIdx < numWords; wordIdx++) {
+      for (let width = 0; width < maxWidth; width++) {
+        const endWord = wordIdx + width;
+        
+        // Skip invalid spans
+        if (endWord >= numWords) continue;
+        
+        for (let labelIdx = 0; labelIdx < numLabels; labelIdx++) {
+          // Index into flattened logits: [numWords, maxWidth, numLabels]
+          const logitIdx = wordIdx * maxWidth * numLabels + width * numLabels + labelIdx;
+          if (logitIdx >= logits.data.length) continue;
+          
+          const score = sigmoid(logits.data[logitIdx]);
+          
+          if (score >= threshold) {
+            // Extract the span text (endWord is inclusive)
+            const spanWords = words.slice(wordIdx, endWord + 1);
+            const spanText = spanWords.join(' ');
+            
+            // Calculate character offsets
+            let charStart = 0;
+            for (let i = 0; i < wordIdx; i++) {
+              charStart += words[i].length + 1; // +1 for space
+            }
+            const charEnd = charStart + spanText.length;
+            
+            entities.push({
+              text: spanText,
+              label: labels[labelIdx],
+              score: Math.round(score * 100) / 100,
+              start: charStart,
+              end: charEnd
+            });
+          }
+        }
+      }
+    }
+    
+    // Sort by score descending and remove overlaps
+    entities.sort((a, b) => b.score - a.score);
+    
+    const accepted = [];
+    const occupied = new Set();
+    
+    for (const entity of entities) {
+      let hasOverlap = false;
+      for (let i = entity.start; i < entity.end; i++) {
+        if (occupied.has(i)) {
+          hasOverlap = true;
+          break;
+        }
+      }
+      
+      if (!hasOverlap) {
+        accepted.push(entity);
+        for (let i = entity.start; i < entity.end; i++) {
+          occupied.add(i);
+        }
+      }
+    }
+    
+    return accepted.sort((a, b) => a.start - b.start);
   }
 }
 

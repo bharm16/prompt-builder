@@ -106,10 +106,10 @@ export const CHUNKING = {
  */
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
-  // DISABLED: Only detects technical terms, misses semantic content
-  ENABLED: false,
+  // Combines NLP technical terms with GLiNER semantic extraction
+  ENABLED: true,  // Enabled - GLiNER now working for semantic entity extraction
   
-  // Minimum number of spans required to skip LLM call
+  // Minimum spans to consider NLP sufficient 
   MIN_SPANS_THRESHOLD: 3,
   
   // Minimum coverage percentage to skip LLM (0-100)
@@ -167,7 +167,7 @@ export const NEURO_SYMBOLIC = {
   },
   
   // Fallback to LLM if neuro-symbolic produces insufficient results
-  FALLBACK_TO_LLM: true,
+  FALLBACK_TO_LLM: true,  // Use LLM for semantic content
   
   // Minimum spans to skip LLM fallback
   MIN_SPANS_THRESHOLD: 3,
