@@ -220,42 +220,37 @@ async function labelSpansSingle(params, aiService) {
     let nlpSource = 'none';
     
     // ============================================================================
-    // PHASE 1: Try Symbolic NLP first (full semantic analysis)
+    // PHASE 1: Neuro-Symbolic NLP (Aho-Corasick + GLiNER)
     // ============================================================================
-    if (SpanLabelingConfig.SYMBOLIC_NLP && SpanLabelingConfig.SYMBOLIC_NLP.ENABLED) {
+    if (SpanLabelingConfig.NEURO_SYMBOLIC && SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED) {
       try {
+        // extractSemanticSpans runs both:
+        // - Tier 1: Aho-Corasick for closed vocabulary (technical terms)
+        // - Tier 2: GLiNER for open vocabulary (semantic entities)
         const semanticResult = await extractSemanticSpans(params.text);
         
-        // Check if symbolic NLP produced good results
-        const hasSemanticSpans = semanticResult.spans && semanticResult.spans.length > 0;
-        const meetsThreshold = semanticResult.spans.length >= (SpanLabelingConfig.SYMBOLIC_NLP.MIN_SEMANTIC_SPANS || 2);
-        const isSemanticPhase = semanticResult.stats?.phase === 'semantic';
+        const hasSpans = semanticResult.spans && semanticResult.spans.length > 0;
+        const meetsThreshold = semanticResult.spans.length >= (SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD || 3);
         
-        if (hasSemanticSpans && meetsThreshold && isSemanticPhase) {
-          // Success! Use symbolic NLP spans
+        if (hasSpans) {
           nlpSpans = semanticResult.spans;
-          nlpSource = 'symbolic-nlp';
+          nlpSource = semanticResult.stats?.phase || 'neuro-symbolic';
           nlpMetadata = {
-            chunks: semanticResult.semantic?.chunks?.length || 0,
-            frames: semanticResult.semantic?.frames?.length || 0,
-            predicates: semanticResult.semantic?.srlStructures?.length || 0,
-            relationships: semanticResult.relationships?.length || 0,
+            closedVocab: semanticResult.stats?.closedVocabSpans || 0,
+            openVocab: semanticResult.stats?.openVocabSpans || 0,
+            tier1Latency: semanticResult.stats?.tier1Latency || 0,
+            tier2Latency: semanticResult.stats?.tier2Latency || 0,
           };
           
-          console.log(`[Symbolic NLP] Extracted ${nlpSpans.length} spans with ${nlpMetadata.frames} frames`);
-        } else if (hasSemanticSpans && semanticResult.stats?.phase === 'fallback-dictionary') {
-          // Symbolic NLP failed, but dictionary fallback worked
-          nlpSpans = semanticResult.spans;
-          nlpSource = 'dictionary-fallback';
+          console.log(`[Neuro-Symbolic] Extracted ${nlpSpans.length} spans (closed: ${nlpMetadata.closedVocab}, open: ${nlpMetadata.openVocab}, latency: ${nlpMetadata.tier1Latency + nlpMetadata.tier2Latency}ms)`);
         }
       } catch (error) {
-        console.warn('[Symbolic NLP] Error during extraction, falling back:', error.message);
-        // Continue to dictionary fallback below
+        console.warn('[Neuro-Symbolic] Error during extraction, falling back:', error.message);
       }
     }
     
     // ============================================================================
-    // PHASE 0: Fallback to Dictionary-only if symbolic NLP didn't run or failed
+    // PHASE 0: Fallback to Dictionary-only if neuro-symbolic didn't run or failed
     // ============================================================================
     if (nlpSpans.length === 0 && SpanLabelingConfig.NLP_FAST_PATH.ENABLED) {
       try {

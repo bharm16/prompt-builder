@@ -43,6 +43,9 @@ import { CategoryAlignmentService } from '../services/enhancement/services/Categ
 // Import config
 import { createRedisClient } from './redis.js';
 
+// Import NLP warmup
+import { warmupGliner } from '../services/nlp/NlpSpanService.js';
+
 /**
  * Create and configure the dependency injection container
  * All service dependencies are declared explicitly
@@ -450,5 +453,18 @@ export async function initializeServices(container) {
   }
 
   logger.info('All services initialized and validated successfully');
+  
+  // Warmup GLiNER model for semantic entity extraction
+  try {
+    const glinerResult = await warmupGliner();
+    if (glinerResult.success) {
+      logger.info('✅ GLiNER model warmed up for semantic extraction');
+    } else {
+      logger.warn('⚠️ GLiNER warmup skipped: ' + glinerResult.message);
+    }
+  } catch (error) {
+    logger.warn('⚠️ GLiNER warmup failed:', error.message);
+  }
+  
   return container;
 }
