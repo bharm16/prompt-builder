@@ -15,7 +15,7 @@ import {
   videoValidationSchema,
   semanticParseSchema,
 } from '../utils/validation.js';
-import { extractSemanticSpans } from '../llm/span-labeling/services/NlpSpanService.js';
+import { extractSemanticSpans } from '../services/nlp/NlpSpanService.js';
 
 /**
  * Create API routes

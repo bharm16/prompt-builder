@@ -182,6 +182,61 @@ describe('NlpSpanService - Disambiguation Rules', () => {
     const rollSpan = spans.find(s => s.text.toLowerCase() === 'roll' && s.role === 'camera.movement');
     expect(rollSpan).toBeUndefined();
   });
+  
+  it('should avoid false positive for "roll" as verb without camera context', () => {
+    const text = 'The dog rolls over';
+    const spans = extractKnownSpans(text);
+    
+    // "rolls" should NOT be tagged as camera.movement (no camera context)
+    const rollSpan = spans.find(s => s.text.toLowerCase().includes('roll') && s.role === 'camera.movement');
+    expect(rollSpan).toBeUndefined();
+  });
+  
+  it('should correctly tag "roll" as camera.movement when camera context exists', () => {
+    const text = 'Camera rolls slightly to create tension';
+    const spans = extractKnownSpans(text);
+    
+    // "rolls" should be tagged as camera.movement (has camera context)
+    const rollSpan = spans.find(s => s.text.toLowerCase().includes('roll'));
+    expect(rollSpan).toBeDefined();
+    expect(rollSpan.role).toBe('camera.movement');
+  });
+  
+  it('should correctly tag "pan" with camera context', () => {
+    const text = 'Pan left with camera movement';
+    const spans = extractKnownSpans(text);
+    
+    // "Pan" should be tagged as camera.movement (has camera context)
+    const panSpan = spans.find(s => s.text.toLowerCase().includes('pan') && s.role === 'camera.movement');
+    expect(panSpan).toBeDefined();
+  });
+  
+  it('should avoid false positive for "pan" without camera context', () => {
+    const text = 'Pan out the vegetables';
+    const spans = extractKnownSpans(text);
+    
+    // "Pan" should NOT be tagged as camera.movement (no camera context, cooking context)
+    const panSpan = spans.find(s => s.text.toLowerCase() === 'pan' && s.role === 'camera.movement');
+    expect(panSpan).toBeUndefined();
+  });
+  
+  it('should avoid false positive for "drone" without camera context', () => {
+    const text = 'A drone flying overhead';
+    const spans = extractKnownSpans(text);
+    
+    // "drone" should NOT be tagged as camera.movement (no camera context)
+    const droneSpan = spans.find(s => s.text.toLowerCase() === 'drone' && s.role === 'camera.movement');
+    expect(droneSpan).toBeUndefined();
+  });
+  
+  it('should correctly tag "drone" as camera.movement with camera context', () => {
+    const text = 'Shot with drone camera flying overhead';
+    const spans = extractKnownSpans(text);
+    
+    // "drone" should be tagged as camera.movement (has camera context)
+    const droneSpan = spans.find(s => s.text.toLowerCase() === 'drone' && s.role === 'camera.movement');
+    expect(droneSpan).toBeDefined();
+  });
 });
 
 describe('NlpSpanService - Multi-word Terms', () => {

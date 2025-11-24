@@ -269,3 +269,4 @@ For questions or issues:
 **Script Version**: 1.0.0
 **Compatibility**: Works with existing highlight system
 
+

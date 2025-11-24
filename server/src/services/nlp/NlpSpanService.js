@@ -12,7 +12,7 @@ import { dirname, join } from 'path';
 // --- SETUP: Load Vocab ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const vocabPath = join(__dirname, '../data/vocab.json');
+const vocabPath = join(__dirname, 'vocab.json');
 let VOCAB = {};
 try {
   VOCAB = JSON.parse(readFileSync(vocabPath, 'utf-8'));
@@ -35,9 +35,16 @@ nlp.plugin((Doc, world) => {
     });
 
     // Register the tag
-    world.addTags({
-      [tag]: { isA: 'Noun' } // Default to noun to prevent verb conjugation mess
-    });
+    // For camera.movement, allow both noun and verb forms
+    if (taxonomyId === 'camera.movement') {
+      world.addTags({
+        [tag]: { isA: ['Noun', 'Verb'] } // Allow both noun and verb
+      });
+    } else {
+      world.addTags({
+        [tag]: { isA: 'Noun' } // Other technical terms remain nouns
+      });
+    }
   });
 
   world.addWords(words);
@@ -50,6 +57,9 @@ export function extractSemanticSpans(text) {
 
   const doc = nlp(text);
   const spans = [];
+
+  // Ambiguous camera terms that can be common verbs/nouns
+  const AMBIGUOUS_CAMERA_TERMS = ['pan', 'roll', 'tilt', 'zoom', 'drone', 'crane', 'boom', 'truck'];
 
   // Helper to add span
   const addSpan = (match, role, confidence) => {
@@ -68,22 +78,56 @@ export function extractSemanticSpans(text) {
     });
   };
 
+  // Helper to check if ambiguous term has camera context
+  const hasCameraContext = (matchText, offsetStart, offsetEnd, fullText) => {
+    // Check for camera context in nearby words (within 50 chars before/after)
+    const start = Math.max(0, offsetStart - 50);
+    const end = Math.min(fullText.length, offsetEnd + 50);
+    const context = fullText.substring(start, end).toLowerCase();
+    return /(camera|shot|lens|frame|cinematography|cinematic|filming|video)/.test(context);
+  };
+
   // 1. CLOSED VOCABULARY (Technical Terms)
   // We use our loaded vocab list. High confidence.
   Object.keys(VOCAB).forEach(taxonomyId => {
     const tag = taxonomyId.replace('.', '_');
-    const matches = doc.match(`#${tag}`);
+    let matches = doc.match(`#${tag}`);
     
     // HEURISTIC: Context Checks
-    // Don't tag "pan" if it's "frying pan"
     if (taxonomyId === 'camera.movement') {
-        matches.notIf('(frying|sauté|sauce|iron) .'); 
+      // Don't tag "pan" if it's "frying pan"
+      matches.notIf('(frying|sauté|sauce|iron) .');
+      
+      // Filter ambiguous terms without camera context by manually adding spans
+      const matchArray = matches.json({ offset: true });
+      matchArray.forEach(m => {
+        const matchText = m.text.toLowerCase();
+        let confidence = 1.0;
+        
+        if (AMBIGUOUS_CAMERA_TERMS.includes(matchText)) {
+          // Check for camera context
+          if (!hasCameraContext(matchText, m.offset.start, m.offset.end, text)) {
+            // Skip ambiguous terms without camera context
+            return;
+          }
+        }
+        
+        // Add span with appropriate confidence
+        spans.push({
+          text: m.text,
+          role: taxonomyId,
+          confidence: confidence,
+          start: m.offset.start,
+          end: m.offset.start + m.text.length
+        });
+      });
+      
+      // Tag original matches as #Technical so we ignore them in the next step
+      matches.tag('Technical');
+      return; // Skip the default addSpan call below
     }
 
-    // Ensure only exact word matches or safe inflections
-    // Fix for "span" matching inside "spans" (which is fine) but avoiding partial matches if possible
-    // compromise .match() handles words, but let's be safe.
-    
+    // Default: add all matches with full confidence
     addSpan(matches, taxonomyId, 1.0);
     
     // Tag these as #Technical so we ignore them in the next step
@@ -187,3 +231,4 @@ export function estimateCoverage(text) {
   
   return Math.min(100, Math.round((coveredWords / words) * 100));
 }
+

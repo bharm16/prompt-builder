@@ -1,3 +1,6 @@
+import { extractSemanticSpans } from '../../nlp/NlpSpanService.js';
+import { getParentCategory } from '../../../../../shared/taxonomy.js';
+
 const UNIVERSAL_ORDER = 'Shot Type > Subject > Action > Setting > Camera Behavior > Lighting > Style';
 
 /**
@@ -260,7 +263,7 @@ export class CleanPromptBuilder {
 
     const modelLine = modelTarget ? `Target model: ${modelTarget}.` : '';
     const sectionLine = promptSection ? `Prompt section: ${promptSection}.` : '';
-    const slotLabel = slot || 'descriptor';
+    const slotLabel = slot || 'subject';
     const guidance = anchors.length
       ? `Context notes: ${anchors.join(' | ')}`
       : '';
@@ -280,42 +283,35 @@ export class CleanPromptBuilder {
     };
   }
 
-  _resolveSlot({ highlightedText, phraseRole, highlightedCategory, contextBefore, contextAfter }) {
-    const text = (highlightedText || '').toLowerCase();
-    const role = (phraseRole || '').toLowerCase();
-    const category = (highlightedCategory || '').toLowerCase();
-    const neighbor = `${contextBefore || ''} ${contextAfter || ''}`.toLowerCase();
+  /**
+   * Resolve slot using taxonomy directly (single source of truth)
+   * Priority: highlightedCategory > phraseRole > NLP inference > default
+   */
+  _resolveSlot({ highlightedText, phraseRole, highlightedCategory }) {
+    // PRIORITY 1: Use category from span labeling (already computed)
+    if (highlightedCategory) {
+      const parent = getParentCategory(highlightedCategory);
+      if (parent) return parent;
+    }
 
-    const actionPattern = /\b(run|runs|running|walk|walking|walks|jump|jumping|flying|flies|dive|dives|leap|leaping|climb|climbing|turns?|spins?|raises?|holds?|throws?|looking|gazing|smiling|staring)\b/;
-    const cameraPattern = /\bshot|frame|framing|lens|camera|angle|dolly|pan|tilt|zoom|close[- ]?up|wide|overhead\b/;
-    const lightingPattern = /\blight|lighting|shadow|glow|sunset|golden hour|neon|moody|illum|rim\b/;
-    const stylePattern = /\bstyle|aesthetic|vibe|tone|noir|cyberpunk|vintage|retro|minimal|surreal\b/;
-    const settingPattern = /\bforest|city|street|room|interior|exterior|desert|ocean|mountain|space|hall\b/;
-    const subjectPattern = /\bface|eyes|hair|hands|wearing|dressed|outfit|clothing|skin|build|silhouette\b/;
-    const technicalPattern = /\b16:9|9:16|fps|frame rate|aspect ratio|resolution|4k|8k|mm\b/;
+    // PRIORITY 2: Use phraseRole if provided
+    if (phraseRole) {
+      const parent = getParentCategory(phraseRole);
+      if (parent) return parent;
+    }
 
-    if (actionPattern.test(text) || actionPattern.test(neighbor) || /action|movement|gesture/.test(role)) {
-      return 'action';
+    // PRIORITY 3: Run compromise.js on the text (manual selection fallback)
+    if (highlightedText) {
+      const { spans } = extractSemanticSpans(highlightedText);
+      if (spans.length > 0) {
+        // Use highest confidence span
+        const bestSpan = spans.reduce((a, b) => (a.confidence > b.confidence ? a : b));
+        const parent = getParentCategory(bestSpan.role);
+        if (parent) return parent;
+      }
     }
-    if (cameraPattern.test(text) || /camera|framing|shot/.test(role) || /camera/.test(category)) {
-      return 'camera';
-    }
-    if (lightingPattern.test(text) || /lighting/.test(role) || /light/.test(category)) {
-      return 'lighting';
-    }
-    if (technicalPattern.test(text) || /technical|aspect|spec|lens/.test(role)) {
-      return 'technical';
-    }
-    if (stylePattern.test(text) || /style|aesthetic|tone/.test(role) || /style/.test(category)) {
-      return 'style';
-    }
-    if (subjectPattern.test(text) || /subject|character|appearance|wardrobe/.test(role)) {
-      return 'subject';
-    }
-    if (settingPattern.test(text) || /location|environment|setting/.test(role)) {
-      return 'setting';
-    }
-    return 'descriptor';
+
+    return 'subject';
   }
 
   _pickDesign(slot, isVideoPrompt, mode) {
@@ -323,7 +319,7 @@ export class CleanPromptBuilder {
       return slot === 'action' ? 'narrative' : 'visual';
     }
     if (slot === 'action') return 'narrative';
-    if (slot === 'camera' || slot === 'lighting' || slot === 'technical') {
+    if (slot === 'camera' || slot === 'shot' || slot === 'lighting' || slot === 'technical') {
       return 'orthogonal';
     }
     if (!isVideoPrompt) return 'visual';
@@ -340,3 +336,4 @@ export class CleanPromptBuilder {
     return fromEnd ? text.slice(-length) : text.slice(0, length);
   }
 }
+

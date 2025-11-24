@@ -212,3 +212,4 @@ The script includes built-in safety features:
 
 See `scripts/migrations/README.md` for detailed documentation and prerequisites.
 
+

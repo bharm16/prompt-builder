@@ -11,7 +11,7 @@ import { validateSpans } from './validation/SpanValidator.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { SemanticRouter } from './routing/SemanticRouter.js';
-import { extractKnownSpans, getVocabStats, extractSemanticSpans } from './services/NlpSpanService.js';
+import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '../../services/nlp/NlpSpanService.js';
 
 /**
  * Span Labeling Service - Refactored Architecture
