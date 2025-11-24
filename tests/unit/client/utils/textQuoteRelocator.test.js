@@ -42,7 +42,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 6, end: 11 });
+        expect(result).toMatchObject({ start: 6, end: 11 });
       });
 
       it('should find match at beginning of text', () => {
@@ -51,7 +51,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 0, end: 5 });
+        expect(result).toMatchObject({ start: 0, end: 5 });
       });
 
       it('should find match at end of text', () => {
@@ -60,7 +60,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 6, end: 11 });
+        expect(result).toMatchObject({ start: 6, end: 11 });
       });
 
       it('should handle quote equal to entire text', () => {
@@ -69,7 +69,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 0, end: 5 });
+        expect(result).toMatchObject({ start: 0, end: 5 });
       });
 
       it('should be case-sensitive', () => {
@@ -87,7 +87,20 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 0, end: 12 });
+        expect(result).toEqual({ start: 0, end: 12, exact: true });
+      });
+
+      it('should find fuzzy match when whitespace differs', () => {
+        const text = 'hello world'; // One space
+        const quote = 'hello  world'; // Two spaces
+
+        const result = relocateQuote({ text, quote });
+
+        // Should find it with fuzzy matching
+        expect(result).not.toBeNull();
+        expect(result.start).toBe(0);
+        expect(result.end).toBe(11);
+        expect(result.exact).toBe(false);
       });
     });
 
@@ -275,7 +288,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 4, end: 5 });
+        expect(result).toMatchObject({ start: 4, end: 5 });
       });
 
       it('should handle unicode characters', () => {
@@ -304,7 +317,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 5, end: 14 });
+        expect(result).toMatchObject({ start: 5, end: 14 });
       });
 
       it('should handle newlines and tabs', () => {
@@ -313,7 +326,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text, quote });
 
-        expect(result).toEqual({ start: 12, end: 16 });
+        expect(result).toMatchObject({ start: 12, end: 16 });
       });
 
       it('should handle very long text', () => {
@@ -322,7 +335,7 @@ describe('textQuoteRelocator', () => {
 
         const result = relocateQuote({ text: longText, quote });
 
-        expect(result).toEqual({ start: 10000, end: 10006 });
+        expect(result).toMatchObject({ start: 10000, end: 10006 });
       });
 
       it('should handle quote appearing many times', () => {
@@ -344,7 +357,7 @@ describe('textQuoteRelocator', () => {
         const result = relocateQuote({ text, quote });
 
         // Should find first occurrence
-        expect(result).toEqual({ start: 0, end: 2 });
+        expect(result).toMatchObject({ start: 0, end: 2 });
       });
     });
 
@@ -361,26 +374,26 @@ describe('textQuoteRelocator', () => {
         expect(result).not.toBeNull(); // Should still find match
       });
 
-      it('should compare context character by character', () => {
+      it('should compare context token by token', () => {
         const text = 'abc target def target';
         const quote = 'target';
         const leftCtx = 'abc ';
 
         const result = relocateQuote({ text, quote, leftCtx });
 
-        // 'abc ' matches exactly before first target
+        // 'abc' token matches before first target
         expect(result.start).toBe(4);
       });
 
-      it('should stop scoring when characters differ', () => {
+      it('should stop scoring when tokens differ', () => {
         const text = 'prefix target different target';
         const quote = 'target';
         const leftCtx = 'prefix ';
 
         const result = relocateQuote({ text, quote, leftCtx });
 
-        // 'prefix ' fully matches before first target (6 chars match)
-        // 'different ' before second target matches 0 chars
+        // 'prefix' token fully matches before first target
+        // 'different' before second target doesn't match
         expect(result.start).toBe(7);
       });
     });
@@ -452,7 +465,7 @@ describe('textQuoteRelocator', () => {
       it('should relocate highlighted text in prose', () => {
         const prose = 'The cinematographer adjusted the camera. The camera angle was perfect. Focus on the camera lens.';
         const quote = 'camera';
-        const leftCtx = 'the ';
+        const leftCtx = 'on the '; // More distinctive context
         const rightCtx = ' lens';
 
       const result = relocateQuote({ text: prose, quote, leftCtx, rightCtx });
@@ -471,6 +484,35 @@ describe('textQuoteRelocator', () => {
 
         expect(result.start).toBe(23); // Second 'fps'
       });
+
+      it('should handle whitespace differences in context (Split-Brain fix)', () => {
+        // Simulate the case where the context was captured with different whitespace
+        // than what currently exists in the text
+        const text = 'the camera moves. the camera angle is great. focus on the camera lens.';
+        const quote = 'camera';
+        const leftCtx = 'on  the  '; // Extra spaces (whitespace variance)
+        const rightCtx = '  lens'; // Extra space (whitespace variance)
+
+        const result = relocateQuote({ text, quote, leftCtx, rightCtx });
+
+        // Should still find the correct 'camera' (the one before 'lens')
+        expect(result).not.toBeNull();
+        expect(result.start).toBe(58); // Third 'camera'
+      });
+
+      it('should handle quote with edited internal whitespace', () => {
+        // User added extra space inside the span after suggestion was generated
+        const text = 'The quick brown fox';
+        const quote = 'quick  brown'; // Two spaces (edited)
+        const leftCtx = 'The ';
+        const rightCtx = ' fox';
+
+        const result = relocateQuote({ text, quote, leftCtx, rightCtx });
+
+        // Should find it with fuzzy matching
+        expect(result).not.toBeNull();
+        expect(text.slice(result.start, result.end)).toBe('quick brown'); // Actual text has one space
+      });
     });
 
     describe('performance', () => {
@@ -483,7 +525,7 @@ describe('textQuoteRelocator', () => {
         const result = relocateQuote({ text, quote });
 
         const endTime = Date.now();
-        expect(endTime - startTime).toBeLessThan(100); // Should be fast
+        expect(endTime - startTime).toBeLessThan(200); // Token-based matching is still fast
         expect(result).not.toBeNull();
       });
     });

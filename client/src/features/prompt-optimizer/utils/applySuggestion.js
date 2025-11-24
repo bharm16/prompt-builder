@@ -1,3 +1,4 @@
+// client/src/features/prompt-optimizer/utils/applySuggestion.js
 import { relocateQuote } from '../../../utils/textQuoteRelocator.js';
 
 const ensureNumber = (value, fallback = -1) =>
@@ -11,67 +12,58 @@ export const applySuggestionToPrompt = ({
   metadata = {},
   offsets = {},
 }) => {
-  const workingPrompt = (prompt ?? '').normalize('NFC');
-  const suggestionNfc = (suggestionText ?? '').normalize('NFC');
-  const highlightText = (highlight ?? '').normalize('NFC');
-
-  if (!workingPrompt || !suggestionNfc) {
+  // Normalize main prompt to ensure reliable indexing
+  const workingPrompt = (prompt ?? ''); 
+  // We generally DO NOT want to NFC normalize the whole prompt arbitrarily if we are using indices,
+  // but since we are searching, standardizing input is okay.
+  
+  const suggestionString = (suggestionText ?? '');
+  
+  if (!workingPrompt || !suggestionString) {
     return { updatedPrompt: null };
   }
 
-  let startIndex = ensureNumber(offsets.start, ensureNumber(spanMeta.start));
-  let endIndex = ensureNumber(offsets.end, ensureNumber(spanMeta.end));
+  // 1. Identify the text we are trying to replace (The "Anchor")
+  // Priority: 
+  // 1. The specific text associated with the span metadata (most accurate)
+  // 2. The text passed as 'highlight' (from selection)
+  // 3. The suggestion text itself (fallback for insertions)
+  let quoteToFind = spanMeta.quote || highlight || suggestionString;
+  
+  // Clean the quote: trim it to avoid matching issues with edge whitespace
+  quoteToFind = quoteToFind.trim();
 
-  const baseQuote = spanMeta.quote || highlightText || suggestionNfc;
-  const replacementSource = baseQuote.normalize('NFC');
-  const leftCtx = (spanMeta.leftCtx || metadata.leftCtx || '').normalize('NFC');
-  const rightCtx = (spanMeta.rightCtx || metadata.rightCtx || '').normalize('NFC');
+  // 2. Gather Context
+  const leftCtx = spanMeta.leftCtx || metadata.leftCtx || '';
+  const rightCtx = spanMeta.rightCtx || metadata.rightCtx || '';
+  
+  // 3. Determine a hint for the location
+  const preferIndex = ensureNumber(offsets.start, ensureNumber(spanMeta.start));
 
-  const preferIndex = Number.isFinite(spanMeta.start) ? spanMeta.start : startIndex;
-
-  const primaryRelocation = relocateQuote({
+  // 4. Relocate!
+  // This now uses the Token-Based Robust Matcher
+  const match = relocateQuote({
     text: workingPrompt,
-    quote: replacementSource,
+    quote: quoteToFind,
     leftCtx,
     rightCtx,
-    preferIndex,
+    preferIndex: preferIndex >= 0 ? preferIndex : null,
   });
 
-  if (primaryRelocation) {
-    startIndex = primaryRelocation.start;
-    endIndex = primaryRelocation.end;
-  }
-
-  if (startIndex < 0 || endIndex <= startIndex) {
-    const fallback = relocateQuote({
-      text: workingPrompt,
-      quote: replacementSource,
-      leftCtx: (metadata.leftCtx || '').normalize('NFC'),
-      rightCtx: (metadata.rightCtx || '').normalize('NFC'),
-      preferIndex: preferIndex >= 0 ? preferIndex : undefined,
-    });
-    if (fallback) {
-      startIndex = fallback.start;
-      endIndex = fallback.end;
-    }
-  }
-
-  if (startIndex < 0 || endIndex <= startIndex) {
-    const fallbackStart = workingPrompt.indexOf(replacementSource);
-    if (fallbackStart !== -1) {
-      startIndex = fallbackStart;
-      endIndex = fallbackStart + replacementSource.length;
-    }
-  }
-
-  if (startIndex < 0 || endIndex <= startIndex || endIndex > workingPrompt.length) {
+  if (!match) {
+    console.warn('[applySuggestion] Failed to locate anchor text:', quoteToFind);
     return { updatedPrompt: null };
   }
 
-  const currentSlice = workingPrompt.slice(startIndex, endIndex);
-  const replacementTarget = currentSlice || replacementSource;
+  const { start, end } = match;
 
-  const updatedPrompt = `${workingPrompt.slice(0, startIndex)}${suggestionNfc}${workingPrompt.slice(endIndex)}`;
+  // 5. Construct the new prompt
+  // We use the INDICES from the match to slice the ORIGINAL string.
+  // This preserves any weird whitespace surrounding the match that wasn't part of the match itself.
+  const prefix = workingPrompt.slice(0, start);
+  const suffix = workingPrompt.slice(end);
+  
+  const updatedPrompt = prefix + suggestionString + suffix;
 
   if (updatedPrompt === workingPrompt) {
     return { updatedPrompt: null };
@@ -79,10 +71,9 @@ export const applySuggestionToPrompt = ({
 
   return {
     updatedPrompt,
-    replacementTarget,
+    replacementTarget: workingPrompt.slice(start, end),
     idempotencyKey: spanMeta.idempotencyKey || metadata.idempotencyKey || null,
   };
 };
 
 export default applySuggestionToPrompt;
-
