@@ -117,26 +117,80 @@ export const NLP_FAST_PATH = {
 };
 
 /**
- * Symbolic NLP Configuration (Phase 1 Implementation)
- * Enables full symbolic processing: POS tagging, chunking, SRL, frames, and scene graphs
+ * Neuro-Symbolic NLP Configuration
+ * 3-Tier architecture: Aho-Corasick → GLiNER → LLM
+ */
+export const NEURO_SYMBOLIC = {
+  // Master switch for neuro-symbolic pipeline
+  ENABLED: true,
+  
+  // Tier 1: Aho-Corasick (Closed Vocabulary)
+  AHO_CORASICK: {
+    // Always enabled - O(N) single pass, 100% precision
+    ENABLED: true,
+  },
+  
+  // Tier 2: GLiNER (Open Vocabulary)
+  GLINER: {
+    // Enable GLiNER for semantic entity recognition
+    ENABLED: true,
+    
+    // Model path (ONNX format)
+    MODEL_PATH: 'onnx-community/gliner_small-v2.1',
+    
+    // Confidence threshold for entity detection (0-1)
+    THRESHOLD: 0.3,
+    
+    // Maximum token width for entity detection
+    MAX_WIDTH: 12,
+    
+    // Timeout for GLiNER inference (ms)
+    TIMEOUT: 5000,
+    
+    // Pre-warm model on server startup
+    PREWARM_ON_STARTUP: true,
+  },
+  
+  // Merge strategy configuration
+  MERGE: {
+    // Priority: closed vocabulary always wins conflicts
+    CLOSED_VOCAB_PRIORITY: true,
+    
+    // Overlap strategy: 'longest-match' or 'highest-confidence'
+    OVERLAP_STRATEGY: 'longest-match',
+  },
+  
+  // Fallback to LLM if neuro-symbolic produces insufficient results
+  FALLBACK_TO_LLM: true,
+  
+  // Minimum spans to skip LLM fallback
+  MIN_SPANS_THRESHOLD: 3,
+  
+  // Maximum processing time (ms) before LLM fallback
+  MAX_PROCESSING_TIME: 200,
+};
+
+/**
+ * @deprecated Use NEURO_SYMBOLIC instead
+ * Symbolic NLP Configuration (Legacy - kept for backward compatibility)
  */
 export const SYMBOLIC_NLP = {
   // Master switch for symbolic NLP pipeline
-  ENABLED: true,
+  ENABLED: false, // Disabled - replaced by NEURO_SYMBOLIC
   
   // Feature flags for individual components
   FEATURES: {
     // Penn Treebank POS tagging with Brill transformation rules
-    POS_TAGGING: true,
+    POS_TAGGING: false,
     
     // Shallow parsing / chunking (NP/VP/PP extraction)
-    CHUNKING: true,
+    CHUNKING: false,
     
     // Frame semantics (Motion, Cinematography, Lighting)
-    FRAME_SEMANTICS: true,
+    FRAME_SEMANTICS: false,
     
     // Semantic role labeling (Arg0/Arg1/ArgM)
-    SEMANTIC_ROLES: true,
+    SEMANTIC_ROLES: false,
   },
   
   // Fallback strategy if symbolic processing fails
@@ -190,7 +244,8 @@ const SpanLabelingConfig = {
   VALIDATION_MODES,
   CHUNKING,
   NLP_FAST_PATH,
-  SYMBOLIC_NLP,
+  NEURO_SYMBOLIC,
+  SYMBOLIC_NLP, // @deprecated - kept for backward compatibility
   estimateMaxTokens,
 };
 

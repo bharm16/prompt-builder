@@ -1,12 +1,23 @@
-import nlp from 'compromise';
+import AhoCorasick from 'ahocorasick';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { TAXONOMY } from '#shared/taxonomy.js';
+
+// GLiNER is loaded dynamically due to ONNX runtime compatibility issues
+let GlinerClass = null;
 
 /**
- * NLP Span Service - PRAGMATIC VERSION
- * * 1. Uses Regex for "Closed Vocabulary" (Technical terms like '4k', 'pan left') - 100% precision
- * 2. Uses Compromise for "Open Vocabulary" (Subjects, Actions) - Good enough heuristics
+ * NLP Span Service - NEURO-SYMBOLIC ARCHITECTURE
+ * 
+ * 3-Tier extraction pipeline:
+ * 1. Aho-Corasick (Tier 1): Closed vocabulary - O(N) single pass, 100% precision
+ * 2. GLiNER (Tier 2): Open vocabulary - Semantic understanding, ~80-90% precision
+ * 3. LLM Fallback (Tier 3): Complex reasoning - handled by SpanLabelingService
+ * 
+ * This replaces the broken Compromise-based approach that:
+ * - Misclassified gerunds as actions ("glowing sunset" → action.movement)
+ * - Had O(M×N) performance from iterating vocab categories
  */
 
 // --- SETUP: Load Vocab ---
@@ -20,187 +31,439 @@ try {
   console.warn("⚠️ NLP Service: Could not load vocab.json. Technical tagging will fail.");
 }
 
-// --- PLUGIN: Teach Compromise your Taxonomy ---
-nlp.plugin((Doc, world) => {
-  const words = {};
+// ============================================================================
+// TIER 1: AHO-CORASICK - Closed Vocabulary (100% precision, O(N) time)
+// ============================================================================
+
+/**
+ * Build Aho-Corasick automaton from vocabulary
+ * This is done ONCE at module load for O(N) extraction
+ */
+function buildAhoCorasickAutomaton() {
+  const patterns = [];
+  const patternToTaxonomy = new Map();
   
-  // Flatten vocab for Compromise: { "pan left": "CameraMove", "kodak portra": "FilmStock" }
   Object.entries(VOCAB).forEach(([taxonomyId, terms]) => {
-    // Create a simpler internal tag (e.g. 'camera.movement' -> 'CameraMove')
-    // We use a suffix to avoid collision with native tags
-    const tag = taxonomyId.replace('.', '_'); // e.g. "camera_movement"
-    
     terms.forEach(term => {
-      words[term.toLowerCase()] = tag;
-    });
-
-    // Register the tag
-    // For camera.movement, allow both noun and verb forms
-    if (taxonomyId === 'camera.movement') {
-      world.addTags({
-        [tag]: { isA: ['Noun', 'Verb'] } // Allow both noun and verb
-      });
-    } else {
-      world.addTags({
-        [tag]: { isA: 'Noun' } // Other technical terms remain nouns
-      });
-    }
-  });
-
-  world.addWords(words);
-});
-
-// --- MAIN FUNCTION ---
-
-export function extractSemanticSpans(text) {
-  if (!text || typeof text !== 'string') return { spans: [] };
-
-  const doc = nlp(text);
-  const spans = [];
-
-  // Ambiguous camera terms that can be common verbs/nouns
-  const AMBIGUOUS_CAMERA_TERMS = ['pan', 'roll', 'tilt', 'zoom', 'drone', 'crane', 'boom', 'truck'];
-
-  // Helper to add span
-  const addSpan = (match, role, confidence) => {
-    match.forEach(m => {
-      // Get raw offsets
-      const json = m.json({ offset: true })[0]; 
-      if (!json) return;
-      
-      spans.push({
-        text: m.text(),
-        role: role,
-        confidence: confidence,
-        start: json.offset.start,
-        end: json.offset.start + json.text.length
+      const lowerTerm = term.toLowerCase();
+      patterns.push(lowerTerm);
+      patternToTaxonomy.set(lowerTerm, {
+        taxonomyId,
+        originalTerm: term
       });
     });
-  };
-
-  // Helper to check if ambiguous term has camera context
-  const hasCameraContext = (matchText, offsetStart, offsetEnd, fullText) => {
-    // Check for camera context in nearby words (within 50 chars before/after)
-    const start = Math.max(0, offsetStart - 50);
-    const end = Math.min(fullText.length, offsetEnd + 50);
-    const context = fullText.substring(start, end).toLowerCase();
-    return /(camera|shot|lens|frame|cinematography|cinematic|filming|video)/.test(context);
-  };
-
-  // 1. CLOSED VOCABULARY (Technical Terms)
-  // We use our loaded vocab list. High confidence.
-  Object.keys(VOCAB).forEach(taxonomyId => {
-    const tag = taxonomyId.replace('.', '_');
-    let matches = doc.match(`#${tag}`);
-    
-    // HEURISTIC: Context Checks
-    if (taxonomyId === 'camera.movement') {
-      // Don't tag "pan" if it's "frying pan"
-      matches.notIf('(frying|sauté|sauce|iron) .');
-      
-      // Filter ambiguous terms without camera context by manually adding spans
-      const matchArray = matches.json({ offset: true });
-      matchArray.forEach(m => {
-        const matchText = m.text.toLowerCase();
-        let confidence = 1.0;
-        
-        if (AMBIGUOUS_CAMERA_TERMS.includes(matchText)) {
-          // Check for camera context
-          if (!hasCameraContext(matchText, m.offset.start, m.offset.end, text)) {
-            // Skip ambiguous terms without camera context
-            return;
-          }
-        }
-        
-        // Add span with appropriate confidence
-        spans.push({
-          text: m.text,
-          role: taxonomyId,
-          confidence: confidence,
-          start: m.offset.start,
-          end: m.offset.start + m.text.length
-        });
-      });
-      
-      // Tag original matches as #Technical so we ignore them in the next step
-      matches.tag('Technical');
-      return; // Skip the default addSpan call below
-    }
-
-    // Default: add all matches with full confidence
-    addSpan(matches, taxonomyId, 1.0);
-    
-    // Tag these as #Technical so we ignore them in the next step
-    matches.tag('Technical'); 
   });
-
-  // 2. OPEN VOCABULARY (Subjects & Actions)
-  // We use grammar rules to guess these. Lower confidence.
-
-  // A. ACTIONS (Verbs that are not technical terms)
-  // Rule: Verbs ending in -ing (Gerunds) are very likely actions in prompts
-  // "A dog [running] in the park"
-  const actions = doc.verbs().if('#Gerund').not('#Technical');
-  addSpan(actions, 'action.movement', 0.85);
-
-  // B. SUBJECTS (Nouns that are not technical terms)
-  // Rule: Nouns that aren't technical, not pronouns, not part of a prepositional phrase
-  // "A [cyborg] holding a gun"
-  const subjects = doc.nouns()
-    .not('#Technical')
-    .not('#Pronoun')
-    .notIf('(in|at|on) .'); // Ignore "park" in "in the park" (that's location)
   
-  addSpan(subjects, 'subject.identity', 0.80);
-
-  // C. LOCATIONS (Prepositional Phrases)
-  // Rule: "in the [Location]"
-  const locations = doc.match('(in|at|on|inside) (the|a|an)? #Noun+')
-                       .not('#Technical');
-  // We want to capture the noun part of the location
-  addSpan(locations.match('#Noun+'), 'environment.location', 0.75);
-
-  // 3. CLEANUP
-  const uniqueSpans = deduplicateSpans(spans);
-
-  return {
-    spans: uniqueSpans,
-    stats: {
-      phase: 'compromise-native',
-      totalSpans: uniqueSpans.length
-    }
-  };
+  const ac = new AhoCorasick(patterns);
+  return { ac, patternToTaxonomy };
 }
 
-// --- UTILS ---
+// Build automaton at module load
+const { ac: ahoCorasick, patternToTaxonomy } = buildAhoCorasickAutomaton();
 
+/**
+ * Ambiguous camera terms that require context disambiguation
+ */
+const AMBIGUOUS_CAMERA_TERMS = new Set(['pan', 'roll', 'tilt', 'zoom', 'drone', 'crane', 'boom', 'truck']);
+
+/**
+ * Check if ambiguous term has camera context nearby
+ */
+function hasCameraContext(text, start, end) {
+  const contextRadius = 50;
+  const contextStart = Math.max(0, start - contextRadius);
+  const contextEnd = Math.min(text.length, end + contextRadius);
+  const context = text.substring(contextStart, contextEnd).toLowerCase();
+  return /(camera|shot|lens|frame|cinematography|cinematic|filming|video|footage)/.test(context);
+}
+
+/**
+ * Extract spans using Aho-Corasick automaton - O(N) single pass
+ * @param {string} text - Input text
+ * @returns {Array} Spans with 100% confidence
+ */
+function extractClosedVocabulary(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  const lowerText = text.toLowerCase();
+  const results = ahoCorasick.search(lowerText);
+  const spans = [];
+  
+  // Results format: [[endIndex, [pattern1, pattern2, ...]], ...]
+  for (const [endIndex, patterns] of results) {
+    for (const pattern of patterns) {
+      const info = patternToTaxonomy.get(pattern);
+      if (!info) continue;
+      
+      const start = endIndex - pattern.length + 1;
+      const end = endIndex + 1;
+      const matchedText = text.substring(start, end);
+      
+      // Apply disambiguation for ambiguous camera terms
+      if (info.taxonomyId === 'camera.movement' && AMBIGUOUS_CAMERA_TERMS.has(pattern)) {
+        // Check for false positive contexts
+        const beforeContext = text.substring(Math.max(0, start - 20), start).toLowerCase();
+        if (/(frying|sauté|sauce|iron|bread|dinner|hair)\s*$/.test(beforeContext)) {
+          continue; // Skip "frying pan", "bread roll", etc.
+        }
+        
+        // Require camera context for ambiguous terms
+        if (!hasCameraContext(text, start, end)) {
+          continue;
+        }
+      }
+      
+      spans.push({
+        text: matchedText,
+        role: info.taxonomyId,
+        confidence: 1.0,
+        start,
+        end,
+        source: 'aho-corasick'
+      });
+    }
+  }
+  
+  return spans;
+}
+
+// ============================================================================
+// TIER 2: GLINER - Open Vocabulary (Semantic understanding)
+// ============================================================================
+
+/**
+ * GLiNER model instance (lazy loaded)
+ */
+let glinerModel = null;
+let glinerInitPromise = null;
+let glinerInitFailed = false;
+let glinerImportFailed = false;
+
+/**
+ * Generate labels from taxonomy for GLiNER
+ * Maps taxonomy categories to human-readable labels
+ */
+function generateGlinerLabels() {
+  const labels = [];
+  const labelToTaxonomyId = new Map();
+  
+  // Add parent categories
+  Object.values(TAXONOMY).forEach(category => {
+    labels.push(category.label);
+    labelToTaxonomyId.set(category.label.toLowerCase(), category.id);
+    
+    // Add attribute-specific labels
+    if (category.attributes) {
+      Object.entries(category.attributes).forEach(([attrName, attrId]) => {
+        // Create readable label from attribute name
+        const label = attrName.replace(/_/g, ' ').toLowerCase();
+        labels.push(label);
+        labelToTaxonomyId.set(label, attrId);
+      });
+    }
+  });
+  
+  // Add domain-specific labels that map to taxonomy
+  const domainLabels = {
+    'person': 'subject.identity',
+    'character': 'subject.identity',
+    'animal': 'subject.identity',
+    'object': 'subject.identity',
+    'place': 'environment.location',
+    'location': 'environment.location',
+    'setting': 'environment.location',
+    'time': 'lighting.timeOfDay',
+    'weather': 'environment.weather',
+    'emotion': 'subject.emotion',
+    'clothing': 'subject.wardrobe',
+    'color': 'style.aesthetic',
+    'texture': 'style.aesthetic',
+    'mood': 'style.aesthetic',
+    'movement': 'action.movement',
+    'pose': 'action.state',
+    'gesture': 'action.gesture',
+  };
+  
+  Object.entries(domainLabels).forEach(([label, taxonomyId]) => {
+    if (!labels.includes(label)) {
+      labels.push(label);
+    }
+    labelToTaxonomyId.set(label, taxonomyId);
+  });
+  
+  return { labels, labelToTaxonomyId };
+}
+
+const { labels: GLINER_LABELS, labelToTaxonomyId: LABEL_TO_TAXONOMY } = generateGlinerLabels();
+
+/**
+ * Dynamically import GLiNER (handles ONNX runtime compatibility issues)
+ */
+async function importGliner() {
+  if (GlinerClass) return GlinerClass;
+  if (glinerImportFailed) return null;
+  
+  try {
+    const glinerModule = await import('gliner');
+    GlinerClass = glinerModule.Gliner;
+    return GlinerClass;
+  } catch (error) {
+    console.warn('[GLiNER] Failed to import gliner package:', error.message);
+    console.warn('[GLiNER] Open vocabulary extraction will be disabled. Closed vocabulary (Aho-Corasick) still works.');
+    glinerImportFailed = true;
+    return null;
+  }
+}
+
+/**
+ * Initialize GLiNER model (lazy loading)
+ */
+async function initGliner() {
+  if (glinerModel) return glinerModel;
+  if (glinerInitFailed || glinerImportFailed) return null;
+  if (glinerInitPromise) return glinerInitPromise;
+  
+  glinerInitPromise = (async () => {
+    try {
+      const Gliner = await importGliner();
+      if (!Gliner) {
+        glinerInitFailed = true;
+        return null;
+      }
+      
+      console.log('[GLiNER] Initializing model...');
+      const startTime = Date.now();
+      
+      glinerModel = new Gliner({
+        tokenizerPath: 'onnx-community/gliner_small-v2.1',
+        modelPath: 'onnx-community/gliner_small-v2.1',
+        maxWidth: 12,
+      });
+      
+      await glinerModel.initialize();
+      
+      const loadTime = Date.now() - startTime;
+      console.log(`[GLiNER] Model initialized in ${loadTime}ms`);
+      
+      return glinerModel;
+    } catch (error) {
+      console.warn('[GLiNER] Failed to initialize:', error.message);
+      glinerInitFailed = true;
+      glinerModel = null;
+      return null;
+    }
+  })();
+  
+  return glinerInitPromise;
+}
+
+/**
+ * Extract spans using GLiNER - semantic understanding
+ * @param {string} text - Input text
+ * @returns {Promise<Array>} Spans with confidence scores
+ */
+async function extractOpenVocabulary(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  try {
+    const model = await initGliner();
+    if (!model) return [];
+    
+    // Use a subset of labels for better performance
+    const activeLabels = [
+      'person', 'character', 'animal', 'object',
+      'place', 'location', 'setting',
+      'movement', 'pose', 'gesture',
+      'emotion', 'mood',
+      'weather', 'time',
+      'clothing', 'color'
+    ];
+    
+    const entities = await model.inference({
+      texts: [text],
+      labels: activeLabels,
+      threshold: 0.3, // Lower threshold to catch more entities
+      flatNer: true,
+    });
+    
+    if (!entities || !entities[0]) return [];
+    
+    return entities[0].map(entity => {
+      const taxonomyId = LABEL_TO_TAXONOMY.get(entity.label.toLowerCase()) || 'subject.identity';
+      
+      return {
+        text: entity.text,
+        role: taxonomyId,
+        confidence: Math.round(entity.score * 100) / 100,
+        start: entity.start,
+        end: entity.end,
+        source: 'gliner'
+      };
+    });
+  } catch (error) {
+    console.warn('[GLiNER] Extraction error:', error.message);
+    return [];
+  }
+}
+
+// ============================================================================
+// PHASE 4: MERGE STRATEGY
+// ============================================================================
+
+/**
+ * Merge spans from closed and open vocabulary extractors
+ * Closed vocabulary takes precedence (100% precision)
+ * 
+ * @param {Array} closedSpans - Aho-Corasick spans (high priority)
+ * @param {Array} openSpans - GLiNER spans (fill gaps)
+ * @returns {Array} Merged and deduplicated spans
+ */
+function mergeSpans(closedSpans, openSpans) {
+  const allSpans = [...closedSpans];
+  
+  // Build occupied positions map from closed spans
+  const occupied = new Set();
+  for (const span of closedSpans) {
+    for (let i = span.start; i < span.end; i++) {
+      occupied.add(i);
+    }
+  }
+  
+  // Add open spans that don't overlap with closed spans
+  for (const span of openSpans) {
+    let hasOverlap = false;
+    for (let i = span.start; i < span.end; i++) {
+      if (occupied.has(i)) {
+        hasOverlap = true;
+        break;
+      }
+    }
+    
+    if (!hasOverlap) {
+      allSpans.push(span);
+      // Mark these positions as occupied
+      for (let i = span.start; i < span.end; i++) {
+        occupied.add(i);
+      }
+    }
+  }
+  
+  return allSpans;
+}
+
+/**
+ * Deduplicate spans using longest-match strategy
+ * When spans overlap, keep the longer one (or higher confidence if same length)
+ */
 function deduplicateSpans(spans) {
-  // Sort by confidence (high to low), then length (long to short)
-  spans.sort((a, b) => b.confidence - a.confidence || b.text.length - a.text.length);
-
+  if (spans.length === 0) return [];
+  
+  // Sort by: confidence (desc), length (desc), start (asc)
+  const sorted = [...spans].sort((a, b) => {
+    if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+    const lenDiff = (b.end - b.start) - (a.end - a.start);
+    if (lenDiff !== 0) return lenDiff;
+    return a.start - b.start;
+  });
+  
   const accepted = [];
   const occupied = new Set();
-
-  for (const span of spans) {
+  
+  for (const span of sorted) {
     let overlap = false;
     for (let i = span.start; i < span.end; i++) {
-      if (occupied.has(i)) overlap = true;
+      if (occupied.has(i)) {
+        overlap = true;
+        break;
+      }
     }
     
     if (!overlap) {
       accepted.push(span);
-      for (let i = span.start; i < span.end; i++) occupied.add(i);
+      for (let i = span.start; i < span.end; i++) {
+        occupied.add(i);
+      }
     }
   }
   
+  // Sort by position for output
   return accepted.sort((a, b) => a.start - b.start);
 }
 
-// Keep for compatibility if needed, but extractSemanticSpans covers it
-export function extractKnownSpans(text) {
-    return extractSemanticSpans(text).spans;
+// ============================================================================
+// MAIN API
+// ============================================================================
+
+/**
+ * Extract semantic spans using neuro-symbolic pipeline
+ * 
+ * @param {string} text - Input text to analyze
+ * @param {Object} options - Extraction options
+ * @param {boolean} options.useGliner - Enable GLiNER for open vocabulary (default: true)
+ * @returns {Promise<{spans: Array, stats: Object}>}
+ */
+export async function extractSemanticSpans(text, options = {}) {
+  if (!text || typeof text !== 'string') return { spans: [], stats: { phase: 'empty-input' } };
+  
+  const { useGliner = true } = options;
+  const startTime = Date.now();
+  
+  // Tier 1: Closed vocabulary (Aho-Corasick) - always runs
+  const closedSpans = extractClosedVocabulary(text);
+  const tier1Time = Date.now() - startTime;
+  
+  // Tier 2: Open vocabulary (GLiNER) - optional
+  let openSpans = [];
+  let tier2Time = 0;
+  
+  if (useGliner) {
+    const tier2Start = Date.now();
+    openSpans = await extractOpenVocabulary(text);
+    tier2Time = Date.now() - tier2Start;
+  }
+  
+  // Merge with closed vocabulary priority
+  const mergedSpans = mergeSpans(closedSpans, openSpans);
+  
+  // Deduplicate using longest-match strategy
+  const uniqueSpans = deduplicateSpans(mergedSpans);
+  
+  // Remove source field from output (internal use only)
+  const outputSpans = uniqueSpans.map(({ source, ...span }) => span);
+  
+  const totalTime = Date.now() - startTime;
+  
+  return {
+    spans: outputSpans,
+    stats: {
+      phase: 'neuro-symbolic',
+      totalSpans: outputSpans.length,
+      closedVocabSpans: closedSpans.length,
+      openVocabSpans: openSpans.length,
+      tier1Latency: tier1Time,
+      tier2Latency: tier2Time,
+      totalLatency: totalTime,
+    }
+  };
 }
 
+/**
+ * Synchronous extraction using only closed vocabulary (Aho-Corasick)
+ * For backward compatibility and fast-path scenarios
+ * 
+ * @param {string} text - Input text
+ * @returns {Array} Spans array
+ */
+export function extractKnownSpans(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  const closedSpans = extractClosedVocabulary(text);
+  return deduplicateSpans(closedSpans).map(({ source, ...span }) => span);
+}
+
+/**
+ * Get vocabulary statistics
+ */
 export function getVocabStats() {
   const stats = {};
   let totalTerms = 0;
@@ -216,14 +479,19 @@ export function getVocabStats() {
   return {
     totalCategories: Object.keys(VOCAB).length,
     totalTerms: totalTerms,
-    categories: stats
+    categories: stats,
+    glinerLabels: GLINER_LABELS.length,
+    glinerReady: glinerModel !== null && !glinerInitFailed,
   };
 }
 
+/**
+ * Estimate coverage percentage
+ */
 export function estimateCoverage(text) {
   if (!text) return 0;
   
-  const { spans } = extractSemanticSpans(text);
+  const spans = extractKnownSpans(text);
   const words = text.split(/\s+/).length;
   const coveredWords = spans.reduce((sum, span) => {
     return sum + span.text.split(/\s+/).length;
@@ -232,3 +500,14 @@ export function estimateCoverage(text) {
   return Math.min(100, Math.round((coveredWords / words) * 100));
 }
 
+/**
+ * Pre-warm GLiNER model (call on server startup)
+ */
+export async function warmupGliner() {
+  try {
+    await initGliner();
+    return { success: true, message: 'GLiNER model initialized' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
