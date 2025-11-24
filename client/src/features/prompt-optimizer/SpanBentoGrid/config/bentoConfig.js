@@ -23,12 +23,20 @@ export const CATEGORY_CONFIG = {
     order: 1,
     description: 'The focal point (person, object, animal) and their attributes',
   },
+  [TAXONOMY.ACTION.id]: {
+    label: 'Action & Motion',
+    color: '#FFFFFF',
+    borderColor: '#E8E8E8',
+    icon: '🎬',
+    order: 2,
+    description: 'What the subject is doing (movement, state, gesture)',
+  },
   [TAXONOMY.ENVIRONMENT.id]: {
     label: 'Environment',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🌲',
-    order: 2,
+    order: 3,
     description: 'Location, weather, and spatial context',
   },
   [TAXONOMY.LIGHTING.id]: {
@@ -36,7 +44,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '💡',
-    order: 3,
+    order: 4,
     description: 'Light source, quality, and time of day',
   },
   [TAXONOMY.CAMERA.id]: {
@@ -44,7 +52,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎥',
-    order: 4,
+    order: 5,
     description: 'Framing, movement, lens, and angles',
   },
   [TAXONOMY.STYLE.id]: {
@@ -52,7 +60,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎨',
-    order: 5,
+    order: 6,
     description: 'Visual treatment, film stock, and aesthetic',
   },
   [TAXONOMY.TECHNICAL.id]: {
@@ -60,7 +68,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '⚙️',
-    order: 6,
+    order: 7,
     description: 'Frame rate, aspect ratio, and resolution',
   },
   [TAXONOMY.AUDIO.id]: {
@@ -68,7 +76,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🔊',
-    order: 7,
+    order: 8,
     description: 'Music, score, and sound effects',
   },
 };
