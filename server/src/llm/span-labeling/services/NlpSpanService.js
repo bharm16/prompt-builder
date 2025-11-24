@@ -376,3 +376,108 @@ export function estimateCoverage(text) {
   return Math.min(100, Math.round((coveredWords / words) * 100));
 }
 
+/**
+ * Extract spans using full symbolic NLP pipeline
+ * 
+ * This is the complete Phase 1 implementation that combines:
+ * - Phase 0: Dictionary matching (existing)
+ * - Phase 1: POS Tagging
+ * - Phase 2: Chunking
+ * - Phase 3: Frame Matching
+ * - Phase 4: Semantic Role Labeling
+ * - Phase 5: Taxonomy Mapping
+ * 
+ * @param {string} text - Input text to analyze
+ * @param {Object} options - Options for processing
+ * @returns {Object} Enhanced spans with semantic metadata
+ */
+export async function extractSemanticSpans(text, options = {}) {
+  if (!text || typeof text !== 'string') {
+    return {
+      spans: [],
+      semantic: null,
+      stats: { phase: 'none', error: 'Invalid input' },
+    };
+  }
+  
+  try {
+    // Dynamic imports to avoid circular dependencies and reduce initial load time
+    const { PosTagger } = await import('../../../nlp/pos-tagging/PosTagger.js');
+    const { BrillTransformer } = await import('../../../nlp/pos-tagging/BrillTransformer.js');
+    const { ChunkParser } = await import('../../../nlp/chunking/ChunkParser.js');
+    const { ChunkMerger } = await import('../../../nlp/chunking/ChunkMerger.js');
+    const { FrameMatcher } = await import('../../../nlp/frames/FrameMatcher.js');
+    const { SimplifiedSRL } = await import('../../../nlp/srl/SimplifiedSRL.js');
+    const { RoleMapper } = await import('../../../nlp/srl/RoleMapper.js');
+    
+    const startTime = Date.now();
+    
+    // Phase 0: Dictionary matching (EXISTING - for known technical terms)
+    const dictionarySpans = extractKnownSpans(text);
+    
+    // Phase 1: POS Tagging with Brill transformation
+    const tokens = PosTagger.tagPOS(text);
+    console.log(`[DEBUG] POS Tagged ${tokens.length} tokens from text: "${text.substring(0, 50)}..."`);
+    
+    const brillTransformer = new BrillTransformer();
+    const transformedTokens = brillTransformer.applyRules(tokens, text);
+    console.log(`[DEBUG] Brill transformed ${transformedTokens.length} tokens`);
+    
+    // Phase 2: Chunking (NP/VP/PP extraction)
+    const chunks = ChunkParser.extractChunks(transformedTokens);
+    console.log(`[DEBUG] Extracted ${chunks.length} chunks:`, chunks.map(c => `${c.type}:"${c.text}"`).join(', '));
+    
+    const mergedChunks = ChunkMerger.mergeCascading(chunks, text);
+    console.log(`[DEBUG] Merged to ${mergedChunks.length} chunks:`, mergedChunks.map(c => `${c.type}:"${c.text}"`).join(', '));
+    
+    // Phase 3: Frame Matching (detect Motion, Cinematography, Lighting frames)
+    const frameMatcher = new FrameMatcher();
+    const frames = frameMatcher.matchFrames(mergedChunks, text);
+    console.log(`[DEBUG] Matched ${frames.length} frames`);
+    
+    // Phase 4: Semantic Role Labeling (Arg0, Arg1, ArgM)
+    const srlStructures = SimplifiedSRL.labelRoles(mergedChunks, frames);
+    
+    // Phase 5: Map to Taxonomy (convert semantic roles to taxonomy categories)
+    const mappingResult = RoleMapper.mapToTaxonomy(srlStructures, frames, dictionarySpans);
+    
+    const endTime = Date.now();
+    
+    return {
+      spans: mappingResult.spans,
+      relationships: mappingResult.relationships,
+      semantic: {
+        tokens: transformedTokens,
+        chunks: mergedChunks,
+        frames,
+        srlStructures,
+      },
+      stats: {
+        latency: endTime - startTime,
+        totalSpans: mappingResult.spans.length,
+        dictionarySpans: dictionarySpans.length,
+        semanticSpans: mappingResult.spans.length - dictionarySpans.length,
+        chunks: mergedChunks.length,
+        frames: frames.length,
+        predicates: srlStructures.length,
+        relationships: mappingResult.relationships.length,
+        phase: 'semantic',
+      },
+    };
+  } catch (error) {
+    console.error('Error in extractSemanticSpans:', error);
+    
+    // Fallback to dictionary-only spans on error
+    const dictionarySpans = extractKnownSpans(text);
+    return {
+      spans: dictionarySpans,
+      semantic: null,
+      stats: {
+        phase: 'fallback-dictionary',
+        error: error.message,
+        totalSpans: dictionarySpans.length,
+      },
+    };
+  }
+}
+

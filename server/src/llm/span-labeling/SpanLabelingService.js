@@ -11,7 +11,7 @@ import { validateSpans } from './validation/SpanValidator.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { SemanticRouter } from './routing/SemanticRouter.js';
-import { extractKnownSpans, getVocabStats } from './services/NlpSpanService.js';
+import { extractKnownSpans, getVocabStats, extractSemanticSpans } from './services/NlpSpanService.js';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -206,58 +206,105 @@ async function labelSpansSingle(params, aiService) {
     });
 
     // ============================================================================
-    // NLP FAST-PATH: Dictionary-based span extraction (Phase 1)
+    // NLP FAST-PATH: Dictionary + Symbolic NLP extraction (Phase 0 + Phase 1)
     // ============================================================================
-    // Attempt to extract spans using deterministic vocabulary matching
-    // This bypasses expensive LLM calls for 60-70% of requests
+    // Attempt to extract spans using:
+    // 1. Symbolic NLP (POS tagging, chunking, SRL, frames) - if enabled
+    // 2. Dictionary matching (technical terms) - fallback
+    // This bypasses expensive LLM calls for 60-80% of requests
     
     const startTime = Date.now();
     let nlpSpans = [];
+    let nlpMetadata = {};
     let usedNlpFastPath = false;
+    let nlpSource = 'none';
     
-    if (SpanLabelingConfig.NLP_FAST_PATH.ENABLED) {
+    // ============================================================================
+    // PHASE 1: Try Symbolic NLP first (full semantic analysis)
+    // ============================================================================
+    if (SpanLabelingConfig.SYMBOLIC_NLP && SpanLabelingConfig.SYMBOLIC_NLP.ENABLED) {
+      try {
+        const semanticResult = await extractSemanticSpans(params.text);
+        
+        // Check if symbolic NLP produced good results
+        const hasSemanticSpans = semanticResult.spans && semanticResult.spans.length > 0;
+        const meetsThreshold = semanticResult.spans.length >= (SpanLabelingConfig.SYMBOLIC_NLP.MIN_SEMANTIC_SPANS || 2);
+        const isSemanticPhase = semanticResult.stats?.phase === 'semantic';
+        
+        if (hasSemanticSpans && meetsThreshold && isSemanticPhase) {
+          // Success! Use symbolic NLP spans
+          nlpSpans = semanticResult.spans;
+          nlpSource = 'symbolic-nlp';
+          nlpMetadata = {
+            chunks: semanticResult.semantic?.chunks?.length || 0,
+            frames: semanticResult.semantic?.frames?.length || 0,
+            predicates: semanticResult.semantic?.srlStructures?.length || 0,
+            relationships: semanticResult.relationships?.length || 0,
+          };
+          
+          console.log(`[Symbolic NLP] Extracted ${nlpSpans.length} spans with ${nlpMetadata.frames} frames`);
+        } else if (hasSemanticSpans && semanticResult.stats?.phase === 'fallback-dictionary') {
+          // Symbolic NLP failed, but dictionary fallback worked
+          nlpSpans = semanticResult.spans;
+          nlpSource = 'dictionary-fallback';
+        }
+      } catch (error) {
+        console.warn('[Symbolic NLP] Error during extraction, falling back:', error.message);
+        // Continue to dictionary fallback below
+      }
+    }
+    
+    // ============================================================================
+    // PHASE 0: Fallback to Dictionary-only if symbolic NLP didn't run or failed
+    // ============================================================================
+    if (nlpSpans.length === 0 && SpanLabelingConfig.NLP_FAST_PATH.ENABLED) {
       try {
         nlpSpans = extractKnownSpans(params.text);
+        nlpSource = 'dictionary';
+      } catch (error) {
+        console.warn('[Dictionary] Error during extraction:', error.message);
+      }
+    }
+    
+    // ============================================================================
+    // Check if we have sufficient coverage to skip LLM
+    // ============================================================================
+    if (nlpSpans.length > 0) {
+      const meetsThreshold = nlpSpans.length >= SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
+      
+      if (meetsThreshold) {
+        const nlpEndTime = Date.now();
+        const nlpLatency = nlpEndTime - startTime;
         
-        // Check if we have sufficient coverage to skip LLM
-        const meetsThreshold = nlpSpans.length >= SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
+        // Validate NLP spans through the same pipeline
+        const validation = validateSpans({
+          spans: nlpSpans,
+          meta: {
+            version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
+            notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
+            source: nlpSource,
+            latency: nlpLatency,
+            ...nlpMetadata,
+            vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
+          },
+          text: params.text,
+          policy,
+          options: sanitizedOptions,
+          attempt: 1,
+          cache,
+          isAdversarial: false,
+        });
         
-        if (meetsThreshold) {
-          const nlpEndTime = Date.now();
-          const nlpLatency = nlpEndTime - startTime;
+        if (validation.ok) {
+          usedNlpFastPath = true;
           
-          // Validate NLP spans through the same pipeline
-          const validation = validateSpans({
-            spans: nlpSpans,
-            meta: {
-              version: 'nlp-v1',
-              notes: `Generated via NLP Dictionary (${nlpSpans.length} spans, ${nlpLatency}ms)`,
-              source: 'nlp-fast-path',
-              latency: nlpLatency,
-              vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
-            },
-            text: params.text,
-            policy,
-            options: sanitizedOptions,
-            attempt: 1,
-            cache,
-            isAdversarial: false,
-          });
-          
-          if (validation.ok) {
-            usedNlpFastPath = true;
-            
-            // Log telemetry if enabled
-            if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
-              console.log(`[NLP Fast-Path] Bypassed LLM call | Spans: ${nlpSpans.length} | Latency: ${nlpLatency}ms | Estimated savings: $0.0005`);
-            }
-            
-            return validation.result;
+          // Log telemetry if enabled
+          if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
+            console.log(`[NLP Fast-Path] Bypassed LLM call | Spans: ${nlpSpans.length} | Latency: ${nlpLatency}ms | Estimated savings: $0.0005`);
           }
+          
+          return validation.result;
         }
-      } catch (nlpError) {
-        // NLP fast-path failed, fall back to LLM
-        console.warn('[NLP Fast-Path] Error during extraction, falling back to LLM:', nlpError.message);
       }
     }
     

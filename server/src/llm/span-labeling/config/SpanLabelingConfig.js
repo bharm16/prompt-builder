@@ -117,6 +117,57 @@ export const NLP_FAST_PATH = {
 };
 
 /**
+ * Symbolic NLP Configuration (Phase 1 Implementation)
+ * Enables full symbolic processing: POS tagging, chunking, SRL, frames, and scene graphs
+ */
+export const SYMBOLIC_NLP = {
+  // Master switch for symbolic NLP pipeline
+  ENABLED: true,
+  
+  // Feature flags for individual components
+  FEATURES: {
+    // Penn Treebank POS tagging with Brill transformation rules
+    POS_TAGGING: true,
+    
+    // Shallow parsing / chunking (NP/VP/PP extraction)
+    CHUNKING: true,
+    
+    // Frame semantics (Motion, Cinematography, Lighting)
+    FRAME_SEMANTICS: true,
+    
+    // Semantic role labeling (Arg0/Arg1/ArgM)
+    SEMANTIC_ROLES: true,
+  },
+  
+  // Fallback strategy if symbolic processing fails
+  FALLBACK_TO_DICTIONARY: true,
+  
+  // Fallback to LLM if symbolic processing produces insufficient results
+  FALLBACK_TO_LLM: false,
+  
+  // Minimum confidence threshold for accepting symbolic spans (0-1)
+  MIN_CONFIDENCE_THRESHOLD: 0.8,
+  
+  // Minimum number of semantic spans to consider successful
+  MIN_SEMANTIC_SPANS: 15,
+
+  // NEW: Require at least 3 frames matched
+  MIN_FRAMES: 3, 
+
+  // NEW: At least 10% of chunks should be VPs
+  MIN_VP_RATIO: 0.1, 
+  
+  // Enable detailed semantic metadata in response
+  INCLUDE_SEMANTIC_METADATA: true,
+  
+  // Enable relationship graph in response
+  INCLUDE_RELATIONSHIPS: true,
+  
+  // Maximum processing time (ms) before fallback
+  MAX_PROCESSING_TIME: 100,
+};
+
+/**
  * Get estimated max tokens for a given number of spans
  * @param {number} maxSpans - Maximum spans requested
  * @returns {number} Estimated max tokens needed
@@ -139,6 +190,7 @@ const SpanLabelingConfig = {
   VALIDATION_MODES,
   CHUNKING,
   NLP_FAST_PATH,
+  SYMBOLIC_NLP,
   estimateMaxTokens,
 };
 

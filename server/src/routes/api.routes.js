@@ -15,6 +15,7 @@ import {
   videoValidationSchema,
   semanticParseSchema,
 } from '../utils/validation.js';
+import { extractSemanticSpans } from '../llm/span-labeling/services/NlpSpanService.js';
 
 /**
  * Create API routes
@@ -345,6 +346,19 @@ export function createAPIRoutes(services) {
         sectionContext,
       });
 
+      res.json(result);
+    })
+  );
+
+  // GET /api/test-nlp - Test NLP pipeline
+  router.get(
+    '/test-nlp',
+    asyncHandler(async (req, res) => {
+      const { prompt } = req.query;
+      if (!prompt) {
+        return res.status(400).json({ error: 'prompt query parameter is required' });
+      }
+      const result = await extractSemanticSpans(prompt);
       res.json(result);
     })
   );
