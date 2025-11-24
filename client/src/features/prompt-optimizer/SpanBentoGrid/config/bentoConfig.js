@@ -15,12 +15,20 @@ import { TAXONOMY } from '@shared/taxonomy.js';
  * Maps taxonomy parent category IDs to their visual and metadata properties
  */
 export const CATEGORY_CONFIG = {
+  [TAXONOMY.SHOT.id]: {
+    label: 'Shot Type',
+    color: '#FFFFFF',
+    borderColor: '#E8E8E8',
+    icon: '📐',
+    order: 1,
+    description: 'Framing and vantage of the camera',
+  },
   [TAXONOMY.SUBJECT.id]: {
     label: 'Subject & Character',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎯',
-    order: 1,
+    order: 2,
     description: 'The focal point (person, object, animal) and their attributes',
   },
   [TAXONOMY.ACTION.id]: {
@@ -28,7 +36,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎬',
-    order: 2,
+    order: 3,
     description: 'What the subject is doing (movement, state, gesture)',
   },
   [TAXONOMY.ENVIRONMENT.id]: {
@@ -36,7 +44,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🌲',
-    order: 3,
+    order: 4,
     description: 'Location, weather, and spatial context',
   },
   [TAXONOMY.LIGHTING.id]: {
@@ -44,7 +52,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '💡',
-    order: 4,
+    order: 5,
     description: 'Light source, quality, and time of day',
   },
   [TAXONOMY.CAMERA.id]: {
@@ -52,7 +60,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎥',
-    order: 5,
+    order: 6,
     description: 'Framing, movement, lens, and angles',
   },
   [TAXONOMY.STYLE.id]: {
@@ -60,7 +68,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🎨',
-    order: 6,
+    order: 7,
     description: 'Visual treatment, film stock, and aesthetic',
   },
   [TAXONOMY.TECHNICAL.id]: {
@@ -68,7 +76,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '⚙️',
-    order: 7,
+    order: 8,
     description: 'Frame rate, aspect ratio, and resolution',
   },
   [TAXONOMY.AUDIO.id]: {
@@ -76,7 +84,7 @@ export const CATEGORY_CONFIG = {
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
     icon: '🔊',
-    order: 8,
+    order: 9,
     description: 'Music, score, and sound effects',
   },
 };
