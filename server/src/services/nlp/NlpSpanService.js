@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { TAXONOMY } from '#shared/taxonomy.js';
+import { NEURO_SYMBOLIC } from '../../llm/span-labeling/config/SpanLabelingConfig.js';
 
 /**
  * NLP Span Service - NEURO-SYMBOLIC ARCHITECTURE (v2)
@@ -258,15 +259,31 @@ class RobustGLiNER {
   }
   
   /**
+   * Find the character position of a word in the original text
+   * Handles variable whitespace correctly
+   */
+  _findWordPosition(text, words, wordIdx) {
+    let pos = 0;
+    for (let i = 0; i < wordIdx; i++) {
+      // Find this word in the text starting from current position
+      const wordStart = text.indexOf(words[i], pos);
+      if (wordStart === -1) return -1;
+      pos = wordStart + words[i].length;
+    }
+    // Find the target word
+    return text.indexOf(words[wordIdx], pos);
+  }
+  
+  /**
    * Extract entities using GLiNER model
-   * Note: GLiNER preprocessing is complex - this is a simplified version
+   * Uses proper subword tokenization alignment for words_mask
    */
   async extract(text, labels, threshold = 0.4) {
     if (!this.initialized || this.initFailed) return [];
     if (!text || !labels.length) return [];
     
     try {
-      // Split text into words
+      // Split text into words, preserving word positions
       const words = text.split(/\s+/).filter(w => w.length > 0);
       const numWords = words.length;
       if (numWords === 0) return [];
@@ -284,19 +301,34 @@ class RobustGLiNER {
       
       const seqLen = encoded.input_ids.dims[1];
       
-      // Create words_mask: maps each token to its word index (0 for non-word tokens)
-      // GLiNER expects word indices starting from 1, with 0 for special/label tokens
+      // Build words_mask properly by aligning tokens to words
       const wordsMaskData = new BigInt64Array(seqLen).fill(BigInt(0));
       
-      // Find where actual text starts in tokens:
-      // Format: [CLS] <<ENT>> label1 <<ENT>> label2 <<SEP>> text... [SEP]
-      // = 1 + (labels.length * 2) + 1 tokens before text
-      let textTokenStart = 1 + labels.length * 2 + 1;
+      // Tokenize JUST the labels prefix to find where text starts
+      const labelPrefix = this._preparePrompt('', labels).trim();
+      const prefixEncoded = await this.tokenizer(labelPrefix, {
+        add_special_tokens: true,
+        return_tensors: 'np'
+      });
+      const textTokenStart = prefixEncoded.input_ids.dims[1]; // Tokens for [CLS] + labels + [SEP]
       
-      // Assign word indices to tokens (1-indexed for GLiNER)
-      for (let i = 0; i < numWords && (textTokenStart + i) < seqLen - 1; i++) {
-        wordsMaskData[textTokenStart + i] = BigInt(i + 1); // 1-indexed
+      // Tokenize each word individually to build proper alignment
+      let currentTokenIdx = textTokenStart;
+      for (let wordIdx = 0; wordIdx < numWords && currentTokenIdx < seqLen - 1; wordIdx++) {
+        // Tokenize just this word
+        const wordTokens = await this.tokenizer(words[wordIdx], {
+          add_special_tokens: false,
+          return_tensors: 'np'
+        });
+        const numWordTokens = wordTokens.input_ids.dims[1];
+        
+        // Assign all tokens of this word to the same word index (1-indexed)
+        for (let t = 0; t < numWordTokens && currentTokenIdx + t < seqLen - 1; t++) {
+          wordsMaskData[currentTokenIdx + t] = BigInt(wordIdx + 1); // 1-indexed for GLiNER
+        }
+        currentTokenIdx += numWordTokens;
       }
+      
       const wordsMask = new this.Tensor('int64', wordsMaskData, [1, seqLen]);
       
       // Generate span indices (0-indexed word positions)
@@ -346,7 +378,15 @@ class RobustGLiNER {
       const results = await this.session.run(feeds);
       
       // Decode output
-      return this._decodeOutput(results, text, words, spanIndices, labels, threshold);
+      const entities = this._decodeOutput(results, text, words, spanIndices, labels, threshold);
+      
+      // Debug logging - remove after verification
+      if (entities.length > 0) {
+        console.log(`[GLiNER] Found ${entities.length} entities:`, 
+          entities.map(e => `"${e.text}" (${e.label}: ${e.score})`).join(', '));
+      }
+      
+      return entities;
     } catch (error) {
       console.warn('[RobustGLiNER] Extraction error:', error.message);
       return [];
@@ -387,20 +427,21 @@ class RobustGLiNER {
             const spanWords = words.slice(wordIdx, endWord + 1);
             const spanText = spanWords.join(' ');
             
-            // Calculate character offsets
-            let charStart = 0;
-            for (let i = 0; i < wordIdx; i++) {
-              charStart += words[i].length + 1; // +1 for space
-            }
+            // Find actual character positions in original text using indexOf
+            // This handles variable whitespace correctly
+            const charStart = this._findWordPosition(text, words, wordIdx);
             const charEnd = charStart + spanText.length;
             
-            entities.push({
-              text: spanText,
-              label: labels[labelIdx],
-              score: Math.round(score * 100) / 100,
-              start: charStart,
-              end: charEnd
-            });
+            // Only add if we found valid positions
+            if (charStart >= 0 && charEnd <= text.length) {
+              entities.push({
+                text: text.substring(charStart, charEnd), // Use actual text slice
+                label: labels[labelIdx],
+                score: Math.round(score * 100) / 100,
+                start: charStart,
+                end: charEnd
+              });
+            }
           }
         }
       }
@@ -456,7 +497,8 @@ async function extractOpenVocabulary(text) {
     'style', 'aesthetic', 'lighting'
   ];
   
-  const entities = await glinerInstance.extract(text, labels, 0.4);
+  const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
+  const entities = await glinerInstance.extract(text, labels, threshold);
   
   return entities.map(entity => ({
     text: entity.text,

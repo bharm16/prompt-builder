@@ -454,16 +454,21 @@ export async function initializeServices(container) {
 
   logger.info('All services initialized and validated successfully');
   
-  // Warmup GLiNER model for semantic entity extraction
-  try {
-    const glinerResult = await warmupGliner();
-    if (glinerResult.success) {
-      logger.info('✅ GLiNER model warmed up for semantic extraction');
-    } else {
-      logger.warn('⚠️ GLiNER warmup skipped: ' + glinerResult.message);
+  // Only warmup GLiNER if neuro-symbolic pipeline is enabled
+  const { NEURO_SYMBOLIC } = await import('../llm/span-labeling/config/SpanLabelingConfig.js');
+  if (NEURO_SYMBOLIC.ENABLED) {
+    try {
+      const glinerResult = await warmupGliner();
+      if (glinerResult.success) {
+        logger.info('✅ GLiNER model warmed up for semantic extraction');
+      } else {
+        logger.warn('⚠️ GLiNER warmup skipped: ' + glinerResult.message);
+      }
+    } catch (error) {
+      logger.warn('⚠️ GLiNER warmup failed:', error.message);
     }
-  } catch (error) {
-    logger.warn('⚠️ GLiNER warmup failed:', error.message);
+  } else {
+    logger.info('ℹ️ GLiNER warmup skipped (NEURO_SYMBOLIC disabled)');
   }
   
   return container;

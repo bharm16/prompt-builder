@@ -107,7 +107,7 @@ export const CHUNKING = {
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
   // Combines NLP technical terms with GLiNER semantic extraction
-  ENABLED: true,  // Enabled - GLiNER now working for semantic entity extraction
+  ENABLED: false,  // Disabled - GLiNER word boundary issues need fixing
   
   // Minimum spans to consider NLP sufficient 
   MIN_SPANS_THRESHOLD: 3,
@@ -128,7 +128,7 @@ export const NLP_FAST_PATH = {
  */
 export const NEURO_SYMBOLIC = {
   // Master switch for neuro-symbolic pipeline
-  ENABLED: true,
+  ENABLED: false,  // Disabled - using LLM-only until GLiNER word boundaries are fixed
   
   // Tier 1: Aho-Corasick (Closed Vocabulary)
   AHO_CORASICK: {
