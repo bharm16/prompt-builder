@@ -116,7 +116,7 @@ export class PromptOptimizationService {
           maxSpans: OptimizationConfig.spanLabeling.maxSpans,
           minConfidence: OptimizationConfig.spanLabeling.minConfidence,
           templateVersion: OptimizationConfig.spanLabeling.templateVersion,
-        }).catch(err => {
+        }, this.ai).catch(err => {
           logger.warn('Parallel span labeling failed, will retry after draft', { error: err.message });
           return null;
         }) : Promise.resolve(null)
