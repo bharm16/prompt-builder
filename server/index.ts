@@ -16,9 +16,9 @@
 import './instrument.mjs';
 
 import dotenv from 'dotenv';
-import { validateEnv } from './src/utils/validateEnv.ts';
-import { logger } from './src/infrastructure/Logger.ts';
-import { configureServices, initializeServices } from './src/config/services.config.ts';
+import { validateEnv } from '@utils/validateEnv';
+import { logger } from '@infrastructure/Logger';
+import { configureServices, initializeServices } from '@config/services.config';
 import { createApp } from './src/app.js';
 import { startServer, setupGracefulShutdown } from './src/server.js';
 
@@ -76,7 +76,7 @@ async function bootstrap() {
   } catch (error) {
     logger.error('❌ Application bootstrap failed', error);
     console.error('\n❌ FATAL: Application failed to start');
-    console.error(error.message);
+    console.error(error instanceof Error ? error.message : String(error));
 
     // Throw error instead of process.exit to allow parent processes to handle
     throw error;
@@ -125,3 +125,4 @@ export default appInstance;
 
 // Export bootstrap function and instances for programmatic use
 export { bootstrap, appInstance, containerInstance };
+

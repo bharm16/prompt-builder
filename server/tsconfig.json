@@ -7,7 +7,7 @@
     "target": "ES2022",
     "types": ["node"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
       "@infrastructure/*": ["src/infrastructure/*"],
@@ -21,7 +21,7 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*", "index.js", "instrument.mjs"],
+  "include": ["src/**/*", "index.ts", "instrument.mjs"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
 
