@@ -1,6 +1,7 @@
 import { ROLE_SET } from '../config/roles.js';
 import { wordCount } from '../utils/textUtils.js';
 import { normalizeSpan } from '../processing/SpanNormalizer.js';
+import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
 import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
 import { resolveOverlaps } from '../processing/OverlapResolver.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
@@ -35,6 +36,7 @@ function normalizeSpanTextForLookup(value) {
  *
  * Phase 1: Individual span validation & auto-correction
  * Phase 2: Sorting by position
+ * Phase 2.5: Merge adjacent spans with compatible categories
  * Phase 3: Deduplication
  * Phase 4: Overlap resolution
  * Phase 5: Confidence filtering
@@ -169,8 +171,12 @@ export function validateSpans({
     return a.start - b.start;
   });
 
+  // Phase 2.5: Merge adjacent spans with compatible categories
+  // Fixes LLM fragmentation like "Action" + "Shot" → "Action Shot"
+  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(sanitized, text);
+
   // Phase 3: Deduplicate
-  const { spans: deduplicated, notes: dedupeNotes } = deduplicateSpans(sanitized);
+  const { spans: deduplicated, notes: dedupeNotes } = deduplicateSpans(merged);
 
   // Phase 4: Resolve overlaps
   const { spans: resolved, notes: overlapNotes } = resolveOverlaps(
@@ -197,6 +203,7 @@ export function validateSpans({
     ...(isAdversarial ? ['input flagged as adversarial'] : []),
     ...validationNotes,
     ...autoFixNotes,
+    ...mergeNotes,
     ...dedupeNotes,
     ...overlapNotes,
     ...confidenceNotes,
