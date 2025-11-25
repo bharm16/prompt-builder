@@ -10,27 +10,58 @@
 
 import { useReducer, useCallback, useMemo } from 'react';
 
-const initialState = {
-  edits: [], // Array of edit objects
-  maxEdits: 50, // Limit history to prevent memory issues
-  
-  // NEW: Undo/Redo functionality
-  promptHistory: [], // Array of complete prompt states
-  historyIndex: -1, // Current position in history (-1 = no history)
-  maxHistorySize: 100, // Limit history size
+interface Edit {
+  id: string;
+  original: string;
+  replacement: string;
+  category: string | null;
+  timestamp: number;
+  position: number | null;
+  confidence: number | null;
+}
+
+interface PromptState {
+  prompt: string;
+  metadata: Record<string, unknown>;
+  timestamp: number;
+}
+
+interface EditHistoryState {
+  edits: Edit[];
+  maxEdits: number;
+  promptHistory: PromptState[];
+  historyIndex: number;
+  maxHistorySize: number;
+}
+
+type EditHistoryAction =
+  | { type: 'ADD_EDIT'; payload: EditPayload }
+  | { type: 'CLEAR_HISTORY' }
+  | { type: 'REMOVE_EDIT'; payload: string }
+  | { type: 'SAVE_STATE'; payload: { prompt: string; metadata: Record<string, unknown> } }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'CLEAR_HISTORY_STATES' };
+
+const initialState: EditHistoryState = {
+  edits: [],
+  maxEdits: 50,
+  promptHistory: [],
+  historyIndex: -1,
+  maxHistorySize: 100,
 };
 
 /**
  * Edit history reducer
- * @param {Object} state - Current state
- * @param {Object} action - Action to perform
- * @returns {Object} New state
  */
-function editHistoryReducer(state, action) {
+function editHistoryReducer(
+  state: EditHistoryState,
+  action: EditHistoryAction
+): EditHistoryState {
   switch (action.type) {
     case 'ADD_EDIT': {
-      const newEdit = {
-        id: `edit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      const newEdit: Edit = {
+        id: `edit_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         original: action.payload.original,
         replacement: action.payload.replacement,
         category: action.payload.category || null,
@@ -63,14 +94,14 @@ function editHistoryReducer(state, action) {
         edits: state.edits.filter((edit) => edit.id !== action.payload),
       };
 
-    // NEW: Undo/Redo actions
     case 'SAVE_STATE': {
       const { prompt, metadata } = action.payload;
-      
+
       // If we're in the middle of history (user went back), discard future states
-      const currentHistory = state.historyIndex >= 0 
-        ? state.promptHistory.slice(0, state.historyIndex + 1)
-        : state.promptHistory;
+      const currentHistory =
+        state.historyIndex >= 0
+          ? state.promptHistory.slice(0, state.historyIndex + 1)
+          : state.promptHistory;
 
       // Add new state
       const newHistory = [
@@ -79,13 +110,14 @@ function editHistoryReducer(state, action) {
           prompt,
           metadata,
           timestamp: Date.now(),
-        }
+        },
       ];
 
       // Limit history size
-      const trimmedHistory = newHistory.length > state.maxHistorySize
-        ? newHistory.slice(-state.maxHistorySize)
-        : newHistory;
+      const trimmedHistory =
+        newHistory.length > state.maxHistorySize
+          ? newHistory.slice(-state.maxHistorySize)
+          : newHistory;
 
       return {
         ...state,
@@ -129,23 +161,26 @@ function editHistoryReducer(state, action) {
   }
 }
 
+interface AddEditParams {
+  original: string;
+  replacement: string;
+  category?: string | null;
+  position?: number | null;
+  confidence?: number | null;
+}
+
+type EditPayload = Omit<Edit, 'id' | 'timestamp'>;
+
 /**
  * Custom hook for tracking edit history
- * @returns {Object} Edit history state and methods
  */
 export function useEditHistory() {
   const [state, dispatch] = useReducer(editHistoryReducer, initialState);
 
   /**
    * Add a new edit to history
-   * @param {Object} edit - Edit details
-   * @param {string} edit.original - Original text
-   * @param {string} edit.replacement - Replacement text
-   * @param {string} edit.category - Category of the edited text
-   * @param {number} edit.position - Position in prompt
-   * @param {number} edit.confidence - Confidence score
    */
-  const addEdit = useCallback((edit) => {
+  const addEdit = useCallback((edit: AddEditParams) => {
     if (!edit || !edit.original || !edit.replacement) {
       return;
     }
@@ -155,20 +190,29 @@ export function useEditHistory() {
       return;
     }
 
+    const payload: EditPayload = {
+      original: edit.original,
+      replacement: edit.replacement,
+      category: edit.category ?? null,
+      position: edit.position ?? null,
+      confidence: edit.confidence ?? null,
+    };
+
     dispatch({
       type: 'ADD_EDIT',
-      payload: edit,
+      payload,
     });
   }, []);
 
   /**
    * Get recent edits
-   * @param {number} count - Number of recent edits to return
-   * @returns {Array} Recent edits
    */
-  const getRecentEdits = useCallback((count = 10) => {
-    return state.edits.slice(-count).reverse(); // Most recent first
-  }, [state.edits]);
+  const getRecentEdits = useCallback(
+    (count: number = 10): Edit[] => {
+      return state.edits.slice(-count).reverse(); // Most recent first
+    },
+    [state.edits]
+  );
 
   /**
    * Clear all edit history
@@ -179,136 +223,152 @@ export function useEditHistory() {
 
   /**
    * Get edits by category
-   * @param {string} category - Category to filter by
-   * @returns {Array} Edits in that category
    */
-  const getEditsByCategory = useCallback((category) => {
-    if (!category) {
-      return [];
-    }
+  const getEditsByCategory = useCallback(
+    (category: string): Edit[] => {
+      if (!category) {
+        return [];
+      }
 
-    return state.edits.filter((edit) => 
-      edit.category && edit.category.toLowerCase() === category.toLowerCase()
-    );
-  }, [state.edits]);
+      return state.edits.filter(
+        (edit) =>
+          edit.category &&
+          edit.category.toLowerCase() === category.toLowerCase()
+      );
+    },
+    [state.edits]
+  );
 
   /**
    * Check if text has been edited before
-   * @param {string} text - Text to check
-   * @returns {boolean} True if text was previously edited
    */
-  const hasEdited = useCallback((text) => {
-    if (!text || typeof text !== 'string') {
-      return false;
-    }
+  const hasEdited = useCallback(
+    (text: string): boolean => {
+      if (!text || typeof text !== 'string') {
+        return false;
+      }
 
-    const normalized = text.trim().toLowerCase();
-    return state.edits.some(
-      (edit) =>
-        edit.original.trim().toLowerCase() === normalized ||
-        edit.replacement.trim().toLowerCase() === normalized
-    );
-  }, [state.edits]);
+      const normalized = text.trim().toLowerCase();
+      return state.edits.some(
+        (edit) =>
+          edit.original.trim().toLowerCase() === normalized ||
+          edit.replacement.trim().toLowerCase() === normalized
+      );
+    },
+    [state.edits]
+  );
 
   /**
    * Get edit for specific text (if it exists)
-   * @param {string} text - Text to find edit for
-   * @returns {Object|null} Edit object or null
    */
-  const getEditForText = useCallback((text) => {
-    if (!text || typeof text !== 'string') {
-      return null;
-    }
+  const getEditForText = useCallback(
+    (text: string): Edit | null => {
+      if (!text || typeof text !== 'string') {
+        return null;
+      }
 
-    const normalized = text.trim().toLowerCase();
-    return state.edits.find(
-      (edit) =>
-        edit.original.trim().toLowerCase() === normalized ||
-        edit.replacement.trim().toLowerCase() === normalized
-    ) || null;
-  }, [state.edits]);
+      const normalized = text.trim().toLowerCase();
+      return (
+        state.edits.find(
+          (edit) =>
+            edit.original.trim().toLowerCase() === normalized ||
+            edit.replacement.trim().toLowerCase() === normalized
+        ) || null
+      );
+    },
+    [state.edits]
+  );
 
   /**
    * Remove a specific edit
-   * @param {string} editId - ID of edit to remove
    */
-  const removeEdit = useCallback((editId) => {
+  const removeEdit = useCallback((editId: string) => {
     dispatch({ type: 'REMOVE_EDIT', payload: editId });
   }, []);
 
   /**
    * Get edits within time range
-   * @param {number} minutes - Minutes to look back
-   * @returns {Array} Edits within time range
    */
-  const getRecentEditsByTime = useCallback((minutes = 10) => {
-    const cutoff = Date.now() - (minutes * 60 * 1000);
-    return state.edits.filter((edit) => edit.timestamp >= cutoff).reverse();
-  }, [state.edits]);
+  const getRecentEditsByTime = useCallback(
+    (minutes: number = 10): Edit[] => {
+      const cutoff = Date.now() - minutes * 60 * 1000;
+      return state.edits
+        .filter((edit) => edit.timestamp >= cutoff)
+        .reverse();
+    },
+    [state.edits]
+  );
 
   /**
    * Get edit summary for API transmission
    * Simplified format for backend processing
-   * @param {number} count - Number of recent edits to include
-   * @returns {Array} Simplified edit array
    */
-  const getEditSummary = useCallback((count = 10) => {
-    return state.edits.slice(-count).map((edit) => ({
-      original: edit.original,
-      replacement: edit.replacement,
-      category: edit.category,
-      timestamp: edit.timestamp,
-      minutesAgo: Math.floor((Date.now() - edit.timestamp) / 60000),
-    }));
-  }, [state.edits]);
+  const getEditSummary = useCallback(
+    (count: number = 10): Array<{
+      original: string;
+      replacement: string;
+      category: string | null;
+      timestamp: number;
+      minutesAgo: number;
+    }> => {
+      return state.edits.slice(-count).map((edit) => ({
+        original: edit.original,
+        replacement: edit.replacement,
+        category: edit.category,
+        timestamp: edit.timestamp,
+        minutesAgo: Math.floor((Date.now() - edit.timestamp) / 60000),
+      }));
+    },
+    [state.edits]
+  );
 
-  // ============ NEW: Undo/Redo Methods ============
+  // ============ Undo/Redo Methods ============
 
   /**
    * Save current prompt state to history
-   * @param {string} prompt - Current prompt text
-   * @param {Object} metadata - Optional metadata (e.g., edit type, position)
    */
-  const saveState = useCallback((prompt, metadata = {}) => {
-    if (!prompt || typeof prompt !== 'string') {
-      return;
-    }
+  const saveState = useCallback(
+    (prompt: string, metadata: Record<string, unknown> = {}) => {
+      if (!prompt || typeof prompt !== 'string') {
+        return;
+      }
 
-    dispatch({
-      type: 'SAVE_STATE',
-      payload: { prompt, metadata },
-    });
-  }, []);
+      dispatch({
+        type: 'SAVE_STATE',
+        payload: { prompt, metadata },
+      });
+    },
+    []
+  );
 
   /**
    * Undo last change
-   * @returns {Object|null} Previous state or null if can't undo
    */
-  const undo = useCallback(() => {
+  const undo = useCallback((): PromptState | null => {
     if (state.historyIndex <= 0) {
       return null;
     }
 
     dispatch({ type: 'UNDO' });
-    return state.promptHistory[state.historyIndex - 1];
+    const previousState = state.promptHistory[state.historyIndex - 1];
+    return previousState ?? null;
   }, [state.historyIndex, state.promptHistory]);
 
   /**
    * Redo last undone change
-   * @returns {Object|null} Next state or null if can't redo
    */
-  const redo = useCallback(() => {
+  const redo = useCallback((): PromptState | null => {
     if (state.historyIndex >= state.promptHistory.length - 1) {
       return null;
     }
 
     dispatch({ type: 'REDO' });
-    return state.promptHistory[state.historyIndex + 1];
+    const nextState = state.promptHistory[state.historyIndex + 1];
+    return nextState ?? null;
   }, [state.historyIndex, state.promptHistory]);
 
   /**
    * Check if undo is available
-   * @returns {boolean} True if can undo
    */
   const canUndo = useMemo(() => {
     return state.historyIndex > 0;
@@ -316,43 +376,45 @@ export function useEditHistory() {
 
   /**
    * Check if redo is available
-   * @returns {boolean} True if can redo
    */
   const canRedo = useMemo(() => {
-    return state.historyIndex >= 0 && state.historyIndex < state.promptHistory.length - 1;
+    return (
+      state.historyIndex >= 0 &&
+      state.historyIndex < state.promptHistory.length - 1
+    );
   }, [state.historyIndex, state.promptHistory.length]);
 
   /**
    * Get preview of what undo would restore
-   * @returns {Object|null} State that undo would restore
    */
-  const getUndoPreview = useCallback(() => {
+  const getUndoPreview = useCallback((): PromptState | null => {
     if (!canUndo) {
       return null;
     }
-    return state.promptHistory[state.historyIndex - 1];
+    return state.promptHistory[state.historyIndex - 1] ?? null;
   }, [canUndo, state.historyIndex, state.promptHistory]);
 
   /**
    * Get preview of what redo would restore
-   * @returns {Object|null} State that redo would restore
    */
-  const getRedoPreview = useCallback(() => {
+  const getRedoPreview = useCallback((): PromptState | null => {
     if (!canRedo) {
       return null;
     }
-    return state.promptHistory[state.historyIndex + 1];
+    return state.promptHistory[state.historyIndex + 1] ?? null;
   }, [canRedo, state.historyIndex, state.promptHistory]);
 
   /**
    * Get current state from history
-   * @returns {Object|null} Current state or null
    */
-  const getCurrentState = useCallback(() => {
-    if (state.historyIndex < 0 || state.historyIndex >= state.promptHistory.length) {
+  const getCurrentState = useCallback((): PromptState | null => {
+    if (
+      state.historyIndex < 0 ||
+      state.historyIndex >= state.promptHistory.length
+    ) {
       return null;
     }
-    return state.promptHistory[state.historyIndex];
+    return state.promptHistory[state.historyIndex] ?? null;
   }, [state.historyIndex, state.promptHistory]);
 
   /**
@@ -368,7 +430,7 @@ export function useEditHistory() {
 
   // Memoized category counts
   const editsByCategory = useMemo(() => {
-    const counts = {};
+    const counts: Record<string, number> = {};
     state.edits.forEach((edit) => {
       const category = edit.category || 'uncategorized';
       counts[category] = (counts[category] || 0) + 1;
@@ -394,7 +456,7 @@ export function useEditHistory() {
     getRecentEditsByTime,
     getEditSummary,
 
-    // NEW: Undo/Redo state and methods
+    // Undo/Redo state and methods
     promptHistory: state.promptHistory,
     historyIndex: state.historyIndex,
     canUndo,

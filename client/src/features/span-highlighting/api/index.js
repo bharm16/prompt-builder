@@ -4,8 +4,8 @@
  * External API calls for span labeling.
  */
 
-export { SpanLabelingApi } from './spanLabelingApi.js';
+export { SpanLabelingApi } from './spanLabelingApi';
 
 // Default export for convenience
-export { SpanLabelingApi as default } from './spanLabelingApi.js';
+export { SpanLabelingApi as default } from './spanLabelingApi';
 

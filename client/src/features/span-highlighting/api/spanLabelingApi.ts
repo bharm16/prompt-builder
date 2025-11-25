@@ -15,13 +15,29 @@ const DEFAULT_HEADERS = {
   'X-API-Key': API_CONFIG.apiKey,
 };
 
+interface LabelSpansPayload {
+  text: string;
+  maxSpans?: number;
+  minConfidence?: number;
+  policy?: Record<string, unknown>;
+  templateVersion?: string;
+}
+
+interface LabelSpansResponse {
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
+}
+
 /**
  * Builds the request body for span labeling API call
  * @private
- * @param {Object} payload - The span labeling payload
- * @returns {string} JSON string of the request body
  */
-const buildBody = (payload) => {
+function buildBody(payload: LabelSpansPayload): string {
   const body = {
     text: payload.text,
     maxSpans: payload.maxSpans,
@@ -31,7 +47,7 @@ const buildBody = (payload) => {
   };
 
   return JSON.stringify(body);
-};
+}
 
 /**
  * Span Labeling API
@@ -40,43 +56,45 @@ export class SpanLabelingApi {
   /**
    * Labels spans in the provided text
    *
-   * @param {Object} payload - The span labeling request payload
-   * @param {string} payload.text - Text to label
-   * @param {number} [payload.maxSpans] - Maximum number of spans to return
-   * @param {number} [payload.minConfidence] - Minimum confidence threshold
-   * @param {Object} [payload.policy] - Policy configuration
-   * @param {string} [payload.templateVersion] - Template version
-   * @param {AbortSignal} [signal] - Optional abort signal for cancellation
-   * @returns {Promise<Object>} Response with spans and metadata
-   * @throws {Error} If the request fails
+   * @param payload - The span labeling request payload
+   * @param signal - Optional abort signal for cancellation
+   * @returns Response with spans and metadata
+   * @throws Error If the request fails
    */
-  static async labelSpans(payload, signal = null) {
+  static async labelSpans(
+    payload: LabelSpansPayload,
+    signal: AbortSignal | null = null
+  ): Promise<LabelSpansResponse> {
     const res = await fetch('/llm/label-spans', {
       method: 'POST',
       headers: DEFAULT_HEADERS,
       body: buildBody(payload),
-      signal,
+      ...(signal && { signal }),
     });
 
     if (!res.ok) {
       let message = `Request failed with status ${res.status}`;
       try {
-        const errorBody = await res.json();
+        const errorBody = (await res.json()) as { message?: string };
         if (errorBody?.message) {
           message = errorBody.message;
         }
       } catch {
         // Ignore JSON parse errors and fall back to default message
       }
-      const error = new Error(message);
+      const error = new Error(message) as Error & { status?: number };
       error.status = res.status;
       throw error;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      spans?: unknown[];
+      meta?: Record<string, unknown> | null;
+    };
     return {
-      spans: Array.isArray(data?.spans) ? data.spans : [],
+      spans: Array.isArray(data?.spans) ? (data.spans as LabelSpansResponse['spans']) : [],
       meta: data?.meta ?? null,
     };
   }
 }
+

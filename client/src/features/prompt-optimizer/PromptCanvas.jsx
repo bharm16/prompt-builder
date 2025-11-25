@@ -17,11 +17,11 @@ import {
 } from './utils/highlightInteractionHelpers.js';
 
 // Extracted services
-import { ExportService } from '../../services/exportService.js';
+import { ExportService } from '../../services/exportService';
 
 // Extracted hooks
-import { useClipboard } from './hooks/useClipboard.js';
-import { useShareLink } from './hooks/useShareLink.js';
+import { useClipboard } from './hooks/useClipboard';
+import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering, useHighlightFingerprint } from './hooks/useHighlightRendering.js';
 
 // Extracted components

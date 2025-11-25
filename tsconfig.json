@@ -37,7 +37,7 @@
       "@shared/*": ["shared/*"]
     },
     "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types", "./client/src/types"]
   },
   "include": ["client/src/**/*", "server/src/**/*", "shared/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist", "build"]

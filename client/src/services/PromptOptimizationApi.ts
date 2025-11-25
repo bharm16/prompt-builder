@@ -5,30 +5,80 @@
  * Provides fast perceived performance (~300ms to draft, full refinement in background)
  */
 
-import { apiClient, ApiError } from './ApiClient';
+import { ApiClient, ApiError } from './ApiClient';
+
+interface OptimizeOptions {
+  prompt: string;
+  mode: string;
+  context?: unknown | null;
+  brainstormContext?: unknown | null;
+}
+
+interface OptimizeResult {
+  optimizedPrompt: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface OptimizeWithStreamingOptions extends OptimizeOptions {
+  onDraft?: ((draft: string) => void) | null;
+  onSpans?: ((spans: unknown[], source: string, meta?: unknown) => void) | null;
+  onRefined?: ((refined: string, metadata?: Record<string, unknown>) => void) | null;
+  onError?: ((error: Error) => void) | null;
+}
+
+interface OptimizeWithStreamingResult {
+  draft: string;
+  refined: string;
+  spans: unknown[];
+  metadata: Record<string, unknown> | null;
+  usedFallback: boolean;
+}
+
+interface StreamWithFetchOptions {
+  url: string;
+  method: string;
+  body: Record<string, unknown>;
+  onMessage: (event: string, data: Record<string, unknown>) => void;
+  onError: (error: Error) => void;
+}
+
+interface OfflineResult {
+  draft: string;
+  refined: string;
+  spans: unknown[];
+  metadata: Record<string, unknown>;
+  usedFallback: boolean;
+}
 
 export class PromptOptimizationApi {
-  constructor(client = apiClient) {
-    this.client = client;
-  }
+  constructor(private readonly client: ApiClient) {}
 
   /**
    * Optimize a prompt with legacy single-stage API (fallback)
-   * @param {Object} options - Optimization options
-   * @returns {Promise<{optimizedPrompt: string}>}
    */
-  async optimizeLegacy({ prompt, mode, context = null, brainstormContext = null }) {
+  async optimizeLegacy({
+    prompt,
+    mode,
+    context = null,
+    brainstormContext = null,
+  }: OptimizeOptions): Promise<OptimizeResult> {
     try {
-      return await this.client.post('/optimize', {
+      return (await this.client.post('/optimize', {
         prompt,
         mode,
         context,
         brainstormContext,
-      });
+      })) as OptimizeResult;
     } catch (error) {
       if (this._shouldUseOfflineFallback(error)) {
-        const offline = this._buildOfflineResult({ prompt, mode, context, brainstormContext }, error);
-        return { optimizedPrompt: offline.refined, metadata: offline.metadata };
+        const offline = this._buildOfflineResult(
+          { prompt, mode, context, brainstormContext },
+          error
+        );
+        return {
+          optimizedPrompt: offline.refined,
+          metadata: offline.metadata,
+        };
       }
 
       throw error;
@@ -37,17 +87,6 @@ export class PromptOptimizationApi {
 
   /**
    * Optimize a prompt with two-stage streaming
-   *
-   * @param {Object} options - Optimization options
-   * @param {string} options.prompt - The prompt to optimize
-   * @param {string} options.mode - Optimization mode
-   * @param {Object} options.context - Additional context
-   * @param {Object} options.brainstormContext - Brainstorm context
-   * @param {Function} options.onDraft - Callback when draft is ready (draft: string) => void
-   * @param {Function} options.onSpans - Callback when spans are ready (spans: Array, source: string) => void
-   * @param {Function} options.onRefined - Callback when refinement is ready (refined: string, metadata: Object) => void
-   * @param {Function} options.onError - Callback for errors (error: Error) => void
-   * @returns {Promise<{draft: string, refined: string, spans: Array, metadata: Object}>}
    */
   async optimizeWithStreaming({
     prompt,
@@ -58,15 +97,17 @@ export class PromptOptimizationApi {
     onSpans = null,
     onRefined = null,
     onError = null,
-  }) {
+  }: OptimizeWithStreamingOptions): Promise<OptimizeWithStreamingResult> {
     return new Promise((resolve, reject) => {
-      let draft = null;
-      let refined = null;
-      let spans = null;
-      let metadata = null;
+      let draft: string | null = null;
+      let refined: string | null = null;
+      let spans: unknown[] | null = null;
+      let metadata: Record<string, unknown> | null = null;
 
       // Build request URL
-      const baseUrl = this.client.getBaseUrl?.() || '/api';
+      const baseUrl =
+        (this.client as unknown as { getBaseUrl?: () => string }).getBaseUrl?.() ||
+        '/api';
       const url = `${baseUrl}/optimize-stream`;
 
       // Create EventSource for SSE
@@ -84,7 +125,7 @@ export class PromptOptimizationApi {
           try {
             switch (event) {
               case 'draft':
-                draft = data.draft;
+                draft = data.draft as string;
                 if (onDraft && typeof onDraft === 'function') {
                   onDraft(draft);
                 }
@@ -92,33 +133,39 @@ export class PromptOptimizationApi {
 
               case 'spans':
                 // New event type for parallel span labeling
-                spans = data.spans;
+                spans = data.spans as unknown[];
                 if (onSpans && typeof onSpans === 'function') {
-                  onSpans(data.spans, data.source || 'unknown', data.meta);
+                  onSpans(
+                    data.spans as unknown[],
+                    (data.source as string) || 'unknown',
+                    data.meta
+                  );
                 }
                 break;
 
               case 'refined':
-                refined = data.refined;
-                metadata = data.metadata;
+                refined = data.refined as string;
+                metadata = (data.metadata as Record<string, unknown>) || null;
                 if (onRefined && typeof onRefined === 'function') {
-                  onRefined(refined, metadata);
+                  onRefined(refined, metadata || undefined);
                 }
                 break;
 
               case 'done':
                 // Resolve with final result including spans
                 resolve({
-                  draft: draft || refined, // Fallback if draft wasn't sent
-                  refined: refined || draft,
+                  draft: draft || refined || '',
+                  refined: refined || draft || '',
                   spans: spans || [],
                   metadata,
-                  usedFallback: data.usedFallback || false,
+                  usedFallback: (data.usedFallback as boolean) || false,
                 });
                 break;
 
               case 'error':
-                const error = new Error(data.error || 'Streaming optimization failed');
+                const error = new Error(
+                  (data.error as string) || 'Streaming optimization failed'
+                );
                 if (onError && typeof onError === 'function') {
                   onError(error);
                 }
@@ -143,22 +190,40 @@ export class PromptOptimizationApi {
    * Internal method to handle SSE streaming with fetch
    * @private
    */
-  async streamWithFetch({ url, method, body, onMessage, onError }) {
+  private async streamWithFetch({
+    url,
+    method,
+    body,
+    onMessage,
+    onError,
+  }: StreamWithFetchOptions): Promise<void> {
     try {
+      const config = this.client as unknown as {
+        config?: { defaultHeaders?: Record<string, string> };
+      };
+      const apiKey =
+        config.config?.defaultHeaders?.['X-API-Key'] || '';
+
       const response = await fetch(url, {
         method: method || 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': this.client.config.defaultHeaders['X-API-Key'],
+          'X-API-Key': apiKey,
         },
         body: JSON.stringify(body),
       });
 
       if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const error = new Error(
+          `HTTP ${response.status}: ${response.statusText}`
+        ) as Error & { status?: number; statusText?: string };
         error.status = response.status;
         error.statusText = response.statusText;
         throw error;
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
       }
 
       const reader = response.body.getReader();
@@ -184,7 +249,7 @@ export class PromptOptimizationApi {
           } else if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
             try {
-              const data = JSON.parse(dataStr);
+              const data = JSON.parse(dataStr) as Record<string, unknown>;
               onMessage(currentEvent, data);
             } catch (e) {
               console.warn('Failed to parse SSE data:', dataStr);
@@ -193,29 +258,33 @@ export class PromptOptimizationApi {
         }
       }
     } catch (error) {
-      if (error && typeof error.status === 'undefined' && error instanceof Error) {
-        error.status = error.status ?? (error.response?.status ?? null);
+      const err = error as Error & {
+        status?: number | null;
+        response?: { status?: number };
+      };
+      if (err && typeof err.status === 'undefined') {
+        const statusValue = err.response?.status;
+        err.status = statusValue !== undefined ? statusValue : null;
       }
 
       console.error('Streaming fetch error:', error);
-      onError(error);
+      onError(err);
     }
   }
 
   /**
    * Optimize with automatic fallback to legacy API if streaming fails
-   *
-   * @param {Object} options - Same as optimizeWithStreaming
-   * @returns {Promise<{draft: string, refined: string, metadata: Object}>}
    */
-  async optimizeWithFallback(options) {
-    let streamingError = null;
+  async optimizeWithFallback(
+    options: OptimizeWithStreamingOptions
+  ): Promise<OptimizeWithStreamingResult> {
+    let streamingError: Error | null = null;
 
     try {
       // Try streaming first
       return await this.optimizeWithStreaming(options);
     } catch (error) {
-      streamingError = error;
+      streamingError = error as Error;
       console.warn('Streaming failed, falling back to legacy API:', error);
 
       if (this._shouldUseOfflineFallback(error)) {
@@ -239,11 +308,15 @@ export class PromptOptimizationApi {
       return {
         draft: optimized,
         refined: optimized,
+        spans: [],
         metadata: { usedFallback: true, ...result.metadata },
         usedFallback: true,
       };
     } catch (legacyError) {
-      if (this._shouldUseOfflineFallback(legacyError) || this._shouldUseOfflineFallback(streamingError)) {
+      if (
+        this._shouldUseOfflineFallback(legacyError) ||
+        this._shouldUseOfflineFallback(streamingError)
+      ) {
         return this._handleOfflineFallback(options, legacyError);
       }
 
@@ -253,11 +326,8 @@ export class PromptOptimizationApi {
 
   /**
    * Get quality score for a prompt (same as V1)
-   * @param {string} inputPrompt - Original prompt
-   * @param {string} outputPrompt - Optimized prompt
-   * @returns {number} Quality score (0-100)
    */
-  calculateQualityScore(inputPrompt, outputPrompt) {
+  calculateQualityScore(inputPrompt: string, outputPrompt: string): number {
     let score = 0;
     const inputWords = inputPrompt.split(/\s+/).length;
     const outputWords = outputPrompt.split(/\s+/).length;
@@ -272,19 +342,38 @@ export class PromptOptimizationApi {
 
     // Key components
     if (outputPrompt.includes('Goal')) score += 15;
-    if (outputPrompt.includes('Return Format') || outputPrompt.includes('Research')) score += 15;
-    if (outputPrompt.includes('Context') || outputPrompt.includes('Learning')) score += 15;
+    if (
+      outputPrompt.includes('Return Format') ||
+      outputPrompt.includes('Research')
+    )
+      score += 15;
+    if (outputPrompt.includes('Context') || outputPrompt.includes('Learning'))
+      score += 15;
 
     return Math.min(score, 100);
   }
 
-  _handleOfflineFallback(options, error) {
+  private _handleOfflineFallback(
+    options: OptimizeWithStreamingOptions,
+    error: unknown
+  ): OptimizeWithStreamingResult {
     const offlineResult = this._buildOfflineResult(options, error);
     this._emitOfflineCallbacks(offlineResult, options);
     return offlineResult;
   }
 
-  _emitOfflineCallbacks(result, { onDraft, onSpans, onRefined }) {
+  private _emitOfflineCallbacks(
+    result: OfflineResult,
+    {
+      onDraft,
+      onSpans,
+      onRefined,
+    }: {
+      onDraft?: ((draft: string) => void) | null;
+      onSpans?: ((spans: unknown[], source: string, meta?: unknown) => void) | null;
+      onRefined?: ((refined: string, metadata?: Record<string, unknown>) => void) | null;
+    }
+  ): void {
     if (typeof onDraft === 'function') {
       onDraft(result.draft);
     }
@@ -298,21 +387,36 @@ export class PromptOptimizationApi {
     }
   }
 
-  _shouldUseOfflineFallback(error) {
+  private _shouldUseOfflineFallback(error: unknown): boolean {
     if (!error) {
       return false;
     }
 
-    const status = error.status ?? error?.response?.status ?? (error instanceof ApiError ? error.status : null);
+    const err = error as Error & {
+      status?: number;
+      response?: { status?: number };
+    };
+
+    const status =
+      err.status ??
+      err?.response?.status ??
+      (err instanceof ApiError ? err.status : null);
     if (status === 401 || status === 403) {
       return true;
     }
 
-    const message = (error.message || '').toLowerCase();
-    return message.includes('401') || message.includes('unauthorized') || message.includes('permission');
+    const message = (err.message || '').toLowerCase();
+    return (
+      message.includes('401') ||
+      message.includes('unauthorized') ||
+      message.includes('permission')
+    );
   }
 
-  _buildOfflineResult({ prompt, mode }, error) {
+  private _buildOfflineResult(
+    { prompt, mode }: OptimizeOptions,
+    error: unknown
+  ): OfflineResult {
     const trimmedPrompt = (prompt || '').trim();
     const normalizedMode = mode ? mode.replace(/-/g, ' ') : 'optimize';
 
@@ -327,7 +431,9 @@ export class PromptOptimizationApi {
     const draft = [
       `✨ Offline Prompt Assistant (${normalizedMode})`,
       '',
-      trimmedPrompt ? `Original prompt:\n${trimmedPrompt}` : 'No original prompt was provided.',
+      trimmedPrompt
+        ? `Original prompt:\n${trimmedPrompt}`
+        : 'No original prompt was provided.',
       '',
       'Quick tips to strengthen your prompt:',
       suggestionList,
@@ -340,11 +446,12 @@ export class PromptOptimizationApi {
       'Update your API credentials or start the backend service to restore real-time optimizations.',
     ].join('\n');
 
+    const err = error as Error | null;
     const metadata = {
       usedFallback: true,
       offline: true,
       reason: 'unauthorized',
-      errorMessage: error?.message || null,
+      errorMessage: err?.message || null,
     };
 
     return {
@@ -358,4 +465,6 @@ export class PromptOptimizationApi {
 }
 
 // Export singleton instance
-export const promptOptimizationApiV2 = new PromptOptimizationApi();
+import { apiClient } from './ApiClient';
+export const promptOptimizationApiV2 = new PromptOptimizationApi(apiClient);
+

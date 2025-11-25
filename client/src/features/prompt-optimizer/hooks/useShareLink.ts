@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useToast } from '../../../components/Toast';
+import type { Toast } from '../../../hooks/types';
 
 /**
  * Custom hook for generating and sharing links with toast feedback
- * @returns {Object} { shared: boolean, share: function }
  */
-export function useShareLink() {
+export function useShareLink(): {
+  shared: boolean;
+  share: (promptUuid: string) => void;
+} {
   const [shared, setShared] = useState(false);
-  const toast = useToast();
+  const toast = useToast() as Toast;
 
-  const share = (promptUuid) => {
+  const share = (promptUuid: string): void => {
     if (!promptUuid) {
       toast.error('Save the prompt first to generate a share link');
       return;
@@ -24,3 +27,4 @@ export function useShareLink() {
 
   return { shared, share };
 }
+

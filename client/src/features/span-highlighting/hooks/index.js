@@ -13,7 +13,7 @@ export {
 export { useHighlightRendering } from './useHighlightRendering.js';
 
 // Supporting hooks
-export { useHighlightFingerprint } from './useHighlightFingerprint.js';
+export { useHighlightFingerprint } from './useHighlightFingerprint';
 export { useHighlightSourceSelection } from './useHighlightSourceSelection.js';
 export { useProgressiveSpanRendering } from './useProgressiveSpanRendering.js';
 

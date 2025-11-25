@@ -15,8 +15,8 @@
  * - Fetch logic → hooks/useSuggestionFetch.js
  */
 
-import { useSuggestionApply } from './useSuggestionApply.js';
-import { useSuggestionFetch } from './useSuggestionFetch.js';
+import { useSuggestionApply } from './useSuggestionApply';
+import { useSuggestionFetch } from './useSuggestionFetch';
 
 /**
  * Custom hook for enhancement suggestions

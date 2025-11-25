@@ -1,47 +1,81 @@
 /**
  * Debounced Validation Hook
- * 
+ *
  * Provides a way to run validation less frequently than rendering.
  * Useful for expensive validation operations that don't need to run on every render.
- * 
+ *
  * PERFORMANCE OPTIMIZATION:
  * - Validation runs at most once per debounce period
  * - Results are cached to avoid redundant validation
  * - Runs validation in background without blocking rendering
- * 
+ *
  * Current Use: Reserved for future heavy validation operations
  * The lightweight structural validation in categoryValidators.js doesn't need debouncing.
  */
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
 
+interface Span {
+  id?: string;
+  start?: number;
+  end?: number;
+  category?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
+interface ValidationResult {
+  pass: boolean;
+  reason?: string;
+}
+
+interface ValidationState {
+  valid: Span[];
+  invalid: Array<{ span: Span; reason?: string }>;
+  validatedAt: number | null;
+}
+
+type ValidatorFunction = (span: Span) => ValidationResult;
+
 /**
  * Simple debounce utility
  */
-function debounce(func, wait) {
-  let timeoutId;
-  
-  const debounced = (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), wait);
+function debounce(
+  func: (spans: Span[]) => void,
+  wait: number
+): ((spans: Span[]) => void) & { cancel: () => void } {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const debounced = ((spans: Span[]) => {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => func(spans), wait);
+  }) as ((spans: Span[]) => void) & { cancel: () => void };
+
+  debounced.cancel = () => {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
   };
-  
-  debounced.cancel = () => clearTimeout(timeoutId);
-  
+
   return debounced;
 }
 
 /**
  * Hook for debounced span validation
- * 
- * @param {Array} spans - Spans to validate
- * @param {Function} validator - Validation function that accepts a span
- * @param {number} delay - Debounce delay in milliseconds (default: 1000ms)
- * @returns {Object} Validation state and trigger function
  */
-export function useDebouncedValidation(spans, validator, delay = 1000) {
-  const validationCacheRef = useRef(new Map());
-  const validationResultRef = useRef({
+export function useDebouncedValidation(
+  spans: Span[] | null | undefined,
+  validator: ValidatorFunction,
+  delay: number = 1000
+): {
+  validationResult: ValidationState;
+  validateNow: () => void;
+  clearCache: () => void;
+} {
+  const validationCacheRef = useRef(new Map<string, ValidationResult>());
+  const validationResultRef = useRef<ValidationState>({
     valid: [],
     invalid: [],
     validatedAt: null,
@@ -50,34 +84,44 @@ export function useDebouncedValidation(spans, validator, delay = 1000) {
   // Create debounced validation function
   const debouncedValidate = useMemo(
     () =>
-      debounce((spansToValidate) => {
-        const valid = [];
-        const invalid = [];
+      debounce((spansToValidate: Span[]) => {
+        const valid: Span[] = [];
+        const invalid: Array<{ span: Span; reason?: string }> = [];
 
         spansToValidate.forEach((span) => {
           // Check cache first
-          const cacheKey = span.id || `${span.start}-${span.end}-${span.category || span.role}`;
-          
-          if (validationCacheRef.current.has(cacheKey)) {
-            const result = validationCacheRef.current.get(cacheKey);
-            if (result.pass) {
+          const cacheKey =
+            span.id ||
+            `${span.start ?? 0}-${span.end ?? 0}-${span.category || span.role || ''}`;
+
+          const cached = validationCacheRef.current.get(cacheKey);
+          if (cached) {
+            if (cached.pass) {
               valid.push(span);
             } else {
-              invalid.push({ span, reason: result.reason });
+              const invalidItem: { span: Span; reason?: string } = { span };
+              if (cached.reason !== undefined) {
+                invalidItem.reason = cached.reason;
+              }
+              invalid.push(invalidItem);
             }
             return;
           }
 
           // Run validation
           const result = validator(span);
-          
+
           // Cache result
           validationCacheRef.current.set(cacheKey, result);
-          
+
           if (result.pass) {
             valid.push(span);
           } else {
-            invalid.push({ span, reason: result.reason });
+            const invalidItem: { span: Span; reason?: string } = { span };
+            if (result.reason !== undefined) {
+              invalidItem.reason = result.reason;
+            }
+            invalid.push(invalidItem);
           }
         });
 

@@ -1,5 +1,5 @@
 // client/src/features/prompt-optimizer/utils/applySuggestion.js
-import { relocateQuote } from '../../../utils/textQuoteRelocator.js';
+import { relocateQuote } from '../../../utils/textQuoteRelocator';
 
 const ensureNumber = (value, fallback = -1) =>
   Number.isFinite(value) ? value : fallback;

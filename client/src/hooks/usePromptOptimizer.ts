@@ -41,7 +41,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
   const analyzeAndOptimize = useCallback(
     async (prompt: string, context: unknown | null = null, brainstormContext: unknown | null = null) => {
       try {
-        const data = await promptOptimizationApiV2.optimize({
+        const data = await promptOptimizationApiV2.optimizeLegacy({
           prompt,
           mode: selectedMode,
           context,

@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react';
-import { useSpanGrouping } from './hooks/useSpanGrouping.js';
+import { useSpanGrouping } from './hooks/useSpanGrouping';
 import { BentoBox } from './components/BentoBox.jsx';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from './config/bentoConfig.js';
 import { scrollToSpan } from './utils/spanFormatting.js';

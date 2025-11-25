@@ -21,43 +21,90 @@
  * - Reduced API calls by 10-20% for users with patterns
  * - Zero performance impact (uses requestIdleCallback)
  */
+
+interface RequestRecord {
+  text: string;
+  policy: Record<string, unknown> | null;
+  templateVersion: string | null;
+  timestamp: number;
+  cacheHit: boolean;
+}
+
+interface PatternData {
+  count: number;
+  lastSeen: number;
+  textLength: number;
+  text: string;
+  policy: Record<string, unknown> | null;
+  templateVersion: string | null;
+}
+
+interface Prediction {
+  text: string;
+  policy: Record<string, unknown> | null;
+  templateVersion: string | null;
+  confidence: number;
+  reason: 'frequent_pattern' | 'similar_pattern';
+}
+
+interface ServiceStats {
+  totalRequests: number;
+  patternsDetected: number;
+  preWarmAttempts: number;
+  preWarmSuccess: number;
+  cacheHitsFromPrediction: number;
+}
+
+interface ServiceOptions {
+  maxHistorySize?: number;
+  minFrequency?: number;
+  predictionWindow?: number;
+  enabled?: boolean;
+}
+
+interface FetchFunctionParams {
+  text: string;
+  policy: Record<string, unknown> | null;
+  templateVersion: string | null;
+  priority?: boolean;
+}
+
+type FetchFunction = (params: FetchFunctionParams) => Promise<unknown>;
+
 export class PredictiveCacheService {
-  constructor(options = {}) {
+  private readonly maxHistorySize: number;
+  private readonly minFrequency: number;
+  private readonly predictionWindow: number;
+  private readonly enabled: boolean;
+
+  private history: RequestRecord[] = [];
+  private patterns: Map<string, PatternData> = new Map();
+  private preWarmQueue: Prediction[] = [];
+  private isPreWarming: boolean = false;
+  private stats: ServiceStats = {
+    totalRequests: 0,
+    patternsDetected: 0,
+    preWarmAttempts: 0,
+    preWarmSuccess: 0,
+    cacheHitsFromPrediction: 0,
+  };
+
+  constructor(options: ServiceOptions = {}) {
     this.maxHistorySize = options.maxHistorySize || 50;
     this.minFrequency = options.minFrequency || 2; // Minimum times a pattern must appear
     this.predictionWindow = options.predictionWindow || 5; // Look at last N requests
     this.enabled = options.enabled !== false;
-
-    // History of requests
-    this.history = [];
-
-    // Pattern frequency tracking
-    this.patterns = new Map(); // text hash -> { count, lastSeen, textLength }
-
-    // Pre-warming queue
-    this.preWarmQueue = [];
-
-    // State
-    this.isPreWarming = false;
-    this.stats = {
-      totalRequests: 0,
-      patternsDetected: 0,
-      preWarmAttempts: 0,
-      preWarmSuccess: 0,
-      cacheHitsFromPrediction: 0,
-    };
   }
 
   /**
    * Record a span labeling request
-   *
-   * @param {Object} request
-   * @param {string} request.text - The text that was labeled
-   * @param {Object} request.policy - Span labeling policy
-   * @param {string} request.templateVersion - Template version
-   * @param {boolean} request.cacheHit - Whether this was a cache hit
    */
-  recordRequest(request) {
+  recordRequest(request: {
+    text: string;
+    policy?: Record<string, unknown> | null;
+    templateVersion?: string | null;
+    cacheHit?: boolean;
+  }): void {
     if (!this.enabled) return;
 
     this.stats.totalRequests++;
@@ -65,8 +112,8 @@ export class PredictiveCacheService {
     // Add to history
     this.history.push({
       text: request.text,
-      policy: request.policy,
-      templateVersion: request.templateVersion,
+      policy: request.policy || null,
+      templateVersion: request.templateVersion || null,
       timestamp: Date.now(),
       cacheHit: request.cacheHit || false,
     });
@@ -89,8 +136,8 @@ export class PredictiveCacheService {
         lastSeen: Date.now(),
         textLength: request.text.length,
         text: request.text,
-        policy: request.policy,
-        templateVersion: request.templateVersion,
+        policy: request.policy || null,
+        templateVersion: request.templateVersion || null,
       });
       this.stats.patternsDetected++;
     }
@@ -105,23 +152,21 @@ export class PredictiveCacheService {
   /**
    * Record a cache hit from prediction
    */
-  recordPredictionHit() {
+  recordPredictionHit(): void {
     this.stats.cacheHitsFromPrediction++;
   }
 
   /**
    * Get predictions for next likely requests
-   *
-   * @returns {Array} Predicted requests
    */
-  getPredictions() {
+  getPredictions(): Prediction[] {
     if (!this.enabled || this.history.length < 2) {
       return [];
     }
 
     // Analyze recent history for patterns
     const recentRequests = this.history.slice(-this.predictionWindow);
-    const predictions = [];
+    const predictions: Prediction[] = [];
 
     // Strategy 1: Frequently used patterns (frequency-based)
     const frequentPatterns = Array.from(this.patterns.entries())
@@ -147,10 +192,11 @@ export class PredictiveCacheService {
     // Strategy 2: Similar text patterns (edit distance < 20%)
     if (recentRequests.length > 0) {
       const lastRequest = recentRequests[recentRequests.length - 1];
+      if (!lastRequest) return predictions;
 
       // Find similar patterns
       this.patterns.forEach((data, key) => {
-        if (predictions.find(p => this._getPatternKey(p) === key)) {
+        if (predictions.find((p) => this._getPatternKey(p) === key)) {
           return; // Already in predictions
         }
 
@@ -172,10 +218,8 @@ export class PredictiveCacheService {
 
   /**
    * Pre-warm cache with predictions during idle time
-   *
-   * @param {Function} fetchFunction - Function to fetch span labels
    */
-  async preWarmCache(fetchFunction) {
+  async preWarmCache(fetchFunction: FetchFunction): Promise<void> {
     if (!this.enabled || this.isPreWarming) return;
 
     const predictions = this.getPredictions();
@@ -204,7 +248,6 @@ export class PredictiveCacheService {
         this.stats.preWarmSuccess++;
       } catch (error) {
         // Silently fail - pre-warming is best-effort
-        
       }
     }
 
@@ -214,22 +257,28 @@ export class PredictiveCacheService {
   /**
    * Get service statistics
    */
-  getStats() {
+  getStats(): ServiceStats & {
+    historySize: number;
+    patternsTracked: number;
+    preWarmQueueSize: number;
+    predictionAccuracy: number;
+  } {
     return {
       ...this.stats,
       historySize: this.history.length,
       patternsTracked: this.patterns.size,
       preWarmQueueSize: this.preWarmQueue.length,
-      predictionAccuracy: this.stats.preWarmSuccess > 0
-        ? (this.stats.cacheHitsFromPrediction / this.stats.preWarmSuccess) * 100
-        : 0,
+      predictionAccuracy:
+        this.stats.preWarmSuccess > 0
+          ? (this.stats.cacheHitsFromPrediction / this.stats.preWarmSuccess) * 100
+          : 0,
     };
   }
 
   /**
    * Clear all history and patterns
    */
-  clear() {
+  clear(): void {
     this.history = [];
     this.patterns.clear();
     this.preWarmQueue = [];
@@ -250,10 +299,16 @@ export class PredictiveCacheService {
    * Generate pattern key from request
    * @private
    */
-  _getPatternKey(request) {
+  private _getPatternKey(
+    request:
+      | { text: string; policy?: Record<string, unknown> | null; templateVersion?: string | null }
+      | Prediction
+  ): string {
     // Simple hash based on text length + policy
     const textHash = this._simpleHash(request.text);
-    const policyHash = this._simpleHash(JSON.stringify(request.policy || {}));
+    const policyHash = this._simpleHash(
+      JSON.stringify(request.policy || {})
+    );
     return `${textHash}_${policyHash}_${request.templateVersion || 'v1'}`;
   }
 
@@ -261,7 +316,7 @@ export class PredictiveCacheService {
    * Simple string hash function
    * @private
    */
-  _simpleHash(str) {
+  private _simpleHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const chr = str.charCodeAt(i);
@@ -275,7 +330,7 @@ export class PredictiveCacheService {
    * Calculate recency score (exponential decay)
    * @private
    */
-  _getRecencyScore(timestamp) {
+  private _getRecencyScore(timestamp: number): number {
     const age = Date.now() - timestamp;
     const hourInMs = 60 * 60 * 1000;
     return Math.exp(-age / hourInMs);
@@ -285,7 +340,7 @@ export class PredictiveCacheService {
    * Calculate text similarity (simple Jaccard similarity)
    * @private
    */
-  _calculateSimilarity(text1, text2) {
+  private _calculateSimilarity(text1: string, text2: string): number {
     if (text1 === text2) return 1;
 
     // Convert to word sets
@@ -293,7 +348,7 @@ export class PredictiveCacheService {
     const words2 = new Set(text2.toLowerCase().split(/\s+/));
 
     // Calculate Jaccard similarity
-    const intersection = new Set([...words1].filter(w => words2.has(w)));
+    const intersection = new Set([...words1].filter((w) => words2.has(w)));
     const union = new Set([...words1, ...words2]);
 
     return intersection.size / union.size;
@@ -303,7 +358,7 @@ export class PredictiveCacheService {
    * Cleanup patterns not seen in 1 hour
    * @private
    */
-  _cleanupOldPatterns() {
+  private _cleanupOldPatterns(): void {
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
     for (const [key, data] of this.patterns.entries()) {
@@ -317,7 +372,7 @@ export class PredictiveCacheService {
    * Schedule pre-warming during idle time
    * @private
    */
-  _schedulePreWarm() {
+  private _schedulePreWarm(): void {
     if (typeof requestIdleCallback === 'undefined') {
       return; // Not supported
     }
@@ -332,8 +387,8 @@ export class PredictiveCacheService {
    * Wait for browser to be idle
    * @private
    */
-  _waitForIdle() {
-    return new Promise(resolve => {
+  private _waitForIdle(): Promise<boolean> {
+    return new Promise((resolve) => {
       if (typeof requestIdleCallback === 'undefined') {
         // Fallback: Use setTimeout
         setTimeout(() => resolve(true), 100);
@@ -355,3 +410,4 @@ export const predictiveCacheService = new PredictiveCacheService({
   minFrequency: 2,
   predictionWindow: 5,
 });
+
