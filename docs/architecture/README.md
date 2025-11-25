@@ -32,6 +32,10 @@ This directory contains the architectural standards and patterns for the Prompt 
 - References key documentation
 - Requests design approval before implementation
 
+### TypeScript Migration
+
+For TypeScript patterns and migration guides, see [typescript/](./typescript/README.md)
+
 ## Quick Start
 
 **Refactoring a large component?**
