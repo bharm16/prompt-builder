@@ -1,0 +1,47 @@
+/**
+ * Scroll and Animation Utilities for Span Bento Grid
+ */
+
+import type { RefObject } from 'react';
+
+export interface Span {
+  id: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Scrolls to a span in the editor and adds pulse animation
+ * Finds the highlight wrapper by data-span-id and smoothly scrolls to it
+ * Adds a temporary pulse animation to draw attention
+ */
+export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | undefined): void {
+  if (!editorRef?.current || !span?.id) {
+    return;
+  }
+  
+  // Find the highlight wrapper with matching span ID
+  const wrapper = editorRef.current.querySelector(
+    `[data-span-id="${span.id}"]`
+  ) as HTMLElement | null;
+  
+  if (!wrapper) {
+    console.warn('Span not found in editor:', span.id);
+    return;
+  }
+  
+  // Scroll into view smoothly
+  wrapper.scrollIntoView({ 
+    behavior: 'smooth', 
+    block: 'center',
+    inline: 'nearest',
+  });
+  
+  // Add temporary pulse animation
+  wrapper.classList.add('highlight-pulse');
+  
+  // Remove pulse after animation completes (1000ms as defined in CSS)
+  setTimeout(() => {
+    wrapper.classList.remove('highlight-pulse');
+  }, 1000);
+}
+

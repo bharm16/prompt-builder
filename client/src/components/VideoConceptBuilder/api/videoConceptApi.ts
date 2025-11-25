@@ -121,7 +121,7 @@ export class VideoConceptApi {
         context,
         concept,
       }),
-      signal: signal ?? undefined,
+      ...(signal ? { signal } : {}),
     });
 
     const parsed = ElementSuggestionsSchema.safeParse(data);

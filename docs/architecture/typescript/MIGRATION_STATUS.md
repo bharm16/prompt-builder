@@ -120,19 +120,105 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 
 **Total**: 6 API files migrated with runtime validation
 
+### ✅ VideoConceptBuilder Hooks (Complete)
+
+**Location**: `client/src/components/VideoConceptBuilder/hooks/`
+
+- ✅ useVideoConceptState.ts (with discriminated union types)
+- ✅ useElementSuggestions.ts
+- ✅ useConflictDetection.ts
+- ✅ useRefinements.ts
+- ✅ useTechnicalParams.ts
+- ✅ useCompatibilityScores.ts
+- ✅ useKeyboardShortcuts.ts
+- ✅ types.ts (shared type definitions)
+
+**Total**: 8 files migrated
+
+### ✅ SuggestionsPanel Hooks (Complete)
+
+**Location**: `client/src/components/SuggestionsPanel/hooks/`
+
+- ✅ useSuggestionsState.ts (with discriminated union types)
+- ✅ useCustomRequest.ts
+- ✅ types.ts (shared type definitions)
+
+**Total**: 3 files migrated
+
+### ✅ SuggestionsPanel Components (Complete)
+
+**Location**: `client/src/components/SuggestionsPanel/`
+
+**Sub-components** (5 files):
+- ✅ PanelStates.tsx (LoadingState, EmptyState, InactiveState)
+- ✅ PanelHeader.tsx
+- ✅ CategoryTabs.tsx
+- ✅ SuggestionsList.tsx
+- ✅ CustomRequestForm.tsx
+- ✅ types.ts (component type definitions)
+
+**Main Component** (1 file):
+- ✅ SuggestionsPanel.tsx (main orchestration component)
+
+**Total**: 6 component files migrated
+
+### ✅ VideoConceptBuilder Components (Sub-components Complete)
+
+**Location**: `client/src/components/VideoConceptBuilder/components/`
+
+**Sub-components** (8 files):
+- ✅ ProgressHeader.tsx
+- ✅ ConceptPreview.tsx
+- ✅ ConflictsAlert.tsx
+- ✅ ElementCard.tsx (with SubjectDescriptorCard)
+- ✅ RefinementSuggestions.tsx
+- ✅ TechnicalBlueprint.tsx
+- ✅ TemplateSelector.tsx
+- ✅ VideoGuidancePanel.tsx
+- ✅ types.ts (component type definitions)
+
+**Main Component** (1 file):
+- ✅ VideoConceptBuilder.tsx (main orchestration component)
+
+**Total**: 10 component files migrated (100% complete)
+
 ## Migration Order (Per MIGRATION_GUIDE.md)
 
 1. ✅ **Types** - Complete
 2. ✅ **Utils** - Span-highlighting complete, core utils mostly complete
 3. ✅ **API** - Complete (all API files migrated with Zod schemas)
-4. ✅ **Hooks** - Core hooks complete, feature hooks partially complete
-5. ⏳ **Components** - Many JSX files remaining
+4. ✅ **Hooks** - Complete (VideoConceptBuilder, SuggestionsPanel, core hooks, span-highlighting hooks)
+5. ✅ **Components** - Complete (SuggestionsPanel + VideoConceptBuilder all components migrated)
+
+### ✅ Prompt-Optimizer Components (Mostly Complete)
+
+**Location**: `client/src/features/prompt-optimizer/`
+
+**Components** (9 files migrated):
+- ✅ PromptInput.tsx
+- ✅ CategoryLegend.tsx
+- ✅ FloatingToolbar.tsx
+- ✅ PromptEditor.tsx
+- ✅ PromptTopBar.tsx
+- ✅ PromptInputSection.tsx
+- ✅ PromptModals.tsx
+- ✅ PromptResultsSection.tsx
+- ✅ PromptSidebar.tsx
+- ✅ types.ts (shared type definitions)
+
+**Still need migration**:
+- PromptCanvas.jsx (large component ~550 lines)
+- PromptOptimizerContainer/PromptOptimizerContainer.jsx
+- SpanBentoGrid components (SpanBentoGrid.jsx, BentoBox.jsx, SpanItem.jsx)
+- context/PromptStateContext.jsx (context provider ~250 lines)
 
 ## Next Priorities
 
-1. Migrate remaining feature hooks (prompt-optimizer)
-2. Migrate remaining utils (prompt-optimizer utils)
-3. Migrate React components (JSX → TSX)
+1. Migrate remaining prompt-optimizer components (PromptCanvas, PromptEditor, etc.)
+2. Migrate PromptStateContext
+3. Migrate SpanBentoGrid components
+4. Migrate remaining feature hooks (if any)
+5. Migrate remaining utils (if any)
 
 ## Quality Metrics
 

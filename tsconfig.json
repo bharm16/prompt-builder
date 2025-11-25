@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    // === Module System ===
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -7,6 +8,8 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+
+    // === Strictness (ALL ON) ===
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -16,16 +19,24 @@
     "noImplicitThis": true,
     "alwaysStrict": true,
     "useUnknownInCatchVariables": true,
+
+    // === Additional Strictness ===
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": true,
+
+    // === Migration Support ===
     "allowJs": true,
     "checkJs": false,
+
+    // === Output ===
     "noEmit": true,
     "skipLibCheck": true,
     "declaration": false,
+
+    // === Path Aliases ===
     "baseUrl": ".",
     "paths": {
       "@/*": ["client/src/*"],
@@ -36,7 +47,11 @@
       "@/api/*": ["client/src/api/*"],
       "@shared/*": ["shared/*"]
     },
+
+    // === React ===
     "jsx": "react-jsx",
+
+    // === Type Roots ===
     "typeRoots": ["./node_modules/@types", "./client/src/types"]
   },
   "include": ["client/src/**/*", "server/src/**/*", "shared/**/*", "tests/**/*"],

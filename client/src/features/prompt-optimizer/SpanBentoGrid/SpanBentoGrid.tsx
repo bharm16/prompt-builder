@@ -1,0 +1,83 @@
+import { memo, useCallback } from 'react';
+import type { RefObject } from 'react';
+import { useSpanGrouping } from './hooks/useSpanGrouping';
+import { BentoBox } from './components/BentoBox';
+import { CATEGORY_CONFIG, CATEGORY_ORDER } from './config/bentoConfig';
+import { scrollToSpan } from './utils/spanFormatting';
+import type { Span } from './components/types';
+import './SpanBentoGrid.css';
+
+export interface SpanBentoGridProps {
+  spans: Span[];
+  onSpanClick?: (span: Span) => void;
+  editorRef: RefObject<HTMLElement>;
+}
+
+/**
+ * Main orchestrator component for Span Bento Grid
+ * Displays spans grouped by category in collapsible bento boxes
+ * Replaces "Your Input" panel
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - All components (BentoBox, SpanItem) are memoized
+ * - Only expanded categories render their contents
+ * - Stable keys (span.id) prevent unnecessary re-renders
+ * - useCallback ensures handler stability
+ * 
+ * Virtual scrolling is NOT needed with only 7 categories.
+ * The current implementation is already optimal for this scale.
+ * 
+ * Desktop: Left sidebar (288px wide)
+ * Mobile: Bottom drawer (40vh height)
+ */
+export const SpanBentoGrid = memo<SpanBentoGridProps>(({ 
+  spans,
+  onSpanClick,
+  editorRef,
+}) => {
+  const { groups, totalSpans, categoryCount } = useSpanGrouping(spans);
+  
+  // Memoize click handler to prevent BentoBox re-renders
+  const handleSpanClick = useCallback((span: Span): void => {
+    // 1. Scroll to span in editor with pulse animation
+    scrollToSpan(editorRef, span);
+    
+    // 2. Trigger suggestions panel
+    onSpanClick?.(span);
+  }, [editorRef, onSpanClick]);
+  
+  return (
+    <div className="span-bento-grid">
+      {/* Header with stats */}
+      <div className="bento-grid-header">
+        <h2 className="header-title">Detected Elements</h2>
+        <div className="header-stats">
+          <span className="stat-item">{totalSpans} highlights</span>
+          <span className="stat-divider">•</span>
+          <span className="stat-item">{categoryCount} categories</span>
+        </div>
+      </div>
+      
+      {/* Scrollable boxes container */}
+      <div className="bento-boxes-container">
+        {CATEGORY_ORDER.map(category => {
+          const config = CATEGORY_CONFIG[category];
+          if (!config) return null;
+          
+          return (
+            <BentoBox
+              key={category}
+              category={category}
+              spans={groups[category] || []}
+              config={config}
+              onSpanClick={handleSpanClick}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+SpanBentoGrid.displayName = 'SpanBentoGrid';
+
