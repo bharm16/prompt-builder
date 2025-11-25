@@ -3,8 +3,8 @@
  * Abstracts the contract for generating suggestions and enhancements
  */
 
-import type { EnhancementResult } from '../types/services.js';
-import type { SuggestionRequest } from '../types/requests.js';
+import type { EnhancementResult } from '../types/services.ts';
+import type { SuggestionRequest } from '../types/requests.ts';
 
 export interface IEnhancementService {
   /**

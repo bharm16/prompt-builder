@@ -1,7 +1,7 @@
 import NodeCache from 'node-cache';
 import crypto from 'crypto';
 import { logger } from '../../infrastructure/Logger.ts';
-import { metricsService } from '../../infrastructure/MetricsService.js';
+import { metricsService } from '../../infrastructure/MetricsService.ts';
 import { SemanticCacheEnhancer } from './SemanticCacheService.js';
 
 /**

@@ -10,6 +10,7 @@ This directory contains all documentation for migrating the Prompt Builder codeb
 | [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) | Step-by-step file conversion process | Converting existing JS files |
 | [STYLE_RULES.md](./STYLE_RULES.md) | Type safety rules and anti-patterns | Writing any TypeScript code |
 | [TSCONFIG_GUIDE.md](./TSCONFIG_GUIDE.md) | Compiler configuration reference | Setting up or debugging TS config |
+| [PATH_ALIASES.md](./PATH_ALIASES.md) | Path alias setup and migration | Fixing relative import hell |
 | [ZOD_PATTERNS.md](./ZOD_PATTERNS.md) | Runtime validation with Zod | Working with API responses or forms |
 | [CLAUDE_CODE_TEMPLATES.md](./CLAUDE_CODE_TEMPLATES.md) | Copy-paste templates for Claude Code | Requesting features via Claude Code |
 | [TEST_PATTERNS.md](./TEST_PATTERNS.md) | TypeScript-specific testing patterns | Writing tests for TS code |

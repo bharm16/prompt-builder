@@ -5,5 +5,5 @@
  * from specific providers.
  */
 
-export { AIModelService } from './AIModelService.js';
+export { AIModelService } from './AIModelService.ts';
 

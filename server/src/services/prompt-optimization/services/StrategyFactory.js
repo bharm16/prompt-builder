@@ -1,5 +1,5 @@
 import { VideoStrategy } from '../strategies/VideoStrategy.js';
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '../../infrastructure/Logger.ts';
 
 /**
  * Factory for creating optimization strategy instances

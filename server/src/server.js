@@ -8,8 +8,8 @@
  * - Resource cleanup
  */
 
-import { logger } from '../infrastructure/Logger.ts';
-import { closeRedisClient } from './config/redis.js';
+import { logger } from './infrastructure/Logger.ts';
+import { closeRedisClient } from './config/redis.ts';
 
 /**
  * Start the HTTP server

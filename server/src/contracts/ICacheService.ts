@@ -3,7 +3,7 @@
  * Abstracts the contract for caching operations
  */
 
-import type { CacheStats } from '../types/services.js';
+import type { CacheStats } from '../types/services.ts';
 
 export interface ICacheService {
   /**

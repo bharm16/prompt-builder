@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CATEGORY_ORDER } from '../config/bentoConfig.js';
+import { CATEGORY_ORDER } from '../config/bentoConfig.ts';
 import {
   TAXONOMY,
   getParentCategory,

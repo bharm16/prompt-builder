@@ -4,8 +4,8 @@
  * Functions for creating and manipulating highlight wrapper elements.
  */
 
-import { getHighlightClassName, applyHighlightStyles } from '../config/highlightStyles.js';
-import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.js';
+import { getHighlightClassName, applyHighlightStyles } from '../config/highlightStyles.ts';
+import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.ts';
 
 export interface SpanForWrapper {
   category?: string;

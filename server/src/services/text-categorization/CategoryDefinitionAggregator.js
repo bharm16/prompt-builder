@@ -12,7 +12,7 @@
  *       Consider moving shared definitions to /shared/ directory.
  */
 
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '../../infrastructure/Logger.ts';
 import { CATEGORY_CONSTRAINTS } from '../enhancement/config/CategoryConstraints.js';
 
 let PromptContextModule = null;

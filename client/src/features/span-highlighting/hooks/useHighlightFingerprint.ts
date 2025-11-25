@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import { createHighlightSignature } from './useSpanLabeling.js';
+import { createHighlightSignature } from './useSpanLabeling.ts';
 
 interface Span {
   id?: string;

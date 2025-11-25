@@ -1,6 +1,6 @@
-import { APIError, TimeoutError } from '../LLMClient.js';
+import { APIError, TimeoutError } from '../LLMClient.ts';
 import { logger } from '../../infrastructure/Logger.ts';
-import type { AIResponse } from '../../interfaces/IAIClient.js';
+import type { AIResponse } from '../../interfaces/IAIClient.ts';
 
 interface CompletionOptions {
   userMessage?: string;

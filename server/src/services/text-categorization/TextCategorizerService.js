@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '../../infrastructure/Logger.ts';
 import { cacheService } from '../cache/CacheService.js';
 import { StructuredOutputEnforcer } from '../../utils/StructuredOutputEnforcer.js';
 import { getCategoryDefinitions } from './CategoryDefinitionAggregator.js';

@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '../../../../infrastructure/Logger.ts';
 import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
 import {
   validatePromptOutputSchema,

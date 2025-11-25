@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '../../infrastructure/Logger.ts';
 import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
 
 /**

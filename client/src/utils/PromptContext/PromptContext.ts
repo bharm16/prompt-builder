@@ -4,9 +4,9 @@
  * Manages context data from Creative Brainstorm for intelligent phrase extraction
  */
 
-import { buildKeywordMaps, buildSemanticGroups, generateVariations, type Elements as ElementsType } from './keywordExtraction.js';
-import { findCategoryForPhrase as findCategory, mapGroupToCategory, type SemanticGroups as SemanticGroupsType } from './categoryMatching.js';
-import { getCategoryColor } from './categoryStyles.js';
+import { buildKeywordMaps, buildSemanticGroups, generateVariations, type Elements as ElementsType } from './keywordExtraction.ts';
+import { findCategoryForPhrase as findCategory, mapGroupToCategory, type SemanticGroups as SemanticGroupsType } from './categoryMatching.ts';
+import { getCategoryColor } from './categoryStyles.ts';
 
 interface BrainstormData {
   subject?: string | null;

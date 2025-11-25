@@ -11,7 +11,7 @@
  */
 
 import { useCallback } from 'react';
-import { applySuggestionToPrompt } from '../../utils/applySuggestion.js';
+import { applySuggestionToPrompt } from '../../utils/applySuggestion.ts';
 import { useEditHistory } from '../../hooks/useEditHistory';
 import type { Toast } from '../../../../hooks/types';
 

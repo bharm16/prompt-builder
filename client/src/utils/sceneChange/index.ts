@@ -7,9 +7,9 @@
  * import { detectAndApplySceneChange } from './utils/sceneChange';
  */
 
-export { extractSceneContext } from './sceneContextParser.js';
-export { detectAndApplySceneChange } from './sceneChangeDetector.js';
+export { extractSceneContext } from './sceneContextParser.ts';
+export { detectAndApplySceneChange } from './sceneChangeDetector.ts';
 
 // Default export for backward compatibility
-export { detectAndApplySceneChange as default } from './sceneChangeDetector.js';
+export { detectAndApplySceneChange as default } from './sceneChangeDetector.ts';
 

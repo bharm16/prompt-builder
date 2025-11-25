@@ -3,7 +3,7 @@
  * Abstracts the contract for optimizing user prompts
  */
 
-import type { OptimizationResult, ValidationResult } from '../types/services.js';
+import type { OptimizationResult, ValidationResult } from '../types/services.ts';
 
 export interface IPromptOptimizationService {
   /**

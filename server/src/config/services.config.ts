@@ -9,21 +9,21 @@
  * - Testing difficulties
  */
 
-import { createContainer, type DIContainer } from '../infrastructure/DIContainer.js';
+import { createContainer, type DIContainer } from '../infrastructure/DIContainer.ts';
 import { logger } from '../infrastructure/Logger.ts';
-import { metricsService } from '../infrastructure/MetricsService.js';
+import { metricsService } from '../infrastructure/MetricsService.ts';
 
 // Import generic LLM client
-import { LLMClient } from '../clients/LLMClient.js';
-import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.js';
-import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.js';
-import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
+import { LLMClient } from '../clients/LLMClient.ts';
+import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.ts';
+import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.ts';
+import { openAILimiter } from '../services/concurrency/ConcurrencyService.ts';
 
 // Import AI Model Service
-import { AIModelService } from '../services/ai-model/index.js';
+import { AIModelService } from '../services/ai-model/index.ts';
 
 // Import services
-import { cacheService } from '../services/cache/CacheService.js';
+import { cacheService } from '../services/cache/CacheService.ts';
 import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
@@ -41,7 +41,7 @@ import { SuggestionDiversityEnforcer } from '../services/enhancement/services/Su
 import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.js';
 
 // Import config
-import { createRedisClient } from './redis.js';
+import { createRedisClient } from './redis.ts';
 
 // Import NLP warmup
 import { warmupGliner } from '../services/nlp/NlpSpanService.js';

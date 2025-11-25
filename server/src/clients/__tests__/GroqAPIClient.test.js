@@ -11,7 +11,7 @@ vi.mock('../../infrastructure/Logger.ts', () => ({
   },
 }));
 
-vi.mock('../../infrastructure/MetricsService.js', () => ({
+vi.mock('../../infrastructure/MetricsService.ts', () => ({
   metricsService: {
     updateCircuitBreakerState: vi.fn(),
     recordClaudeAPICall: vi.fn(),
@@ -617,7 +617,7 @@ describe('GroqAPIClient', () => {
 
   describe('Circuit Breaker Integration', () => {
     it('should trigger circuit breaker events', () => {
-      const { metricsService } = require('../../infrastructure/MetricsService.js');
+        const { metricsService } = require('../../infrastructure/MetricsService.ts');
 
       client.breaker._triggerEvent('open');
       expect(metricsService.updateCircuitBreakerState).toHaveBeenCalledWith(
@@ -668,7 +668,7 @@ describe('GroqAPIClient', () => {
 
   describe('Metrics Recording', () => {
     it('should record successful API calls', async () => {
-      const { metricsService } = require('../../infrastructure/MetricsService.js');
+        const { metricsService } = require('../../infrastructure/MetricsService.ts');
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -687,7 +687,7 @@ describe('GroqAPIClient', () => {
     });
 
     it('should record failed API calls', async () => {
-      const { metricsService } = require('../../infrastructure/MetricsService.js');
+        const { metricsService } = require('../../infrastructure/MetricsService.ts');
 
       mockFetch.mockResolvedValue({
         ok: false,
@@ -705,7 +705,7 @@ describe('GroqAPIClient', () => {
     });
 
     it('should record successful streaming calls', async () => {
-      const { metricsService } = require('../../infrastructure/MetricsService.js');
+        const { metricsService } = require('../../infrastructure/MetricsService.ts');
       const onChunk = vi.fn();
       const sseContent = createSSEChunks(['Response']);
 
@@ -738,7 +738,7 @@ describe('GroqAPIClient', () => {
     });
 
     it('should record failed streaming calls', async () => {
-      const { metricsService } = require('../../infrastructure/MetricsService.js');
+        const { metricsService } = require('../../infrastructure/MetricsService.ts');
       const onChunk = vi.fn();
 
       mockFetch.mockResolvedValue({

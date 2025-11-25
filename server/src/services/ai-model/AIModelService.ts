@@ -1,6 +1,6 @@
 import { logger } from '../../infrastructure/Logger.ts';
-import { ModelConfig, DEFAULT_CONFIG } from '../../config/modelConfig.js';
-import type { IAIClient, AIResponse, CompletionOptions } from '../../interfaces/IAIClient.js';
+import { ModelConfig, DEFAULT_CONFIG } from '../../config/modelConfig.ts';
+import type { IAIClient, AIResponse, CompletionOptions } from '../../interfaces/IAIClient.ts';
 
 /**
  * AI Model Service - Unified Router for LLM Operations

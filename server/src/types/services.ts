@@ -4,7 +4,7 @@
  * Types for service interfaces and implementations
  */
 
-import type { PromptOptimizationRequest, SuggestionRequest } from './requests.js';
+import type { PromptOptimizationRequest, SuggestionRequest } from './requests.ts';
 
 export interface OptimizationResult {
   optimizedPrompt: string;

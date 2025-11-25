@@ -4,7 +4,7 @@
  * Functions for validating and matching highlighted text against expected values.
  */
 
-import { DEBUG_HIGHLIGHTS } from '../config/constants.js';
+import { DEBUG_HIGHLIGHTS } from '../config/constants.ts';
 
 /**
  * Normalize text for comparison (lowercase, trim, collapse whitespace)

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_POLICY, DEFAULT_OPTIONS, calculateSmartDebounce } from '../config/index.js';
-import { sanitizeText, hashString } from '../utils/index.js';
-import { spanLabelingCache } from '../services/index.js';
-import { SpanLabelingApi } from '../api/index.js';
+import { DEFAULT_POLICY, DEFAULT_OPTIONS, calculateSmartDebounce } from '../config/index.ts';
+import { sanitizeText, hashString } from '../utils/index.ts';
+import { spanLabelingCache } from '../services/index.ts';
+import { SpanLabelingApi } from '../api/index.ts';
 
 export interface Span {
   start: number;

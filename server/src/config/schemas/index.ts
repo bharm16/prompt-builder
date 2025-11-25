@@ -11,7 +11,7 @@ export {
   semanticParseSchema,
   type PromptRequest,
   type SemanticParseRequest,
-} from './promptSchemas.js';
+} from './promptSchemas.ts';
 
 // Suggestion schemas
 export {
@@ -21,7 +21,7 @@ export {
   type SuggestionRequest,
   type CustomSuggestionRequest,
   type SceneChangeRequest,
-} from './suggestionSchemas.js';
+} from './suggestionSchemas.ts';
 
 // Video/creative workflow schemas
 export {
@@ -44,7 +44,7 @@ export {
   type TemplateRecommendationsRequest,
   type RecordUserChoiceRequest,
   type AlternativePhrasingsRequest,
-} from './videoSchemas.js';
+} from './videoSchemas.ts';
 
 // LLM output schemas
 export {
@@ -58,5 +58,5 @@ export {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
-} from './outputSchemas.js';
+} from './outputSchemas.ts';
 

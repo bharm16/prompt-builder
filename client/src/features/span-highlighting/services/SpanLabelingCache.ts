@@ -9,9 +9,9 @@
  */
 
 import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.config';
-import { hashString } from '../utils/hashing.js';
-import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.js';
-import { getCacheStorage } from './storageAdapter.js';
+import { hashString } from '../utils/hashing.ts';
+import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.ts';
+import { getCacheStorage } from './storageAdapter.ts';
 import { getVersionString } from '#shared/version';
 import type { Span, SpanMeta } from '../hooks/useSpanLabeling';
 

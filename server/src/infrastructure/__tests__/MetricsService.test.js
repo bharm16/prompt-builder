@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MetricsService } from '../MetricsService.js';
+import { MetricsService } from '../MetricsService.ts';
 
 function findMetric(metrics, name) {
   return metrics.find((m) => m.name === name);

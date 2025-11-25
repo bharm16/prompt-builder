@@ -32,7 +32,7 @@ vi.mock('../../infrastructure/Logger.ts', () => ({
   },
 }));
 
-vi.mock('../../infrastructure/MetricsService.js', () => ({
+vi.mock('../../infrastructure/MetricsService.ts', () => ({
   metricsService: {
     updateCircuitBreakerState: vi.fn(),
     recordClaudeAPICall: vi.fn(),
@@ -511,7 +511,7 @@ describe('ClaudeAPIClient', () => {
   describe('Circuit Breaker Integration', () => {
     it('should trigger circuit breaker on event', async () => {
       // Get fresh mock after client initialization
-      const mockModule = await import('../../infrastructure/MetricsService.js');
+        const mockModule = await import('../../infrastructure/MetricsService.ts');
       const metricsService = mockModule.metricsService;
 
       // Clear previous calls from constructor
@@ -553,7 +553,7 @@ describe('ClaudeAPIClient', () => {
 
   describe('Metrics Recording', () => {
     it('should record successful API calls with mode', async () => {
-      const mockModule = await import('../../infrastructure/MetricsService.js');
+        const mockModule = await import('../../infrastructure/MetricsService.ts');
       const metricsService = mockModule.metricsService;
 
       mockFetch.mockResolvedValue({
@@ -576,7 +576,7 @@ describe('ClaudeAPIClient', () => {
     });
 
     it('should record failed API calls', async () => {
-      const mockModule = await import('../../infrastructure/MetricsService.js');
+        const mockModule = await import('../../infrastructure/MetricsService.ts');
       const metricsService = mockModule.metricsService;
 
       mockFetch.mockResolvedValue({

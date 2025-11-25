@@ -1,6 +1,6 @@
 import CircuitBreaker from 'opossum';
-import type { ILogger } from '../interfaces/ILogger.js';
-import type { IMetricsCollector } from '../interfaces/IMetricsCollector.js';
+import type { ILogger } from '../interfaces/ILogger.ts';
+import type { IMetricsCollector } from '../interfaces/IMetricsCollector.ts';
 
 interface CircuitBreakerConfig {
   name: string;

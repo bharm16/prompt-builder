@@ -22,7 +22,7 @@ export {
   useProgressiveSpanRendering,
   useHighlightFingerprint,
   createHighlightSignature,
-} from './hooks/index.js';
+} from './hooks/index.ts';
 
 // ============================================================================
 // UTILITIES (Secondary API)
@@ -41,7 +41,7 @@ export {
   sanitizeSpans,
   normalizeSpan,
   snapSpanToTokenBoundaries,
-} from './utils/index.js';
+} from './utils/index.ts';
 
 // Processing - Most commonly used
 export {
@@ -54,14 +54,14 @@ export {
 export {
   hashString,
   sanitizeText,
-} from './utils/index.js';
+} from './utils/index.ts';
 
 // ============================================================================
 // SERVICES (Advanced API)
 // ============================================================================
 
-export { spanLabelingCache } from './services/index.js';
-export { SpanLabelingApi } from './api/index.js';
+export { spanLabelingCache } from './services/index.ts';
+export { SpanLabelingApi } from './api/index.ts';
 
 // ============================================================================
 // CONFIGURATION (Exports for customization)
@@ -70,21 +70,21 @@ export { SpanLabelingApi } from './api/index.js';
 export {
   DEFAULT_POLICY,
   DEFAULT_OPTIONS,
-} from './config/index.js';
+} from './config/index.ts';
 
 export {
   CATEGORY_CAPS,
-} from './utils/index.js';
+} from './utils/index.ts';
 
 // ============================================================================
 // NAMESPACE EXPORTS (For organized imports)
 // ============================================================================
 
-import * as spanHooks from './hooks/index.js';
-import * as spanUtils from './utils/index.js';
-import * as spanConfig from './config/index.js';
-import * as spanServices from './services/index.js';
-import * as spanApi from './api/index.js';
+import * as spanHooks from './hooks/index.ts';
+import * as spanUtils from './utils/index.ts';
+import * as spanConfig from './config/index.ts';
+import * as spanServices from './services/index.ts';
+import * as spanApi from './api/index.ts';
 
 export { spanHooks, spanUtils, spanConfig, spanServices, spanApi };
 

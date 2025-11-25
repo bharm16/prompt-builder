@@ -12,27 +12,27 @@
  */
 
 // Core class
-export { PromptContext } from './PromptContext.js';
+export { PromptContext } from './PromptContext.ts';
 
 // Keyword extraction utilities
 export { 
   buildKeywordMaps, 
   buildSemanticGroups, 
   generateVariations 
-} from './keywordExtraction.js';
+} from './keywordExtraction.ts';
 
 // Category matching utilities
 export { 
   findCategoryForPhrase, 
   mapGroupToCategory 
-} from './categoryMatching.js';
+} from './categoryMatching.ts';
 
 // Category styling utilities
 export { 
   getCategoryColor,
   CATEGORY_COLORS 
-} from './categoryStyles.js';
+} from './categoryStyles.ts';
 
 // Default export for backward compatibility
-export { PromptContext as default } from './PromptContext.js';
+export { PromptContext as default } from './PromptContext.ts';
 

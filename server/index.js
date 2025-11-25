@@ -16,9 +16,9 @@
 import './instrument.mjs';
 
 import dotenv from 'dotenv';
-import { validateEnv } from './src/utils/validateEnv.js';
-import { logger } from './src/infrastructure/Logger.js';
-import { configureServices, initializeServices } from './src/config/services.config.js';
+import { validateEnv } from './src/utils/validateEnv.ts';
+import { logger } from './src/infrastructure/Logger.ts';
+import { configureServices, initializeServices } from './src/config/services.config.ts';
 import { createApp } from './src/app.js';
 import { startServer, setupGracefulShutdown } from './src/server.js';
 

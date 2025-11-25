@@ -28,8 +28,8 @@ import {
   logEmptyWrappers,
   hasOverlap,
   addToCoverage,
-} from '../utils/index.js';
-import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES } from '../config/index.js';
+} from '../utils/index.ts';
+import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES } from '../config/index.ts';
 
 interface TextNodeIndex {
   nodes: Array<{ node: Node; start: number; end: number }>;
