@@ -153,7 +153,7 @@ export const PromptInput = ({
               rows={1}
               className="w-full resize-none bg-transparent text-[15px] text-neutral-900 placeholder-neutral-400 outline-none leading-relaxed px-6 pt-5 pb-0 rounded-t-xl"
               style={{
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+                fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 border: 'none',
                 boxShadow: 'none',
                 outline: 'none',

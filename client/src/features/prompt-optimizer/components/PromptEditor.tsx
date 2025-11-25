@@ -24,7 +24,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       suppressContentEditableWarning
       className="min-h-[calc(100vh-8rem)] outline-none focus:outline-none cursor-text"
       style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+        fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
         caretColor: 'rgb(23, 23, 23)',
         wordBreak: 'break-word',
         overflowWrap: 'break-word',
