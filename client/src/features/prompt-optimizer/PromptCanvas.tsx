@@ -13,7 +13,6 @@ import {
   findHighlightNode,
   extractHighlightMetadata,
   createHighlightRange,
-  selectRange,
 } from './utils/highlightInteractionHelpers';
 
 // Extracted services
@@ -22,7 +21,8 @@ import { ExportService } from '../../services/exportService';
 // Extracted hooks
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
-import { useHighlightRendering, useHighlightFingerprint } from '../span-highlighting/hooks/useHighlightRendering';
+import { useHighlightRendering } from '../span-highlighting/hooks/useHighlightRendering';
+import { useHighlightFingerprint } from '../span-highlighting/hooks/useHighlightFingerprint';
 
 // Extracted components
 import { CategoryLegend } from './components/CategoryLegend';

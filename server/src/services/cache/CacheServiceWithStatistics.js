@@ -1,4 +1,4 @@
-import { ICacheService } from '../../interfaces/ICacheService.js';
+import { ICacheService } from '@interfaces/ICacheService';
 
 /**
  * Cache Service with Statistics (Decorator Pattern)

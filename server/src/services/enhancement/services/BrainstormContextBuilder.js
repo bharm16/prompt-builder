@@ -1,4 +1,4 @@
-import { TAXONOMY } from '@shared/taxonomy.ts';
+import { TAXONOMY } from '@shared/taxonomy';
 
 /**
  * Suggestion mappings from creative intent to taxonomy categories

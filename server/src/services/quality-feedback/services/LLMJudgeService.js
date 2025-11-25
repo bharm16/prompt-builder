@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { getRubric, calculateTotalScore } from '../config/judgeRubrics.js';
 
 /**

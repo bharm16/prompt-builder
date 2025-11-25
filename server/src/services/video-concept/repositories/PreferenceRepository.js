@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * Repository for user preferences with support for eventual persistence.

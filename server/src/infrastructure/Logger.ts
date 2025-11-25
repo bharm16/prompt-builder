@@ -1,6 +1,6 @@
 import pino from 'pino';
 import type { Request, Response, NextFunction } from 'express';
-import type { ILogger } from '../interfaces/ILogger.ts';
+import type { ILogger } from '@interfaces/ILogger';
 
 interface LoggerConfig {
   level?: string;

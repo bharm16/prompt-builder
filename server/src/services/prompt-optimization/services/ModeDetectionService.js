@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.ts';
-import OptimizationConfig from '@config/OptimizationConfig.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
 
 /**
  * Service for detecting the optimal optimization mode for a prompt

@@ -1,7 +1,7 @@
 import promClient from 'prom-client';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from './Logger.ts';
-import type { IMetricsCollector } from '../interfaces/IMetricsCollector.ts';
+import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
 
 interface EnhancementTimingMetrics {
   total?: number;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react';
-import { buildTextNodeIndex, wrapRangeSegments } from '@utils/anchorRanges.js';
+import { buildTextNodeIndex, wrapRangeSegments } from '@utils/anchorRanges';
 import { snapSpanToTokenBoundaries, rangeOverlaps } from '../utils/tokenBoundaries.js';
 import { createHighlightSignature } from './useSpanLabeling.js';
 import { PromptContext } from '@utils/PromptContext';

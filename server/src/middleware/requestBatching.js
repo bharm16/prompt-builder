@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { metricsService } from '@infrastructure/MetricsService.ts';
+import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
 
 /**
  * Request Batching Middleware for Span Labeling

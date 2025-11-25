@@ -14,12 +14,14 @@
       "@services/*": ["src/services/*"],
       "@api/*": ["src/api/*"],
       "@types/*": ["src/types/*"],
+      "@interfaces/*": ["src/interfaces/*"],
       "@utils/*": ["src/utils/*"],
       "@config/*": ["src/config/*"],
+      "@llm/*": ["src/llm/*"],
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "index.js", "instrument.mjs"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
 

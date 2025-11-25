@@ -23,9 +23,9 @@ import compression from 'compression';
 
 import { requestIdMiddleware } from '../middleware/requestId.js';
 import { requestCoalescing } from '../middleware/requestCoalescing.js';
-import { logger } from '@infrastructure/Logger.ts';
-import type { ILogger } from '../interfaces/ILogger.ts';
-import type { IMetricsCollector } from '../interfaces/IMetricsCollector.ts';
+import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
+import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
 
 interface RateLimitConfig {
   general: {

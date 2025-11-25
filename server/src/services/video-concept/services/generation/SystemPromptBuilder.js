@@ -2,7 +2,7 @@ import {
   buildAnalysisProcessTemplate,
   getElementPromptTemplate,
   VIDEO_PROMPT_PRINCIPLES,
-} from '@config/videoPromptTemplates.js';
+} from '@config/videoPromptTemplates';
 import {
   detectDescriptorCategory,
   getCategoryInstruction,

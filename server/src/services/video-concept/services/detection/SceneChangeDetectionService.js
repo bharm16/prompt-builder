@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { cacheService } from '@services/cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
+import { logger } from '@infrastructure/Logger';
+import { cacheService } from '@services/cache/CacheService';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 
 /**
  * Service for detecting scene changes in video prompts

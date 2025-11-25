@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { completeSceneOutputSchema } from '@utils/validation.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { completeSceneOutputSchema } from '@utils/validation';
 
 /**
  * Service responsible for completing video scenes by filling empty elements.

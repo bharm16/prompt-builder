@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { technicalParamsOutputSchema } from '@utils/validation.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { technicalParamsOutputSchema } from '@utils/validation';
 
 /**
  * Service responsible for generating technical video production parameters.

@@ -1,7 +1,7 @@
 import CircuitBreaker from 'opossum';
-import { logger } from '@infrastructure/Logger.ts';
-import { metricsService } from '@infrastructure/MetricsService.ts';
-import type { IAIClient, AIResponse } from '../interfaces/IAIClient.ts';
+import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
+import type { IAIClient, AIResponse } from '@interfaces/IAIClient';
 
 /**
  * Custom error classes for better error handling

@@ -4,7 +4,7 @@
  * Detects scene changes via API and applies suggested updates to the prompt
  */
 
-import { API_CONFIG } from '@config/api.config.ts';
+import { API_CONFIG } from '@config/api.config';
 import { extractSceneContext } from './sceneContextParser.ts';
 
 const escapeRegExp = (value: string): string =>

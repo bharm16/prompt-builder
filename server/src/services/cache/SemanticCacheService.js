@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * Semantic Cache Service

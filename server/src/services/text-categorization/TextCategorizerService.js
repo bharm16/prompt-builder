@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 import { cacheService } from '../cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { getCategoryDefinitions } from './CategoryDefinitionAggregator.js';
 
 const CACHE_NAMESPACE = 'video-llm-parse';

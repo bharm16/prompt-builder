@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { compatibilityOutputSchema } from '@utils/validation.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { compatibilityOutputSchema } from '@utils/validation';
 
 /**
  * Service responsible for checking semantic and thematic compatibility

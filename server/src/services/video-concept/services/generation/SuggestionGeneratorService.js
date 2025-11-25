@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { PromptBuilderService } from './SystemPromptBuilder.js';
 import { TAXONOMY } from '#shared/taxonomy.ts';
 

@@ -12,7 +12,7 @@
 import * as Sentry from '@sentry/node';
 import type { Application } from 'express';
 import type { Request, Response } from 'express';
-import type { DIContainer } from '@infrastructure/DIContainer.ts';
+import type { DIContainer } from '@infrastructure/DIContainer';
 
 // Import middleware
 import { apiAuthMiddleware } from '../middleware/apiAuth.js';

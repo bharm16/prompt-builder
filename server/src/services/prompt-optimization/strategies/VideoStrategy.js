@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.ts';
-import OptimizationConfig from '@config/OptimizationConfig.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
 import { generateUniversalVideoPrompt } from './videoPromptOptimizationTemplate.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 
 /**
  * Strategy for optimizing video generation prompts

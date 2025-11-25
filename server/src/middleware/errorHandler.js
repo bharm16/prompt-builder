@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * Redact sensitive data from strings

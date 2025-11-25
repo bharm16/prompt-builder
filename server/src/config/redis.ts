@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * Create and configure Redis client

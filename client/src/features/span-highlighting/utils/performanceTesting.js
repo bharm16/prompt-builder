@@ -17,7 +17,7 @@
  * ```
  */
 
-import { TAXONOMY } from '@shared/taxonomy.js';
+import { TAXONOMY } from '@shared/taxonomy';
 
 /**
  * Generate test spans for performance testing

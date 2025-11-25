@@ -1,5 +1,5 @@
 import NodeCache from 'node-cache';
-import { ICacheService } from '../../interfaces/ICacheService.js';
+import { ICacheService } from '@interfaces/ICacheService';
 
 /**
  * NodeCache Adapter

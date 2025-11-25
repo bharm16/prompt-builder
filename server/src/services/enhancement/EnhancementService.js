@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 import { cacheService } from '../cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
 import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';

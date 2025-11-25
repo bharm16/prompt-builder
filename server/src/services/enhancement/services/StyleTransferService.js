@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 import { STYLE_DEFINITIONS, DEFAULT_STYLE } from '../config/styleDefinitions.js';
 
 /**

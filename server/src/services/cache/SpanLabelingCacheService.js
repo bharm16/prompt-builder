@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
-import { logger } from '@infrastructure/Logger.ts';
-import { metricsService } from '@infrastructure/MetricsService.ts';
+import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results

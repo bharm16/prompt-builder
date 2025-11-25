@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
 import { spanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 

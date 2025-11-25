@@ -1,9 +1,9 @@
-import { logger } from '@infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger';
 import { cacheService } from '../cache/CacheService.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import { ConstitutionalAI } from '@utils/ConstitutionalAI.js';
-import { labelSpans } from '../../llm/span-labeling/SpanLabelingService.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { ConstitutionalAI } from '@utils/ConstitutionalAI';
+import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import OptimizationConfig from '@config/OptimizationConfig';
 
 // Import specialized services
 import { ContextInferenceService } from './services/ContextInferenceService.js';
