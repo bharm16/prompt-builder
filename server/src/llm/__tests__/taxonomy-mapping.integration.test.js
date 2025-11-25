@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { labelSpans } from '../span-labeling/SpanLabelingService.js';
 import { normalizeSpan } from '../span-labeling/processing/SpanNormalizer.js';
-import { TAXONOMY } from '../../../shared/taxonomy.js';
+import { TAXONOMY } from '../../../shared/taxonomy.ts';
 
 describe('Taxonomy Mapping Integration', () => {
   describe('End-to-end LLM response with taxonomy IDs', () => {

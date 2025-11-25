@@ -57,7 +57,7 @@ vi.mock('../hooks/useShareLink.js', () => ({
   useShareLink: () => ({ shared: false, share: vi.fn() })
 }));
 
-vi.mock('../hooks/useHighlightRendering.js', () => ({
+vi.mock('../span-highlighting/hooks/useHighlightRendering', () => ({
   useHighlightRendering: () => ({ renderKey: 0 }),
   useHighlightFingerprint: () => ({ fingerprint: null, updateFingerprint: vi.fn() })
 }));

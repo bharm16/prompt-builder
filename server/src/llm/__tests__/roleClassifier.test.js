@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ROLE_SET, validate, hashKey } from '../roleClassifier.js';
-import { VALID_CATEGORIES, TAXONOMY } from '../../../shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '../../../shared/taxonomy.ts';
 
 describe('roleClassifier - Taxonomy Integration', () => {
   describe('ROLE_SET validation', () => {

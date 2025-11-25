@@ -22,7 +22,7 @@ import { ExportService } from '../../services/exportService';
 // Extracted hooks
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
-import { useHighlightRendering, useHighlightFingerprint } from './hooks/useHighlightRendering';
+import { useHighlightRendering, useHighlightFingerprint } from '../span-highlighting/hooks/useHighlightRendering';
 
 // Extracted components
 import { CategoryLegend } from './components/CategoryLegend';

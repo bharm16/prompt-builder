@@ -8,7 +8,7 @@ import { parseJson, buildUserPayload } from './utils/jsonUtils.js';
 import { formatValidationErrors } from './utils/textUtils.js';
 import { validateSchemaOrThrow } from './validation/SchemaValidator.js';
 import { validateSpans } from './validation/SpanValidator.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { SemanticRouter } from './routing/SemanticRouter.js';
 import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '../../services/nlp/NlpSpanService.js';

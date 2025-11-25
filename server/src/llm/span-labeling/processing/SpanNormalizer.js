@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { ROLE_SET } from '../config/roles.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 import { clamp01 } from '../utils/textUtils.js';
 
 /**

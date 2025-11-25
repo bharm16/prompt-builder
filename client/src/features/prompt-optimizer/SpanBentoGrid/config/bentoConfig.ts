@@ -8,7 +8,7 @@
  * - Monochromatic design system with emoji icons
  */
 
-import { TAXONOMY } from '@shared/taxonomy.js';
+import { TAXONOMY } from '@shared/taxonomy';
 
 /**
  * Category Configuration

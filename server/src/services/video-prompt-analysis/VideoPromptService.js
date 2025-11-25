@@ -7,7 +7,7 @@ import { ModelDetectionService } from './services/detection/ModelDetectionServic
 import { SectionDetectionService } from './services/detection/SectionDetectionService.js';
 import { TaxonomyValidationService } from '../taxonomy-validation/TaxonomyValidationService.js';
 import { countWords } from './utils/textHelpers.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 
 /**
  * VideoPromptService - Main Orchestrator

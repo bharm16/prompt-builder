@@ -1,4 +1,4 @@
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 
 /**
  * ValidationReporter

@@ -38,7 +38,7 @@ export const TIMING = {
   // Server
   SERVER_KEEP_ALIVE_TIMEOUT_MS: 65000,
   SERVER_HEADERS_TIMEOUT_MS: 66000,
-};
+} as const;
 
 // ============================================================================
 // Cache Constants
@@ -58,7 +58,7 @@ export const CACHE = {
   SPAN_LABELING_DEFAULT_TTL: 3600, // 1 hour
   SPAN_LABELING_SHORT_TTL: 300, // 5 minutes for large texts
   DOMAIN_CONTENT_TTL: 3600, // 1 hour
-};
+} as const;
 
 // ============================================================================
 // Token Limits (LLM)
@@ -80,7 +80,7 @@ export const TOKEN_LIMITS = {
   
   // Health check
   HEALTH_CHECK_MAX_TOKENS: 10,
-};
+} as const;
 
 // ============================================================================
 // Text Length Thresholds
@@ -93,7 +93,7 @@ export const TEXT_LENGTH = {
   // For cache preview
   PREVIEW_LENGTH: 100,
   BODY_PREVIEW_LENGTH: 300,
-};
+} as const;
 
 // ============================================================================
 // Rate Limits
@@ -117,7 +117,7 @@ export const RATE_LIMITS = {
   COMPATIBILITY_CHECK_1M_MAX: 30,
   SUGGESTIONS_3S_MAX: 2,
   SUGGESTIONS_1M_MAX: 20,
-};
+} as const;
 
 // ============================================================================
 // Concurrency Limits
@@ -125,7 +125,7 @@ export const RATE_LIMITS = {
 export const CONCURRENCY = {
   OPENAI_MAX_CONCURRENT: 5, // Max concurrent OpenAI requests
   QUEUE_TIMEOUT_MS: 30000, // 30 seconds queue timeout
-};
+} as const;
 
 // ============================================================================
 // Circuit Breaker Thresholds
@@ -133,7 +133,7 @@ export const CONCURRENCY = {
 export const CIRCUIT_BREAKER = {
   ERROR_THRESHOLD_PERCENTAGE: 50, // Open circuit at 50% error rate
   ROLLING_COUNT_BUCKETS: 10,
-};
+} as const;
 
 // ============================================================================
 // Validation Constants
@@ -147,7 +147,7 @@ export const VALIDATION = {
   // Prompt optimization
   MIN_PROMPT_QUALITY_SCORE: 60,
   EXCELLENT_PROMPT_SCORE: 80,
-};
+} as const;
 
 // ============================================================================
 // HTTP Status Codes
@@ -162,7 +162,7 @@ export const HTTP_STATUS = {
   TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500,
   SERVICE_UNAVAILABLE: 503,
-};
+} as const;
 
 // ============================================================================
 // Security Constants
@@ -176,14 +176,14 @@ export const SECURITY = {
   
   // Body size limits
   BODY_SIZE_LIMIT: '2mb',
-};
+} as const;
 
 // ============================================================================
 // Compression Constants
 // ============================================================================
 export const COMPRESSION = {
   LEVEL: 6, // Compression level (0-9)
-};
+} as const;
 
 // ============================================================================
 // Performance Budgets
@@ -196,7 +196,7 @@ export const PERFORMANCE = {
   
   // Memory budgets
   MAX_BUNDLE_SIZE_KB: 250, // Gzipped bundle size for 3G networks
-};
+} as const;
 
 // ============================================================================
 // Error Messages
@@ -214,7 +214,7 @@ export const ERROR_MESSAGES = {
   // Server Errors
   OPENAI_KEY_MISSING: 'FATAL: Application cannot start without valid OpenAI API key',
   CORS_NOT_CONFIGURED: 'CORS configuration error: No allowed origins configured for production',
-};
+} as const;
 
 // ============================================================================
 // Model Defaults
@@ -222,7 +222,7 @@ export const ERROR_MESSAGES = {
 export const MODELS = {
   OPENAI_DEFAULT: 'gpt-4o-mini',
   GROQ_DEFAULT: 'llama-3.1-8b-instant',
-};
+} as const;
 
 // ============================================================================
 // Template Versions
@@ -234,4 +234,5 @@ export const TEMPLATE_VERSIONS = {
   RESEARCH: '3.0.0',
   SOCRATIC: '3.0.0',
   VIDEO: '1.0.0',
-};
+} as const;
+

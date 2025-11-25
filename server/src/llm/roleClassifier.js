@@ -4,7 +4,7 @@
 
 import crypto from 'crypto';
 import NodeCache from 'node-cache';
-import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.ts';
 
 const cache = new NodeCache({ stdTTL: 120 });
 

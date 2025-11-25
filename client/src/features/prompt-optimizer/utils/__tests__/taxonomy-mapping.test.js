@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { convertLabeledSpansToHighlights } from '../highlightConversion.js';
-import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
 
 describe('Client Taxonomy Mapping', () => {
   const sampleText = 'A cowboy in a leather jacket walks through the dusty street at golden hour';

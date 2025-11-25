@@ -2,7 +2,7 @@ import AhoCorasick from 'ahocorasick';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '../../llm/span-labeling/config/SpanLabelingConfig.js';
 
 /**

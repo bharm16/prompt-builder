@@ -1,4 +1,4 @@
-import { TAXONOMY, getParentCategory, isAttribute, resolveCategory } from '#shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute, resolveCategory } from '#shared/taxonomy.ts';
 
 /**
  * OrphanDetector

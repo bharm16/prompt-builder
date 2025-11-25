@@ -12,7 +12,7 @@ import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.co
 import { hashString } from '../utils/hashing.js';
 import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.js';
 import { getCacheStorage } from './storageAdapter.js';
-import { getVersionString } from '#shared/version.js';
+import { getVersionString } from '#shared/version';
 import type { Span, SpanMeta } from '../hooks/useSpanLabeling';
 
 // Cache version - includes system versions from shared/version.js

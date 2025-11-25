@@ -2,7 +2,7 @@ import { logger } from '../../../../infrastructure/Logger.js';
 import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '../../../../utils/TemperatureOptimizer.js';
 import { PromptBuilderService } from './SystemPromptBuilder.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { TAXONOMY } from '#shared/taxonomy.ts';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'];
 

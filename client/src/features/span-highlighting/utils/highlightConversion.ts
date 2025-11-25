@@ -4,7 +4,7 @@
  * Now uses unified taxonomy system with namespaced IDs
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
 
 const LLM_PARSER_VERSION = 'llm-v2-taxonomy';
 const CONTEXT_WINDOW_CHARS = 20;

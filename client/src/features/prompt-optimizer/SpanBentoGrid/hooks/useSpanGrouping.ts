@@ -5,7 +5,7 @@ import {
   getParentCategory,
   isAttribute,
   getAllParentCategories,
-} from '@shared/taxonomy.js';
+} from '@shared/taxonomy';
 
 interface Span {
   category?: string;

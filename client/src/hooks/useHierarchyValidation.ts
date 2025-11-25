@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TAXONOMY, getParentCategory, isAttribute } from '@shared/taxonomy.js';
+import { TAXONOMY, getParentCategory, isAttribute } from '@shared/taxonomy';
 import type {
   Span,
   ValidationResult,

@@ -1,4 +1,4 @@
-import { TAXONOMY, VALID_CATEGORIES } from '@shared/taxonomy.js';
+import { TAXONOMY, VALID_CATEGORIES } from '@shared/taxonomy';
 
 /**
  * Structural-Only Span Validation

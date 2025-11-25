@@ -24,22 +24,20 @@ export const VERSIONS = {
   // Increment when API response format changes
   // Examples: Changing span structure, metadata format
   API: '1.0.0',
-};
+} as const;
 
 /**
  * Get combined version string for cache keys
- * @returns {string} Hyphen-separated version string
  */
-export function getVersionString() {
+export function getVersionString(): string {
   return Object.values(VERSIONS).join('-');
 }
 
 /**
  * Get version hash for compact storage
  * Simple hash for version comparison
- * @returns {string} Version hash
  */
-export function getVersionHash() {
+export function getVersionHash(): string {
   const versionString = getVersionString();
   let hash = 0;
   for (let i = 0; i < versionString.length; i++) {
