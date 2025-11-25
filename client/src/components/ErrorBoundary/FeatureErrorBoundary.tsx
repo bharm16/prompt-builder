@@ -1,18 +1,23 @@
-/**
- * FeatureErrorBoundary - Feature-specific Error Boundary
- *
- * Catches errors in feature components but allows the rest of the app to continue
- * More graceful than crashing the entire application
- */
-
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { AlertCircle, X } from 'lucide-react';
-import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorBoundary, type FallbackProps } from './ErrorBoundary';
+
+interface FeatureErrorFallbackProps {
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+  resetError: () => void;
+  featureName?: string | undefined;
+}
 
 /**
  * Fallback component for feature errors
  */
-export const FeatureErrorFallback = ({ error, errorInfo, resetError, featureName }) => {
+export const FeatureErrorFallback = ({
+  error,
+  errorInfo,
+  resetError,
+  featureName,
+}: FeatureErrorFallbackProps): React.ReactElement => {
   const [showDetails, setShowDetails] = React.useState(false);
 
   return (
@@ -28,7 +33,7 @@ export const FeatureErrorFallback = ({ error, errorInfo, resetError, featureName
           </p>
 
           {/* Error details toggle */}
-          {import.meta.env.MODE === 'development' && error && (
+          {(import.meta as { env?: { MODE?: string } }).env?.MODE === 'development' && error && (
             <div className="mb-3">
               <button
                 onClick={() => setShowDetails(!showDetails)}
@@ -39,9 +44,7 @@ export const FeatureErrorFallback = ({ error, errorInfo, resetError, featureName
 
               {showDetails && (
                 <div className="mt-2 p-3 bg-white rounded border border-red-200">
-                  <p className="text-xs font-mono text-red-600 mb-2">
-                    {error.toString()}
-                  </p>
+                  <p className="text-xs font-mono text-red-600 mb-2">{error.toString()}</p>
                   {errorInfo && (
                     <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-auto max-h-32">
                       {errorInfo.componentStack}
@@ -61,7 +64,9 @@ export const FeatureErrorFallback = ({ error, errorInfo, resetError, featureName
               Retry
             </button>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                window.location.reload();
+              }}
               className="px-3 py-1.5 text-sm bg-white text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors"
             >
               Reload Page
@@ -80,10 +85,22 @@ export const FeatureErrorFallback = ({ error, errorInfo, resetError, featureName
   );
 };
 
+interface FeatureErrorBoundaryProps {
+  children: ReactNode;
+  featureName?: string;
+  fallback?: ReactNode | ((props: FallbackProps) => ReactNode);
+  title?: string;
+  message?: string;
+}
+
 /**
  * Feature Error Boundary Component
  */
-export const FeatureErrorBoundary = ({ children, featureName, ...props }) => {
+export const FeatureErrorBoundary = ({
+  children,
+  featureName,
+  ...props
+}: FeatureErrorBoundaryProps): React.ReactElement => {
   return (
     <ErrorBoundary
       fallback={({ error, errorInfo, resetError }) => (
@@ -100,3 +117,4 @@ export const FeatureErrorBoundary = ({ children, featureName, ...props }) => {
     </ErrorBoundary>
   );
 };
+

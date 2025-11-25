@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { AlertCircle, Check } from 'lucide-react';
+import React, { useState, type ChangeEvent, type FocusEvent, type KeyboardEvent } from 'react';
+import { AlertCircle, Check, type LucideIcon } from 'lucide-react';
 import BaseInput from '../atoms/BaseInput';
 import {
   formFieldPreset,
@@ -9,6 +8,26 @@ import {
   typography,
   iconSizes,
 } from '../../styles/tokens';
+
+interface FormFieldProps {
+  id: string;
+  name?: string;
+  label: string;
+  value?: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  hint?: string;
+  error?: string;
+  isValid?: boolean;
+  isRequired?: boolean;
+  disabled?: boolean;
+  icon?: LucideIcon;
+  type?: string;
+  autoComplete?: string;
+}
 
 /**
  * FormField Component (Atomic Design - Molecule)
@@ -26,29 +45,26 @@ import {
  * - 8px input-to-hint/error margin
  * - 24px field-to-field margin (applied by parent)
  * - Icons are 16px × 16px (2 × base unit)
- *
- * @component
  */
 const FormField = ({
   id,
   name,
   label,
-  value,
+  value = '',
   onChange,
   onFocus,
   onBlur,
   onKeyDown,
-  placeholder,
+  placeholder = '',
   hint,
   error,
-  isValid,
-  isRequired,
-  disabled,
+  isValid = false,
+  isRequired = false,
+  disabled = false,
   icon: Icon,
-  type,
-  autoComplete,
-  ...rest
-}) => {
+  type = 'text',
+  autoComplete = 'off',
+}: FormFieldProps): React.ReactElement => {
   const [isFocused, setIsFocused] = useState(false);
 
   // Generate IDs for ARIA relationships
@@ -57,13 +73,13 @@ const FormField = ({
   const ariaDescribedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
 
   // Handle focus with parent callback
-  const handleFocus = (e) => {
+  const handleFocus = (e: FocusEvent<HTMLInputElement>): void => {
     setIsFocused(true);
     if (onFocus) onFocus(e);
   };
 
   // Handle blur with parent callback
-  const handleBlur = (e) => {
+  const handleBlur = (e: FocusEvent<HTMLInputElement>): void => {
     setIsFocused(false);
     if (onBlur) onBlur(e);
   };
@@ -143,7 +159,6 @@ const FormField = ({
           ariaRequired={isRequired}
           ariaInvalid={isInvalid}
           ariaDescribedBy={ariaDescribedBy}
-          {...rest}
         />
 
         {/* Success Checkmark Icon */}
@@ -157,10 +172,7 @@ const FormField = ({
               pointerEvents: 'none',
             }}
           >
-            <Check
-              size={iconSizes.md}
-              color={colors.feedback.success}
-            />
+            <Check size={iconSizes.md} color={colors.feedback.success} />
           </div>
         )}
       </div>
@@ -179,10 +191,7 @@ const FormField = ({
             lineHeight: typography.caption.lineHeight,
           }}
         >
-          <AlertCircle
-            size={iconSizes.sm}
-            style={{ marginRight: spacing.xs }}
-          />
+          <AlertCircle size={iconSizes.sm} style={{ marginRight: spacing.xs }} />
           {error}
         </p>
       )}
@@ -190,54 +199,5 @@ const FormField = ({
   );
 };
 
-FormField.propTypes = {
-  // Input identification
-  id: PropTypes.string.isRequired,
-  name: PropTypes.string,
-
-  // Label
-  label: PropTypes.string.isRequired,
-  icon: PropTypes.elementType, // Lucide React icon component
-
-  // Value and handlers
-  value: PropTypes.string,
-  onChange: PropTypes.func.isRequired,
-  onFocus: PropTypes.func,
-  onBlur: PropTypes.func,
-  onKeyDown: PropTypes.func,
-
-  // Input attributes
-  placeholder: PropTypes.string,
-  type: PropTypes.string,
-  autoComplete: PropTypes.string,
-
-  // Supporting text
-  hint: PropTypes.string,
-
-  // Validation
-  error: PropTypes.string,
-  isValid: PropTypes.bool,
-  isRequired: PropTypes.bool,
-
-  // State
-  disabled: PropTypes.bool,
-};
-
-FormField.defaultProps = {
-  name: undefined,
-  value: '',
-  onFocus: undefined,
-  onBlur: undefined,
-  onKeyDown: undefined,
-  placeholder: '',
-  type: 'text',
-  autoComplete: 'off',
-  hint: '',
-  error: '',
-  isValid: false,
-  isRequired: false,
-  disabled: false,
-  icon: null,
-};
-
 export default FormField;
+

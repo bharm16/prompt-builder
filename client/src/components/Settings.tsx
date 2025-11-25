@@ -1,11 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { X, Moon, Sun, Type, Save, Trash2, Download, FileText } from 'lucide-react';
 
+type FontSize = 'small' | 'medium' | 'large';
+type ExportFormat = 'text' | 'markdown' | 'json';
+
+interface AppSettings {
+  darkMode: boolean;
+  fontSize: FontSize;
+  autoSave: boolean;
+  exportFormat: ExportFormat;
+}
+
+interface SettingsProps {
+  isOpen: boolean;
+  onClose: () => void;
+  settings: AppSettings;
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  resetSettings: () => void;
+  onClearAllData?: () => void;
+}
+
 // Settings hook for managing user preferences
 export const useSettings = () => {
-  const [settings, setSettings] = useState(() => {
+  const [settings, setSettings] = useState<AppSettings>(() => {
     // Always start with light mode by default
-    const defaultSettings = {
+    const defaultSettings: AppSettings = {
       darkMode: false,
       fontSize: 'medium',
       autoSave: true,
@@ -15,10 +34,10 @@ export const useSettings = () => {
     const saved = localStorage.getItem('app-settings');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(saved) as Partial<AppSettings>;
         // Force dark mode to false
         parsed.darkMode = false;
-        return parsed;
+        return { ...defaultSettings, ...parsed };
       } catch (e) {
         return defaultSettings;
       }
@@ -37,12 +56,12 @@ export const useSettings = () => {
     document.documentElement.setAttribute('data-font-size', settings.fontSize);
   }, [settings]);
 
-  const updateSetting = (key, value) => {
+  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  const resetSettings = () => {
-    const defaultSettings = {
+  const resetSettings = (): void => {
+    const defaultSettings: AppSettings = {
       darkMode: false,
       fontSize: 'medium',
       autoSave: true,
@@ -56,13 +75,20 @@ export const useSettings = () => {
 };
 
 // Settings Panel Component
-export default function Settings({ isOpen, onClose, settings, updateSetting, resetSettings, onClearAllData }) {
+export default function Settings({
+  isOpen,
+  onClose,
+  settings,
+  updateSetting,
+  resetSettings,
+  onClearAllData,
+}: SettingsProps): React.ReactElement | null {
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
@@ -72,16 +98,17 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
+    return undefined;
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const handleResetSettings = () => {
+  const handleResetSettings = (): void => {
     resetSettings();
     setShowConfirmReset(false);
   };
 
-  const handleClearAllData = () => {
+  const handleClearAllData = (): void => {
     if (onClearAllData) {
       onClearAllData();
     }
@@ -96,10 +123,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
       aria-modal="true"
       aria-labelledby="settings-title"
     >
-      <div
-        className="modal-content-lg animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-content-lg animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="card-header flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
           <h2 id="settings-title" className="text-xl font-bold text-neutral-900">
@@ -118,9 +142,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
         <div className="card-body space-y-6 max-h-[70vh] overflow-y-auto">
           {/* Appearance Section */}
           <section>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-              Appearance
-            </h3>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Appearance</h3>
 
             {/* Dark Mode Toggle */}
             <div className="flex items-center justify-between p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50 transition-colors duration-200">
@@ -134,9 +156,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
                   <label htmlFor="dark-mode-toggle" className="font-medium text-neutral-900">
                     Dark Mode
                   </label>
-                  <p className="text-sm text-neutral-600">
-                    Use dark theme across the app
-                  </p>
+                  <p className="text-sm text-neutral-600">Use dark theme across the app</p>
                 </div>
               </div>
               <button
@@ -163,12 +183,10 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
             <div className="mt-4 p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
               <div className="flex items-center gap-3 mb-3">
                 <Type className="h-5 w-5 text-neutral-600" aria-hidden="true" />
-                <label className="font-medium text-neutral-900">
-                  Font Size
-                </label>
+                <label className="font-medium text-neutral-900">Font Size</label>
               </div>
               <div className="flex gap-2">
-                {['small', 'medium', 'large'].map((size) => (
+                {(['small', 'medium', 'large'] as FontSize[]).map((size) => (
                   <button
                     key={size}
                     onClick={() => updateSetting('fontSize', size)}
@@ -191,9 +209,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
 
           {/* Behavior Section */}
           <section>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-              Behavior
-            </h3>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Behavior</h3>
 
             {/* Auto-save Toggle */}
             <div className="flex items-center justify-between p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
@@ -203,9 +219,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
                   <label htmlFor="auto-save-toggle" className="font-medium text-neutral-900">
                     Auto-save
                   </label>
-                  <p className="text-sm text-neutral-600">
-                    Automatically save prompts to history
-                  </p>
+                  <p className="text-sm text-neutral-600">Automatically save prompts to history</p>
                 </div>
               </div>
               <button
@@ -231,22 +245,18 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
 
           {/* Export Section */}
           <section>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-              Export Preferences
-            </h3>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Export Preferences</h3>
 
             <div className="p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
               <div className="flex items-center gap-3 mb-3">
                 <Download className="h-5 w-5 text-neutral-600" aria-hidden="true" />
-                <label className="font-medium text-neutral-900">
-                  Default Export Format
-                </label>
+                <label className="font-medium text-neutral-900">Default Export Format</label>
               </div>
               <div className="flex gap-2">
                 {[
-                  { value: 'text', label: 'Text' },
-                  { value: 'markdown', label: 'Markdown' },
-                  { value: 'json', label: 'JSON' },
+                  { value: 'text' as ExportFormat, label: 'Text' },
+                  { value: 'markdown' as ExportFormat, label: 'Markdown' },
+                  { value: 'json' as ExportFormat, label: 'JSON' },
                 ].map((format) => (
                   <button
                     key={format.value}
@@ -270,9 +280,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
 
           {/* Danger Zone */}
           <section>
-            <h3 className="text-lg font-semibold text-error-600 mb-4">
-              Danger Zone
-            </h3>
+            <h3 className="text-lg font-semibold text-error-600 mb-4">Danger Zone</h3>
 
             <div className="space-y-3">
               {/* Reset Settings */}
@@ -321,10 +329,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
                     Are you sure? This will permanently delete all your saved prompts and history.
                   </p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={handleClearAllData}
-                      className="flex-1 btn-sm btn-danger"
-                    >
+                    <button onClick={handleClearAllData} className="flex-1 btn-sm btn-danger">
                       Yes, Delete All
                     </button>
                     <button
@@ -342,9 +347,7 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
 
         {/* Footer */}
         <div className="card-footer flex items-center justify-between">
-          <p className="text-xs text-neutral-600">
-            Settings are saved automatically
-          </p>
+          <p className="text-xs text-neutral-600">Settings are saved automatically</p>
           <button onClick={onClose} className="btn-primary">
             Done
           </button>
@@ -353,3 +356,4 @@ export default function Settings({ isOpen, onClose, settings, updateSetting, res
     </div>
   );
 }
+

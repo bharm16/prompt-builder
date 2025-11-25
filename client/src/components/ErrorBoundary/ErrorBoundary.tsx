@@ -1,19 +1,39 @@
-import React from 'react';
+import React, { type ReactNode, type ComponentType } from 'react';
 import * as Sentry from '@sentry/react';
 
-export class ErrorBoundary extends React.Component {
-  constructor(props) {
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+  eventId: string | null;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode | ((props: FallbackProps) => ReactNode);
+  title?: string;
+  message?: string;
+}
+
+export interface FallbackProps {
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+  resetError: () => void;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null, eventId: null };
   }
 
-  static getDerivedStateFromError(_error) {
+  static getDerivedStateFromError(_error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     // Log error to console in development
-    if (import.meta.env.DEV) {
+    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
       console.error('Error caught by boundary:', error, errorInfo);
     }
 
@@ -33,17 +53,17 @@ export class ErrorBoundary extends React.Component {
     });
   }
 
-  handleReportFeedback = () => {
+  handleReportFeedback = (): void => {
     if (this.state.eventId) {
       Sentry.showReportDialog({ eventId: this.state.eventId });
     }
   };
 
-  handleReset = () => {
+  handleReset = (): void => {
     this.setState({ hasError: false, error: null, errorInfo: null, eventId: null });
   };
 
-  render() {
+  override render(): ReactNode {
     if (this.state.hasError) {
       // Custom fallback if provided
       if (this.props.fallback) {
@@ -80,28 +100,31 @@ export class ErrorBoundary extends React.Component {
             </h1>
 
             <p className="text-gray-600 text-center mb-6">
-              {this.props.message || 'We apologize for the inconvenience. The application encountered an unexpected error.'}
+              {this.props.message ||
+                'We apologize for the inconvenience. The application encountered an unexpected error.'}
             </p>
 
-            {import.meta.env.DEV && this.state.error && (
+            {(import.meta as { env?: { DEV?: boolean } }).env?.DEV && this.state.error && (
               <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
                 <p className="font-semibold text-gray-800 mb-2">Error Details:</p>
-                <p className="text-red-600 font-mono text-xs break-all">
-                  {this.state.error.toString()}
-                </p>
+                <p className="text-red-600 font-mono text-xs break-all">{this.state.error.toString()}</p>
               </div>
             )}
 
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 <button
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => {
+                    window.location.href = '/';
+                  }}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
                 >
                   Go to Home
                 </button>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    window.location.reload();
+                  }}
                   className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors"
                 >
                   Reload Page
@@ -129,8 +152,11 @@ export class ErrorBoundary extends React.Component {
 /**
  * Higher-order component that wraps a component with an error boundary
  */
-export const withErrorBoundary = (Component, errorBoundaryProps = {}) => {
-  const WrappedComponent = (props) => (
+export const withErrorBoundary = <P extends object>(
+  Component: ComponentType<P>,
+  errorBoundaryProps: Partial<ErrorBoundaryProps> = {}
+): ComponentType<P> => {
+  const WrappedComponent = (props: P): React.ReactElement => (
     <ErrorBoundary {...errorBoundaryProps}>
       <Component {...props} />
     </ErrorBoundary>
@@ -142,3 +168,4 @@ export const withErrorBoundary = (Component, errorBoundaryProps = {}) => {
 };
 
 export default ErrorBoundary;
+

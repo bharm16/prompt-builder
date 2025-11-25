@@ -7,22 +7,39 @@ import { PromptContext } from '../utils/PromptContext';
 import { formatTextToHTML } from '../features/prompt-optimizer/utils/textFormatting';
 import '../features/prompt-optimizer/PromptCanvas.css';
 
-const SharedPrompt = () => {
-  const { uuid } = useParams();
+interface PromptData {
+  input: string;
+  output: string;
+  mode?: string;
+  score?: number;
+  timestamp: string;
+  brainstormContext?: unknown;
+}
+
+type PromptMode = 'optimize' | 'reasoning' | 'research' | 'socratic' | 'video';
+
+const SharedPrompt = (): React.ReactElement => {
+  const { uuid } = useParams<{ uuid: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const [prompt, setPrompt] = useState(null);
-  const [promptContext, setPromptContext] = useState(null);
+  const [prompt, setPrompt] = useState<PromptData | null>(null);
+  const [promptContext, setPromptContext] = useState<PromptContext | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const fetchPrompt = async () => {
+    const fetchPrompt = async (): Promise<void> => {
+      if (!uuid) {
+        setError('Invalid prompt ID');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const promptRepository = getPromptRepository();
-        const promptData = await promptRepository.getByUuid(uuid);
+        const promptData = (await promptRepository.getByUuid(uuid)) as PromptData | null;
         if (promptData) {
           setPrompt(promptData);
           if (promptData.brainstormContext) {
@@ -56,18 +73,23 @@ const SharedPrompt = () => {
     };
 
     fetchPrompt();
-  }, [uuid]);
+  }, [uuid, toast]);
 
-  const formattedOutput = useMemo(() => {
+  const formattedOutput = useMemo<{ html: string }>(() => {
     if (!prompt?.output) {
       return { html: '' };
     }
 
-    const enableHighlighting = prompt.mode === 'video';
-    return formatTextToHTML(prompt.output, enableHighlighting, promptContext);
-  }, [prompt, promptContext]);
+    // formatTextToHTML only takes text parameter
+    const result = formatTextToHTML(prompt.output);
+    return typeof result === 'object' && result !== null && 'html' in result
+      ? (result as { html: string })
+      : { html: String(result) };
+  }, [prompt]);
 
-  const handleCopy = async () => {
+  const handleCopy = async (): Promise<void> => {
+    if (!prompt?.output) return;
+
     try {
       await navigator.clipboard.writeText(prompt.output);
       setCopied(true);
@@ -78,15 +100,15 @@ const SharedPrompt = () => {
     }
   };
 
-  const getModeLabel = (mode) => {
-    const modes = {
+  const getModeLabel = (mode?: string): string => {
+    const modes: Record<PromptMode, string> = {
       optimize: 'Standard Prompt',
       reasoning: 'Reasoning Prompt',
       research: 'Deep Research',
       socratic: 'Socratic Learning',
       video: 'Video Prompt',
     };
-    return modes[mode] || mode;
+    return mode && mode in modes ? modes[mode as PromptMode] : mode || 'Unknown';
   };
 
   if (loading) {
@@ -104,16 +126,11 @@ const SharedPrompt = () => {
     return (
       <div className="min-h-screen gradient-neutral flex items-center justify-center">
         <div className="text-center max-w-md p-8">
-          <h1 className="text-3xl font-bold text-neutral-800 mb-4">
-            {error || 'Prompt Not Found'}
-          </h1>
+          <h1 className="text-3xl font-bold text-neutral-800 mb-4">{error || 'Prompt Not Found'}</h1>
           <p className="text-neutral-600 mb-6">
             The prompt you're looking for doesn't exist or has been removed.
           </p>
-          <button
-            onClick={() => navigate('/')}
-            className="btn-primary inline-flex items-center gap-2"
-          >
+          <button onClick={() => navigate('/')} className="btn-primary inline-flex items-center gap-2">
             <Home className="h-4 w-4" />
             Go to Home
           </button>
@@ -128,17 +145,12 @@ const SharedPrompt = () => {
       <div className="border-b border-neutral-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-800">
-              Shared Prompt
-            </h1>
+            <h1 className="text-xl font-semibold text-neutral-800">Shared Prompt</h1>
             <p className="text-sm text-neutral-500">
               {getModeLabel(prompt.mode)} · {new Date(prompt.timestamp).toLocaleDateString()}
             </p>
           </div>
-          <button
-            onClick={() => navigate('/')}
-            className="btn-ghost inline-flex items-center gap-2"
-          >
+          <button onClick={() => navigate('/')} className="btn-ghost inline-flex items-center gap-2">
             <Home className="h-4 w-4" />
             Home
           </button>
@@ -193,9 +205,7 @@ const SharedPrompt = () => {
         {prompt.score && (
           <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-neutral-200">
             <span className="text-sm text-neutral-500">Quality Score:</span>
-            <span className="text-sm font-semibold text-neutral-800">
-              {prompt.score}/100
-            </span>
+            <span className="text-sm font-semibold text-neutral-800">{prompt.score}/100</span>
           </div>
         )}
 
@@ -217,3 +227,4 @@ const SharedPrompt = () => {
 };
 
 export default SharedPrompt;
+
