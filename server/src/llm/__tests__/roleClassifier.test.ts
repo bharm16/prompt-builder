@@ -7,7 +7,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ROLE_SET, validate, hashKey } from '../roleClassifier.js';
-import { VALID_CATEGORIES, TAXONOMY } from '../../../shared/taxonomy.ts';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
+
+interface SourceSpan {
+  text: string;
+  start: number;
+  end: number;
+}
+
+interface LabeledSpan extends SourceSpan {
+  role: string;
+  confidence: number;
+}
 
 describe('roleClassifier - Taxonomy Integration', () => {
   describe('ROLE_SET validation', () => {
@@ -52,51 +63,51 @@ describe('roleClassifier - Taxonomy Integration', () => {
 
   describe('validate() function', () => {
     it('accepts valid taxonomy parent IDs', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'test subject', start: 0, end: 12 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'test subject', start: 0, end: 12, role: 'subject', confidence: 0.9 }
       ];
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(1);
-      expect(result[0].role).toBe('subject');
+      expect(result[0]?.role).toBe('subject');
     });
 
     it('accepts valid taxonomy attribute IDs', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'leather jacket', start: 0, end: 14 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'leather jacket', start: 0, end: 14, role: 'subject.wardrobe', confidence: 0.9 }
       ];
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(1);
-      expect(result[0].role).toBe('subject.wardrobe');
+      expect(result[0]?.role).toBe('subject.wardrobe');
     });
 
     it('normalizes invalid roles to subject', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'something', start: 0, end: 9 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'something', start: 0, end: 9, role: 'InvalidRole', confidence: 0.9 }
       ];
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(1);
-      expect(result[0].role).toBe(TAXONOMY.SUBJECT.id);
+      expect(result[0]?.role).toBe(TAXONOMY.SUBJECT.id);
     });
 
     it('handles multiple spans with different taxonomy IDs', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'cowboy', start: 0, end: 6 },
         { text: 'leather boots', start: 10, end: 23 },
         { text: 'walking', start: 30, end: 37 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'cowboy', start: 0, end: 6, role: 'subject.identity', confidence: 0.95 },
         { text: 'leather boots', start: 10, end: 23, role: 'subject.wardrobe', confidence: 0.9 },
         { text: 'walking', start: 30, end: 37, role: 'subject.action', confidence: 0.85 }
@@ -104,28 +115,28 @@ describe('roleClassifier - Taxonomy Integration', () => {
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(3);
-      expect(result[0].role).toBe('subject.identity');
-      expect(result[1].role).toBe('subject.wardrobe');
-      expect(result[2].role).toBe('subject.action');
+      expect(result[0]?.role).toBe('subject.identity');
+      expect(result[1]?.role).toBe('subject.wardrobe');
+      expect(result[2]?.role).toBe('subject.action');
     });
 
     it('clamps confidence values to [0, 1]', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'test', start: 0, end: 4 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'test', start: 0, end: 4, role: 'subject', confidence: 1.5 }
       ];
 
       const result = validate(source, labeled);
-      expect(result[0].confidence).toBe(1);
+      expect(result[0]?.confidence).toBe(1);
     });
 
     it('filters out spans that dont match source', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'original', start: 0, end: 8 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'different', start: 0, end: 9, role: 'subject', confidence: 0.9 }
       ];
 
@@ -134,10 +145,10 @@ describe('roleClassifier - Taxonomy Integration', () => {
     });
 
     it('skips very long spans for non-technical roles', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'a very long phrase with more than six words here', start: 0, end: 49 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'a very long phrase with more than six words here', start: 0, end: 49, role: 'subject', confidence: 0.9 }
       ];
 
@@ -146,23 +157,23 @@ describe('roleClassifier - Taxonomy Integration', () => {
     });
 
     it('allows long spans for technical role', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: '16:9 aspect ratio with 24fps frame rate', start: 0, end: 40 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: '16:9 aspect ratio with 24fps frame rate', start: 0, end: 40, role: 'technical', confidence: 0.9 }
       ];
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(1);
-      expect(result[0].role).toBe('technical');
+      expect(result[0]?.role).toBe('technical');
     });
 
     it('handles overlapping spans by preferring technical and higher confidence', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: '24fps', start: 0, end: 5 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: '24fps', start: 0, end: 5, role: 'technical', confidence: 0.7 },
         { text: '24fps', start: 0, end: 5, role: 'style', confidence: 0.9 }
       ];
@@ -170,16 +181,16 @@ describe('roleClassifier - Taxonomy Integration', () => {
       const result = validate(source, labeled);
       expect(result).toHaveLength(1);
       // Technical gets priority boost, so even with lower confidence it wins
-      expect(result[0].role).toBe('technical');
+      expect(result[0]?.role).toBe('technical');
     });
 
     it('sorts spans by start position', () => {
-      const source = [
+      const source: SourceSpan[] = [
         { text: 'third', start: 20, end: 25 },
         { text: 'first', start: 0, end: 5 },
         { text: 'second', start: 10, end: 16 }
       ];
-      const labeled = [
+      const labeled: LabeledSpan[] = [
         { text: 'third', start: 20, end: 25, role: 'subject', confidence: 0.9 },
         { text: 'first', start: 0, end: 5, role: 'subject', confidence: 0.9 },
         { text: 'second', start: 10, end: 16, role: 'subject', confidence: 0.9 }
@@ -187,15 +198,15 @@ describe('roleClassifier - Taxonomy Integration', () => {
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(3);
-      expect(result[0].text).toBe('first');
-      expect(result[1].text).toBe('second');
-      expect(result[2].text).toBe('third');
+      expect(result[0]?.text).toBe('first');
+      expect(result[1]?.text).toBe('second');
+      expect(result[2]?.text).toBe('third');
     });
   });
 
   describe('hashKey() cache versioning', () => {
     it('includes cache version in hash key', () => {
-      const spans = [{ text: 'test', start: 0, end: 4 }];
+      const spans: SourceSpan[] = [{ text: 'test', start: 0, end: 4 }];
       const version = 'v1';
 
       const key1 = hashKey(spans, version);
@@ -208,7 +219,7 @@ describe('roleClassifier - Taxonomy Integration', () => {
     });
 
     it('generates consistent hashes for same input', () => {
-      const spans = [{ text: 'test', start: 0, end: 4 }];
+      const spans: SourceSpan[] = [{ text: 'test', start: 0, end: 4 }];
       const version = 'v1';
 
       const key1 = hashKey(spans, version);
@@ -218,7 +229,7 @@ describe('roleClassifier - Taxonomy Integration', () => {
     });
 
     it('generates different hashes for different versions', () => {
-      const spans = [{ text: 'test', start: 0, end: 4 }];
+      const spans: SourceSpan[] = [{ text: 'test', start: 0, end: 4 }];
 
       const key1 = hashKey(spans, 'v1');
       const key2 = hashKey(spans, 'v2');

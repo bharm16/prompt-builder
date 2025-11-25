@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaxonomyValidationService } from '../TaxonomyValidationService.js';
-import { TAXONOMY } from '#shared/taxonomy.ts';
+import { TAXONOMY } from '@shared/taxonomy';
+
+interface Span {
+  category: string;
+  text: string;
+}
 
 describe('TaxonomyValidationService', () => {
-  let validator;
+  let validator: TaxonomyValidationService;
 
   beforeEach(() => {
     validator = new TaxonomyValidationService();
@@ -18,7 +23,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should pass validation when parent and attributes present', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' },
         { category: TAXONOMY.SUBJECT.attributes.ACTION, text: 'standing' }
@@ -31,7 +36,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should detect orphaned subject attributes', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' },
         { category: TAXONOMY.SUBJECT.attributes.ACTION, text: 'standing' }
       ];
@@ -40,12 +45,12 @@ describe('TaxonomyValidationService', () => {
       
       expect(result.isValid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0].type).toBe('ORPHANED_ATTRIBUTE');
-      expect(result.issues[0].missingParent).toBe(TAXONOMY.SUBJECT.id);
+      expect(result.issues[0]?.type).toBe('ORPHANED_ATTRIBUTE');
+      expect(result.issues[0]?.missingParent).toBe(TAXONOMY.SUBJECT.id);
     });
 
     it('should detect orphaned camera attributes', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.CAMERA.attributes.FRAMING, text: 'close-up' },
         { category: TAXONOMY.CAMERA.attributes.MOVEMENT, text: 'dolly in' }
       ];
@@ -53,11 +58,11 @@ describe('TaxonomyValidationService', () => {
       const result = validator.validateSpans(spans);
       
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0].missingParent).toBe(TAXONOMY.CAMERA.id);
+      expect(result.issues[0]?.missingParent).toBe(TAXONOMY.CAMERA.id);
     });
 
     it('should allow parent categories without attributes', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.ENVIRONMENT.id, text: 'in a saloon' }
       ];
@@ -68,7 +73,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should detect multiple orphan groups', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' },
         { category: TAXONOMY.CAMERA.attributes.FRAMING, text: 'wide shot' }
       ];
@@ -84,7 +89,7 @@ describe('TaxonomyValidationService', () => {
 
   describe('hasOrphanedAttributes', () => {
     it('should return false when no orphans', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' }
       ];
@@ -93,7 +98,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should return true when orphans detected', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' }
       ];
 
@@ -103,7 +108,7 @@ describe('TaxonomyValidationService', () => {
 
   describe('getMissingParents', () => {
     it('should return empty array when no missing parents', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' }
       ];
@@ -113,7 +118,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should return missing parent categories', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' },
         { category: TAXONOMY.CAMERA.attributes.FRAMING, text: 'close-up' }
       ];
@@ -127,7 +132,7 @@ describe('TaxonomyValidationService', () => {
 
   describe('validateBeforeAdd', () => {
     it('should allow adding parent category', () => {
-      const existingSpans = [];
+      const existingSpans: Span[] = [];
       const result = validator.validateBeforeAdd(TAXONOMY.SUBJECT.id, existingSpans);
       
       expect(result.canAdd).toBe(true);
@@ -135,7 +140,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should allow adding attribute when parent exists', () => {
-      const existingSpans = [
+      const existingSpans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' }
       ];
       const result = validator.validateBeforeAdd(
@@ -148,7 +153,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should warn when adding attribute without parent', () => {
-      const existingSpans = [];
+      const existingSpans: Span[] = [];
       const result = validator.validateBeforeAdd(
         TAXONOMY.SUBJECT.attributes.WARDROBE, 
         existingSpans
@@ -162,7 +167,7 @@ describe('TaxonomyValidationService', () => {
 
   describe('getValidationStats', () => {
     it('should return correct statistics', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' },
         { category: TAXONOMY.CAMERA.attributes.FRAMING, text: 'close-up' }
@@ -177,7 +182,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should return zero counts for valid spans', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.SUBJECT.id, text: 'a cowboy' },
         { category: TAXONOMY.SUBJECT.attributes.WARDROBE, text: 'leather jacket' }
       ];
@@ -192,7 +197,7 @@ describe('TaxonomyValidationService', () => {
 
   describe('strict mode', () => {
     it('should fail validation on warnings in strict mode', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.CAMERA.attributes.MOVEMENT, text: 'dolly in' }
       ];
 
@@ -203,7 +208,7 @@ describe('TaxonomyValidationService', () => {
     });
 
     it('should pass validation on warnings in normal mode', () => {
-      const spans = [
+      const spans: Span[] = [
         { category: TAXONOMY.CAMERA.attributes.MOVEMENT, text: 'dolly in' }
       ];
 

@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { cn } from '../cn.js';
+import { cn } from '../cn';
 
 describe('cn (className utility)', () => {
   describe('basic string merging', () => {
@@ -163,7 +163,7 @@ describe('cn (className utility)', () => {
 
     it('handles objects by filtering them out - catches object filtering', () => {
       // Would fail if objects aren't properly filtered
-      const result = cn('class1', { key: 'value' }, 'class2');
+      const result = cn('class1', { key: 'value' } as unknown as string, 'class2');
       // Objects become "[object Object]" when converted to string
       // This test documents current behavior
       expect(result).toContain('class1');
@@ -187,7 +187,7 @@ describe('cn (className utility)', () => {
 
     it('handles optional class prop - catches undefined prop bug', () => {
       // Real-world pattern: optional className prop
-      const className = undefined;
+      const className: string | undefined = undefined;
       const result = cn('base-class', className);
       expect(result).toBe('base-class');
     });
@@ -200,3 +200,4 @@ describe('cn (className utility)', () => {
     });
   });
 });
+

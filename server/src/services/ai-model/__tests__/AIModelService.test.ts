@@ -10,23 +10,32 @@
  * - Error handling
  * - Configuration management
  * 
- * Pattern: EXAMPLE_BACKEND_TEST.test.js
+ * Pattern: TypeScript test with typed mocks
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AIModelService } from '../AIModelService.js';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
+import { AIModelService } from '../AIModelService';
+import type { IAIClient, AIResponse } from '@interfaces/IAIClient';
 
 describe('AIModelService', () => {
   // ============================================
   // SETUP - Dependency Injection Pattern
   // ============================================
   
-  let service;
-  let mockOpenAIClient;
-  let mockGroqClient;
+  let service: AIModelService;
+  let mockOpenAIClient: {
+    complete: MockedFunction<IAIClient['complete']>;
+    streamComplete?: MockedFunction<IAIClient['streamComplete']>;
+    healthCheck?: MockedFunction<IAIClient['healthCheck']>;
+  };
+  let mockGroqClient: {
+    complete: MockedFunction<IAIClient['complete']>;
+    streamComplete?: MockedFunction<IAIClient['streamComplete']>;
+    healthCheck?: MockedFunction<IAIClient['healthCheck']>;
+  };
   
   beforeEach(() => {
-    // Create mock clients
+    // Create typed mock clients
     mockOpenAIClient = {
       complete: vi.fn(),
       streamComplete: vi.fn(),
@@ -42,8 +51,8 @@ describe('AIModelService', () => {
     // Create service with injected dependencies
     service = new AIModelService({
       clients: {
-        openai: mockOpenAIClient,
-        groq: mockGroqClient,
+        openai: mockOpenAIClient as IAIClient,
+        groq: mockGroqClient as IAIClient,
       },
     });
   });
@@ -65,22 +74,22 @@ describe('AIModelService', () => {
     });
     
     it('should throw error if clients parameter is missing', () => {
-      expect(() => new AIModelService({})).toThrow('AIModelService requires clients object');
+      expect(() => new AIModelService({} as unknown as { clients: { openai: IAIClient } })).toThrow('AIModelService requires clients object');
     });
     
     it('should throw error if clients parameter is not an object', () => {
-      expect(() => new AIModelService({ clients: null })).toThrow('AIModelService requires clients object');
+      expect(() => new AIModelService({ clients: null } as unknown as { clients: { openai: IAIClient } })).toThrow('AIModelService requires clients object');
     });
     
     it('should throw error if openai client is missing', () => {
       expect(() => new AIModelService({
-        clients: { groq: mockGroqClient }
-      })).toThrow('AIModelService requires at least openai client');
+        clients: { groq: mockGroqClient as IAIClient }
+      } as unknown as { clients: { openai: IAIClient } })).toThrow('AIModelService requires at least openai client');
     });
     
     it('should allow groq client to be null (optional)', () => {
       const serviceWithoutGroq = new AIModelService({
-        clients: { openai: mockOpenAIClient, groq: null }
+        clients: { openai: mockOpenAIClient as IAIClient, groq: null }
       });
       
       expect(serviceWithoutGroq).toBeDefined();
@@ -96,8 +105,9 @@ describe('AIModelService', () => {
   describe('execute()', () => {
     it('should route operation to correct client based on config', async () => {
       // Arrange
-      const mockResponse = {
-        content: [{ text: 'optimized prompt' }]
+      const mockResponse: AIResponse = {
+        content: [{ text: 'optimized prompt' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       };
       mockOpenAIClient.complete.mockResolvedValue(mockResponse);
       
@@ -124,8 +134,9 @@ describe('AIModelService', () => {
     
     it('should use groq client for draft operations', async () => {
       // Arrange
-      const mockResponse = {
-        content: [{ text: 'draft prompt' }]
+      const mockResponse: AIResponse = {
+        content: [{ text: 'draft prompt' }],
+        usage: { inputTokens: 5, outputTokens: 10 },
       };
       mockGroqClient.complete.mockResolvedValue(mockResponse);
       
@@ -152,7 +163,8 @@ describe('AIModelService', () => {
     it('should allow params to override config values', async () => {
       // Arrange
       mockOpenAIClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
+        content: [{ text: 'result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       });
       
       // Act
@@ -175,7 +187,8 @@ describe('AIModelService', () => {
     it('should use default config for unknown operations', async () => {
       // Arrange
       mockOpenAIClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
+        content: [{ text: 'result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       });
       
       // Act
@@ -203,8 +216,9 @@ describe('AIModelService', () => {
     it('should fallback to groq when openai fails and fallback is configured', async () => {
       // Arrange
       const openaiError = new Error('OpenAI API error');
-      const groqResponse = {
-        content: [{ text: 'fallback result' }]
+      const groqResponse: AIResponse = {
+        content: [{ text: 'fallback result' }],
+        usage: { inputTokens: 5, outputTokens: 10 },
       };
       
       mockOpenAIClient.complete.mockRejectedValue(openaiError);
@@ -224,8 +238,9 @@ describe('AIModelService', () => {
     it('should fallback to openai when groq fails and fallback is configured', async () => {
       // Arrange
       const groqError = new Error('Groq API error');
-      const openaiResponse = {
-        content: [{ text: 'fallback result' }]
+      const openaiResponse: AIResponse = {
+        content: [{ text: 'fallback result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       };
       
       mockGroqClient.complete.mockRejectedValue(groqError);
@@ -276,7 +291,7 @@ describe('AIModelService', () => {
     it('should throw error when fallback client is not available', async () => {
       // Arrange
       const serviceWithoutGroq = new AIModelService({
-        clients: { openai: mockOpenAIClient, groq: null }
+        clients: { openai: mockOpenAIClient as IAIClient, groq: null }
       });
       
       const error = new Error('OpenAI error');
@@ -300,9 +315,9 @@ describe('AIModelService', () => {
       // Arrange
       const chunks = ['chunk1', 'chunk2', 'chunk3'];
       const fullText = chunks.join('');
-      const onChunk = vi.fn();
+      const onChunk = vi.fn<(chunk: string) => void>();
       
-      mockGroqClient.streamComplete.mockResolvedValue(fullText);
+      mockGroqClient.streamComplete?.mockResolvedValue(fullText);
       
       // Act
       const result = await service.stream('optimize_draft', {
@@ -328,7 +343,7 @@ describe('AIModelService', () => {
       // Arrange
       const serviceWithNonStreamingClient = new AIModelService({
         clients: {
-          openai: { complete: vi.fn() }, // No streamComplete method
+          openai: { complete: vi.fn() } as unknown as IAIClient, // No streamComplete method
         }
       });
       
@@ -344,14 +359,14 @@ describe('AIModelService', () => {
       await expect(service.stream('optimize_draft', {
         systemPrompt: 'Test',
         // onChunk missing
-      })).rejects.toThrow('Streaming requires onChunk callback');
+      } as unknown as Parameters<typeof service.stream>[1])).rejects.toThrow('Streaming requires onChunk callback');
     });
     
     it('should throw error if onChunk is not a function', async () => {
       // Act & Assert
       await expect(service.stream('optimize_draft', {
         systemPrompt: 'Test',
-        onChunk: 'not a function',
+        onChunk: 'not a function' as unknown as (chunk: string) => void,
       })).rejects.toThrow('Streaming requires onChunk callback');
     });
   });
@@ -406,7 +421,7 @@ describe('AIModelService', () => {
     
     it('getAvailableClients() should exclude null clients', () => {
       const serviceWithNullGroq = new AIModelService({
-        clients: { openai: mockOpenAIClient, groq: null }
+        clients: { openai: mockOpenAIClient as IAIClient, groq: null }
       });
       
       const clients = serviceWithNullGroq.getAvailableClients();
@@ -421,7 +436,7 @@ describe('AIModelService', () => {
     it('supportsStreaming() should return false if client lacks streamComplete', () => {
       const serviceWithoutStreaming = new AIModelService({
         clients: {
-          openai: { complete: vi.fn() }, // No streamComplete
+          openai: { complete: vi.fn() } as unknown as IAIClient, // No streamComplete
         }
       });
       
@@ -437,7 +452,8 @@ describe('AIModelService', () => {
     it('should handle unavailable client gracefully with fallback to default', async () => {
       // Arrange
       mockOpenAIClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
+        content: [{ text: 'result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       });
       
       // Act - Use operation configured for a client that exists
@@ -446,20 +462,21 @@ describe('AIModelService', () => {
       });
       
       // Assert - Should successfully use the available client
-      expect(result.content[0].text).toBe('result');
+      expect(result.content[0]?.text).toBe('result');
       expect(mockOpenAIClient.complete).toHaveBeenCalled();
     });
     
     it('should handle malformed params gracefully', async () => {
       // Arrange
       mockOpenAIClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
+        content: [{ text: 'result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
       });
       
       // Act - Missing systemPrompt (undefined)
       await service.execute('optimize_standard', {
         userMessage: 'Test',
-      });
+      } as unknown as Parameters<typeof service.execute>[1]);
       
       // Assert - Should still call client with undefined systemPrompt
       expect(mockOpenAIClient.complete).toHaveBeenCalledWith(
@@ -476,8 +493,14 @@ describe('AIModelService', () => {
   describe('Integration scenarios', () => {
     it('should handle complete optimization workflow', async () => {
       // Arrange - Simulate two-stage optimization
-      const draftResponse = { content: [{ text: 'draft prompt' }] };
-      const refinedResponse = { content: [{ text: 'refined prompt' }] };
+      const draftResponse: AIResponse = { 
+        content: [{ text: 'draft prompt' }],
+        usage: { inputTokens: 5, outputTokens: 10 },
+      };
+      const refinedResponse: AIResponse = { 
+        content: [{ text: 'refined prompt' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
+      };
       
       mockGroqClient.complete.mockResolvedValue(draftResponse);
       mockOpenAIClient.complete.mockResolvedValue(refinedResponse);
@@ -491,7 +514,7 @@ describe('AIModelService', () => {
       // Act - Stage 2: Quality refinement
       const refined = await service.execute('optimize_standard', {
         systemPrompt: 'Refine this draft',
-        userMessage: draft.content[0].text,
+        userMessage: draft.content[0]?.text || '',
       });
       
       // Assert
@@ -503,12 +526,12 @@ describe('AIModelService', () => {
     
     it('should handle multiple concurrent operations', async () => {
       // Arrange
-      mockOpenAIClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
-      });
-      mockGroqClient.complete.mockResolvedValue({
-        content: [{ text: 'result' }]
-      });
+      const mockResponse: AIResponse = {
+        content: [{ text: 'result' }],
+        usage: { inputTokens: 10, outputTokens: 20 },
+      };
+      mockOpenAIClient.complete.mockResolvedValue(mockResponse);
+      mockGroqClient.complete.mockResolvedValue(mockResponse);
       
       // Act - Execute multiple operations concurrently
       const results = await Promise.all([

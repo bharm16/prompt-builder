@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('../../infrastructure/Logger.ts', () => ({
+vi.mock('@infrastructure/Logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -43,3 +43,4 @@ describe('TracingService', () => {
     });
   });
 });
+
