@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 
 interface ClaudeClient {
   complete(prompt: string, options?: { maxTokens?: number }): Promise<{

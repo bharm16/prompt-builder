@@ -1,4 +1,4 @@
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import { cacheService } from '../cache/CacheService.js';
 import { TemperatureOptimizer } from '../../utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '../../utils/ConstitutionalAI.js';

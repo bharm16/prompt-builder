@@ -8,7 +8,7 @@
  * - Resource cleanup
  */
 
-import { logger } from './infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import { closeRedisClient } from './config/redis.js';
 
 /**

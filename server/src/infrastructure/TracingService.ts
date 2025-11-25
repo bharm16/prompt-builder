@@ -7,7 +7,7 @@ import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import type { Request, Response, NextFunction } from 'express';
-import { logger } from './Logger.js';
+import { logger } from './Logger.ts';
 
 interface TracingConfig {
   serviceName?: string;

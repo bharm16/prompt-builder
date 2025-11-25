@@ -10,7 +10,7 @@
  */
 
 import { createContainer, type DIContainer } from '../infrastructure/DIContainer.js';
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import { metricsService } from '../infrastructure/MetricsService.js';
 
 // Import generic LLM client

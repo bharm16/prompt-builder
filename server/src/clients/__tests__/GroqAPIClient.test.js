@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GroqAPIClient, APIError, TimeoutError, ServiceUnavailableError } from '../GroqAPIClient.js';
 
 // Mock external dependencies
-vi.mock('../../infrastructure/Logger.js', () => ({
+vi.mock('../../infrastructure/Logger.ts', () => ({
   logger: {
     info: vi.fn(),
     debug: vi.fn(),

@@ -1,5 +1,5 @@
 import CircuitBreaker from 'opossum';
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import { metricsService } from '../infrastructure/MetricsService.js';
 import type { IAIClient, AIResponse } from '../interfaces/IAIClient.js';
 

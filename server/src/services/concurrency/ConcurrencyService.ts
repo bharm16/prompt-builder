@@ -1,4 +1,4 @@
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../../infrastructure/Logger.ts';
 import { metricsService } from '../../infrastructure/MetricsService.js';
 
 /**

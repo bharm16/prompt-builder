@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { validateRequest } from '../validateRequest.js';
 import Joi from 'joi';
 
-vi.mock('../../infrastructure/Logger.js', () => ({
+vi.mock('../../infrastructure/Logger.ts', () => ({
   logger: { warn: vi.fn() },
 }));
 

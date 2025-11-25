@@ -23,7 +23,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Module-level mocks (required due to direct imports in ClaudeAPIClient)
 // TODO: Refactor ClaudeAPIClient to accept logger and metricsService via constructor
-vi.mock('../../infrastructure/Logger.js', () => ({
+vi.mock('../../infrastructure/Logger.ts', () => ({
   logger: {
     info: vi.fn(),
     debug: vi.fn(),

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 
 /**
  * Request coalescing middleware

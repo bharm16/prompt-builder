@@ -1,5 +1,5 @@
 import { APIError, TimeoutError } from '../LLMClient.js';
-import { logger } from '../../infrastructure/Logger.js';
+import { logger } from '../../infrastructure/Logger.ts';
 import type { AIResponse } from '../../interfaces/IAIClient.js';
 
 interface CompletionOptions {

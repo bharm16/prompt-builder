@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('../../infrastructure/Logger.js', () => ({
+vi.mock('../../infrastructure/Logger.ts', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

@@ -23,7 +23,7 @@ import compression from 'compression';
 
 import { requestIdMiddleware } from '../middleware/requestId.js';
 import { requestCoalescing } from '../middleware/requestCoalescing.js';
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import type { ILogger } from '../interfaces/ILogger.js';
 import type { IMetricsCollector } from '../interfaces/IMetricsCollector.js';
 

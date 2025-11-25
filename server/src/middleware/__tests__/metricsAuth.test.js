@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { metricsAuthMiddleware } from '../metricsAuth.js';
 
-vi.mock('../../infrastructure/Logger.js', () => ({
+vi.mock('../../infrastructure/Logger.ts', () => ({
   logger: {
     warn: vi.fn(),
     info: vi.fn(),

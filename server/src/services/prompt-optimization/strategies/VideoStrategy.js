@@ -1,4 +1,4 @@
-import { logger } from '../../../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 import OptimizationConfig from '../../../config/OptimizationConfig.js';
 import { generateUniversalVideoPrompt } from './videoPromptOptimizationTemplate.js';
 import { StructuredOutputEnforcer } from '../../../utils/StructuredOutputEnforcer.js';

@@ -1,6 +1,6 @@
 import { CATEGORY_PATTERNS, CONTEXT_PATTERNS, DEFAULT_ROLE } from '../../config/categoryMapping.js';
 import { normalizeText } from '../../utils/textHelpers.js';
-import { logger } from '../../../../infrastructure/Logger.js';
+import { logger } from '../infrastructure/Logger.ts';
 
 /**
  * Service responsible for analyzing and detecting phrase roles in video prompts
