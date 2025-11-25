@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, RefObject } from 'react';
-import { PromptContext } from '../../../utils/PromptContext';
+import { PromptContext } from '@utils/PromptContext';
 import {
   buildTextNodeIndex,
   wrapRangeSegments,

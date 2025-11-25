@@ -1,6 +1,6 @@
-import { logger } from '../../../../infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
-import { parseConceptOutputSchema } from '../../../../utils/validation.js';
+import { logger } from '@infrastructure/Logger.ts';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { parseConceptOutputSchema } from '@utils/validation.js';
 
 /**
  * Service responsible for parsing text concept descriptions into structured elements.

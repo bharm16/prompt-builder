@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Toast } from '../../../../hooks/types';
+import type { Toast } from '@hooks/types';
 
 interface PromptOptimizer {
   inputPrompt: string;

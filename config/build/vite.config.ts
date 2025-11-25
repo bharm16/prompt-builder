@@ -20,11 +20,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '../../client/src'),
-      '@/components': path.resolve(__dirname, '../../client/src/components'),
-      '@/hooks': path.resolve(__dirname, '../../client/src/hooks'),
-      '@/types': path.resolve(__dirname, '../../client/src/types'),
-      '@/utils': path.resolve(__dirname, '../../client/src/utils'),
-      '@/api': path.resolve(__dirname, '../../client/src/api'),
+      '@components': path.resolve(__dirname, '../../client/src/components'),
+      '@features': path.resolve(__dirname, '../../client/src/features'),
+      '@hooks': path.resolve(__dirname, '../../client/src/hooks'),
+      '@api': path.resolve(__dirname, '../../client/src/api'),
+      '@types': path.resolve(__dirname, '../../client/src/types'),
+      '@utils': path.resolve(__dirname, '../../client/src/utils'),
+      '@config': path.resolve(__dirname, '../../client/src/config'),
       '@shared': path.resolve(__dirname, '../../shared'),
     },
   },

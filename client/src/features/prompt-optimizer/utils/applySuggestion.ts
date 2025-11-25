@@ -1,4 +1,4 @@
-import { relocateQuote } from '../../../utils/textQuoteRelocator';
+import { relocateQuote } from '@utils/textQuoteRelocator';
 
 const ensureNumber = (value: unknown, fallback = -1): number =>
   Number.isFinite(value) ? Number(value) : fallback;

@@ -1,5 +1,5 @@
-import { logger } from '../../infrastructure/Logger.ts';
-import OptimizationConfig from '../../../config/OptimizationConfig.js';
+import { logger } from '@infrastructure/Logger.ts';
+import OptimizationConfig from '@config/OptimizationConfig.js';
 
 /**
  * Service for inferring context from user prompts

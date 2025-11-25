@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PERFORMANCE_CONFIG } from '../../../../config/performance.config';
+import { PERFORMANCE_CONFIG } from '@config/performance.config';
 
 interface PromptOptimizer {
   displayedPrompt: string;

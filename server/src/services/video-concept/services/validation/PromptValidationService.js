@@ -1,9 +1,9 @@
-import { logger } from '../../../../infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
+import { logger } from '@infrastructure/Logger.ts';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
-} from '../../../../utils/validation.js';
+} from '@utils/validation.js';
 
 /**
  * Service responsible for validating prompt quality and completeness.

@@ -9,9 +9,9 @@
  * - Testing difficulties
  */
 
-import { createContainer, type DIContainer } from '../infrastructure/DIContainer.ts';
-import { logger } from '../infrastructure/Logger.ts';
-import { metricsService } from '../infrastructure/MetricsService.ts';
+import { createContainer, type DIContainer } from '@infrastructure/DIContainer.ts';
+import { logger } from '@infrastructure/Logger.ts';
+import { metricsService } from '@infrastructure/MetricsService.ts';
 
 // Import generic LLM client
 import { LLMClient } from '../clients/LLMClient.ts';

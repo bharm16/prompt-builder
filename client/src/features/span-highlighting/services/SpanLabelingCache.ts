@@ -8,7 +8,7 @@
  * - Async hydration to avoid blocking initial render
  */
 
-import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '../../../config/performance.config';
+import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '@config/performance.config';
 import { hashString } from '../utils/hashing.ts';
 import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.ts';
 import { getCacheStorage } from './storageAdapter.ts';

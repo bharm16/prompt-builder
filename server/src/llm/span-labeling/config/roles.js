@@ -6,7 +6,7 @@
  * ensuring client-server consistency
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '../../../../../shared/taxonomy.ts';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy.ts';
 
 /**
  * Complete set of valid roles for span labeling

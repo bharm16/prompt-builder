@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { PromptContext } from '../../../../utils/PromptContext';
-import { PERFORMANCE_CONFIG } from '../../../../config/performance.config';
-import type { Toast } from '../../../../hooks/types';
+import { PromptContext } from '@utils/PromptContext';
+import { PERFORMANCE_CONFIG } from '@config/performance.config';
+import type { Toast } from '@hooks/types';
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;

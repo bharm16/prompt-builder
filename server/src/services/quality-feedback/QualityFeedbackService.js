@@ -1,4 +1,4 @@
-import { logger } from '../../infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger.ts';
 import { FeatureExtractor } from './services/FeatureExtractor.js';
 import { QualityAssessor } from './services/QualityAssessor.js';
 import { QualityModel } from './services/QualityModel.js';

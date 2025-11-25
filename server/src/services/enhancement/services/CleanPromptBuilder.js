@@ -1,5 +1,5 @@
 import { extractSemanticSpans } from '../../nlp/NlpSpanService.js';
-import { getParentCategory } from '../../../../../shared/taxonomy.ts';
+import { getParentCategory } from '@shared/taxonomy.ts';
 
 const UNIVERSAL_ORDER = 'Shot Type > Subject > Action > Setting > Camera Behavior > Lighting > Style';
 

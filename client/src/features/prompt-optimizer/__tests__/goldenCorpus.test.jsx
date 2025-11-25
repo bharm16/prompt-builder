@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GOLDEN_CORPUS } from '../../../../../tests/fixtures/goldenCorpus.js';
-import { PromptContext } from '../../../utils/PromptContext';
+import { PromptContext } from '@utils/PromptContext';
 
 describe('prompt optimizer golden corpus', () => {
   GOLDEN_CORPUS.forEach(({ name, text, context, expected }) => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import Settings, { useSettings } from '../../../components/Settings';
-import KeyboardShortcuts from '../../../components/KeyboardShortcuts';
+import Settings, { useSettings } from '@components/Settings';
+import KeyboardShortcuts from '@components/KeyboardShortcuts';
 import PromptImprovementForm from '../../../PromptImprovementForm';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';

@@ -6,8 +6,8 @@
  * even when whitespace/normalization differs.
  */
 
-import { API_CONFIG } from '../../../config/api.config';
-import { relocateQuote } from '../../../utils/textQuoteRelocator';
+import { API_CONFIG } from '@config/api.config';
+import { relocateQuote } from '@utils/textQuoteRelocator';
 
 interface FetchEnhancementSuggestionsParams {
   highlightedText: string;

@@ -15,7 +15,7 @@ import type React from 'react';
 import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/enhancementSuggestionsApi';
 import { prepareSpanContext } from '../../utils/spanUtils.ts';
 import { useEditHistory } from '../../hooks/useEditHistory';
-import type { Toast } from '../../../../hooks/types';
+import type { Toast } from '@hooks/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;

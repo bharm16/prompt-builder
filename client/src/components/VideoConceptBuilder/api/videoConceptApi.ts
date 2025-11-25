@@ -6,7 +6,7 @@
  * Uses Zod schemas for runtime validation at API boundaries.
  */
 
-import { API_CONFIG } from '../../../config/api.config';
+import { API_CONFIG } from '@config/api.config';
 import {
   ValidationResultSchema,
   CompatibilityScoreSchema,

@@ -2,7 +2,7 @@
  * Hashing utilities with memoization for span labeling
  */
 
-import { PERFORMANCE_CONFIG } from '../../../config/performance.config';
+import { PERFORMANCE_CONFIG } from '@config/performance.config';
 
 // Hash cache for memoization (LRU eviction)
 const hashCache = new Map<string, string>();

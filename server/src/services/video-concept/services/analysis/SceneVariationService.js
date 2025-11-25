@@ -1,6 +1,6 @@
-import { logger } from '../../../../infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
-import { variationsOutputSchema } from '../../../../utils/validation.js';
+import { logger } from '@infrastructure/Logger.ts';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { variationsOutputSchema } from '@utils/validation.js';
 
 /**
  * Service responsible for generating creative variations of video scenes.

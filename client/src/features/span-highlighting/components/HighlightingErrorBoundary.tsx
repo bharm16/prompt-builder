@@ -7,7 +7,7 @@
  */
 
 import React, { type ReactNode } from 'react';
-import { ErrorBoundary } from '../../../components/ErrorBoundary/ErrorBoundary';
+import { ErrorBoundary } from '@components/ErrorBoundary/ErrorBoundary';
 import { spanLabelingCache } from '../services/index.ts';
 
 export interface HighlightingErrorBoundaryProps {

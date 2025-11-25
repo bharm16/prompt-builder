@@ -1,8 +1,8 @@
 import { useEffect, useRef, useMemo } from 'react';
-import { buildTextNodeIndex, wrapRangeSegments } from '../../../utils/anchorRanges.js';
+import { buildTextNodeIndex, wrapRangeSegments } from '@utils/anchorRanges.js';
 import { snapSpanToTokenBoundaries, rangeOverlaps } from '../utils/tokenBoundaries.js';
 import { createHighlightSignature } from './useSpanLabeling.js';
-import { PromptContext } from '../../../utils/PromptContext';
+import { PromptContext } from '@utils/PromptContext';
 
 // Debug flag for highlight logging
 const DEBUG_HIGHLIGHTS = true;

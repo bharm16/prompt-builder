@@ -1,6 +1,6 @@
 import { MODEL_CONFIG } from '../config/modelConfig.js';
 import { normalizeWeights, sigmoid } from '../utils/statisticsHelpers.js';
-import { logger } from '../../infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger.ts';
 
 /**
  * Service responsible for managing the machine learning quality model

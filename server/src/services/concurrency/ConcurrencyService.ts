@@ -1,5 +1,5 @@
-import { logger } from '../../infrastructure/Logger.ts';
-import { metricsService } from '../../infrastructure/MetricsService.ts';
+import { logger } from '@infrastructure/Logger.ts';
+import { metricsService } from '@infrastructure/MetricsService.ts';
 
 /**
  * ConcurrencyService - Manages concurrent API request limits with priority queue

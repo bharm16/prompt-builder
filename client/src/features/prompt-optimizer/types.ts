@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { User } from '../../../hooks/types';
+import type { User } from '@hooks/types';
 
 /**
  * Prompt optimization mode configuration

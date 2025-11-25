@@ -5,7 +5,7 @@
  * Each method returns a Promise that resolves with the API response data.
  */
 
-import { API_CONFIG } from '../../../../../config/api.config';
+import { API_CONFIG } from '@config/api.config';
 
 /**
  * Default headers for span labeling API requests

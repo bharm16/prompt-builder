@@ -15,10 +15,10 @@ import { PromptResultsSection } from '../components/PromptResultsSection';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
-import DebugButton from '../../../components/DebugButton';
-import { useToast } from '../../../components/Toast';
-import { useKeyboardShortcuts } from '../../../components/KeyboardShortcuts';
-import { getAuthRepository } from '../../../repositories';
+import DebugButton from '@components/DebugButton';
+import { useToast } from '@components/Toast';
+import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
+import { getAuthRepository } from '@/repositories';
 import {
   usePromptLoader,
   useHighlightsPersistence,

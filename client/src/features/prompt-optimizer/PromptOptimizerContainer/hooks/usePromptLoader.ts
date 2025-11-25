@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getPromptRepository } from '../../../../repositories';
+import { getPromptRepository } from '@/repositories';
 import { createHighlightSignature } from '../../hooks/useSpanLabeling.ts';
-import { PromptContext } from '../../../../utils/PromptContext';
-import type { Toast } from '../../../../hooks/types';
+import { PromptContext } from '@utils/PromptContext';
+import type { Toast } from '@hooks/types';
 
 interface PromptData {
   id?: string;

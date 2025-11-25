@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useToast } from '../../../components/Toast';
-import type { Toast } from '../../../hooks/types';
+import { useToast } from '@components/Toast';
+import type { Toast } from '@hooks/types';
 
 /**
  * Custom hook for generating and sharing links with toast feedback

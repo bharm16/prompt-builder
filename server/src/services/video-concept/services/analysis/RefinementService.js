@@ -1,6 +1,6 @@
-import { logger } from '../../../../infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
-import { refinementsOutputSchema } from '../../../../utils/validation.js';
+import { logger } from '@infrastructure/Logger.ts';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { refinementsOutputSchema } from '@utils/validation.js';
 
 /**
  * Service responsible for refining video scene elements for better coherence.

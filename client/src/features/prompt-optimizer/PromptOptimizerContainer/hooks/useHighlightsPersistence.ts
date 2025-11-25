@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { getPromptRepository } from '../../../../repositories';
-import type { Toast } from '../../../../hooks/types';
+import { getPromptRepository } from '@/repositories';
+import type { Toast } from '@hooks/types';
 
 interface Span {
   id?: string;

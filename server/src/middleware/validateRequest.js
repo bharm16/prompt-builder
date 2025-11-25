@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger.ts';
 
 /**
  * Middleware factory for request validation using Joi schemas

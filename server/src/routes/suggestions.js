@@ -1,5 +1,5 @@
 import express from 'express';
-import { logger } from '../infrastructure/Logger.ts';
+import { logger } from '@infrastructure/Logger.ts';
 import { LLMJudgeService } from '../services/quality-feedback/services/LLMJudgeService.js';
 
 /**

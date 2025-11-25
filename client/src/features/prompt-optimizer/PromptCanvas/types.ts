@@ -3,7 +3,7 @@
  */
 
 import type { Mode } from '../context/types';
-import type { PromptContext } from '../../../utils/PromptContext/PromptContext';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
 
 export interface SpansData {
   spans: unknown[];

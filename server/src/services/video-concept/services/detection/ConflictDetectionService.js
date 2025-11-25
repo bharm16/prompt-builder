@@ -1,6 +1,6 @@
-import { logger } from '../../../../infrastructure/Logger.ts';
-import { StructuredOutputEnforcer } from '../../../../utils/StructuredOutputEnforcer.js';
-import { conflictsOutputSchema } from '../../../../utils/validation.js';
+import { logger } from '@infrastructure/Logger.ts';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { conflictsOutputSchema } from '@utils/validation.js';
 import {
   detectDescriptorCategory,
 } from '../../config/descriptorCategories.js';

@@ -1,6 +1,6 @@
 import CircuitBreaker from 'opossum';
-import { logger } from '../infrastructure/Logger.ts';
-import { metricsService } from '../infrastructure/MetricsService.ts';
+import { logger } from '@infrastructure/Logger.ts';
+import { metricsService } from '@infrastructure/MetricsService.ts';
 import type { IAIClient, AIResponse } from '../interfaces/IAIClient.ts';
 
 /**

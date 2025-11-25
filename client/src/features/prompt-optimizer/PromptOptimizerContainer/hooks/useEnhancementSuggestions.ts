@@ -17,7 +17,7 @@
 
 import { useSuggestionApply } from './useSuggestionApply';
 import { useSuggestionFetch } from './useSuggestionFetch';
-import type { Toast } from '../../../../hooks/types';
+import type { Toast } from '@hooks/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;

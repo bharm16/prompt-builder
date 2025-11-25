@@ -5,8 +5,8 @@
 import type { ReactNode } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import type { PromptHistoryEntry } from '../../../hooks/types';
-import type { PromptContext } from '../../../utils/PromptContext/PromptContext';
+import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
 
 export interface User {
   uid: string;

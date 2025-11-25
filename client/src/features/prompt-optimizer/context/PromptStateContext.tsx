@@ -8,9 +8,9 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Video } from 'lucide-react';
-import { usePromptOptimizer } from '../../../hooks/usePromptOptimizer';
-import { usePromptHistory } from '../../../hooks/usePromptHistory';
-import { PromptContext } from '../../../utils/PromptContext/PromptContext';
+import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
+import { usePromptHistory } from '@hooks/usePromptHistory';
+import { PromptContext } from '@utils/PromptContext/PromptContext';
 import { createHighlightSignature } from '../hooks/useSpanLabeling';
 import type {
   PromptStateContextValue,
