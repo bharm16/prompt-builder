@@ -14,6 +14,6 @@ if (process.env.NODE_ENV === 'development') {
   );
 }
 
-export * from '../../span-highlighting/hooks/useHighlightRendering.js';
+export * from '../../span-highlighting/hooks/useHighlightRendering';
 export * from '../../span-highlighting/hooks/useHighlightFingerprint';
 

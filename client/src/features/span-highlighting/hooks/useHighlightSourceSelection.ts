@@ -1,0 +1,124 @@
+import { useMemo } from 'react';
+import { createHighlightSignature } from './useSpanLabeling';
+
+export interface SpanData {
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
+}
+
+export interface HighlightSourceResult {
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
+  signature: string;
+  cacheId: string | null;
+  source: 'draft' | 'refined' | 'persisted';
+}
+
+export interface UseHighlightSourceSelectionOptions {
+  draftSpans?: SpanData | null;
+  refinedSpans?: SpanData | null;
+  isDraftReady?: boolean;
+  isRefining?: boolean;
+  initialHighlights?: {
+    spans: Array<{
+      start: number;
+      end: number;
+      category: string;
+      confidence: number;
+    }>;
+    meta?: Record<string, unknown> | null;
+    signature?: string;
+    cacheId?: string | null;
+  } | null;
+  promptUuid?: string | null;
+  displayedPrompt?: string | null;
+  enableMLHighlighting?: boolean;
+  initialHighlightsVersion?: number;
+}
+
+/**
+ * Determines which highlight source to use based on priority:
+ * 1. Draft spans (instant ~300ms highlights)
+ * 2. Refined spans (updated after refinement completes)
+ * 3. Persisted spans (loaded from history)
+ */
+export function useHighlightSourceSelection({
+  draftSpans,
+  refinedSpans,
+  isDraftReady,
+  isRefining,
+  initialHighlights,
+  promptUuid,
+  displayedPrompt,
+  enableMLHighlighting,
+  initialHighlightsVersion,
+}: UseHighlightSourceSelectionOptions): HighlightSourceResult | null {
+  return useMemo(() => {
+    if (!enableMLHighlighting) {
+      return null;
+    }
+
+    // PRIORITY 1: Use draft spans if available and we're showing draft text
+    // This provides instant highlights at ~300ms
+    if (draftSpans && isDraftReady && !refinedSpans) {
+      const signature = createHighlightSignature(displayedPrompt ?? '');
+      return {
+        spans: draftSpans.spans || [],
+        meta: draftSpans.meta || null,
+        signature,
+        cacheId: promptUuid ? String(promptUuid) : null,
+        source: 'draft',
+      };
+    }
+
+    // PRIORITY 2: Use refined spans if available
+    // This provides updated highlights when refinement completes
+    if (refinedSpans && !isRefining) {
+      const signature = createHighlightSignature(displayedPrompt ?? '');
+      return {
+        spans: refinedSpans.spans || [],
+        meta: refinedSpans.meta || null,
+        signature,
+        cacheId: promptUuid ? String(promptUuid) : null,
+        source: 'refined',
+      };
+    }
+
+    // PRIORITY 3: Fallback to persisted highlights (e.g., loaded from history)
+    if (initialHighlights && Array.isArray(initialHighlights.spans)) {
+      const resolvedSignature =
+        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+
+      return {
+        spans: initialHighlights.spans,
+        meta: initialHighlights.meta ?? null,
+        signature: resolvedSignature,
+        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: 'persisted',
+      };
+    }
+
+    return null;
+  }, [
+    enableMLHighlighting,
+    draftSpans,
+    refinedSpans,
+    isDraftReady,
+    isRefining,
+    initialHighlights,
+    initialHighlightsVersion,
+    promptUuid,
+    displayedPrompt,
+  ]);
+}
+

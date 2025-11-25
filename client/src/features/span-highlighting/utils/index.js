@@ -11,7 +11,7 @@ export {
   mapGlobalRangeToDom,
   surroundRange,
   wrapRangeSegments,
-} from './anchorRanges.js';
+} from './anchorRanges';
 
 // DOM utilities - Highlight wrapper management
 export {
@@ -19,73 +19,73 @@ export {
   enhanceWrapperWithMetadata,
   unwrapHighlight,
   logEmptyWrappers,
-} from './domManipulation.js';
+} from './domManipulation';
 
 // DOM utilities - Coverage tracking
 export {
   hasOverlap,
   addToCoverage,
-} from './coverageTracking.js';
+} from './coverageTracking';
 
 // Validation - Category and taxonomy validation
 export {
   validateSpan,
   CATEGORY_CAPS,
   LEGACY_MAPPINGS,
-} from './categoryValidators.js';
+} from './categoryValidators';
 
 // Validation - Span structure validation
 export {
   sanitizeSpans,
   normalizeSpan,
-} from './spanValidation.js';
+} from './spanValidation';
 
 // Validation - Token boundaries
 export {
   isWordBoundary,
   snapSpanToTokenBoundaries,
   rangeOverlaps,
-} from './tokenBoundaries.js';
+} from './tokenBoundaries';
 
 // Processing - Business logic for spans
 export {
   findNearbySpans,
   buildSimplifiedSpans,
   prepareSpanContext,
-} from './spanProcessing.js';
+} from './spanProcessing';
 
 // Processing - Rendering preparation
 export {
   hasValidOffsets,
   snapSpan,
   processAndSortSpans,
-} from './spanRenderingUtils.js';
+} from './spanRenderingUtils';
 
 // Processing - Text matching
 export {
   normalizeText,
   isSubstringMatch,
   validateHighlightText,
-} from './textMatching.js';
+} from './textMatching';
 
 // Processing - Highlight format conversion
 export {
   convertLabeledSpansToHighlights,
-} from './highlightConversion.js';
+} from './highlightConversion';
 
 // Cache utilities - Hashing
 export {
   hashString,
-} from './hashing.js';
+} from './hashing';
 
 // Cache utilities - Cache key generation
 export {
   buildCacheKey,
-} from './cacheKey.js';
+} from './cacheKey';
 
 // Cache utilities - Text processing
 export {
   sanitizeText,
   serializePolicy,
-} from './textUtils.js';
+} from './textUtils';
 

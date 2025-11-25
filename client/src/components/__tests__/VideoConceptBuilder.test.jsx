@@ -23,7 +23,7 @@ import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest';
 import VideoConceptBuilder from '../VideoConceptBuilder'; // Import from folder index
 
 // Mock VideoConceptApi at service boundary (not fetch!)
-vi.mock('../VideoConceptBuilder/api/videoConceptApi.js', () => ({
+vi.mock('../VideoConceptBuilder/api/videoConceptApi', () => ({
   VideoConceptApi: {
     validateElements: vi.fn(),
     checkCompatibility: vi.fn(),
@@ -88,7 +88,7 @@ vi.mock('../../utils/subjectDescriptorCategories.js', () => ({
   detectDescriptorCategoryClient: vi.fn(() => ({ confidence: 0.5 })),
 }));
 
-import { VideoConceptApi } from '../VideoConceptBuilder/api/videoConceptApi.js';
+import { VideoConceptApi } from '../VideoConceptBuilder/api/videoConceptApi';
 
 describe('VideoConceptBuilder', () => {
   // ============================================

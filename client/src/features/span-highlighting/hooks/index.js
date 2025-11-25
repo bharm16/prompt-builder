@@ -8,12 +8,12 @@
 export {
   useSpanLabeling,
   createHighlightSignature,
-} from './useSpanLabeling.js';
+} from './useSpanLabeling';
 
-export { useHighlightRendering } from './useHighlightRendering.js';
+export { useHighlightRendering } from './useHighlightRendering';
 
 // Supporting hooks
 export { useHighlightFingerprint } from './useHighlightFingerprint';
-export { useHighlightSourceSelection } from './useHighlightSourceSelection.js';
-export { useProgressiveSpanRendering } from './useProgressiveSpanRendering.js';
+export { useHighlightSourceSelection } from './useHighlightSourceSelection';
+export { useProgressiveSpanRendering } from './useProgressiveSpanRendering';
 

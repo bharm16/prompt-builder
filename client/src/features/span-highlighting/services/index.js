@@ -5,10 +5,10 @@
  */
 
 // Cache service
-export { spanLabelingCache } from './SpanLabelingCache.js';
+export { spanLabelingCache } from './SpanLabelingCache';
 
 // Storage adapters
 export {
   getCacheStorage,
-} from './storageAdapter.js';
+} from './storageAdapter';
 

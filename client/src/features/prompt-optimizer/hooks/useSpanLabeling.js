@@ -14,5 +14,5 @@ if (process.env.NODE_ENV === 'development') {
   );
 }
 
-export * from '../../span-highlighting/hooks/useSpanLabeling.js';
+export * from '../../span-highlighting/hooks/useSpanLabeling';
 

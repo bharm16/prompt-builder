@@ -14,5 +14,5 @@ if (process.env.NODE_ENV === 'development') {
   );
 }
 
-export * from '../features/span-highlighting/utils/categoryValidators.js';
+export * from '../features/span-highlighting/utils/categoryValidators';
 

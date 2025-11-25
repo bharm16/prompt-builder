@@ -33,7 +33,7 @@ export {
   buildTextNodeIndex,
   wrapRangeSegments,
   mapGlobalRangeToDom,
-} from './utils/anchorRanges.js';
+} from './utils/anchorRanges';
 
 // Validation - Most commonly used
 export {
@@ -48,7 +48,7 @@ export {
   findNearbySpans,
   buildSimplifiedSpans,
   prepareSpanContext,
-} from './utils/spanProcessing.js';
+} from './utils/spanProcessing';
 
 // Cache utilities - Most commonly used
 export {
