@@ -1,38 +1,52 @@
-const DEFAULT_SEGMENTER = typeof Intl !== 'undefined'
-  ? new Intl.Segmenter('en', { granularity: 'grapheme' })
-  : null;
+interface GraphemeSegment {
+  segment: string;
+  index: number;
+  start: number;
+  end: number;
+}
+
+interface CanonicalTextOptions {
+  segmenter?: Intl.Segmenter | null;
+}
+
+const DEFAULT_SEGMENTER: Intl.Segmenter | null =
+  typeof Intl !== 'undefined' ? new Intl.Segmenter('en', { granularity: 'grapheme' }) : null;
 
 export class CanonicalText {
-  constructor(input = '', { segmenter = DEFAULT_SEGMENTER } = {}) {
+  private readonly original: string;
+  private readonly normalized: string;
+  private readonly segmenter: Intl.Segmenter | null;
+  private _graphemes: GraphemeSegment[] | null = null;
+  private _graphemeStarts: number[] | null = null;
+
+  constructor(input: string = '', { segmenter = DEFAULT_SEGMENTER }: CanonicalTextOptions = {}) {
     this.original = input ?? '';
     this.normalized = typeof input === 'string' ? input.normalize('NFC') : '';
     this.segmenter = segmenter;
-    this._graphemes = null;
-    this._graphemeStarts = null;
   }
 
-  get length() {
+  get length(): number {
     return this.graphemes.length;
   }
 
-  get graphemes() {
+  get graphemes(): GraphemeSegment[] {
     if (this._graphemes) return this._graphemes;
     if (!this.segmenter) {
       // Fallback: treat each code unit as a grapheme (not ideal but keeps pipeline alive)
-      const graphemes = [...this.normalized].map((char, index) => ({
+      const graphemes: GraphemeSegment[] = [...this.normalized].map((char, index) => ({
         segment: char,
         index,
         start: index,
         end: index + char.length,
       }));
       this._graphemes = graphemes;
-      this._graphemeStarts = graphemes.map(g => g.start);
+      this._graphemeStarts = graphemes.map((g) => g.start);
       this._graphemeStarts.push(this.normalized.length);
       return this._graphemes;
     }
 
-    const graphemes = [];
-    const starts = [];
+    const graphemes: GraphemeSegment[] = [];
+    const starts: number[] = [];
     let currentIndex = 0;
     for (const segment of this.segmenter.segment(this.normalized)) {
       graphemes.push({
@@ -50,28 +64,28 @@ export class CanonicalText {
     return this._graphemes;
   }
 
-  toCodePoint(index) {
+  toCodePoint(index: number): number {
     return this.codeUnitOffsetForGrapheme(index);
   }
 
-  codeUnitOffsetForGrapheme(index) {
+  codeUnitOffsetForGrapheme(index: number): number {
     if (index <= 0) return 0;
     if (index >= this.length) return this.normalized.length;
     if (!this._graphemeStarts) {
       this.graphemes; // ensure cache built
     }
-    return this._graphemeStarts[index];
+    return this._graphemeStarts![index]!;
   }
 
-  graphemeIndexForCodeUnit(offset) {
+  graphemeIndexForCodeUnit(offset: number): number {
     if (offset <= 0) return 0;
     if (offset >= this.normalized.length) return this.length;
     if (!this._graphemeStarts) {
       this.graphemes;
     }
-    for (let i = 0; i < this._graphemeStarts.length - 1; i += 1) {
-      const start = this._graphemeStarts[i];
-      const end = this._graphemeStarts[i + 1];
+    for (let i = 0; i < this._graphemeStarts!.length - 1; i += 1) {
+      const start = this._graphemeStarts![i]!;
+      const end = this._graphemeStarts![i + 1]!;
       if (offset >= start && offset < end) {
         return i;
       }
@@ -79,7 +93,7 @@ export class CanonicalText {
     return this.length;
   }
 
-  sliceGraphemes(start, end) {
+  sliceGraphemes(start: number, end: number): string {
     const normalizedStart = Math.max(0, Math.min(this.length, start));
     const normalizedEnd = Math.max(normalizedStart, Math.min(this.length, end));
     const codeStart = this.codeUnitOffsetForGrapheme(normalizedStart);
@@ -87,7 +101,7 @@ export class CanonicalText {
     return this.normalized.slice(codeStart, codeEnd);
   }
 
-  toJSON() {
+  toJSON(): { original: string; normalized: string; length: number } {
     return {
       original: this.original,
       normalized: this.normalized,
@@ -96,5 +110,6 @@ export class CanonicalText {
   }
 }
 
-export const createCanonicalText = (input, options) =>
+export const createCanonicalText = (input: string, options?: CanonicalTextOptions): CanonicalText =>
   new CanonicalText(input, options);
+

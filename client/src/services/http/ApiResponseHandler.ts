@@ -1,11 +1,18 @@
 import { ApiError } from './ApiError';
+import type { ApiErrorFactory } from './ApiErrorFactory';
+
+interface SafeParseOptions {
+  allowEmpty?: boolean;
+}
 
 export class ApiResponseHandler {
-  constructor({ errorFactory }) {
+  private readonly errorFactory: ApiErrorFactory;
+
+  constructor(errorFactory: ApiErrorFactory) {
     this.errorFactory = errorFactory;
   }
 
-  async handle(response) {
+  async handle(response: Response | null): Promise<unknown> {
     if (!response) {
       throw this.errorFactory.create({ message: 'Empty response received' });
     }
@@ -13,8 +20,12 @@ export class ApiResponseHandler {
     if (!response.ok) {
       const errorPayload = await this.safeParseJson(response, { allowEmpty: true });
       const message =
-        errorPayload?.error ||
-        errorPayload?.message ||
+        (errorPayload && typeof errorPayload === 'object' && 'error' in errorPayload && typeof errorPayload.error === 'string'
+          ? errorPayload.error
+          : null) ||
+        (errorPayload && typeof errorPayload === 'object' && 'message' in errorPayload && typeof errorPayload.message === 'string'
+          ? errorPayload.message
+          : null) ||
         `HTTP ${response.status}`;
 
       throw this.errorFactory.create({
@@ -31,19 +42,22 @@ export class ApiResponseHandler {
     return this.safeParseJson(response, { allowEmpty: true });
   }
 
-  mapError(error) {
+  mapError(error: unknown): ApiError {
     if (error instanceof ApiError) {
       return error;
     }
 
-    if (error?.name === 'AbortError' || error?.name === 'TimeoutError') {
-      return this.errorFactory.createTimeout();
+    if (error && typeof error === 'object' && 'name' in error) {
+      const name = error.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        return this.errorFactory.createTimeout();
+      }
     }
 
     return this.errorFactory.createNetwork(error);
   }
 
-  async safeParseJson(response, { allowEmpty = false } = {}) {
+  async safeParseJson(response: Response, { allowEmpty = false }: SafeParseOptions = {}): Promise<unknown> {
     try {
       return await response.json();
     } catch (error) {
@@ -58,8 +72,9 @@ export class ApiResponseHandler {
     }
   }
 
-  isEmptyBody(response) {
+  private isEmptyBody(response: Response): boolean {
     const contentLength = response.headers.get('content-length');
     return response.status === 204 || contentLength === '0' || contentLength === null;
   }
 }
+

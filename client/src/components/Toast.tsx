@@ -1,11 +1,34 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle, type LucideIcon } from 'lucide-react';
+
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+interface Toast {
+  id: number;
+  message: string;
+  type: ToastType;
+  duration: number;
+}
+
+interface ToastContextValue {
+  success: (message: string, duration?: number) => void;
+  error: (message: string, duration?: number) => void;
+  warning: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number) => void;
+}
+
+interface ToastConfig {
+  icon: LucideIcon;
+  className: string;
+  iconClassName: string;
+  ariaLabel: string;
+}
 
 // Toast Context for managing toasts globally
-const ToastContext = createContext();
+const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 // Custom hook to use toast functionality
-export const useToast = () => {
+export const useToast = (): ToastContextValue => {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
@@ -13,13 +36,17 @@ export const useToast = () => {
   return context;
 };
 
-// Toast Provider Component
-export function ToastProvider({ children }) {
-  const [toasts, setToasts] = useState([]);
+interface ToastProviderProps {
+  children: ReactNode;
+}
 
-  const addToast = useCallback((message, type = 'info', duration = 4000) => {
+// Toast Provider Component
+export function ToastProvider({ children }: ToastProviderProps): React.ReactElement {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000): number => {
     const id = Date.now() + Math.random();
-    const toast = { id, message, type, duration };
+    const toast: Toast = { id, message, type, duration };
 
     setToasts((prev) => [...prev, toast]);
 
@@ -33,15 +60,15 @@ export function ToastProvider({ children }) {
     return id;
   }, []);
 
-  const removeToast = useCallback((id) => {
+  const removeToast = useCallback((id: number): void => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
-  const toast = {
-    success: (message, duration) => addToast(message, 'success', duration),
-    error: (message, duration) => addToast(message, 'error', duration),
-    warning: (message, duration) => addToast(message, 'warning', duration),
-    info: (message, duration) => addToast(message, 'info', duration),
+  const toast: ToastContextValue = {
+    success: (message: string, duration?: number) => addToast(message, 'success', duration),
+    error: (message: string, duration?: number) => addToast(message, 'error', duration),
+    warning: (message: string, duration?: number) => addToast(message, 'warning', duration),
+    info: (message: string, duration?: number) => addToast(message, 'info', duration),
   };
 
   return (
@@ -52,8 +79,13 @@ export function ToastProvider({ children }) {
   );
 }
 
+interface ToastContainerProps {
+  toasts: Toast[];
+  onRemove: (id: number) => void;
+}
+
 // Toast Container Component
-function ToastContainer({ toasts, onRemove }) {
+function ToastContainer({ toasts, onRemove }: ToastContainerProps): React.ReactElement {
   return (
     <div
       className="fixed top-4 right-4 z-toast flex flex-col gap-2 pointer-events-none"
@@ -63,22 +95,29 @@ function ToastContainer({ toasts, onRemove }) {
       aria-label="Notifications"
     >
       {toasts.map((toast) => (
-        <Toast key={toast.id} {...toast} onClose={() => onRemove(toast.id)} />
+        <ToastItem key={toast.id} {...toast} onClose={() => onRemove(toast.id)} />
       ))}
     </div>
   );
 }
 
+interface ToastItemProps {
+  id: number;
+  message: string;
+  type: ToastType;
+  onClose: () => void;
+}
+
 // Individual Toast Component
-function Toast({ id, message, type, onClose }) {
+function ToastItem({ id, message, type, onClose }: ToastItemProps): React.ReactElement {
   const [isExiting, setIsExiting] = useState(false);
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     setIsExiting(true);
     setTimeout(onClose, 200); // Match animation duration
   };
 
-  const config = {
+  const config: Record<ToastType, ToastConfig> = {
     success: {
       icon: CheckCircle,
       className: 'bg-success-50 border-success-200 text-success-900',
@@ -140,3 +179,4 @@ function Toast({ id, message, type, onClose }) {
 }
 
 export default Toast;
+

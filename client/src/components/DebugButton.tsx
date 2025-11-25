@@ -1,3 +1,17 @@
+import React, { type CSSProperties } from 'react';
+import { usePromptDebugger } from '../hooks/usePromptDebugger';
+import type { PromptDebuggerState } from '../hooks/types';
+
+interface DebugButtonProps {
+  inputPrompt: string;
+  displayedPrompt?: string;
+  optimizedPrompt?: string;
+  selectedMode?: string;
+  promptContext?: unknown;
+  style?: CSSProperties;
+  className?: string;
+}
+
 /**
  * Debug Button Component
  *
@@ -13,10 +27,6 @@
  *   promptContext={promptContext}
  * />
  */
-
-import React from 'react';
-import { usePromptDebugger } from '../hooks/usePromptDebugger';
-
 export default function DebugButton({
   inputPrompt,
   displayedPrompt,
@@ -24,17 +34,19 @@ export default function DebugButton({
   selectedMode,
   promptContext,
   style = {},
-  className = ''
-}) {
-  const { capturePromptData, exportToFile, isCapturing } = usePromptDebugger({
+  className = '',
+}: DebugButtonProps): React.ReactElement {
+  const state: PromptDebuggerState = {
     inputPrompt,
     displayedPrompt,
     optimizedPrompt,
     selectedMode,
-    promptContext
-  });
+    promptContext,
+  };
 
-  const handleCapture = async () => {
+  const { capturePromptData, exportToFile, isCapturing } = usePromptDebugger(state);
+
+  const handleCapture = async (): Promise<void> => {
     try {
       await capturePromptData();
       // Data is automatically logged to console and saved
@@ -44,7 +56,7 @@ export default function DebugButton({
     }
   };
 
-  const handleExport = () => {
+  const handleExport = (): void => {
     try {
       exportToFile();
     } catch (error) {
@@ -63,7 +75,7 @@ export default function DebugButton({
         display: 'flex',
         gap: '10px',
         zIndex: 9999,
-        ...style
+        ...style,
       }}
     >
       <button
@@ -82,20 +94,22 @@ export default function DebugButton({
           transition: 'all 0.2s',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
         }}
-        onMouseEnter={(e) => {
+        onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
           if (!isCapturing) {
-            e.target.style.backgroundColor = '#2563eb';
-            e.target.style.transform = 'translateY(-1px)';
-            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            const target = e.currentTarget;
+            target.style.backgroundColor = '#2563eb';
+            target.style.transform = 'translateY(-1px)';
+            target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
           }
         }}
-        onMouseLeave={(e) => {
+        onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
           if (!isCapturing) {
-            e.target.style.backgroundColor = '#3b82f6';
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            const target = e.currentTarget;
+            target.style.backgroundColor = '#3b82f6';
+            target.style.transform = 'translateY(0)';
+            target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
           }
         }}
         title="Capture prompt data with all highlights and AI suggestions"
@@ -128,17 +142,19 @@ export default function DebugButton({
           transition: 'all 0.2s',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
         }}
-        onMouseEnter={(e) => {
-          e.target.style.backgroundColor = '#059669';
-          e.target.style.transform = 'translateY(-1px)';
-          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+        onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+          const target = e.currentTarget;
+          target.style.backgroundColor = '#059669';
+          target.style.transform = 'translateY(-1px)';
+          target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
         }}
-        onMouseLeave={(e) => {
-          e.target.style.backgroundColor = '#10b981';
-          e.target.style.transform = 'translateY(0)';
-          e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+        onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+          const target = e.currentTarget;
+          target.style.backgroundColor = '#10b981';
+          target.style.transform = 'translateY(0)';
+          target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
         }}
         title="Export last capture to JSON file"
       >
@@ -148,3 +164,4 @@ export default function DebugButton({
     </div>
   );
 }
+

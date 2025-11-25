@@ -1,14 +1,11 @@
 /**
- * Utility function for merging Tailwind CSS classes
- * Handles conditional classes and removes duplicates
- * 
- * @param {...(string|string[]|Object|undefined|null|boolean)} classes - Classes to merge
- * @returns {string} Merged class string
- * 
+ * Utility function for merging Tailwind CSS classes.
+ * Handles conditional classes and removes duplicates.
+ *
  * @example
  * cn('base-class', condition && 'conditional-class', ['array', 'classes'])
  */
-export function cn(...classes) {
+export function cn(...classes: Array<string | string[] | Record<string, boolean> | undefined | null | boolean>): string {
   return classes
     .flat()
     .filter((cls) => {
@@ -21,3 +18,4 @@ export function cn(...classes) {
 }
 
 export default cn;
+

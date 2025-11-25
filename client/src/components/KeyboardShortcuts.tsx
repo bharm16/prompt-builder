@@ -1,8 +1,38 @@
 import React, { useEffect } from 'react';
 import { X, Command, Keyboard } from 'lucide-react';
 
+interface ShortcutItem {
+  keys: string[];
+  description: string;
+  id: string;
+}
+
+interface ShortcutCategory {
+  category: string;
+  items: ShortcutItem[];
+}
+
+interface KeyboardShortcutsCallbacks {
+  openShortcuts?: () => void;
+  openSettings?: () => void;
+  createNew?: () => void;
+  optimize?: () => void;
+  canCopy?: () => boolean;
+  copy?: () => void;
+  export?: () => void;
+  toggleSidebar?: () => void;
+  switchMode?: (index: number) => void;
+  applySuggestion?: (index: number) => void;
+  closeModal?: () => void;
+}
+
+interface KeyboardShortcutsProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 // Keyboard shortcuts configuration
-export const SHORTCUTS = [
+export const SHORTCUTS: ShortcutCategory[] = [
   {
     category: 'General',
     items: [
@@ -43,15 +73,15 @@ const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase
 const modKey = isMac ? 'Cmd' : 'Ctrl';
 
 // Format shortcut keys for display
-export const formatShortcut = (keys) => {
+export const formatShortcut = (keys: string[]): string[] => {
   return keys.map((key) => (key === 'Cmd' ? modKey : key));
 };
 
 // KeyboardShortcuts Panel Component
-export default function KeyboardShortcuts({ isOpen, onClose }) {
+export default function KeyboardShortcuts({ isOpen, onClose }: KeyboardShortcutsProps): React.ReactElement | null {
   // Close on Escape key
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
@@ -61,6 +91,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }) {
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
+    return undefined;
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -73,10 +104,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }) {
       aria-modal="true"
       aria-labelledby="shortcuts-title"
     >
-      <div
-        className="modal-content-lg animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-content-lg animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="card-header flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
           <div className="flex items-center gap-3">
@@ -108,9 +136,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }) {
                       key={itemIdx}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50 transition-colors duration-150"
                     >
-                      <span className="text-sm text-neutral-700">
-                        {shortcut.description}
-                      </span>
+                      <span className="text-sm text-neutral-700">{shortcut.description}</span>
                       <div className="flex items-center gap-1">
                         {formatShortcut(shortcut.keys).map((key, keyIdx) => (
                           <React.Fragment key={keyIdx}>
@@ -162,9 +188,9 @@ export default function KeyboardShortcuts({ isOpen, onClose }) {
 }
 
 // Custom hook for handling keyboard shortcuts
-export const useKeyboardShortcuts = (callbacks) => {
+export const useKeyboardShortcuts = (callbacks: KeyboardShortcutsCallbacks): void => {
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       const isMod = isMac ? e.metaKey : e.ctrlKey;
 
       // Cmd/Ctrl + K - Open shortcuts
@@ -195,7 +221,7 @@ export const useKeyboardShortcuts = (callbacks) => {
       if (isMod && e.key === 'c' && callbacks.canCopy?.()) {
         // Check if there's a text selection
         const selection = window.getSelection();
-        const selectedText = selection.toString().trim();
+        const selectedText = selection?.toString().trim();
 
         // Only intercept if there's no text selection
         // This allows normal browser copy to work when text is selected
@@ -241,3 +267,4 @@ export const useKeyboardShortcuts = (callbacks) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [callbacks]);
 };
+

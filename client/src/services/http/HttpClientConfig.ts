@@ -1,14 +1,32 @@
+interface HttpClientConfigOptions {
+  baseURL: string;
+  timeout?: number | undefined;
+  defaultHeaders?: Record<string, string>;
+}
+
+interface ApiConfig {
+  baseURL: string;
+  timeout?: {
+    default?: number;
+  };
+  apiKey: string;
+}
+
 export class HttpClientConfig {
-  constructor({ baseURL, timeout, defaultHeaders = {} }) {
+  private readonly baseURL: string;
+  private readonly timeout: number | undefined;
+  private readonly defaultHeaders: Record<string, string>;
+
+  constructor({ baseURL, timeout, defaultHeaders = {} }: HttpClientConfigOptions) {
     this.baseURL = baseURL;
     this.timeout = timeout;
     this.defaultHeaders = { ...defaultHeaders };
   }
 
-  static fromApiConfig(apiConfig) {
+  static fromApiConfig(apiConfig: ApiConfig): HttpClientConfig {
     return new HttpClientConfig({
       baseURL: apiConfig.baseURL,
-      timeout: apiConfig.timeout?.default,
+      timeout: apiConfig.timeout?.default ?? undefined,
       defaultHeaders: {
         'Content-Type': 'application/json',
         'X-API-Key': apiConfig.apiKey,
@@ -16,7 +34,7 @@ export class HttpClientConfig {
     });
   }
 
-  buildUrl(endpoint = '') {
+  buildUrl(endpoint: string = ''): string {
     if (!endpoint) {
       return this.baseURL;
     }
@@ -35,21 +53,22 @@ export class HttpClientConfig {
     return `${this.baseURL}${endpoint}`;
   }
 
-  mergeHeaders(headers = {}) {
+  mergeHeaders(headers: Record<string, string> = {}): Record<string, string> {
     return {
       ...this.defaultHeaders,
       ...headers,
     };
   }
 
-  createSignal(timeout) {
+  createSignal(timeout?: number): AbortSignal {
     const effectiveTimeout = Number.isFinite(timeout) ? timeout : this.timeout;
-    if (typeof AbortSignal?.timeout === 'function') {
+    if (typeof AbortSignal?.timeout === 'function' && effectiveTimeout !== undefined) {
       return AbortSignal.timeout(effectiveTimeout);
     }
 
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), effectiveTimeout);
+    setTimeout(() => controller.abort(), effectiveTimeout ?? 0);
     return controller.signal;
   }
 }
+

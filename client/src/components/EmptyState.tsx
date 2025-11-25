@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   Sparkles,
   FileText,
@@ -9,21 +9,35 @@ import {
   Zap,
   Coffee,
   Inbox,
+  type LucideIcon,
 } from 'lucide-react';
 
-/**
- * EmptyState Component - Reusable empty state with illustrations
- *
- * Variants:
- * - history: No history items
- * - search: No search results
- * - welcome: First-time user welcome
- * - error: Error state
- * - loading: Loading state placeholder
- * - custom: Custom message with icon
- */
+type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
 
-const emptyStateConfig = {
+interface EmptyStateConfig {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  tips: string[];
+}
+
+interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+  icon?: LucideIcon;
+}
+
+interface EmptyStateProps {
+  variant?: EmptyStateVariant;
+  icon?: LucideIcon | null;
+  title?: string | null;
+  description?: string | null;
+  tips?: string[] | null;
+  action?: EmptyStateAction | null;
+  className?: string;
+}
+
+const emptyStateConfig: Record<EmptyStateVariant, EmptyStateConfig> = {
   history: {
     icon: Clock,
     title: 'No prompts yet',
@@ -94,7 +108,7 @@ export default function EmptyState({
   tips = null,
   action = null,
   className = '',
-}) {
+}: EmptyStateProps): React.ReactElement {
   const config = emptyStateConfig[variant] || emptyStateConfig.inbox;
   const Icon = CustomIcon || config.icon;
   const displayTitle = title || config.title;
@@ -117,26 +131,22 @@ export default function EmptyState({
 
         {/* Icon container */}
         <div className="relative flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-50 to-secondary-50 rounded-full border-2 border-primary-200 animate-fade-in">
-          <Icon
-            className="h-10 w-10 text-primary-600 animate-pulse"
-            aria-hidden="true"
-          />
+          <Icon className="h-10 w-10 text-primary-600 animate-pulse" aria-hidden="true" />
         </div>
 
         {/* Floating sparkles decoration */}
         <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-bounce" aria-hidden="true" />
-        <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-400 rounded-full animate-bounce animation-delay-200" aria-hidden="true" />
+        <div
+          className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-400 rounded-full animate-bounce animation-delay-200"
+          aria-hidden="true"
+        />
       </div>
 
       {/* Title */}
-      <h3 className="text-xl font-bold text-neutral-900 mb-2">
-        {displayTitle}
-      </h3>
+      <h3 className="text-xl font-bold text-neutral-900 mb-2">{displayTitle}</h3>
 
       {/* Description */}
-      <p className="text-neutral-600 mb-6 max-w-md">
-        {displayDescription}
-      </p>
+      <p className="text-neutral-600 mb-6 max-w-md">{displayDescription}</p>
 
       {/* Tips */}
       {displayTips && displayTips.length > 0 && (
@@ -144,16 +154,11 @@ export default function EmptyState({
           <div className="text-left bg-white rounded-lg border-2 border-neutral-200 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <span className="text-sm font-semibold text-neutral-700">
-                Tips to get started:
-              </span>
+              <span className="text-sm font-semibold text-neutral-700">Tips to get started:</span>
             </div>
             <ul className="space-y-2">
               {displayTips.map((tip, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-2 text-sm text-neutral-600"
-                >
+                <li key={index} className="flex items-start gap-2 text-sm text-neutral-600">
                   <span
                     className="flex-shrink-0 w-5 h-5 flex items-center justify-center bg-primary-100 text-primary-600 rounded-full text-xs font-semibold mt-0.5"
                     aria-hidden="true"
@@ -170,11 +175,7 @@ export default function EmptyState({
 
       {/* Action Button */}
       {action && (
-        <button
-          onClick={action.onClick}
-          className="btn-primary animate-fade-in"
-          aria-label={action.label}
-        >
+        <button onClick={action.onClick} className="btn-primary animate-fade-in" aria-label={action.label}>
           {action.icon && <action.icon className="h-4 w-4" aria-hidden="true" />}
           <span>{action.label}</span>
         </button>
@@ -185,7 +186,11 @@ export default function EmptyState({
 
 // Specialized empty state variants for common use cases
 
-export function HistoryEmptyState({ onCreateNew }) {
+interface HistoryEmptyStateProps {
+  onCreateNew?: () => void;
+}
+
+export function HistoryEmptyState({ onCreateNew }: HistoryEmptyStateProps): React.ReactElement {
   return (
     <div className="p-4 text-center">
       {/* Empty state - no content when there's no history */}
@@ -193,15 +198,16 @@ export function HistoryEmptyState({ onCreateNew }) {
   );
 }
 
-export function SearchEmptyState({ searchQuery, onClearSearch }) {
+interface SearchEmptyStateProps {
+  searchQuery?: string;
+  onClearSearch?: () => void;
+}
+
+export function SearchEmptyState({ searchQuery, onClearSearch }: SearchEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="search"
-      description={
-        searchQuery
-          ? `No results found for "${searchQuery}"`
-          : 'Try adjusting your search terms'
-      }
+      description={searchQuery ? `No results found for "${searchQuery}"` : 'Try adjusting your search terms'}
       action={
         onClearSearch
           ? {
@@ -214,7 +220,11 @@ export function SearchEmptyState({ searchQuery, onClearSearch }) {
   );
 }
 
-export function WelcomeEmptyState({ onGetStarted }) {
+interface WelcomeEmptyStateProps {
+  onGetStarted?: () => void;
+}
+
+export function WelcomeEmptyState({ onGetStarted }: WelcomeEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="welcome"
@@ -231,7 +241,12 @@ export function WelcomeEmptyState({ onGetStarted }) {
   );
 }
 
-export function ErrorEmptyState({ onRetry, errorMessage }) {
+interface ErrorEmptyStateProps {
+  onRetry?: () => void;
+  errorMessage?: string;
+}
+
+export function ErrorEmptyState({ onRetry, errorMessage }: ErrorEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="error"
@@ -249,12 +264,11 @@ export function ErrorEmptyState({ onRetry, errorMessage }) {
   );
 }
 
-export function LoadingEmptyState({ message = 'Loading...' }) {
-  return (
-    <EmptyState
-      variant="loading"
-      description={message}
-      tips={[]}
-    />
-  );
+interface LoadingEmptyStateProps {
+  message?: string;
 }
+
+export function LoadingEmptyState({ message = 'Loading...' }: LoadingEmptyStateProps): React.ReactElement {
+  return <EmptyState variant="loading" description={message} tips={[]} />;
+}
+

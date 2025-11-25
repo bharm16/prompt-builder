@@ -1,15 +1,29 @@
-export class ApiRequestBuilder {
-  constructor(config) {
-    this.config = config;
-  }
+import type { HttpClientConfig } from './HttpClientConfig';
 
-  build(endpoint, options = {}) {
+interface RequestOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  signal?: AbortSignal;
+  timeout?: number;
+  fetchOptions?: RequestInit;
+}
+
+interface BuiltRequest {
+  url: string;
+  init: RequestInit;
+}
+
+export class ApiRequestBuilder {
+  constructor(private readonly config: HttpClientConfig) {}
+
+  build(endpoint: string, options: RequestOptions = {}): BuiltRequest {
     const method = options.method || 'GET';
     const url = this.config.buildUrl(endpoint);
     const headers = this.config.mergeHeaders(options.headers);
     const signal = options.signal || this.config.createSignal(options.timeout);
 
-    const init = {
+    const init: RequestInit = {
       method,
       headers,
       signal,
@@ -24,7 +38,7 @@ export class ApiRequestBuilder {
     return { url, init };
   }
 
-  serializeBody(method, body) {
+  private serializeBody(method: string, body: unknown): BodyInit | undefined {
     if (!body || method === 'GET' || method === 'HEAD') {
       return undefined;
     }
@@ -36,3 +50,4 @@ export class ApiRequestBuilder {
     return JSON.stringify(body);
   }
 }
+

@@ -1,11 +1,23 @@
 import React, { memo } from 'react';
 import { X, Info } from 'lucide-react';
 
+interface ContextData {
+  specificAspects?: string;
+  backgroundLevel?: string;
+  intendedUse?: string;
+  [key: string]: string | undefined;
+}
+
+interface ContextPreviewBadgeProps {
+  context?: ContextData | null;
+  onClear?: () => void;
+}
+
 /**
  * ContextPreviewBadge - Compact badge displaying context information
  * Shows a summary of active context fields with a tooltip and clear button
  */
-export const ContextPreviewBadge = memo(({ context, onClear }) => {
+export const ContextPreviewBadge = memo<ContextPreviewBadgeProps>(({ context, onClear }) => {
   if (!context || !Object.keys(context).some((k) => context[k])) {
     return null;
   }
@@ -22,7 +34,7 @@ export const ContextPreviewBadge = memo(({ context, onClear }) => {
   const fieldLabel = fieldCount === 1 ? 'field' : 'fields';
 
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm group relative">
       <Info className="h-3.5 w-3.5 text-blue-600" />
       <span className="text-blue-900 font-medium">
         Context: {fieldCount} {fieldLabel}
@@ -43,20 +55,17 @@ export const ContextPreviewBadge = memo(({ context, onClear }) => {
         <div className="text-xs text-neutral-600 space-y-2">
           {context.specificAspects && (
             <div>
-              <span className="font-semibold">Focus Areas:</span>{' '}
-              {context.specificAspects}
+              <span className="font-semibold">Focus Areas:</span> {context.specificAspects}
             </div>
           )}
           {context.backgroundLevel && (
             <div>
-              <span className="font-semibold">Audience Level:</span>{' '}
-              {context.backgroundLevel}
+              <span className="font-semibold">Audience Level:</span> {context.backgroundLevel}
             </div>
           )}
           {context.intendedUse && (
             <div>
-              <span className="font-semibold">Use Case:</span>{' '}
-              {context.intendedUse}
+              <span className="font-semibold">Use Case:</span> {context.intendedUse}
             </div>
           )}
         </div>
@@ -71,7 +80,7 @@ ContextPreviewBadge.displayName = 'ContextPreviewBadge';
  * ContextIndicatorBanner - Full-width prominent banner for context display
  * Alternative to the compact badge for more visible context indication
  */
-export const ContextIndicatorBanner = memo(({ context, onClear }) => {
+export const ContextIndicatorBanner = memo<ContextPreviewBadgeProps>(({ context, onClear }) => {
   if (!context || !Object.keys(context).some((k) => context[k])) {
     return null;
   }
@@ -90,26 +99,21 @@ export const ContextIndicatorBanner = memo(({ context, onClear }) => {
         <div className="flex items-start gap-3 flex-1">
           <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="space-y-2 flex-1">
-            <h3 className="text-sm font-semibold text-blue-900">
-              Context Requirements Active
-            </h3>
+            <h3 className="text-sm font-semibold text-blue-900">Context Requirements Active</h3>
             <div className="text-sm text-blue-800 space-y-1">
               {context.specificAspects && (
                 <div>
-                  <span className="font-medium">Focus Areas:</span>{' '}
-                  {context.specificAspects}
+                  <span className="font-medium">Focus Areas:</span> {context.specificAspects}
                 </div>
               )}
               {context.backgroundLevel && (
                 <div>
-                  <span className="font-medium">Audience Level:</span>{' '}
-                  {context.backgroundLevel}
+                  <span className="font-medium">Audience Level:</span> {context.backgroundLevel}
                 </div>
               )}
               {context.intendedUse && (
                 <div>
-                  <span className="font-medium">Use Case:</span>{' '}
-                  {context.intendedUse}
+                  <span className="font-medium">Use Case:</span> {context.intendedUse}
                 </div>
               )}
             </div>
@@ -132,11 +136,17 @@ export const ContextIndicatorBanner = memo(({ context, onClear }) => {
 
 ContextIndicatorBanner.displayName = 'ContextIndicatorBanner';
 
+interface ContextFieldTagProps {
+  label: string;
+  value?: string | null;
+  onRemove?: () => void;
+}
+
 /**
  * ContextFieldTag - Individual field tag for displaying single context value
  * Useful for showing multiple tags in a row
  */
-export const ContextFieldTag = memo(({ label, value, onRemove }) => {
+export const ContextFieldTag = memo<ContextFieldTagProps>(({ label, value, onRemove }) => {
   if (!value || typeof value !== 'string' || value.trim().length === 0) {
     return null;
   }
@@ -166,3 +176,4 @@ export const ContextFieldTag = memo(({ label, value, onRemove }) => {
 ContextFieldTag.displayName = 'ContextFieldTag';
 
 export default ContextPreviewBadge;
+

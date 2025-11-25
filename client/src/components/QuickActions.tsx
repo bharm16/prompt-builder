@@ -1,4 +1,26 @@
 import React from 'react';
+import { type LucideIcon } from 'lucide-react';
+
+interface QuickAction {
+  label: string;
+  description?: string;
+  category?: 'research' | 'writing' | 'learning' | 'creative';
+  icon: LucideIcon;
+  [key: string]: unknown;
+}
+
+interface QuickActionsProps {
+  actions: QuickAction[];
+  onActionClick: (action: QuickAction) => void;
+}
+
+interface CategoryConfig {
+  title: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+}
 
 /**
  * QuickActions Component - Visual cards for quick action templates
@@ -6,7 +28,7 @@ import React from 'react';
  * Transforms small pills into larger, more visual cards grouped by category
  */
 
-const categories = {
+const categories: Record<string, CategoryConfig> = {
   research: {
     title: 'Research',
     color: 'from-blue-500 to-cyan-500',
@@ -37,14 +59,14 @@ const categories = {
   },
 };
 
-export default function QuickActions({ actions, onActionClick }) {
+export default function QuickActions({ actions, onActionClick }: QuickActionsProps): React.ReactElement {
   // Group actions by category
-  const groupedActions = actions.reduce((acc, action) => {
+  const groupedActions = actions.reduce<Record<string, QuickAction[]>>((acc, action) => {
     const category = action.category || 'creative';
     if (!acc[category]) {
       acc[category] = [];
     }
-    acc[category].push(action);
+    acc[category]!.push(action);
     return acc;
   }, {});
 
@@ -57,6 +79,7 @@ export default function QuickActions({ actions, onActionClick }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {Object.entries(groupedActions).map(([categoryKey, categoryActions]) => {
           const category = categories[categoryKey] || categories.creative;
+          if (!category) return null;
 
           return categoryActions.map((action, idx) => {
             const Icon = action.icon;
@@ -85,12 +108,14 @@ export default function QuickActions({ actions, onActionClick }) {
                 {/* Content */}
                 <div className="relative flex flex-col items-start gap-2">
                   {/* Icon */}
-                  <div className={`
+                  <div
+                    className={`
                     flex items-center justify-center w-10 h-10 rounded-lg
                     bg-white shadow-sm
                     ${category.textColor}
                     group-hover:scale-110 transition-transform duration-200
-                  `}>
+                  `}
+                  >
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </div>
 
@@ -100,18 +125,18 @@ export default function QuickActions({ actions, onActionClick }) {
                       {action.label}
                     </h4>
                     {action.description && (
-                      <p className="text-xs text-neutral-600 mt-0.5 line-clamp-2">
-                        {action.description}
-                      </p>
+                      <p className="text-xs text-neutral-600 mt-0.5 line-clamp-2">{action.description}</p>
                     )}
                   </div>
 
                   {/* Category badge */}
-                  <span className={`
+                  <span
+                    className={`
                     inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
                     ${category.textColor} ${category.bgColor}
                     opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                  `}>
+                  `}
+                  >
                     {category.title}
                   </span>
                 </div>
@@ -132,3 +157,4 @@ export default function QuickActions({ actions, onActionClick }) {
     </div>
   );
 }
+

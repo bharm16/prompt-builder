@@ -9,10 +9,10 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: path.resolve(__dirname, '../../client'),
-  envDir: path.resolve(__dirname, '../../'), // Load .env from project root
+  envDir: path.resolve(__dirname, '../../'),
   build: {
-    outDir: path.resolve(__dirname, '../../dist'), // Output to project root dist
-    sourcemap: true, // Enable source maps for Sentry
+    outDir: path.resolve(__dirname, '../../dist'),
+    sourcemap: true,
   },
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),
@@ -20,27 +20,26 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '../../client/src'),
-      '@shared': path.resolve(__dirname, '../../shared')
-    }
+      '@/components': path.resolve(__dirname, '../../client/src/components'),
+      '@/hooks': path.resolve(__dirname, '../../client/src/hooks'),
+      '@/types': path.resolve(__dirname, '../../client/src/types'),
+      '@/utils': path.resolve(__dirname, '../../client/src/utils'),
+      '@/api': path.resolve(__dirname, '../../client/src/api'),
+      '@shared': path.resolve(__dirname, '../../shared'),
+    },
   },
   plugins: [
     react(),
-    
-    // Sentry plugin for source map upload (only in production builds)
     process.env.NODE_ENV === 'production' && process.env.SENTRY_AUTH_TOKEN
       ? sentryVitePlugin({
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
           authToken: process.env.SENTRY_AUTH_TOKEN,
-          
-          // Configure source map upload
           sourcemaps: {
             assets: path.resolve(__dirname, '../../dist/**'),
             ignore: ['node_modules'],
             filesToDeleteAfterUpload: [path.resolve(__dirname, '../../dist/**/*.map')],
           },
-          
-          // Configure release
           release: {
             name: process.env.VITE_APP_VERSION || 'unknown',
             cleanArtifacts: true,
@@ -51,10 +50,9 @@ export default defineConfig({
           },
         })
       : undefined,
-  ].filter(Boolean),
+  ].filter(Boolean) as ReturnType<typeof defineConfig>['plugins'],
   server: {
     proxy: {
-      // Proxy API calls to the backend during development to avoid CORS
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
@@ -63,7 +61,6 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
-      // Optional: expose health/metrics locally if you hit them from the UI
       '/health': {
         target: 'http://localhost:3001',
         changeOrigin: true,
@@ -75,3 +72,4 @@ export default defineConfig({
     },
   },
 });
+

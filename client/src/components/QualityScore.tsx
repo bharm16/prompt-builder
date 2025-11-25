@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Info, CheckCircle, AlertCircle } from 'lucide-react';
 
+type ScoreColor = 'success' | 'info' | 'warning' | 'error';
+
+interface ScoreFactor {
+  label: string;
+  value: number;
+  max: number;
+  description: string;
+}
+
+interface QualityScoreProps {
+  score: number;
+  previousScore?: number | null;
+  showDetails?: boolean;
+  inputPrompt?: string;
+  outputPrompt?: string;
+  animated?: boolean;
+}
+
 // Get color based on score
-const getScoreColor = (score) => {
+const getScoreColor = (score: number): ScoreColor => {
   if (score >= 80) return 'success';
   if (score >= 60) return 'info';
   if (score >= 40) return 'warning';
@@ -10,7 +28,7 @@ const getScoreColor = (score) => {
 };
 
 // Get score label
-const getScoreLabel = (score) => {
+const getScoreLabel = (score: number): string => {
   if (score >= 90) return 'Excellent';
   if (score >= 80) return 'Great';
   if (score >= 70) return 'Good';
@@ -20,7 +38,14 @@ const getScoreLabel = (score) => {
 };
 
 // Get score factors breakdown
-const getScoreFactors = (inputLength, outputLength, sections, hasGoal, hasFormat, hasContext) => {
+const getScoreFactors = (
+  inputLength: number,
+  outputLength: number,
+  sections: number,
+  hasGoal: boolean,
+  hasFormat: boolean,
+  hasContext: boolean
+): ScoreFactor[] => {
   return [
     {
       label: 'Length Improvement',
@@ -61,8 +86,8 @@ export default function QualityScore({
   showDetails = false,
   inputPrompt = '',
   outputPrompt = '',
-  animated = true
-}) {
+  animated = true,
+}: QualityScoreProps): React.ReactElement {
   const [displayScore, setDisplayScore] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -90,49 +115,54 @@ export default function QualityScore({
 
   const scoreColor = getScoreColor(score);
   const scoreLabel = getScoreLabel(score);
-  const improvement = previousScore ? score - previousScore : null;
+  const improvement = previousScore !== null ? score - previousScore : null;
 
   // Calculate score factors
   const inputWords = inputPrompt.split(/\s+/).length;
   const outputWords = outputPrompt.split(/\s+/).length;
   const sections = (outputPrompt.match(/\*\*/g) || []).length / 2;
   const hasGoal = outputPrompt.toLowerCase().includes('goal');
-  const hasFormat = outputPrompt.toLowerCase().includes('format') || outputPrompt.toLowerCase().includes('research');
-  const hasContext = outputPrompt.toLowerCase().includes('context') || outputPrompt.toLowerCase().includes('learning');
+  const hasFormat =
+    outputPrompt.toLowerCase().includes('format') || outputPrompt.toLowerCase().includes('research');
+  const hasContext =
+    outputPrompt.toLowerCase().includes('context') || outputPrompt.toLowerCase().includes('learning');
 
-  const scoreFactors = showDetails ? getScoreFactors(inputWords, outputWords, sections, hasGoal, hasFormat, hasContext) : [];
+  const scoreFactors = showDetails
+    ? getScoreFactors(inputWords, outputWords, sections, hasGoal, hasFormat, hasContext)
+    : [];
 
   // Color classes for different states
-  const colorClasses = {
-    success: {
-      bg: 'bg-success-50',
-      border: 'border-success-300',
-      text: 'text-success-700',
-      ring: 'text-success-600',
-      progress: 'text-success-600',
-    },
-    info: {
-      bg: 'bg-info-50',
-      border: 'border-info-300',
-      text: 'text-info-700',
-      ring: 'text-info-600',
-      progress: 'text-info-600',
-    },
-    warning: {
-      bg: 'bg-warning-50',
-      border: 'border-warning-300',
-      text: 'text-warning-700',
-      ring: 'text-warning-600',
-      progress: 'text-warning-600',
-    },
-    error: {
-      bg: 'bg-error-50',
-      border: 'border-error-300',
-      text: 'text-error-700',
-      ring: 'text-error-600',
-      progress: 'text-error-600',
-    },
-  };
+  const colorClasses: Record<ScoreColor, { bg: string; border: string; text: string; ring: string; progress: string }> =
+    {
+      success: {
+        bg: 'bg-success-50',
+        border: 'border-success-300',
+        text: 'text-success-700',
+        ring: 'text-success-600',
+        progress: 'text-success-600',
+      },
+      info: {
+        bg: 'bg-info-50',
+        border: 'border-info-300',
+        text: 'text-info-700',
+        ring: 'text-info-600',
+        progress: 'text-info-600',
+      },
+      warning: {
+        bg: 'bg-warning-50',
+        border: 'border-warning-300',
+        text: 'text-warning-700',
+        ring: 'text-warning-600',
+        progress: 'text-warning-600',
+      },
+      error: {
+        bg: 'bg-error-50',
+        border: 'border-error-300',
+        text: 'text-error-700',
+        ring: 'text-error-600',
+        progress: 'text-error-600',
+      },
+    };
 
   const colors = colorClasses[scoreColor];
   const circumference = 2 * Math.PI * 45; // radius = 45
@@ -151,7 +181,7 @@ export default function QualityScore({
           role="button"
           tabIndex={0}
           aria-label={`Quality score: ${score}%. ${scoreLabel}. Click for details.`}
-          onKeyPress={(e) => {
+          onKeyPress={(e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               setShowTooltip(!showTooltip);
@@ -186,18 +216,14 @@ export default function QualityScore({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className={`text-sm font-bold ${colors.text}`}>
-                {displayScore}
-              </span>
+              <span className={`text-sm font-bold ${colors.text}`}>{displayScore}</span>
             </div>
           </div>
 
           {/* Score Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold ${colors.text}`}>
-                Quality Score
-              </span>
+              <span className={`text-sm font-semibold ${colors.text}`}>Quality Score</span>
               {improvement !== null && improvement !== 0 && (
                 <span
                   className={`
@@ -209,13 +235,12 @@ export default function QualityScore({
                     className={`h-3 w-3 ${improvement < 0 ? 'rotate-180' : ''}`}
                     aria-hidden="true"
                   />
-                  {improvement > 0 ? '+' : ''}{improvement}%
+                  {improvement > 0 ? '+' : ''}
+                  {improvement}%
                 </span>
               )}
             </div>
-            <p className={`text-xs ${colors.text} opacity-80`}>
-              {scoreLabel}
-            </p>
+            <p className={`text-xs ${colors.text} opacity-80`}>{scoreLabel}</p>
           </div>
 
           {/* Info Icon */}
@@ -258,40 +283,31 @@ export default function QualityScore({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-bold ${colors.text}`}>
-                  {displayScore}
-                </span>
-                <span className={`text-xs ${colors.text} opacity-70`}>
-                  / 100
-                </span>
+                <span className={`text-2xl font-bold ${colors.text}`}>{displayScore}</span>
+                <span className={`text-xs ${colors.text} opacity-70`}>/ 100</span>
               </div>
             </div>
 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className={`text-xl font-bold ${colors.text}`}>
-                  {scoreLabel}
-                </h3>
-                {score >= 80 && (
-                  <CheckCircle className="h-5 w-5 text-success-600" aria-hidden="true" />
-                )}
-                {score < 60 && (
-                  <AlertCircle className="h-5 w-5 text-warning-600" aria-hidden="true" />
-                )}
+                <h3 className={`text-xl font-bold ${colors.text}`}>{scoreLabel}</h3>
+                {score >= 80 && <CheckCircle className="h-5 w-5 text-success-600" aria-hidden="true" />}
+                {score < 60 && <AlertCircle className="h-5 w-5 text-warning-600" aria-hidden="true" />}
               </div>
-              <p className="text-sm text-neutral-600">
-                Your prompt quality assessment
-              </p>
+              <p className="text-sm text-neutral-600">Your prompt quality assessment</p>
               {improvement !== null && improvement !== 0 && (
-                <div className={`
+                <div
+                  className={`
                   inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full text-xs font-medium
                   ${improvement > 0 ? 'bg-success-100 text-success-700' : 'bg-error-100 text-error-700'}
-                `}>
+                `}
+                >
                   <TrendingUp
                     className={`h-3 w-3 ${improvement < 0 ? 'rotate-180' : ''}`}
                     aria-hidden="true"
                   />
-                  {improvement > 0 ? '+' : ''}{improvement}% from previous
+                  {improvement > 0 ? '+' : ''}
+                  {improvement}% from previous
                 </div>
               )}
             </div>
@@ -299,15 +315,11 @@ export default function QualityScore({
 
           {/* Score Factors */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-neutral-700 mb-3">
-              Score Breakdown
-            </h4>
+            <h4 className="text-sm font-semibold text-neutral-700 mb-3">Score Breakdown</h4>
             {scoreFactors.map((factor, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-neutral-700">
-                    {factor.label}
-                  </span>
+                  <span className="font-medium text-neutral-700">{factor.label}</span>
                   <span className={`font-bold ${colors.text}`}>
                     {factor.value}/{factor.max}
                   </span>
@@ -318,9 +330,7 @@ export default function QualityScore({
                     style={{ width: `${(factor.value / factor.max) * 100}%` }}
                   />
                 </div>
-                <p className="text-xs text-neutral-500">
-                  {factor.description}
-                </p>
+                <p className="text-xs text-neutral-500">{factor.description}</p>
               </div>
             ))}
           </div>
@@ -361,3 +371,4 @@ export default function QualityScore({
     </div>
   );
 }
+
