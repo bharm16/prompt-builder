@@ -58,10 +58,25 @@
   border-radius: 10px; /* Increased from 8px */
   border: 1px solid;
   overflow: hidden;
-  transition: all 200ms ease-out;
+  transition: height 200ms ease-out;
   /* Resting state shadow - subtle elevation */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
               0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Expanded state - uniform height */
+.bento-box-expanded {
+  height: 240px;
+  min-height: 240px;
+}
+
+/* Collapsed state - just fits header but remains clickable */
+.bento-box-collapsed {
+  height: 40px; /* Fixed height to match header, ensures clickability */
+  min-height: 40px;
 }
 
 .bento-box:hover {
@@ -76,15 +91,16 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 16px; /* Increased from 0.75rem (12px) */
+  padding: 8px 12px; /* Reduced from 16px to make header more compact */
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem; /* Slightly smaller font */
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: background-color 200ms ease-out;
   border: none;
   width: 100%;
   text-align: left;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .bento-header:hover {
@@ -92,8 +108,11 @@
 }
 
 .category-icon {
-  font-size: 1rem;
-  line-height: 1;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  color: rgb(115, 115, 115); /* Match the span-count color for monochromatic design */
+  stroke-width: 2;
 }
 
 .category-label {
@@ -121,6 +140,40 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Allows flex child to shrink below content size */
+  width: 100%;
+  box-sizing: border-box;
+  /* Explicit height calculation: box height (240px) - header height (~40px with reduced padding) */
+  height: calc(240px - 40px);
+  max-height: calc(240px - 40px);
+}
+
+/* Custom scrollbar styling for bento content */
+.bento-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bento-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.bento-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+
+.bento-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Firefox scrollbar */
+.bento-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) rgba(0, 0, 0, 0.05);
 }
 
 /* Individual span item */
@@ -235,9 +288,29 @@
   }
   
   /* Slightly smaller boxes on mobile */
+  .bento-box-expanded {
+    min-height: 180px;
+    height: 180px; /* Smaller uniform height for mobile */
+  }
+  
+  .bento-box-collapsed {
+    height: 36px; /* Fixed height for mobile, ensures clickability */
+    min-height: 36px;
+  }
+  
+  .bento-content {
+    height: calc(180px - 36px);
+    max-height: calc(180px - 36px);
+  }
+  
   .bento-header {
-    padding: 0.625rem;
-    font-size: 0.8125rem;
+    padding: 6px 10px; /* Even more compact on mobile */
+    font-size: 0.75rem;
+  }
+  
+  .category-icon {
+    width: 0.8125rem;
+    height: 0.8125rem; /* Smaller icon on mobile */
   }
   
   .span-item {

@@ -5,9 +5,21 @@
  * Now aligned with unified taxonomy system:
  * - Uses taxonomy parent categories as box keys
  * - All attributes (e.g., subject.wardrobe) grouped under their parents
- * - Monochromatic design system with emoji icons
+ * - Monochromatic design system with lucide-react icons
  */
 
+import {
+  Ruler,
+  Target,
+  Film,
+  TreePine,
+  Lightbulb,
+  Video,
+  Palette,
+  Settings,
+  Volume2,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { TAXONOMY } from '@shared/taxonomy';
 
 /**
@@ -19,7 +31,7 @@ export const CATEGORY_CONFIG = {
     label: 'Shot Type',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '📐',
+    icon: Ruler,
     order: 1,
     description: 'Framing and vantage of the camera',
   },
@@ -27,7 +39,7 @@ export const CATEGORY_CONFIG = {
     label: 'Subject & Character',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎯',
+    icon: Target,
     order: 2,
     description: 'The focal point (person, object, animal) and their attributes',
   },
@@ -35,7 +47,7 @@ export const CATEGORY_CONFIG = {
     label: 'Action & Motion',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎬',
+    icon: Film,
     order: 3,
     description: 'What the subject is doing (movement, state, gesture)',
   },
@@ -43,7 +55,7 @@ export const CATEGORY_CONFIG = {
     label: 'Environment',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🌲',
+    icon: TreePine,
     order: 4,
     description: 'Location, weather, and spatial context',
   },
@@ -51,7 +63,7 @@ export const CATEGORY_CONFIG = {
     label: 'Lighting',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '💡',
+    icon: Lightbulb,
     order: 5,
     description: 'Light source, quality, and time of day',
   },
@@ -59,7 +71,7 @@ export const CATEGORY_CONFIG = {
     label: 'Camera',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎥',
+    icon: Video,
     order: 6,
     description: 'Framing, movement, lens, and angles',
   },
@@ -67,7 +79,7 @@ export const CATEGORY_CONFIG = {
     label: 'Style & Aesthetic',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🎨',
+    icon: Palette,
     order: 7,
     description: 'Visual treatment, film stock, and aesthetic',
   },
@@ -75,7 +87,7 @@ export const CATEGORY_CONFIG = {
     label: 'Technical Specs',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '⚙️',
+    icon: Settings,
     order: 8,
     description: 'Frame rate, aspect ratio, and resolution',
   },
@@ -83,7 +95,7 @@ export const CATEGORY_CONFIG = {
     label: 'Audio',
     color: '#FFFFFF',
     borderColor: '#E8E8E8',
-    icon: '🔊',
+    icon: Volume2,
     order: 9,
     description: 'Music, score, and sound effects',
   },

@@ -21,7 +21,7 @@ export const BentoBox = memo<BentoBoxProps>(({
   
   return (
     <div 
-      className="bento-box"
+      className={`bento-box ${isExpanded ? 'bento-box-expanded' : 'bento-box-collapsed'}`}
       style={{
         backgroundColor: config.color,
         borderColor: config.borderColor,
@@ -34,7 +34,7 @@ export const BentoBox = memo<BentoBoxProps>(({
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${config.label} category`}
       >
-        <span className="category-icon">{config.icon}</span>
+        <config.icon className="category-icon" />
         <span className="category-label">{config.label}</span>
         <span className="span-count">({spans.length})</span>
         <span className="spacer" />

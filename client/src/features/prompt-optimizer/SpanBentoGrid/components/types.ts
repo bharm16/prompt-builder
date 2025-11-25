@@ -2,6 +2,8 @@
  * Types for SpanBentoGrid components
  */
 
+import type { LucideIcon } from 'lucide-react';
+
 export interface Span {
   id: string;
   quote: string;
@@ -16,7 +18,7 @@ export interface CategoryConfig {
   label: string;
   color: string;
   borderColor: string;
-  icon: string;
+  icon: LucideIcon;
   order: number;
   description: string;
 }
