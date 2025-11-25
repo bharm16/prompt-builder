@@ -29,15 +29,15 @@ function createConstraint(config, highlightWordCount, slotDescriptor) {
  */
 export const CONSTRAINT_MODES = {
   /**
-   * Micro mode: 2-6 word noun phrase
+   * Micro mode: 2-8 word noun phrase (expanded for camera/shot descriptions)
    */
   micro: (highlightWordCount, slotDescriptor) => createConstraint({
     mode: 'micro',
-    minWords: Math.max(2, Math.min(3, highlightWordCount + 1)),
-    maxWords: Math.min(6, Math.max(4, highlightWordCount + 2)),
+    minWords: Math.max(2, Math.min(4, highlightWordCount + 1)),
+    maxWords: Math.min(8, Math.max(6, highlightWordCount + 3)),
     maxSentences: 1,
     disallowTerminalPunctuation: true,
-    formRequirement: '2-6 word cinematic noun phrase describing the same subject',
+    formRequirement: '2-8 word cinematic noun phrase describing the same subject',
     focusGuidance: [
       'Use precise visual modifiers (wardrobe, era, material)',
       'Avoid verbs; keep the replacement as a noun phrase',

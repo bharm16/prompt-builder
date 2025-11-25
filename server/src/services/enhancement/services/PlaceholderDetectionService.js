@@ -112,7 +112,12 @@ export class PlaceholderDetectionService {
     }
 
     // Pattern 6: In a list or comma-separated context
+    // Exclude technical spec patterns common in video prompts (e.g., "**Camera:**", "**Shot Type:**")
+    const technicalSpecPattern = /\*\*(Camera|Shot|Lighting|Audio|Style|Environment|Technical|Duration|Aspect|Frame|Subject|Action|Motion)\b[^:]*:\*\*\s*$/i;
+    const isAfterTechnicalSpec = technicalSpecPattern.test(contextBefore);
+    
     if (
+      !isAfterTechnicalSpec &&
       (contextBefore.includes(':') || contextBefore.includes('-')) &&
       text.split(/\s+/).length <= 3
     ) {

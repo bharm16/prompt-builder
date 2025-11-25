@@ -141,7 +141,10 @@ export class SuggestionValidationService {
             return;
           }
 
-          if (/[,:;]/.test(text)) {
+          // Allow single comma for camera specs like "50mm lens, shallow DOF"
+          // but still reject colons and semicolons
+          const commaCount = (text.match(/,/g) || []).length;
+          if (commaCount > 1 || /[:;]/.test(text)) {
             return;
           }
 
