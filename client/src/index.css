@@ -65,6 +65,16 @@
     --geist-gap-half: 8pt;       /* ~11px */
     --geist-gap-quarter: 4pt;    /* ~5px */
     --geist-page-margin: 16pt;   /* ~21px */
+    
+    /* Standard Spacing Tokens (8px grid system) */
+    --spacing-xxs: 4px;    /* Half unit - micro adjustments */
+    --spacing-xs: 8px;     /* Base unit - tight spacing */
+    --spacing-sm: 12px;    /* 1.5x base - input vertical padding */
+    --spacing-md: 16px;    /* 2x base - standard padding, input horizontal */
+    --spacing-lg: 24px;    /* 3x base - component gaps (most common) */
+    --spacing-xl: 32px;    /* 4x base - section spacing */
+    --spacing-xxl: 48px;   /* 6x base - major divisions */
+    --spacing-xxxl: 64px;  /* 8x base - hero sections */
 
     /* Border Radius - UNOFFICIAL */
     --geist-radius: 5px;         /* Tight! Much smaller than typical */
@@ -866,8 +876,8 @@
     z-index: 1050;
     max-height: 90vh;
     background: white;
-    border-radius: 20px 20px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    border-radius: var(--spacing-lg) var(--spacing-lg) 0 0;
+    box-shadow: 0 calc(-1 * var(--spacing-xxs)) var(--spacing-lg) rgba(0, 0, 0, 0.15);
     animation: slideUpFromBottom 0.3s ease-out;
   }
 

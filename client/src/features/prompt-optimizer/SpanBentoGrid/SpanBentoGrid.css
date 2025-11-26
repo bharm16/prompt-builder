@@ -217,13 +217,13 @@
 
 .bento-content::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 4px;
+  border-radius: var(--spacing-xxs);
   transition: background-color 0.2s ease;
 }
 
 .bento-content::-webkit-scrollbar-thumb {
   background: transparent;
-  border-radius: 4px;
+  border-radius: var(--spacing-xxs);
   transition: background-color 0.2s ease;
 }
 
