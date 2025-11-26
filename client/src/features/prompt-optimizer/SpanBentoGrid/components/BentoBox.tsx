@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from '@geist-ui/icons';
 import { SpanItem } from './SpanItem';
 import { EMPTY_STATE_MESSAGE } from '../config/bentoConfig';
 import type { BentoBoxProps } from './types';
@@ -21,6 +21,7 @@ export const BentoBox = memo<BentoBoxProps>(({
   const [isExpanded, setIsExpanded] = useState<boolean>(spans.length >= 3);
   
   const hasSpans = spans.length > 0;
+  const IconComponent = config.icon;
   
   return (
     <div 
@@ -36,14 +37,14 @@ export const BentoBox = memo<BentoBoxProps>(({
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${config.label} category`}
       >
-        <config.icon className="category-icon" />
+        <IconComponent size={14} className="category-icon" />
         <span className="category-label">{config.label}</span>
         <span className="span-count">({spans.length})</span>
         <span className="spacer" />
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 chevron" />
+          <ChevronDown size={16} className="chevron" />
         ) : (
-          <ChevronRight className="h-4 w-4 chevron" />
+          <ChevronRight size={16} className="chevron" />
         )}
       </button>
       

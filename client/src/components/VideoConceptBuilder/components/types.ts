@@ -2,11 +2,11 @@
  * Type definitions for VideoConceptBuilder components
  */
 
-import type { LucideIcon } from 'lucide-react';
+import type React from 'react';
 import type { ElementKey, Elements } from '../hooks/types';
 
 export interface ElementConfig {
-  icon: LucideIcon;
+  icon: React.ComponentType<{ size?: number; color?: string; className?: string; style?: React.CSSProperties }>;
   label: string;
   taxonomyId?: string | null;
   placeholder: string;

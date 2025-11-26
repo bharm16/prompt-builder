@@ -5,7 +5,8 @@
  * Following VideoConceptBuilder pattern: components/ProgressHeader.tsx
  */
 
-import { Sparkles, X, RefreshCw, type LucideIcon } from 'lucide-react';
+import { Star as Sparkles, X, RefreshCw } from '@geist-ui/icons';
+import type { Icon } from '@geist-ui/icons';
 
 interface PanelHeaderProps {
   panelTitle?: string;
@@ -15,10 +16,10 @@ interface PanelHeaderProps {
   contextValue?: string;
   contextLabel?: string;
   contextSecondaryValue?: string;
-  contextIcon?: LucideIcon;
+  contextIcon?: Icon;
   showContextBadge?: boolean;
   contextBadgeText?: string;
-  contextBadgeIcon?: LucideIcon;
+  contextBadgeIcon?: Icon;
   isPlaceholder?: boolean;
 }
 
@@ -42,7 +43,7 @@ export function PanelHeader({
         {panelTitle && (
           <div className="flex items-center gap-geist-3 min-w-0 flex-1">
             <div className="p-geist-2 bg-gradient-to-br from-geist-accents-2 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
-              <Sparkles className="h-3.5 w-3.5 text-geist-accents-7" aria-hidden="true" />
+              <Sparkles size={14} color="currentColor" aria-hidden="true" />
             </div>
             <h3 id="suggestions-title" className="text-label-14 text-geist-foreground">
               {panelTitle}
@@ -60,7 +61,7 @@ export function PanelHeader({
               title="Refresh suggestions"
               aria-label="Refresh suggestions"
             >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              <RefreshCw size={14} aria-hidden="true" />
             </button>
           )}
           {onClose && (
@@ -70,7 +71,7 @@ export function PanelHeader({
               title="Close suggestions"
               aria-label="Close suggestions"
             >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
+              <X size={14} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -84,7 +85,7 @@ export function PanelHeader({
             </span>
             {showContextBadge && (
               <span className="inline-flex items-center gap-geist-1 px-geist-2 py-geist-1 text-label-12 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {ContextBadgeIcon ? <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" /> : null}
+                {ContextBadgeIcon ? <ContextBadgeIcon size={12} aria-hidden="true" /> : null}
                 {contextBadgeText}
               </span>
             )}
@@ -92,7 +93,7 @@ export function PanelHeader({
           <div className="flex items-start gap-geist-3">
             {ContextIcon ? (
               <div className="p-geist-2 bg-orange-50 rounded-geist border border-orange-200/50 flex-shrink-0">
-                <ContextIcon className="h-3.5 w-3.5 text-orange-600" aria-hidden="true" />
+                <ContextIcon size={14} color="#ea580c" aria-hidden="true" />
               </div>
             ) : null}
             <div className="flex-1 min-w-0">

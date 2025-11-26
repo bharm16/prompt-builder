@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Sparkles, ArrowRight, Brain, BookOpen, Wand2, Info } from 'lucide-react';
+import { Star as Sparkles, ArrowRight, Zap as Brain, BookOpen, Zap as Wand2, Info } from '@geist-ui/icons';
 import { Button } from './Button';
 
 // State and Hooks
@@ -421,11 +421,11 @@ export default function VideoConceptBuilder({
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-geist-3 text-label-12 text-geist-accents-6">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
-                  <Sparkles className="h-3.5 w-3.5 text-neutral-500" />
+                  <Sparkles size={14} color="#737373" />
                   AI-guided workflow
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1">
-                  <Info className="h-3.5 w-3.5 text-neutral-500" />
+                  <Info size={14} color="#737373" />
                   {completionPercent}% filled
                 </span>
               </div>
@@ -451,7 +451,7 @@ export default function VideoConceptBuilder({
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'element' })}
                   variant={mode === 'element' ? 'tertiary' : 'ghost'}
                   shape="rounded"
-                  prefix={<Sparkles className="h-4 w-4" />}
+                  prefix={<Sparkles size={16} />}
                   className={mode === 'element' ? 'bg-white text-neutral-900 shadow-sm' : ''}
                 >
                   Element Builder
@@ -460,7 +460,7 @@ export default function VideoConceptBuilder({
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'concept' })}
                   variant={mode === 'concept' ? 'tertiary' : 'ghost'}
                   shape="rounded"
-                  prefix={<Brain className="h-4 w-4" />}
+                  prefix={<Brain size={16} />}
                   className={mode === 'concept' ? 'bg-white text-neutral-900 shadow-sm' : ''}
                 >
                   Describe Concept
@@ -472,7 +472,7 @@ export default function VideoConceptBuilder({
                   onClick={() => dispatch({ type: 'TOGGLE_TEMPLATES' })}
                   variant="ghost"
                   size="small"
-                  prefix={<BookOpen className="h-4 w-4" />}
+                  prefix={<BookOpen size={16} />}
                 >
                   Templates
                 </Button>
@@ -481,7 +481,7 @@ export default function VideoConceptBuilder({
                   disabled={filledCount === 0}
                   variant="ghost"
                   size="small"
-                  prefix={<Wand2 className="h-4 w-4" />}
+                  prefix={<Wand2 size={16} />}
                 >
                   Auto-complete
                 </Button>
@@ -536,7 +536,7 @@ export default function VideoConceptBuilder({
                   disabled={!concept}
                   variant="primary"
                   size="small"
-                  prefix={<Brain className="h-4 w-4" />}
+                  prefix={<Brain size={16} />}
                 >
                   Parse into elements
                 </Button>

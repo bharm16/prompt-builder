@@ -5,21 +5,21 @@
  * Now aligned with unified taxonomy system:
  * - Uses taxonomy parent categories as box keys
  * - All attributes (e.g., subject.wardrobe) grouped under their parents
- * - Monochromatic design system with lucide-react icons
+ * - Monochromatic design system with Geist icons
  */
 
 import {
-  Ruler,
+  Divider as Ruler,
   Target,
   Film,
-  TreePine,
-  Lightbulb,
+  Layers as TreePine,
+  Zap as Lightbulb,
   Video,
-  Palette,
+  Grid as Palette,
   Settings,
   Volume2,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+} from '@geist-ui/icons';
+import type React from 'react';
 import { TAXONOMY } from '@shared/taxonomy';
 
 /**

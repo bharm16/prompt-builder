@@ -5,7 +5,7 @@
  * For the 'subject' element, also displays subject descriptor cards.
  */
 
-import { Sparkles, CheckCircle, AlertCircle, Tag } from 'lucide-react';
+import { Star as Sparkles, CheckCircle, AlertCircle, Tag } from '@geist-ui/icons';
 import { Button } from '../../../Button';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
 import type { ElementKey, Elements } from '../hooks/types';
@@ -37,7 +37,7 @@ function SubjectDescriptorCard({
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white/80 p-3 relative">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <Tag className="h-3.5 w-3.5 text-neutral-500" />
+        <Tag size={14} color="#737373" />
         <span className="text-label-12 text-geist-accents-7">
           Descriptor {descriptorIndex + 1}
         </span>
@@ -59,12 +59,12 @@ function SubjectDescriptorCard({
           <span className="ml-auto flex items-center gap-1 text-[10px] text-neutral-500">
             {compatibility >= 0.8 ? (
               <>
-                <CheckCircle className="h-3 w-3 text-emerald-500" />
+                <CheckCircle size={12} color="#10b981" />
                 <span>Strong</span>
               </>
             ) : compatibility < 0.6 ? (
               <>
-                <AlertCircle className="h-3 w-3 text-amber-500" />
+                <AlertCircle size={12} color="#f59e0b" />
                 <span>Rework</span>
               </>
             ) : null}
@@ -84,7 +84,7 @@ function SubjectDescriptorCard({
           onClick={() => onFetchSuggestions(descriptorKey)}
           variant="primary"
           size="small"
-          prefix={<Sparkles className="h-3 w-3" />}
+          prefix={<Sparkles size={12} />}
           className="shadow-geist-small active:scale-95"
           title="Get AI descriptor ideas"
         >
@@ -149,7 +149,7 @@ export function ElementCard({
       {/* Card Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-neutral-100 rounded-lg">
-          <Icon className="h-4 w-4 text-neutral-700" />
+          <Icon size={16} color="#404040" />
         </div>
         <div className="flex-1">
           <h3 className="text-label-14 text-geist-foreground">{config.label}</h3>
@@ -162,16 +162,16 @@ export function ElementCard({
         >
           <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
           <div className="relative flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3" />
+            <Sparkles size={12} />
             <span>AI</span>
           </div>
         </button>
         {isFilled && compatibility !== undefined && (
           <div className="flex items-center gap-1">
             {compatibility >= 0.8 ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle size={16} color="#16a34a" />
             ) : compatibility < 0.6 ? (
-              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertCircle size={16} color="#dc2626" />
             ) : null}
           </div>
         )}
@@ -213,7 +213,7 @@ export function ElementCard({
               </span>
             </div>
             <div className="hidden sm:flex items-center gap-1 text-[11px] text-neutral-500">
-              <Sparkles className="h-3 w-3" />
+              <Sparkles size={12} />
               <span>Use AI to fill any slot</span>
             </div>
           </div>
