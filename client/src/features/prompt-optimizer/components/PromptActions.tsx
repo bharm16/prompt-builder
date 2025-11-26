@@ -8,6 +8,7 @@ import {
   RotateCcw,
   RotateCw,
 } from 'lucide-react';
+import { Button } from '../../../components/Button';
 import type { FloatingToolbarProps } from '../types';
 
 /**
@@ -48,41 +49,35 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 
   return (
     <div className="flex items-center justify-end gap-geist-1 mt-geist-4 -mb-geist-2">
-      <button
+      <Button
         onClick={onCopy}
-        className={`inline-flex items-center justify-center p-geist-2 rounded-geist transition-colors ${
-          copied
-            ? 'text-green-600 bg-green-50'
-            : 'text-geist-accents-5 hover:text-geist-accents-7 hover:bg-geist-accents-2'
-        }`}
+        svgOnly
+        variant="ghost"
+        prefix={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        className={copied ? 'text-green-600 bg-green-50' : ''}
         aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
         title="Copy"
-      >
-        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </button>
+      />
 
-      <button
+      <Button
         onClick={onShare}
-        className={`inline-flex items-center justify-center p-geist-2 rounded-geist transition-colors ${
-          shared
-            ? 'text-green-600 bg-green-50'
-            : 'text-geist-accents-5 hover:text-geist-accents-7 hover:bg-geist-accents-2'
-        }`}
+        svgOnly
+        variant="ghost"
+        prefix={shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+        className={shared ? 'text-green-600 bg-green-50' : ''}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
-      >
-        {shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-      </button>
+      />
 
       <div className="relative" ref={exportMenuRef}>
-        <button
+        <Button
           onClick={() => onToggleExportMenu(!showExportMenu)}
-          className="inline-flex items-center justify-center p-geist-2 rounded-geist text-geist-accents-5 hover:text-geist-accents-7 hover:bg-geist-accents-2 transition-colors"
+          svgOnly
+          variant="ghost"
+          prefix={<Download className="h-4 w-4" />}
           aria-expanded={showExportMenu}
           title="Export"
-        >
-          <Download className="h-4 w-4" />
-        </button>
+        />
         {showExportMenu && (
           <div className="absolute bottom-full right-0 mb-geist-2 w-36 bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1 z-30">
             <button
@@ -112,26 +107,22 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 
       <div className="w-px h-geist-4 bg-geist-accents-2 mx-geist-1" />
 
-      <button
+      <Button
         onClick={onUndo}
         disabled={!canUndo}
-        className={`inline-flex items-center justify-center p-geist-2 rounded-geist transition ${
-          canUndo ? 'hover:bg-geist-accents-2 text-geist-accents-5 hover:text-geist-accents-7' : 'text-geist-accents-3 cursor-not-allowed'
-        }`}
+        svgOnly
+        variant="ghost"
+        prefix={<RotateCcw className="h-4 w-4" />}
         title="Undo"
-      >
-        <RotateCcw className="h-4 w-4" />
-      </button>
-      <button
+      />
+      <Button
         onClick={onRedo}
         disabled={!canRedo}
-        className={`inline-flex items-center justify-center p-geist-2 rounded-geist transition ${
-          canRedo ? 'hover:bg-geist-accents-2 text-geist-accents-5 hover:text-geist-accents-7' : 'text-geist-accents-3 cursor-not-allowed'
-        }`}
+        svgOnly
+        variant="ghost"
+        prefix={<RotateCw className="h-4 w-4" />}
         title="Redo"
-      >
-        <RotateCw className="h-4 w-4" />
-      </button>
+      />
     </div>
   );
 });

@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import { getAuthRepository } from '../../repositories';
 import { HistoryEmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
+import { Button } from '../../components/Button';
 import type { User, PromptHistoryEntry } from '../../hooks/types';
 import type { Mode } from '../prompt-optimizer/context/types';
 
@@ -61,18 +62,22 @@ const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDelete }) 
         <div className="group w-full rounded-geist-lg p-geist-3 bg-red-50 border border-red-200">
           <p className="text-label-12 text-red-900 mb-geist-2">Delete this prompt?</p>
           <div className="flex gap-geist-2">
-            <button
+            <Button
               onClick={handleDelete}
-              className="flex-1 px-geist-2 py-geist-1 text-button-12 text-white bg-red-600 rounded-geist hover:bg-red-700 transition-colors"
+              size="small"
+              variant="primary"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
             >
               Delete
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCancel}
-              className="flex-1 px-geist-2 py-geist-1 text-button-12 text-geist-accents-7 bg-geist-background border border-geist-accents-3 rounded-geist hover:bg-geist-accents-1 transition-colors"
+              size="small"
+              variant="secondary"
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </li>
@@ -149,14 +154,16 @@ function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.ReactElem
 
   if (!user) {
     return (
-      <button
+      <Button
         onClick={onSignIn}
-        className="w-full inline-flex items-center justify-center gap-geist-2 px-geist-3 py-geist-2 text-button-12 text-white bg-geist-foreground rounded-geist-lg hover:bg-geist-accents-8 transition-colors"
+        size="small"
+        variant="primary"
+        prefix={<LogIn className="h-3.5 w-3.5" />}
+        className="w-full"
         aria-label="Sign in with Google"
       >
-        <LogIn className="h-3.5 w-3.5" />
-        <span>Sign in</span>
-      </button>
+        Sign in
+      </Button>
     );
   }
 
@@ -191,13 +198,15 @@ function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.ReactElem
 
       {showAuthMenu && (
         <div className="absolute bottom-full mb-geist-2 left-0 w-full bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1">
-          <button
+          <Button
             onClick={onSignOut}
-            className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+            size="small"
+            variant="ghost"
+            prefix={<LogOut className="h-3.5 w-3.5" />}
+            className="w-full"
           >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Sign out</span>
-          </button>
+            Sign out
+          </Button>
         </div>
       )}
     </div>
@@ -279,42 +288,47 @@ export function HistorySidebar({
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with expand button */}
           <header className="flex-shrink-0 px-geist-2 py-geist-3">
-            <button
+            <Button
               onClick={() => setShowHistory(true)}
-              className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist transition-colors flex items-center justify-center"
+              svgOnly
+              variant="ghost"
+              prefix={<PanelRight className="h-5 w-5 text-geist-accents-6" />}
+              className="w-full"
               aria-label="Expand sidebar"
-            >
-              <PanelRight className="h-5 w-5 text-geist-accents-6" />
-            </button>
+            />
           </header>
 
           {/* New Prompt button - icon only */}
           <div className="flex-shrink-0 px-geist-2 py-geist-2">
-            <button
+            <Button
               onClick={onCreateNew}
-              className="w-full p-geist-2 hover:bg-orange-50 rounded-geist-lg transition-colors flex items-center justify-center group"
+              svgOnly
+              variant="ghost"
+              prefix={<Plus className="h-5 w-5 text-orange-500" />}
+              className="w-full hover:bg-orange-50"
               aria-label="Create new prompt"
               title="New Prompt"
-            >
-              <Plus className="h-5 w-5 text-orange-500 group-hover:text-orange-600" />
-            </button>
+            />
           </div>
 
           {/* History icon - shows recent count */}
           <div className="flex-shrink-0 px-geist-2 py-geist-2">
-            <button
-              onClick={() => setShowHistory(true)}
-              className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist-lg transition-colors flex items-center justify-center relative group"
-              aria-label="Show history"
-              title="History"
-            >
-              <History className="h-5 w-5 text-geist-accents-6" />
+            <div className="relative">
+              <Button
+                onClick={() => setShowHistory(true)}
+                svgOnly
+                variant="ghost"
+                prefix={<History className="h-5 w-5 text-geist-accents-6" />}
+                className="w-full"
+                aria-label="Show history"
+                title="History"
+              />
               {filteredHistory.length > 0 && (
                 <span className="absolute -top-1 -right-1 h-geist-4 w-geist-4 bg-orange-500 text-white text-label-12 rounded-full flex items-center justify-center">
                   {filteredHistory.length > 9 ? '9+' : filteredHistory.length}
                 </span>
               )}
-            </button>
+            </div>
           </div>
 
           {/* Spacer */}
@@ -323,14 +337,15 @@ export function HistorySidebar({
           {/* Auth Section - icon only */}
           <footer className="flex-shrink-0 border-t border-geist-accents-1 p-geist-2">
             {!user ? (
-              <button
+              <Button
                 onClick={handleSignIn}
-                className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist-lg transition-colors flex items-center justify-center"
+                svgOnly
+                variant="ghost"
+                prefix={<LogIn className="h-5 w-5 text-geist-accents-6" />}
+                className="w-full"
                 aria-label="Sign in"
                 title="Sign in"
-              >
-                <LogIn className="h-5 w-5 text-geist-accents-6" />
-              </button>
+              />
             ) : (
               <div className="relative">
                 <button
@@ -359,26 +374,28 @@ export function HistorySidebar({
           {/* Header with toggle + title */}
           <header className="flex-shrink-0 px-geist-4 py-geist-3">
             <div className="flex items-center gap-geist-3">
-              <button
+              <Button
                 onClick={() => setShowHistory(false)}
-                className="p-geist-2 hover:bg-geist-accents-1 rounded-geist transition-colors"
+                svgOnly
+                variant="ghost"
+                prefix={<PanelLeft className="h-5 w-5 text-geist-accents-6" />}
                 aria-label="Collapse sidebar"
-              >
-                <PanelLeft className="h-5 w-5 text-geist-accents-6" />
-              </button>
+              />
               <h1 className="text-heading-20 text-geist-foreground">Prompt Builder</h1>
             </div>
           </header>
 
           {/* New Prompt button */}
           <div className="flex-shrink-0 px-geist-4 py-geist-3">
-            <button
+            <Button
               onClick={onCreateNew}
-              className="flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-12 text-white bg-orange-500 rounded-geist-lg hover:bg-orange-600 transition-colors"
+              size="small"
+              variant="primary"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
               aria-label="Create new prompt"
             >
-              <span>New Prompt</span>
-            </button>
+              New Prompt
+            </Button>
           </div>
 
           {/* Sign-in message */}
@@ -425,12 +442,14 @@ export function HistorySidebar({
                   </ul>
                 </nav>
                 {filteredHistory.length > INITIAL_HISTORY_LIMIT && (
-                  <button
+                  <Button
                     onClick={() => setShowAllHistory(!showAllHistory)}
-                    className="w-full px-geist-2 py-geist-2 text-label-12 text-geist-accents-5 hover:text-geist-accents-7 transition-colors text-left"
+                    variant="ghost"
+                    size="small"
+                    className="w-full text-left text-geist-accents-5 hover:text-geist-accents-7"
                   >
                     {showAllHistory ? 'See less' : 'See more...'}
-                  </button>
+                  </Button>
                 )}
               </>
             )}

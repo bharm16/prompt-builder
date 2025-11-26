@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Moon, Sun, Type, Save, Trash2, Download, FileText } from 'lucide-react';
+import { Button } from './Button';
 
 type FontSize = 'small' | 'medium' | 'large';
 type ExportFormat = 'text' | 'markdown' | 'json';
@@ -129,13 +130,14 @@ export default function Settings({
           <h2 id="settings-title" className="text-heading-20 text-geist-foreground">
             Settings
           </h2>
-          <button
+          <Button
             onClick={onClose}
-            className="btn-icon-secondary btn-sm"
+            svgOnly
+            variant="secondary"
+            size="small"
+            prefix={<X className="h-5 w-5" />}
             aria-label="Close settings"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          />
         </div>
 
         {/* Content */}
@@ -285,59 +287,72 @@ export default function Settings({
             <div className="space-y-3">
               {/* Reset Settings */}
               {!showConfirmReset ? (
-                <button
+                <Button
                   onClick={() => setShowConfirmReset(true)}
-                  className="w-full btn-secondary text-neutral-700 hover:border-warning-400 hover:bg-warning-50"
+                  variant="secondary"
+                  prefix={<FileText className="h-4 w-4" />}
+                  className="w-full hover:border-warning-400 hover:bg-warning-50"
                 >
-                  <FileText className="h-4 w-4" aria-hidden="true" />
-                  <span>Reset Settings to Default</span>
-                </button>
+                  Reset Settings to Default
+                </Button>
               ) : (
                 <div className="p-4 rounded-lg border-2 border-warning-300 bg-warning-50">
                   <p className="text-sm text-warning-900 mb-3">
                     Are you sure? This will reset all settings to their default values.
                   </p>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={handleResetSettings}
-                      className="flex-1 btn-sm bg-warning-600 text-white hover:bg-warning-700"
+                      size="small"
+                      variant="primary"
+                      className="flex-1 bg-warning-600 hover:bg-warning-700 text-white"
                     >
                       Yes, Reset
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setShowConfirmReset(false)}
-                      className="flex-1 btn-sm btn-secondary"
+                      size="small"
+                      variant="secondary"
+                      className="flex-1"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
 
               {/* Clear All Data */}
               {!showConfirmClear ? (
-                <button
+                <Button
                   onClick={() => setShowConfirmClear(true)}
-                  className="w-full btn-secondary text-neutral-700 hover:border-error-400 hover:bg-error-50"
+                  variant="secondary"
+                  prefix={<Trash2 className="h-4 w-4" />}
+                  className="w-full hover:border-error-400 hover:bg-error-50"
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  <span>Clear All Data</span>
-                </button>
+                  Clear All Data
+                </Button>
               ) : (
                 <div className="p-4 rounded-lg border-2 border-error-300 bg-error-50">
                   <p className="text-sm text-error-900 mb-3">
                     Are you sure? This will permanently delete all your saved prompts and history.
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={handleClearAllData} className="flex-1 btn-sm btn-danger">
+                    <Button
+                      onClick={handleClearAllData}
+                      size="small"
+                      variant="primary"
+                      className="flex-1 bg-error-600 hover:bg-error-700 text-white"
+                    >
                       Yes, Delete All
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setShowConfirmClear(false)}
-                      className="flex-1 btn-sm btn-secondary"
+                      size="small"
+                      variant="secondary"
+                      className="flex-1"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -348,9 +363,9 @@ export default function Settings({
         {/* Footer */}
         <div className="card-footer flex items-center justify-between">
           <p className="text-xs text-neutral-600">Settings are saved automatically</p>
-          <button onClick={onClose} className="btn-primary">
+          <Button onClick={onClose} variant="primary">
             Done
-          </button>
+          </Button>
         </div>
       </div>
     </div>

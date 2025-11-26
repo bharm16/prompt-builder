@@ -6,6 +6,7 @@
  */
 
 import { Sparkles, CheckCircle, AlertCircle, Tag } from 'lucide-react';
+import { Button } from '../../../Button';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
 import type { ElementKey, Elements } from '../hooks/types';
 import type { ElementConfig, CategoryDetection } from './types';
@@ -79,14 +80,16 @@ function SubjectDescriptorCard({
           placeholder={descriptorConfig.placeholder}
           className="input text-copy-14 focus:border-geist-accents-5 focus:ring-geist-accents-5/30"
         />
-        <button
+        <Button
           onClick={() => onFetchSuggestions(descriptorKey)}
-          className="btn-primary btn-sm px-geist-3 py-geist-1 text-button-12 shadow-geist-small active:scale-95"
+          variant="primary"
+          size="small"
+          prefix={<Sparkles className="h-3 w-3" />}
+          className="shadow-geist-small active:scale-95"
           title="Get AI descriptor ideas"
         >
-          <Sparkles className="h-3 w-3" />
           AI fill
-        </button>
+        </Button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {descriptorConfig.examples.map((example, exampleIdx) => (

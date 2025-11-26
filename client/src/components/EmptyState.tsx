@@ -11,6 +11,7 @@ import {
   Inbox,
   type LucideIcon,
 } from 'lucide-react';
+import { Button } from './Button';
 
 type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
 
@@ -175,10 +176,15 @@ export default function EmptyState({
 
       {/* Action Button */}
       {action && (
-        <button onClick={action.onClick} className="btn-primary animate-fade-in" aria-label={action.label}>
-          {action.icon && <action.icon className="h-4 w-4" aria-hidden="true" />}
-          <span>{action.label}</span>
-        </button>
+        <Button
+          onClick={action.onClick}
+          variant="primary"
+          prefix={action.icon ? <action.icon className="h-4 w-4" /> : undefined}
+          className="animate-fade-in"
+          aria-label={action.label}
+        >
+          {action.label}
+        </Button>
       )}
     </div>
   );

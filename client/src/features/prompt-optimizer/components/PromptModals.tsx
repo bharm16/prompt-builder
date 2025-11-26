@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import Settings, { useSettings } from '@components/Settings';
 import KeyboardShortcuts from '@components/KeyboardShortcuts';
+import { Button } from '@components/Button';
 import PromptImprovementForm from '../../../PromptImprovementForm';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';
@@ -55,14 +56,15 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete }: Promp
             aria-labelledby="improvement-title"
           >
             <div className="my-8 w-full max-w-3xl">
-              <button
+              <Button
                 onClick={() => setShowImprover(false)}
-                className="mb-4 btn-ghost text-white hover:text-neutral-200"
+                variant="ghost"
+                prefix={<X className="h-5 w-5" />}
+                className="mb-4 text-white hover:text-neutral-200"
                 aria-label="Close improvement form"
               >
-                <X className="h-5 w-5" />
-                <span>Close</span>
-              </button>
+                Close
+              </Button>
               <PromptImprovementForm
                 initialPrompt={promptOptimizer.inputPrompt}
                 onComplete={onImprovementComplete}

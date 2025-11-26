@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Command, Keyboard } from 'lucide-react';
+import { Button } from './Button';
 
 interface ShortcutItem {
   keys: string[];
@@ -113,13 +114,14 @@ export default function KeyboardShortcuts({ isOpen, onClose }: KeyboardShortcuts
               Keyboard Shortcuts
             </h2>
           </div>
-          <button
+          <Button
             onClick={onClose}
-            className="btn-icon-secondary btn-sm"
+            svgOnly
+            variant="secondary"
+            size="small"
+            prefix={<X className="h-5 w-5" />}
             aria-label="Close keyboard shortcuts"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          />
         </div>
 
         {/* Content */}
@@ -178,9 +180,9 @@ export default function KeyboardShortcuts({ isOpen, onClose }: KeyboardShortcuts
           <p className="text-xs text-neutral-600">
             {isMac ? 'Using Mac keyboard layout' : 'Using Windows/Linux keyboard layout'}
           </p>
-          <button onClick={onClose} className="btn-primary">
+          <Button onClick={onClose} variant="primary">
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '../repositories';
 import { Home, Copy, Check } from 'lucide-react';
 import { useToast } from './Toast';
+import { Button } from './Button';
 import { PromptContext } from '../utils/PromptContext';
 import { formatTextToHTML } from '../features/prompt-optimizer/utils/textFormatting';
 import '../features/prompt-optimizer/PromptCanvas.css';
@@ -130,10 +131,13 @@ const SharedPrompt = (): React.ReactElement => {
           <p className="text-neutral-600 mb-6">
             The prompt you're looking for doesn't exist or has been removed.
           </p>
-          <button onClick={() => navigate('/')} className="btn-primary inline-flex items-center gap-2">
-            <Home className="h-4 w-4" />
+          <Button
+            onClick={() => navigate('/')}
+            variant="primary"
+            prefix={<Home className="h-4 w-4" />}
+          >
             Go to Home
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -150,10 +154,13 @@ const SharedPrompt = (): React.ReactElement => {
               {getModeLabel(prompt.mode)} · {new Date(prompt.timestamp).toLocaleDateString()}
             </p>
           </div>
-          <button onClick={() => navigate('/')} className="btn-ghost inline-flex items-center gap-2">
-            <Home className="h-4 w-4" />
+          <Button
+            onClick={() => navigate('/')}
+            variant="ghost"
+            prefix={<Home className="h-4 w-4" />}
+          >
             Home
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -175,22 +182,14 @@ const SharedPrompt = (): React.ReactElement => {
             <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
               Optimized Output
             </h2>
-            <button
+            <Button
               onClick={handleCopy}
-              className="btn-ghost text-sm inline-flex items-center gap-2"
+              variant="ghost"
+              size="small"
+              prefix={copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
             >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4 text-green-600" />
-                  <span className="text-green-600">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy
-                </>
-              )}
-            </button>
+              {copied ? 'Copied!' : 'Copy'}
+            </Button>
           </div>
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
             {/* Styles are now imported from PromptCanvas.css */}

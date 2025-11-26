@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Sparkles, ArrowRight, Brain, BookOpen, Wand2, Info } from 'lucide-react';
+import { Button } from './Button';
 
 // State and Hooks
 import { useVideoConceptState } from './VideoConceptBuilder/hooks/useVideoConceptState';
@@ -446,50 +447,50 @@ export default function VideoConceptBuilder({
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-100/80 p-1 text-sm font-medium text-neutral-600 shadow-inner">
-                <button
+                <Button
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'element' })}
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
-                    mode === 'element'
-                      ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-500 hover:text-neutral-900'
-                  }`}
+                  variant={mode === 'element' ? 'tertiary' : 'ghost'}
+                  shape="rounded"
+                  prefix={<Sparkles className="h-4 w-4" />}
+                  className={mode === 'element' ? 'bg-white text-neutral-900 shadow-sm' : ''}
                 >
-                  <Sparkles className="h-4 w-4" />
                   Element Builder
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'concept' })}
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
-                    mode === 'concept'
-                      ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-500 hover:text-neutral-900'
-                  }`}
+                  variant={mode === 'concept' ? 'tertiary' : 'ghost'}
+                  shape="rounded"
+                  prefix={<Brain className="h-4 w-4" />}
+                  className={mode === 'concept' ? 'bg-white text-neutral-900 shadow-sm' : ''}
                 >
-                  <Brain className="h-4 w-4" />
                   Describe Concept
-                </button>
+                </Button>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
+                <Button
                   onClick={() => dispatch({ type: 'TOGGLE_TEMPLATES' })}
-                  className="btn-ghost btn-sm border border-transparent text-neutral-700 hover:border-neutral-200 hover:bg-white"
+                  variant="ghost"
+                  size="small"
+                  prefix={<BookOpen className="h-4 w-4" />}
                 >
-                  <BookOpen className="h-4 w-4" />
                   Templates
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleCompleteScene}
                   disabled={filledCount === 0}
-                  className="btn-ghost btn-sm border border-transparent text-neutral-700 hover:border-neutral-200 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  variant="ghost"
+                  size="small"
+                  prefix={<Wand2 className="h-4 w-4" />}
                 >
-                  <Wand2 className="h-4 w-4" />
                   Auto-complete
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleGenerateTemplate('detailed')}
                   disabled={!isReadyToGenerate}
-                  className="btn-primary btn-sm shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                  variant="primary"
+                  size="small"
+                  suffix={<ArrowRight className="h-4 w-4" />}
                   title={
                     isReadyToGenerate
                       ? 'Generate optimized prompt'
@@ -497,8 +498,7 @@ export default function VideoConceptBuilder({
                   }
                 >
                   Generate Prompt
-                  <ArrowRight className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -531,14 +531,15 @@ export default function VideoConceptBuilder({
                 className="textarea min-h-[140px] rounded-geist-lg border-geist-accents-2 bg-geist-accents-1 text-copy-14"
               />
               <div className="mt-4 flex justify-end">
-                <button
+                <Button
                   onClick={handleParseConcept}
                   disabled={!concept}
-                  className="btn-primary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  variant="primary"
+                  size="small"
+                  prefix={<Brain className="h-4 w-4" />}
                 >
-                  <Brain className="h-4 w-4" />
                   Parse into elements
-                </button>
+                </Button>
               </div>
             </div>
           )}
