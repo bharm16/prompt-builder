@@ -52,10 +52,16 @@ export function SuggestionsList({
 
   return (
     <div
-      className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-neutral-100 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
+      className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-neutral-100 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 hover:[&::-webkit-scrollbar-thumb:hover]:bg-neutral-400"
       role="list"
       aria-label="Suggestion options"
-      style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db #f3f4f6' }}
+      style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.scrollbarColor = '#d1d5db #f3f4f6';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
+      }}
     >
       {suggestions.map((suggestion, index) => {
         const suggestionObj = normalizeSuggestion(suggestion) as SuggestionItem;

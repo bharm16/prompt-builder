@@ -26,7 +26,7 @@ import { useHighlightFingerprint } from '../span-highlighting/hooks/useHighlight
 
 // Extracted components
 import { CategoryLegend } from './components/CategoryLegend';
-import { FloatingToolbar } from './components/FloatingToolbar';
+import { PromptActions } from './components/PromptActions';
 import { PromptEditor } from './components/PromptEditor';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
@@ -495,26 +495,6 @@ export function PromptCanvas({
   return (
     <div className="fixed inset-0 flex flex-col bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
 
-      {/* Fixed Header */}
-      <header className="flex-shrink-0 border-b border-neutral-200 bg-white">
-        <FloatingToolbar
-          onCopy={handleCopy}
-          onExport={handleExport}
-          onCreateNew={onCreateNew}
-          onShare={handleShare}
-          copied={copied}
-          shared={shared}
-          showExportMenu={showExportMenu}
-          onToggleExportMenu={setShowExportMenu}
-          showLegend={showLegend}
-          onToggleLegend={setShowLegend}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-        />
-      </header>
-
       {/* Category Legend */}
       <CategoryLegend
         show={showLegend}
@@ -537,17 +517,37 @@ export function PromptCanvas({
 
         {/* Main Editor Area - Optimized Prompt */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-12 py-16">
-              {/* PromptEditor continues working even if highlighting fails */}
-              <PromptEditor
-                ref={editorRef}
-                onTextSelection={handleTextSelection}
-                onHighlightClick={handleHighlightClick}
-                onHighlightMouseDown={handleHighlightMouseDown}
-                onCopyEvent={handleCopyEvent}
-                onInput={handleInput}
-              />
+          <div className="flex-1 overflow-y-auto scrollbar-auto-hide">
+            <div className="max-w-3xl mx-auto px-8 pt-32 pb-12">
+              <div className="group">
+                {/* PromptEditor continues working even if highlighting fails */}
+                <PromptEditor
+                  ref={editorRef}
+                  onTextSelection={handleTextSelection}
+                  onHighlightClick={handleHighlightClick}
+                  onHighlightMouseDown={handleHighlightMouseDown}
+                  onCopyEvent={handleCopyEvent}
+                  onInput={handleInput}
+                />
+                
+                {/* Action buttons floating below prompt content, aligned right */}
+                <PromptActions
+                  onCopy={handleCopy}
+                  onExport={handleExport}
+                  onCreateNew={onCreateNew}
+                  onShare={handleShare}
+                  copied={copied}
+                  shared={shared}
+                  showExportMenu={showExportMenu}
+                  onToggleExportMenu={setShowExportMenu}
+                  showLegend={showLegend}
+                  onToggleLegend={setShowLegend}
+                  onUndo={onUndo}
+                  onRedo={onRedo}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -23,7 +23,6 @@
 .header-title {
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgb(115, 115, 115);
   margin-bottom: 0.5rem;
@@ -53,6 +52,44 @@
   display: flex;
   flex-direction: column;
   gap: 20px; /* Increased from 0.75rem (12px) to 20px */
+}
+
+/* Hide scrollbar by default, show on hover/scroll */
+.bento-boxes-container::-webkit-scrollbar-track {
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.bento-boxes-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.bento-boxes-container:hover::-webkit-scrollbar-track {
+  @apply bg-neutral-100;
+}
+
+.bento-boxes-container:hover::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300;
+}
+
+.bento-boxes-container:active::-webkit-scrollbar-track,
+.bento-boxes-container:focus::-webkit-scrollbar-track {
+  @apply bg-neutral-100;
+}
+
+.bento-boxes-container:active::-webkit-scrollbar-thumb,
+.bento-boxes-container:focus::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300;
+}
+
+.bento-boxes-container {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.bento-boxes-container:hover {
+  scrollbar-color: #d1d5db #f3f4f6;
 }
 
 /* Individual bento box */
@@ -160,28 +197,54 @@
   max-height: calc(240px - 40px);
 }
 
-/* Custom scrollbar styling for bento content */
+/* Custom scrollbar styling for bento content - hidden by default */
 .bento-content::-webkit-scrollbar {
   width: 8px;
 }
 
 .bento-content::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: transparent;
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .bento-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.25);
+  background: transparent;
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
-.bento-content::-webkit-scrollbar-thumb:hover {
+/* Show scrollbar on hover */
+.bento-content:hover::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.bento-content:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.bento-content:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.4);
+}
+
+/* Show scrollbar when scrolling */
+.bento-content:active::-webkit-scrollbar-track,
+.bento-content:focus::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.bento-content:active::-webkit-scrollbar-thumb,
+.bento-content:focus::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* Firefox scrollbar */
 .bento-content {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.bento-content:hover {
   scrollbar-color: rgba(0, 0, 0, 0.25) rgba(0, 0, 0, 0.05);
 }
 

@@ -52,7 +52,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   // UI State
   const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [showHistory, setShowHistory] = useState<boolean>(true);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showShortcuts, setShowShortcuts] = useState<boolean>(false);

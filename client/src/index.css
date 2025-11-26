@@ -59,21 +59,38 @@
     @apply bg-accent-100 text-accent-900;
   }
 
-  /* Custom scrollbar styling */
+  /* Custom scrollbar styling - hidden by default, shown on hover/scroll */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300 rounded-full;
+    @apply bg-transparent rounded-full;
+    transition: background-color 0.2s ease;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-400;
+  /* Show scrollbar on hover */
+  *:hover::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300;
+  }
+
+  *:hover::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  /* Show scrollbar when scrolling */
+  *:active::-webkit-scrollbar-thumb,
+  *:focus::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300;
+  }
+
+  *:active::-webkit-scrollbar-track,
+  *:focus::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
   }
 }
 
@@ -429,6 +446,34 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Scrollbar auto-hide - shows on hover/scroll */
+  .scrollbar-auto-hide::-webkit-scrollbar-track {
+    background: transparent;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-auto-hide::-webkit-scrollbar-thumb {
+    background: transparent;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-auto-hide:hover::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  .scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300;
+  }
+
+  .scrollbar-auto-hide {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .scrollbar-auto-hide:hover {
+    scrollbar-color: #d1d5db #f3f4f6;
   }
 
   /* Safe area utilities for mobile */
