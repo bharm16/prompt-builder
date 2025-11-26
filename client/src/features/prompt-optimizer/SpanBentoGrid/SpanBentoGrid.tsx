@@ -35,7 +35,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   onSpanClick,
   editorRef,
 }) => {
-  const { groups, totalSpans, categoryCount } = useSpanGrouping(spans);
+  const { groups } = useSpanGrouping(spans);
   
   // Memoize click handler to prevent BentoBox re-renders
   const handleSpanClick = useCallback((span: Span): void => {
@@ -48,14 +48,9 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   
   return (
     <div className="span-bento-grid">
-      {/* Header with stats */}
+      {/* Header */}
       <div className="bento-grid-header">
         <h2 className="header-title">Detected Elements</h2>
-        <div className="header-stats">
-          <span className="stat-item">{totalSpans} highlights</span>
-          <span className="stat-divider">•</span>
-          <span className="stat-item">{categoryCount} categories</span>
-        </div>
       </div>
       
       {/* Scrollable boxes container */}

@@ -29,7 +29,6 @@ import { SuggestionsList } from './components/SuggestionsList';
 import { LoadingState, EmptyState, InactiveState } from './components/PanelStates';
 
 // Utils
-import { computeKeyboardHint } from './utils/suggestionHelpers';
 
 // Config
 import {
@@ -156,9 +155,6 @@ export function SuggestionsPanel({
   // COMPUTED VALUES
   // ===========================
   const hasActiveSuggestions = show;
-  const computedKeyboardHint =
-    keyboardHint ||
-    computeKeyboardHint(hasActiveSuggestions, currentSuggestions.length);
 
   // ===========================
   // RENDER
@@ -238,12 +234,6 @@ export function SuggestionsPanel({
       </div>
 
       {hasActiveSuggestions && footer}
-
-      {computedKeyboardHint && hasActiveSuggestions && (
-        <div className="px-4 py-3 text-center text-[11px] text-neutral-500 border-t border-neutral-200 bg-neutral-50/60">
-          {computedKeyboardHint}
-        </div>
-      )}
 
       <style>{`
         @keyframes slideIn {

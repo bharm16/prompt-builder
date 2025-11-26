@@ -7,7 +7,8 @@ import type { BentoBoxProps } from './types';
 /**
  * Category container with collapse/expand functionality
  * Shows "No items" when empty for consistent layout
- * Expanded by default
+ * Smart default: Expanded only if category has 3+ spans, collapsed otherwise
+ * This reduces visual clutter and helps users focus on what matters
  */
 export const BentoBox = memo<BentoBoxProps>(({ 
   category, 
@@ -15,7 +16,9 @@ export const BentoBox = memo<BentoBoxProps>(({
   config, 
   onSpanClick,
 }) => {
-  const [isExpanded, setIsExpanded] = useState<boolean>(true); // Expanded by default
+  // Expand by default only if category has meaningful content (3+ spans)
+  // Empty or low-count categories start collapsed to reduce clutter
+  const [isExpanded, setIsExpanded] = useState<boolean>(spans.length >= 3);
   
   const hasSpans = spans.length > 0;
   
