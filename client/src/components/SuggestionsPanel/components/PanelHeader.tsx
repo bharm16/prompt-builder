@@ -72,9 +72,9 @@ export function PanelHeader({
       </div>
 
       {hasActiveSuggestions && contextValue && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-3 flex flex-col gap-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wider">
               {contextLabel}
             </span>
             {showContextBadge && (
@@ -84,21 +84,26 @@ export function PanelHeader({
               </span>
             )}
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2.5">
             {ContextIcon ? (
-              <div className="p-1.5 bg-neutral-100 rounded-md">
-                <ContextIcon className="h-3.5 w-3.5 text-neutral-600" aria-hidden="true" />
+              <div className="p-1.5 bg-orange-50 rounded-md border border-orange-200/50 flex-shrink-0">
+                <ContextIcon className="h-3.5 w-3.5 text-orange-600" aria-hidden="true" />
               </div>
             ) : null}
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-neutral-900 font-medium leading-tight break-words">
-                {contextValue}
-              </p>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-50 border border-orange-200/60 rounded-md shadow-sm">
+                <p className="text-[13px] text-orange-900 font-semibold leading-tight break-words">
+                  {contextValue}
+                </p>
+              </div>
               {contextSecondaryValue && (
-                <p className="text-[11px] text-neutral-500 leading-tight break-words">
+                <p className="mt-1.5 text-[11px] text-neutral-600 leading-tight break-words">
                   {contextSecondaryValue}
                 </p>
               )}
+              <p className="mt-2 text-[11px] text-neutral-500 italic leading-tight">
+                Alternatives for this phrase
+              </p>
             </div>
           </div>
         </div>

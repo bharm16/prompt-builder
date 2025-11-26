@@ -69,40 +69,40 @@ export function SuggestionsList({
           >
             <button
               onClick={() => handleSuggestionSelect(suggestionObj || suggestion)}
-              className="w-full p-3.5 text-left rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+              className="w-full p-4 text-left rounded-xl border-2 border-neutral-200 bg-white hover:border-orange-300 hover:bg-orange-50/30 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 active:scale-[0.98] cursor-pointer group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >
               {index < MAX_KEYBOARD_SHORTCUTS && (
-                <kbd className="absolute top-3 right-3 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <kbd className="absolute top-3.5 right-3.5 px-2 py-1 text-[11px] font-semibold text-neutral-500 bg-neutral-100 border border-neutral-300 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   {index + 1}
                 </kbd>
               )}
 
-              <div className="space-y-2 pr-6">
+              <div className="space-y-2.5 pr-8">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="text-[12px] font-semibold text-neutral-900 break-words leading-snug whitespace-pre-wrap">
+                  <div className="text-[13px] font-semibold text-neutral-900 break-words leading-snug whitespace-pre-wrap group-hover:text-neutral-950 transition-colors">
                     {suggestionText}
                   </div>
                   {suggestionObj?.compatibility !== undefined &&
                     renderCompatibilityBadge(suggestionObj.compatibility)}
                 </div>
                 {isPlaceholder && suggestionObj?.explanation ? (
-                  <div className="text-[11px] leading-relaxed text-neutral-600 break-words">
+                  <div className="text-[12px] leading-relaxed text-neutral-700 break-words font-medium group-hover:text-neutral-900 transition-colors">
                     {suggestionObj.explanation}
                   </div>
                 ) : suggestionObj?.explanation ? (
-                  <div className="text-[11px] leading-relaxed text-neutral-600 break-words">
+                  <div className="text-[12px] leading-relaxed text-neutral-700 break-words font-medium group-hover:text-neutral-900 transition-colors">
                     {suggestionObj.explanation}
                   </div>
                 ) : null}
               </div>
 
               {showCopyAction && suggestionText && (
-                <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="mt-3 pt-3 border-t border-neutral-200 group-hover:border-neutral-300 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <span
                     onClick={(e) => handleCopy(suggestionText, e)}
-                    className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150 cursor-pointer"
+                    className="text-[11px] font-semibold text-neutral-600 hover:text-orange-600 transition-colors duration-150 cursor-pointer"
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => handleCopyKeyDown(suggestionText, e)}
@@ -110,7 +110,7 @@ export function SuggestionsList({
                     Copy
                   </span>
                   <span className="text-neutral-300">•</span>
-                  <span className="text-[11px] text-neutral-500">Click to apply</span>
+                  <span className="text-[11px] text-neutral-600 font-medium">Click to apply</span>
                 </div>
               )}
             </button>
