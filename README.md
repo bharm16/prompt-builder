@@ -1,266 +1,260 @@
-# Prompt Optimizer
+# PromptCanvas
 
-> AI-powered prompt optimization platform with enterprise-grade architecture, specialized for AI video generation
+> **Interactive editing for AI video prompts. Every phrase is semantically labeled. Click any word to get context-aware alternatives.**
 
-A production-ready, full-stack application for optimizing prompts for AI video generation (Sora, Veo3, RunwayML, Kling, Luma). Built with React, Express, and Firebase, featuring comprehensive testing, monitoring, and deployment configurations.
-
-> **📖 For comprehensive documentation, see [OVERVIEW.md](OVERVIEW.md)**
+It's Grammarly for Sora, Runway, Veo3, Kling, and Luma.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![React Version](https://img.shields.io/badge/react-18.2.0-blue)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue)](https://www.typescriptlang.com/)
 
 ---
 
-## Table of Contents
+## What This Is
 
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [API Reference](#api-reference)
-- [Components](#components)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Monitoring](#monitoring)
-- [Contributing](#contributing)
-- [Documentation](#documentation)
-- [License](#license)
+<!-- TODO: Add GIF showing the click-to-enhance flow -->
 
----
+**PromptCanvas is NOT another paste-and-optimize tool.**
 
-## Features
+It's an interactive editing canvas where:
 
-- **Video Prompt Optimization** - Specialized for AI video generation (Sora, Veo3, RunwayML, Kling, Luma)
-- **Two-Stage Optimization** - Fast draft generation with progressive refinement via SSE streaming
-- **Intelligent Span Labeling** - Real-time text categorization with color-coded highlights
-- **Interactive Enhancement** - Click-to-improve suggestions with context-aware AI recommendations
-- **Video Concept Builder** - Element-by-element concept construction with compatibility checking
-- **Quality Assessment** - Automated scoring (0-100) with expansion ratio and completeness tracking
-- **History & Collaboration** - Up to 100 saved optimizations with search, filter, and UUID sharing
-- **PromptCanvas** - Three-pane interactive editor with undo/redo, export, and keyboard shortcuts
-- **Enterprise Architecture** - Multi-provider LLM support, circuit breakers, caching, monitoring, Kubernetes-ready
+1. You write/paste a prompt
+2. Every phrase gets ML-labeled (subject, camera, lighting, action, style...)
+3. 15+ color-coded highlights appear
+4. **Click ANY highlight** → get 5 AI-generated alternatives
+5. One-click replace → prompt updates
+6. Repeat until perfect
 
-> **For detailed feature explanations and examples, see [OVERVIEW.md](OVERVIEW.md)**
+**You control every word. The AI assists, you decide.**
+
+> 📖 **[Full documentation →](OVERVIEW.md)**
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js >= 20.0.0
-- npm >= 10.0.0
-- Firebase account (for authentication & database)
-- OpenAI API key
-
-### Installation
-
-1. **Clone and install:**
 ```bash
+# Clone
 git clone https://github.com/yourusername/prompt-builder.git
 cd prompt-builder
+
+# Install
 npm install
-```
 
-2. **Configure environment:**
-```bash
+# Configure
 cp .env.example .env
-# Edit .env with your API keys
-```
+# Add your API keys to .env
 
-**Required environment variables:**
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4o-mini
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-```
-
-3. **Start the application:**
-```bash
+# Run
 npm start
+# Open http://localhost:5173
 ```
 
-This starts both backend (port 3001) and frontend (port 5173). Open http://localhost:5173
+**Required:**
+- Node.js >= 20.0.0
+- OpenAI API key
 
-4. **Create your first optimization:**
-   - Sign up/sign in
-   - Enter a prompt: `"A person walking on a beach"`
-   - Click "Optimize" or press `Ctrl/Cmd + K`
-
-> **For detailed setup instructions, see [OVERVIEW.md](OVERVIEW.md#getting-started)**
+**Optional (but recommended):**
+- Groq API key (free, enables sub-300ms drafts)
+- Firebase account (for auth and history)
 
 ---
 
-## Architecture
-
-High-level system architecture:
+## The Experience
 
 ```
-┌─────────────────────────────────────────────┐
-│         React Frontend (Vite)               │
-│  - Interactive UI                           │
-│  - Real-time highlighting                   │
-│  - SSE streaming                            │
-└─────────────┬───────────────────────────────┘
-              │ HTTP/SSE
-┌─────────────┴───────────────────────────────┐
-│         Express Backend API                 │
-│  ┌──────────────────────────────────────┐ │
-│  │   Dependency Injection Container       │ │
-│  │  - Services: Optimization, Enhancement │ │
-│  │  - Span Labeling, Video Concept       │ │
-│  └──────────────────────────────────────┘ │
-│  ┌──────────────────────────────────────┐ │
-│  │      AIModelService (Router)         │ │
-│  │  - Multi-provider LLM support        │ │
-│  │  - Automatic fallback                │ │
-│  └──────────────────────────────────────┘ │
-└─────────────────────────────────────────────┘
-              │
-┌─────────────┴───────────────────────────────┐
-│      External Services & Storage            │
-│  - Firebase (Auth & Firestore)              │
-│  - Redis (Optional caching)                 │
-│  - OpenAI, Groq, Gemini APIs                │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  SPAN BENTO        INTERACTIVE EDITOR                  SUGGESTIONS     │
+│  ───────────       ──────────────────                  ───────────     │
+│                                                                         │
+│  Subject (3)       "A [woman in her 30s] walks        "woman in her    │
+│  Action (1)         along a [pristine beach] at        30s":           │
+│  Location (2)       [golden hour]..."                                  │
+│  Lighting (2)                                          • elderly man   │
+│  Camera (1)         ↑ Click any highlight              • young dancer  │
+│  Style (1)                                             • shadowy figure│
+│                                                                         │
+│  [15 elements]                                         [Click to apply]│
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **For detailed architecture flows and component descriptions, see [OVERVIEW.md](OVERVIEW.md#technical-architecture)**
+**Left:** Overview of detected elements by category  
+**Center:** Your prompt with clickable highlights  
+**Right:** AI suggestions for selected text
+
+---
+
+## Key Features
+
+| Feature | What It Does |
+|---------|--------------|
+| **Semantic Labeling** | 30+ categories tuned for video (subject, camera, lighting, action, style...) |
+| **Click-to-Enhance** | Click any highlight → get context-aware alternatives → one-click replace |
+| **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
+| **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
+| **Consistency Tracking** | Suggestions respect your edit history to maintain coherence |
+
+---
+
+## Why This Exists
+
+AI video models (Sora, Runway, Veo3) are sensitive to prompt quality. The difference between:
+
+❌ `"person on beach"`  
+✅ `"Wide shot: woman in her 30s walks barefoot along pristine beach at golden hour, lateral tracking shot, warm backlight..."`
+
+...is the difference between generic output and cinematic results.
+
+**The problem:** Most people don't know cinematographic language.
+
+**The solution:** PromptCanvas shows you what elements your prompt has, what's missing, and lets you refine each element with AI assistance.
 
 ---
 
 ## Tech Stack
 
-**Frontend:** React 18.2, Vite 7.1, Tailwind CSS, TypeScript 5.9  
-**Backend:** Express 4.21, Firebase 12.4, TypeScript 5.9  
-**LLM:** OpenAI (GPT-4o-mini), Groq (Llama 3.1 8B), Gemini Pro  
-**Testing:** Vitest, Playwright, k6  
-**Infrastructure:** Docker, Kubernetes, Prometheus, Grafana, Redis
-
-> **For detailed tech stack explanations, see [OVERVIEW.md](OVERVIEW.md#technology-stack)**
+| | |
+|-|-|
+| **Frontend** | React 18, Vite, Tailwind, TypeScript |
+| **Backend** | Express, TypeScript, Firebase |
+| **LLMs** | OpenAI (quality), Groq (speed), Gemini (diversity) |
+| **Infra** | Docker, Kubernetes, Redis, Prometheus |
 
 ---
 
-## API Reference
+## Project Structure
 
-**Base URL:** `http://localhost:3001/api` (dev) | `https://your-domain.com/api` (prod)
+```
+prompt-builder/
+├── client/                    # React frontend
+│   └── src/
+│       ├── features/
+│       │   └── prompt-optimizer/
+│       │       ├── PromptCanvas.tsx      # Main editor
+│       │       └── SpanBentoGrid/        # Element overview
+│       └── components/
+│           ├── SuggestionsPanel/         # AI suggestions
+│           └── VideoConceptBuilder/      # Guided wizard
+├── server/                    # Express backend
+│   └── src/
+│       ├── services/
+│       │   ├── prompt-optimization/      # Core optimization
+│       │   ├── enhancement/              # Suggestions
+│       │   └── ai-model/                 # LLM routing
+│       └── llm/
+│           └── span-labeling/            # Semantic labeling
+└── shared/
+    └── taxonomy.ts            # 30+ video categories
+```
 
-**Authentication:** `Authorization: Bearer YOUR_API_KEY`
+---
 
-### Key Endpoints
+## API
 
-**POST /api/optimize-stream** - Two-stage optimization with SSE streaming
-```json
+**Optimize with streaming:**
+```bash
+POST /api/optimize-stream
+Content-Type: application/json
+
 {
-  "prompt": "A person walking on a beach",
+  "prompt": "person walking on beach",
   "mode": "video"
 }
+
+# Returns SSE stream: draft → spans → refined → done
 ```
 
-**POST /llm/label-spans** - Label text spans with semantic categories
-```json
+**Get suggestions for a span:**
+```bash
+POST /api/enhance
+Content-Type: application/json
+
 {
-  "text": "A woman walks on a beach at sunset",
-  "policy": "highlighting"
+  "highlightedText": "woman in her 30s",
+  "contextBefore": "Wide shot: ",
+  "contextAfter": " walks barefoot...",
+  "fullPrompt": "...",
+  "highlightedCategory": "subject.identity"
 }
 ```
 
-**Health:** `GET /health`, `GET /health/ready`, `GET /metrics`
-
-> **For complete API documentation, see [docs/API.md](docs/API.md)**
+> 📖 **[Full API docs →](docs/API.md)**
 
 ---
 
-## Components
+## Scripts
 
-**Frontend:** PromptCanvas (interactive editor), SpanBentoGrid (highlighting), VideoConceptBuilder (concept construction)
-
-**Backend:** AIModelService (LLM router), PromptOptimizationService, SpanLabelingService, EnhancementService
-
-> **For detailed component documentation, see [OVERVIEW.md](OVERVIEW.md#technical-architecture)**
+```bash
+npm start           # Run both frontend + backend
+npm run dev         # Frontend only (Vite)
+npm run server      # Backend only (Express)
+npm run test        # Unit tests (Vitest)
+npm run test:e2e    # E2E tests (Playwright)
+npm run lint        # ESLint
+npm run build       # Production build
+```
 
 ---
 
-## Testing
+## Environment Variables
 
-```bash
-npm run test          # Unit tests (Vitest)
-npm run test:e2e      # E2E tests (Playwright)
-npm run test:load     # Load tests (k6)
-npm run lint          # Linting
+```env
+# Required
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+
+# Optional (enables fast drafts)
+GROQ_API_KEY=gsk_...
+
+# Firebase (for auth/history)
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
 ```
 
-> **For detailed testing guide, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
-
----
-
-## Deployment
-
-**Docker:**
-```bash
-docker build -t prompt-builder:latest .
-docker run -p 3001:3001 -e OPENAI_API_KEY=your_key prompt-builder:latest
-```
-
-**Kubernetes:**
-```bash
-kubectl apply -f infrastructure/kubernetes/base/
-kubectl apply -k infrastructure/kubernetes/overlays/production/
-```
-
-**Firebase Hosting:**
-```bash
-npm run build
-firebase deploy --only hosting:production
-```
-
-> **For detailed deployment guides, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
-
-## Monitoring
-
-**Health:** `GET /health`, `GET /health/ready`, `GET /health/live`  
-**Metrics:** `GET /metrics` (Prometheus format)  
-**Monitoring Stack:** `npm run perf:monitor` (Prometheus + Grafana)
-
-> **For detailed monitoring setup, see [docs/monitoring/README.md](docs/monitoring/README.md)**
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and run tests: `npm run test:all && npm run lint`
-4. Commit with conventional commits: `git commit -m "feat: add new feature"`
-5. Push and create PR
-
-**Commit types:** `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
-
-> **For detailed development guidelines, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
+See `.env.example` for full list.
 
 ---
 
 ## Documentation
 
-- **[OVERVIEW.md](OVERVIEW.md)** - Comprehensive project overview, features, and use cases
-- **[docs/API.md](docs/API.md)** - Complete API reference
-- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Development guide and testing
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guides
+| Doc | Contents |
+|-----|----------|
+| **[OVERVIEW.md](OVERVIEW.md)** | Full product documentation, architecture, features |
+| **[docs/API.md](docs/API.md)** | API reference |
+| **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | Development guide |
+| **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment instructions |
 
-## Support
+---
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/prompt-builder/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/prompt-builder/discussions)
+## Status
+
+**In active development.** Core features working:
+
+- ✅ Two-stage optimization
+- ✅ Semantic span labeling (30+ categories)
+- ✅ Click-to-enhance suggestions
+- ✅ Video Concept Builder
+- ✅ Multi-provider LLM support
+- ⏳ Payment integration
+- ⏳ Team collaboration
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT
+
+---
+
+## Contributing
+
+1. Fork the repo
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Run tests: `npm run test && npm run lint`
+4. Commit: `git commit -m "feat: add feature"`
+5. Push and create PR
+
+---
+
+**[→ Full documentation](OVERVIEW.md)** · **[→ API reference](docs/API.md)**
