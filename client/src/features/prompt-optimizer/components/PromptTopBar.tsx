@@ -15,21 +15,12 @@ export const PromptTopBar = (): React.ReactElement | null => {
     showBrainstorm,
   } = usePromptState();
 
-  // Hide when brainstorm modal is open or when sidebar is visible
-  if (showBrainstorm || showHistory) {
+  // Hide when brainstorm modal is open
+  if (showBrainstorm) {
     return null;
   }
 
-  return (
-    <div className="fixed left-6 top-6 z-fixed">
-      <button
-        onClick={() => setShowHistory(true)}
-        className="btn-icon-secondary shadow-lg hover-scale ripple"
-        aria-label="Show history sidebar"
-      >
-        <PanelLeft className="h-5 w-5" />
-      </button>
-    </div>
-  );
+  // Sidebar is always visible now (collapsed or expanded), so we don't need the top bar toggle
+  return null;
 };
 

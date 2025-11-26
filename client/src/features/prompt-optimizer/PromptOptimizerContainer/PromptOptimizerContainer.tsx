@@ -252,7 +252,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   return (
     <div
       className="h-screen overflow-hidden gradient-neutral transition-colors duration-300"
-      style={{ '--sidebar-width': showHistory ? '18rem' : '0px' } as React.CSSProperties}
+      style={{ '--sidebar-width': showHistory ? '18rem' : '4rem' } as React.CSSProperties}
     >
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only-focusable top-4 left-4">
@@ -275,7 +275,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       {/* Main Content */}
       <main
         id="main-content"
-        className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-0'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
+        className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-16'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
       >
         {/* Input Section */}
         {!showResults && (

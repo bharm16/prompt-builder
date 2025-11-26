@@ -4,7 +4,11 @@ import {
   LogIn,
   LogOut,
   PanelLeft,
+  PanelRight,
   Trash2,
+  Plus,
+  History,
+  User as UserIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getAuthRepository } from '../../repositories';
@@ -201,7 +205,7 @@ function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.ReactElem
 }
 
 export interface HistorySidebarProps {
-  showHistory: boolean;
+  showHistory: boolean; // true = expanded, false = collapsed
   setShowHistory: (show: boolean) => void;
   user: User | null;
   history: PromptHistoryEntry[];
@@ -262,14 +266,95 @@ export function HistorySidebar({
     }
   };
 
+  const isCollapsed = !showHistory;
+
   return (
     <aside
       id="history-sidebar"
-      className={`${showHistory ? 'w-72' : 'w-0'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-white transition-all duration-300`}
+      className={`${showHistory ? 'w-72' : 'w-16'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-neutral-200 bg-white transition-all duration-300`}
       aria-label="Prompt history"
-      aria-hidden={!showHistory}
     >
-      {showHistory && (
+      {isCollapsed ? (
+        // Collapsed state - icon-only sidebar
+        <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+          {/* Header with expand button */}
+          <header className="flex-shrink-0 px-2 py-3 border-b border-neutral-200">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="w-full p-2 hover:bg-neutral-100 rounded transition-colors flex items-center justify-center"
+              aria-label="Expand sidebar"
+            >
+              <PanelRight className="h-5 w-5 text-neutral-600" />
+            </button>
+          </header>
+
+          {/* New Prompt button - icon only */}
+          <div className="flex-shrink-0 px-2 py-2">
+            <button
+              onClick={onCreateNew}
+              className="w-full p-2 hover:bg-orange-50 rounded-lg transition-colors flex items-center justify-center group"
+              aria-label="Create new prompt"
+              title="New Prompt"
+            >
+              <Plus className="h-5 w-5 text-orange-500 group-hover:text-orange-600" />
+            </button>
+          </div>
+
+          {/* History icon - shows recent count */}
+          <div className="flex-shrink-0 px-2 py-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="w-full p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center justify-center relative group"
+              aria-label="Show history"
+              title="History"
+            >
+              <History className="h-5 w-5 text-neutral-600" />
+              {filteredHistory.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {filteredHistory.length > 9 ? '9+' : filteredHistory.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Auth Section - icon only */}
+          <footer className="flex-shrink-0 border-t border-neutral-100 p-2">
+            {!user ? (
+              <button
+                onClick={handleSignIn}
+                className="w-full p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center justify-center"
+                aria-label="Sign in"
+                title="Sign in"
+              >
+                <LogIn className="h-5 w-5 text-neutral-600" />
+              </button>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="w-full p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center justify-center"
+                  aria-label="User menu"
+                  title={typeof user.displayName === 'string' ? user.displayName : 'User'}
+                >
+                  {typeof user.photoURL === 'string' && user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt=""
+                      className="h-8 w-8 rounded-full"
+                    />
+                  ) : (
+                    <UserIcon className="h-5 w-5 text-neutral-600" />
+                  )}
+                </button>
+              </div>
+            )}
+          </footer>
+        </div>
+      ) : (
+        // Expanded state - full sidebar
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with toggle + title */}
           <header className="flex-shrink-0 px-4 py-3 border-b border-neutral-200">
@@ -277,7 +362,7 @@ export function HistorySidebar({
               <button
                 onClick={() => setShowHistory(false)}
                 className="p-1.5 hover:bg-neutral-100 rounded transition-colors"
-                aria-label="Close sidebar"
+                aria-label="Collapse sidebar"
               >
                 <PanelLeft className="h-5 w-5 text-neutral-600" />
               </button>
