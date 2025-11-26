@@ -30,7 +30,7 @@ export const APP_CONFIG = {
 
   // UI Configuration
   ui: {
-    defaultMode: 'optimize',
+    defaultMode: 'video', // Only video mode is currently supported
     showHistory: true,
     animationDuration: 200,
     toastDuration: 3000,
@@ -44,31 +44,33 @@ export const APP_CONFIG = {
   },
 
   // Mode Configuration
+  // NOTE: Only 'video' mode is currently implemented in the backend.
+  // Other modes are commented out but kept for future implementation.
   modes: [
-    {
-      id: 'optimize',
-      name: 'Standard Prompt',
-      icon: MessageSquare,
-      description: 'Optimize any prompt',
-    },
-    {
-      id: 'reasoning',
-      name: 'Reasoning Prompt',
-      icon: Lightbulb,
-      description: 'Deep thinking & verification',
-    },
-    {
-      id: 'research',
-      name: 'Deep Research',
-      icon: Search,
-      description: 'Create research plans',
-    },
-    {
-      id: 'socratic',
-      name: 'Socratic Learning',
-      icon: GraduationCap,
-      description: 'Learning journeys',
-    },
+    // {
+    //   id: 'optimize',
+    //   name: 'Standard Prompt',
+    //   icon: MessageSquare,
+    //   description: 'Optimize any prompt',
+    // },
+    // {
+    //   id: 'reasoning',
+    //   name: 'Reasoning Prompt',
+    //   icon: Lightbulb,
+    //   description: 'Deep thinking & verification',
+    // },
+    // {
+    //   id: 'research',
+    //   name: 'Deep Research',
+    //   icon: Search,
+    //   description: 'Create research plans',
+    // },
+    // {
+    //   id: 'socratic',
+    //   name: 'Socratic Learning',
+    //   icon: GraduationCap,
+    //   description: 'Learning journeys',
+    // },
     {
       id: 'video',
       name: 'Video Prompt',
