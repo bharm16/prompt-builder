@@ -126,7 +126,7 @@ export default function Settings({
       <div className="modal-content-lg animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="card-header flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
-          <h2 id="settings-title" className="text-xl font-bold text-neutral-900">
+          <h2 id="settings-title" className="text-heading-20 text-geist-foreground">
             Settings
           </h2>
           <button
@@ -142,7 +142,7 @@ export default function Settings({
         <div className="card-body space-y-6 max-h-[70vh] overflow-y-auto">
           {/* Appearance Section */}
           <section>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Appearance</h3>
+            <h3 className="text-heading-18 text-geist-foreground mb-geist-4">Appearance</h3>
 
             {/* Dark Mode Toggle */}
             <div className="flex items-center justify-between p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50 transition-colors duration-200">
@@ -153,10 +153,10 @@ export default function Settings({
                   <Sun className="h-5 w-5 text-warning-600" aria-hidden="true" />
                 )}
                 <div>
-                  <label htmlFor="dark-mode-toggle" className="font-medium text-neutral-900">
+                  <label htmlFor="dark-mode-toggle" className="text-label-16 text-geist-foreground">
                     Dark Mode
                   </label>
-                  <p className="text-sm text-neutral-600">Use dark theme across the app</p>
+                  <p className="text-copy-14 text-geist-accents-6">Use dark theme across the app</p>
                 </div>
               </div>
               <button
@@ -183,7 +183,7 @@ export default function Settings({
             <div className="mt-4 p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
               <div className="flex items-center gap-3 mb-3">
                 <Type className="h-5 w-5 text-neutral-600" aria-hidden="true" />
-                <label className="font-medium text-neutral-900">Font Size</label>
+                <label className="text-label-16 text-geist-foreground">Font Size</label>
               </div>
               <div className="flex gap-2">
                 {(['small', 'medium', 'large'] as FontSize[]).map((size) => (
@@ -250,7 +250,7 @@ export default function Settings({
             <div className="p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
               <div className="flex items-center gap-3 mb-3">
                 <Download className="h-5 w-5 text-neutral-600" aria-hidden="true" />
-                <label className="font-medium text-neutral-900">Default Export Format</label>
+                <label className="text-label-16 text-geist-foreground">Default Export Format</label>
               </div>
               <div className="flex gap-2">
                 {[
@@ -280,7 +280,7 @@ export default function Settings({
 
           {/* Danger Zone */}
           <section>
-            <h3 className="text-lg font-semibold text-error-600 mb-4">Danger Zone</h3>
+            <h3 className="text-heading-18 text-error-600 mb-geist-4">Danger Zone</h3>
 
             <div className="space-y-3">
               {/* Reset Settings */}

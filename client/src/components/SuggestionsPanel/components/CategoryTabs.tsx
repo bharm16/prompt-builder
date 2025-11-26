@@ -23,25 +23,25 @@ export function CategoryTabs({
   }
 
   return (
-    <div className="flex-shrink-0 flex flex-wrap gap-2 p-4 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white">
+    <div className="flex-shrink-0 flex flex-wrap gap-geist-2 p-geist-4 border-b border-geist-accents-2 bg-gradient-to-b from-geist-accents-1/50 to-geist-background">
       {categories.map((cat) => (
         <button
           key={cat.category}
           onClick={() => onCategoryChange(cat.category)}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold rounded-lg transition-all duration-150 ${
+          className={`inline-flex items-center gap-geist-2 px-geist-2 py-geist-1 text-label-12 rounded-geist-lg transition-all duration-150 ${
             activeCategory === cat.category
-              ? 'bg-neutral-900 text-white shadow-sm'
-              : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-300 hover:border-neutral-400'
+              ? 'bg-geist-foreground text-white shadow-geist-small'
+              : 'bg-geist-background text-geist-accents-7 hover:bg-geist-accents-1 border border-geist-accents-3 hover:border-geist-accents-4'
           }`}
           aria-pressed={activeCategory === cat.category}
           aria-label={`Category: ${cat.category} (${cat.suggestions.length} options)`}
         >
           <span>{cat.category}</span>
           <span
-            className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+            className={`text-label-12 px-geist-2 py-geist-1 rounded-full ${
               activeCategory === cat.category
                 ? 'bg-white/20'
-                : 'bg-neutral-200 text-neutral-600'
+                : 'bg-geist-accents-2 text-geist-accents-6'
             }`}
           >
             {cat.suggestions.length}

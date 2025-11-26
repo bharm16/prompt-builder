@@ -33,15 +33,15 @@ export function CustomRequestForm({
   };
 
   return (
-    <div className="flex-shrink-0 p-3 border-b border-neutral-200 bg-gradient-to-b from-white to-neutral-50/30 space-y-2">
-      <div className="space-y-1">
+    <div className="flex-shrink-0 p-geist-3 border-b border-geist-accents-2 bg-gradient-to-b from-geist-background to-geist-accents-1/30 space-y-geist-2">
+      <div className="space-y-geist-1">
         <label
           htmlFor="custom-request"
-          className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wide"
+          className="text-label-12 text-geist-accents-6 uppercase tracking-wide"
         >
           Need something specific?
         </label>
-        <p className="text-[12px] text-neutral-500 leading-relaxed">{helperText}</p>
+        <p className="text-copy-14 text-geist-accents-5 leading-relaxed">{helperText}</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -50,17 +50,17 @@ export function CustomRequestForm({
           value={customRequest}
           onChange={(e) => onCustomRequestChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-12 text-[13px] text-neutral-900 bg-white border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
+          className="w-full h-12 text-copy-14 text-geist-foreground bg-geist-background border border-geist-accents-3 rounded-geist-lg px-geist-3 py-geist-2 focus:outline-none focus:ring-2 focus:ring-geist-foreground/10 focus:border-geist-accents-4"
           maxLength={MAX_REQUEST_LENGTH}
         />
 
         <button
           type="submit"
           disabled={isLoading || !customRequest.trim()}
-          className={`inline-flex items-center justify-center gap-2 w-full px-3 py-2 mt-3 text-[13px] font-semibold rounded-lg transition-all duration-150 ${
+          className={`inline-flex items-center justify-center gap-geist-2 w-full px-geist-3 py-geist-2 mt-geist-3 text-button-14 rounded-geist-lg transition-all duration-150 ${
             isLoading || !customRequest.trim()
-              ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-sm'
+              ? 'bg-geist-accents-2 text-geist-accents-5 cursor-not-allowed'
+              : 'bg-geist-foreground text-white hover:bg-geist-accents-8 shadow-geist-small'
           }`}
           aria-busy={isLoading}
           aria-live="polite"

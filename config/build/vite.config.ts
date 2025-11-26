@@ -72,6 +72,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    fs: {
+      allow: ['..'],
+    },
   },
+  publicDir: path.resolve(__dirname, '../../client/public'),
 });
 

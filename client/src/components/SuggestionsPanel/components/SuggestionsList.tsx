@@ -52,12 +52,12 @@ export function SuggestionsList({
 
   return (
     <div
-      className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-neutral-100 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 hover:[&::-webkit-scrollbar-thumb:hover]:bg-neutral-400"
+      className="flex-1 min-h-0 space-y-geist-3 overflow-y-auto p-geist-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3 hover:[&::-webkit-scrollbar-thumb:hover]:bg-geist-accents-4"
       role="list"
       aria-label="Suggestion options"
       style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.scrollbarColor = '#d1d5db #f3f4f6';
+        (e.currentTarget as HTMLElement).style.scrollbarColor = 'var(--geist-accents-3) var(--geist-accents-1)';
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
@@ -75,48 +75,48 @@ export function SuggestionsList({
           >
             <button
               onClick={() => handleSuggestionSelect(suggestionObj || suggestion)}
-              className="w-full p-4 text-left rounded-xl border-2 border-neutral-200/50 glass-subtle hover:border-orange-300/50 hover:bg-orange-50/40 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 active:scale-[0.98] cursor-pointer group"
+              className="w-full p-geist-4 text-left rounded-geist-lg border-2 border-geist-accents-2/50 glass-subtle hover:border-orange-300/50 hover:bg-orange-50/40 hover:shadow-geist-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 active:scale-[0.98] cursor-pointer group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >
               {index < MAX_KEYBOARD_SHORTCUTS && (
-                <kbd className="absolute top-3.5 right-3.5 px-2 py-1 text-[11px] font-semibold text-neutral-500 bg-neutral-100 border border-neutral-300 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <kbd className="absolute top-3.5 right-3.5 px-geist-2 py-geist-1 text-label-12 text-geist-accents-5 bg-geist-accents-2 border border-geist-accents-3 rounded-geist shadow-geist-small opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   {index + 1}
                 </kbd>
               )}
 
-              <div className="space-y-2.5 pr-8">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-[13px] font-semibold text-neutral-900 break-words leading-snug whitespace-pre-wrap group-hover:text-neutral-950 transition-colors">
+              <div className="space-y-geist-3 pr-geist-8">
+                <div className="flex items-start justify-between gap-geist-2">
+                  <div className="text-label-14 text-geist-foreground break-words leading-snug whitespace-pre-wrap group-hover:text-geist-accents-8 transition-colors">
                     {suggestionText}
                   </div>
                   {suggestionObj?.compatibility !== undefined &&
                     renderCompatibilityBadge(suggestionObj.compatibility)}
                 </div>
                 {isPlaceholder && suggestionObj?.explanation ? (
-                  <div className="text-[12px] leading-relaxed text-neutral-700 break-words font-medium group-hover:text-neutral-900 transition-colors">
+                  <div className="text-copy-14 leading-relaxed text-geist-accents-7 break-words group-hover:text-geist-foreground transition-colors">
                     {suggestionObj.explanation}
                   </div>
                 ) : suggestionObj?.explanation ? (
-                  <div className="text-[12px] leading-relaxed text-neutral-700 break-words font-medium group-hover:text-neutral-900 transition-colors">
+                  <div className="text-copy-14 leading-relaxed text-geist-accents-7 break-words group-hover:text-geist-foreground transition-colors">
                     {suggestionObj.explanation}
                   </div>
                 ) : null}
               </div>
 
               {showCopyAction && suggestionText && (
-                <div className="mt-3 pt-3 border-t border-neutral-200 group-hover:border-neutral-300 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <div className="mt-geist-3 pt-geist-3 border-t border-geist-accents-2 group-hover:border-geist-accents-3 flex items-center gap-geist-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <span
                     onClick={(e) => handleCopy(suggestionText, e)}
-                    className="text-[11px] font-semibold text-neutral-600 hover:text-orange-600 transition-colors duration-150 cursor-pointer"
+                    className="text-label-12 text-geist-accents-6 hover:text-orange-600 transition-colors duration-150 cursor-pointer"
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => handleCopyKeyDown(suggestionText, e)}
                   >
                     Copy
                   </span>
-                  <span className="text-neutral-300">•</span>
-                  <span className="text-[11px] text-neutral-600 font-medium">Click to apply</span>
+                  <span className="text-geist-accents-3">•</span>
+                  <span className="text-label-12 text-geist-accents-6">Click to apply</span>
                 </div>
               )}
             </button>

@@ -240,6 +240,44 @@ export default {
         'text-md': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '400' }],
         'text-sm': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '400' }],
         'text-xs': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '400' }],
+
+        // ============================================
+        // GEIST TYPOGRAPHY HIERARCHY (Official)
+        // Source: vercel.com/geist/typography
+        // ============================================
+        
+        // Headings - For page and section titles (72px to 14px)
+        'heading-72': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-64': ['4rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-56': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-48': ['3rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'heading-40': ['2.5rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'heading-32': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'heading-24': ['1.5rem', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'heading-20': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '600' }],
+        'heading-18': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '600' }],
+        'heading-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '600' }],
+        'heading-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '600' }],
+
+        // Buttons - For button components
+        'button-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'button-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'button-12': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '500' }],
+
+        // Labels - For single-line text elements
+        'label-20': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '500' }],
+        'label-18': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '500' }],
+        'label-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'label-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'label-12': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '500' }],
+
+        // Copy - For multi-line text content
+        'copy-24': ['1.5rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-20': ['1.25rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-18': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-16': ['1rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-14': ['0.875rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-12': ['0.75rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
       },
 
       // ============================================

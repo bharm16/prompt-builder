@@ -1,7 +1,3 @@
-/* Import Geist font (official) - must be before @tailwind */
-@import 'geist/font/sans';
-@import 'geist/font/mono';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,6 +6,11 @@
    BASE LAYER - Global styles and resets
    ============================================ */
 @layer base {
+  /* ============================================
+     GEIST FONT FACES (Official - from npm install geist)
+     Note: Fonts will be loaded via CSS variables in Tailwind config
+     ============================================ */
+
   /* Fallback to Inter if Geist fails to load */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -67,6 +68,8 @@
 
     /* Border Radius - UNOFFICIAL */
     --geist-radius: 5px;         /* Tight! Much smaller than typical */
+    --geist-radius-sm: 3px;      /* Smaller radius */
+    --geist-radius-lg: 8px;      /* Larger radius (still tight) */
   }
 
   /* Base HTML styles */
@@ -147,37 +150,41 @@
 
   /* Base button styles */
   .btn {
-    @apply inline-flex items-center justify-center gap-2
-           px-4 py-2 rounded-xl font-medium
+    @apply inline-flex items-center justify-center gap-geist-2
+           px-geist-4 py-geist-2 rounded-geist
            transition-all duration-200
            focus-visible:outline-none focus-visible:ring focus-visible:ring-offset-2
            disabled:cursor-not-allowed disabled:opacity-60;
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
   }
 
   /* Primary button - Indigo Gradient */
   .btn-primary {
-    @apply btn bg-gradient-to-br from-accent-600 to-accent-700 text-white rounded-lg
-           hover:shadow-md hover:shadow-accent-500/30 hover:-translate-y-0.5
-           active:scale-[0.98] active:shadow-sm
+    @apply btn bg-gradient-to-br from-accent-600 to-accent-700 text-white rounded-geist-lg
+           hover:shadow-geist-medium hover:shadow-accent-500/30 hover:-translate-y-0.5
+           active:scale-[0.98] active:shadow-geist-small
            focus-visible:ring-accent-500 focus-visible:ring-opacity-50
-           shadow-sm transition-all duration-150;
+           shadow-geist-small transition-all duration-150;
   }
 
   /* Secondary button - Clean white */
   .btn-secondary {
-    @apply btn bg-white text-primary-700 border-2 border-neutral-200 rounded-lg
-           hover:bg-neutral-50 hover:border-neutral-300
-           active:bg-neutral-100 active:scale-[0.98]
+    @apply btn bg-geist-background text-primary-700 border-2 border-geist-accents-2 rounded-geist-lg
+           hover:bg-geist-accents-1 hover:border-geist-accents-3
+           active:bg-geist-accents-2 active:scale-[0.98]
            focus-visible:ring-accent-500 focus-visible:ring-opacity-30
-           shadow-sm transition-all duration-150;
+           shadow-geist-small transition-all duration-150;
   }
 
   /* Tertiary/Ghost button - Minimal interaction */
   .btn-ghost {
-    @apply btn bg-transparent text-neutral-600
-           hover:bg-neutral-50 hover:text-neutral-900
-           active:bg-neutral-100
-           focus-visible:ring-neutral-400 focus-visible:ring-opacity-30;
+    @apply btn bg-transparent text-geist-accents-6
+           hover:bg-geist-accents-1 hover:text-geist-foreground
+           active:bg-geist-accents-2
+           focus-visible:ring-geist-accents-4 focus-visible:ring-opacity-30;
   }
 
   /* Danger button */
@@ -219,29 +226,45 @@
 
   /* Button sizes */
   .btn-sm {
-    @apply px-3 py-1.5 text-sm;
+    @apply px-geist-3 py-geist-2;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
   }
 
   .btn-lg {
-    @apply px-6 py-3 text-lg;
+    @apply px-geist-6 py-geist-3;
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
   }
 
   .btn-xl {
-    @apply px-8 py-4 text-xl;
+    @apply px-geist-8 py-geist-4;
+    font-size: 1.25rem;
+    line-height: 1.4;
+    letter-spacing: 0;
+    font-weight: 600;
   }
 
   /* ===== INPUT COMPONENTS ===== */
 
   /* Base input styles - Clean and modern */
   .input {
-    @apply w-full px-4 py-3.5 rounded-xl text-base
-           bg-white border-2 border-neutral-200
-           text-neutral-900 placeholder-neutral-400
+    @apply w-full px-geist-4 py-geist-4 rounded-geist-lg
+           bg-geist-background border-2 border-geist-accents-2
+           text-geist-foreground placeholder-geist-accents-4
            transition-all duration-150
-           hover:border-neutral-300
+           hover:border-geist-accents-3
            focus:outline-none focus:border-accent-500 focus:ring-4 focus:ring-accent-100
-           disabled:bg-neutral-50 disabled:border-neutral-200 disabled:text-neutral-400
+           disabled:bg-geist-accents-1 disabled:border-geist-accents-2 disabled:text-geist-accents-4
            disabled:cursor-not-allowed disabled:opacity-60;
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0;
+    font-weight: 400;
   }
 
   /* Input error state */
@@ -270,34 +293,34 @@
 
   /* Base card - Modern elevation */
   .card {
-    @apply rounded-xl bg-white shadow-lg shadow-neutral-200/30
-           ring-1 ring-neutral-900/5
+    @apply rounded-geist-lg bg-geist-background shadow-geist-medium shadow-geist-accents-2/30
+           ring-1 ring-geist-foreground/5
            transition-all duration-150;
   }
 
   /* Interactive card (hoverable/clickable) - Lift effect */
   .card-interactive {
     @apply card cursor-pointer
-           hover:shadow-xl hover:-translate-y-1
-           active:translate-y-0 active:shadow-lg;
+           hover:shadow-geist-large hover:-translate-y-1
+           active:translate-y-0 active:shadow-geist-medium;
   }
 
   /* Elevated card - Refined elevation */
   .card-elevated {
-    @apply card shadow-md border-neutral-200;
+    @apply card shadow-geist-medium border-geist-accents-2;
   }
 
   /* Card sections */
   .card-header {
-    @apply px-6 py-4 border-b border-neutral-200;
+    @apply px-geist-6 py-geist-4 border-b border-geist-accents-2;
   }
 
   .card-body {
-    @apply px-6 py-4;
+    @apply px-geist-6 py-geist-4;
   }
 
   .card-footer {
-    @apply px-6 py-4 border-t border-neutral-200 bg-neutral-50;
+    @apply px-geist-6 py-geist-4 border-t border-geist-accents-2 bg-geist-accents-1;
   }
 
   /* ===== BADGE COMPONENTS ===== */
@@ -466,11 +489,19 @@
   }
 
   .section-title {
-    @apply text-2xl font-bold text-neutral-900 mb-2;
+    @apply text-geist-foreground mb-geist-2;
+    font-size: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    font-weight: 600;
   }
 
   .section-subtitle {
-    @apply text-neutral-600;
+    @apply text-geist-accents-6;
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0;
+    font-weight: 400;
   }
 }
 
@@ -856,8 +887,7 @@
 
   /* ===== MODERN PROSE STYLING FOR CANVAS ===== */
   .prose-canvas {
-    @apply text-[15px] leading-relaxed text-neutral-900;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system;
+    @apply text-[15px] leading-relaxed text-neutral-900 font-sans;
     letter-spacing: -0.011em;
   }
 

@@ -37,13 +37,13 @@ function SubjectDescriptorCard({
     <div className="rounded-2xl border border-neutral-200 bg-white/80 p-3 relative">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Tag className="h-3.5 w-3.5 text-neutral-500" />
-        <span className="text-xs font-semibold text-neutral-700">
+        <span className="text-label-12 text-geist-accents-7">
           Descriptor {descriptorIndex + 1}
         </span>
-        <span className="text-[10px] text-neutral-400">Optional</span>
+        <span className="text-label-12 text-geist-accents-4">Optional</span>
         {categoryDetection && (
           <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+            className="inline-flex items-center gap-geist-1 rounded-full px-geist-2 py-geist-1 text-label-12 uppercase tracking-wide"
             style={{
               backgroundColor: categoryDetection.colors.bg,
               color: categoryDetection.colors.text,
@@ -77,11 +77,11 @@ function SubjectDescriptorCard({
           onChange={(e) => onValueChange(descriptorKey, e.target.value)}
           onFocus={() => onFetchSuggestions(descriptorKey)}
           placeholder={descriptorConfig.placeholder}
-          className="input text-sm focus:border-neutral-500 focus:ring-neutral-500/30"
+          className="input text-copy-14 focus:border-geist-accents-5 focus:ring-geist-accents-5/30"
         />
         <button
           onClick={() => onFetchSuggestions(descriptorKey)}
-          className="btn-primary btn-sm px-3 py-1 text-[11px] font-semibold shadow-sm active:scale-95"
+          className="btn-primary btn-sm px-geist-3 py-geist-1 text-button-12 shadow-geist-small active:scale-95"
           title="Get AI descriptor ideas"
         >
           <Sparkles className="h-3 w-3" />
@@ -93,7 +93,7 @@ function SubjectDescriptorCard({
           <button
             key={`${descriptorKey}-example-${exampleIdx}`}
             onClick={() => onValueChange(descriptorKey, example)}
-            className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-medium text-neutral-700 transition-all duration-150 hover:border-neutral-300 hover:bg-neutral-50 active:scale-95"
+            className="rounded-full border border-geist-accents-2 bg-geist-background px-geist-3 py-geist-2 text-button-12 text-geist-accents-7 transition-all duration-150 hover:border-geist-accents-3 hover:bg-geist-accents-1 active:scale-95"
           >
             {example}
           </button>
@@ -149,7 +149,7 @@ export function ElementCard({
           <Icon className="h-4 w-4 text-neutral-700" />
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-neutral-900">{config.label}</h3>
+          <h3 className="text-label-14 text-geist-foreground">{config.label}</h3>
         </div>
         {/* AI Button */}
         <button

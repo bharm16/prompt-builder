@@ -27,7 +27,7 @@ export function getCompatibilityStyles(compatibility: number | undefined): Compa
     return null;
   }
 
-  let tone = 'text-neutral-500 bg-neutral-100 border border-neutral-200';
+  let tone = 'text-geist-accents-5 bg-geist-accents-1 border border-geist-accents-2';
   let IconComponent: typeof CheckCircle | typeof AlertCircle | null = null;
 
   if (compatibility >= COMPATIBILITY_THRESHOLDS.HIGH) {
@@ -55,7 +55,7 @@ export function renderCompatibilityBadge(compatibility: number | undefined): Rea
   const { tone, IconComponent, percent } = styles;
 
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${tone}`}>
+    <div className={`inline-flex items-center gap-geist-1 px-geist-2 py-geist-1 rounded-full text-label-12 ${tone}`}>
       {IconComponent ? <IconComponent className="h-3.5 w-3.5" aria-hidden="true" /> : null}
       <span>{percent}% fit</span>
     </div>

@@ -418,7 +418,7 @@ export default function VideoConceptBuilder({
         <div className="rounded-3xl border border-neutral-200/80 bg-white/90 px-6 py-6 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur-sm sm:px-8 sm:py-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-neutral-600">
+              <div className="flex flex-wrap items-center gap-geist-3 text-label-12 text-geist-accents-6">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
                   <Sparkles className="h-3.5 w-3.5 text-neutral-500" />
                   AI-guided workflow
@@ -429,10 +429,10 @@ export default function VideoConceptBuilder({
                 </span>
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight sm:text-3xl">
+                <h1 className="text-heading-32 sm:text-heading-40 text-geist-foreground">
                   Video Concept Builder
                 </h1>
-                <p className="mt-1 text-sm text-neutral-600">
+                <p className="mt-geist-1 text-copy-14 text-geist-accents-6">
                   Structure production-ready AI video prompts with contextual
                   guardrails and live guidance.
                 </p>
@@ -519,7 +519,7 @@ export default function VideoConceptBuilder({
           {/* Concept Mode */}
           {mode === 'concept' && (
             <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
-              <label className="mb-3 block text-sm font-semibold text-neutral-900">
+              <label className="mb-geist-3 block text-label-14 text-geist-foreground">
                 Describe your video concept
               </label>
               <textarea
@@ -528,7 +528,7 @@ export default function VideoConceptBuilder({
                   dispatch({ type: 'SET_CONCEPT', payload: e.target.value })
                 }
                 placeholder="Example: A sleek sports car drifting through a neon-lit Tokyo street at night, dramatic lighting, shot on anamorphic lenses..."
-                className="textarea min-h-[140px] rounded-2xl border-neutral-200 bg-neutral-50 text-sm"
+                className="textarea min-h-[140px] rounded-geist-lg border-geist-accents-2 bg-geist-accents-1 text-copy-14"
               />
               <div className="mt-4 flex justify-end">
                 <button

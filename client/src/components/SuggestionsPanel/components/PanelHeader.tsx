@@ -37,21 +37,21 @@ export function PanelHeader({
   isPlaceholder = false,
 }: PanelHeaderProps): React.ReactElement {
   return (
-    <header className="flex-shrink-0 px-4 py-3.5 border-b border-neutral-200 bg-gradient-to-b from-neutral-50/50 to-white backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="p-1.5 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg shadow-sm ring-1 ring-neutral-200/50">
-            <Sparkles className="h-3.5 w-3.5 text-neutral-700" aria-hidden="true" />
+    <header className="flex-shrink-0 px-geist-4 py-geist-4 border-b border-geist-accents-2 bg-gradient-to-b from-geist-accents-1/50 to-geist-background backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-geist-2">
+        <div className="flex items-center gap-geist-3 min-w-0 flex-1">
+          <div className="p-geist-2 bg-gradient-to-br from-geist-accents-2 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
+            <Sparkles className="h-3.5 w-3.5 text-geist-accents-7" aria-hidden="true" />
           </div>
-          <h3 id="suggestions-title" className="text-[13px] font-semibold text-neutral-900 tracking-tight">
+          <h3 id="suggestions-title" className="text-label-14 text-geist-foreground">
             {panelTitle}
           </h3>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-geist-1">
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-all duration-150"
+              className="p-geist-2 text-geist-accents-5 hover:text-geist-foreground hover:bg-geist-accents-1 rounded-geist transition-all duration-150"
               title="Refresh suggestions"
               aria-label="Refresh suggestions"
             >
@@ -61,7 +61,7 @@ export function PanelHeader({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-all duration-150"
+              className="p-geist-2 text-geist-accents-5 hover:text-geist-foreground hover:bg-geist-accents-1 rounded-geist transition-all duration-150"
               title="Close suggestions"
               aria-label="Close suggestions"
             >
@@ -72,36 +72,36 @@ export function PanelHeader({
       </div>
 
       {hasActiveSuggestions && contextValue && (
-        <div className="mt-3 flex flex-col gap-2.5">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wider">
+        <div className="mt-geist-3 flex flex-col gap-geist-3">
+          <div className="flex items-center gap-geist-2">
+            <span className="text-label-12 text-geist-accents-6 uppercase tracking-wider">
               {contextLabel}
             </span>
             {showContextBadge && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-geist-1 px-geist-2 py-geist-1 text-label-12 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {ContextBadgeIcon ? <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" /> : null}
                 {contextBadgeText}
               </span>
             )}
           </div>
-          <div className="flex items-start gap-2.5">
+          <div className="flex items-start gap-geist-3">
             {ContextIcon ? (
-              <div className="p-1.5 bg-orange-50 rounded-md border border-orange-200/50 flex-shrink-0">
+              <div className="p-geist-2 bg-orange-50 rounded-geist border border-orange-200/50 flex-shrink-0">
                 <ContextIcon className="h-3.5 w-3.5 text-orange-600" aria-hidden="true" />
               </div>
             ) : null}
             <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-50 border border-orange-200/60 rounded-md shadow-sm">
-                <p className="text-[13px] text-orange-900 font-semibold leading-tight break-words">
+              <div className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 bg-orange-50 border border-orange-200/60 rounded-geist shadow-geist-small">
+                <p className="text-label-14 text-orange-900 leading-tight break-words">
                   {contextValue}
                 </p>
               </div>
               {contextSecondaryValue && (
-                <p className="mt-1.5 text-[11px] text-neutral-600 leading-tight break-words">
+                <p className="mt-geist-2 text-label-12 text-geist-accents-6 leading-tight break-words">
                   {contextSecondaryValue}
                 </p>
               )}
-              <p className="mt-2 text-[11px] text-neutral-500 italic leading-tight">
+              <p className="mt-geist-2 text-label-12 text-geist-accents-5 italic leading-tight">
                 Alternatives for this phrase
               </p>
             </div>

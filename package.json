@@ -113,6 +113,8 @@
     "migrate:rerender:regenerate": "tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --mode=regenerate",
     "migrate:rerender:dry": "tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --mode=clear --dry-run",
     "migrate:backfill": "node scripts/migrations/backfill-highlight-cache.js",
-    "migrate:backfill:dry": "node scripts/migrations/backfill-highlight-cache.js --dry-run"
+    "migrate:backfill:dry": "node scripts/migrations/backfill-highlight-cache.js --dry-run",
+    "setup:fonts": "node scripts/setup-geist-fonts.js",
+    "postinstall": "npm run setup:fonts"
   }
 }

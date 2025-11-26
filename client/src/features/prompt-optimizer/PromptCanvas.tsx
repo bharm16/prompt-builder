@@ -493,7 +493,7 @@ export function PromptCanvas({
 
   // Render the component
   return (
-    <div className="fixed inset-0 flex flex-col bg-neutral-50" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
+    <div className="fixed inset-0 flex flex-col bg-geist-accents-1" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
 
       {/* Category Legend */}
       <CategoryLegend
@@ -518,7 +518,7 @@ export function PromptCanvas({
         {/* Main Editor Area - Optimized Prompt */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto scrollbar-auto-hide">
-            <div className="max-w-3xl mx-auto px-8 pt-32 pb-12">
+            <div className="max-w-3xl mx-auto px-geist-8 pt-geist-12 pb-geist-12">
               <div className="group">
                 {/* PromptEditor continues working even if highlighting fails */}
                 <PromptEditor
