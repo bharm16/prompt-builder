@@ -18,72 +18,177 @@ interface ColorScheme {
 }
 
 /**
+ * Geist Color Scales
+ * Based on vercel.com/geist/colors
+ * Each scale has 10 shades (1-10) where:
+ * - Colors 1-3: Component backgrounds (lightest to darker)
+ * - Colors 4-6: Borders (light to dark)
+ * - Colors 7-8: High contrast backgrounds
+ * - Colors 9-10: Text and icons (secondary to primary)
+ */
+const GEIST_COLORS = {
+  // Gray scale (monochromatic base)
+  gray: {
+    1: '#fafafa',  // Background 1
+    2: '#eaeaea',  // Background 2 / Color 1
+    3: '#e5e5e5',  // Color 2 (hover)
+    4: '#d4d4d4',  // Color 3 (active) / Border 4
+    5: '#a3a3a3',  // Border 5
+    6: '#737373',  // Border 6
+    7: '#525252',  // High contrast 7
+    8: '#404040',  // High contrast 8
+    9: '#737373',  // Text 9 (secondary)
+    10: '#171717', // Text 10 (primary)
+  },
+  // Amber scale (warm, golden)
+  amber: {
+    1: '#fffbeb',  // Background
+    2: '#fef3c7',  // Color 1
+    3: '#fde68a',  // Color 2
+    4: '#fcd34d',  // Color 3 / Border 4
+    5: '#f59e0b',  // Border 5
+    6: '#d97706',  // Border 6
+    7: '#b45309',  // High contrast 7
+    8: '#92400e',  // High contrast 8
+    9: '#78350f',  // Text 9
+    10: '#451a03', // Text 10
+  },
+  // Red scale (action, urgency)
+  red: {
+    1: '#fef2f2',  // Background
+    2: '#fee2e2',  // Color 1
+    3: '#fecaca',  // Color 2
+    4: '#fca5a5',  // Color 3 / Border 4
+    5: '#ef4444',  // Border 5
+    6: '#dc2626',  // Border 6
+    7: '#b91c1c',  // High contrast 7
+    8: '#991b1b',  // High contrast 8
+    9: '#7f1d1d',  // Text 9
+    10: '#450a0a', // Text 10
+  },
+  // Green scale (nature, environment)
+  green: {
+    1: '#f0fdf4',  // Background
+    2: '#dcfce7',  // Color 1
+    3: '#bbf7d0',  // Color 2
+    4: '#86efac',  // Color 3 / Border 4
+    5: '#22c55e',  // Border 5
+    6: '#16a34a',  // Border 6
+    7: '#15803d',  // High contrast 7
+    8: '#166534',  // High contrast 8
+    9: '#14532d',  // Text 9
+    10: '#052e16', // Text 10
+  },
+  // Blue scale (expansive, perspective)
+  blue: {
+    1: '#eff6ff',  // Background
+    2: '#dbeafe',  // Color 1
+    3: '#bfdbfe',  // Color 2
+    4: '#93c5fd',  // Color 3 / Border 4
+    5: '#3b82f6',  // Border 5
+    6: '#2563eb',  // Border 6
+    7: '#1d4ed8',  // High contrast 7
+    8: '#1e40af',  // High contrast 8
+    9: '#1e3a8a',  // Text 9
+    10: '#172554', // Text 10
+  },
+  // Purple scale (creative, artistry)
+  purple: {
+    1: '#faf5ff',  // Background
+    2: '#f3e8ff',  // Color 1
+    3: '#e9d5ff',  // Color 2
+    4: '#d8b4fe',  // Color 3 / Border 4
+    5: '#a855f7',  // Border 5
+    6: '#9333ea',  // Border 6
+    7: '#7e22ce',  // High contrast 7
+    8: '#6b21a8',  // High contrast 8
+    9: '#581c87',  // Text 9
+    10: '#3b0764', // Text 10
+  },
+  // Teal scale (technical, neutral)
+  teal: {
+    1: '#f0fdfa',  // Background
+    2: '#ccfbf1',  // Color 1
+    3: '#99f6e4',  // Color 2
+    4: '#5eead4',  // Color 3 / Border 4
+    5: '#14b8a6',  // Border 5
+    6: '#0d9488',  // Border 6
+    7: '#0f766e',  // High contrast 7
+    8: '#115e59',  // High contrast 8
+    9: '#134e4a',  // Text 9
+    10: '#042f2e', // Text 10
+  },
+} as const;
+
+/**
  * Base color palettes for each parent category
- * Each category has a unique color family with shade variations
+ * Uses Geist color scales from vercel.com/geist/colors
+ * Backgrounds use Color 1-2 (light component backgrounds)
+ * Borders use Color 5-6 (border colors)
  */
 const BASE_COLORS: Record<string, {
   shades: Array<{ bg: string; border: string }>;
 }> = {
-  // SUBJECT - Warm Coral (protagonist, draws focus)
+  // SUBJECT - Amber scale (warm, protagonist, draws focus)
   subject: {
     shades: [
-      { bg: '#FFF7ED', border: '#EA580C' }, // Warm Coral - main character energy
+      { bg: GEIST_COLORS.amber[2], border: GEIST_COLORS.amber[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // ACTION - Red-Orange (movement, verbs, energy)
+  // ACTION - Red scale (movement, verbs, energy)
   action: {
     shades: [
-      { bg: '#FEF2F2', border: '#DC2626' }, // Red-Orange - action, urgency
+      { bg: GEIST_COLORS.red[2], border: GEIST_COLORS.red[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // ENVIRONMENT - Forest Green (nature, location, grounding)
+  // ENVIRONMENT - Green scale (nature, location, grounding)
   environment: {
     shades: [
-      { bg: '#F0FDF4', border: '#16A34A' }, // Forest Green - place/nature
+      { bg: GEIST_COLORS.green[2], border: GEIST_COLORS.green[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // LIGHTING - Golden Amber (light itself)
+  // LIGHTING - Amber scale (light itself, golden)
   lighting: {
     shades: [
-      { bg: '#FFFBEB', border: '#D97706' }, // Golden Amber - light quality
+      { bg: GEIST_COLORS.amber[2], border: GEIST_COLORS.amber[6] }, // Color 1 bg, Border 6 (darker)
     ],
   },
   
-  // SHOT - Sky Blue (frame/POV, expansive perspective)
+  // SHOT - Blue scale (frame/POV, expansive perspective)
   shot: {
     shades: [
-      { bg: '#F0F9FF', border: '#0284C7' }, // Sky Blue - composition, framing
+      { bg: GEIST_COLORS.blue[2], border: GEIST_COLORS.blue[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // CAMERA - Slate Gray (equipment/mechanics, neutral technical)
+  // CAMERA - Gray scale (equipment/mechanics, neutral technical)
   camera: {
     shades: [
-      { bg: '#F8FAFC', border: '#64748B' }, // Slate Gray - technical, neutral
+      { bg: GEIST_COLORS.gray[2], border: GEIST_COLORS.gray[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // STYLE - Violet (creative/aesthetic, artistry)
+  // STYLE - Purple scale (creative/aesthetic, artistry)
   style: {
     shades: [
-      { bg: '#FAF5FF', border: '#9333EA' }, // Violet - artistry, mood, flair
+      { bg: GEIST_COLORS.purple[2], border: GEIST_COLORS.purple[5] }, // Color 1 bg, Border 5
     ],
   },
   
-  // TECHNICAL - Cool Gray (specs/metadata, lowest visual priority)
+  // TECHNICAL - Gray scale (specs/metadata, lowest visual priority)
   technical: {
     shades: [
-      { bg: '#F9FAFB', border: '#6B7280' }, // Cool Gray - supporting info
+      { bg: GEIST_COLORS.gray[1], border: GEIST_COLORS.gray[4] }, // Background 1 bg, Border 4 (subtle)
     ],
   },
   
-  // AUDIO - Deep Indigo (sound waves, depth, frequency)
+  // AUDIO - Teal scale (sound waves, depth, frequency)
   audio: {
     shades: [
-      { bg: '#EEF2FF', border: '#4F46E5' }, // Deep Indigo - frequency, depth
+      { bg: GEIST_COLORS.teal[2], border: GEIST_COLORS.teal[5] }, // Color 1 bg, Border 5
     ],
   },
 };
@@ -94,14 +199,14 @@ const BASE_COLORS: Record<string, {
  * Subcategories get different shades of their parent category's color
  */
 export function getCategoryColor(category: string): ColorScheme {
-  // Legacy brainstorm categories (keep for backward compatibility)
+  // Legacy brainstorm categories (keep for backward compatibility) - Updated to Geist colors
   const legacyColors: Record<string, ColorScheme> = {
-    location: { bg: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.5)' },
-    time: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)' },
-    mood: { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.5)' },
-    event: { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.5)' },
-    quality: { bg: '#f9fafb', border: '#6b7280' },
-    color: { bg: '#fef3c7', border: '#f59e0b' },
+    location: { bg: GEIST_COLORS.green[2], border: GEIST_COLORS.green[5] }, // Green scale
+    time: { bg: GEIST_COLORS.amber[2], border: GEIST_COLORS.amber[5] }, // Amber scale
+    mood: { bg: GEIST_COLORS.purple[2], border: GEIST_COLORS.purple[5] }, // Purple scale
+    event: { bg: GEIST_COLORS.blue[2], border: GEIST_COLORS.blue[5] }, // Blue scale
+    quality: { bg: GEIST_COLORS.gray[1], border: GEIST_COLORS.gray[4] }, // Gray scale (subtle)
+    color: { bg: GEIST_COLORS.amber[2], border: GEIST_COLORS.amber[5] }, // Amber scale
   };
 
   // Check legacy categories first
@@ -123,7 +228,7 @@ export function getCategoryColor(category: string): ColorScheme {
     } catch {
       // Ignore errors in non-browser environments
     }
-    return { bg: '#fee2e2', border: '#ef4444' };
+    return { bg: GEIST_COLORS.gray[1], border: GEIST_COLORS.gray[4] }; // Gray scale fallback
   }
 
   const parentId = parsed.parent;
@@ -140,7 +245,7 @@ export function getCategoryColor(category: string): ColorScheme {
     } catch {
       // Ignore errors in non-browser environments
     }
-    return { bg: '#fee2e2', border: '#ef4444' };
+    return { bg: GEIST_COLORS.gray[1], border: GEIST_COLORS.gray[4] }; // Gray scale fallback
   }
 
   // If it's a parent category (no attribute), use the first shade
