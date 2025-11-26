@@ -18,11 +18,6 @@ export const SpanItem = memo<SpanItemProps>(({ span, onClick }) => {
       title={`Click to view in context (${span.start}-${span.end})`}
     >
       <span className="span-text">{span.quote}</span>
-      {span.confidence !== undefined && (
-        <span className="confidence-badge">
-          {Math.round(span.confidence * 100)}%
-        </span>
-      )}
     </button>
   );
 });
