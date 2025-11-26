@@ -28,10 +28,6 @@ const BASE_COLORS: Record<string, {
   subject: {
     shades: [
       { bg: '#FFF7ED', border: '#EA580C' }, // Warm Coral - main character energy
-      { bg: '#ffedd5', border: '#c2410c' }, // Orange-200/700
-      { bg: '#fed7aa', border: '#9a3412' }, // Orange-300/800
-      { bg: '#fdba74', border: '#7c2d12' }, // Orange-400/900
-      { bg: '#fb923c', border: '#7c2d12' }, // Orange-400/900
     ],
   },
   
@@ -39,8 +35,6 @@ const BASE_COLORS: Record<string, {
   action: {
     shades: [
       { bg: '#FEF2F2', border: '#DC2626' }, // Red-Orange - action, urgency
-      { bg: '#fee2e2', border: '#b91c1c' }, // Red-200/700
-      { bg: '#fecaca', border: '#991b1b' }, // Red-300/800
     ],
   },
   
@@ -48,8 +42,6 @@ const BASE_COLORS: Record<string, {
   environment: {
     shades: [
       { bg: '#F0FDF4', border: '#16A34A' }, // Forest Green - place/nature
-      { bg: '#dcfce7', border: '#15803d' }, // Green-200/700
-      { bg: '#bbf7d0', border: '#166534' }, // Green-300/800
     ],
   },
   
@@ -57,8 +49,6 @@ const BASE_COLORS: Record<string, {
   lighting: {
     shades: [
       { bg: '#FFFBEB', border: '#D97706' }, // Golden Amber - light quality
-      { bg: '#fef3c7', border: '#b45309' }, // Amber-200/700
-      { bg: '#fde68a', border: '#92400e' }, // Amber-300/800
     ],
   },
   
@@ -66,8 +56,6 @@ const BASE_COLORS: Record<string, {
   shot: {
     shades: [
       { bg: '#F0F9FF', border: '#0284C7' }, // Sky Blue - composition, framing
-      { bg: '#dbeafe', border: '#0369a1' }, // Sky-200/700
-      { bg: '#bfdbfe', border: '#075985' }, // Sky-300/800
     ],
   },
   
@@ -75,9 +63,6 @@ const BASE_COLORS: Record<string, {
   camera: {
     shades: [
       { bg: '#F8FAFC', border: '#64748B' }, // Slate Gray - technical, neutral
-      { bg: '#f1f5f9', border: '#475569' }, // Slate-200/700
-      { bg: '#e2e8f0', border: '#334155' }, // Slate-300/800
-      { bg: '#cbd5e1', border: '#1e293b' }, // Slate-400/900
     ],
   },
   
@@ -85,8 +70,6 @@ const BASE_COLORS: Record<string, {
   style: {
     shades: [
       { bg: '#FAF5FF', border: '#9333EA' }, // Violet - artistry, mood, flair
-      { bg: '#f3e8ff', border: '#7e22ce' }, // Violet-200/700
-      { bg: '#e9d5ff', border: '#6b21a8' }, // Violet-300/800
     ],
   },
   
@@ -94,9 +77,6 @@ const BASE_COLORS: Record<string, {
   technical: {
     shades: [
       { bg: '#F9FAFB', border: '#6B7280' }, // Cool Gray - supporting info
-      { bg: '#f3f4f6', border: '#4b5563' }, // Gray-200/700
-      { bg: '#e5e7eb', border: '#374151' }, // Gray-300/800
-      { bg: '#d1d5db', border: '#1f2937' }, // Gray-400/900
     ],
   },
   
@@ -104,8 +84,6 @@ const BASE_COLORS: Record<string, {
   audio: {
     shades: [
       { bg: '#EEF2FF', border: '#4F46E5' }, // Deep Indigo - frequency, depth
-      { bg: '#e0e7ff', border: '#4338ca' }, // Indigo-200/700
-      { bg: '#c7d2fe', border: '#3730a3' }, // Indigo-300/800
     ],
   },
 };
