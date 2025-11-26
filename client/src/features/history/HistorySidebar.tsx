@@ -278,7 +278,7 @@ export function HistorySidebar({
         // Collapsed state - icon-only sidebar
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with expand button */}
-          <header className="flex-shrink-0 px-geist-2 py-geist-3 border-b border-geist-accents-2">
+          <header className="flex-shrink-0 px-geist-2 py-geist-3">
             <button
               onClick={() => setShowHistory(true)}
               className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist transition-colors flex items-center justify-center"
@@ -357,7 +357,7 @@ export function HistorySidebar({
         // Expanded state - full sidebar
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with toggle + title */}
-          <header className="flex-shrink-0 px-geist-4 py-geist-3 border-b border-geist-accents-2">
+          <header className="flex-shrink-0 px-geist-4 py-geist-3">
             <div className="flex items-center gap-geist-3">
               <button
                 onClick={() => setShowHistory(false)}
@@ -366,7 +366,7 @@ export function HistorySidebar({
               >
                 <PanelLeft className="h-5 w-5 text-geist-accents-6" />
               </button>
-              <h1 className="text-heading-18 text-geist-foreground">Prompt Builder</h1>
+              <h1 className="text-heading-20 text-geist-foreground">Prompt Builder</h1>
             </div>
           </header>
 

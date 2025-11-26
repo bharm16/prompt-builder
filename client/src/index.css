@@ -514,6 +514,45 @@
     text-wrap: balance;
   }
 
+  /* Tabular numbers for consistent spacing */
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Geist Typography Mono Variants */
+  /* These combine the typography size with mono font family */
+  .text-label-14-mono {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
+    font-family: var(--font-geist-mono);
+  }
+
+  .text-label-13-mono {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
+    font-family: var(--font-geist-mono);
+  }
+
+  .text-label-12-mono {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    font-weight: 500;
+    font-family: var(--font-geist-mono);
+  }
+
+  .text-copy-13-mono {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.6;
+    letter-spacing: 0;
+    font-weight: 400;
+    font-family: var(--font-geist-mono);
+  }
+
   /* Scrollbar utilities */
   .scrollbar-hide {
     -ms-overflow-style: none;

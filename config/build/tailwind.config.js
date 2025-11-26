@@ -226,6 +226,9 @@ export default {
           'monospace',
         ],
       },
+      fontVariantNumeric: {
+        'tabular': 'tabular-nums',
+      },
       fontSize: {
         // Display sizes
         'display-2xl': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
@@ -269,6 +272,7 @@ export default {
         'label-18': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '500' }],
         'label-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
         'label-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'label-13': ['0.8125rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }], // 13px
         'label-12': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '500' }],
 
         // Copy - For multi-line text content
@@ -277,6 +281,7 @@ export default {
         'copy-18': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
         'copy-16': ['1rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
         'copy-14': ['0.875rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-13': ['0.8125rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }], // 13px
         'copy-12': ['0.75rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
       },
 

@@ -1,24 +1,29 @@
 /* Prompt Line Styles */
 .prompt-line {
-  font-size: 0.9375rem; /* Increased from 0.8125rem */
-  color: var(--geist-accents-6);
+  font-size: 0.875rem; /* text-copy-14 */
   line-height: 1.6;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--geist-accents-6);
   margin-bottom: var(--geist-gap-half);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .prompt-line--heading {
-  font-size: 1.25rem; /* Increased from 1.0625rem */
+  font-size: 1.25rem; /* text-heading-20 */
+  line-height: 1.4;
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--geist-foreground);
   margin-top: var(--geist-gap);
   margin-bottom: var(--geist-gap-half);
-  letter-spacing: -0.02em;
 }
 
 .prompt-line--section {
-  font-size: 1rem; /* Increased from 0.875rem */
+  font-size: 1rem; /* text-heading-16 */
+  line-height: 1.5;
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--geist-accents-7);
   margin-top: var(--geist-gap);
@@ -37,8 +42,10 @@
 .prompt-ordered-index {
   flex-shrink: 0;
   color: var(--geist-accents-4);
+  font-size: 0.875rem; /* text-label-14 */
+  line-height: 1.5;
+  letter-spacing: 0;
   font-weight: 500;
-  font-size: 0.875rem; /* Increased from 0.75rem */
 }
 
 .prompt-ordered-text,
@@ -53,8 +60,10 @@
 
 .prompt-line--separator {
   color: var(--geist-accents-2);
-  font-size: 0.6875rem; /* Reduced from 0.75rem */
+  font-size: 0.75rem; /* text-label-12 */
+  line-height: 1.5;
   letter-spacing: 0.4em;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
@@ -62,7 +71,11 @@
   background: var(--geist-accents-1);
   padding: var(--geist-gap-half);
   border-radius: var(--geist-radius);
-  font-size: 0.875rem; /* Increased from 0.75rem */
+  font-size: 0.875rem; /* text-label-14-mono */
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-family: var(--font-geist-mono);
   margin-bottom: var(--geist-gap-half);
   overflow-x: auto;
   white-space: pre-wrap;
@@ -170,7 +183,9 @@
   border-radius: var(--geist-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: var(--shadow-small);
-  font-size: 9px; /* Reduced from 10px */
+  font-size: 0.75rem; /* text-label-12 */
+  line-height: 1.5;
+  letter-spacing: 0.01em;
   font-weight: 500;
   text-transform: capitalize;
   white-space: nowrap;

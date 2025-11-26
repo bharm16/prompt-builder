@@ -22,7 +22,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       onInput={onInput}
       contentEditable
       suppressContentEditableWarning
-      className="outline-none focus:outline-none cursor-text font-sans"
+      className="outline-none focus:outline-none cursor-text font-sans text-copy-16 text-geist-foreground"
       style={{
         caretColor: 'rgb(23, 23, 23)',
         wordBreak: 'break-word',

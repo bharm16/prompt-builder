@@ -10,46 +10,33 @@ This document provides a quick reference for using Geist design tokens in the pr
 - **CSS Variables**: `--font-geist-sans`, `--font-geist-mono`
 
 ### Typography Hierarchy
+**📖 Full Documentation**: See [Geist Typography](./geist-typography.md) for complete typography system documentation.
+
 Available at: `vercel.com/geist/typography`
 
 Vercel organizes typography into four distinct categories, each with predefined styles:
 
-**Headings** - For page and section titles
-```tsx
-<h1 className="text-heading-72">Hero Title</h1>      {/* 72px */}
-<h2 className="text-heading-48">Section Title</h2>    {/* 48px */}
-<h3 className="text-heading-32">Subsection</h3>     {/* 32px */}
-<h4 className="text-heading-20">Component Title</h4> {/* 20px */}
-```
-
-Available sizes: `heading-72`, `heading-64`, `heading-56`, `heading-48`, `heading-40`, `heading-32`, `heading-24`, `heading-20`, `heading-18`, `heading-16`, `heading-14`
-
-**Buttons** - For button components
-```tsx
-<button className="text-button-16">Primary Action</button>  {/* 16px */}
-<button className="text-button-14">Secondary</button>       {/* 14px */}
-<button className="text-button-12">Tertiary</button>        {/* 12px */}
-```
-
-**Labels** - For single-line text elements
-```tsx
-<label className="text-label-16">Form Label</label>   {/* 16px */}
-<span className="text-label-14">Helper Text</span>    {/* 14px */}
-<span className="text-label-12">Caption</span>       {/* 12px */}
-```
-
-Available sizes: `label-20`, `label-18`, `label-16`, `label-14`, `label-12`
-
-**Copy** - For multi-line text content
-```tsx
-<p className="text-copy-20">Large body text</p>      {/* 20px */}
-<p className="text-copy-16">Standard body</p>       {/* 16px */}
-<p className="text-copy-14">Small body</p>          {/* 14px */}
-```
-
-Available sizes: `copy-24`, `copy-20`, `copy-18`, `copy-16`, `copy-14`, `copy-12`
+**Headings** - For page and section titles (10 sizes: 72, 64, 56, 48, 40, 32, 24, 20, 16, 14)
+**Buttons** - For button components (3 sizes: 16, 14, 12)
+**Labels** - For single-line text elements (9 sizes including mono variants: 20, 18, 16, 14, 14-mono, 13, 13-mono, 12, 12-mono)
+**Copy** - For multi-line text content (8 sizes including mono variant: 24, 20, 18, 16, 14, 13, 13-mono, 12)
 
 Each category specifies combinations of `font-size`, `line-height`, `letter-spacing`, and `font-weight` to maintain visual harmony.
+
+**Quick Examples:**
+```tsx
+<h1 className="text-heading-72">Hero Title</h1>
+<button className="text-button-14">Button</button>
+<label className="text-label-14">Label</label>
+<p className="text-copy-16">Body text</p>
+<code className="text-label-14-mono">mono code</code>
+<span className="text-label-13 font-tabular">123</span>
+```
+
+**Strong Modifier:** Use `<strong>` element nested within typography classes:
+```tsx
+<p className="text-copy-16">Regular text <strong>Strong text</strong></p>
+```
 
 ### Colors (CSS Variables)
 Available at: `vercel.com/geist/colors`

@@ -50,7 +50,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
     <div className="span-bento-grid">
       {/* Header */}
       <div className="bento-grid-header">
-        <h2 className="header-title">Detected Elements</h2>
+        <h2 className="header-title text-label-14 text-geist-accents-5 uppercase tracking-wider">Detected Elements</h2>
       </div>
       
       {/* Scrollable boxes container */}

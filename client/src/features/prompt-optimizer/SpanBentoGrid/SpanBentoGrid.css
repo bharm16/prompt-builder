@@ -21,10 +21,11 @@
 }
 
 .header-title {
-  font-size: 0.75rem;
-  font-weight: 600;
+  /* text-label-14 with uppercase and tracking */
+  font-size: 0.875rem;
+  line-height: 1.5;
   letter-spacing: 0.05em;
-  color: var(--geist-accents-5);
+  font-weight: 500;
   margin: 0;
 }
 
@@ -32,7 +33,11 @@
   display: flex;
   align-items: center;
   gap: var(--geist-gap-quarter);
+  /* text-label-13 */
   font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
   color: var(--geist-accents-3);
 }
 
@@ -129,8 +134,11 @@
   align-items: center;
   gap: var(--geist-gap-quarter);
   padding: var(--geist-gap-quarter) var(--geist-gap-half);
-  font-weight: 600;
+  /* text-label-13 */
   font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
   background: var(--geist-accents-1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
@@ -161,7 +169,10 @@
 
 .span-count {
   color: var(--geist-accents-5);
+  /* text-label-13 */
   font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
   font-weight: 500;
 }
 
@@ -255,7 +266,11 @@
   align-items: center;
   text-align: left;
   width: 100%;
+  /* text-label-13 */
   font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
 .span-item:hover {
@@ -278,8 +293,11 @@
 
 .confidence-badge {
   flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  /* text-label-12 - smaller for badges */
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  font-weight: 500;
   color: var(--geist-accents-5);
   background: var(--geist-accents-1);
   padding: var(--geist-gap-quarter) var(--geist-gap-half);
@@ -292,7 +310,11 @@
   padding: var(--geist-gap);
   text-align: center;
   color: var(--geist-accents-3);
+  /* text-label-13 */
   font-size: 0.8125rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
   font-style: italic;
 }
 
@@ -371,7 +393,11 @@
   
   .bento-header {
     padding: 6px 10px; /* Even more compact on mobile */
+    /* text-label-12 */
     font-size: 0.75rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    font-weight: 500;
   }
   
   .category-icon {
@@ -381,7 +407,11 @@
   
   .span-item {
     padding: 0.5rem;
+    /* text-label-12 */
     font-size: 0.75rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    font-weight: 500;
   }
 }
 
