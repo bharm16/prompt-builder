@@ -69,7 +69,7 @@ export function SuggestionsList({
           >
             <button
               onClick={() => handleSuggestionSelect(suggestionObj || suggestion)}
-              className="w-full p-4 text-left rounded-xl border-2 border-neutral-200 bg-white hover:border-orange-300 hover:bg-orange-50/30 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 active:scale-[0.98] cursor-pointer group"
+              className="w-full p-4 text-left rounded-xl border-2 border-neutral-200/50 glass-subtle hover:border-orange-300/50 hover:bg-orange-50/40 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 active:scale-[0.98] cursor-pointer group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >

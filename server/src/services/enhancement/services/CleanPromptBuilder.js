@@ -111,10 +111,14 @@ export class CleanPromptBuilder {
       modelLine,
       sectionLine,
       guidance,
+      replacementInstruction,
+      highlightedText,
     } = ctx;
 
     return [
       'You are an expert Cinematographer and Prompt Engineer for span-level replacements.',
+      replacementInstruction,
+      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
       `Context sentence: "${inlineContext}"`,
       `Prefix to preserve: "${prefix}"`,
       `Suffix to preserve: "${suffix}"`,
@@ -125,6 +129,7 @@ export class CleanPromptBuilder {
       `Slot: ${slotLabel}. This is Design 1 (Orthogonal Attribute Injector).`,
       'Goal: Generate 12 drop-in replacements that vary one technical attribute each.',
       'Rules:',
+      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
       '- Stay inside the same slot; do not alter subject or main action.',
       '- Use Director\'s Lexicon: shot types, lens specs, camera moves, lighting patterns.',
       '- Each option must be visually orthogonal (different direction/quality/source/move/focal length).',
@@ -132,7 +137,7 @@ export class CleanPromptBuilder {
       '- Keep grammar identical to the surrounding sentence; no leading verbs unless the slot is an action.',
       constraintLine,
       guidance || '',
-      `Output JSON array only: [{"text":"...","category":"${slotLabel}","explanation":"visual change on screen"}].`,
+      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual change on screen"}].`,
       'Make explanations act as visual rationales (how the frame changes).',
       'Force diversity: later options must avoid reusing nouns/verbs from earlier ones.',
     ]
@@ -151,10 +156,14 @@ export class CleanPromptBuilder {
       modelLine,
       sectionLine,
       guidance,
+      replacementInstruction,
+      highlightedText,
     } = ctx;
 
     return [
       'You are a Visual Director translating abstract descriptors into grounded, camera-visible details.',
+      replacementInstruction,
+      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
       `Context sentence: "${inlineContext}"`,
       `Prefix to preserve: "${prefix}"`,
       `Suffix to preserve: "${suffix}"`,
@@ -164,6 +173,7 @@ export class CleanPromptBuilder {
       `Universal prompt order: ${UNIVERSAL_ORDER}. Stay in the current slot.`,
       `Slot: ${slotLabel}. This is Design 2 (Visual Decomposition Expander).`,
       'Rules:',
+      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
       '- Provide 12 replacements that fit grammatically in the sentence.',
       '- Show, don\'t tell: convert abstract terms into physical cues (materials, silhouette, lighting, movement).',
       '- Ensure visual variance across style, mood, composition, and texture; avoid synonym collapse.',
@@ -171,7 +181,7 @@ export class CleanPromptBuilder {
       '- Do not introduce new subjects or actions unless the span is a placeholder.',
       constraintLine,
       guidance || '',
-      `Output JSON array only: [{"text":"...","category":"${slotLabel}","explanation":"visual rationale"}].`,
+      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual rationale"}].`,
       'Make explanations clear: what the viewer sees change on screen.',
     ]
       .filter(Boolean)
@@ -189,10 +199,14 @@ export class CleanPromptBuilder {
       modelLine,
       sectionLine,
       guidance,
+      replacementInstruction,
+      highlightedText,
     } = ctx;
 
     return [
       'You are a Grammar-Constrained Narrative Editor for video prompts.',
+      replacementInstruction,
+      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
       `Context sentence: "${inlineContext}"`,
       `Prefix to preserve: "${prefix}"`,
       `Suffix to preserve: "${suffix}"`,
@@ -202,13 +216,14 @@ export class CleanPromptBuilder {
       `Universal prompt order: ${UNIVERSAL_ORDER}. Stay in the current slot.`,
       `Slot: ${slotLabel}. This is Design 3 (One Clip, One Action).`,
       'Rules:',
+      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
       '- Generate 12 replacements that keep the same tense and grammatical structure.',
       '- One continuous action/state only; forbid sequences ("and then", "after", "starts to").',
       '- Keep subject and setting intact; replacements must be camera-visible physical behavior.',
       '- Avoid auxiliary clutter; single concise clause.',
       constraintLine,
       guidance || '',
-      `Output JSON array only: [{"text":"...","category":"${slotLabel}","explanation":"visual change"}].`,
+      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual change"}].`,
       'Explanations should describe how the motion or tempo changes on screen.',
     ]
       .filter(Boolean)
@@ -257,9 +272,41 @@ export class CleanPromptBuilder {
       ? ` Aim for roughly ${highlightWordCount} words (drop-in parity).`
       : '';
 
-    const constraintLine = videoConstraints
-      ? `Keep drop-in length ${videoConstraints.minWords || 0}-${videoConstraints.maxWords || 25} words, max sentences ${videoConstraints.maxSentences ?? 1}, mode ${videoConstraints.mode || 'standard'}.${lengthHint}`
-      : `Keep a single concise span (no multi-sentence output).${lengthHint}`;
+    let constraintLine = '';
+    if (videoConstraints) {
+      const parts = [];
+      
+      // Basic constraints
+      parts.push(`Length: ${videoConstraints.minWords || 0}-${videoConstraints.maxWords || 25} words`);
+      parts.push(`Max sentences: ${videoConstraints.maxSentences ?? 1}`);
+      
+      // Mode-specific requirements
+      if (videoConstraints.formRequirement) {
+        parts.push(`Form: ${videoConstraints.formRequirement}`);
+      }
+      
+      if (videoConstraints.focusGuidance && Array.isArray(videoConstraints.focusGuidance)) {
+        parts.push(`Focus: ${videoConstraints.focusGuidance.join('; ')}`);
+      }
+      
+      if (videoConstraints.extraRequirements && Array.isArray(videoConstraints.extraRequirements) && videoConstraints.extraRequirements.length > 0) {
+        parts.push(`Requirements: ${videoConstraints.extraRequirements.join('; ')}`);
+      }
+      
+      // Micro mode specific restrictions
+      if (videoConstraints.mode === 'micro') {
+        parts.push('CRITICAL: No punctuation (no periods, colons, semicolons). Max 1 comma allowed. No verbs (is, are, was, were, be, being, been, am). Must be a noun phrase only.');
+      }
+      
+      // Disallow terminal punctuation
+      if (videoConstraints.disallowTerminalPunctuation) {
+        parts.push('No terminal punctuation (no period, exclamation, or question mark at the end).');
+      }
+      
+      constraintLine = `Constraints: ${parts.join(' | ')}.${lengthHint}`;
+    } else {
+      constraintLine = `Keep a single concise span (no multi-sentence output).${lengthHint}`;
+    }
 
     const modelLine = modelTarget ? `Target model: ${modelTarget}.` : '';
     const sectionLine = promptSection ? `Prompt section: ${promptSection}.` : '';
@@ -267,6 +314,11 @@ export class CleanPromptBuilder {
     const guidance = anchors.length
       ? `Context notes: ${anchors.join(' | ')}`
       : '';
+
+    // Critical instruction: Only replace the highlighted phrase
+    const replacementInstruction = `CRITICAL: You are replacing ONLY the highlighted phrase "${highlightedText}". 
+Your output must be ONLY the replacement phrase (2-25 words), NOT the entire sentence or prompt.
+Return ONLY the replacement text that will be inserted in place of the highlighted phrase.`;
 
     return {
       inlineContext,
@@ -280,6 +332,8 @@ export class CleanPromptBuilder {
       guidance,
       highlightWordCount,
       mode,
+      replacementInstruction,
+      highlightedText,
     };
   }
 

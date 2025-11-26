@@ -49,7 +49,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
   }, [showExportMenu, onToggleExportMenu]);
 
   return (
-    <div className="w-full flex items-center justify-between px-6 py-3">
+    <div className="w-full flex items-center justify-between px-6 py-3 glass-card rounded-lg">
       <div className="flex items-center gap-1">
         <button
           onClick={onCopy}
@@ -102,7 +102,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
             <Download className="h-4 w-4" />
           </button>
           {showExportMenu && (
-            <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-neutral-200 rounded-lg shadow-lg py-1 z-30">
+            <div className="absolute top-full left-0 mt-2 w-40 glass-card rounded-lg py-1 z-30">
               <button
                 onClick={() => onExport('text')}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"

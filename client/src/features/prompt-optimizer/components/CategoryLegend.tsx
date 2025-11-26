@@ -45,8 +45,8 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
   });
 
   return (
-    <div className="fixed top-16 right-6 z-30 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg">
-      <div className="flex flex-col gap-2 px-4 py-3 border-b border-neutral-200">
+    <div className="fixed top-16 right-6 z-30 w-80 glass-card rounded-lg">
+      <div className="flex flex-col gap-2 px-4 py-3 border-b border-white/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Info className="h-4 w-4 text-neutral-500" />

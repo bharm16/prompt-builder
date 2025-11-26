@@ -477,6 +477,18 @@
     @apply bg-white bg-opacity-80 backdrop-blur-lg;
   }
 
+  .glass-subtle {
+    @apply bg-white/60 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-neutral-900/70 backdrop-blur-lg border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/30 shadow-lg shadow-black/5;
+  }
+
   /* Gradient utilities */
   .gradient-primary {
     @apply bg-gradient-to-r from-primary-600 to-secondary-600;
