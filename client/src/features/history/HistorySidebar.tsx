@@ -412,14 +412,14 @@ export function HistorySidebar({
               Recent
             </h2>
             {isLoadingHistory ? (
-              <div className="p-4 text-center">
-                <div className="spinner-sm mx-auto mb-2" />
+              <div className="p-geist-4 text-center">
+                <div className="spinner-sm mx-auto mb-geist-2" />
                 <p className="text-label-12 text-geist-accents-5">
                   Loading...
                 </p>
               </div>
             ) : filteredHistory.length === 0 && searchQuery ? (
-              <div className="p-4 text-center">
+              <div className="p-geist-4 text-center">
                 <p className="text-label-12 text-geist-accents-5">
                   No results for &quot;{searchQuery}&quot;
                 </p>

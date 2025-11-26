@@ -1,11 +1,13 @@
 /**
- * Grid Component (Radix UI Themes inspired)
+ * Grid Component (Geist Design System)
  * 
  * Grid is used to organize the content in columns and rows. Like Box and Flex,
  * it's made to provide convenient access to the underlying CSS grid properties
- * without any magic of its own.
+ * without any magic of its own. Supports Geist spacing tokens for gaps.
  * 
- * Based on: https://www.radix-ui.com/themes/docs/overview/layout
+ * Supports Geist gap tokens: geist-quarter, geist-half, geist-base
+ * 
+ * Based on: https://vercel.com/geist
  */
 
 import React from 'react';

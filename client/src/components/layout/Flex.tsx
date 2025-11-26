@@ -1,11 +1,13 @@
 /**
- * Flex Component (Radix UI Themes inspired)
+ * Flex Component (Geist Design System)
  * 
  * Flex component does everything that Box can do, but comes with an additional
  * set of props to organize items along an axis. It provides convenient access
- * to the CSS flexbox properties.
+ * to the CSS flexbox properties and supports Geist spacing tokens for gaps.
  * 
- * Based on: https://www.radix-ui.com/themes/docs/overview/layout
+ * Supports Geist gap tokens: geist-quarter, geist-half, geist-base
+ * 
+ * Based on: https://vercel.com/geist
  */
 
 import React from 'react';

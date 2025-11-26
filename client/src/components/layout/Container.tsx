@@ -1,12 +1,11 @@
 /**
- * Container Component (Radix UI Themes inspired)
+ * Container Component (Geist Design System)
  * 
  * Container's sole responsibility is to provide a consistent max-width to the
- * content it wraps. Like Section, it comes just with a couple of pre-defined
- * sizes that work well with common breakpoints and typical content widths for
- * comfortable reading.
+ * content it wraps. Uses Geist's content width standards for optimal reading
+ * and visual hierarchy.
  * 
- * Based on: https://www.radix-ui.com/themes/docs/overview/layout
+ * Based on: https://vercel.com/geist
  */
 
 import React from 'react';
@@ -15,8 +14,9 @@ import { Box, type BoxProps } from './Box';
 export interface ContainerProps extends BoxProps {
   /**
    * Container size variant
+   * Geist uses narrower content widths for optimal readability
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   
   /**
    * Custom max width
@@ -24,12 +24,17 @@ export interface ContainerProps extends BoxProps {
   maxWidth?: string;
 }
 
+/**
+ * Geist container sizes
+ * Based on Vercel's content width standards
+ */
 const containerSizes = {
-  sm: '640px',
-  md: '768px',
-  lg: '1024px',
-  xl: '1280px',
-  full: '100%',
+  sm: '640px',      // Small content
+  md: '768px',      // Medium content
+  lg: '1024px',     // Large content (common)
+  xl: '1280px',     // Extra large
+  '2xl': '1536px',  // Maximum width
+  full: '100%',     // Full width
 };
 
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(

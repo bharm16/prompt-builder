@@ -24,6 +24,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       suppressContentEditableWarning
       className="outline-none focus:outline-none cursor-text font-sans text-copy-16 text-geist-foreground"
       style={{
+        fontFamily: 'var(--font-geist-sans)',
         caretColor: 'rgb(23, 23, 23)',
         wordBreak: 'break-word',
         overflowWrap: 'break-word',

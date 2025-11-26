@@ -180,7 +180,7 @@ export function PromptCanvas({
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#039;');
-        return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem;">${escaped}</div>` };
+        return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem; font-family: var(--font-geist-sans);">${escaped}</div>` };
       }
       return formatTextToHTML(displayedPrompt ?? '', enableMLHighlighting, promptContext);
     },
@@ -487,7 +487,7 @@ export function PromptCanvas({
         }
       }
     } else if (editorRef.current && !displayedPrompt) {
-      editorRef.current.innerHTML = '<p style="color: rgb(163, 163, 163); font-size: 0.875rem;">Your optimized prompt will appear here...</p>';
+      editorRef.current.innerHTML = '<p style="color: rgb(163, 163, 163); font-size: 0.875rem; font-family: var(--font-geist-sans);">Your optimized prompt will appear here...</p>';
     }
   }, [displayedPrompt, formattedHTML]);
 

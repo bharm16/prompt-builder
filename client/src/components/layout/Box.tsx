@@ -1,13 +1,16 @@
 /**
- * Box Component (Radix UI Themes inspired)
+ * Box Component (Geist Design System)
  * 
  * The most fundamental layout component. Box is used to:
- * - Provide spacing to child elements
+ * - Provide spacing to child elements using Geist spacing tokens
  * - Impose sizing constraints on content
  * - Control layout behaviour within flex and grid containers
  * - Hide content based on screen size using responsive display prop
  * 
- * Based on: https://www.radix-ui.com/themes/docs/overview/layout
+ * Geist spacing tokens: quarter (4pt), half (8pt), base (16pt)
+ * Supports both Geist tokens (geist-quarter, geist-half, geist-base) and standard spacing values
+ * 
+ * Based on: https://vercel.com/geist
  */
 
 import React from 'react';
@@ -85,6 +88,17 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
 /**
  * Converts responsive prop to Tailwind classes
  */
+/**
+ * Geist spacing token mapping
+ * Converts Geist tokens to CSS values
+ */
+const geistSpacingMap: Record<string, string> = {
+  'geist-quarter': '4pt',   // ~5px
+  'geist-half': '8pt',       // ~11px
+  'geist-base': '16pt',      // ~21px
+  'geist-page': '16pt',      // ~21px (page margin)
+};
+
 function getResponsiveClasses(
   prop: string | { [key: string]: string } | undefined,
   prefix: string
@@ -92,6 +106,14 @@ function getResponsiveClasses(
   if (!prop) return '';
   
   if (typeof prop === 'string') {
+    // Handle Geist spacing tokens
+    if (prop.startsWith('geist-')) {
+      const geistValue = geistSpacingMap[prop];
+      if (geistValue) {
+        // Return empty string - we'll handle Geist tokens via inline styles
+        return '';
+      }
+    }
     // Handle Polaris spacing tokens
     if (prop.startsWith('polaris-')) {
       return `${prefix}-${prop}`;
@@ -104,12 +126,32 @@ function getResponsiveClasses(
   const classes: string[] = [];
   Object.entries(prop).forEach(([breakpoint, value]) => {
     if (breakpoint === 'initial' || breakpoint === 'base') {
+      if (typeof value === 'string' && value.startsWith('geist-')) {
+        // Skip Geist tokens in classes, handle via inline styles
+        return;
+      }
       classes.push(`${prefix}-${value}`);
     } else {
+      if (typeof value === 'string' && value.startsWith('geist-')) {
+        return;
+      }
       classes.push(`${breakpoint}:${prefix}-${value}`);
     }
   });
   return classes.join(' ');
+}
+
+/**
+ * Get Geist spacing value for inline styles
+ */
+function getGeistSpacingValue(prop: string | { [key: string]: string } | undefined): string | undefined {
+  if (!prop) return undefined;
+  
+  if (typeof prop === 'string' && prop.startsWith('geist-')) {
+    return geistSpacingMap[prop];
+  }
+  
+  return undefined;
 }
 
 export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
@@ -193,9 +235,39 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
       .filter(Boolean)
       .join(' ');
 
+    // Handle Geist spacing tokens via inline styles
+    const geistPadding = getGeistSpacingValue(p);
+    const geistPaddingX = getGeistSpacingValue(px);
+    const geistPaddingY = getGeistSpacingValue(py);
+    const geistPaddingTop = getGeistSpacingValue(pt);
+    const geistPaddingRight = getGeistSpacingValue(pr);
+    const geistPaddingBottom = getGeistSpacingValue(pb);
+    const geistPaddingLeft = getGeistSpacingValue(pl);
+    const geistMargin = getGeistSpacingValue(m);
+    const geistMarginX = getGeistSpacingValue(mx);
+    const geistMarginY = getGeistSpacingValue(my);
+    const geistMarginTop = getGeistSpacingValue(mt);
+    const geistMarginRight = getGeistSpacingValue(mr);
+    const geistMarginBottom = getGeistSpacingValue(mb);
+    const geistMarginLeft = getGeistSpacingValue(ml);
+
     // Build inline styles for properties not covered by Tailwind
     const inlineStyles: React.CSSProperties = {
       ...style,
+      ...(geistPadding ? { padding: geistPadding } : {}),
+      ...(geistPaddingX ? { paddingLeft: geistPaddingX, paddingRight: geistPaddingX } : {}),
+      ...(geistPaddingY ? { paddingTop: geistPaddingY, paddingBottom: geistPaddingY } : {}),
+      ...(geistPaddingTop ? { paddingTop: geistPaddingTop } : {}),
+      ...(geistPaddingRight ? { paddingRight: geistPaddingRight } : {}),
+      ...(geistPaddingBottom ? { paddingBottom: geistPaddingBottom } : {}),
+      ...(geistPaddingLeft ? { paddingLeft: geistPaddingLeft } : {}),
+      ...(geistMargin ? { margin: geistMargin } : {}),
+      ...(geistMarginX ? { marginLeft: geistMarginX, marginRight: geistMarginX } : {}),
+      ...(geistMarginY ? { marginTop: geistMarginY, marginBottom: geistMarginY } : {}),
+      ...(geistMarginTop ? { marginTop: geistMarginTop } : {}),
+      ...(geistMarginRight ? { marginRight: geistMarginRight } : {}),
+      ...(geistMarginBottom ? { marginBottom: geistMarginBottom } : {}),
+      ...(geistMarginLeft ? { marginLeft: geistMarginLeft } : {}),
       ...(width && typeof width === 'string' ? { width } : {}),
       ...(minWidth && typeof minWidth === 'string' ? { minWidth } : {}),
       ...(maxWidth && typeof maxWidth === 'string' ? { maxWidth } : {}),

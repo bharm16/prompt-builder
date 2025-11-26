@@ -1,6 +1,8 @@
-/* Prompt Line Styles */
+/* Prompt Line Styles - Geist Typography */
 .prompt-line {
-  font-size: 0.875rem; /* text-copy-14 */
+  /* Using text-copy-14 - Most common text style */
+  font-family: var(--font-geist-sans);
+  font-size: 0.875rem;
   line-height: 1.6;
   letter-spacing: 0;
   font-weight: 400;
@@ -11,7 +13,9 @@
 }
 
 .prompt-line--heading {
-  font-size: 1.25rem; /* text-heading-20 */
+  /* Using text-heading-20 - Small headings */
+  font-family: var(--font-geist-sans);
+  font-size: 1.25rem;
   line-height: 1.4;
   letter-spacing: 0;
   font-weight: 600;
@@ -21,7 +25,9 @@
 }
 
 .prompt-line--section {
-  font-size: 1rem; /* text-heading-16 */
+  /* Using text-heading-16 - Tiny headings */
+  font-family: var(--font-geist-sans);
+  font-size: 1rem;
   line-height: 1.5;
   letter-spacing: 0;
   font-weight: 600;
@@ -40,9 +46,11 @@
 
 .prompt-bullet-marker,
 .prompt-ordered-index {
+  /* Using text-label-14 - Menu items (most common) */
+  font-family: var(--font-geist-sans);
   flex-shrink: 0;
   color: var(--geist-accents-4);
-  font-size: 0.875rem; /* text-label-14 */
+  font-size: 0.875rem;
   line-height: 1.5;
   letter-spacing: 0;
   font-weight: 500;
@@ -59,8 +67,10 @@
 }
 
 .prompt-line--separator {
+  /* Using text-label-12 - Tertiary labels */
+  font-family: var(--font-geist-sans);
   color: var(--geist-accents-2);
-  font-size: 0.75rem; /* text-label-12 */
+  font-size: 0.75rem;
   line-height: 1.5;
   letter-spacing: 0.4em;
   font-weight: 500;
@@ -68,10 +78,11 @@
 }
 
 .prompt-line--code {
+  /* Using text-label-14-mono - Mono labels */
   background: var(--geist-accents-1);
   padding: var(--geist-gap-half);
   border-radius: var(--geist-radius);
-  font-size: 0.875rem; /* text-label-14-mono */
+  font-size: 0.875rem;
   line-height: 1.5;
   letter-spacing: 0;
   font-weight: 500;
@@ -183,7 +194,9 @@
   border-radius: var(--geist-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: var(--shadow-small);
-  font-size: 0.75rem; /* text-label-12 */
+  /* Using text-label-12 - Tertiary labels */
+  font-family: var(--font-geist-sans);
+  font-size: 0.75rem;
   line-height: 1.5;
   letter-spacing: 0.01em;
   font-weight: 500;
