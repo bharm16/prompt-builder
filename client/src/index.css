@@ -1,3 +1,7 @@
+/* Import Geist font (official) - must be before @tailwind */
+@import 'geist/font/sans';
+@import 'geist/font/mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,7 +10,7 @@
    BASE LAYER - Global styles and resets
    ============================================ */
 @layer base {
-  /* Import Inter font for better typography */
+  /* Fallback to Inter if Geist fails to load */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   /* Root variables for theming */
@@ -22,6 +26,47 @@
     /* Focus ring */
     --ring-offset-width: 2px;
     --ring-width: 3px;
+
+    /* ============================================
+       GEIST DESIGN TOKENS (Official)
+       Based on: vercel.com/geist
+       ============================================ */
+    
+    /* Font Variables (Official - from npm install geist) */
+    --font-geist-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-geist-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+    /* Shadows (Official - 3 levels documented) */
+    --shadow-small: 0 5px 10px rgba(0, 0, 0, 0.12);
+    --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --shadow-large: 0 30px 60px rgba(0, 0, 0, 0.12);
+
+    /* Colors (Official - CSS variables documented at vercel.com/geist/colors) */
+    --accents-1: #fafafa;    /* Lightest background */
+    --accents-2: #eaeaea;    /* Borders, dividers */
+    --accents-3: #999;       /* Placeholder text */
+    --accents-4: #888;
+    --accents-5: #666;       /* Secondary text */
+    --accents-6: #444;
+    --accents-7: #333;
+    --accents-8: #111;       /* Primary text */
+    --geist-foreground: #000;
+    --geist-background: #fff;
+
+    /* ============================================
+       GEIST DESIGN TOKENS (Unofficial/Extracted)
+       Note: Spacing and Border Radius are NOT officially documented
+       but extracted from Vercel's implementation
+       ============================================ */
+    
+    /* Spacing Scale (pt units: 1pt = 1.333px) - UNOFFICIAL */
+    --geist-gap: 16pt;           /* ~21px - primary spacing */
+    --geist-gap-half: 8pt;       /* ~11px */
+    --geist-gap-quarter: 4pt;    /* ~5px */
+    --geist-page-margin: 16pt;   /* ~21px */
+
+    /* Border Radius - UNOFFICIAL */
+    --geist-radius: 5px;         /* Tight! Much smaller than typical */
   }
 
   /* Base HTML styles */

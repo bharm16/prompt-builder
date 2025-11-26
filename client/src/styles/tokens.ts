@@ -275,6 +275,67 @@ export const borderRadius = {
 } as const;
 
 // ============================================================================
+// GEIST DESIGN TOKENS
+// Official documentation: vercel.com/geist
+// ============================================================================
+
+// Geist Shadows (Official - 3 levels documented)
+export const geistShadows = {
+  small: '0 5px 10px rgba(0, 0, 0, 0.12)',
+  medium: '0 8px 30px rgba(0, 0, 0, 0.12)',
+  large: '0 30px 60px rgba(0, 0, 0, 0.12)',
+} as const;
+
+// Geist Accent Colors (Official - CSS variables documented at vercel.com/geist/colors)
+export const geistAccents = {
+  1: '#fafafa',    // Lightest background
+  2: '#eaeaea',    // Borders, dividers
+  3: '#999',       // Placeholder text
+  4: '#888',
+  5: '#666',       // Secondary text
+  6: '#444',
+  7: '#333',
+  8: '#111',       // Primary text
+  foreground: '#000',
+  background: '#fff',
+} as const;
+
+// ============================================================================
+// GEIST DESIGN TOKENS (Unofficial/Extracted)
+// Note: Spacing and Border Radius are NOT officially documented
+// but extracted from Vercel's implementation
+// ============================================================================
+
+// Geist Spacing Scale (pt units: 1pt = 1.333px) - UNOFFICIAL
+export const geistSpacing = {
+  quarter: '4pt',    // ~5px
+  half: '8pt',       // ~11px
+  base: '16pt',      // ~21px - primary spacing (gap)
+  pageMargin: '16pt', // ~21px
+} as const;
+
+// Geist Border Radius (Tight, subtle rounding) - UNOFFICIAL
+export const geistBorderRadius = {
+  sm: '3px',
+  base: '5px',   // Primary radius - very tight (Vercel signature)
+  lg: '8px',
+} as const;
+
+// Geist Accent Colors (Gray Scale)
+export const geistAccents = {
+  1: '#fafafa',    // Lightest background
+  2: '#eaeaea',    // Borders, dividers
+  3: '#999',       // Placeholder text
+  4: '#888',
+  5: '#666',       // Secondary text
+  6: '#444',
+  7: '#333',
+  8: '#111',       // Primary text
+  foreground: '#000',
+  background: '#fff',
+} as const;
+
+// ============================================================================
 // SHADOW TOKENS
 // ============================================================================
 
@@ -733,5 +794,10 @@ export default {
   wizard,
   wizardTypography,
   wizardColors,
+  // Geist tokens
+  geistSpacing,
+  geistBorderRadius,
+  geistShadows,
+  geistAccents,
 };
 

@@ -181,6 +181,20 @@ export default {
         'text-primary': '#222222',
         'text-secondary': '#484848',
         'borders-lines': '#E3E3E3',
+        // ============================================
+        // GEIST ACCENT COLORS (Official - CSS variables documented)
+        // Source: vercel.com/geist/colors
+        // ============================================
+        'geist-accents-1': '#fafafa',    // Lightest background
+        'geist-accents-2': '#eaeaea',    // Borders, dividers
+        'geist-accents-3': '#999',       // Placeholder text
+        'geist-accents-4': '#888',
+        'geist-accents-5': '#666',       // Secondary text
+        'geist-accents-6': '#444',
+        'geist-accents-7': '#333',
+        'geist-accents-8': '#111',       // Primary text
+        'geist-foreground': '#000',
+        'geist-background': '#fff',
       },
 
       // ============================================
@@ -189,6 +203,8 @@ export default {
       // ============================================
       fontFamily: {
         sans: [
+          'var(--font-geist-sans)',
+          'Geist',
           'Inter',
           'ui-sans-serif',
           'system-ui',
@@ -201,6 +217,8 @@ export default {
           'sans-serif',
         ],
         mono: [
+          'var(--font-geist-mono)',
+          'Geist Mono',
           'JetBrains Mono',
           'Menlo',
           'Monaco',
@@ -262,6 +280,19 @@ export default {
         72: '18rem', // 288px
         80: '20rem', // 320px
         96: '24rem', // 384px
+        // ============================================
+        // GEIST SPACING (pt units: 1pt = 1.333px)
+        // UNOFFICIAL - Not documented but extracted from Vercel
+        // ============================================
+        'geist-0': '0',
+        'geist-1': '4pt',    // ~5.33px (~5px)
+        'geist-2': '8pt',    // ~10.66px (~11px)
+        'geist-3': '12pt',   // ~16px
+        'geist-4': '16pt',   // ~21.33px (~21px - default gap)
+        'geist-5': '20pt',   // ~26.66px (~27px)
+        'geist-6': '24pt',   // ~32px
+        'geist-8': '32pt',   // ~42.66px (~43px)
+        'geist-12': '48pt',  // ~64px
       },
 
       // ============================================
@@ -278,6 +309,13 @@ export default {
         '2xl': '1.25rem', // 20px
         '3xl': '1.5rem', // 24px
         full: '9999px',
+        // ============================================
+        // GEIST BORDER RADIUS (Tight, subtle rounding)
+        // UNOFFICIAL - Not documented but extracted from Vercel
+        // ============================================
+        'geist': '5px',      // Primary radius - very tight
+        'geist-sm': '3px',   // Smaller radius
+        'geist-lg': '8px',   // Larger radius (still tight)
       },
 
       // ============================================
@@ -303,6 +341,12 @@ export default {
         'primary': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
         'accent': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
         'success': '0 10px 15px -3px rgb(16 185 129 / 0.3)',
+        // ============================================
+        // GEIST SHADOWS (Official - 3 levels documented)
+        // ============================================
+        'geist-small': '0 5px 10px rgba(0, 0, 0, 0.12)',
+        'geist-medium': '0 8px 30px rgba(0, 0, 0, 0.12)',
+        'geist-large': '0 30px 60px rgba(0, 0, 0, 0.12)',
       },
 
       // ============================================
