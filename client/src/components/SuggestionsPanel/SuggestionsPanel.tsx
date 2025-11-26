@@ -163,7 +163,7 @@ export function SuggestionsPanel({
     <aside
       className={panelClassName}
       role="complementary"
-      aria-labelledby="suggestions-title"
+      {...(panelTitle ? { 'aria-labelledby': 'suggestions-title' } : {})}
     >
       <PanelHeader
         panelTitle={panelTitle}

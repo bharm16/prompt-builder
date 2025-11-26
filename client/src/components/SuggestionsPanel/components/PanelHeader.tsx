@@ -23,7 +23,7 @@ interface PanelHeaderProps {
 }
 
 export function PanelHeader({
-  panelTitle = 'AI Suggestions',
+  panelTitle = '',
   onRefresh,
   onClose,
   hasActiveSuggestions = false,
@@ -37,16 +37,21 @@ export function PanelHeader({
   isPlaceholder = false,
 }: PanelHeaderProps): React.ReactElement {
   return (
-    <header className="flex-shrink-0 px-geist-4 py-geist-4 border-b border-geist-accents-2 bg-gradient-to-b from-geist-accents-1/50 to-geist-background backdrop-blur-sm">
+    <header className="flex-shrink-0 px-geist-4 py-geist-4 bg-gradient-to-b from-geist-accents-1/50 to-geist-background backdrop-blur-sm">
       <div className="flex items-center justify-between gap-geist-2">
-        <div className="flex items-center gap-geist-3 min-w-0 flex-1">
-          <div className="p-geist-2 bg-gradient-to-br from-geist-accents-2 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
-            <Sparkles className="h-3.5 w-3.5 text-geist-accents-7" aria-hidden="true" />
+        {panelTitle && (
+          <div className="flex items-center gap-geist-3 min-w-0 flex-1">
+            <div className="p-geist-2 bg-gradient-to-br from-geist-accents-2 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
+              <Sparkles className="h-3.5 w-3.5 text-geist-accents-7" aria-hidden="true" />
+            </div>
+            <h3 id="suggestions-title" className="text-label-14 text-geist-foreground">
+              {panelTitle}
+            </h3>
           </div>
-          <h3 id="suggestions-title" className="text-label-14 text-geist-foreground">
-            {panelTitle}
-          </h3>
-        </div>
+        )}
+        {!panelTitle && (
+          <div className="flex-1" />
+        )}
         <div className="flex items-center gap-geist-1">
           {onRefresh && (
             <button

@@ -29,8 +29,8 @@ export const DEFAULT_EMPTY_STATE = {
 // ===========================
 
 export const DEFAULT_PANEL_CONFIG = {
-  panelTitle: 'AI Suggestions',
-  panelClassName: 'w-80 flex-shrink-0 flex flex-col bg-white border-l border-neutral-200 overflow-hidden',
+  panelTitle: '',
+  panelClassName: 'w-80 flex-shrink-0 flex flex-col bg-geist-background border-l border-geist-accents-2 overflow-hidden',
   enableCustomRequest: true,
   customRequestPlaceholder: 'Make it more cinematic, brighter, tense, etc.',
   customRequestHelperText: 'Describe the tone, detail, or direction you want to see.',

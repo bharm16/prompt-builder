@@ -26,7 +26,6 @@ export const BentoBox = memo<BentoBoxProps>(({
     <div 
       className={`bento-box ${isExpanded ? 'bento-box-expanded' : 'bento-box-collapsed'}`}
       style={{
-        backgroundColor: config.color,
         borderColor: config.borderColor,
       }}
     >
