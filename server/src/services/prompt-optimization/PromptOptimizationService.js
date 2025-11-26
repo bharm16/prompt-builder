@@ -124,7 +124,7 @@ export class PromptOptimizationService {
 
       const [draftResponse, initialSpans] = await Promise.all(operations);
 
-      const draft = draftResponse.content[0]?.text || '';
+      const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
       const draftDuration = Date.now() - draftStartTime;
 
       logger.info('Draft generated successfully', {

@@ -27,7 +27,7 @@ export class StyleTransferService {
         temperature: 0.7,
       });
 
-      return response.content[0].text.trim();
+      return (response.text || response.content?.[0]?.text || '').trim();
     } catch (error) {
       logger.warn('Failed to transfer style', { error });
       return text; // Return original on error

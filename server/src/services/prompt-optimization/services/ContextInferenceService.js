@@ -28,7 +28,7 @@ export class ContextInferenceService {
         timeout: OptimizationConfig.timeouts.contextInference,
       });
 
-      const rawOutput = response.content[0].text.trim();
+      const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
       logger.debug('Raw inference output', { rawOutput: rawOutput.substring(0, 200) });
 
       // Extract and parse JSON from response

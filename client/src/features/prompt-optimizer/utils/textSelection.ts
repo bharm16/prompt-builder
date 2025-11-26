@@ -44,6 +44,32 @@ export const getSelectionOffsets = (
 };
 
 /**
+ * Selects a Range object in the browser's selection
+ */
+export const selectRange = (range: Range | null): void => {
+  if (!range) {
+    return;
+  }
+
+  const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
+  if (typeof getSelectionFn !== 'function') {
+    return;
+  }
+
+  const selection = getSelectionFn.call(window);
+  if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') {
+    return;
+  }
+
+  try {
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } catch (error) {
+    console.error('Error selecting range:', error);
+  }
+};
+
+/**
  * Restores a text selection in an element from character offsets
  */
 export const restoreSelectionFromOffsets = (

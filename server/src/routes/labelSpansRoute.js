@@ -108,6 +108,8 @@ const sanitizeNumber = (value) => {
     } catch (error) {
       logger.warn('label-spans request failed', {
         error: error?.message,
+        stack: error?.stack,
+        textLength: text?.length,
       });
       return res.status(502).json({
         error: 'LLM span labeling failed',

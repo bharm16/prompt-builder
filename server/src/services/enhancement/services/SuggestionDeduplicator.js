@@ -185,7 +185,8 @@ Provide a JSON object with the new suggestion:
         temperature: 0.9, // Higher temperature for diversity
       });
 
-      const alternative = JSON.parse(response.content[0].text);
+      const responseText = response.text || (response.content?.[0]?.text || '');
+      const alternative = JSON.parse(responseText);
       return alternative;
     } catch (error) {
       logger.warn('Failed to generate diverse alternative', { error });

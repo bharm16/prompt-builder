@@ -127,7 +127,7 @@ Output ONLY the mode name (one word): reasoning, research, socratic, video, or o
       timeout: OptimizationConfig.timeouts.modeDetection,
     });
 
-    const mode = response.content[0].text.trim().toLowerCase();
+    const mode = (response.text || response.content?.[0]?.text || '').trim().toLowerCase();
 
     // Validate mode
     const validModes = ['reasoning', 'research', 'socratic', 'video', 'optimize'];

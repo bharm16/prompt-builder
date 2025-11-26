@@ -15,7 +15,9 @@ interface EnforceJSONOptions {
 }
 
 interface AIServiceResponse {
-  content: Array<{
+  text?: string;
+  metadata?: Record<string, unknown>;
+  content?: Array<{
     text: string;
   }>;
 }
@@ -71,9 +73,12 @@ export class StructuredOutputEnforcer {
           { ...restOptions, isArray }  // Pass the isArray flag through
         );
 
+        // Extract text from response
+        const responseText = StructuredOutputEnforcer.extractResponseText(response);
+
         // Extract and clean JSON from response
         const cleanedText = this._cleanJSONResponse(
-          response.content[0]?.text || '',
+          responseText,
           isArray
         );
 
@@ -209,6 +214,21 @@ export class StructuredOutputEnforcer {
     });
 
     return response;
+  }
+
+  /**
+   * Extract text from AI service response
+   * Handles both { text: string } and { content: [{ text: string }] } formats
+   * @private
+   */
+  static extractResponseText(response: AIServiceResponse): string {
+    if (response.text) {
+      return response.text;
+    }
+    if (response.content && Array.isArray(response.content) && response.content.length > 0) {
+      return response.content[0]?.text || '';
+    }
+    return '';
   }
 
   /**

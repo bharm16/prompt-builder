@@ -107,7 +107,7 @@ export async function roleClassify(spans, templateVersion, aiService) {
       // temperature and maxTokens are configured in modelConfig.js
     });
 
-    const raw = response.content[0]?.text || '';
+    const raw = response.text || response.content?.[0]?.text || '';
     const parsed = safeParseJSON(raw);
     const labeled = validate(spans, parsed?.spans ?? []);
     cache.set(key, labeled);

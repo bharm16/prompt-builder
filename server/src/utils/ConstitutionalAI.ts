@@ -2,7 +2,8 @@ import { logger } from '@infrastructure/Logger';
 
 interface ClaudeClient {
   complete(prompt: string, options?: { maxTokens?: number }): Promise<{
-    content: Array<{
+    text?: string;
+    content?: Array<{
       text: string;
     }>;
   }>;
@@ -163,7 +164,7 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
       maxTokens: 2048,
     });
 
-    let critiqueText = response.content[0]?.text || '';
+    let critiqueText = response.text || response.content?.[0]?.text || '';
     critiqueText = critiqueText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
@@ -214,7 +215,7 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
       maxTokens: 4096,
     });
 
-    const revisedOutput = response.content[0]?.text.trim() || '';
+    const revisedOutput = (response.text || response.content?.[0]?.text || '').trim();
 
     logger.debug('Output revised via constitutional AI', {
       originalLength: output.length,
@@ -298,7 +299,7 @@ Respond with ONLY "YES" or "NO".`;
       maxTokens: 10,
     });
 
-    const result = response.content[0]?.text.trim().toUpperCase() || '';
+    const result = (response.text || response.content?.[0]?.text || '').trim().toUpperCase();
     return result === 'YES';
   }
 }

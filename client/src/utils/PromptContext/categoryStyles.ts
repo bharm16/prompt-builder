@@ -135,8 +135,12 @@ export function getCategoryColor(category: string): ColorScheme {
   const parsed = parseCategoryId(resolvedCategory);
   if (!parsed) {
     // Fallback for invalid categories
-    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
-      console.warn(`[CategoryStyles] Invalid category: "${category}"`);
+    try {
+      if ((import.meta as { env?: { DEV?: boolean } })?.env?.DEV) {
+        console.warn(`[CategoryStyles] Invalid category: "${category}"`);
+      }
+    } catch {
+      // Ignore errors in non-browser environments
     }
     return { bg: '#fee2e2', border: '#ef4444' };
   }
@@ -146,17 +150,21 @@ export function getCategoryColor(category: string): ColorScheme {
 
   // Get the base color palette for this parent category
   const colorPalette = BASE_COLORS[parentId];
-  if (!colorPalette) {
-    // Unknown parent category
-    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
-      console.warn(`[CategoryStyles] Unknown parent category: "${parentId}"`);
+  if (!colorPalette || !colorPalette.shades || !Array.isArray(colorPalette.shades) || colorPalette.shades.length === 0) {
+    // Unknown parent category or invalid palette
+    try {
+      if ((import.meta as { env?: { DEV?: boolean } })?.env?.DEV) {
+        console.warn(`[CategoryStyles] Unknown parent category or invalid palette: "${parentId}"`);
+      }
+    } catch {
+      // Ignore errors in non-browser environments
     }
     return { bg: '#fee2e2', border: '#ef4444' };
   }
 
   // If it's a parent category (no attribute), use the first shade
   if (parsed.isParent || !attributeName) {
-    return colorPalette.shades[0];
+    return colorPalette.shades[0] || { bg: '#fee2e2', border: '#ef4444' };
   }
 
   // It's an attribute - find its index in the parent's attributes array
@@ -165,16 +173,20 @@ export function getCategoryColor(category: string): ColorScheme {
   
   if (attributeIndex === -1) {
     // Attribute not found in taxonomy, use first shade as fallback
-    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
-      console.warn(`[CategoryStyles] Attribute "${category}" not found in parent "${parentId}"`);
+    try {
+      if ((import.meta as { env?: { DEV?: boolean } })?.env?.DEV) {
+        console.warn(`[CategoryStyles] Attribute "${category}" not found in parent "${parentId}"`);
+      }
+    } catch {
+      // Ignore errors in non-browser environments
     }
-    return colorPalette.shades[0];
+    return colorPalette.shades[0] || { bg: '#fee2e2', border: '#ef4444' };
   }
 
   // Use the shade index based on attribute position
   // If there are more attributes than shades, cycle through shades
-  const shadeIndex = Math.min(attributeIndex, colorPalette.shades.length - 1);
-  return colorPalette.shades[shadeIndex];
+  const shadeIndex = Math.min(Math.max(0, attributeIndex), colorPalette.shades.length - 1);
+  return colorPalette.shades[shadeIndex] || colorPalette.shades[0] || { bg: '#fee2e2', border: '#ef4444' };
 }
 
 // Export as a static method on PromptContext for backward compatibility

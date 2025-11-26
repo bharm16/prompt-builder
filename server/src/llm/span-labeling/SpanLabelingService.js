@@ -146,7 +146,15 @@ async function callModel({ systemPrompt, userPayload, aiService, maxTokens }) {
   });
   
   // Extract text from response
-  return response.content[0]?.text || '';
+  // Response format: { text: string, metadata: {...} }
+  // Handle both formats for backward compatibility
+  if (response.text) {
+    return response.text;
+  }
+  if (response.content && Array.isArray(response.content) && response.content.length > 0) {
+    return response.content[0]?.text || '';
+  }
+  return '';
 }
 
 /**

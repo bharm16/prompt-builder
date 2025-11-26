@@ -7,7 +7,7 @@ import { createCanonicalText } from '../../utils/canonicalText';
 
 // Extracted utilities
 import { formatTextToHTML } from './utils/textFormatting';
-import { getSelectionOffsets, restoreSelectionFromOffsets } from './utils/textSelection';
+import { getSelectionOffsets, restoreSelectionFromOffsets, selectRange } from './utils/textSelection';
 import { convertLabeledSpansToHighlights } from './utils/highlightConversion';
 import {
   findHighlightNode,

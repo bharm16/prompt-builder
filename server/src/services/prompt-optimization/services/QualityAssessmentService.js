@@ -29,7 +29,7 @@ export class QualityAssessmentService {
         timeout: OptimizationConfig.timeouts.qualityAssessment,
       });
 
-      const rawOutput = response.content[0].text.trim();
+      const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
       const assessment = this.parseAssessment(rawOutput);
 
       logger.info('Quality assessment complete', {

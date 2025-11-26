@@ -54,7 +54,7 @@ Score:`;
         temperature: 0.1,
       });
 
-      const score = parseFloat(response.content[0].text.trim());
+      const score = parseFloat((response.text || response.content?.[0]?.text || '').trim());
 
       // Cache the score
       this.semanticCache.set(cacheKey, score);
