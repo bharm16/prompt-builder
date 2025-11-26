@@ -14,7 +14,9 @@
  * on next load or via the backfill script.
  * 
  * Usage:
- *   node scripts/migrations/force-highlight-rerender.js [options]
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js [options]
+ *   OR
+ *   npm run migrate:rerender [options]
  * 
  * Options:
  *   --dry-run              Preview changes without writing to Firestore
@@ -29,19 +31,19 @@
  * 
  * Examples:
  *   # Dry run to see what would be updated
- *   node scripts/migrations/force-highlight-rerender.js --dry-run
+ *   npm run migrate:rerender:dry
  * 
  *   # Clear highlight cache for all prompts (fast)
- *   node scripts/migrations/force-highlight-rerender.js --mode=clear
+ *   npm run migrate:rerender
  * 
  *   # Clear and regenerate highlights for all prompts (slower but complete)
- *   node scripts/migrations/force-highlight-rerender.js --mode=regenerate
+ *   npm run migrate:rerender:regenerate
  * 
  *   # Process prompts for specific user
- *   node scripts/migrations/force-highlight-rerender.js --userId=abc123 --mode=clear
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --userId=abc123 --mode=clear
  * 
  *   # Test on 10 documents first
- *   node scripts/migrations/force-highlight-rerender.js --limit=10 --dry-run
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --limit=10 --dry-run
  */
 
 import { initializeFirebaseAdmin, admin } from './firebase-admin-init.js';

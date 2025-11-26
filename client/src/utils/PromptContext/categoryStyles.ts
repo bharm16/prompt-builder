@@ -1,17 +1,15 @@
-import { TAXONOMY } from '@shared/taxonomy';
+import { TAXONOMY, parseCategoryId, getAttributesForParent, resolveCategory } from '@shared/taxonomy';
 
 /**
  * Category Styling Configuration
  * 
  * UI styling rules for different highlight categories
- * Now uses hierarchical taxonomy for consistent color grouping
+ * Uses hierarchical taxonomy with unique colors per category
  * 
  * Color Strategy:
- * - All attributes of a parent category share the same base color
- * - Subject attributes (wardrobe, action, appearance) = Orange
- * - Environment/Lighting = Green
- * - Camera attributes = Blue
- * - Style/Technical = Purple
+ * - Each parent category gets a unique color family
+ * - Subcategories (attributes) get different shades of the same color
+ * - Shades progress from lighter to darker based on attribute order
  */
 
 interface ColorScheme {
@@ -19,60 +17,100 @@ interface ColorScheme {
   border: string;
 }
 
-// Master color groups mapped to taxonomy hierarchy
-const COLOR_GROUPS: Record<string, ColorScheme> = {
-  // Subject & Character (Entity) - Orange family
-  SUBJECT: {
-    bg: '#fff7ed',        // Orange-50
-    border: '#f97316'     // Orange-500
+/**
+ * Base color palettes for each parent category
+ * Each category has a unique color family with shade variations
+ */
+const BASE_COLORS: Record<string, {
+  shades: Array<{ bg: string; border: string }>;
+}> = {
+  // SHOT - Teal family
+  shot: {
+    shades: [
+      { bg: '#f0fdfa', border: '#14b8a6' }, // Teal-50/500
+      { bg: '#ccfbf1', border: '#0d9488' }, // Teal-100/600
+    ],
   },
   
-  // Environment (Setting) - Green family
-  ENVIRONMENT: {
-    bg: '#f0fdf4',        // Green-50
-    border: '#22c55e'     // Green-500
+  // SUBJECT - Orange family
+  subject: {
+    shades: [
+      { bg: '#fff7ed', border: '#f97316' }, // Orange-50/500
+      { bg: '#ffedd5', border: '#ea580c' }, // Orange-100/600
+      { bg: '#fed7aa', border: '#c2410c' }, // Orange-200/700
+      { bg: '#fdba74', border: '#9a3412' }, // Orange-300/800
+      { bg: '#fb923c', border: '#7c2d12' }, // Orange-400/900
+    ],
   },
   
-  // Lighting (Setting) - Yellow/Green family
-  LIGHTING: {
-    bg: '#fefce8',        // Yellow-50
-    border: '#eab308'     // Yellow-500
+  // ACTION - Red family
+  action: {
+    shades: [
+      { bg: '#fef2f2', border: '#ef4444' }, // Red-50/500
+      { bg: '#fee2e2', border: '#dc2626' }, // Red-100/600
+      { bg: '#fecaca', border: '#b91c1c' }, // Red-200/700
+    ],
   },
   
-  // Camera (Technical) - Blue family
-  CAMERA: {
-    bg: '#eff6ff',        // Blue-50
-    border: '#3b82f6'     // Blue-500
+  // ENVIRONMENT - Green family
+  environment: {
+    shades: [
+      { bg: '#f0fdf4', border: '#22c55e' }, // Green-50/500
+      { bg: '#dcfce7', border: '#16a34a' }, // Green-100/600
+      { bg: '#bbf7d0', border: '#15803d' }, // Green-200/700
+    ],
   },
   
-  // Style & Aesthetic (Technical) - Purple family
-  STYLE: {
-    bg: '#faf5ff',        // Fuchsia-50
-    border: '#d946ef'     // Fuchsia-500
+  // LIGHTING - Yellow/Amber family
+  lighting: {
+    shades: [
+      { bg: '#fefce8', border: '#eab308' }, // Yellow-50/500
+      { bg: '#fef9c3', border: '#ca8a04' }, // Yellow-100/600
+      { bg: '#fef08a', border: '#a16207' }, // Yellow-200/700
+    ],
   },
   
-  // Technical Specs (Technical) - Violet family
-  TECHNICAL: {
-    bg: '#f5f3ff',        // Violet-50
-    border: '#8b5cf6'     // Violet-500
+  // CAMERA - Blue family
+  camera: {
+    shades: [
+      { bg: '#eff6ff', border: '#3b82f6' }, // Blue-50/500
+      { bg: '#dbeafe', border: '#2563eb' }, // Blue-100/600
+      { bg: '#bfdbfe', border: '#1d4ed8' }, // Blue-200/700
+      { bg: '#93c5fd', border: '#1e40af' }, // Blue-300/800
+    ],
   },
   
-  // Audio (Technical) - Indigo family
-  AUDIO: {
-    bg: '#eef2ff',        // Indigo-50
-    border: '#6366f1'     // Indigo-500
+  // STYLE - Purple/Fuchsia family
+  style: {
+    shades: [
+      { bg: '#faf5ff', border: '#d946ef' }, // Fuchsia-50/500
+      { bg: '#f3e8ff', border: '#c026d3' }, // Fuchsia-100/600
+    ],
   },
   
-  // Narrative/Action (Entity attribute) - Red family
-  ACTION: {
-    bg: '#fef2f2',        // Red-50
-    border: '#ef4444'     // Red-500
+  // TECHNICAL - Violet family
+  technical: {
+    shades: [
+      { bg: '#f5f3ff', border: '#8b5cf6' }, // Violet-50/500
+      { bg: '#ede9fe', border: '#7c3aed' }, // Violet-100/600
+      { bg: '#ddd6fe', border: '#6d28d9' }, // Violet-200/700
+      { bg: '#c4b5fd', border: '#5b21b6' }, // Violet-300/800
+    ],
+  },
+  
+  // AUDIO - Indigo family
+  audio: {
+    shades: [
+      { bg: '#eef2ff', border: '#6366f1' }, // Indigo-50/500
+      { bg: '#e0e7ff', border: '#4f46e5' }, // Indigo-100/600
+    ],
   },
 };
 
 /**
  * Get category color for UI display
- * Uses taxonomy hierarchy to ensure consistent colors
+ * Uses taxonomy hierarchy with unique colors per category
+ * Subcategories get different shades of their parent category's color
  */
 export function getCategoryColor(category: string): ColorScheme {
   // Legacy brainstorm categories (keep for backward compatibility)
@@ -90,65 +128,53 @@ export function getCategoryColor(category: string): ColorScheme {
     return legacyColors[category];
   }
 
-  // Check if it's a direct parent category match
-  if (category === TAXONOMY.SUBJECT.id) return COLOR_GROUPS.SUBJECT!;
-  if (category === TAXONOMY.ENVIRONMENT.id) return COLOR_GROUPS.ENVIRONMENT!;
-  if (category === TAXONOMY.LIGHTING.id) return COLOR_GROUPS.LIGHTING!;
-  if (category === TAXONOMY.CAMERA.id) return COLOR_GROUPS.CAMERA!;
-  if (category === TAXONOMY.STYLE.id) return COLOR_GROUPS.STYLE!;
-  if (category === TAXONOMY.TECHNICAL.id) return COLOR_GROUPS.TECHNICAL!;
-  if (category === TAXONOMY.AUDIO.id) return COLOR_GROUPS.AUDIO!;
+  // Resolve legacy IDs to taxonomy IDs (e.g., 'wardrobe' -> 'subject.wardrobe')
+  const resolvedCategory = resolveCategory(category);
 
-  // Check if it's an attribute of a parent (hierarchical color assignment)
-  // All subject attributes get subject color
-  if (Object.values(TAXONOMY.SUBJECT.attributes).includes(category)) {
-    // Special case: action gets its own red color for visual distinction
-    if (category === TAXONOMY.SUBJECT.attributes.ACTION) {
-      return COLOR_GROUPS.ACTION!;
+  // Parse the category ID to determine if it's a parent or attribute
+  const parsed = parseCategoryId(resolvedCategory);
+  if (!parsed) {
+    // Fallback for invalid categories
+    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+      console.warn(`[CategoryStyles] Invalid category: "${category}"`);
     }
-    return COLOR_GROUPS.SUBJECT!;
+    return { bg: '#fee2e2', border: '#ef4444' };
   }
 
-  // All environment attributes get environment color
-  if (Object.values(TAXONOMY.ENVIRONMENT.attributes).includes(category)) {
-    return COLOR_GROUPS.ENVIRONMENT!;
+  const parentId = parsed.parent;
+  const attributeName = parsed.attribute;
+
+  // Get the base color palette for this parent category
+  const colorPalette = BASE_COLORS[parentId];
+  if (!colorPalette) {
+    // Unknown parent category
+    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+      console.warn(`[CategoryStyles] Unknown parent category: "${parentId}"`);
+    }
+    return { bg: '#fee2e2', border: '#ef4444' };
   }
 
-  // All lighting attributes get lighting color
-  if (Object.values(TAXONOMY.LIGHTING.attributes).includes(category)) {
-    return COLOR_GROUPS.LIGHTING!;
+  // If it's a parent category (no attribute), use the first shade
+  if (parsed.isParent || !attributeName) {
+    return colorPalette.shades[0];
   }
 
-  // All camera attributes get camera color
-  if (Object.values(TAXONOMY.CAMERA.attributes).includes(category)) {
-    return COLOR_GROUPS.CAMERA!;
-  }
-
-  // All style attributes get style color
-  if (Object.values(TAXONOMY.STYLE.attributes).includes(category)) {
-    return COLOR_GROUPS.STYLE!;
-  }
-
-  // All technical attributes get technical color
-  if (Object.values(TAXONOMY.TECHNICAL.attributes).includes(category)) {
-    return COLOR_GROUPS.TECHNICAL!;
-  }
-
-  // All audio attributes get audio color
-  if (Object.values(TAXONOMY.AUDIO.attributes).includes(category)) {
-    return COLOR_GROUPS.AUDIO!;
-  }
-
-  // Default fallback for unknown categories
-  if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
-    console.warn(`[CategoryStyles] Unknown category: "${category}"`);
-  }
+  // It's an attribute - find its index in the parent's attributes array
+  const attributes = getAttributesForParent(parentId);
+  const attributeIndex = attributes.indexOf(resolvedCategory);
   
-  // Error color for unknown/invalid categories
-  return { 
-    bg: '#fee2e2',  // Red-100
-    border: '#ef4444'  // Red-500
-  };
+  if (attributeIndex === -1) {
+    // Attribute not found in taxonomy, use first shade as fallback
+    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+      console.warn(`[CategoryStyles] Attribute "${category}" not found in parent "${parentId}"`);
+    }
+    return colorPalette.shades[0];
+  }
+
+  // Use the shade index based on attribute position
+  // If there are more attributes than shades, cycle through shades
+  const shadeIndex = Math.min(attributeIndex, colorPalette.shades.length - 1);
+  return colorPalette.shades[shadeIndex];
 }
 
 // Export as a static method on PromptContext for backward compatibility
