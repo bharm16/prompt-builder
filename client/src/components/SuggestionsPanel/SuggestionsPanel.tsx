@@ -256,6 +256,6 @@ export function SuggestionsPanel({
     </aside>
   );
 }
-
 export default SuggestionsPanel;
+
 

@@ -29,6 +29,13 @@ export default defineConfig({
       '@config': path.resolve(__dirname, '../../client/src/config'),
       '@shared': path.resolve(__dirname, '../../shared'),
     },
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+    esbuildOptions: {
+      resolveExtensions: ['.jsx', '.js', '.tsx', '.ts'],
+    },
   },
   plugins: [
     react(),
