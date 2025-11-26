@@ -1,7 +1,7 @@
 /**
  * Design Tokens
  *
- * Based on Airbnb's Design Language System (DLS) principles:
+ * Based on Vercel's Geist Design System principles:
  * - 8px base unit grid system
  * - Systematic spacing, typography, and color scales
  * - Semantic token naming for maintainability
@@ -120,14 +120,14 @@ export const typography = {
 // COLOR TOKENS
 // ============================================================================
 
-// Primary Brand Color (Rausch Pink - Airbnb inspired)
+// Primary Brand Color (Accent Pink)
 export const primary = {
   50: '#FFF5F7',
   100: '#FFE3EA',
   200: '#FFC0CC',
   300: '#FF98AF',
   400: '#FF6D8C',
-  500: '#FF385C',  // Main Rausch pink
+  500: '#FF385C',  // Main accent color
   600: '#E03252',
   700: '#C12745',
   800: '#971E36',
@@ -719,7 +719,7 @@ export const wizardTypography = {
 
 // Wizard color variations
 export const wizardColors = {
-  // Accent (Rausch pink)
+  // Accent
   accent: {
     base: primary[500],              // #FF385C
     hover: primary[600],             // #E03252

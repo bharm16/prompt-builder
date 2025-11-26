@@ -14,7 +14,7 @@ export default {
   theme: {
     extend: {
       // ============================================
-      // COLOR SYSTEM - Airbnb DLS Aligned
+      // COLOR SYSTEM - Geist/Vercel Design System
       // Calm neutrals, confident accent, accessible contrast
       // ============================================
       colors: {
@@ -33,7 +33,7 @@ export default {
           950: '#0B0B0B',
         },
 
-        // ACCENT SCALE (Rausch)
+        // ACCENT SCALE
         accent: {
           50: '#FFF5F7',
           100: '#FFE3EA',
@@ -362,7 +362,7 @@ export default {
       },
 
       // ============================================
-      // SHADOW SYSTEM - Airbnb DLS Inspired
+      // SHADOW SYSTEM - Geist/Vercel Design System
       // Sophisticated elevation with proper depth
       // ============================================
       boxShadow: {
