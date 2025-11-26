@@ -33,46 +33,46 @@ export function CustomRequestForm({
   };
 
   return (
-    <div className="flex-shrink-0 p-geist-3 border-b border-geist-accents-2 bg-gradient-to-b from-geist-background to-geist-accents-1/30 space-y-geist-2">
+    <div className="flex-shrink-0 px-geist-3 py-geist-2 border-b border-geist-accents-2 bg-geist-background space-y-geist-2">
       <div className="space-y-geist-1">
         <label
           htmlFor="custom-request"
-          className="text-label-12 text-geist-accents-6 uppercase tracking-wide"
+          className="text-label-12 text-geist-accents-5 uppercase tracking-wider"
         >
           Need something specific?
         </label>
-        <p className="text-copy-14 text-geist-accents-5 leading-relaxed">{helperText}</p>
+        <p className="text-label-12 text-geist-accents-5">{helperText}</p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-geist-2">
         <textarea
           id="custom-request"
           value={customRequest}
           onChange={(e) => onCustomRequestChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-12 text-copy-14 text-geist-foreground bg-geist-background border border-geist-accents-3 rounded-geist-lg px-geist-3 py-geist-2 focus:outline-none focus:ring-2 focus:ring-geist-foreground/10 focus:border-geist-accents-4"
+          className="w-full h-10 text-label-12 text-geist-foreground bg-geist-background border border-geist-accents-2 rounded-geist px-geist-2 py-geist-1 focus:outline-none focus:ring-2 focus:ring-geist-foreground/10 focus:border-geist-accents-4"
           maxLength={MAX_REQUEST_LENGTH}
         />
 
         <button
           type="submit"
           disabled={isLoading || !customRequest.trim()}
-          className={`inline-flex items-center justify-center gap-geist-2 w-full px-geist-3 py-geist-2 mt-geist-3 text-button-14 rounded-geist-lg transition-all duration-150 ${
+          className={`inline-flex items-center justify-center gap-geist-1 w-full px-geist-3 py-geist-1 text-label-12 rounded-geist transition-colors duration-150 ${
             isLoading || !customRequest.trim()
               ? 'bg-geist-accents-2 text-geist-accents-5 cursor-not-allowed'
-              : 'bg-geist-foreground text-white hover:bg-geist-accents-8 shadow-geist-small'
+              : 'bg-geist-foreground text-white hover:bg-geist-accents-8'
           }`}
           aria-busy={isLoading}
           aria-live="polite"
         >
           {isLoading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               <span>Generating...</span>
             </>
           ) : (
             <>
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
               <span>{ctaLabel}</span>
             </>
           )}

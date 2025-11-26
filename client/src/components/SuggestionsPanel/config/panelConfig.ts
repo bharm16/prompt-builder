@@ -30,7 +30,7 @@ export const DEFAULT_EMPTY_STATE = {
 
 export const DEFAULT_PANEL_CONFIG = {
   panelTitle: '',
-  panelClassName: 'w-80 flex-shrink-0 flex flex-col bg-geist-background border-l border-geist-accents-2 overflow-hidden',
+  panelClassName: 'flex flex-col overflow-hidden',
   enableCustomRequest: true,
   customRequestPlaceholder: 'Make it more cinematic, brighter, tense, etc.',
   customRequestHelperText: 'Describe the tone, detail, or direction you want to see.',

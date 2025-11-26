@@ -15,6 +15,7 @@ import { PromptResultsSection } from '../components/PromptResultsSection';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
+import SuggestionsPanel from '@components/SuggestionsPanel';
 import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
@@ -252,7 +253,17 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   return (
     <div
       className="h-screen overflow-hidden gradient-neutral transition-colors duration-300"
-      style={{ '--sidebar-width': showHistory ? '18rem' : '4rem' } as React.CSSProperties}
+      style={{
+        '--sidebar-width': showHistory 
+          ? 'var(--layout-sidebar-width-expanded)' 
+          : 'var(--layout-sidebar-width-collapsed)',
+        display: 'grid',
+        gridTemplateColumns: `
+          var(--sidebar-width) 
+          minmax(0, 1fr)
+          var(--layout-suggestions-panel-width)
+        `,
+      } as React.CSSProperties}
     >
       {/* Skip to main content */}
       <a href="#main-content" className="sr-only-focusable top-4 left-4">
@@ -275,15 +286,20 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       {/* Main Content */}
       <main
         id="main-content"
-        className={`relative flex h-screen flex-col items-center px-4 sm:px-6 py-8 transition-all duration-300 ${showHistory ? 'ml-72' : 'ml-16'} ${showResults ? 'justify-start' : 'justify-center overflow-y-auto'}`}
+        className="relative flex flex-col overflow-y-auto transition-all duration-300"
+        style={{
+          minWidth: 0, // Allows flex shrinking
+        }}
       >
         {/* Input Section */}
         {!showResults && (
-          <PromptInputSection
-            aiNames={aiNames}
-            onOptimize={handleOptimize}
-            onShowBrainstorm={() => setShowBrainstorm(true)}
-          />
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+            <PromptInputSection
+              aiNames={aiNames}
+              onOptimize={handleOptimize}
+              onShowBrainstorm={() => setShowBrainstorm(true)}
+            />
+          </div>
         )}
 
         {/* Results Section */}
@@ -299,7 +315,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
         {/* Privacy Policy Footer */}
         {!showResults && (
-          <footer className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          <footer className="mt-auto py-8 text-center">
             <a
               href="/privacy-policy"
               className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
@@ -309,6 +325,22 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           </footer>
         )}
       </main>
+
+      {/* Suggestions Panel - Right Column */}
+      <aside 
+        className="overflow-y-auto border-l border-geist-accents-2 bg-geist-background"
+        style={{
+          width: 'var(--layout-suggestions-panel-width)',
+        }}
+      >
+        <SuggestionsPanel 
+          suggestionsData={
+            suggestionsData 
+              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick: handleSuggestionClick } 
+              : { show: false }
+          } 
+        />
+      </aside>
 
       {/* Debug Button - Hidden */}
       {false && (import.meta.env.DEV ||

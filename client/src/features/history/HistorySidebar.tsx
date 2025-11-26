@@ -280,7 +280,10 @@ export function HistorySidebar({
   return (
     <aside
       id="history-sidebar"
-      className={`${showHistory ? 'w-72' : 'w-16'} fixed left-0 top-0 z-sticky h-screen max-h-screen overflow-hidden border-r border-geist-accents-2 bg-geist-background transition-all duration-300`}
+      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background transition-all duration-300"
+      style={{
+        width: 'var(--sidebar-width)',
+      }}
       aria-label="Prompt history"
     >
       {isCollapsed ? (

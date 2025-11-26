@@ -45,7 +45,13 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
   });
 
   return (
-    <div className="fixed top-12 right-geist-4 z-30 w-72 glass-card rounded-geist-lg">
+    <div 
+      className="absolute top-12 z-30 glass-card rounded-geist-lg"
+      style={{
+        right: 'calc(var(--layout-suggestions-panel-width) + var(--layout-gap-md) + var(--layout-gap-md))',
+        width: 'var(--layout-legend-width, clamp(16rem, 20vw, 20rem))',
+      }}
+    >
       <div className="flex flex-col gap-geist-2 px-geist-3 py-geist-2 border-b border-white/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-geist-2">

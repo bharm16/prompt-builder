@@ -28,37 +28,36 @@ export function LoadingState({
   const skeletonCount = getLoadingSkeletonCount(textLength, isPlaceholder);
 
   return (
-    <div className="p-geist-4 space-y-geist-3" role="status" aria-live="polite">
+    <div className="px-geist-3 py-geist-3 space-y-geist-2" role="status" aria-live="polite">
       {Array.from({ length: skeletonCount }).map((_, i) => (
         <div
           key={i}
-          className="relative overflow-hidden p-geist-4 bg-gradient-to-r from-geist-accents-1 via-geist-accents-1 to-geist-accents-1 border border-geist-accents-2 rounded-geist-lg animate-pulse"
+          className="relative overflow-hidden px-geist-3 py-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist animate-pulse"
           style={{ animationDelay: `${i * 75}ms`, animationDuration: '1.5s' }}
         >
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-          <div className="relative space-y-geist-3">
+          <div className="space-y-geist-1">
             <div
-              className={`h-4 bg-geist-accents-2/70 rounded-geist ${
+              className={`h-3 bg-geist-accents-2 rounded-geist ${
                 i % 4 === 0 ? 'w-3/4' : i % 4 === 1 ? 'w-2/3' : i % 4 === 2 ? 'w-4/5' : 'w-5/6'
               }`}
             />
             {isPlaceholder ? (
               <>
-                <div className={`h-3 bg-geist-accents-2/50 rounded-geist ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
-                <div className={`h-3 bg-geist-accents-2/50 rounded-geist ${i % 3 === 0 ? 'w-5/6' : 'w-4/5'}`} />
+                <div className={`h-2.5 bg-geist-accents-2 rounded-geist ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
+                <div className={`h-2.5 bg-geist-accents-2 rounded-geist ${i % 3 === 0 ? 'w-5/6' : 'w-4/5'}`} />
               </>
             ) : (
               <>
-                <div className={`h-3 bg-geist-accents-2/50 rounded-geist ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
+                <div className={`h-2.5 bg-geist-accents-2 rounded-geist ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
                 {i % 3 !== 2 && (
-                  <div className={`h-3 bg-geist-accents-2/50 rounded-geist ${i % 2 === 0 ? 'w-5/6' : 'w-4/5'}`} />
+                  <div className={`h-2.5 bg-geist-accents-2 rounded-geist ${i % 2 === 0 ? 'w-5/6' : 'w-4/5'}`} />
                 )}
               </>
             )}
           </div>
         </div>
       ))}
-      <p className="text-center text-label-14 text-geist-accents-5 mt-geist-6">
+      <p className="text-center text-label-12 text-geist-accents-5 mt-geist-4">
         {isPlaceholder ? 'Finding relevant values...' : 'Analyzing context...'}
       </p>
     </div>
@@ -77,16 +76,15 @@ export function EmptyState({ emptyState }: EmptyStateProps): React.ReactElement 
   const EmptyIcon = emptyState.icon;
 
   return (
-    <div className="flex flex-1 items-center justify-center py-geist-12">
-      <div className="px-geist-4 text-center max-w-[240px]">
-        <div className="relative inline-flex mb-geist-4">
-          <div className="absolute inset-0 bg-geist-accents-2/50 rounded-full blur-xl animate-pulse" />
-          <div className="relative p-geist-3 bg-gradient-to-br from-geist-accents-1 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
-            <EmptyIcon className="h-8 w-8 text-geist-accents-4" aria-hidden="true" />
+    <div className="flex flex-1 items-center justify-center py-geist-8">
+      <div className="px-geist-3 text-center max-w-[200px]">
+        <div className="relative inline-flex mb-geist-3">
+          <div className="relative p-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist">
+            <EmptyIcon className="h-6 w-6 text-geist-accents-5" aria-hidden="true" />
           </div>
         </div>
-        <p className="text-label-14 text-geist-foreground mb-geist-2">{emptyState.title}</p>
-        <p className="text-copy-14 text-geist-accents-6 leading-relaxed">{emptyState.description}</p>
+        <p className="text-label-12 text-geist-foreground mb-geist-1">{emptyState.title}</p>
+        <p className="text-label-12 text-geist-accents-5">{emptyState.description}</p>
       </div>
     </div>
   );
@@ -104,27 +102,26 @@ export function InactiveState({ inactiveState }: InactiveStateProps): React.Reac
   const InactiveIcon = inactiveState.icon;
 
   return (
-    <div className="flex flex-1 items-center justify-center p-geist-6">
-      <div className="text-center max-w-[240px]">
-        <div className="relative inline-flex mb-geist-4">
-          <div className="absolute inset-0 bg-geist-accents-2/50 rounded-full blur-xl animate-pulse" />
-          <div className="relative p-geist-3 bg-gradient-to-br from-geist-accents-1 to-geist-accents-1 rounded-geist-lg shadow-geist-small ring-1 ring-geist-accents-2/50">
-            <InactiveIcon className="h-8 w-8 text-geist-accents-4" aria-hidden="true" />
+    <div className="flex flex-1 items-center justify-center px-geist-3 py-geist-6">
+      <div className="text-center max-w-[200px]">
+        <div className="relative inline-flex mb-geist-3">
+          <div className="relative p-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist">
+            <InactiveIcon className="h-6 w-6 text-geist-accents-5" aria-hidden="true" />
           </div>
         </div>
-        <h4 className="text-label-14 text-geist-foreground mb-geist-2">{inactiveState.title}</h4>
-        <p className="text-copy-14 text-geist-accents-6 leading-relaxed">{inactiveState.description}</p>
+        <h4 className="text-label-12 text-geist-foreground mb-geist-1">{inactiveState.title}</h4>
+        <p className="text-label-12 text-geist-accents-5">{inactiveState.description}</p>
         {Array.isArray(inactiveState.tips) && inactiveState.tips.length > 0 && (
-          <div className="mt-geist-4 space-y-geist-2 text-left">
+          <div className="mt-geist-3 space-y-geist-1 text-left">
             {inactiveState.tips.map((tip, index) => {
               const TipIcon = tip.icon || Info;
               return (
                 <div
                   key={`${tip.text}-${index}`}
-                  className="flex items-start gap-geist-2 p-geist-2 bg-geist-accents-1 rounded-geist-lg border border-geist-accents-2/60"
+                  className="flex items-start gap-geist-2 px-geist-2 py-geist-1 bg-geist-accents-1 border border-geist-accents-2 rounded-geist"
                 >
-                  <TipIcon className="h-3.5 w-3.5 text-geist-accents-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  <span className="text-label-12 text-geist-accents-6 leading-relaxed">{tip.text}</span>
+                  <TipIcon className="h-3 w-3 text-geist-accents-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <span className="text-label-12 text-geist-accents-6">{tip.text}</span>
                 </div>
               );
             })}

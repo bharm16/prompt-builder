@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import SuggestionsPanel from '../../components/SuggestionsPanel';
 import { useToast } from '../../components/Toast';
 import { useSpanLabeling } from './hooks/useSpanLabeling';
 import { useHighlightSourceSelection } from './hooks/useHighlightSourceSelection';
@@ -493,8 +492,7 @@ export function PromptCanvas({
 
   // Render the component
   return (
-    <div className="fixed inset-0 flex flex-col bg-geist-accents-1" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>
-
+    <div className="relative flex flex-col bg-geist-background min-h-full">
       {/* Category Legend */}
       <CategoryLegend
         show={showLegend}
@@ -503,22 +501,49 @@ export function PromptCanvas({
       />
 
       {/* Main Content Container */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Span Bento Grid (Desktop) / Bottom Drawer (Mobile) */}
-        <div className="w-72 h-full flex-shrink-0 max-md:w-full max-md:h-auto">
-          <HighlightingErrorBoundary>
-            <SpanBentoGrid
-              spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
-              onSpanClick={handleSpanClickFromBento}
-              editorRef={editorRef}
-            />
-          </HighlightingErrorBoundary>
+      <div 
+        className="flex-1 flex overflow-hidden"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'var(--layout-bento-grid-width) minmax(0, 1fr)',
+          gap: 'var(--layout-gap-md)',
+        }}
+      >
+        {/* Left Sidebar - Span Bento Grid */}
+        <div 
+          className="flex flex-col overflow-hidden max-md:w-full max-md:h-auto"
+          style={{
+            width: 'var(--layout-bento-grid-width)',
+            minWidth: 'var(--layout-bento-grid-width)',
+          }}
+        >
+          {/* Header */}
+          <div className="bento-grid-header flex-shrink-0">
+            <h2 className="header-title text-label-14 text-geist-accents-5 uppercase tracking-wider">Detected Elements</h2>
+          </div>
+          
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            <HighlightingErrorBoundary>
+              <SpanBentoGrid
+                spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
+                onSpanClick={handleSpanClickFromBento}
+                editorRef={editorRef}
+              />
+            </HighlightingErrorBoundary>
+          </div>
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-col overflow-hidden min-w-0">
           <div className="flex-1 overflow-y-auto scrollbar-auto-hide">
-            <div className="max-w-3xl mx-auto px-geist-8 pt-geist-12 pb-geist-12">
+            <div 
+              className="mx-auto px-geist-8 pt-geist-12 pb-geist-12"
+              style={{
+                maxWidth: 'var(--layout-content-max-width)',
+                width: '100%',
+              }}
+            >
               <div className="group">
                 {/* PromptEditor continues working even if highlighting fails */}
                 <PromptEditor
@@ -551,15 +576,6 @@ export function PromptCanvas({
             </div>
           </div>
         </div>
-
-        {/* Right Side - AI Suggestions Panel (Always Visible) */}
-        <SuggestionsPanel 
-          suggestionsData={
-            suggestionsData 
-              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick } 
-              : { show: false }
-          } 
-        />
       </div>
     </div>
   );
