@@ -27,7 +27,6 @@ import { CategoryTabs } from './components/CategoryTabs';
 import { CustomRequestForm } from './components/CustomRequestForm';
 import { SuggestionsList } from './components/SuggestionsList';
 import { LoadingState, EmptyState, InactiveState } from './components/PanelStates';
-import { VisualPreview } from '@/features/preview/components/VisualPreview';
 
 // Utils
 import { cn } from '@/utils/cn';
@@ -139,7 +138,6 @@ export function SuggestionsPanel({
   // ===========================
   // STATE MANAGEMENT
   // ===========================
-  const [activeTab, setActiveTab] = useState<'suggestions' | 'preview'>('suggestions');
   const { categories, activeCategory, currentSuggestions, dispatch, actions } =
     useSuggestionsState(suggestions, initialCategory);
 
@@ -187,41 +185,6 @@ export function SuggestionsPanel({
         isPlaceholder={isPlaceholder}
       />
 
-      {/* Tab Bar */}
-      {hasActiveSuggestions && (
-        <div className="flex border-b border-geist-accents-2">
-          <button
-            onClick={() => setActiveTab('suggestions')}
-            className={cn(
-              'flex-1 py-3 text-sm font-medium transition-colors relative',
-              activeTab === 'suggestions'
-                ? 'text-geist-foreground'
-                : 'text-geist-accents-4 hover:text-geist-foreground'
-            )}
-            aria-label="Suggestions tab"
-          >
-            Refine
-            {activeTab === 'suggestions' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-geist-foreground" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('preview')}
-            className={cn(
-              'flex-1 py-3 text-sm font-medium transition-colors relative',
-              activeTab === 'preview'
-                ? 'text-geist-foreground'
-                : 'text-geist-accents-4 hover:text-geist-foreground'
-            )}
-            aria-label="Preview tab"
-          >
-            Preview
-            {activeTab === 'preview' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-geist-foreground" />
-            )}
-          </button>
-        </div>
-      )}
 
       {hasActiveSuggestions && (
         <>
@@ -250,36 +213,25 @@ export function SuggestionsPanel({
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {hasActiveSuggestions ? (
           <>
-            {activeTab === 'preview' ? (
-              <div className="flex-1 overflow-y-auto p-4">
-                <VisualPreview
-                  prompt={currentPrompt}
-                  isVisible={activeTab === 'preview'}
-                />
-              </div>
-            ) : (
-              <>
-                {isLoading && (
-                  <LoadingState
-                    contextValue={contextValue}
-                    selectedText={selectedText}
-                    isPlaceholder={isPlaceholder}
-                  />
-                )}
+            {isLoading && (
+              <LoadingState
+                contextValue={contextValue}
+                selectedText={selectedText}
+                isPlaceholder={isPlaceholder}
+              />
+            )}
 
-                {!isLoading && currentSuggestions.length > 0 && (
-                  <SuggestionsList
-                    suggestions={currentSuggestions}
-                    onSuggestionClick={onSuggestionClick}
-                    isPlaceholder={isPlaceholder}
-                    showCopyAction={showCopyAction}
-                  />
-                )}
+            {!isLoading && currentSuggestions.length > 0 && (
+              <SuggestionsList
+                suggestions={currentSuggestions}
+                onSuggestionClick={onSuggestionClick}
+                isPlaceholder={isPlaceholder}
+                showCopyAction={showCopyAction}
+              />
+            )}
 
-                {!isLoading && currentSuggestions.length === 0 && (
-                  <EmptyState emptyState={emptyState} />
-                )}
-              </>
+            {!isLoading && currentSuggestions.length === 0 && (
+              <EmptyState emptyState={emptyState} />
             )}
           </>
         ) : (
