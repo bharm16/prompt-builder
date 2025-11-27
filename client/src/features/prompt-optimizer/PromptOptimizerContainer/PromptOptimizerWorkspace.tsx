@@ -288,6 +288,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           onRedo={handleRedo}
           stablePromptContext={stablePromptContext}
           suggestionsData={suggestionsData}
+          displayedPrompt={promptOptimizer.displayedPrompt}
         />
       ) : (
         <PromptInputLayout

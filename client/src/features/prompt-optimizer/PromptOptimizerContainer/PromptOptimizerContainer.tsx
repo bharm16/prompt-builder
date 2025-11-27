@@ -336,8 +336,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         <SuggestionsPanel 
           suggestionsData={
             suggestionsData 
-              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick: handleSuggestionClick } 
-              : { show: false }
+              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick: handleSuggestionClick, currentPrompt: promptOptimizer.displayedPrompt } 
+              : { show: false, currentPrompt: promptOptimizer.displayedPrompt }
           } 
         />
       </aside>

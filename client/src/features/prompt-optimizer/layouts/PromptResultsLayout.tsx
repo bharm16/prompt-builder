@@ -26,6 +26,7 @@ interface PromptResultsLayoutProps {
   onRedo: () => void;
   stablePromptContext: PromptContext | null;
   suggestionsData: unknown | null;
+  displayedPrompt?: string;
 }
 
 export const PromptResultsLayout = ({
@@ -38,6 +39,7 @@ export const PromptResultsLayout = ({
   onRedo,
   stablePromptContext,
   suggestionsData,
+  displayedPrompt,
 }: PromptResultsLayoutProps): React.ReactElement => {
   // Check if suggestions should be visible based on data presence
   const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
@@ -73,8 +75,9 @@ export const PromptResultsLayout = ({
               ? {
                   ...(suggestionsData as Record<string, unknown>),
                   onSuggestionClick: onSuggestionClick,
+                  currentPrompt: displayedPrompt,
                 }
-              : { show: false }
+              : { show: false, currentPrompt: displayedPrompt }
           }
         />
       </aside>

@@ -30,6 +30,7 @@ import { SceneChangeDetectionService } from '../services/video-concept/services/
 import { VideoConceptService } from '../services/VideoConceptService.js';
 import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
+import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.js';
@@ -363,6 +364,18 @@ export function configureServices(): DIContainer {
     'textCategorizerService',
     (aiService: AIModelService) => new TextCategorizerService(aiService),
     ['aiService']
+  );
+
+  // ============================================================================
+  // Image Generation Service
+  // ============================================================================
+
+  container.register(
+    'imageGenerationService',
+    () => new ImageGenerationService({
+      apiToken: process.env.REPLICATE_API_TOKEN,
+    }),
+    []
   );
 
   return container;

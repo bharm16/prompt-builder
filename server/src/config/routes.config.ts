@@ -25,6 +25,7 @@ import { createHealthRoutes } from '../routes/health.routes.js';
 import { createRoleClassifyRoute } from '../routes/roleClassifyRoute.js';
 import { createLabelSpansRoute } from '../routes/labelSpansRoute.js';
 import { createSuggestionsRoute } from '../routes/suggestions.js';
+import { createPreviewRoutes } from '../routes/preview.routes.js';
 
 /**
  * Register all application routes
@@ -85,6 +86,15 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Optional quality evaluation endpoints (with DI)
   const suggestionsRoute = createSuggestionsRoute(container.resolve('aiService'));
   app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
+
+  // ============================================================================
+  // Preview Routes (image generation)
+  // ============================================================================
+
+  const previewRoutes = createPreviewRoutes({
+    imageGenerationService: container.resolve('imageGenerationService'),
+  });
+  app.use('/api/preview', apiAuthMiddleware, previewRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)
