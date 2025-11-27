@@ -37,7 +37,24 @@ export const BentoBox = memo<BentoBoxProps>(({
   const cardSize = getCardSize(config.order);
   
   return (
-    <div className={`card w-full bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-small hover:shadow-geist-medium hover:border-geist-accents-3 transition-all duration-200 ${cardSize} flex flex-col min-h-[120px] ${isExpanded ? 'max-h-[400px]' : 'max-h-[200px]'}`}>
+    <div 
+      className={`card w-full rounded-geist-lg shadow-geist-small hover:shadow-geist-medium transition-all duration-200 ${cardSize} flex flex-col min-h-[120px] ${isExpanded ? 'max-h-[400px]' : 'max-h-[200px]'}`}
+      style={{
+        backgroundColor: config.backgroundColor,
+        borderColor: config.borderColor,
+        borderWidth: '1px',
+        borderStyle: 'solid',
+      }}
+      onMouseEnter={(e) => {
+        // Darken border on hover for better visual feedback
+        const currentBorder = config.borderColor;
+        e.currentTarget.style.borderColor = currentBorder;
+        e.currentTarget.style.opacity = '0.95';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = '1';
+      }}
+    >
       {/* HEADER: Title with icon and count - at the very top */}
       <div 
         className="flex items-center justify-start gap-1.5 px-2 py-2 cursor-pointer hover:bg-geist-accents-1 transition-all duration-150 flex-shrink-0"
@@ -67,7 +84,7 @@ export const BentoBox = memo<BentoBoxProps>(({
         )}
       </div>
       
-      <div className="card-body flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="card-body flex-1 flex flex-col min-h-0 overflow-hidden pt-1 pb-2 px-2">
         {/* CONTENT: Spans list - always scrollable */}
         {hasSpans ? (
           <div className="flex flex-col gap-1.5 overflow-y-auto flex-1 w-full [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3"
@@ -84,6 +101,8 @@ export const BentoBox = memo<BentoBoxProps>(({
                 key={span.id} 
                 span={span} 
                 onClick={onSpanClick}
+                backgroundColor={config.backgroundColor}
+                borderColor={config.borderColor}
               />
             ))}
           </div>

@@ -17,7 +17,7 @@ export interface Span {
 
 export interface CategoryConfig {
   label: string;
-  color: string;
+  backgroundColor: string;
   borderColor: string;
   icon: React.ComponentType<{ size?: number; color?: string; className?: string; style?: React.CSSProperties }>;
   order: number;
@@ -34,5 +34,7 @@ export interface BentoBoxProps {
 export interface SpanItemProps {
   span: Span;
   onClick?: (span: Span) => void;
+  backgroundColor?: string;
+  borderColor?: string;
 }
 
