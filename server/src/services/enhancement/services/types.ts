@@ -131,12 +131,14 @@ export interface PromptBuildParams {
   contextBefore?: string;
   contextAfter?: string;
   fullPrompt?: string;
+  originalUserPrompt?: string;
   brainstormContext?: BrainstormContext | null;
-  editHistory?: Array<{ original?: string }>;
+  editHistory?: Array<{ original?: string; category?: string }>;
   modelTarget?: string | null;
   isVideoPrompt?: boolean;
   phraseRole?: string | null;
   highlightedCategory?: string | null;
+  highlightedCategoryConfidence?: number | null;
   promptSection?: string | null;
   videoConstraints?: VideoConstraints | null;
   highlightWordCount?: number | null;
@@ -206,6 +208,9 @@ export interface FallbackRegenerationParams {
   regenerationDetails: {
     highlightWordCount?: number;
     phraseRole?: string;
+    highlightedText?: string;
+    highlightedCategory?: string;
+    highlightedCategoryConfidence?: number;
   };
   requestParams: PromptBuildParams;
   aiService: AIModelService;
@@ -268,7 +273,27 @@ export interface EnhancementResult {
  * Service dependencies
  */
 export interface VideoService {
+  isVideoPrompt(fullPrompt: string): boolean;
   countWords(text: string): number;
+  detectVideoPhraseRole(
+    highlightedText: string,
+    contextBefore: string,
+    contextAfter: string,
+    highlightedCategory?: string | null
+  ): string | null;
+  getVideoReplacementConstraints(params: {
+    highlightWordCount: number;
+    phraseRole: string | null;
+    highlightedText: string;
+    highlightedCategory?: string | null;
+    highlightedCategoryConfidence?: number | null;
+  }): VideoConstraints | null;
+  detectTargetModel(fullPrompt: string): string | null;
+  detectPromptSection(
+    highlightedText: string,
+    fullPrompt: string,
+    contextBefore: string
+  ): string | null;
   getVideoFallbackConstraints(
     currentConstraints: VideoConstraints | undefined,
     details: Record<string, unknown>,
@@ -277,4 +302,112 @@ export interface VideoService {
 }
 
 export type AIService = AIModelService;
+
+/**
+ * Placeholder detector interface
+ */
+export interface PlaceholderDetector {
+  detectPlaceholder(
+    highlightedText: string,
+    contextBefore: string,
+    contextAfter: string,
+    fullPrompt: string
+  ): boolean;
+}
+
+/**
+ * Brainstorm builder interface
+ */
+export interface BrainstormBuilder {
+  buildBrainstormSignature(brainstormContext: BrainstormContext | null): string;
+}
+
+/**
+ * Prompt builder interface
+ */
+export interface PromptBuilder {
+  buildPlaceholderPrompt(params: PromptBuildParams): string;
+  buildRewritePrompt(params: PromptBuildParams): string;
+  buildCustomPrompt(params: CustomPromptParams): string;
+}
+
+/**
+ * Validation service interface
+ */
+export interface ValidationService {
+  sanitizeSuggestions(
+    suggestions: Suggestion[] | string[],
+    context: SanitizationContext
+  ): Suggestion[];
+  groupSuggestionsByCategory(suggestions: Suggestion[]): GroupedSuggestions[];
+}
+
+/**
+ * Diversity enforcer interface
+ */
+export interface DiversityEnforcer {
+  ensureDiverseSuggestions(suggestions: Suggestion[]): Promise<Suggestion[]>;
+}
+
+/**
+ * Category aligner interface
+ */
+export interface CategoryAligner {
+  enforceCategoryAlignment(
+    suggestions: Suggestion[],
+    params: ValidationParams
+  ): CategoryAlignmentResult;
+}
+
+/**
+ * Metrics service interface
+ */
+export interface MetricsService {
+  recordEnhancementTiming(
+    metrics: Record<string, unknown>,
+    params: Record<string, unknown>
+  ): void;
+  recordAlert(type: string, data: Record<string, unknown>): void;
+}
+
+/**
+ * Enhancement request parameters
+ */
+export interface EnhancementRequestParams {
+  highlightedText: string;
+  contextBefore: string;
+  contextAfter: string;
+  fullPrompt: string;
+  originalUserPrompt: string;
+  brainstormContext?: BrainstormContext | null;
+  highlightedCategory?: string | null;
+  highlightedCategoryConfidence?: number | null;
+  highlightedPhrase?: string | null;
+  editHistory?: Array<{ original?: string; category?: string }>;
+}
+
+/**
+ * Custom suggestion request parameters
+ */
+export interface CustomSuggestionRequestParams {
+  highlightedText: string;
+  customRequest: string;
+  fullPrompt: string;
+}
+
+/**
+ * Enhancement metrics
+ */
+export interface EnhancementMetrics {
+  total: number;
+  cache: boolean;
+  cacheCheck: number;
+  modelDetection: number;
+  sectionDetection: number;
+  promptBuild: number;
+  groqCall: number;
+  postProcessing: number;
+  promptMode: string;
+  usedContrastiveDecoding?: boolean;
+}
 

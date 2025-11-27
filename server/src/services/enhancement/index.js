@@ -3,7 +3,7 @@
  * Provides backward compatibility and clean imports
  */
 
-export { EnhancementService } from './EnhancementService.js';
+export { EnhancementService } from './EnhancementService.ts';
 
 // Export specialized services for advanced usage
 export { FallbackRegenerationService } from './services/FallbackRegenerationService.js';

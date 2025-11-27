@@ -3,10 +3,29 @@ import { cacheService } from '../cache/CacheService.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
-import { FallbackRegenerationService } from './services/FallbackRegenerationService.ts';
-import { SuggestionProcessor } from './services/SuggestionProcessor.ts';
-import { StyleTransferService } from './services/StyleTransferService.ts';
-import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.ts';
+import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
+import { SuggestionProcessor } from './services/SuggestionProcessor.js';
+import { StyleTransferService } from './services/StyleTransferService.js';
+import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
+import type {
+  AIService,
+  VideoService,
+  PlaceholderDetector,
+  BrainstormBuilder,
+  PromptBuilder,
+  ValidationService,
+  DiversityEnforcer,
+  CategoryAligner,
+  MetricsService,
+  EnhancementRequestParams,
+  CustomSuggestionRequestParams,
+  EnhancementResult,
+  EnhancementMetrics,
+  Suggestion,
+  VideoConstraints,
+  CategoryAlignmentResult,
+  BrainstormContext,
+} from './services/types.js';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -17,16 +36,31 @@ import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnf
  * Single Responsibility: Orchestrate the enhancement suggestion workflow
  */
 export class EnhancementService {
+  private readonly ai: AIService;
+  private readonly placeholderDetector: PlaceholderDetector;
+  private readonly videoService: VideoService;
+  private readonly brainstormBuilder: BrainstormBuilder;
+  private readonly promptBuilder: PromptBuilder;
+  private readonly validationService: ValidationService;
+  private readonly diversityEnforcer: DiversityEnforcer;
+  private readonly categoryAligner: CategoryAligner;
+  private readonly metricsService: MetricsService | null;
+  private readonly cacheConfig: { ttl: number; namespace: string };
+  private readonly fallbackRegeneration: FallbackRegenerationService;
+  private readonly suggestionProcessor: SuggestionProcessor;
+  private readonly styleTransfer: StyleTransferService;
+  private readonly contrastiveDiversity: ContrastiveDiversityEnforcer;
+
   constructor(
-    aiService,
-    placeholderDetector,
-    videoService,
-    brainstormBuilder,
-    promptBuilder,
-    validationService,
-    diversityEnforcer,
-    categoryAligner,
-    metricsService = null
+    aiService: AIService,
+    placeholderDetector: PlaceholderDetector,
+    videoService: VideoService,
+    brainstormBuilder: BrainstormBuilder,
+    promptBuilder: PromptBuilder,
+    validationService: ValidationService,
+    diversityEnforcer: DiversityEnforcer,
+    categoryAligner: CategoryAligner,
+    metricsService: MetricsService | null = null
   ) {
     this.ai = aiService;
     this.placeholderDetector = placeholderDetector;
@@ -56,8 +90,6 @@ export class EnhancementService {
 
   /**
    * Get enhancement suggestions for highlighted text
-   * @param {Object} params - Enhancement parameters
-   * @returns {Promise<Object>} Suggestions with metadata
    */
   async getEnhancementSuggestions({
     highlightedText,
@@ -69,9 +101,9 @@ export class EnhancementService {
     highlightedCategory,
     highlightedCategoryConfidence,
     highlightedPhrase,
-    editHistory = [], // NEW: Edit history for consistency
-  }) {
-    const metrics = {
+    editHistory = [],
+  }: EnhancementRequestParams): Promise<EnhancementResult> {
+    const metrics: EnhancementMetrics = {
       total: 0,
       cache: false,
       cacheCheck: 0,
@@ -85,8 +117,8 @@ export class EnhancementService {
     const startTotal = Date.now();
 
     let isVideoPrompt = false;
-    let modelTarget = null;
-    let promptSection = null;
+    let modelTarget: string | null = null;
+    let promptSection: string | null = null;
 
     try {
       logger.info('Getting enhancement suggestions', {
@@ -99,14 +131,14 @@ export class EnhancementService {
       });
 
       isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
-      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext);
+      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext ?? null);
       const highlightWordCount = this.videoService.countWords(highlightedText);
       const phraseRole = isVideoPrompt
         ? this.videoService.detectVideoPhraseRole(
             highlightedText,
             contextBefore,
             contextAfter,
-            highlightedCategory
+            highlightedCategory ?? null
           )
         : null;
       const videoConstraints = isVideoPrompt
@@ -114,8 +146,8 @@ export class EnhancementService {
             highlightWordCount,
             phraseRole,
             highlightedText,
-            highlightedCategory,
-            highlightedCategoryConfidence,
+            highlightedCategory: highlightedCategory ?? null,
+            highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
           })
         : null;
 
@@ -150,7 +182,7 @@ export class EnhancementService {
         originalUserPrompt,
         isVideoPrompt,
         brainstormSignature,
-        highlightedCategory,
+        highlightedCategory: highlightedCategory ?? null,
         highlightWordCount,
         phraseRole,
         videoConstraints,
@@ -159,7 +191,7 @@ export class EnhancementService {
         promptSection,
       });
 
-      const cached = await cacheService.get(cacheKey, 'enhancement');
+      const cached = await cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
       metrics.cacheCheck = Date.now() - cacheStart;
 
       if (cached) {
@@ -167,7 +199,7 @@ export class EnhancementService {
         metrics.total = Date.now() - startTotal;
         metrics.promptMode = 'pdf_router';
         this._logMetrics(metrics, {
-          highlightedCategory,
+          highlightedCategory: highlightedCategory ?? null,
           isVideoPrompt,
           modelTarget,
           promptSection,
@@ -193,12 +225,12 @@ export class EnhancementService {
         contextBefore,
         contextAfter,
         fullPrompt,
-        brainstormContext,
+        brainstormContext: brainstormContext ?? null,
         editHistory,
         modelTarget,
         isVideoPrompt,
         phraseRole,
-        highlightedCategory,
+        highlightedCategory: highlightedCategory ?? null,
         promptSection,
         videoConstraints,
         highlightWordCount,
@@ -218,9 +250,9 @@ export class EnhancementService {
       const groqStart = Date.now();
       
       // PDF Enhancement: Try contrastive decoding for enhanced diversity
-      let suggestions = await this.contrastiveDiversity.generateWithContrastiveDecoding({
+      let suggestions: Suggestion[] | null = await this.contrastiveDiversity.generateWithContrastiveDecoding({
         systemPrompt,
-        schema,
+        schema: schema as Record<string, unknown>,
         isVideoPrompt,
         isPlaceholder,
         highlightedText,
@@ -230,7 +262,7 @@ export class EnhancementService {
       
       // Fallback to standard generation if contrastive decoding not used/failed
       if (!suggestions) {
-        suggestions = await StructuredOutputEnforcer.enforceJSON(
+        suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
           this.ai,
           systemPrompt,
           {
@@ -287,7 +319,7 @@ export class EnhancementService {
         sampleSuggestions,
       });
 
-      if (hasPoisonousText) {
+      if (hasPoisonousText && Array.isArray(suggestions)) {
         logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
           highlightedText,
           highlightedCategory,
@@ -296,13 +328,13 @@ export class EnhancementService {
       }
 
       const postStart = Date.now();
-      const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions);
+      const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions ?? []);
 
       const alignmentResult = this._applyCategoryAlignment(
         diverseSuggestions,
-        highlightedCategory,
+        highlightedCategory ?? null,
         highlightedText,
-        highlightedCategoryConfidence
+        highlightedCategoryConfidence ?? null
       );
 
       const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
@@ -311,21 +343,32 @@ export class EnhancementService {
           highlightedText,
           isPlaceholder,
           isVideoPrompt,
-          videoConstraints,
+          ...(videoConstraints ? { videoConstraints } : {}),
         }
       );
 
-      const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration({
+      const fallbackParams: {
+        sanitizedSuggestions: Suggestion[];
+        isVideoPrompt: boolean;
+        isPlaceholder: boolean;
+        videoConstraints?: VideoConstraints;
+        regenerationDetails: {
+          highlightWordCount?: number;
+          phraseRole?: string;
+          highlightedText?: string;
+          highlightedCategory?: string;
+          highlightedCategoryConfidence?: number;
+        };
+        requestParams: PromptBuildParams;
+        aiService: AIService;
+        schema: Record<string, unknown>;
+        temperature: number;
+      } = {
         sanitizedSuggestions,
         isVideoPrompt,
         isPlaceholder,
-        videoConstraints,
         regenerationDetails: {
           highlightWordCount,
-          phraseRole,
-          highlightedText,
-          highlightedCategory,
-          highlightedCategoryConfidence,
         },
         requestParams: {
           highlightedText,
@@ -335,19 +378,28 @@ export class EnhancementService {
           originalUserPrompt,
           isVideoPrompt,
           isPlaceholder,
-          brainstormContext,
+          brainstormContext: brainstormContext ?? null,
           phraseRole,
           highlightWordCount,
-          highlightedCategory,
-          highlightedCategoryConfidence,
+          highlightedCategory: highlightedCategory ?? null,
+          highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
           editHistory,
           modelTarget,
           promptSection,
         },
         aiService: this.ai,
-        schema,
+        schema: schema as Record<string, unknown>,
         temperature,
-      });
+      };
+      if (videoConstraints) fallbackParams.videoConstraints = videoConstraints;
+      if (phraseRole) fallbackParams.regenerationDetails.phraseRole = phraseRole;
+      if (highlightedText) fallbackParams.regenerationDetails.highlightedText = highlightedText;
+      if (highlightedCategory) fallbackParams.regenerationDetails.highlightedCategory = highlightedCategory;
+      if (highlightedCategoryConfidence !== null && highlightedCategoryConfidence !== undefined) {
+        fallbackParams.regenerationDetails.highlightedCategoryConfidence = highlightedCategoryConfidence;
+      }
+      
+      const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration(fallbackParams);
 
       let suggestionsToUse = fallbackResult.suggestions;
       const activeConstraints = fallbackResult.constraints;
@@ -379,15 +431,25 @@ export class EnhancementService {
         isPlaceholder
       );
 
-      const result = this.suggestionProcessor.buildResult({
+      const buildResultParams: {
+        groupedSuggestions: Suggestion[] | GroupedSuggestions[];
+        isPlaceholder: boolean;
+        phraseRole?: string | null;
+        activeConstraints?: { mode?: string } | null;
+        alignmentFallbackApplied?: boolean;
+        usedFallback?: boolean;
+        hasNoSuggestions?: boolean;
+      } = {
         groupedSuggestions,
         isPlaceholder,
-        phraseRole,
-        activeConstraints,
-        alignmentFallbackApplied: alignmentResult.fallbackApplied,
-        usedFallback,
-        hasNoSuggestions: suggestionsToUse.length === 0,
-      });
+      };
+      if (phraseRole !== null) buildResultParams.phraseRole = phraseRole;
+      if (activeConstraints) buildResultParams.activeConstraints = { mode: activeConstraints.mode };
+      if (alignmentResult.fallbackApplied) buildResultParams.alignmentFallbackApplied = true;
+      if (usedFallback) buildResultParams.usedFallback = true;
+      if (suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
+      
+      const result = this.suggestionProcessor.buildResult(buildResultParams);
 
       metrics.postProcessing = Date.now() - postStart;
 
@@ -396,7 +458,7 @@ export class EnhancementService {
         sanitizedSuggestions,
         usedFallback,
         fallbackSourceCount,
-        suggestions
+        suggestions ?? []
       );
 
       await cacheService.set(cacheKey, result, {
@@ -406,7 +468,7 @@ export class EnhancementService {
       metrics.total = Date.now() - startTotal;
       metrics.promptMode = 'pdf_router';
       this._logMetrics(metrics, {
-        highlightedCategory,
+        highlightedCategory: highlightedCategory ?? null,
         isVideoPrompt,
         modelTarget,
         promptSection,
@@ -420,12 +482,12 @@ export class EnhancementService {
       this._logMetrics(
         metrics,
         {
-          highlightedCategory,
+          highlightedCategory: highlightedCategory ?? null,
           isVideoPrompt,
           modelTarget,
           promptSection,
         },
-        error
+        error as Error
       );
       throw error;
     }
@@ -433,10 +495,12 @@ export class EnhancementService {
 
   /**
    * Get custom suggestions based on user request
-   * @param {Object} params - Custom suggestion parameters
-   * @returns {Promise<Object>} Custom suggestions
    */
-  async getCustomSuggestions({ highlightedText, customRequest, fullPrompt }) {
+  async getCustomSuggestions({ 
+    highlightedText, 
+    customRequest, 
+    fullPrompt 
+  }: CustomSuggestionRequestParams): Promise<{ suggestions: Suggestion[] }> {
     logger.info('Getting custom suggestions', {
       request: customRequest,
       highlightedLength: highlightedText?.length,
@@ -449,7 +513,7 @@ export class EnhancementService {
       fullPrompt: fullPrompt.substring(0, 500),
     });
 
-    const cached = await cacheService.get(cacheKey, 'enhancement');
+    const cached = await cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
     if (cached) {
       logger.debug('Cache hit for custom suggestions');
       return cached;
@@ -473,7 +537,7 @@ export class EnhancementService {
       precision: 'medium',
     });
 
-    const suggestions = await StructuredOutputEnforcer.enforceJSON(
+    const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
       this.ai,
       systemPrompt,
       {
@@ -506,11 +570,8 @@ export class EnhancementService {
 
   /**
    * Transfer text from one style to another
-   * @param {string} text - Text to transform
-   * @param {string} targetStyle - Target style
-   * @returns {Promise<string>} Transformed text
    */
-  async transferStyle(text, targetStyle) {
+  async transferStyle(text: string, targetStyle: string): Promise<string> {
     return this.styleTransfer.transferStyle(text, targetStyle);
   }
 
@@ -519,8 +580,23 @@ export class EnhancementService {
    * Includes edit/model context for cache separation
    * @private
    */
-  _generateCacheKey(params) {
-    let editFingerprint = null;
+  private _generateCacheKey(params: {
+    highlightedText: string;
+    contextBefore: string;
+    contextAfter: string;
+    fullPrompt: string;
+    originalUserPrompt: string;
+    isVideoPrompt: boolean;
+    brainstormSignature: string;
+    highlightedCategory: string | null;
+    highlightWordCount: number;
+    phraseRole: string | null;
+    videoConstraints: VideoConstraints | null;
+    editHistory: Array<{ original?: string; category?: string }>;
+    modelTarget: string | null;
+    promptSection: string | null;
+  }): string {
+    let editFingerprint: string | null = null;
     if (Array.isArray(params.editHistory) && params.editHistory.length > 0) {
       // Create compact fingerprint from recent edit patterns
       editFingerprint = params.editHistory
@@ -551,15 +627,20 @@ export class EnhancementService {
    * Apply category alignment if needed
    * @private
    */
-  _applyCategoryAlignment(suggestions, highlightedCategory, highlightedText, confidence) {
+  private _applyCategoryAlignment(
+    suggestions: Suggestion[],
+    highlightedCategory: string | null,
+    highlightedText: string,
+    confidence: number | null
+  ): CategoryAlignmentResult {
     if (!highlightedCategory) {
       return { suggestions, fallbackApplied: false, context: {} };
     }
 
-    const alignmentResult = this.categoryAligner.enforceCategoryAlignment(suggestions || [], {
+    const alignmentResult = this.categoryAligner.enforceCategoryAlignment(suggestions, {
       highlightedText,
       highlightedCategory,
-      highlightedCategoryConfidence: confidence,
+      ...(confidence !== null && confidence !== undefined ? { highlightedCategoryConfidence: confidence } : {}),
     });
 
     if (alignmentResult.fallbackApplied) {
@@ -577,7 +658,16 @@ export class EnhancementService {
    * Log metrics for enhancement request
    * @private
    */
-  _logMetrics(metrics, params, error = null) {
+  private _logMetrics(
+    metrics: EnhancementMetrics,
+    params: {
+      highlightedCategory: string | null;
+      isVideoPrompt: boolean;
+      modelTarget: string | null;
+      promptSection: string | null;
+    },
+    error: Error | null = null
+  ): void {
     const isDev = process.env.NODE_ENV === 'development';
 
     // Console logging in development
@@ -608,7 +698,7 @@ export class EnhancementService {
 
     // Send to metrics service in production
     if (this.metricsService && !isDev) {
-      this.metricsService.recordEnhancementTiming(metrics, {
+      this.metricsService.recordEnhancementTiming(metrics as unknown as Record<string, unknown>, {
         category: params.highlightedCategory || 'unknown',
         isVideo: params.isVideoPrompt,
         modelTarget: params.modelTarget,
@@ -634,7 +724,7 @@ export class EnhancementService {
    * Check if latency threshold was exceeded and alert if necessary
    * @private
    */
-  _checkLatencyThreshold(metrics) {
+  private _checkLatencyThreshold(metrics: EnhancementMetrics): void {
     if (metrics.total > 2000) {
       logger.warn('Enhancement request exceeded latency threshold', {
         total: metrics.total,
@@ -659,3 +749,4 @@ export class EnhancementService {
     }
   }
 }
+
