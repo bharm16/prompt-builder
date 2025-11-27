@@ -5,15 +5,30 @@
 import type { Mode } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 
+import type { SpanData } from '../span-highlighting/hooks/useHighlightSourceSelection';
+
 export interface SpansData {
-  spans: unknown[];
-  meta: unknown | null;
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
   source: string;
   timestamp: number;
 }
 
 export interface HighlightSnapshot {
-  signature: string;
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta?: Record<string, unknown> | null;
+  signature?: string;
+  cacheId?: string | null;
   [key: string]: unknown;
 }
 
@@ -28,7 +43,16 @@ export interface PromptCanvasProps {
   promptContext: PromptContext | null;
   onDisplayedPromptChange: (text: string) => void;
   suggestionsData: unknown | null;
-  onFetchSuggestions?: (text: string, trigger: string) => void;
+  onFetchSuggestions?: (payload: {
+    highlightedText?: string;
+    originalText?: string;
+    displayedPrompt?: string;
+    range?: Range | null;
+    offsets?: { start?: number; end?: number } | null;
+    metadata?: Record<string, unknown> | null;
+    trigger?: string;
+    allLabeledSpans?: unknown[];
+  }) => void;
   onSuggestionClick?: (suggestion: unknown) => void;
   onCreateNew: () => void;
   initialHighlights?: HighlightSnapshot | null;

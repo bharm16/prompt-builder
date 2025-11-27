@@ -39,17 +39,19 @@ import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '
 import './PromptCanvas.css';
 
 import type { PromptCanvasProps } from './PromptCanvas/types';
+import type { CanonicalText } from '../../utils/canonicalText';
+import type { HighlightSpan } from '../span-highlighting/hooks/useHighlightRendering';
+import type { ExportFormat as ExportFormatType } from './types';
 
 interface ParseResult {
-  canonical: string;
-  spans: unknown[];
+  canonical: CanonicalText;
+  spans: HighlightSpan[];
   meta: unknown | null;
   status: string;
   error: Error | null;
   displayText: string;
+  [key: string]: unknown;
 }
-
-type ExportFormat = 'json' | 'txt' | 'md';
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -83,7 +85,7 @@ export function PromptCanvas({
   const [showLegend, setShowLegend] = useState<boolean>(false);
 
   // Extract suggestions panel visibility state
-  const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
+  const isSuggestionsOpen = Boolean(suggestionsData && (suggestionsData as Record<string, unknown>).show !== false);
 
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
@@ -101,12 +103,66 @@ export function PromptCanvas({
   );
 
   // EXTRACTED: Highlight source selection logic
+  // Convert SpansData to SpanData format
+  const convertedDraftSpans: import('../span-highlighting/hooks/useHighlightSourceSelection').SpanData | null = draftSpans
+    ? {
+        spans: Array.isArray(draftSpans.spans)
+          ? draftSpans.spans.filter(
+              (s): s is { start: number; end: number; category: string; confidence: number } =>
+                typeof s === 'object' &&
+                s !== null &&
+                typeof (s as { start?: unknown }).start === 'number' &&
+                typeof (s as { end?: unknown }).end === 'number' &&
+                typeof (s as { category?: unknown }).category === 'string' &&
+                typeof (s as { confidence?: unknown }).confidence === 'number'
+            )
+          : [],
+        meta: draftSpans.meta as Record<string, unknown> | null,
+      }
+    : null;
+
+  const convertedRefinedSpans: import('../span-highlighting/hooks/useHighlightSourceSelection').SpanData | null = refinedSpans
+    ? {
+        spans: Array.isArray(refinedSpans.spans)
+          ? refinedSpans.spans.filter(
+              (s): s is { start: number; end: number; category: string; confidence: number } =>
+                typeof s === 'object' &&
+                s !== null &&
+                typeof (s as { start?: unknown }).start === 'number' &&
+                typeof (s as { end?: unknown }).end === 'number' &&
+                typeof (s as { category?: unknown }).category === 'string' &&
+                typeof (s as { confidence?: unknown }).confidence === 'number'
+            )
+          : [],
+        meta: refinedSpans.meta as Record<string, unknown> | null,
+      }
+    : null;
+
+  const convertedInitialHighlights: import('../span-highlighting/hooks/useHighlightSourceSelection').UseHighlightSourceSelectionOptions['initialHighlights'] = initialHighlights
+    ? {
+        spans: Array.isArray(initialHighlights.spans)
+          ? initialHighlights.spans.filter(
+              (s): s is { start: number; end: number; category: string; confidence: number } =>
+                typeof s === 'object' &&
+                s !== null &&
+                typeof (s as { start?: unknown }).start === 'number' &&
+                typeof (s as { end?: unknown }).end === 'number' &&
+                typeof (s as { category?: unknown }).category === 'string' &&
+                typeof (s as { confidence?: unknown }).confidence === 'number'
+            )
+          : [],
+        ...(initialHighlights.meta !== undefined && { meta: initialHighlights.meta as Record<string, unknown> | null }),
+        ...(initialHighlights.signature !== undefined && { signature: initialHighlights.signature }),
+        ...(initialHighlights.cacheId !== undefined && { cacheId: initialHighlights.cacheId ?? null }),
+      }
+    : null;
+
   const memoizedInitialHighlights = useHighlightSourceSelection({
-    draftSpans,
-    refinedSpans,
+    draftSpans: convertedDraftSpans,
+    refinedSpans: convertedRefinedSpans,
     isDraftReady,
     isRefining,
-    initialHighlights,
+    initialHighlights: convertedInitialHighlights,
     promptUuid,
     displayedPrompt,
     enableMLHighlighting,
@@ -150,8 +206,8 @@ export function PromptCanvas({
   });
 
   const [parseResult, setParseResult] = useState<ParseResult>(() => ({
-    canonical: createCanonicalText(displayedPrompt ?? ''),
-    spans: [],
+    canonical: createCanonicalText(displayedPrompt ?? '') as CanonicalText,
+    spans: [] as HighlightSpan[],
     meta: null,
     status: 'idle',
     error: null,
@@ -162,8 +218,8 @@ export function PromptCanvas({
   const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, parseResult);
 
   useHighlightRendering({
-    editorRef,
-    parseResult,
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    parseResult: parseResult as unknown as import('../span-highlighting/hooks/useHighlightRendering').ParseResult,
     enabled: enableMLHighlighting,
     fingerprint: highlightFingerprint,
     text: displayedPrompt ?? '',
@@ -186,7 +242,7 @@ export function PromptCanvas({
           .replace(/'/g, '&#039;');
         return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem; font-family: var(--font-geist-sans);">${escaped}</div>` };
       }
-      return formatTextToHTML(displayedPrompt ?? '', enableMLHighlighting, promptContext);
+      return formatTextToHTML(displayedPrompt ?? '');
     },
     // Only depend on promptContext when NOT using ML highlighting (to prevent infinite loops)
     enableMLHighlighting 
@@ -202,13 +258,13 @@ export function PromptCanvas({
   }, [displayedPrompt, enableMLHighlighting]);
 
   useEffect(() => {
-    const canonical = createCanonicalText(displayedPrompt ?? '');
+    const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
     const currentText = displayedPrompt ?? '';
 
     if (!enableMLHighlighting || !currentText.trim()) {
       setParseResult({
         canonical,
-        spans: [],
+        spans: [] as HighlightSpan[],
         meta: labeledMeta,
         status: labelingStatus,
         error: labelingError,
@@ -218,14 +274,14 @@ export function PromptCanvas({
     }
 
     const highlights = convertLabeledSpansToHighlights({
-      spans: labeledSpans,
+      spans: labeledSpans as unknown as import('../span-highlighting/utils/highlightConversion').LLMSpan[],
       text: currentText,
-      canonical,
+      canonical: canonical as unknown as import('../span-highlighting/utils/highlightConversion').CanonicalText,
     });
 
     setParseResult({
       canonical,
-      spans: highlights,
+      spans: highlights as unknown as HighlightSpan[],
       meta: labeledMeta,
       status: labelingStatus,
       error: labelingError,
@@ -247,18 +303,31 @@ export function PromptCanvas({
   };
 
   const handleShare = (): void => {
-    share(promptUuid);
+    if (promptUuid) {
+      share(promptUuid);
+    }
   };
 
-  const handleExport = (format: ExportFormat): void => {
-    ExportService.export(format, {
+  const handleExport = (format: ExportFormatType): void => {
+    // Convert ExportFormatType to ExportService format
+    let exportFormat: 'text' | 'markdown' | 'json';
+    const formatStr = format as string;
+    if (formatStr === 'md' || formatStr === 'markdown') {
+      exportFormat = 'markdown';
+    } else if (formatStr === 'txt' || formatStr === 'text') {
+      exportFormat = 'text';
+    } else {
+      exportFormat = 'json';
+    }
+    
+    ExportService.export(exportFormat, {
       inputPrompt,
       displayedPrompt: displayedPrompt ?? '',
-      qualityScore,
+      ...(qualityScore !== null && { qualityScore }),
       selectedMode,
     });
     setShowExportMenu(false);
-    toast.success(`Exported as ${format.toUpperCase()}`);
+    toast.success(`Exported as ${exportFormat.toUpperCase()}`);
   };
 
   // NEW: Keyboard shortcuts for undo/redo
@@ -334,7 +403,7 @@ export function PromptCanvas({
     }
 
     // Find the highlighted word element
-    const node = findHighlightNode(targetElement, editorRef.current);
+    const node = findHighlightNode(targetElement as HTMLElement | null, editorRef.current);
     if (!node) {
       return;
     }
@@ -343,7 +412,7 @@ export function PromptCanvas({
     if (e && e.preventDefault) e.preventDefault();
 
     // Extract metadata from the node
-    const metadata = extractHighlightMetadata(node, parseResult);
+    const metadata = extractHighlightMetadata(node, parseResult as unknown as import('./utils/highlightInteractionHelpers').ParseResult);
     const wordText = node.textContent?.trim() ?? '';
 
     if (wordText && onFetchSuggestions) {
@@ -364,7 +433,7 @@ export function PromptCanvas({
         displayedPrompt: displayedPrompt ?? '',
         range: rangeClone,
         offsets,
-        metadata,
+        metadata: metadata ? (metadata as unknown as Record<string, unknown>) : null,
         trigger: 'highlight',
         allLabeledSpans: labeledSpans,
       });
@@ -523,7 +592,7 @@ export function PromptCanvas({
             <SpanBentoGrid
               spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
               onSpanClick={handleSpanClickFromBento}
-              editorRef={editorRef}
+              editorRef={editorRef as React.RefObject<HTMLElement>}
             />
           </HighlightingErrorBoundary>
         </div>
