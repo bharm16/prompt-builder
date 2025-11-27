@@ -30,7 +30,7 @@ function getCategoryExample(category: CategoryKey): string {
  * Displays a legend of all highlight categories with examples
  * Now dynamically generated from bentoConfig for consistency
  */
-export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasContext = false }): React.ReactElement | null => {
+export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasContext = false, isSuggestionsOpen = false }): React.ReactElement | null => {
   if (!show) return null;
 
   // Generate categories dynamically from actual configuration
@@ -44,11 +44,16 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
     };
   });
 
+  // Dynamic positioning based on suggestions panel visibility
+  const rightOffset = isSuggestionsOpen
+    ? 'calc(var(--layout-suggestions-panel-width) + var(--layout-gap-md) + var(--layout-gap-md))'
+    : 'var(--layout-gap-md)';
+
   return (
     <div 
       className="absolute top-12 z-30 glass-card rounded-geist-lg"
       style={{
-        right: 'calc(var(--layout-suggestions-panel-width) + var(--layout-gap-md) + var(--layout-gap-md))',
+        right: rightOffset,
         width: 'var(--layout-legend-width, clamp(16rem, 20vw, 20rem))',
       }}
     >

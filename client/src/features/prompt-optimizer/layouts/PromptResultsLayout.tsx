@@ -39,6 +39,9 @@ export const PromptResultsLayout = ({
   stablePromptContext,
   suggestionsData,
 }: PromptResultsLayoutProps): React.ReactElement => {
+  // Check if suggestions should be visible based on data presence
+  const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
+
   return (
     <div className="prompt-results-layout">
       {/* History Sidebar */}
@@ -57,8 +60,13 @@ export const PromptResultsLayout = ({
         />
       </main>
 
-      {/* Suggestions Panel - Right Column */}
-      <aside className="prompt-results-layout__suggestions">
+      {/* The overlay panel.
+         We use data-open to trigger the CSS transform.
+      */}
+      <aside 
+        className="prompt-results-layout__suggestions"
+        data-open={isSuggestionsOpen}
+      >
         <SuggestionsPanel
           suggestionsData={
             suggestionsData

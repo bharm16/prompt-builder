@@ -43,6 +43,7 @@ export interface CategoryLegendProps {
   show: boolean;
   onClose: () => void;
   hasContext?: boolean;
+  isSuggestionsOpen?: boolean;
 }
 
 /**

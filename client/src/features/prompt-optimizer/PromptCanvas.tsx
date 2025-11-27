@@ -80,6 +80,9 @@ export function PromptCanvas({
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [showLegend, setShowLegend] = useState<boolean>(false);
 
+  // Extract suggestions panel visibility state
+  const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
+
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -498,6 +501,7 @@ export function PromptCanvas({
         show={showLegend}
         onClose={() => setShowLegend(false)}
         hasContext={promptContext?.hasContext() ?? false}
+        isSuggestionsOpen={isSuggestionsOpen}
       />
 
       {/* Main Content Container */}
