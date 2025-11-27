@@ -62,25 +62,7 @@ export const PromptResultsLayout = ({
         />
       </main>
 
-      {/* The overlay panel.
-         We use data-open to trigger the CSS transform.
-      */}
-      <aside 
-        className="prompt-results-layout__suggestions"
-        data-open={isSuggestionsOpen}
-      >
-        <SuggestionsPanel
-          suggestionsData={
-            suggestionsData
-              ? {
-                  ...(suggestionsData as Record<string, unknown>),
-                  onSuggestionClick: onSuggestionClick,
-                  currentPrompt: displayedPrompt,
-                }
-              : { show: false, currentPrompt: displayedPrompt }
-          }
-        />
-      </aside>
+      {/* Floating suggestions panel - Hidden, moved to Image Gen column */}
     </div>
   );
 };

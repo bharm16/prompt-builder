@@ -29,6 +29,8 @@ import { PromptActions } from './components/PromptActions';
 import { PromptEditor } from './components/PromptEditor';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
+import SuggestionsPanel from '@components/SuggestionsPanel';
+import { VisualPreview } from '@/features/preview/components/VisualPreview';
 
 // Configuration
 import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
@@ -574,28 +576,34 @@ export function PromptCanvas({
             flexShrink: 0,
           }}
         >
-          <div className="flex flex-col h-full overflow-y-auto p-geist-4">
-            <div className="mb-geist-4">
-              <h3 className="text-heading-16 text-geist-foreground font-semibold mb-geist-2">
-                Image Generation
-              </h3>
-              <p className="text-copy-14 text-geist-accents-6">
-                Generated images will appear here
-              </p>
-            </div>
-            <div className="flex-1 flex items-center justify-center bg-geist-accents-1 rounded-geist border border-geist-accents-2">
-              <p className="text-copy-14 text-geist-accents-4">
-                No image generated yet
-              </p>
-            </div>
-            <div className="mt-geist-4 flex gap-geist-2">
-              <button className="flex-1 px-geist-4 py-geist-2 bg-geist-foreground text-geist-background rounded-geist text-button-14 font-medium hover:bg-geist-accents-8 transition-colors">
-                Generate
-              </button>
-              <button className="px-geist-4 py-geist-2 bg-geist-accents-1 text-geist-foreground rounded-geist text-button-14 font-medium hover:bg-geist-accents-2 transition-colors">
-                Settings
-              </button>
-            </div>
+          {/* Image Generation Section */}
+          <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0">
+            <VisualPreview
+              prompt={displayedPrompt || ''}
+              isVisible={true}
+            />
+          </div>
+
+          {/* AI Suggestions Section */}
+          <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+            <SuggestionsPanel
+              suggestionsData={
+                suggestionsData
+                  ? {
+                      ...(suggestionsData as Record<string, unknown>),
+                      onSuggestionClick: onSuggestionClick as (suggestion: unknown) => void,
+                      ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
+                      panelTitle: 'AI Suggestions',
+                      panelClassName: 'h-full flex flex-col',
+                    }
+                  : { 
+                      show: false, 
+                      ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
+                      panelTitle: 'AI Suggestions',
+                      panelClassName: 'h-full flex flex-col',
+                    }
+              }
+            />
           </div>
         </div>
       </div>
