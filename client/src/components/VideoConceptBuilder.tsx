@@ -30,9 +30,12 @@ import { useKeyboardShortcuts } from './VideoConceptBuilder/hooks/useKeyboardSho
 import { VideoConceptApi } from './VideoConceptBuilder/api/videoConceptApi';
 
 // Utils
-import { validatePrompt, calculateGroupProgress } from './VideoConceptBuilder/utils/validation';
+import { validatePrompt } from './VideoConceptBuilder/utils/validation';
 import { formatLabel } from './VideoConceptBuilder/utils/formatting';
 import { buildComposedElements } from './VideoConceptBuilder/utils/subjectDescriptors';
+
+// Hooks
+import { useVideoConceptComputed } from './VideoConceptBuilder/hooks/useVideoConceptComputed';
 
 // Config
 import { ELEMENT_CONFIG } from './VideoConceptBuilder/config/elementConfig';
@@ -46,17 +49,15 @@ import { TEMPLATE_LIBRARY } from './VideoConceptBuilder/config/templates';
 // Components
 import { ProgressHeader } from './VideoConceptBuilder/components/ProgressHeader';
 import { ConceptPreview } from './VideoConceptBuilder/components/ConceptPreview';
-import { ElementCard } from './VideoConceptBuilder/components/ElementCard';
 import { ConflictsAlert } from './VideoConceptBuilder/components/ConflictsAlert';
 import { RefinementSuggestions } from './VideoConceptBuilder/components/RefinementSuggestions';
 import { TechnicalBlueprint } from './VideoConceptBuilder/components/TechnicalBlueprint';
 import { VideoGuidancePanel } from './VideoConceptBuilder/components/VideoGuidancePanel';
 import { TemplateSelector } from './VideoConceptBuilder/components/TemplateSelector';
+import { ConceptInputSection } from './VideoConceptBuilder/components/ConceptInputSection';
+import { ElementGrid } from './VideoConceptBuilder/components/ElementGrid';
 import SuggestionsPanel from './SuggestionsPanel';
 
-// Utils for descriptor categories
-import { detectDescriptorCategoryClient } from '../utils/subjectDescriptorCategories';
-import { SUBJECT_DESCRIPTOR_KEYS } from './VideoConceptBuilder/config/constants';
 import type { ElementKey, Elements } from './VideoConceptBuilder/hooks/types';
 import type {
   CategoryDetection,
@@ -119,52 +120,15 @@ export default function VideoConceptBuilder({
   // ===========================
   // COMPUTED VALUES
   // ===========================
-  const groupProgress = useMemo(
-    () => calculateGroupProgress(elements),
-    [elements]
-  );
-
-  const conceptPreviewText = useMemo(() => {
-    const orderedKeys: ElementKey[] = [
-      'subject',
-      'action',
-      'location',
-      'time',
-      'mood',
-      'style',
-      'event',
-    ];
-    const parts = orderedKeys
-      .map((key) => composedElements[key])
-      .filter(Boolean);
-    return parts.join(' • ');
-  }, [composedElements]);
-
-  const filledCount = Object.values(elements).filter((v) => v).length;
-  const totalElementSlots = Object.keys(elements).length;
-  const completionPercent = Math.round(
-    (filledCount / Math.max(totalElementSlots, 1)) * 100
-  );
-  const isReadyToGenerate = filledCount >= 3;
-
-  // Detect categories for filled descriptors
-  const descriptorCategories = useMemo(() => {
-    const categories: Record<string, CategoryDetection> = {};
-    SUBJECT_DESCRIPTOR_KEYS.forEach((key) => {
-      const value = elements[key];
-      if (value && value.trim()) {
-        const detection = detectDescriptorCategoryClient(value);
-        if (detection.confidence > 0.5 && detection.colors && detection.label) {
-          categories[key] = {
-            label: detection.label,
-            confidence: detection.confidence,
-            colors: detection.colors,
-          };
-        }
-      }
-    });
-    return categories;
-  }, [elements]);
+  const {
+    groupProgress,
+    conceptPreviewText,
+    filledCount,
+    totalElementSlots,
+    completionPercent,
+    isReadyToGenerate,
+    descriptorCategories,
+  } = useVideoConceptComputed(elements, composedElements);
 
   // ===========================
   // EVENT HANDLERS
@@ -518,30 +482,11 @@ export default function VideoConceptBuilder({
 
           {/* Concept Mode */}
           {mode === 'concept' && (
-            <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
-              <label className="mb-geist-3 block text-label-14 text-geist-foreground">
-                Describe your video concept
-              </label>
-              <textarea
-                value={concept}
-                onChange={(e) =>
-                  dispatch({ type: 'SET_CONCEPT', payload: e.target.value })
-                }
-                placeholder="Example: A sleek sports car drifting through a neon-lit Tokyo street at night, dramatic lighting, shot on anamorphic lenses..."
-                className="textarea min-h-[140px] rounded-geist-lg border-geist-accents-2 bg-geist-accents-1 text-copy-14"
-              />
-              <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={handleParseConcept}
-                  disabled={!concept}
-                  variant="primary"
-                  size="small"
-                  prefix={<Brain size={16} />}
-                >
-                  Parse into elements
-                </Button>
-              </div>
-            </div>
+            <ConceptInputSection
+              concept={concept}
+              onConceptChange={(value) => dispatch({ type: 'SET_CONCEPT', payload: value })}
+              onParseConcept={handleParseConcept}
+            />
           )}
 
           <ConflictsAlert
@@ -563,29 +508,14 @@ export default function VideoConceptBuilder({
 
           {/* Bento Grid - Element Cards */}
           {mode === 'element' && (
-            <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-5 py-6 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {ELEMENT_CARD_ORDER.map((key) => {
-                  const elementKey = key as ElementKey;
-                  return (
-                    <ElementCard
-                      key={elementKey}
-                      elementKey={elementKey}
-                      config={ELEMENT_CONFIG[elementKey] as ElementConfig}
-                      value={elements[elementKey]}
-                      isActive={ui.activeElement === elementKey}
-                      compatibility={compatibilityScores[elementKey]}
-                      elements={elements}
-                      compatibilityScores={compatibilityScores}
-                      descriptorCategories={descriptorCategories}
-                      elementConfig={ELEMENT_CONFIG as unknown as Record<string, ElementConfig>}
-                      onValueChange={handleElementChange}
-                      onFetchSuggestions={fetchSuggestions}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+            <ElementGrid
+              elements={elements}
+              activeElement={ui.activeElement}
+              compatibilityScores={compatibilityScores}
+              descriptorCategories={descriptorCategories}
+              onValueChange={handleElementChange}
+              onFetchSuggestions={fetchSuggestions}
+            />
           )}
         </div>
       </div>
