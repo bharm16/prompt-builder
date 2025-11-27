@@ -75,44 +75,41 @@ export function SuggestionsList({
           >
             <button
               onClick={() => handleSuggestionSelect(suggestionObj || suggestion)}
-              className="w-full px-geist-3 py-geist-2 text-left rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 hover:border-geist-accents-3 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-geist-foreground/10 focus:border-geist-accents-4 cursor-pointer group"
+              className="w-full text-left relative p-geist-3 rounded-geist-lg bg-geist-background border border-geist-accents-2 hover:bg-geist-accents-1 hover:border-geist-accents-3 hover:shadow-geist-small active:scale-[0.99] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 cursor-pointer group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >
+              {/* Keyboard Shortcut Badge */}
               {index < MAX_KEYBOARD_SHORTCUTS && (
-                <kbd className="absolute top-geist-2 right-geist-2 px-geist-1 py-geist-1 text-label-12 text-geist-accents-5 bg-geist-accents-1 border border-geist-accents-2 rounded-geist opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  {index + 1}
-                </kbd>
+                <div className="absolute top-geist-2 right-geist-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <kbd className="px-1.5 py-0.5 bg-white border border-geist-accents-2 rounded-md text-[10px] font-mono text-geist-accents-5 shadow-sm">
+                     {index + 1}
+                   </kbd>
+                </div>
               )}
 
-              <div className="space-y-geist-1 pr-geist-6">
-                <div className="flex items-start justify-between gap-geist-2">
-                  <div className="text-label-12 text-geist-foreground break-words whitespace-pre-wrap">
+              <div className="space-y-geist-1">
+                <div className="flex items-start justify-between gap-geist-2 pr-6">
+                  <span className="text-copy-13 text-geist-foreground font-medium">
                     {suggestionText}
-                  </div>
+                  </span>
                   {suggestionObj?.compatibility !== undefined &&
                     renderCompatibilityBadge(suggestionObj.compatibility)}
                 </div>
+                
                 {suggestionObj?.explanation && (
-                  <div className="text-label-12 text-geist-accents-5 break-words">
+                  <p className="text-label-12 text-geist-accents-5 leading-relaxed">
                     {suggestionObj.explanation}
-                  </div>
+                  </p>
                 )}
               </div>
 
-              {showCopyAction && suggestionText && (
-                <div className="mt-geist-2 pt-geist-2 border-t border-geist-accents-2 flex items-center gap-geist-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <span
-                    onClick={(e) => handleCopy(suggestionText, e)}
-                    className="text-label-12 text-geist-accents-6 hover:text-geist-foreground transition-colors duration-150 cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => handleCopyKeyDown(suggestionText, e)}
-                  >
-                    Copy
-                  </span>
-                  <span className="text-geist-accents-3">•</span>
-                  <span className="text-label-12 text-geist-accents-5">Click to apply</span>
+              {/* Action Footer - Only shows on hover */}
+              {showCopyAction && (
+                <div className="mt-geist-3 pt-geist-2 border-t border-geist-accents-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <span className="text-[11px] font-medium text-geist-accents-5 uppercase tracking-wide">
+                     Click to Apply
+                   </span>
                 </div>
               )}
             </button>

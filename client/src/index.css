@@ -32,11 +32,11 @@
        FLEXIBLE LAYOUT DIMENSIONS
        All layout sizes use clamp() for responsiveness
        ============================================ */
-    --layout-sidebar-width-expanded: clamp(16rem, 20vw, 20rem);
+    --layout-sidebar-width-expanded: clamp(12rem, 18vw, 16rem);
     --layout-sidebar-width-collapsed: clamp(3rem, 5vw, 4rem);
-    --layout-bento-grid-width: clamp(16rem, 25vw, 20rem);
+    --layout-bento-grid-width: clamp(12rem, 18vw, 16rem);
     --layout-suggestions-panel-width: clamp(18rem, 22vw, 22rem);
-    --layout-content-max-width: clamp(48rem, 60vw, 56rem);
+    --layout-content-max-width: clamp(40rem, 50vw, 48rem);
     --layout-legend-width: clamp(16rem, 20vw, 20rem);
     --layout-gap-md: clamp(1rem, 2vw, 1.5rem);
     

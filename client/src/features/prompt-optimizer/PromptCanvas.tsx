@@ -515,27 +515,19 @@ export function PromptCanvas({
       >
         {/* Left Sidebar - Span Bento Grid */}
         <div 
-          className="flex flex-col overflow-hidden max-md:w-full max-md:h-auto"
+          className="flex flex-col h-full overflow-hidden bg-geist-accents-1 border-l border-geist-accents-2 max-md:w-full max-md:h-auto"
           style={{
             width: 'var(--layout-bento-grid-width)',
             minWidth: 'var(--layout-bento-grid-width)',
           }}
         >
-          {/* Header */}
-          <div className="bento-grid-header flex-shrink-0">
-            <h2 className="header-title text-label-14 text-geist-accents-5 uppercase tracking-wider">Detected Elements</h2>
-          </div>
-          
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
-            <HighlightingErrorBoundary>
-              <SpanBentoGrid
-                spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
-                onSpanClick={handleSpanClickFromBento}
-                editorRef={editorRef}
-              />
-            </HighlightingErrorBoundary>
-          </div>
+          <HighlightingErrorBoundary>
+            <SpanBentoGrid
+              spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
+              onSpanClick={handleSpanClickFromBento}
+              editorRef={editorRef}
+            />
+          </HighlightingErrorBoundary>
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
@@ -548,35 +540,33 @@ export function PromptCanvas({
                 width: '100%',
               }}
             >
-              <div className="group">
-                {/* PromptEditor continues working even if highlighting fails */}
-                <PromptEditor
-                  ref={editorRef}
-                  onTextSelection={handleTextSelection}
-                  onHighlightClick={handleHighlightClick}
-                  onHighlightMouseDown={handleHighlightMouseDown}
-                  onCopyEvent={handleCopyEvent}
-                  onInput={handleInput}
-                />
-                
-                {/* Action buttons floating below prompt content, aligned right */}
-                <PromptActions
-                  onCopy={handleCopy}
-                  onExport={handleExport}
-                  onCreateNew={onCreateNew}
-                  onShare={handleShare}
-                  copied={copied}
-                  shared={shared}
-                  showExportMenu={showExportMenu}
-                  onToggleExportMenu={setShowExportMenu}
-                  showLegend={showLegend}
-                  onToggleLegend={setShowLegend}
-                  onUndo={onUndo}
-                  onRedo={onRedo}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                />
-              </div>
+              {/* PromptEditor continues working even if highlighting fails */}
+              <PromptEditor
+                ref={editorRef}
+                onTextSelection={handleTextSelection}
+                onHighlightClick={handleHighlightClick}
+                onHighlightMouseDown={handleHighlightMouseDown}
+                onCopyEvent={handleCopyEvent}
+                onInput={handleInput}
+              />
+              
+              {/* Action buttons floating below prompt content, aligned right */}
+              <PromptActions
+                onCopy={handleCopy}
+                onExport={handleExport}
+                onCreateNew={onCreateNew}
+                onShare={handleShare}
+                copied={copied}
+                shared={shared}
+                showExportMenu={showExportMenu}
+                onToggleExportMenu={setShowExportMenu}
+                showLegend={showLegend}
+                onToggleLegend={setShowLegend}
+                onUndo={onUndo}
+                onRedo={onRedo}
+                canUndo={canUndo}
+                canRedo={canRedo}
+              />
             </div>
           </div>
         </div>

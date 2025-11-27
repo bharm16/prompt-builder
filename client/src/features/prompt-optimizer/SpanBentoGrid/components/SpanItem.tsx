@@ -12,12 +12,14 @@ export const SpanItem = memo<SpanItemProps>(({ span, onClick }) => {
   
   return (
     <button
-      className="span-item"
+      className="w-full p-geist-2 rounded-geist bg-geist-background border border-geist-accents-2 hover:bg-geist-accents-1 hover:border-geist-accents-3 hover:shadow-geist-small active:scale-[0.99] transition-all duration-150 flex items-center text-left text-label-13 text-geist-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5"
       onClick={handleClick}
       type="button"
       title={`Click to view in context (${span.start}-${span.end})`}
     >
-      <span className="span-text">{span.quote}</span>
+      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-geist-accents-7">
+        {span.quote}
+      </span>
     </button>
   );
 });
