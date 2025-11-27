@@ -238,13 +238,15 @@
   position: relative;
 }
 
-/* No gap between bento grid and text content */
+/* Flexbox layout for bento grid, editor, and image generation */
 .prompt-canvas-grid {
+  display: flex !important;
+  flex-direction: row !important;
   gap: 0 !important;
 }
 
-/* Responsive content padding - scales with viewport width */
+/* No left/right padding - content fills edge-to-edge */
 .prompt-canvas-content-wrapper {
-  padding-left: 1vw !important;
-  padding-right: 1vw !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }

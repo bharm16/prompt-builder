@@ -39,6 +39,7 @@
     --layout-content-max-width: 50vw;
     --layout-legend-width: 20vw;
     --layout-gap-md: 2vw;
+    --layout-image-gen-width: 25vw;
     
     /* Current sidebar state (set dynamically) */
     --sidebar-width: var(--layout-sidebar-width-collapsed);

@@ -507,10 +507,6 @@ export function PromptCanvas({
       {/* Main Content Container */}
       <div 
         className="flex-1 flex overflow-hidden prompt-canvas-grid"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'var(--layout-bento-grid-width) minmax(0, 1fr)',
-        }}
       >
         {/* Left Sidebar - Span Bento Grid */}
         <div 
@@ -518,6 +514,7 @@ export function PromptCanvas({
           style={{
             width: 'var(--layout-bento-grid-width)',
             minWidth: 'var(--layout-bento-grid-width)',
+            flexShrink: 0,
           }}
         >
           <HighlightingErrorBoundary>
@@ -565,6 +562,40 @@ export function PromptCanvas({
               canUndo={canUndo}
               canRedo={canRedo}
             />
+          </div>
+        </div>
+
+        {/* Image Generation Panel */}
+        <div 
+          className="flex flex-col h-full overflow-hidden bg-geist-background border-l border-geist-accents-2"
+          style={{
+            width: 'var(--layout-image-gen-width)',
+            minWidth: 'var(--layout-image-gen-width)',
+            flexShrink: 0,
+          }}
+        >
+          <div className="flex flex-col h-full overflow-y-auto p-geist-4">
+            <div className="mb-geist-4">
+              <h3 className="text-heading-16 text-geist-foreground font-semibold mb-geist-2">
+                Image Generation
+              </h3>
+              <p className="text-copy-14 text-geist-accents-6">
+                Generated images will appear here
+              </p>
+            </div>
+            <div className="flex-1 flex items-center justify-center bg-geist-accents-1 rounded-geist border border-geist-accents-2">
+              <p className="text-copy-14 text-geist-accents-4">
+                No image generated yet
+              </p>
+            </div>
+            <div className="mt-geist-4 flex gap-geist-2">
+              <button className="flex-1 px-geist-4 py-geist-2 bg-geist-foreground text-geist-background rounded-geist text-button-14 font-medium hover:bg-geist-accents-8 transition-colors">
+                Generate
+              </button>
+              <button className="px-geist-4 py-geist-2 bg-geist-accents-1 text-geist-foreground rounded-geist text-button-14 font-medium hover:bg-geist-accents-2 transition-colors">
+                Settings
+              </button>
+            </div>
           </div>
         </div>
       </div>
