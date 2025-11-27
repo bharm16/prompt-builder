@@ -42,6 +42,11 @@ interface UseSuggestionApplyParams {
   handleDisplayedPromptChange: (prompt: string) => void;
   setSuggestionsData: (data: SuggestionsData | null) => void;
   toast: Toast;
+  currentPromptUuid: string | null;
+  currentPromptDocId: string | null;
+  promptHistory: {
+    updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  };
 }
 
 /**
@@ -52,6 +57,9 @@ export function useSuggestionApply({
   handleDisplayedPromptChange,
   setSuggestionsData,
   toast,
+  currentPromptUuid,
+  currentPromptDocId,
+  promptHistory,
 }: UseSuggestionApplyParams): {
   handleSuggestionClick: (suggestion: Suggestion | string) => Promise<void>;
 } {
@@ -96,6 +104,20 @@ export function useSuggestionApply({
             confidence:
               metadata?.confidence || metadata?.span?.confidence || null,
           });
+
+          // Persist the updated prompt to database/storage
+          if (currentPromptUuid && result.updatedPrompt) {
+            try {
+              promptHistory.updateEntryOutput(
+                currentPromptUuid,
+                currentPromptDocId,
+                result.updatedPrompt
+              );
+            } catch (error) {
+              // Don't block UI if save fails - just log warning
+              console.warn('Failed to persist suggestion update:', error);
+            }
+          }
         } else {
           toast.error('Could not locate text to replace');
         }
@@ -107,7 +129,7 @@ export function useSuggestionApply({
         toast.error('Failed to apply suggestion');
       }
     },
-    [suggestionsData, handleDisplayedPromptChange, setSuggestionsData, toast, addEdit]
+    [suggestionsData, handleDisplayedPromptChange, setSuggestionsData, toast, addEdit, currentPromptUuid, currentPromptDocId, promptHistory]
   );
 
   return {

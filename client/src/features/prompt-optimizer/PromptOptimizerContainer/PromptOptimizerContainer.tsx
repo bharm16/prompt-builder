@@ -209,6 +209,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     handleDisplayedPromptChange,
     stablePromptContext,
     toast,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
   });
 
   // ============================================================================

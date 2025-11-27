@@ -167,6 +167,42 @@ export const usePromptHistory = (user: User | null) => {
     [user]
   );
 
+  const updateEntryOutput = useCallback(
+    (uuid: string, docId: string | null, output: string) => {
+      const repository = getPromptRepositoryForUser(!!user);
+
+      // Update in repository
+      // Note: updateOutput signature varies between repository types
+      // Firestore uses docId, localStorage uses uuid
+      if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
+        // Check if this is a Firestore repository (has collectionName property) or localStorage repository
+        const isFirestoreRepo = 'collectionName' in repository && user;
+        
+        if (isFirestoreRepo && docId) {
+          // Firestore repository - use docId
+          const updateFn = repository.updateOutput as (docId: string, output: string) => Promise<void>;
+          updateFn(docId, output).catch((error) => {
+            console.warn('Unable to persist updated output:', error);
+          });
+        } else {
+          // LocalStorage repository - use uuid
+          const updateFn = repository.updateOutput as (uuid: string, output: string) => Promise<void>;
+          updateFn(uuid, output).catch((error) => {
+            console.warn('Unable to persist updated output:', error);
+          });
+        }
+      }
+
+      // Update local state optimistically
+      setHistory((prevHistory) => {
+        return prevHistory.map((entry) =>
+          entry.uuid === uuid ? { ...entry, output } : entry
+        );
+      });
+    },
+    [user]
+  );
+
   // Clear all history
   const clearHistory = useCallback(async () => {
     const repository = getPromptRepositoryForUser(!!user);
@@ -233,6 +269,7 @@ export const usePromptHistory = (user: User | null) => {
     deleteFromHistory,
     loadHistoryFromFirestore,
     updateEntryHighlight,
+    updateEntryOutput,
   };
 };
 

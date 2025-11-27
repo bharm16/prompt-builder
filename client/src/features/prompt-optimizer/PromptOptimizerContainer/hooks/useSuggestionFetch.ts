@@ -13,7 +13,7 @@
 import { useCallback } from 'react';
 import type React from 'react';
 import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/enhancementSuggestionsApi';
-import { prepareSpanContext } from '../../utils/spanUtils.ts';
+import { prepareSpanContext } from '@/features/span-highlighting/utils/spanProcessing';
 import { useEditHistory } from '../../hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
 

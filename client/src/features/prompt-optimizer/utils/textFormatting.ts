@@ -260,3 +260,18 @@ export const formatTextToHTML = (text: string | null | undefined): { html: strin
   return formatter.format();
 };
 
+/**
+ * Escapes HTML for ML highlighting mode
+ * Preserves whitespace and newlines for span offset matching
+ */
+export function escapeHTMLForMLHighlighting(text: string): string {
+  const escaped = (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+  
+  return `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem; font-family: var(--font-geist-sans);">${escaped}</div>`;
+}
+

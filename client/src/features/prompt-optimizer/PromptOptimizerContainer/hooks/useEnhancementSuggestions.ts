@@ -59,6 +59,11 @@ export interface UseEnhancementSuggestionsParams {
   handleDisplayedPromptChange: (prompt: string) => void;
   stablePromptContext: StablePromptContext | null;
   toast: Toast;
+  currentPromptUuid: string | null;
+  currentPromptDocId: string | null;
+  promptHistory: {
+    updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  };
 }
 
 export interface UseEnhancementSuggestionsReturn {
@@ -78,6 +83,9 @@ export function useEnhancementSuggestions({
   handleDisplayedPromptChange,
   stablePromptContext,
   toast,
+  currentPromptUuid,
+  currentPromptDocId,
+  promptHistory,
 }: UseEnhancementSuggestionsParams): UseEnhancementSuggestionsReturn {
   // Handle applying suggestions
   const { handleSuggestionClick } = useSuggestionApply({
@@ -85,6 +93,9 @@ export function useEnhancementSuggestions({
     handleDisplayedPromptChange,
     setSuggestionsData,
     toast,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
   });
 
   // Handle fetching suggestions

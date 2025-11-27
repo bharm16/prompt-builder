@@ -1,29 +1,32 @@
-import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useMemo, useCallback, useEffect } from 'react';
+
+// External libraries
 import { useToast } from '../../components/Toast';
-import { useSpanLabeling } from './hooks/useSpanLabeling';
-import { useHighlightSourceSelection } from './hooks/useHighlightSourceSelection';
-import { createCanonicalText } from '../../utils/canonicalText';
 
-// Extracted utilities
-import { formatTextToHTML } from './utils/textFormatting';
-import { getSelectionOffsets, restoreSelectionFromOffsets, selectRange } from './utils/textSelection';
-import { convertLabeledSpansToHighlights } from './utils/highlightConversion';
-import {
-  findHighlightNode,
-  extractHighlightMetadata,
-  createHighlightRange,
-} from './utils/highlightInteractionHelpers';
-
-// Extracted services
+// Internal absolute imports
 import { ExportService } from '../../services/exportService';
+import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
 
-// Extracted hooks
+// Relative imports - types first
+import type { PromptCanvasProps } from './PromptCanvas/types';
+import type { ExportFormat } from './types';
+
+// Relative imports - implementations
+import { useSpanLabeling } from './hooks/useSpanLabeling';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '../span-highlighting/hooks/useHighlightRendering';
 import { useHighlightFingerprint } from '../span-highlighting/hooks/useHighlightFingerprint';
+import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textFormatting';
+import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
+import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
+import { useParseResult } from './PromptCanvas/hooks/useParseResult';
+import { useTextSelection } from './PromptCanvas/hooks/useTextSelection';
+import { useEditorContent } from './PromptCanvas/hooks/useEditorContent';
+import { useKeyboardShortcuts } from './PromptCanvas/hooks/useKeyboardShortcuts';
+import { convertExportFormat } from './PromptCanvas/utils/exportFormatConversion';
 
-// Extracted components
+// Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
 import { PromptActions } from './components/PromptActions';
 import { PromptEditor } from './components/PromptEditor';
@@ -32,26 +35,8 @@ import { HighlightingErrorBoundary } from '../span-highlighting/components/Highl
 import SuggestionsPanel from '@components/SuggestionsPanel';
 import { VisualPreview } from '@/features/preview/components/VisualPreview';
 
-// Configuration
-import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
-
 // Styles
 import './PromptCanvas.css';
-
-import type { PromptCanvasProps } from './PromptCanvas/types';
-import type { CanonicalText } from '../../utils/canonicalText';
-import type { HighlightSpan } from '../span-highlighting/hooks/useHighlightRendering';
-import type { ExportFormat as ExportFormatType } from './types';
-
-interface ParseResult {
-  canonical: CanonicalText;
-  spans: HighlightSpan[];
-  meta: unknown | null;
-  status: string;
-  error: Error | null;
-  displayText: string;
-  [key: string]: unknown;
-}
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -80,13 +65,6 @@ export function PromptCanvas({
   draftSpans = null,
   refinedSpans = null,
 }: PromptCanvasProps): React.ReactElement {
-  // UI state
-  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
-  const [showLegend, setShowLegend] = useState<boolean>(false);
-
-  // Extract suggestions panel visibility state
-  const isSuggestionsOpen = Boolean(suggestionsData && (suggestionsData as Record<string, unknown>).show !== false);
-
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -97,72 +75,18 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
-  const labelingPolicy = useMemo(
-    () => DEFAULT_LABELING_POLICY,
-    []
-  );
+  const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
-  // EXTRACTED: Highlight source selection logic
-  // Convert SpansData to SpanData format
-  const convertedDraftSpans: import('../span-highlighting/hooks/useHighlightSourceSelection').SpanData | null = draftSpans
-    ? {
-        spans: Array.isArray(draftSpans.spans)
-          ? draftSpans.spans.filter(
-              (s): s is { start: number; end: number; category: string; confidence: number } =>
-                typeof s === 'object' &&
-                s !== null &&
-                typeof (s as { start?: unknown }).start === 'number' &&
-                typeof (s as { end?: unknown }).end === 'number' &&
-                typeof (s as { category?: unknown }).category === 'string' &&
-                typeof (s as { confidence?: unknown }).confidence === 'number'
-            )
-          : [],
-        meta: draftSpans.meta as Record<string, unknown> | null,
-      }
-    : null;
+  // Extract suggestions panel visibility state
+  const isSuggestionsOpen = Boolean(suggestionsData && suggestionsData.show !== false);
 
-  const convertedRefinedSpans: import('../span-highlighting/hooks/useHighlightSourceSelection').SpanData | null = refinedSpans
-    ? {
-        spans: Array.isArray(refinedSpans.spans)
-          ? refinedSpans.spans.filter(
-              (s): s is { start: number; end: number; category: string; confidence: number } =>
-                typeof s === 'object' &&
-                s !== null &&
-                typeof (s as { start?: unknown }).start === 'number' &&
-                typeof (s as { end?: unknown }).end === 'number' &&
-                typeof (s as { category?: unknown }).category === 'string' &&
-                typeof (s as { confidence?: unknown }).confidence === 'number'
-            )
-          : [],
-        meta: refinedSpans.meta as Record<string, unknown> | null,
-      }
-    : null;
-
-  const convertedInitialHighlights: import('../span-highlighting/hooks/useHighlightSourceSelection').UseHighlightSourceSelectionOptions['initialHighlights'] = initialHighlights
-    ? {
-        spans: Array.isArray(initialHighlights.spans)
-          ? initialHighlights.spans.filter(
-              (s): s is { start: number; end: number; category: string; confidence: number } =>
-                typeof s === 'object' &&
-                s !== null &&
-                typeof (s as { start?: unknown }).start === 'number' &&
-                typeof (s as { end?: unknown }).end === 'number' &&
-                typeof (s as { category?: unknown }).category === 'string' &&
-                typeof (s as { confidence?: unknown }).confidence === 'number'
-            )
-          : [],
-        ...(initialHighlights.meta !== undefined && { meta: initialHighlights.meta as Record<string, unknown> | null }),
-        ...(initialHighlights.signature !== undefined && { signature: initialHighlights.signature }),
-        ...(initialHighlights.cacheId !== undefined && { cacheId: initialHighlights.cacheId ?? null }),
-      }
-    : null;
-
-  const memoizedInitialHighlights = useHighlightSourceSelection({
-    draftSpans: convertedDraftSpans,
-    refinedSpans: convertedRefinedSpans,
+  // Span data conversion hook
+  const { memoizedInitialHighlights } = useSpanDataConversion({
+    draftSpans,
+    refinedSpans,
+    initialHighlights,
     isDraftReady,
     isRefining,
-    initialHighlights: convertedInitialHighlights,
     promptUuid,
     displayedPrompt,
     enableMLHighlighting,
@@ -170,7 +94,15 @@ export function PromptCanvas({
   });
 
   const handleLabelingResult = useCallback(
-    (result: unknown): void => {
+    (result: {
+      spans: Array<{
+        start: number;
+        end: number;
+        category: string;
+        confidence: number;
+      }>;
+      meta: Record<string, unknown> | null;
+    }): void => {
       if (!enableMLHighlighting || !result) {
         return;
       }
@@ -182,21 +114,21 @@ export function PromptCanvas({
   );
 
   // Track if this is the first time seeing this text (skip debounce for initial optimization)
-  const [hasUserEdited, setHasUserEdited] = useState<boolean>(false);
-  const isInitialOptimization = isDraftReady && !hasUserEdited;
+  const isInitialOptimization = isDraftReady;
 
   const {
     spans: labeledSpans,
     meta: labeledMeta,
     status: labelingStatus,
     error: labelingError,
+    refresh: refreshLabeling,
   } = useSpanLabeling({
     text: enableMLHighlighting ? displayedPrompt ?? '' : '',
     initialData: memoizedInitialHighlights,
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
     enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
-    immediate: isInitialOptimization, // Skip debounce on initial draft display
+    immediate: isInitialOptimization,
     maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
     minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
     policy: labelingPolicy,
@@ -205,364 +137,146 @@ export function PromptCanvas({
     onResult: handleLabelingResult,
   });
 
-  const [parseResult, setParseResult] = useState<ParseResult>(() => ({
-    canonical: createCanonicalText(displayedPrompt ?? '') as CanonicalText,
-    spans: [] as HighlightSpan[],
-    meta: null,
-    status: 'idle',
-    error: null,
-    displayText: displayedPrompt ?? '',
-  }));
-
-  // Highlight rendering using extracted hook
-  const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, parseResult);
-
-  useHighlightRendering({
-    editorRef: editorRef as React.RefObject<HTMLElement>,
-    parseResult: parseResult as unknown as import('../span-highlighting/hooks/useHighlightRendering').ParseResult,
-    enabled: enableMLHighlighting,
-    fingerprint: highlightFingerprint,
-    text: displayedPrompt ?? '',
+  // Suggestion detection hook
+  useSuggestionDetection({
+    displayedPrompt,
+    isSuggestionsOpen,
+    refreshLabeling,
   });
 
-  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
-  // We need to preserve the original text structure for span offsets to work
-  const { html: formattedHTML } = useMemo(
-    () => {
-      // If ML highlighting is enabled, don't apply formatting
-      // Highlighting needs the raw text to match span offsets
-      if (enableMLHighlighting) {
-        // Return plain text with preserved whitespace
-        // Escape HTML but preserve newlines and spaces
-        const escaped = (displayedPrompt || '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-        return { html: `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem; font-family: var(--font-geist-sans);">${escaped}</div>` };
-      }
-      return formatTextToHTML(displayedPrompt ?? '');
-    },
-    // Only depend on promptContext when NOT using ML highlighting (to prevent infinite loops)
-    enableMLHighlighting 
-      ? [displayedPrompt, enableMLHighlighting] 
-      : [displayedPrompt, enableMLHighlighting, promptContext]
-  );
-
-  // ⏱️ CRITICAL PERFORMANCE TIMER: Track when prompt appears on screen
-  useEffect(() => {
-    if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
-      performance.mark('prompt-displayed-on-screen');
-    }
-  }, [displayedPrompt, enableMLHighlighting]);
-
-  useEffect(() => {
-    const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
-    const currentText = displayedPrompt ?? '';
-
-    if (!enableMLHighlighting || !currentText.trim()) {
-      setParseResult({
-        canonical,
-        spans: [] as HighlightSpan[],
-        meta: labeledMeta,
-        status: labelingStatus,
-        error: labelingError,
-        displayText: currentText,
-      });
-      return;
-    }
-
-    const highlights = convertLabeledSpansToHighlights({
-      spans: labeledSpans as unknown as import('../span-highlighting/utils/highlightConversion').LLMSpan[],
-      text: currentText,
-      canonical: canonical as unknown as import('../span-highlighting/utils/highlightConversion').CanonicalText,
-    });
-
-    setParseResult({
-      canonical,
-      spans: highlights as unknown as HighlightSpan[],
-      meta: labeledMeta,
-      status: labelingStatus,
-      error: labelingError,
-      displayText: currentText,
-    });
-  }, [
+  // Parse result hook
+  const parseResult = useParseResult({
     labeledSpans,
     labeledMeta,
     labelingStatus,
     labelingError,
     enableMLHighlighting,
     displayedPrompt,
-  ]);
+  });
 
+  // Highlight rendering using extracted hook
+  const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, {
+    spans: parseResult.spans,
+    displayText: parseResult.displayText,
+  });
 
-  // Event handlers using extracted hooks and services
-  const handleCopy = (): void => {
+  useHighlightRendering({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    parseResult: {
+      spans: parseResult.spans,
+      displayText: parseResult.displayText,
+    },
+    enabled: enableMLHighlighting,
+    fingerprint: highlightFingerprint,
+    text: displayedPrompt ?? '',
+  });
+
+  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
+  const { html: formattedHTML } = useMemo(
+    () => {
+      if (enableMLHighlighting) {
+        return { html: escapeHTMLForMLHighlighting(displayedPrompt || '') };
+      }
+      return formatTextToHTML(displayedPrompt ?? '');
+    },
+    enableMLHighlighting
+      ? [displayedPrompt, enableMLHighlighting]
+      : [displayedPrompt, enableMLHighlighting, promptContext]
+  );
+
+  // Performance timer: Track when prompt appears on screen
+  useEffect(() => {
+    if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
+      performance.mark('prompt-displayed-on-screen');
+    }
+  }, [displayedPrompt, enableMLHighlighting]);
+
+  // UI state (simple boolean flags - could be moved to reducer if needed)
+  const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
+  const [showLegend, setShowLegend] = React.useState<boolean>(false);
+
+  // Text selection hook
+  const {
+    handleTextSelection,
+    handleHighlightClick,
+    handleHighlightMouseDown,
+    handleSpanClickFromBento,
+  } = useTextSelection({
+    selectedMode,
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    displayedPrompt,
+    labeledSpans,
+    parseResult,
+    onFetchSuggestions,
+  });
+
+  // Editor content hook
+  useEditorContent({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    displayedPrompt,
+    formattedHTML,
+  });
+
+  // Keyboard shortcuts hook
+  useKeyboardShortcuts({
+    canUndo,
+    canRedo,
+    onUndo,
+    onRedo,
+    toast,
+  });
+
+  // Event handlers
+  const handleCopy = useCallback((): void => {
     copy(displayedPrompt ?? '');
-  };
+  }, [copy, displayedPrompt]);
 
-  const handleShare = (): void => {
+  const handleShare = useCallback((): void => {
     if (promptUuid) {
       share(promptUuid);
     }
-  };
+  }, [share, promptUuid]);
 
-  const handleExport = (format: ExportFormatType): void => {
-    // Convert ExportFormatType to ExportService format
-    let exportFormat: 'text' | 'markdown' | 'json';
-    const formatStr = format as string;
-    if (formatStr === 'md' || formatStr === 'markdown') {
-      exportFormat = 'markdown';
-    } else if (formatStr === 'txt' || formatStr === 'text') {
-      exportFormat = 'text';
-    } else {
-      exportFormat = 'json';
-    }
-    
-    ExportService.export(exportFormat, {
-      inputPrompt,
-      displayedPrompt: displayedPrompt ?? '',
-      ...(qualityScore !== null && { qualityScore }),
-      selectedMode,
-    });
-    setShowExportMenu(false);
-    toast.success(`Exported as ${exportFormat.toUpperCase()}`);
-  };
+  const handleExport = useCallback(
+    (format: ExportFormat): void => {
+      const exportFormat = convertExportFormat(format);
 
-  // NEW: Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      // Check for Cmd (Mac) or Ctrl (Windows/Linux)
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const modifier = isMac ? e.metaKey : e.ctrlKey;
+      ExportService.export(exportFormat, {
+        inputPrompt,
+        displayedPrompt: displayedPrompt ?? '',
+        ...(qualityScore !== null && { qualityScore }),
+        selectedMode,
+      });
+      setShowExportMenu(false);
+      toast.success(`Exported as ${exportFormat.toUpperCase()}`);
+    },
+    [inputPrompt, displayedPrompt, qualityScore, selectedMode, toast]
+  );
 
-      // Undo: Cmd/Ctrl + Z (without Shift)
-      if (modifier && e.key === 'z' && !e.shiftKey) {
-        if (canUndo) {
-          e.preventDefault();
-          onUndo();
-          toast.info('Undone');
-        }
+  const handleCopyEvent = useCallback(
+    (e: React.ClipboardEvent): void => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim() ?? '';
+
+      if (selectedText) {
         return;
       }
 
-      // Redo: Cmd/Ctrl + Shift + Z OR Cmd/Ctrl + Y
-      if ((modifier && e.shiftKey && e.key === 'z') || (modifier && e.key === 'y')) {
-        if (canRedo) {
-          e.preventDefault();
-          onRedo();
-          toast.info('Redone');
-        }
-        return;
+      e.clipboardData.setData('text/plain', displayedPrompt ?? '');
+      e.preventDefault();
+    },
+    [displayedPrompt]
+  );
+
+  const handleInput = useCallback(
+    (e: React.FormEvent<HTMLDivElement>): void => {
+      const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
+      if (onDisplayedPromptChange) {
+        onDisplayedPromptChange(newText);
       }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onUndo, onRedo, canUndo, canRedo, toast]);
-
-  // Text selection helpers (using extracted utilities)
-  const handleTextSelection = (): void => {
-    if (selectedMode !== 'video') {
-      return;
-    }
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      return;
-    }
-
-    const rawText = selection.toString();
-    const trimmed = rawText.trim();
-    if (!trimmed) {
-      return;
-    }
-
-    if (onFetchSuggestions && editorRef.current) {
-      const cleanedText = trimmed.replace(/^-\s*/, '') || trimmed;
-      const range = selection.getRangeAt(0).cloneRange();
-      const offsets = getSelectionOffsets(editorRef.current, range);
-      onFetchSuggestions({
-        highlightedText: cleanedText,
-        originalText: trimmed,
-        displayedPrompt: displayedPrompt ?? '',
-        range,
-        offsets,
-        metadata: null,
-        trigger: 'selection',
-        allLabeledSpans: labeledSpans, // NEW: Complete span context
-      });
-    }
-  };
-
-  // REFACTORED: Trigger suggestions from a DOM target (highlight click)
-  const triggerSuggestionsFromTarget = (targetElement: EventTarget | null, e: React.MouseEvent | null): void => {
-    if (selectedMode !== 'video' || !editorRef.current) {
-      return;
-    }
-
-    // Find the highlighted word element
-    const node = findHighlightNode(targetElement as HTMLElement | null, editorRef.current);
-    if (!node) {
-      return;
-    }
-
-    // Prevent default text selection behavior
-    if (e && e.preventDefault) e.preventDefault();
-
-    // Extract metadata from the node
-    const metadata = extractHighlightMetadata(node, parseResult as unknown as import('./utils/highlightInteractionHelpers').ParseResult);
-    const wordText = node.textContent?.trim() ?? '';
-
-    if (wordText && onFetchSuggestions) {
-      // Create range and get offsets
-      const { range, rangeClone, offsets } = createHighlightRange(
-        node,
-        editorRef.current,
-        getSelectionOffsets
-      );
-
-      // Update browser selection
-      selectRange(range);
-
-      // Trigger suggestions
-      onFetchSuggestions({
-        highlightedText: wordText,
-        originalText: wordText,
-        displayedPrompt: displayedPrompt ?? '',
-        range: rangeClone,
-        offsets,
-        metadata: metadata ? (metadata as unknown as Record<string, unknown>) : null,
-        trigger: 'highlight',
-        allLabeledSpans: labeledSpans,
-      });
-    }
-  };
-
-  // Handle clicks on highlighted words
-  const handleHighlightClick = (e: React.MouseEvent): void => {
-    triggerSuggestionsFromTarget(e.target, e);
-  };
-
-  // Some headless environments can swallow click on contentEditable.
-  // Also listen on mousedown to reliably capture interactions.
-  const handleHighlightMouseDown = (e: React.MouseEvent): void => {
-    triggerSuggestionsFromTarget(e.target, e);
-  };
-
-  // Handle clicks on spans from the Bento Grid
-  const handleSpanClickFromBento = (span: { quote: string; start: number; end: number; category?: string; source?: string; spanId?: string; startGrapheme?: number; endGrapheme?: number; validatorPass?: boolean; confidence?: number; leftCtx?: string; rightCtx?: string; idempotencyKey?: string; id?: string; [key: string]: unknown }): void => {
-    if (!onFetchSuggestions || selectedMode !== 'video') {
-      return;
-    }
-    
-    // Create synthetic event matching highlight click behavior
-    onFetchSuggestions({
-      highlightedText: span.quote,
-      originalText: span.quote,
-      displayedPrompt: displayedPrompt ?? '',
-      range: null, // Not needed for bento clicks
-      offsets: { start: span.start, end: span.end },
-      metadata: {
-        category: span.category,
-        source: span.source,
-        spanId: span.id,
-        start: span.start,
-        end: span.end,
-        startGrapheme: span.startGrapheme,
-        endGrapheme: span.endGrapheme,
-        validatorPass: span.validatorPass,
-        confidence: span.confidence,
-        quote: span.quote,
-        leftCtx: span.leftCtx,
-        rightCtx: span.rightCtx,
-        idempotencyKey: span.idempotencyKey,
-        span: span, // Full span object
-      },
-      trigger: 'bento-grid',
-      allLabeledSpans: labeledSpans,
-    });
-  };
-
-  const handleCopyEvent = (e: React.ClipboardEvent): void => {
-    // Check if there's a text selection
-    const selection = window.getSelection();
-    const selectedText = selection?.toString().trim() ?? '';
-
-    // If there's selected text, copy only the selection
-    // Otherwise, copy the entire prompt (for backwards compatibility with copy button)
-    if (selectedText) {
-      // Let the browser handle copying the selected text
-      // No need to prevent default or set clipboard data
-      return;
-    }
-
-    // Only copy the full prompt if there's no selection
-    e.clipboardData.setData('text/plain', displayedPrompt ?? '');
-    e.preventDefault();
-  };
-
-  const handleInput = (e: React.FormEvent<HTMLDivElement>): void => {
-    // Extract plain text from the contentEditable div
-    const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
-    if (onDisplayedPromptChange) {
-      onDisplayedPromptChange(newText);
-    }
-  };
-
-  // Update the editor content when displayedPrompt changes
-  useEffect(() => {
-    if (editorRef.current && displayedPrompt) {
-      const newHTML = formattedHTML || displayedPrompt;
-
-      // Only update if content has actually changed to preserve cursor position
-      const currentText = editorRef.current.innerText || editorRef.current.textContent || '';
-      const newText = displayedPrompt;
-
-      if (currentText !== newText) {
-        const selection = window.getSelection();
-        const hadFocus = document.activeElement === editorRef.current;
-        let savedOffsets: { start: number; end: number } | null = null;
-
-        // Try to save cursor selection offsets when focus is within the editor
-        if (hadFocus && selection && selection.rangeCount > 0) {
-          try {
-            const range = selection.getRangeAt(0);
-            if (
-              editorRef.current.contains(range.startContainer) &&
-              editorRef.current.contains(range.endContainer)
-            ) {
-              savedOffsets = getSelectionOffsets(editorRef.current, range);
-            }
-          } catch {
-            savedOffsets = null;
-          }
-        }
-
-        // Set the HTML content
-        editorRef.current.innerHTML = newHTML;
-
-        // Restore focus and cursor if it had focus before
-        if (hadFocus) {
-          try {
-            editorRef.current.focus();
-            if (savedOffsets) {
-              restoreSelectionFromOffsets(
-                editorRef.current,
-                savedOffsets.start,
-                savedOffsets.end
-              );
-            }
-          } catch {
-            // Ignore focus errors
-          }
-        }
-      }
-    } else if (editorRef.current && !displayedPrompt) {
-      editorRef.current.innerHTML = '<p style="color: rgb(163, 163, 163); font-size: 0.875rem; font-family: var(--font-geist-sans);">Your optimized prompt will appear here...</p>';
-    }
-  }, [displayedPrompt, formattedHTML]);
+    },
+    [onDisplayedPromptChange]
+  );
 
   // Render the component
   return (
@@ -576,11 +290,9 @@ export function PromptCanvas({
       />
 
       {/* Main Content Container */}
-      <div 
-        className="flex-1 flex overflow-hidden prompt-canvas-grid"
-      >
+      <div className="flex-1 flex overflow-hidden prompt-canvas-grid">
         {/* Left Sidebar - Span Bento Grid */}
-        <div 
+        <div
           className="flex flex-col h-full overflow-hidden bg-geist-accents-1 border-l border-geist-accents-2 max-md:w-full max-md:h-auto"
           style={{
             width: 'var(--layout-bento-grid-width)',
@@ -590,7 +302,15 @@ export function PromptCanvas({
         >
           <HighlightingErrorBoundary>
             <SpanBentoGrid
-              spans={parseResult.spans as Array<{ id: string; quote: string; start: number; end: number; confidence?: number; category?: string; [key: string]: unknown }>}
+              spans={parseResult.spans.map((span) => ({
+                id: span.id ?? `span_${span.start}_${span.end}`,
+                quote: span.quote ?? span.text ?? '',
+                confidence: span.confidence,
+                start: span.start,
+                end: span.end,
+                category: span.category,
+                ...span,
+              }))}
               onSpanClick={handleSpanClickFromBento}
               editorRef={editorRef as React.RefObject<HTMLElement>}
             />
@@ -599,7 +319,7 @@ export function PromptCanvas({
 
         {/* Main Editor Area - Optimized Prompt */}
         <div className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0">
-          <div 
+          <div
             className="mx-auto pt-geist-12 pb-geist-12 prompt-canvas-content-wrapper"
             style={{
               maxWidth: 'var(--layout-content-max-width)',
@@ -608,14 +328,14 @@ export function PromptCanvas({
           >
             {/* PromptEditor continues working even if highlighting fails */}
             <PromptEditor
-              ref={editorRef}
+              ref={editorRef as React.RefObject<HTMLDivElement>}
               onTextSelection={handleTextSelection}
               onHighlightClick={handleHighlightClick}
               onHighlightMouseDown={handleHighlightMouseDown}
               onCopyEvent={handleCopyEvent}
               onInput={handleInput}
             />
-            
+
             {/* Action buttons floating below prompt content, aligned right */}
             <PromptActions
               onCopy={handleCopy}
@@ -637,7 +357,7 @@ export function PromptCanvas({
         </div>
 
         {/* Image Generation Panel */}
-        <div 
+        <div
           className="flex flex-col h-full overflow-hidden bg-geist-background border-l border-geist-accents-2"
           style={{
             width: 'var(--layout-image-gen-width)',
@@ -647,10 +367,7 @@ export function PromptCanvas({
         >
           {/* Image Generation Section */}
           <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0">
-            <VisualPreview
-              prompt={displayedPrompt || ''}
-              isVisible={true}
-            />
+            <VisualPreview prompt={displayedPrompt || ''} isVisible={true} />
           </div>
 
           {/* AI Suggestions Section */}
@@ -658,19 +375,19 @@ export function PromptCanvas({
             <SuggestionsPanel
               suggestionsData={
                 suggestionsData
-                  ? {
-                      ...(suggestionsData as Record<string, unknown>),
-                      onSuggestionClick: onSuggestionClick as (suggestion: unknown) => void,
+                  ? ({
+                      ...suggestionsData,
+                      onSuggestionClick: onSuggestionClick,
                       ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
                       panelTitle: 'AI Suggestions',
                       panelClassName: 'h-full flex flex-col',
-                    }
-                  : { 
-                      show: false, 
+                    } as Record<string, unknown>)
+                  : ({
+                      show: false,
                       ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
                       panelTitle: 'AI Suggestions',
                       panelClassName: 'h-full flex flex-col',
-                    }
+                    } as Record<string, unknown>)
               }
             />
           </div>
@@ -679,4 +396,3 @@ export function PromptCanvas({
     </div>
   );
 }
-

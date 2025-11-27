@@ -388,7 +388,7 @@ export function useSpanLabeling({
         }, effectiveDebounce);
       }
     },
-    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest, immediate, emitResult]
+    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest, emitResult]
   );
 
   useEffect(() => {
@@ -448,7 +448,7 @@ export function useSpanLabeling({
       return;
     }
 
-    schedule(payload, false);
+    schedule(payload, immediate);
     return () => cancelPending();
   }, [
     text,
@@ -463,6 +463,7 @@ export function useSpanLabeling({
     initialData,
     initialDataVersion,
     emitResult,
+    immediate,
   ]);
 
   const refresh = useCallback((): void => {

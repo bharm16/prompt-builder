@@ -244,6 +244,37 @@ export class PromptRepository {
   }
 
   /**
+   * Update prompt output text
+   */
+  async updateOutput(docId: string, output: string): Promise<void> {
+    try {
+      if (!docId || !output) return;
+
+      await updateDoc(doc(this.db, this.collectionName, docId), {
+        output,
+      });
+    } catch (error) {
+      // EXPECTED BEHAVIOR: Firestore permission errors are handled gracefully
+      // This is NOT a bug - it's a security feature working as designed.
+      //
+      // When permission errors occur:
+      // - Unauthenticated users: Cannot write to Firestore (expected)
+      // - Authenticated users: Can only update their own prompts
+      // - Expired sessions: Will get permission denied until re-authenticated
+      //
+      // The app continues to work locally even without Firestore write permissions.
+      // This graceful degradation prevents crashes while maintaining security.
+      if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
+        console.warn('Skipping output update due to insufficient Firestore permissions.');
+        return;
+      }
+
+      console.error('Error updating prompt output:', error);
+      throw new PromptRepositoryError('Failed to update output', error);
+    }
+  }
+
+  /**
    * Delete a prompt by its document ID
    */
   async deleteById(docId: string): Promise<void> {
@@ -403,6 +434,37 @@ export class LocalStoragePromptRepository {
       }
     } catch (error) {
       console.warn('Unable to persist highlights to localStorage:', error);
+    }
+  }
+
+  /**
+   * Update output text in localStorage
+   */
+  async updateOutput(uuid: string, output: string): Promise<void> {
+    try {
+      if (!uuid || !output) return;
+
+      const history = this._getHistory();
+      const updated = history.map(entry =>
+        entry.uuid === uuid
+          ? { ...entry, output }
+          : entry
+      );
+
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(updated));
+      } catch (storageError) {
+        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+          // Try to save with fewer items, keeping the updated one
+          const trimmed = updated.slice(0, 50);
+          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+          console.warn('Storage limit reached, keeping only 50 most recent items');
+        } else {
+          throw storageError;
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to persist output update to localStorage:', error);
     }
   }
 
