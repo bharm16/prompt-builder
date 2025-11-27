@@ -37,6 +37,9 @@ export function getAuthRepository(): AuthRepository {
  */
 export function getPromptRepository(): PromptRepository {
   if (!promptRepository) {
+    if (!db) {
+      throw new Error('Firestore db is not initialized. Cannot create PromptRepository.');
+    }
     promptRepository = new PromptRepository(db);
   }
   return promptRepository;

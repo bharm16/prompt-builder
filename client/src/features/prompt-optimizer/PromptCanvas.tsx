@@ -12,11 +12,11 @@ import type { PromptCanvasProps } from './PromptCanvas/types';
 import type { ExportFormat } from './types';
 
 // Relative imports - implementations
-import { useSpanLabeling } from './hooks/useSpanLabeling';
+import { useSpanLabeling } from '@/features/span-highlighting';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
-import { useHighlightRendering } from '../span-highlighting/hooks/useHighlightRendering';
-import { useHighlightFingerprint } from '../span-highlighting/hooks/useHighlightFingerprint';
+import { useHighlightRendering } from '@/features/span-highlighting';
+import { useHighlightFingerprint } from '@/features/span-highlighting';
 import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textFormatting';
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';

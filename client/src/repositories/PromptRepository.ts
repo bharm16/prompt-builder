@@ -201,6 +201,12 @@ export class PromptRepository {
     try {
       if (!docId) return;
 
+      // Guard against uninitialized db
+      if (!this.db) {
+        console.warn('Firestore db not initialized, skipping highlight update');
+        return;
+      }
+
       const updatePayload: Record<string, unknown> = {};
 
       if (highlightCache) {

@@ -41,6 +41,7 @@ export {
   sanitizeSpans,
   normalizeSpan,
   snapSpanToTokenBoundaries,
+  convertLabeledSpansToHighlights,
 } from './utils/index.ts';
 
 // Processing - Most commonly used

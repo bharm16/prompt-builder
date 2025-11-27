@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { createCanonicalText } from '../../../../utils/canonicalText';
-import { convertLabeledSpansToHighlights } from '../../utils/highlightConversion';
+import { convertLabeledSpansToHighlights } from '@/features/span-highlighting';
 import type { CanonicalText } from '../../../../utils/canonicalText';
 import type { HighlightSpan } from '../../../span-highlighting/hooks/useHighlightRendering';
 import type { ParseResult } from '../types';
