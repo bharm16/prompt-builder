@@ -41,7 +41,7 @@ export async function generatePreview(
     throw new Error('Prompt is required and must be a non-empty string');
   }
 
-  return apiClient.post('/api/preview/generate', {
+  return apiClient.post('/preview/generate', {
     prompt: prompt.trim(),
     ...(aspectRatio ? { aspectRatio } : {}),
   }) as Promise<GeneratePreviewResponse>;

@@ -51,8 +51,11 @@ export function createPreviewRoutes(services) {
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const statusCode = error.statusCode || (errorMessage.includes('402') ? 402 : errorMessage.includes('429') ? 429 : 500);
+        
         logger.error('Preview generation failed', {
           error: errorMessage,
+          statusCode,
           userId,
           prompt: prompt.substring(0, 100),
         });
@@ -66,7 +69,25 @@ export function createPreviewRoutes(services) {
           });
         }
 
-        res.status(500).json({
+        // Handle payment required (402)
+        if (statusCode === 402) {
+          return res.status(402).json({
+            success: false,
+            error: 'Payment required',
+            message: errorMessage,
+          });
+        }
+
+        // Handle rate limiting (429)
+        if (statusCode === 429) {
+          return res.status(429).json({
+            success: false,
+            error: 'Rate limit exceeded',
+            message: errorMessage,
+          });
+        }
+
+        res.status(statusCode).json({
           success: false,
           error: 'Image generation failed',
           message: errorMessage,
