@@ -506,11 +506,10 @@ export function PromptCanvas({
 
       {/* Main Content Container */}
       <div 
-        className="flex-1 flex overflow-hidden"
+        className="flex-1 flex overflow-hidden prompt-canvas-grid"
         style={{
           display: 'grid',
           gridTemplateColumns: 'var(--layout-bento-grid-width) minmax(0, 1fr)',
-          gap: 'var(--layout-gap-md)',
         }}
       >
         {/* Left Sidebar - Span Bento Grid */}
@@ -531,43 +530,41 @@ export function PromptCanvas({
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div className="flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 overflow-y-auto scrollbar-auto-hide">
-            <div 
-              className="mx-auto px-geist-8 pt-geist-12 pb-geist-12"
-              style={{
-                maxWidth: 'var(--layout-content-max-width)',
-                width: '100%',
-              }}
-            >
-              {/* PromptEditor continues working even if highlighting fails */}
-              <PromptEditor
-                ref={editorRef}
-                onTextSelection={handleTextSelection}
-                onHighlightClick={handleHighlightClick}
-                onHighlightMouseDown={handleHighlightMouseDown}
-                onCopyEvent={handleCopyEvent}
-                onInput={handleInput}
-              />
-              
-              {/* Action buttons floating below prompt content, aligned right */}
-              <PromptActions
-                onCopy={handleCopy}
-                onExport={handleExport}
-                onCreateNew={onCreateNew}
-                onShare={handleShare}
-                copied={copied}
-                shared={shared}
-                showExportMenu={showExportMenu}
-                onToggleExportMenu={setShowExportMenu}
-                showLegend={showLegend}
-                onToggleLegend={setShowLegend}
-                onUndo={onUndo}
-                onRedo={onRedo}
-                canUndo={canUndo}
-                canRedo={canRedo}
-              />
-            </div>
+        <div className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0">
+          <div 
+            className="mx-auto pt-geist-12 pb-geist-12 prompt-canvas-content-wrapper"
+            style={{
+              maxWidth: 'var(--layout-content-max-width)',
+              width: '100%',
+            }}
+          >
+            {/* PromptEditor continues working even if highlighting fails */}
+            <PromptEditor
+              ref={editorRef}
+              onTextSelection={handleTextSelection}
+              onHighlightClick={handleHighlightClick}
+              onHighlightMouseDown={handleHighlightMouseDown}
+              onCopyEvent={handleCopyEvent}
+              onInput={handleInput}
+            />
+            
+            {/* Action buttons floating below prompt content, aligned right */}
+            <PromptActions
+              onCopy={handleCopy}
+              onExport={handleExport}
+              onCreateNew={onCreateNew}
+              onShare={handleShare}
+              copied={copied}
+              shared={shared}
+              showExportMenu={showExportMenu}
+              onToggleExportMenu={setShowExportMenu}
+              showLegend={showLegend}
+              onToggleLegend={setShowLegend}
+              onUndo={onUndo}
+              onRedo={onRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
+            />
           </div>
         </div>
       </div>

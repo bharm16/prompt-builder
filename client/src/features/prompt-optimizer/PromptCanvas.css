@@ -237,3 +237,14 @@
 [contenteditable] {
   position: relative;
 }
+
+/* No gap between bento grid and text content */
+.prompt-canvas-grid {
+  gap: 0 !important;
+}
+
+/* Responsive content padding - scales with viewport width */
+.prompt-canvas-content-wrapper {
+  padding-left: 1vw !important;
+  padding-right: 1vw !important;
+}
