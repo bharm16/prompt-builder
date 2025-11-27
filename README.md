@@ -23,7 +23,8 @@ It's an interactive editing canvas where:
 3. 15+ color-coded highlights appear
 4. **Click ANY highlight** → get 5 AI-generated alternatives
 5. One-click replace → prompt updates
-6. Repeat until perfect
+6. **Visual preview** → See your prompt as an image (auto-generated with Flux Schnell)
+7. Repeat until perfect
 
 **You control every word. The AI assists, you decide.**
 
@@ -56,6 +57,7 @@ npm start
 
 **Optional (but recommended):**
 - Groq API key (free, enables sub-300ms drafts)
+- Replicate API token (enables visual preview generation with Flux Schnell)
 - Firebase account (for auth and history)
 
 ---
@@ -75,12 +77,17 @@ npm start
 │  Style (1)                                             • shadowy figure│
 │                                                                         │
 │  [15 elements]                                         [Click to apply]│
+│                                                                         │
+│  ────────────────────────────────────────────────────────────────────── │
+│  VISUAL PREVIEW (Flux Schnell)                                         │
+│  [Generated preview image appears here as you type]                    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Left:** Overview of detected elements by category  
 **Center:** Your prompt with clickable highlights  
-**Right:** AI suggestions for selected text
+**Right:** AI suggestions for selected text  
+**Bottom:** Visual preview generated automatically as you type
 
 ---
 
@@ -90,6 +97,7 @@ npm start
 |---------|--------------|
 | **Semantic Labeling** | 30+ categories tuned for video (subject, camera, lighting, action, style...) |
 | **Click-to-Enhance** | Click any highlight → get context-aware alternatives → one-click replace |
+| **Visual Preview** | Auto-generates preview images using Flux Schnell as you type (debounced) |
 | **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
 | **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
 | **Consistency Tracking** | Suggestions respect your edit history to maintain coherence |
@@ -178,6 +186,30 @@ Content-Type: application/json
 }
 ```
 
+**Generate preview image:**
+```bash
+POST /api/preview/generate
+Content-Type: application/json
+
+{
+  "prompt": "woman in her 30s walks along pristine beach at golden hour",
+  "aspectRatio": "16:9"  // optional, defaults to "16:9"
+}
+
+# Returns:
+{
+  "success": true,
+  "data": {
+    "imageUrl": "https://...",
+    "metadata": {
+      "model": "flux-schnell",
+      "aspectRatio": "16:9",
+      "generatedAt": "2024-..."
+    }
+  }
+}
+```
+
 > 📖 **[Full API docs →](docs/API.md)**
 
 ---
@@ -205,6 +237,9 @@ OPENAI_MODEL=gpt-4o-mini
 
 # Optional (enables fast drafts)
 GROQ_API_KEY=gsk_...
+
+# Optional (enables visual preview generation)
+REPLICATE_API_TOKEN=r8_...
 
 # Firebase (for auth/history)
 VITE_FIREBASE_API_KEY=...
@@ -234,6 +269,7 @@ See `.env.example` for full list.
 - ✅ Two-stage optimization
 - ✅ Semantic span labeling (30+ categories)
 - ✅ Click-to-enhance suggestions
+- ✅ Visual preview generation (Flux Schnell)
 - ✅ Video Concept Builder
 - ✅ Multi-provider LLM support
 - ⏳ Payment integration
