@@ -1,12 +1,14 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from '@infrastructure/Logger.js';
 import { cacheService } from '../cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
 import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
 import { SuggestionProcessor } from './services/SuggestionProcessor.js';
 import { StyleTransferService } from './services/StyleTransferService.js';
 import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
+import { EnhancementMetricsService } from './services/EnhancementMetricsService.js';
+import { PROMPT_MODES, POISONOUS_PATTERNS } from './constants.js';
 import type {
   AIService,
   VideoService,
@@ -25,6 +27,8 @@ import type {
   VideoConstraints,
   CategoryAlignmentResult,
   BrainstormContext,
+  PromptBuildParams,
+  GroupedSuggestions,
 } from './services/types.js';
 
 /**
@@ -50,6 +54,7 @@ export class EnhancementService {
   private readonly suggestionProcessor: SuggestionProcessor;
   private readonly styleTransfer: StyleTransferService;
   private readonly contrastiveDiversity: ContrastiveDiversityEnforcer;
+  private readonly metricsLogger: EnhancementMetricsService;
 
   constructor(
     aiService: AIService,
@@ -86,6 +91,7 @@ export class EnhancementService {
     this.suggestionProcessor = new SuggestionProcessor(validationService);
     this.styleTransfer = new StyleTransferService(aiService);
     this.contrastiveDiversity = new ContrastiveDiversityEnforcer(aiService);
+    this.metricsLogger = new EnhancementMetricsService(metricsService);
   }
 
   /**
@@ -112,7 +118,7 @@ export class EnhancementService {
       promptBuild: 0,
       groqCall: 0,
       postProcessing: 0,
-      promptMode: 'pdf_router',
+      promptMode: PROMPT_MODES.ENHANCEMENT,
     };
     const startTotal = Date.now();
 
@@ -130,48 +136,23 @@ export class EnhancementService {
           : undefined,
       });
 
-      isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
-      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext ?? null);
-      const highlightWordCount = this.videoService.countWords(highlightedText);
-      const phraseRole = isVideoPrompt
-        ? this.videoService.detectVideoPhraseRole(
-            highlightedText,
-            contextBefore,
-            contextAfter,
-            highlightedCategory ?? null
-          )
-        : null;
-      const videoConstraints = isVideoPrompt
-        ? this.videoService.getVideoReplacementConstraints({
-            highlightWordCount,
-            phraseRole,
-            highlightedText,
-            highlightedCategory: highlightedCategory ?? null,
-            highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
-          })
-        : null;
-
-      if (isVideoPrompt) {
-        const modelStart = Date.now();
-        modelTarget = this.videoService.detectTargetModel(fullPrompt);
-        metrics.modelDetection = Date.now() - modelStart;
-
-        const sectionStart = Date.now();
-        promptSection = this.videoService.detectPromptSection(
-          highlightedText,
-          fullPrompt,
-          contextBefore
-        );
-        metrics.sectionDetection = Date.now() - sectionStart;
-      }
-
-      logger.debug('Model and section detection', {
-        isVideoPrompt,
-        modelTarget: modelTarget || 'none detected',
-        promptSection: promptSection || 'main_prompt',
-        modelDetectionTime: metrics.modelDetection,
-        sectionDetectionTime: metrics.sectionDetection,
+      const videoContext = this._detectVideoContext({
+        fullPrompt,
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        highlightedCategory: highlightedCategory ?? null,
+        highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
+        metrics,
       });
+      
+      isVideoPrompt = videoContext.isVideoPrompt;
+      modelTarget = videoContext.modelTarget;
+      promptSection = videoContext.promptSection;
+      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext ?? null);
+      const highlightWordCount = videoContext.highlightWordCount;
+      const phraseRole = videoContext.phraseRole;
+      const videoConstraints = videoContext.videoConstraints;
 
       const cacheStart = Date.now();
       const cacheKey = this._generateCacheKey({
@@ -197,8 +178,8 @@ export class EnhancementService {
       if (cached) {
         metrics.cache = true;
         metrics.total = Date.now() - startTotal;
-        metrics.promptMode = 'pdf_router';
-        this._logMetrics(metrics, {
+        metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+        this.metricsLogger.logMetrics(metrics, {
           highlightedCategory: highlightedCategory ?? null,
           isVideoPrompt,
           modelTarget,
@@ -247,217 +228,60 @@ export class EnhancementService {
         precision: 'medium',
       });
 
-      const groqStart = Date.now();
-      
-      // PDF Enhancement: Try contrastive decoding for enhanced diversity
-      let suggestions: Suggestion[] | null = await this.contrastiveDiversity.generateWithContrastiveDecoding({
+      const generationResult = await this._generateSuggestions({
         systemPrompt,
         schema: schema as Record<string, unknown>,
         isVideoPrompt,
         isPlaceholder,
         highlightedText,
+        temperature,
+        metrics,
       });
       
-      let usedContrastiveDecoding = false;
-      
-      // Fallback to standard generation if contrastive decoding not used/failed
-      if (!suggestions) {
-        suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-          this.ai,
-          systemPrompt,
-          {
-            schema,
-            isArray: true,
-            maxTokens: 2048,
-            maxRetries: 2,
-            temperature,
-            operation: 'enhance_suggestions',
-          }
-        );
-      } else {
-        usedContrastiveDecoding = true;
-        
-        // Calculate and log diversity metrics
-        const diversityMetrics = this.contrastiveDiversity.calculateDiversityMetrics(suggestions);
-        logger.info('Contrastive decoding diversity metrics', diversityMetrics);
-      }
-      
-      metrics.groqCall = Date.now() - groqStart;
-      metrics.usedContrastiveDecoding = usedContrastiveDecoding;
-
-      const poisonousPatterns = [
-        'specific element detail',
-        'alternative aspect feature',
-        'varied choice showcasing',
-        'different variant featuring',
-        'alternative option with specific',
-        'distinctive',
-        'remarkable',
-        'notable'
-      ];
-
-      const hasPoisonousText = Array.isArray(suggestions) && suggestions.some((s) =>
-        poisonousPatterns.some((pattern) =>
-          s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
-          s.text?.toLowerCase() === pattern.toLowerCase()
-        )
-      );
-
-      const sampleSuggestions = Array.isArray(suggestions)
-        ? suggestions.slice(0, 3).map((s) => s.text)
-        : [];
-
-      logger.info('Raw suggestions from Claude', {
-        isPlaceholder,
-        suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
-        hasCategory: suggestions?.[0]?.category !== undefined,
-        phraseRole,
-        videoConstraintMode: videoConstraints?.mode || null,
-        highlightWordCount,
-        zeroShotActive: true,
-        hasPoisonousText,
-        sampleSuggestions,
-      });
-
-      if (hasPoisonousText && Array.isArray(suggestions)) {
-        logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
-          highlightedText,
-          highlightedCategory,
-          suggestions: suggestions.map((s) => s.text),
-        });
-      }
+      const suggestions = generationResult.suggestions;
+      metrics.groqCall = generationResult.groqCallTime;
+      metrics.usedContrastiveDecoding = generationResult.usedContrastiveDecoding;
 
       const postStart = Date.now();
-      const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions ?? []);
-
-      const alignmentResult = this._applyCategoryAlignment(
-        diverseSuggestions,
-        highlightedCategory ?? null,
+      const processingResult = await this._processSuggestions({
+        suggestions: suggestions ?? [],
+        highlightedCategory: highlightedCategory ?? null,
         highlightedText,
-        highlightedCategoryConfidence ?? null
-      );
-
-      const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
-        alignmentResult.suggestions,
-        {
-          highlightedText,
-          isPlaceholder,
-          isVideoPrompt,
-          ...(videoConstraints ? { videoConstraints } : {}),
-        }
-      );
-
-      const fallbackParams: {
-        sanitizedSuggestions: Suggestion[];
-        isVideoPrompt: boolean;
-        isPlaceholder: boolean;
-        videoConstraints?: VideoConstraints;
-        regenerationDetails: {
-          highlightWordCount?: number;
-          phraseRole?: string;
-          highlightedText?: string;
-          highlightedCategory?: string;
-          highlightedCategoryConfidence?: number;
-        };
-        requestParams: PromptBuildParams;
-        aiService: AIService;
-        schema: Record<string, unknown>;
-        temperature: number;
-      } = {
-        sanitizedSuggestions,
-        isVideoPrompt,
+        highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
         isPlaceholder,
-        regenerationDetails: {
-          highlightWordCount,
-        },
-        requestParams: {
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          originalUserPrompt,
-          isVideoPrompt,
-          isPlaceholder,
-          brainstormContext: brainstormContext ?? null,
-          phraseRole,
-          highlightWordCount,
-          highlightedCategory: highlightedCategory ?? null,
-          highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
-          editHistory,
-          modelTarget,
-          promptSection,
-        },
-        aiService: this.ai,
+        isVideoPrompt,
+        videoConstraints,
+        phraseRole,
+        highlightWordCount,
         schema: schema as Record<string, unknown>,
         temperature,
-      };
-      if (videoConstraints) fallbackParams.videoConstraints = videoConstraints;
-      if (phraseRole) fallbackParams.regenerationDetails.phraseRole = phraseRole;
-      if (highlightedText) fallbackParams.regenerationDetails.highlightedText = highlightedText;
-      if (highlightedCategory) fallbackParams.regenerationDetails.highlightedCategory = highlightedCategory;
-      if (highlightedCategoryConfidence !== null && highlightedCategoryConfidence !== undefined) {
-        fallbackParams.regenerationDetails.highlightedCategoryConfidence = highlightedCategoryConfidence;
-      }
-      
-      const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration(fallbackParams);
-
-      let suggestionsToUse = fallbackResult.suggestions;
-      const activeConstraints = fallbackResult.constraints;
-      let usedFallback = fallbackResult.usedFallback;
-      const fallbackSourceCount = fallbackResult.sourceCount;
-
-      if (suggestionsToUse.length === 0) {
-        const descriptorResult = this.suggestionProcessor.applyDescriptorFallbacks(
-          suggestionsToUse,
-          highlightedText
-        );
-        suggestionsToUse = descriptorResult.suggestions;
-        if (descriptorResult.usedFallback) {
-          usedFallback = true;
-        }
-      }
-
-      logger.info('Processing suggestions for categorization', {
-        isPlaceholder,
-        hasCategoryField: suggestionsToUse[0]?.category !== undefined,
-        totalSuggestions: suggestionsToUse.length,
-        sanitizedCount: sanitizedSuggestions.length,
-        appliedConstraintMode: activeConstraints?.mode || null,
-        usedFallback,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        brainstormContext: brainstormContext ?? null,
+        editHistory,
+        modelTarget,
+        promptSection,
       });
 
-      const groupedSuggestions = this.suggestionProcessor.groupSuggestions(
-        suggestionsToUse,
-        isPlaceholder
-      );
-
-      const buildResultParams: {
-        groupedSuggestions: Suggestion[] | GroupedSuggestions[];
-        isPlaceholder: boolean;
-        phraseRole?: string | null;
-        activeConstraints?: { mode?: string } | null;
-        alignmentFallbackApplied?: boolean;
-        usedFallback?: boolean;
-        hasNoSuggestions?: boolean;
-      } = {
-        groupedSuggestions,
+      const result = this._buildEnhancementResult({
+        suggestionsToUse: processingResult.suggestionsToUse,
+        activeConstraints: processingResult.activeConstraints,
+        alignmentFallbackApplied: processingResult.alignmentFallbackApplied,
+        usedFallback: processingResult.usedFallback,
         isPlaceholder,
-      };
-      if (phraseRole !== null) buildResultParams.phraseRole = phraseRole;
-      if (activeConstraints) buildResultParams.activeConstraints = { mode: activeConstraints.mode };
-      if (alignmentResult.fallbackApplied) buildResultParams.alignmentFallbackApplied = true;
-      if (usedFallback) buildResultParams.usedFallback = true;
-      if (suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
-      
-      const result = this.suggestionProcessor.buildResult(buildResultParams);
+        phraseRole,
+      });
 
       metrics.postProcessing = Date.now() - postStart;
 
+      // Note: sanitizedSuggestions not available here after extraction, using suggestionsToUse instead
       this.suggestionProcessor.logResult(
         result,
-        sanitizedSuggestions,
-        usedFallback,
-        fallbackSourceCount,
+        processingResult.suggestionsToUse,
+        processingResult.usedFallback,
+        processingResult.fallbackSourceCount,
         suggestions ?? []
       );
 
@@ -466,20 +290,20 @@ export class EnhancementService {
       });
 
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = 'pdf_router';
-      this._logMetrics(metrics, {
+      metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+      this.metricsLogger.logMetrics(metrics, {
         highlightedCategory: highlightedCategory ?? null,
         isVideoPrompt,
         modelTarget,
         promptSection,
       });
-      this._checkLatencyThreshold(metrics);
+      this.metricsLogger.checkLatency(metrics);
 
       return result;
     } catch (error) {
       metrics.total = Date.now() - startTotal;
-      metrics.promptMode = 'pdf_router';
-      this._logMetrics(
+      metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+      this.metricsLogger.logMetrics(
         metrics,
         {
           highlightedCategory: highlightedCategory ?? null,
@@ -537,12 +361,32 @@ export class EnhancementService {
       precision: 'medium',
     });
 
+    // Create adapter for StructuredOutputEnforcer compatibility
+    // StructuredOutputEnforcer._callAIService adds systemPrompt to options
+    const aiAdapter = {
+      execute: async (operation: string, options: Record<string, unknown>) => {
+        const executeParams: Parameters<AIService['execute']>[1] = {
+          systemPrompt: options.systemPrompt as string,
+        };
+        if (options.userMessage) executeParams.userMessage = options.userMessage as string;
+        if (options.temperature !== undefined) executeParams.temperature = options.temperature as number;
+        if (options.maxTokens !== undefined) executeParams.maxTokens = options.maxTokens as number;
+        
+        const response = await this.ai.execute(operation, executeParams);
+        // Convert AIResponse to AIServiceResponse format
+        return {
+          text: response.text,
+          content: [{ text: response.text }],
+        };
+      },
+    };
+    
     const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-      this.ai,
+      aiAdapter,
       systemPrompt,
       {
         operation: 'custom_suggestions',
-        schema,
+        schema: schema as { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] } } | null,
         isArray: true,
         maxTokens: 2048,
         maxRetries: 2,
@@ -573,6 +417,371 @@ export class EnhancementService {
    */
   async transferStyle(text: string, targetStyle: string): Promise<string> {
     return this.styleTransfer.transferStyle(text, targetStyle);
+  }
+
+  /**
+   * Detect video context and extract video-specific information
+   * @private
+   */
+  private _detectVideoContext(params: {
+    fullPrompt: string;
+    highlightedText: string;
+    contextBefore: string;
+    contextAfter: string;
+    highlightedCategory: string | null;
+    highlightedCategoryConfidence: number | null | undefined;
+    metrics: EnhancementMetrics;
+  }): {
+    isVideoPrompt: boolean;
+    modelTarget: string | null;
+    promptSection: string | null;
+    highlightWordCount: number;
+    phraseRole: string | null;
+    videoConstraints: VideoConstraints | null;
+  } {
+    const isVideoPrompt = this.videoService.isVideoPrompt(params.fullPrompt);
+    const highlightWordCount = this.videoService.countWords(params.highlightedText);
+    const phraseRole = isVideoPrompt
+      ? this.videoService.detectVideoPhraseRole(
+          params.highlightedText,
+          params.contextBefore,
+          params.contextAfter,
+          params.highlightedCategory
+        )
+      : null;
+    const videoConstraints = isVideoPrompt
+      ? this.videoService.getVideoReplacementConstraints({
+          highlightWordCount,
+          phraseRole,
+          highlightedText: params.highlightedText,
+          highlightedCategory: params.highlightedCategory,
+          highlightedCategoryConfidence: params.highlightedCategoryConfidence ?? null,
+        })
+      : null;
+
+    let modelTarget: string | null = null;
+    let promptSection: string | null = null;
+
+    if (isVideoPrompt) {
+      const modelStart = Date.now();
+      modelTarget = this.videoService.detectTargetModel(params.fullPrompt);
+      params.metrics.modelDetection = Date.now() - modelStart;
+
+      const sectionStart = Date.now();
+      promptSection = this.videoService.detectPromptSection(
+        params.highlightedText,
+        params.fullPrompt,
+        params.contextBefore
+      );
+      params.metrics.sectionDetection = Date.now() - sectionStart;
+    }
+
+    logger.debug('Model and section detection', {
+      isVideoPrompt,
+      modelTarget: modelTarget || 'none detected',
+      promptSection: promptSection || 'main_prompt',
+      modelDetectionTime: params.metrics.modelDetection,
+      sectionDetectionTime: params.metrics.sectionDetection,
+    });
+
+    return {
+      isVideoPrompt,
+      modelTarget,
+      promptSection,
+      highlightWordCount,
+      phraseRole,
+      videoConstraints,
+    };
+  }
+
+  /**
+   * Generate suggestions using contrastive decoding or standard generation
+   * @private
+   */
+  private async _generateSuggestions(params: {
+    systemPrompt: string;
+    schema: Record<string, unknown>;
+    isVideoPrompt: boolean;
+    isPlaceholder: boolean;
+    highlightedText: string;
+    temperature: number;
+    metrics: EnhancementMetrics;
+  }): Promise<{
+    suggestions: Suggestion[] | null;
+    groqCallTime: number;
+    usedContrastiveDecoding: boolean;
+  }> {
+    const groqStart = Date.now();
+    
+    // PDF Enhancement: Try contrastive decoding for enhanced diversity
+    let suggestions: Suggestion[] | null = await this.contrastiveDiversity.generateWithContrastiveDecoding({
+      systemPrompt: params.systemPrompt,
+      schema: params.schema,
+      isVideoPrompt: params.isVideoPrompt,
+      isPlaceholder: params.isPlaceholder,
+      highlightedText: params.highlightedText,
+    });
+    
+    let usedContrastiveDecoding = false;
+    
+    // Fallback to standard generation if contrastive decoding not used/failed
+    if (!suggestions) {
+      // Create adapter for StructuredOutputEnforcer compatibility
+      const aiAdapter = {
+        execute: async (operation: string, options: Record<string, unknown>) => {
+          const response = await this.ai.execute(operation, {
+            systemPrompt: options.systemPrompt as string,
+            ...options,
+          } as Parameters<AIService['execute']>[1]);
+          // Convert AIResponse to AIServiceResponse format
+          return {
+            text: response.text,
+            content: [{ text: response.text }],
+          };
+        },
+      };
+      
+      suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+        aiAdapter,
+        params.systemPrompt,
+        {
+          schema: params.schema as { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] } } | null,
+          isArray: true,
+          maxTokens: 2048,
+          maxRetries: 2,
+          temperature: params.temperature,
+          operation: 'enhance_suggestions',
+        }
+      );
+    } else {
+      usedContrastiveDecoding = true;
+      
+      // Calculate and log diversity metrics
+      const diversityMetrics = this.contrastiveDiversity.calculateDiversityMetrics(suggestions);
+      logger.info('Contrastive decoding diversity metrics', {
+        avgSimilarity: diversityMetrics.avgSimilarity,
+        minSimilarity: diversityMetrics.minSimilarity,
+        maxSimilarity: diversityMetrics.maxSimilarity,
+        pairCount: diversityMetrics.pairCount,
+      });
+    }
+
+    const groqCallTime = Date.now() - groqStart;
+
+    // Check for poisonous patterns
+    const poisonousPatterns = POISONOUS_PATTERNS;
+    const hasPoisonousText = Array.isArray(suggestions) && suggestions.some((s) =>
+      poisonousPatterns.some((pattern) =>
+        s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
+        s.text?.toLowerCase() === pattern.toLowerCase()
+      )
+    );
+
+    const sampleSuggestions = Array.isArray(suggestions)
+      ? suggestions.slice(0, 3).map((s) => s.text)
+      : [];
+
+      logger.info('Raw suggestions from Claude', {
+      isPlaceholder: params.isPlaceholder,
+      suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
+      hasCategory: suggestions?.[0]?.category !== undefined,
+      zeroShotActive: true,
+      hasPoisonousText,
+      sampleSuggestions,
+    });
+
+    if (hasPoisonousText && Array.isArray(suggestions)) {
+      logger.warn('ALERT: Poisonous example patterns detected in zero-shot suggestions!', {
+        highlightedText: params.highlightedText,
+        suggestions: suggestions.map((s) => s.text),
+      });
+    }
+
+    return {
+      suggestions,
+      groqCallTime,
+      usedContrastiveDecoding,
+    };
+  }
+
+  /**
+   * Process suggestions through diversity, alignment, sanitization, and fallback
+   * @private
+   */
+  private async _processSuggestions(params: {
+    suggestions: Suggestion[];
+    highlightedCategory: string | null;
+    highlightedText: string;
+    highlightedCategoryConfidence: number | null | undefined;
+    isPlaceholder: boolean;
+    isVideoPrompt: boolean;
+    videoConstraints: VideoConstraints | null;
+    phraseRole: string | null;
+    highlightWordCount: number;
+    schema: Record<string, unknown>;
+    temperature: number;
+    contextBefore: string;
+    contextAfter: string;
+    fullPrompt: string;
+    originalUserPrompt: string;
+    brainstormContext: BrainstormContext | null;
+    editHistory: Array<{ original?: string; category?: string }>;
+    modelTarget: string | null;
+    promptSection: string | null;
+  }): Promise<{
+    suggestionsToUse: Suggestion[];
+    activeConstraints: VideoConstraints | undefined;
+    alignmentFallbackApplied: boolean;
+    usedFallback: boolean;
+    fallbackSourceCount: number;
+  }> {
+    const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(params.suggestions);
+
+    const alignmentResult = this._applyCategoryAlignment(
+      diverseSuggestions,
+      params.highlightedCategory,
+      params.highlightedText,
+      params.highlightedCategoryConfidence ?? null
+    );
+
+    const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
+      alignmentResult.suggestions,
+      {
+        highlightedText: params.highlightedText,
+        isPlaceholder: params.isPlaceholder,
+        isVideoPrompt: params.isVideoPrompt,
+        ...(params.videoConstraints ? { videoConstraints: params.videoConstraints } : {}),
+      }
+    );
+
+    const fallbackParams: {
+      sanitizedSuggestions: Suggestion[];
+      isVideoPrompt: boolean;
+      isPlaceholder: boolean;
+      videoConstraints?: VideoConstraints;
+      regenerationDetails: {
+        highlightWordCount?: number;
+        phraseRole?: string;
+        highlightedText?: string;
+        highlightedCategory?: string;
+        highlightedCategoryConfidence?: number;
+      };
+      requestParams: PromptBuildParams;
+      aiService: AIService;
+      schema: Record<string, unknown>;
+      temperature: number;
+    } = {
+      sanitizedSuggestions,
+      isVideoPrompt: params.isVideoPrompt,
+      isPlaceholder: params.isPlaceholder,
+      regenerationDetails: {
+        highlightWordCount: params.highlightWordCount,
+      },
+      requestParams: {
+        highlightedText: params.highlightedText,
+        contextBefore: params.contextBefore,
+        contextAfter: params.contextAfter,
+        fullPrompt: params.fullPrompt,
+        originalUserPrompt: params.originalUserPrompt,
+        isVideoPrompt: params.isVideoPrompt,
+        isPlaceholder: params.isPlaceholder,
+        brainstormContext: params.brainstormContext,
+        phraseRole: params.phraseRole,
+        highlightWordCount: params.highlightWordCount,
+        highlightedCategory: params.highlightedCategory,
+        highlightedCategoryConfidence: params.highlightedCategoryConfidence ?? null,
+        editHistory: params.editHistory,
+        modelTarget: params.modelTarget,
+        promptSection: params.promptSection,
+      },
+      aiService: this.ai,
+      schema: params.schema,
+      temperature: params.temperature,
+    };
+    if (params.videoConstraints) fallbackParams.videoConstraints = params.videoConstraints;
+    if (params.phraseRole) fallbackParams.regenerationDetails.phraseRole = params.phraseRole;
+    if (params.highlightedText) fallbackParams.regenerationDetails.highlightedText = params.highlightedText;
+    if (params.highlightedCategory) fallbackParams.regenerationDetails.highlightedCategory = params.highlightedCategory;
+    if (params.highlightedCategoryConfidence !== null && params.highlightedCategoryConfidence !== undefined) {
+      fallbackParams.regenerationDetails.highlightedCategoryConfidence = params.highlightedCategoryConfidence;
+    }
+    
+    const fallbackResult = await this.fallbackRegeneration.attemptFallbackRegeneration(fallbackParams);
+
+    let suggestionsToUse = fallbackResult.suggestions;
+    const activeConstraints = fallbackResult.constraints;
+    let usedFallback = fallbackResult.usedFallback;
+    const fallbackSourceCount = fallbackResult.sourceCount;
+
+    if (suggestionsToUse.length === 0) {
+      const descriptorResult = this.suggestionProcessor.applyDescriptorFallbacks(
+        suggestionsToUse,
+        params.highlightedText
+      );
+      suggestionsToUse = descriptorResult.suggestions;
+      if (descriptorResult.usedFallback) {
+        usedFallback = true;
+      }
+    }
+
+    logger.info('Processing suggestions for categorization', {
+      isPlaceholder: params.isPlaceholder,
+      hasCategoryField: suggestionsToUse[0]?.category !== undefined,
+      totalSuggestions: suggestionsToUse.length,
+      sanitizedCount: sanitizedSuggestions.length,
+      appliedConstraintMode: activeConstraints?.mode || null,
+      usedFallback,
+    });
+
+    return {
+      suggestionsToUse,
+      activeConstraints,
+      alignmentFallbackApplied: alignmentResult.fallbackApplied,
+      usedFallback,
+      fallbackSourceCount,
+    };
+  }
+
+  /**
+   * Build final enhancement result from processed suggestions
+   * @private
+   */
+  private _buildEnhancementResult(params: {
+    suggestionsToUse: Suggestion[];
+    activeConstraints: VideoConstraints | undefined;
+    alignmentFallbackApplied: boolean;
+    usedFallback: boolean;
+    isPlaceholder: boolean;
+    phraseRole: string | null;
+  }): EnhancementResult {
+    const groupedSuggestions = this.suggestionProcessor.groupSuggestions(
+      params.suggestionsToUse,
+      params.isPlaceholder
+    );
+
+    const buildResultParams: {
+      groupedSuggestions: Suggestion[] | GroupedSuggestions[];
+      isPlaceholder: boolean;
+      phraseRole?: string | null;
+      activeConstraints?: { mode?: string } | null;
+      alignmentFallbackApplied?: boolean;
+      usedFallback?: boolean;
+      hasNoSuggestions?: boolean;
+    } = {
+      groupedSuggestions,
+      isPlaceholder: params.isPlaceholder,
+    };
+    if (params.phraseRole !== null) buildResultParams.phraseRole = params.phraseRole;
+    if (params.activeConstraints && params.activeConstraints.mode) {
+      buildResultParams.activeConstraints = { mode: params.activeConstraints.mode };
+    } else if (params.activeConstraints) {
+      buildResultParams.activeConstraints = null;
+    }
+    if (params.alignmentFallbackApplied) buildResultParams.alignmentFallbackApplied = true;
+    if (params.usedFallback) buildResultParams.usedFallback = true;
+    if (params.suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
+    
+    return this.suggestionProcessor.buildResult(buildResultParams);
   }
 
   /**
@@ -654,99 +863,5 @@ export class EnhancementService {
     return alignmentResult;
   }
 
-  /**
-   * Log metrics for enhancement request
-   * @private
-   */
-  private _logMetrics(
-    metrics: EnhancementMetrics,
-    params: {
-      highlightedCategory: string | null;
-      isVideoPrompt: boolean;
-      modelTarget: string | null;
-      promptSection: string | null;
-    },
-    error: Error | null = null
-  ): void {
-    const isDev = process.env.NODE_ENV === 'development';
-
-    // Console logging in development
-    if (isDev) {
-      console.log('\n=== Enhancement Service Performance ===');
-      console.log(`Total: ${metrics.total}ms`);
-      console.log(`Prompt Mode: ${metrics.promptMode || 'pdf_router'}`);
-      console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
-
-      if (metrics.modelDetection > 0) {
-        console.log(`Model Detection: ${metrics.modelDetection}ms`);
-      }
-      if (metrics.sectionDetection > 0) {
-        console.log(`Section Detection: ${metrics.sectionDetection}ms`);
-      }
-      if (metrics.promptBuild > 0) {
-        console.log(`Prompt Build: ${metrics.promptBuild}ms`);
-      }
-      if (metrics.groqCall > 0) {
-        console.log(`Groq Call: ${metrics.groqCall}ms`);
-      }
-      if (metrics.postProcessing > 0) {
-        console.log(`Post-Processing: ${metrics.postProcessing}ms`);
-      }
-      
-      console.log('======================================\n');
-    }
-
-    // Send to metrics service in production
-    if (this.metricsService && !isDev) {
-      this.metricsService.recordEnhancementTiming(metrics as unknown as Record<string, unknown>, {
-        category: params.highlightedCategory || 'unknown',
-        isVideo: params.isVideoPrompt,
-        modelTarget: params.modelTarget,
-        promptSection: params.promptSection,
-        promptMode: metrics.promptMode || 'pdf_router',
-        error: error?.message,
-      });
-    }
-
-    // Always log to structured logger
-    logger.info('Enhancement request completed', {
-      ...metrics,
-      category: params.highlightedCategory,
-      isVideo: params.isVideoPrompt,
-      modelTarget: params.modelTarget,
-      promptSection: params.promptSection,
-      promptMode: metrics.promptMode || 'pdf_router',
-      error: error?.message,
-    });
-  }
-
-  /**
-   * Check if latency threshold was exceeded and alert if necessary
-   * @private
-   */
-  private _checkLatencyThreshold(metrics: EnhancementMetrics): void {
-    if (metrics.total > 2000) {
-      logger.warn('Enhancement request exceeded latency threshold', {
-        total: metrics.total,
-        threshold: 2000,
-        breakdown: {
-          cacheCheck: metrics.cacheCheck,
-          modelDetection: metrics.modelDetection,
-          sectionDetection: metrics.sectionDetection,
-          promptBuild: metrics.promptBuild,
-          groq: metrics.groqCall,
-          postProcessing: metrics.postProcessing,
-        },
-      });
-
-      // Alert in production
-      if (process.env.NODE_ENV === 'production' && this.metricsService) {
-        this.metricsService.recordAlert('enhancement_latency_exceeded', {
-          total: metrics.total,
-          threshold: 2000,
-        });
-      }
-    }
-  }
 }
 

@@ -5,6 +5,7 @@
 
 import type { AIModelService } from '../../ai-model/AIModelService.js';
 import type { VideoPromptService } from '../../video-prompt-analysis/index.js';
+import type { PromptMode } from '../constants.js';
 
 /**
  * Suggestion object structure
@@ -407,7 +408,7 @@ export interface EnhancementMetrics {
   promptBuild: number;
   groqCall: number;
   postProcessing: number;
-  promptMode: string;
+  promptMode: PromptMode;
   usedContrastiveDecoding?: boolean;
 }
 
