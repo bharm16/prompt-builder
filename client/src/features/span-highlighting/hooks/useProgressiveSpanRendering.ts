@@ -1,33 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type {
+  Span,
+  UseProgressiveSpanRenderingOptions,
+  UseProgressiveSpanRenderingReturn,
+} from './types';
 
-export interface Span {
-  start: number;
-  end: number;
-  category: string;
-  confidence?: number;
-  [key: string]: unknown;
-}
-
-export interface UseProgressiveSpanRenderingOptions {
-  spans?: Span[];
-  enabled?: boolean;
-  highConfidenceDelay?: number;
-  mediumConfidenceDelay?: number;
-  lowConfidenceDelay?: number;
-  highConfidenceThreshold?: number;
-  mediumConfidenceThreshold?: number;
-}
-
-export interface UseProgressiveSpanRenderingReturn {
-  visibleSpans: Span[];
-  isRendering: boolean;
-  progress: number;
-  stats: {
-    total: number;
-    visible: number;
-    remaining: number;
-  };
-}
+// Re-export types for backward compatibility
+export type {
+  Span,
+  UseProgressiveSpanRenderingOptions,
+  UseProgressiveSpanRenderingReturn,
+} from './types';
 
 /**
  * Progressive span rendering for improved perceived performance

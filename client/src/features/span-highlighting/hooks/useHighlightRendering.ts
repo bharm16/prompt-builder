@@ -15,7 +15,7 @@
  * This eliminates flickering and improves performance with 50+ highlights.
  */
 
-import { useEffect, useRef, RefObject } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import {
   buildTextNodeIndex,
@@ -30,60 +30,21 @@ import {
   addToCoverage,
 } from '../utils/index.ts';
 import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES } from '../config/index.ts';
+import type {
+  HighlightSpan,
+  ParseResult,
+  TextNodeIndex,
+  SpanEntry,
+  HighlightState,
+  UseHighlightRenderingOptions,
+} from './types';
 
-interface TextNodeIndex {
-  nodes: Array<{ node: Node; start: number; end: number }>;
-  length: number;
-}
-
-export interface HighlightSpan {
-  id?: string;
-  start: number;
-  end: number;
-  displayStart?: number;
-  displayEnd?: number;
-  text?: string;
-  quote?: string;
-  displayQuote?: string;
-  category?: string;
-  role?: string;
-  confidence?: number;
-  source?: string;
-  startGrapheme?: number;
-  endGrapheme?: number;
-  validatorPass?: boolean;
-  idempotencyKey?: string;
-  leftCtx?: string;
-  rightCtx?: string;
-  displayLeftCtx?: string;
-  displayRightCtx?: string;
-  [key: string]: unknown;
-}
-
-export interface ParseResult {
-  spans?: HighlightSpan[];
-  displayText?: string;
-  [key: string]: unknown;
-}
-
-interface SpanEntry {
-  span: HighlightSpan;
-  wrappers: HTMLElement[];
-}
-
-interface HighlightState {
-  spanMap: Map<string, SpanEntry>;
-  nodeIndex: TextNodeIndex | null;
-  fingerprint: string | null;
-}
-
-export interface UseHighlightRenderingOptions {
-  editorRef: RefObject<HTMLElement>;
-  parseResult?: ParseResult | null;
-  enabled?: boolean;
-  fingerprint?: string | null;
-  text?: string | null;
-}
+// Re-export types for backward compatibility
+export type {
+  HighlightSpan,
+  ParseResult,
+  UseHighlightRenderingOptions,
+} from './types';
 
 /**
  * Custom hook for rendering highlights in the editor
@@ -94,7 +55,7 @@ export function useHighlightRendering({
   enabled,
   fingerprint,
   text,
-}: UseHighlightRenderingOptions): RefObject<HighlightState> {
+}: UseHighlightRenderingOptions): React.RefObject<HighlightState> {
   const highlightStateRef = useRef<HighlightState>({
     spanMap: new Map(), // Maps span.id -> { span, wrappers: [] }
     nodeIndex: null,

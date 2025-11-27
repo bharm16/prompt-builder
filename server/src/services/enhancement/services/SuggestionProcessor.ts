@@ -1,22 +1,28 @@
 import { logger } from '@infrastructure/Logger';
 import { detectDescriptorCategory, getCategoryFallbacks } from '../../video-concept/config/descriptorCategories.js';
+import type { Suggestion, GroupedSuggestions, EnhancementResult, DescriptorFallbackResult } from './types.js';
+
+/**
+ * Interface for validation service
+ */
+interface ValidationService {
+  groupSuggestionsByCategory(suggestions: Suggestion[]): GroupedSuggestions[];
+}
 
 /**
  * Service responsible for processing and finalizing suggestions
  * Handles descriptor fallbacks, grouping, and result formatting
  */
 export class SuggestionProcessor {
-  constructor(validationService) {
-    this.validationService = validationService;
-  }
+  constructor(private readonly validationService: ValidationService) {}
 
   /**
    * Apply descriptor fallbacks if needed
-   * @param {Array} suggestions - Current suggestions
-   * @param {string} highlightedText - Highlighted text
-   * @returns {Object} Processed suggestions with metadata
+   * @param suggestions - Current suggestions
+   * @param highlightedText - Highlighted text
+   * @returns Processed suggestions with metadata
    */
-  applyDescriptorFallbacks(suggestions, highlightedText) {
+  applyDescriptorFallbacks(suggestions: Suggestion[], highlightedText: string): DescriptorFallbackResult {
     if (suggestions.length > 0) {
       return {
         suggestions,
@@ -53,7 +59,7 @@ export class SuggestionProcessor {
       });
       
       return {
-        suggestions: descriptorFallbacks,
+        suggestions: descriptorFallbacks as Suggestion[],
         usedFallback: true,
         isDescriptorPhrase,
         descriptorCategory: descriptorDetection.category,
@@ -69,11 +75,11 @@ export class SuggestionProcessor {
 
   /**
    * Group suggestions by category if applicable
-   * @param {Array} suggestions - Suggestions to group
-   * @param {boolean} isPlaceholder - Whether suggestions are for placeholder
-   * @returns {Array} Grouped or ungrouped suggestions
+   * @param suggestions - Suggestions to group
+   * @param isPlaceholder - Whether suggestions are for placeholder
+   * @returns Grouped or ungrouped suggestions
    */
-  groupSuggestions(suggestions, isPlaceholder) {
+  groupSuggestions(suggestions: Suggestion[], isPlaceholder: boolean): Suggestion[] | GroupedSuggestions[] {
     if (isPlaceholder && suggestions[0]?.category) {
       return this.validationService.groupSuggestionsByCategory(suggestions);
     }
@@ -82,8 +88,8 @@ export class SuggestionProcessor {
 
   /**
    * Build final result object
-   * @param {Object} params - Result parameters
-   * @returns {Object} Final result object
+   * @param params - Result parameters
+   * @returns Final result object
    */
   buildResult({
     groupedSuggestions,
@@ -93,18 +99,26 @@ export class SuggestionProcessor {
     alignmentFallbackApplied,
     usedFallback,
     hasNoSuggestions,
-  }) {
-    const result = {
+  }: {
+    groupedSuggestions: Suggestion[] | GroupedSuggestions[];
+    isPlaceholder: boolean;
+    phraseRole?: string | null;
+    activeConstraints?: { mode?: string } | null;
+    alignmentFallbackApplied?: boolean;
+    usedFallback?: boolean;
+    hasNoSuggestions?: boolean;
+  }): EnhancementResult {
+    const result: EnhancementResult = {
       suggestions: groupedSuggestions,
       isPlaceholder,
-      hasCategories: isPlaceholder && groupedSuggestions[0]?.category ? true : false,
+      hasCategories: isPlaceholder && Array.isArray(groupedSuggestions) && groupedSuggestions[0] && 'suggestions' in groupedSuggestions[0] ? true : false,
       phraseRole: phraseRole || null,
       appliedConstraintMode: activeConstraints?.mode || null,
-      fallbackApplied: alignmentFallbackApplied || usedFallback,
+      fallbackApplied: alignmentFallbackApplied || usedFallback || false,
     };
 
     if (activeConstraints) {
-      result.appliedVideoConstraints = activeConstraints;
+      result.appliedVideoConstraints = activeConstraints as { mode?: string; [key: string]: unknown };
     }
 
     if (hasNoSuggestions) {
@@ -117,25 +131,32 @@ export class SuggestionProcessor {
 
   /**
    * Log result metadata
-   * @param {Object} result - Result object
-   * @param {Array} sanitizedSuggestions - Original sanitized suggestions
-   * @param {boolean} usedFallback - Whether fallback was used
-   * @param {number} fallbackSourceCount - Count from fallback source
-   * @param {Array} baseSuggestions - Base suggestions array
+   * @param result - Result object
+   * @param sanitizedSuggestions - Original sanitized suggestions
+   * @param usedFallback - Whether fallback was used
+   * @param fallbackSourceCount - Count from fallback source
+   * @param baseSuggestions - Base suggestions array
    */
-  logResult(result, sanitizedSuggestions, usedFallback, fallbackSourceCount, baseSuggestions) {
+  logResult(
+    result: EnhancementResult,
+    sanitizedSuggestions: Suggestion[],
+    usedFallback: boolean,
+    fallbackSourceCount: number,
+    baseSuggestions: Suggestion[]
+  ): void {
     const groupedSuggestions = result.suggestions;
 
     logger.info('Final result structure', {
       isGrouped:
         Array.isArray(groupedSuggestions) &&
-        groupedSuggestions[0]?.suggestions !== undefined,
-      categoriesCount: groupedSuggestions[0]?.suggestions ? groupedSuggestions.length : 0,
+        groupedSuggestions[0] &&
+        'suggestions' in groupedSuggestions[0],
+      categoriesCount: Array.isArray(groupedSuggestions) && groupedSuggestions[0] && 'suggestions' in groupedSuggestions[0] ? groupedSuggestions.length : 0,
       hasCategories: result.hasCategories,
       appliedConstraintMode: result.appliedConstraintMode || null,
     });
 
-    let baseSuggestionCount;
+    let baseSuggestionCount: number;
     if (usedFallback) {
       baseSuggestionCount = fallbackSourceCount;
     } else if (Array.isArray(baseSuggestions)) {

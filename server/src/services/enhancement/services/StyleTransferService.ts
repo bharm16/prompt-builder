@@ -1,22 +1,21 @@
 import { logger } from '@infrastructure/Logger';
 import { STYLE_DEFINITIONS, DEFAULT_STYLE } from '../config/styleDefinitions.js';
+import type { AIService } from './types.js';
 
 /**
  * Service responsible for transferring text between different writing styles
  */
 export class StyleTransferService {
-  constructor(aiService) {
-    this.ai = aiService;
-  }
+  constructor(private readonly ai: AIService) {}
 
   /**
    * Transfer text from one style to another
-   * @param {string} text - Text to transform
-   * @param {string} targetStyle - Target style (technical, creative, academic, casual, formal)
-   * @returns {Promise<string>} Transformed text
+   * @param text - Text to transform
+   * @param targetStyle - Target style (technical, creative, academic, casual, formal)
+   * @returns Transformed text
    */
-  async transferStyle(text, targetStyle) {
-    const styleConfig = STYLE_DEFINITIONS[targetStyle] || STYLE_DEFINITIONS[DEFAULT_STYLE];
+  async transferStyle(text: string, targetStyle: string): Promise<string> {
+    const styleConfig = STYLE_DEFINITIONS[targetStyle as keyof typeof STYLE_DEFINITIONS] || STYLE_DEFINITIONS[DEFAULT_STYLE as keyof typeof STYLE_DEFINITIONS];
 
     const styleTransferPrompt = this._buildStyleTransferPrompt(text, targetStyle, styleConfig);
 
@@ -27,7 +26,7 @@ export class StyleTransferService {
         temperature: 0.7,
       });
 
-      return (response.text || response.content?.[0]?.text || '').trim();
+      return (response.text || (response as { content?: Array<{ text?: string }> }).content?.[0]?.text || '').trim();
     } catch (error) {
       logger.warn('Failed to transfer style', { error });
       return text; // Return original on error
@@ -38,7 +37,7 @@ export class StyleTransferService {
    * Build style transfer prompt
    * @private
    */
-  _buildStyleTransferPrompt(text, targetStyle, styleConfig) {
+  private _buildStyleTransferPrompt(text: string, targetStyle: string, styleConfig: typeof STYLE_DEFINITIONS[keyof typeof STYLE_DEFINITIONS]): string {
     return `Transform the following text to ${targetStyle} style while preserving its core meaning and information.
 
 Original text: "${text}"

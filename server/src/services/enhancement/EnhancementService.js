@@ -3,10 +3,10 @@ import { cacheService } from '../cache/CacheService.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
-import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
-import { SuggestionProcessor } from './services/SuggestionProcessor.js';
-import { StyleTransferService } from './services/StyleTransferService.js';
-import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
+import { FallbackRegenerationService } from './services/FallbackRegenerationService.ts';
+import { SuggestionProcessor } from './services/SuggestionProcessor.ts';
+import { StyleTransferService } from './services/StyleTransferService.ts';
+import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.ts';
 
 /**
  * EnhancementService - Main Orchestrator

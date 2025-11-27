@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger';
+import type { Suggestion, AIService } from './types.js';
 
 /**
  * SuggestionDiversityEnforcer
@@ -9,16 +10,14 @@ import { logger } from '@infrastructure/Logger';
  * Single Responsibility: Suggestion diversity and deduplication
  */
 export class SuggestionDiversityEnforcer {
-  constructor(aiService) {
-    this.ai = aiService;
-  }
+  constructor(private readonly ai: AIService) {}
 
   /**
    * Ensure diverse suggestions by replacing too-similar ones
-   * @param {Array} suggestions - Array of suggestion objects
-   * @returns {Promise<Array>} Diverse suggestions
+   * @param suggestions - Array of suggestion objects
+   * @returns Diverse suggestions
    */
-  async ensureDiverseSuggestions(suggestions) {
+  async ensureDiverseSuggestions(suggestions: Suggestion[]): Promise<Suggestion[]> {
     if (!suggestions || suggestions.length <= 1) return suggestions;
 
     // Special handling for categorized suggestions
@@ -27,7 +26,7 @@ export class SuggestionDiversityEnforcer {
     }
 
     // Calculate similarity matrix
-    const similarities = [];
+    const similarities: Array<{ i: number; j: number; similarity: number }> = [];
     for (let i = 0; i < suggestions.length; i++) {
       for (let j = i + 1; j < suggestions.length; j++) {
         const sim = await this.calculateSimilarity(
@@ -47,7 +46,7 @@ export class SuggestionDiversityEnforcer {
     }
 
     // Mark indices that need replacement
-    const toReplace = new Set();
+    const toReplace = new Set<number>();
     tooSimilar.forEach(pair => {
       // Keep the first, replace the second
       toReplace.add(pair.j);
@@ -73,12 +72,12 @@ export class SuggestionDiversityEnforcer {
   /**
    * Ensure diversity across categories
    * Prevents any single category from dominating suggestions
-   * @param {Array} suggestions - Array of categorized suggestions
-   * @returns {Array} Balanced suggestions
+   * @param suggestions - Array of categorized suggestions
+   * @returns Balanced suggestions
    */
-  ensureCategoricalDiversity(suggestions) {
+  ensureCategoricalDiversity(suggestions: Suggestion[]): Suggestion[] {
     // Group by category
-    const categoryCounts = {};
+    const categoryCounts: Record<string, number> = {};
     suggestions.forEach(s => {
       const cat = s.category || 'Other';
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
@@ -102,8 +101,8 @@ export class SuggestionDiversityEnforcer {
     }
 
     // Rebalance by limiting each category
-    const balanced = [];
-    const categoryLimits = {};
+    const balanced: Suggestion[] = [];
+    const categoryLimits: Record<string, number> = {};
 
     // First pass: take up to max from each category
     suggestions.forEach(suggestion => {
@@ -130,11 +129,11 @@ export class SuggestionDiversityEnforcer {
 
   /**
    * Calculate similarity between two texts using Jaccard similarity
-   * @param {string} text1 - First text
-   * @param {string} text2 - Second text
-   * @returns {Promise<number>} Similarity score (0-1)
+   * @param text1 - First text
+   * @param text2 - Second text
+   * @returns Similarity score (0-1)
    */
-  async calculateSimilarity(text1, text2) {
+  async calculateSimilarity(text1: string, text2: string): Promise<number> {
     // Simple character-level similarity (Jaccard)
     const set1 = new Set(text1.toLowerCase().split(/\s+/));
     const set2 = new Set(text2.toLowerCase().split(/\s+/));
@@ -154,11 +153,11 @@ export class SuggestionDiversityEnforcer {
   /**
    * Generate a diverse alternative to replace a similar suggestion
    * Uses LLM to create a meaningfully different alternative
-   * @param {Array} suggestions - All suggestions
-   * @param {number} indexToReplace - Index of suggestion to replace
-   * @returns {Promise<Object>} New diverse suggestion
+   * @param suggestions - All suggestions
+   * @param indexToReplace - Index of suggestion to replace
+   * @returns New diverse suggestion
    */
-  async generateDiverseAlternative(suggestions, indexToReplace) {
+  async generateDiverseAlternative(suggestions: Suggestion[], indexToReplace: number): Promise<Suggestion> {
     const original = suggestions[indexToReplace];
     const otherSuggestions = suggestions.filter((_, i) => i !== indexToReplace);
 
@@ -185,8 +184,9 @@ Provide a JSON object with the new suggestion:
         temperature: 0.9, // Higher temperature for diversity
       });
 
-      const responseText = response.text || (response.content?.[0]?.text || '');
-      const alternative = JSON.parse(responseText);
+      const responseText = (response as { text?: string; content?: Array<{ text?: string }> }).text || 
+        ((response as { content?: Array<{ text?: string }> }).content?.[0]?.text || '');
+      const alternative = JSON.parse(responseText) as Suggestion;
       return alternative;
     } catch (error) {
       logger.warn('Failed to generate diverse alternative', { error });
@@ -198,3 +198,4 @@ Provide a JSON object with the new suggestion:
     }
   }
 }
+

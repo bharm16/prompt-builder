@@ -17,3 +17,6 @@ export { useHighlightFingerprint } from './useHighlightFingerprint';
 export { useHighlightSourceSelection } from './useHighlightSourceSelection';
 export { useProgressiveSpanRendering } from './useProgressiveSpanRendering';
 
+// Types
+export type * from './types';
+

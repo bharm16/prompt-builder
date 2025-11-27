@@ -1,4 +1,5 @@
 import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
+import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
 
 /**
  * SuggestionValidationService
@@ -9,26 +10,24 @@ import { validateAgainstVideoTemplate, detectSubcategory } from '../config/Categ
  * Single Responsibility: Suggestion validation and sanitization
  */
 export class SuggestionValidationService {
-  constructor(videoService) {
-    this.videoService = videoService;
-  }
+  constructor(private readonly videoService: VideoService) {}
 
   /**
    * Sanitize suggestions to ensure they are valid drop-in replacements
-   * @param {Array} suggestions - Raw suggestions from Claude
-   * @param {Object} context - Context for validation
-   * @returns {Array} Sanitized suggestions
+   * @param suggestions - Raw suggestions from Claude
+   * @param context - Context for validation
+   * @returns Sanitized suggestions
    */
   sanitizeSuggestions(
-    suggestions,
-    { highlightedText, isPlaceholder, isVideoPrompt, videoConstraints }
-  ) {
+    suggestions: Suggestion[] | string[],
+    context: SanitizationContext
+  ): Suggestion[] {
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
       return [];
     }
 
-    const sanitized = [];
-    const normalizedHighlight = highlightedText?.trim().toLowerCase();
+    const sanitized: Suggestion[] = [];
+    const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
     const disallowedTemplatePatterns = [
       /\bmain prompt\b/i,
       /\btechnical specs?\b/i,
@@ -59,7 +58,7 @@ export class SuggestionValidationService {
         return;
       }
 
-      const suggestionObj =
+      const suggestionObj: Suggestion =
         typeof suggestion === 'string'
           ? { text: suggestion, explanation: '' }
           : { ...suggestion };
@@ -92,13 +91,13 @@ export class SuggestionValidationService {
         return;
       }
 
-      if (isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
+      if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
         return; // violates One Clip, One Action guidance
       }
 
       const wordCount = this.videoService.countWords(text);
 
-      if (isPlaceholder) {
+      if (context.isPlaceholder) {
         if (wordCount === 0 || wordCount > 4) {
           return;
         }
@@ -106,21 +105,21 @@ export class SuggestionValidationService {
         if (/[.!?]/.test(text)) {
           return;
         }
-      } else if (isVideoPrompt) {
-        const constraints = videoConstraints || {
+      } else if (context.isVideoPrompt) {
+        const constraints = context.videoConstraints || {
           minWords: 10,
           maxWords: 25,
           maxSentences: 1,
         };
 
         const minWords = Number.isFinite(constraints.minWords)
-          ? constraints.minWords
+          ? constraints.minWords!
           : 10;
         const maxWords = Number.isFinite(constraints.maxWords)
-          ? constraints.maxWords
+          ? constraints.maxWords!
           : 25;
         const maxSentences = Number.isFinite(constraints.maxSentences)
-          ? constraints.maxSentences
+          ? constraints.maxSentences!
           : 1;
 
         if (wordCount < minWords || wordCount > maxWords) {
@@ -169,12 +168,12 @@ export class SuggestionValidationService {
 
   /**
    * Validate suggestions against category and template requirements
-   * @param {Array} suggestions - Suggestions to validate
-   * @param {string} highlightedText - Original highlighted text
-   * @param {string} category - Category to validate against
-   * @returns {Array} Validated suggestions
+   * @param suggestions - Suggestions to validate
+   * @param highlightedText - Original highlighted text
+   * @param category - Category to validate against
+   * @returns Validated suggestions
    */
-  validateSuggestions(suggestions, highlightedText, category) {
+  validateSuggestions(suggestions: Suggestion[], highlightedText: string, category: string): Suggestion[] {
     if (!suggestions || !Array.isArray(suggestions)) return [];
 
     const subcategory = detectSubcategory(highlightedText, category);
@@ -197,11 +196,11 @@ export class SuggestionValidationService {
 
   /**
    * Group suggestions by their categories
-   * @param {Array} suggestions - Array of suggestions with category field
-   * @returns {Array} Grouped suggestions by category
+   * @param suggestions - Array of suggestions with category field
+   * @returns Grouped suggestions by category
    */
-  groupSuggestionsByCategory(suggestions) {
-    const grouped = {};
+  groupSuggestionsByCategory(suggestions: Suggestion[]): GroupedSuggestions[] {
+    const grouped: Record<string, Suggestion[]> = {};
 
     suggestions.forEach(suggestion => {
       const category = suggestion.category || 'Other';
@@ -218,3 +217,4 @@ export class SuggestionValidationService {
     }));
   }
 }
+

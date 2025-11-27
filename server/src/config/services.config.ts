@@ -33,13 +33,13 @@ import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheServic
 import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
 
 // Import enhancement sub-services
-import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.js';
+import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.ts';
 import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
-import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.js';
-import { CleanPromptBuilder } from '../services/enhancement/services/CleanPromptBuilder.js';
-import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.js';
-import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.js';
-import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.js';
+import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.ts';
+import { CleanPromptBuilder } from '../services/enhancement/services/CleanPromptBuilder.ts';
+import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.ts';
+import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.ts';
+import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.ts';
 
 // Import config
 import { createRedisClient } from './redis.ts';

@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { Suggestion, AIService, ContrastiveDecodingContext, DiversityMetrics } from './types.js';
 
 /**
  * ContrastiveDiversityEnforcer
@@ -19,9 +20,13 @@ import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
  * distinct ideas; models tend to cluster around the most probable synonyms."
  */
 export class ContrastiveDiversityEnforcer {
-  constructor(aiService) {
-    this.ai = aiService;
-    
+  private readonly config: {
+    batchSizes: number[];
+    temperatures: number[];
+    enabled: boolean;
+  };
+
+  constructor(private readonly ai: AIService) {
     // Configuration from PDF recommendations
     this.config = {
       batchSizes: [4, 4, 4], // Total: 12 suggestions
@@ -33,15 +38,10 @@ export class ContrastiveDiversityEnforcer {
   /**
    * Generate diverse suggestions using contrastive decoding approach
    * 
-   * @param {Object} context - Generation context
-   * @param {string} context.systemPrompt - Base system prompt
-   * @param {Object} context.schema - JSON schema for output
-   * @param {boolean} context.isVideoPrompt - Whether this is for video prompts
-   * @param {boolean} context.isPlaceholder - Whether this is placeholder generation
-   * @param {string} context.highlightedText - The text being enhanced
-   * @returns {Promise<Array>} Array of diverse suggestions
+   * @param context - Generation context
+   * @returns Array of diverse suggestions or null to use standard generation
    */
-  async generateWithContrastiveDecoding(context) {
+  async generateWithContrastiveDecoding(context: ContrastiveDecodingContext): Promise<Suggestion[] | null> {
     const startTime = Date.now();
     
     if (!this.shouldUseContrastiveDecoding(context)) {
@@ -55,13 +55,13 @@ export class ContrastiveDiversityEnforcer {
     });
 
     try {
-      const allSuggestions = [];
+      const allSuggestions: Suggestion[] = [];
       
       // Batch 1: Standard temperature, no constraints
       const batch1 = await this._generateBatch({
         ...context,
-        temperature: this.config.temperatures[0],
-        count: this.config.batchSizes[0],
+        temperature: this.config.temperatures[0]!,
+        count: this.config.batchSizes[0]!,
         negativeConstraint: null,
         batchNumber: 1,
       });
@@ -70,8 +70,8 @@ export class ContrastiveDiversityEnforcer {
       // Batch 2: Higher temperature, constrain against Batch 1
       const batch2 = await this._generateBatch({
         ...context,
-        temperature: this.config.temperatures[1],
-        count: this.config.batchSizes[1],
+        temperature: this.config.temperatures[1]!,
+        count: this.config.batchSizes[1]!,
         negativeConstraint: this._buildNegativeConstraint(batch1),
         batchNumber: 2,
       });
@@ -80,8 +80,8 @@ export class ContrastiveDiversityEnforcer {
       // Batch 3: Highest temperature, constrain against Batches 1+2
       const batch3 = await this._generateBatch({
         ...context,
-        temperature: this.config.temperatures[2],
-        count: this.config.batchSizes[2],
+        temperature: this.config.temperatures[2]!,
+        count: this.config.batchSizes[2]!,
         negativeConstraint: this._buildNegativeConstraint([...batch1, ...batch2]),
         batchNumber: 3,
       });
@@ -112,10 +112,10 @@ export class ContrastiveDiversityEnforcer {
    * - Placeholder generation (need varied creative directions)
    * - NOT for simple text replacements (overhead not justified)
    * 
-   * @param {Object} context - Generation context
-   * @returns {boolean} True if contrastive decoding should be used
+   * @param context - Generation context
+   * @returns True if contrastive decoding should be used
    */
-  shouldUseContrastiveDecoding(context) {
+  shouldUseContrastiveDecoding(context: ContrastiveDecodingContext): boolean {
     if (!this.config.enabled) {
       return false;
     }
@@ -142,11 +142,18 @@ export class ContrastiveDiversityEnforcer {
   /**
    * Generate a single batch of suggestions
    * 
-   * @param {Object} params - Batch generation parameters
-   * @returns {Promise<Array>} Batch of suggestions
+   * @param params - Batch generation parameters
+   * @returns Batch of suggestions
    * @private
    */
-  async _generateBatch(params) {
+  private async _generateBatch(params: {
+    systemPrompt: string;
+    schema: Record<string, unknown>;
+    temperature: number;
+    count: number;
+    negativeConstraint: string | null;
+    batchNumber: number;
+  }): Promise<Suggestion[]> {
     const {
       systemPrompt,
       schema,
@@ -179,7 +186,7 @@ export class ContrastiveDiversityEnforcer {
           temperature,
           operation: 'enhance_suggestions',
         }
-      );
+      ) as Suggestion[];
 
       // Validate we got the right count
       if (!Array.isArray(suggestions)) {
@@ -210,17 +217,17 @@ export class ContrastiveDiversityEnforcer {
    * "Generate the next 4 with a higher temperature and a Negative Constraint:
    * 'Do not use concepts related to [List of first 4 options].'"
    * 
-   * @param {Array} previousSuggestions - Previous batch(es) of suggestions
-   * @returns {string} Negative constraint text
+   * @param previousSuggestions - Previous batch(es) of suggestions
+   * @returns Negative constraint text
    * @private
    */
-  _buildNegativeConstraint(previousSuggestions) {
+  private _buildNegativeConstraint(previousSuggestions: Suggestion[]): string | null {
     if (!previousSuggestions || previousSuggestions.length === 0) {
       return null;
     }
 
     const previousTexts = previousSuggestions
-      .map(s => s.text || s)
+      .map(s => s.text || String(s))
       .filter(Boolean)
       .map(text => `"${text}"`)
       .join(', ');
@@ -233,12 +240,12 @@ export class ContrastiveDiversityEnforcer {
    * 
    * Injects the constraint prominently so the model respects it
    * 
-   * @param {string} basePrompt - Original system prompt
-   * @param {string} constraint - Negative constraint to add
-   * @returns {string} Augmented prompt
+   * @param basePrompt - Original system prompt
+   * @param constraint - Negative constraint to add
+   * @returns Augmented prompt
    * @private
    */
-  _augmentPromptWithConstraint(basePrompt, constraint) {
+  private _augmentPromptWithConstraint(basePrompt: string, constraint: string): string {
     if (!constraint) {
       return basePrompt;
     }
@@ -277,21 +284,21 @@ Avoid synonyms or minor variations of the above concepts.
    * Measures how well contrastive decoding achieved diversity goals
    * Uses Jaccard similarity (same as existing SuggestionDeduplicator)
    * 
-   * @param {Array} suggestions - All generated suggestions
-   * @returns {Object} Diversity metrics
+   * @param suggestions - All generated suggestions
+   * @returns Diversity metrics
    */
-  calculateDiversityMetrics(suggestions) {
+  calculateDiversityMetrics(suggestions: Suggestion[]): DiversityMetrics {
     if (!suggestions || suggestions.length < 2) {
       return { avgSimilarity: 0, minSimilarity: 0, maxSimilarity: 0 };
     }
 
-    const similarities = [];
+    const similarities: number[] = [];
     
     for (let i = 0; i < suggestions.length; i++) {
       for (let j = i + 1; j < suggestions.length; j++) {
         const sim = this._jaccardSimilarity(
-          suggestions[i].text || suggestions[i],
-          suggestions[j].text || suggestions[j]
+          suggestions[i]!.text || String(suggestions[i]),
+          suggestions[j]!.text || String(suggestions[j])
         );
         similarities.push(sim);
       }
@@ -313,7 +320,7 @@ Avoid synonyms or minor variations of the above concepts.
    * Calculate Jaccard similarity between two texts
    * @private
    */
-  _jaccardSimilarity(text1, text2) {
+  private _jaccardSimilarity(text1: string, text2: string): number {
     const set1 = new Set(String(text1).toLowerCase().split(/\s+/));
     const set2 = new Set(String(text2).toLowerCase().split(/\s+/));
 

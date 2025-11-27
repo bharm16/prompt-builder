@@ -1,50 +1,17 @@
 import { useMemo } from 'react';
 import { createHighlightSignature } from './useSpanLabeling';
+import type {
+  SpanData,
+  HighlightSourceResult,
+  UseHighlightSourceSelectionOptions,
+} from './types';
 
-export interface SpanData {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
-  meta: Record<string, unknown> | null;
-}
-
-export interface HighlightSourceResult {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
-  meta: Record<string, unknown> | null;
-  signature: string;
-  cacheId: string | null;
-  source: 'draft' | 'refined' | 'persisted';
-}
-
-export interface UseHighlightSourceSelectionOptions {
-  draftSpans?: SpanData | null;
-  refinedSpans?: SpanData | null;
-  isDraftReady?: boolean;
-  isRefining?: boolean;
-  initialHighlights?: {
-    spans: Array<{
-      start: number;
-      end: number;
-      category: string;
-      confidence: number;
-    }>;
-    meta?: Record<string, unknown> | null;
-    signature?: string;
-    cacheId?: string | null;
-  } | null;
-  promptUuid?: string | null;
-  displayedPrompt?: string | null;
-  enableMLHighlighting?: boolean;
-  initialHighlightsVersion?: number;
-}
+// Re-export types for backward compatibility
+export type {
+  SpanData,
+  HighlightSourceResult,
+  UseHighlightSourceSelectionOptions,
+} from './types';
 
 /**
  * Determines which highlight source to use based on priority:

@@ -22,49 +22,13 @@
  */
 
 import { useRef, useCallback, useEffect, useState } from 'react';
-
-interface Span {
-  id?: string;
-  start?: number;
-  end?: number;
-  category?: string;
-  [key: string]: unknown;
-}
-
-interface ProcessingOptions {
-  minConfidence?: number;
-  maxSpans?: number;
-  removeOverlaps?: boolean;
-  [key: string]: unknown;
-}
-
-interface ProcessedResult {
-  processedSpans: Span[];
-  meta: {
-    originalCount: number;
-    processedCount: number;
-    processingTime: number;
-    usedWorker: boolean;
-    [key: string]: unknown;
-  };
-}
-
-interface WorkerCallback {
-  resolve: (value: ProcessedResult) => void;
-  reject: (error: Error) => void;
-  timeoutId: ReturnType<typeof setTimeout>;
-}
-
-interface WorkerMessage {
-  id: number;
-  type: 'ready' | 'result' | 'error' | 'process';
-  processedSpans?: Span[];
-  meta?: Record<string, unknown>;
-  error?: string;
-  spans?: Span[];
-  text?: string;
-  options?: ProcessingOptions;
-}
+import type {
+  Span,
+  ProcessingOptions,
+  ProcessedResult,
+  WorkerCallback,
+  WorkerMessage,
+} from './types';
 
 /**
  * Hook for span processing via Web Worker

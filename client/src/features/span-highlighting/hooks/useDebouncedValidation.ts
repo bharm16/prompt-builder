@@ -14,28 +14,12 @@
  */
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
-
-interface Span {
-  id?: string;
-  start?: number;
-  end?: number;
-  category?: string;
-  role?: string;
-  [key: string]: unknown;
-}
-
-interface ValidationResult {
-  pass: boolean;
-  reason?: string;
-}
-
-interface ValidationState {
-  valid: Span[];
-  invalid: Array<{ span: Span; reason?: string }>;
-  validatedAt: number | null;
-}
-
-type ValidatorFunction = (span: Span) => ValidationResult;
+import type {
+  Span,
+  ValidationResult,
+  ValidationState,
+  ValidatorFunction,
+} from './types';
 
 /**
  * Simple debounce utility

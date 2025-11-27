@@ -1,4 +1,12 @@
 import { TAXONOMY } from '@shared/taxonomy';
+import type {
+  BrainstormContext,
+  BrainstormSignature,
+  CreativeIntent,
+  StyleConflict,
+  ComplementaryElement,
+  MissingElement,
+} from './types.js';
 
 /**
  * Suggestion mappings from creative intent to taxonomy categories
@@ -35,7 +43,7 @@ const SUGGESTION_MAPPINGS = {
     displayLabel: 'Environment',
     reason: 'Setting establishes context and supports narrative'
   }
-};
+} as const;
 
 /**
  * BrainstormContextBuilder
@@ -52,10 +60,10 @@ export class BrainstormContextBuilder {
 
   /**
    * Build a compact signature of brainstorm context for caching
-   * @param {Object} brainstormContext - Brainstorm context object
-   * @returns {Object|null} Normalized signature or null
+   * @param brainstormContext - Brainstorm context object
+   * @returns Normalized signature or null
    */
-  buildBrainstormSignature(brainstormContext) {
+  buildBrainstormSignature(brainstormContext: BrainstormContext | null | undefined): BrainstormSignature | null {
     if (!brainstormContext || typeof brainstormContext !== 'object') {
       return null;
     }
@@ -70,9 +78,9 @@ export class BrainstormContextBuilder {
         }
       }
       return acc;
-    }, {});
+    }, {} as Record<string, string>);
 
-    const normalizedMetadata = {};
+    const normalizedMetadata: BrainstormSignature['metadata'] = {};
     if (metadata && typeof metadata === 'object') {
       if (typeof metadata.format === 'string' && metadata.format.trim()) {
         normalizedMetadata.format = metadata.format.trim();
@@ -110,7 +118,7 @@ export class BrainstormContextBuilder {
             acc[key] = value;
             return acc;
           },
-          {}
+          {} as Record<string, unknown>
         );
 
         if (Object.keys(technicalEntries).length) {
@@ -126,7 +134,7 @@ export class BrainstormContextBuilder {
       }
     }
 
-    const signature = {};
+    const signature: BrainstormSignature = {};
     if (Object.keys(normalizedElements).length) {
       signature.elements = normalizedElements;
     }
@@ -141,15 +149,15 @@ export class BrainstormContextBuilder {
    * Infer creative intent from element combinations
    * NEW: Analyzes how elements work together to understand the narrative intent
    * 
-   * @param {Object} elements - Brainstorm elements
-   * @returns {Object} Creative intent analysis
+   * @param elements - Brainstorm elements
+   * @returns Creative intent analysis
    */
-  inferCreativeIntent(elements) {
+  inferCreativeIntent(elements: Record<string, string> | null | undefined): CreativeIntent | null {
     if (!elements || typeof elements !== 'object') {
       return null;
     }
 
-    const analysis = {
+    const analysis: CreativeIntent = {
       primaryIntent: null,
       supportingThemes: [],
       narrativeDirection: null,
@@ -209,17 +217,17 @@ export class BrainstormContextBuilder {
    * NEW: Identifies gaps in the creative direction
    * Uses taxonomy-based SUGGESTION_MAPPINGS for consistency
    * 
-   * @param {Object} intent - Creative intent from inferCreativeIntent
-   * @param {Object} elements - Existing elements
-   * @returns {Array} Suggested missing elements
+   * @param intent - Creative intent from inferCreativeIntent
+   * @param elements - Existing elements
+   * @returns Suggested missing elements
    */
-  suggestMissingElements(intent, elements) {
+  suggestMissingElements(intent: CreativeIntent | null, elements: Record<string, string> | null | undefined): MissingElement[] {
     if (!intent || !intent.primaryIntent) {
       return [];
     }
 
-    const suggestions = [];
-    const hasElement = (keywords) => {
+    const suggestions: MissingElement[] = [];
+    const hasElement = (keywords: string[]): boolean => {
       const elementText = Object.values(elements || {}).join(' ').toLowerCase();
       return keywords.some(k => elementText.includes(k));
     };
@@ -293,15 +301,15 @@ export class BrainstormContextBuilder {
    * Detect style conflicts in element combinations
    * NEW: Identifies clashing or contradictory elements
    * 
-   * @param {Object} elements - Brainstorm elements
-   * @returns {Array} Detected conflicts
+   * @param elements - Brainstorm elements
+   * @returns Detected conflicts
    */
-  detectStyleConflicts(elements) {
+  detectStyleConflicts(elements: Record<string, string> | null | undefined): StyleConflict[] {
     if (!elements || typeof elements !== 'object') {
       return [];
     }
 
-    const conflicts = [];
+    const conflicts: StyleConflict[] = [];
     const elementText = Object.values(elements).filter(v => typeof v === 'string').join(' ').toLowerCase();
 
     // Time period conflicts
@@ -347,17 +355,17 @@ export class BrainstormContextBuilder {
    * Get complementary elements for a given element
    * NEW: Suggests what naturally pairs with an element given the creative intent
    * 
-   * @param {string} element - Element to find complements for
-   * @param {Object} intent - Creative intent
-   * @returns {Array} Complementary elements
+   * @param element - Element to find complements for
+   * @param intent - Creative intent
+   * @returns Complementary elements
    */
-  getComplementaryElements(element, intent) {
+  getComplementaryElements(element: string, intent: CreativeIntent | null): ComplementaryElement[] {
     if (!element || typeof element !== 'string') {
       return [];
     }
 
     const elementLower = element.toLowerCase();
-    const complements = [];
+    const complements: ComplementaryElement[] = [];
 
     // Golden hour lighting complements
     if (elementLower.includes('golden hour')) {
@@ -404,18 +412,19 @@ export class BrainstormContextBuilder {
    * Build brainstorm context section for prompt inclusion
    * ENHANCED: Now includes creative intent analysis, missing elements, and relationships
    * 
-   * @param {Object} brainstormContext - Brainstorm context object
-   * @param {Object} options - Options for context building
-   * @returns {string} Formatted context section
+   * @param brainstormContext - Brainstorm context object
+   * @param options - Options for context building
+   * @returns Formatted context section
    */
   buildBrainstormContextSection(
-    brainstormContext,
-    { includeCategoryGuidance = false, isVideoPrompt = false } = {}
-  ) {
+    brainstormContext: BrainstormContext | null | undefined,
+    options: { includeCategoryGuidance?: boolean; isVideoPrompt?: boolean } = {}
+  ): string {
     if (!brainstormContext || typeof brainstormContext !== 'object') {
       return '';
     }
 
+    const { includeCategoryGuidance = false, isVideoPrompt = false } = options;
     const elements = brainstormContext.elements || {};
     const metadata = brainstormContext.metadata || {};
 
@@ -551,10 +560,10 @@ export class BrainstormContextBuilder {
 
   /**
    * Format brainstorm keys into human-readable labels
-   * @param {string} key - Key to format
-   * @returns {string} Formatted key
+   * @param key - Key to format
+   * @returns Formatted key
    */
-  formatBrainstormKey(key) {
+  formatBrainstormKey(key: string): string {
     if (!key) {
       return '';
     }
@@ -570,10 +579,10 @@ export class BrainstormContextBuilder {
 
   /**
    * Normalize brainstorm metadata values for prompt inclusion
-   * @param {*} value - Value to format
-   * @returns {string} Formatted value
+   * @param value - Value to format
+   * @returns Formatted value
    */
-  formatBrainstormValue(value) {
+  formatBrainstormValue(value: unknown): string {
     if (Array.isArray(value)) {
       return value.join(', ');
     }
@@ -585,3 +594,4 @@ export class BrainstormContextBuilder {
     return String(value);
   }
 }
+

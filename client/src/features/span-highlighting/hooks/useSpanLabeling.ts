@@ -3,82 +3,32 @@ import { DEFAULT_POLICY, DEFAULT_OPTIONS, calculateSmartDebounce } from '../conf
 import { sanitizeText, hashString } from '../utils/index.ts';
 import { spanLabelingCache } from '../services/index.ts';
 import { SpanLabelingApi } from '../api/index.ts';
+import type {
+  LabeledSpan,
+  SpanMeta,
+  SpanLabelingResult,
+  SpanLabelingStatus,
+  SpanLabelingState,
+  SpanLabelingPolicy,
+  SpanLabelingPayload,
+  InitialData,
+  UseSpanLabelingOptions,
+  UseSpanLabelingReturn,
+} from './types';
 
-export interface Span {
-  start: number;
-  end: number;
-  category: string;
-  confidence: number;
-}
-
-export interface SpanMeta extends Record<string, unknown> {
-  version?: string;
-  source?: string;
-  cacheAge?: number;
-  error?: string;
-}
-
-export interface SpanLabelingResult {
-  spans: Span[];
-  meta: SpanMeta | null;
-  text: string;
-  signature: string;
-  cacheId: string | null;
-  source: 'initial' | 'cache' | 'network' | 'cache-fallback' | 'refresh-cache';
-}
-
-export type SpanLabelingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale';
-
-export interface SpanLabelingState {
-  spans: Span[];
-  meta: SpanMeta | null;
-  status: SpanLabelingStatus;
-  error: Error | null;
-}
-
-export interface SpanLabelingPolicy {
-  nonTechnicalWordLimit?: number;
-  allowOverlap: boolean;
-}
-
-export interface SpanLabelingPayload {
-  text: string;
-  cacheId?: string;
-  maxSpans?: number;
-  minConfidence?: number;
-  policy?: SpanLabelingPolicy;
-  templateVersion?: string;
-}
-
-export interface InitialData {
-  spans: Span[];
-  meta: SpanMeta | null;
-  signature: string;
-}
-
-export interface UseSpanLabelingOptions {
-  text: string | null | undefined;
-  initialData?: InitialData | null;
-  initialDataVersion?: number;
-  cacheKey?: string | null;
-  enabled?: boolean;
-  immediate?: boolean;
-  maxSpans?: number;
-  minConfidence?: number;
-  policy?: Partial<SpanLabelingPolicy>;
-  templateVersion?: string;
-  debounceMs?: number;
-  useSmartDebounce?: boolean;
-  onResult?: (result: SpanLabelingResult) => void;
-}
-
-export interface UseSpanLabelingReturn {
-  spans: Span[];
-  meta: SpanMeta | null;
-  status: SpanLabelingStatus;
-  error: Error | null;
-  refresh: () => void;
-}
+// Re-export types for backward compatibility
+export type {
+  LabeledSpan,
+  SpanMeta,
+  SpanLabelingResult,
+  SpanLabelingStatus,
+  SpanLabelingState,
+  SpanLabelingPolicy,
+  SpanLabelingPayload,
+  InitialData,
+  UseSpanLabelingOptions,
+  UseSpanLabelingReturn,
+} from './types';
 
 export const createHighlightSignature = (text: string | null | undefined): string => {
   return hashString(sanitizeText(text ?? ''));
@@ -146,7 +96,7 @@ export function useSpanLabeling({
   }, []);
 
   const performRequest = useCallback(
-    async (payload: SpanLabelingPayload, signal: AbortSignal | null): Promise<{ spans: Span[]; meta: SpanMeta | null }> => {
+    async (payload: SpanLabelingPayload, signal: AbortSignal | null): Promise<{ spans: LabeledSpan[]; meta: SpanMeta | null }> => {
       return SpanLabelingApi.labelSpans(payload, signal);
     },
     []
@@ -161,7 +111,7 @@ export function useSpanLabeling({
         cacheId,
         signature,
       }: {
-        spans: Span[];
+        spans: LabeledSpan[];
         meta: SpanMeta | null;
         text: string;
         cacheId?: string | null;
@@ -231,7 +181,7 @@ export function useSpanLabeling({
               spans: cached.spans,
               meta: cached.meta,
               text: payload.text,
-              cacheId: cached.cacheId ?? payload.cacheId,
+              cacheId: cached.cacheId ?? payload.cacheId ?? null,
               signature: cached.signature,
             },
             immediate ? 'refresh-cache' : 'cache'
@@ -298,7 +248,7 @@ export function useSpanLabeling({
               spans: normalizedResult.spans,
               meta: normalizedResult.meta,
               text: payload.text,
-              cacheId: payload.cacheId,
+              cacheId: payload.cacheId ?? null,
               signature,
             },
             'network'
@@ -350,7 +300,7 @@ export function useSpanLabeling({
                   error: errorObj.message,
                 } as SpanMeta,
                 text: payload.text,
-                cacheId: fallback.cacheId ?? payload.cacheId,
+                cacheId: fallback.cacheId ?? payload.cacheId ?? null,
                 signature: fallback.signature,
               },
               'cache-fallback' // Event type for monitoring/analytics
@@ -440,7 +390,7 @@ export function useSpanLabeling({
           spans: initialData.spans,
           meta: initialData.meta,
           text: normalized,
-          cacheId: payload.cacheId,
+          cacheId: payload.cacheId ?? null,
           signature: initialData.signature,
         },
         'initial'

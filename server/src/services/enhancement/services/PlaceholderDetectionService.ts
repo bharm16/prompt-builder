@@ -13,13 +13,18 @@ export class PlaceholderDetectionService {
 
   /**
    * Detect if highlighted text is a placeholder/parameter
-   * @param {string} highlightedText - The highlighted text
-   * @param {string} contextBefore - Text before highlight
-   * @param {string} contextAfter - Text after highlight
-   * @param {string} fullPrompt - Full prompt text
-   * @returns {boolean} True if text is a placeholder
+   * @param highlightedText - The highlighted text
+   * @param contextBefore - Text before highlight
+   * @param contextAfter - Text after highlight
+   * @param fullPrompt - Full prompt text
+   * @returns True if text is a placeholder
    */
-  detectPlaceholder(highlightedText, contextBefore, contextAfter, fullPrompt) {
+  detectPlaceholder(
+    highlightedText: string,
+    contextBefore: string,
+    contextAfter: string,
+    fullPrompt: string
+  ): boolean {
     if (!highlightedText || typeof highlightedText !== 'string') {
       return false;
     }
@@ -142,12 +147,16 @@ export class PlaceholderDetectionService {
 
   /**
    * Detect the semantic type of a placeholder for better categorization
-   * @param {string} highlightedText - The highlighted text
-   * @param {string} contextBefore - Text before highlight
-   * @param {string} contextAfter - Text after highlight
-   * @returns {string} Placeholder type (material, style, location, time, person, general)
+   * @param highlightedText - The highlighted text
+   * @param contextBefore - Text before highlight
+   * @param contextAfter - Text after highlight
+   * @returns Placeholder type (material, style, location, time, person, general)
    */
-  detectPlaceholderType(highlightedText, contextBefore, contextAfter) {
+  detectPlaceholderType(
+    highlightedText: string,
+    contextBefore: string,
+    contextAfter: string
+  ): 'material' | 'style' | 'location' | 'time' | 'person' | 'general' {
     const text = highlightedText.toLowerCase();
     const combinedContext = (contextBefore + ' ' + contextAfter).toLowerCase();
 
@@ -188,3 +197,4 @@ export class PlaceholderDetectionService {
     return 'general';
   }
 }
+

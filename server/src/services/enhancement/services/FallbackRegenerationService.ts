@@ -1,39 +1,76 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type {
+  Suggestion,
+  VideoService,
+  AIService,
+  FallbackRegenerationParams,
+  FallbackRegenerationResult,
+  PromptBuildParams,
+  VideoConstraints,
+} from './types.js';
+
+/**
+ * Interface for prompt builder
+ */
+interface PromptBuilder {
+  buildRewritePrompt(params: PromptBuildParams): string;
+}
+
+/**
+ * Interface for validation service
+ */
+interface ValidationService {
+  sanitizeSuggestions(suggestions: Suggestion[], context: {
+    highlightedText?: string;
+    isPlaceholder?: boolean;
+    isVideoPrompt?: boolean;
+    videoConstraints?: VideoConstraints;
+  }): Suggestion[];
+}
+
+/**
+ * Interface for diversity enforcer
+ */
+interface DiversityEnforcer {
+  ensureDiverseSuggestions(suggestions: Suggestion[]): Promise<Suggestion[]>;
+}
 
 /**
  * Service responsible for fallback regeneration when initial suggestions fail validation
  * Implements iterative fallback strategy for video prompts
  */
 export class FallbackRegenerationService {
-  constructor(videoService, promptBuilder, validationService, diversityEnforcer) {
-    this.videoService = videoService;
-    this.promptBuilder = promptBuilder;
-    this.validationService = validationService;
-    this.diversityEnforcer = diversityEnforcer;
-  }
+  constructor(
+    private readonly videoService: VideoService,
+    private readonly promptBuilder: PromptBuilder,
+    private readonly validationService: ValidationService,
+    private readonly diversityEnforcer: DiversityEnforcer
+  ) {}
 
   /**
    * Attempt fallback regeneration with different constraint modes
-   * @param {Object} params - Regeneration parameters
-   * @returns {Promise<Object>} Regeneration result with suggestions and metadata
+   * @param params - Regeneration parameters
+   * @returns Regeneration result with suggestions and metadata
    */
-  async attemptFallbackRegeneration({
-    sanitizedSuggestions,
-    isVideoPrompt,
-    isPlaceholder,
-    videoConstraints,
-    regenerationDetails,
-    requestParams,
-    aiService,
-    schema,
-    temperature,
-  }) {
+  async attemptFallbackRegeneration(params: FallbackRegenerationParams): Promise<FallbackRegenerationResult> {
+    const {
+      sanitizedSuggestions,
+      isVideoPrompt,
+      isPlaceholder,
+      videoConstraints,
+      regenerationDetails,
+      requestParams,
+      aiService,
+      schema,
+      temperature,
+    } = params;
+
     // Early return if we have valid suggestions or this isn't a video prompt
     if (sanitizedSuggestions.length > 0 || !isVideoPrompt) {
       return {
         suggestions: sanitizedSuggestions,
-        constraints: videoConstraints,
+        constraints: videoConstraints || undefined,
         usedFallback: false,
         sourceCount: 0,
       };
@@ -44,7 +81,7 @@ export class FallbackRegenerationService {
     if (isPlaceholder && sanitizedSuggestions.length > 0) {
       return {
         suggestions: sanitizedSuggestions,
-        constraints: videoConstraints,
+        constraints: videoConstraints || undefined,
         usedFallback: false,
         sourceCount: 0,
       };
@@ -57,7 +94,7 @@ export class FallbackRegenerationService {
     });
 
     // Initialize fallback state
-    const attemptedModes = new Set();
+    const attemptedModes = new Set<string>();
     if (videoConstraints?.mode) {
       attemptedModes.add(videoConstraints.mode);
     }
@@ -96,12 +133,12 @@ export class FallbackRegenerationService {
       } catch (error) {
         logger.warn('Fallback regeneration failed', {
           mode: fallbackConstraints.mode,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
 
       // Move to next fallback
-      attemptedModes.add(fallbackConstraints.mode);
+      attemptedModes.add(fallbackConstraints.mode || '');
       currentConstraints = fallbackConstraints;
       fallbackConstraints = this.videoService.getVideoFallbackConstraints(
         currentConstraints,
@@ -113,7 +150,7 @@ export class FallbackRegenerationService {
     // No successful fallback found
     return {
       suggestions: [],
-      constraints: videoConstraints,
+      constraints: videoConstraints || undefined,
       usedFallback: false,
       sourceCount: 0,
     };
@@ -123,7 +160,7 @@ export class FallbackRegenerationService {
    * Attempt a single fallback regeneration
    * @private
    */
-  async _attemptSingleFallback({
+  private async _attemptSingleFallback({
     fallbackConstraints,
     requestParams,
     aiService,
@@ -131,7 +168,15 @@ export class FallbackRegenerationService {
     temperature,
     isPlaceholder,
     isVideoPrompt,
-  }) {
+  }: {
+    fallbackConstraints: VideoConstraints;
+    requestParams: PromptBuildParams;
+    aiService: AIService;
+    schema: Record<string, unknown>;
+    temperature: number;
+    isPlaceholder: boolean;
+    isVideoPrompt: boolean;
+  }): Promise<FallbackRegenerationResult> {
     // Build fallback prompt
     const fallbackPrompt = this.promptBuilder.buildRewritePrompt({
       ...requestParams,
@@ -150,7 +195,7 @@ export class FallbackRegenerationService {
         maxRetries: 1,
         temperature,
       }
-    );
+    ) as Suggestion[];
 
     // Process suggestions
     const fallbackDiverse = await this.diversityEnforcer.ensureDiverseSuggestions(

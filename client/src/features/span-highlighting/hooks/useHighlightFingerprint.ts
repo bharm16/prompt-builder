@@ -6,23 +6,8 @@
  */
 
 import { useMemo } from 'react';
-import { createHighlightSignature } from './useSpanLabeling.ts';
-
-interface Span {
-  id?: string;
-  displayStart?: number;
-  start?: number;
-  displayEnd?: number;
-  end?: number;
-  category?: string;
-  [key: string]: unknown;
-}
-
-interface ParseResult {
-  displayText?: string;
-  spans?: Span[];
-  [key: string]: unknown;
-}
+import { createHighlightSignature } from './useSpanLabeling';
+import type { Span, ParseResult } from './types';
 
 /**
  * Creates a unique fingerprint for the current highlight state

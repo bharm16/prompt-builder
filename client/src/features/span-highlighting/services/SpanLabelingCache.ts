@@ -13,7 +13,7 @@ import { hashString } from '../utils/hashing.ts';
 import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.ts';
 import { getCacheStorage } from './storageAdapter.ts';
 import { getVersionString } from '#shared/version';
-import type { Span, SpanMeta } from '../hooks/useSpanLabeling';
+import type { LabeledSpan, SpanMeta } from '../hooks/types';
 
 // Cache version - includes system versions from shared/version.js
 // This ensures cache invalidation when taxonomy, prompts, or API changes
@@ -23,7 +23,7 @@ const CURRENT_CACHE_VERSION = getVersionString();
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface CacheEntry {
-  spans: Span[];
+  spans: LabeledSpan[];
   meta: SpanMeta | null;
   version: string;
   timestamp: number;
@@ -140,7 +140,7 @@ class SpanLabelingCache {
           }
 
           const normalized: CacheEntry = {
-            spans: Array.isArray(valueObj.spans) ? valueObj.spans as Span[] : [],
+            spans: Array.isArray(valueObj.spans) ? valueObj.spans as LabeledSpan[] : [],
             meta: (valueObj.meta ?? null) as SpanMeta | null,
             timestamp: typeof valueObj.timestamp === 'number' ? valueObj.timestamp : Date.now(),
             text: typeof valueObj.text === 'string' ? valueObj.text : '',
@@ -252,7 +252,7 @@ class SpanLabelingCache {
   /**
    * Set cached result for a payload
    */
-  set(payload: CacheKeyPayload, data: { spans: Span[]; meta: SpanMeta | null; signature?: string }): void {
+  set(payload: CacheKeyPayload, data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string }): void {
     this.hydrate();
     if (!payload?.text) {
       return;
