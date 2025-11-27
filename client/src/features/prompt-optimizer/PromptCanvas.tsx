@@ -492,7 +492,7 @@ export function PromptCanvas({
 
   // Render the component
   return (
-    <div className="relative flex flex-col bg-geist-background min-h-full">
+    <div className="relative flex flex-col bg-geist-background min-h-full flex-1">
       {/* Category Legend */}
       <CategoryLegend
         show={showLegend}
