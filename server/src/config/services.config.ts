@@ -24,10 +24,10 @@ import { AIModelService } from '../services/ai-model/index.ts';
 
 // Import services
 import { cacheService } from '../services/cache/CacheService.ts';
-import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.js';
+import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.ts';
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
-import { VideoConceptService } from '../services/VideoConceptService.js';
+import { VideoConceptService } from '../services/VideoConceptService.ts';
 import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
