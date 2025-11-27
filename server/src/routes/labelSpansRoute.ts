@@ -1,27 +1,35 @@
-import { Router } from 'express';
+import type { Router, Request, Response } from 'express';
+import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
 import { spanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
+import type { AIModelService } from '../services/ai-model/AIModelService.js';
+import type { LabelSpansParams, LabelSpansResult } from '../llm/span-labeling/types.js';
+import type { ValidationPolicy } from '../llm/span-labeling/types.js';
 
 /**
  * Create label spans route with dependency injection
- * @param {Object} aiService - AI Model Service instance
- * @returns {Router} Express router
  */
-export function createLabelSpansRoute(aiService) {
-  const router = Router();
+export function createLabelSpansRoute(aiService: AIModelService): Router {
+  const router = ExpressRouter();
 
-const sanitizeNumber = (value) => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-  return undefined;
-};
+  const sanitizeNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return undefined;
+  };
 
-  router.post('/', async (req, res) => {
-    const { text, maxSpans, minConfidence, policy, templateVersion } = req.body || {};
+  router.post('/', async (req: Request, res: Response) => {
+    const { text, maxSpans, minConfidence, policy, templateVersion } = (req.body || {}) as {
+      text?: unknown;
+      maxSpans?: unknown;
+      minConfidence?: unknown;
+      policy?: ValidationPolicy;
+      templateVersion?: string;
+    };
 
     if (typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'text is required' });
@@ -43,7 +51,7 @@ const sanitizeNumber = (value) => {
       return res.status(400).json({ error: 'minConfidence must be between 0 and 1' });
     }
 
-    const payload = {
+    const payload: LabelSpansParams = {
       text,
       maxSpans: safeMaxSpans,
       minConfidence: safeMinConfidence,
@@ -54,7 +62,7 @@ const sanitizeNumber = (value) => {
     try {
       // Cache-aside pattern: Check cache first
       // This reduces API calls by 70-90% and provides <5ms response time for cached results
-      let result;
+      let result: LabelSpansResult | undefined;
       let cacheHit = false;
 
       if (spanLabelingCache) {
@@ -107,16 +115,17 @@ const sanitizeNumber = (value) => {
       return res.json(result);
     } catch (error) {
       logger.warn('label-spans request failed', {
-        error: error?.message,
-        stack: error?.stack,
+        error: (error as { message?: string })?.message,
+        stack: (error as { stack?: string })?.stack,
         textLength: text?.length,
       });
       return res.status(502).json({
         error: 'LLM span labeling failed',
-        message: error?.message || 'Unknown error',
+        message: (error as { message?: string })?.message || 'Unknown error',
       });
     }
   });
 
   return router;
 }
+

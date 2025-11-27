@@ -4,16 +4,16 @@
  * Handles image preview generation endpoints
  */
 
+import type { Router, Request, Response } from 'express';
 import express from 'express';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import type { PreviewRoutesServices } from './types.js';
 
 /**
  * Create preview routes
- * @param {Object} services - Service instances
- * @returns {Router} Express router
  */
-export function createPreviewRoutes(services) {
+export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const router = express.Router();
 
   const { imageGenerationService } = services;
@@ -21,9 +21,11 @@ export function createPreviewRoutes(services) {
   // POST /api/preview/generate - Generate image preview
   router.post(
     '/generate',
-    asyncHandler(async (req, res) => {
-      const { prompt, aspectRatio } = req.body;
-      const userId = req.user?.uid || req.apiKey || 'anonymous';
+    asyncHandler(async (req: Request, res: Response) => {
+      const { prompt, aspectRatio } = req.body as { prompt?: unknown; aspectRatio?: string };
+      const userId = (req as Request & { user?: { uid?: string }; apiKey?: string }).user?.uid || 
+                     (req as Request & { apiKey?: string }).apiKey || 
+                     'anonymous';
 
       if (!prompt) {
         return res.status(400).json({
@@ -51,7 +53,9 @@ export function createPreviewRoutes(services) {
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const statusCode = error.statusCode || (errorMessage.includes('402') ? 402 : errorMessage.includes('429') ? 429 : 500);
+        const statusCode = (error as { statusCode?: number }).statusCode || 
+                          (errorMessage.includes('402') ? 402 : 
+                           errorMessage.includes('429') ? 429 : 500);
         
         logger.error('Preview generation failed', {
           error: errorMessage,
