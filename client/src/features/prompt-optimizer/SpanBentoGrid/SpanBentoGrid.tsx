@@ -59,7 +59,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
 
       {/* SCROLL AREA: Custom scrollbar styling via Tailwind utilities */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-base-200 hover:[&::-webkit-scrollbar-thumb]:bg-base-300"
+        className="flex-1 overflow-y-auto p-5 space-y-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-base-200 hover:[&::-webkit-scrollbar-thumb]:bg-base-300"
         style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLElement).style.scrollbarColor = 'hsl(var(--bc) / 0.2) transparent';

@@ -38,7 +38,7 @@ export const BentoBox = memo<BentoBoxProps>(({
   
   return (
     <div 
-      className={`card w-full rounded-geist-lg shadow-geist-small hover:shadow-geist-medium transition-all duration-200 ${cardSize} flex flex-col min-h-[120px] ${isExpanded ? 'max-h-[400px]' : 'max-h-[200px]'}`}
+      className={`card w-full rounded-geist-lg shadow-geist-small hover:shadow-geist-medium transition-all duration-200 ${cardSize} flex flex-col min-h-[150px] ${isExpanded ? 'max-h-[500px]' : 'max-h-[250px]'}`}
       style={{
         backgroundColor: config.backgroundColor,
         borderColor: config.borderColor,
