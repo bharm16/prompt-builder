@@ -1,6 +1,6 @@
 /**
- * PromptOptimizerContainer - Barrel Export
+ * PromptOptimizerWorkspace - Barrel Export
  */
 
-export { default } from './PromptOptimizerContainer';
+export { default } from './PromptOptimizerWorkspace';
 

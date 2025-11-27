@@ -1,0 +1,34 @@
+/* PromptResultsLayout - Results/Canvas View Layout Styles
+ * Completely isolated CSS for results view
+ * No shared classes with PromptInputLayout
+ */
+
+.prompt-results-layout {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--geist-background);
+  transition: background-color 0.3s;
+  display: grid;
+  grid-template-columns:
+    var(--sidebar-width)
+    minmax(0, 1fr)
+    var(--layout-suggestions-panel-width);
+  gap: 0;
+}
+
+.prompt-results-layout__main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: all 0.3s;
+  min-width: 0;
+}
+
+.prompt-results-layout__suggestions {
+  overflow-y: auto;
+  border-left: 1px solid var(--geist-accents-2);
+  background: var(--geist-background);
+  width: var(--layout-suggestions-panel-width);
+}
+
