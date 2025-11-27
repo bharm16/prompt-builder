@@ -59,10 +59,10 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
 
       {/* SCROLL AREA: Custom scrollbar styling via Tailwind utilities */}
       <div 
-        className="flex-1 overflow-y-auto p-geist-3 space-y-geist-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3 hover:[&::-webkit-scrollbar-thumb:hover]:bg-geist-accents-4"
+        className="flex-1 overflow-y-auto p-4 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-base-200 hover:[&::-webkit-scrollbar-thumb]:bg-base-300"
         style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.scrollbarColor = 'var(--geist-accents-3) var(--geist-accents-1)';
+          (e.currentTarget as HTMLElement).style.scrollbarColor = 'hsl(var(--bc) / 0.2) transparent';
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
