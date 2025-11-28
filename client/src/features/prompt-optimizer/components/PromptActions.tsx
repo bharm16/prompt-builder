@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import type { FloatingToolbarProps } from '../types';
+import { ModelMenu } from './ModelMenu';
 
 /**
  * Prompt Actions Component
@@ -31,33 +32,64 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   onRedo,
   canUndo,
   canRedo,
+  promptText = '',
+  showModelMenu,
+  onToggleModelMenu,
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const copyMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
         onToggleExportMenu(false);
       }
+      if (copyMenuRef.current && !copyMenuRef.current.contains(event.target as Node)) {
+        onToggleModelMenu(false);
+      }
     };
 
-    if (showExportMenu) {
+    if (showExportMenu || showModelMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showExportMenu, onToggleExportMenu]);
+    return undefined;
+  }, [showExportMenu, showModelMenu, onToggleExportMenu, onToggleModelMenu]);
+
+  const handleCopyClick = (): void => {
+    if (showModelMenu) {
+      // If menu is open, just copy directly
+      onCopy();
+      onToggleModelMenu(false);
+    } else {
+      // Toggle menu
+      onToggleModelMenu(true);
+    }
+  };
 
   return (
     <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
-      <Button
-        onClick={onCopy}
-        svgOnly
-        variant="ghost"
-        prefix={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-        className={copied ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
-        aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
-        title="Copy"
-      />
+      <div className="relative -mx-0.5" ref={copyMenuRef}>
+        <Button
+          onClick={handleCopyClick}
+          svgOnly={!copied}
+          variant="ghost"
+          prefix={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          className={copied ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
+          aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
+          aria-expanded={showModelMenu}
+          title="Copy"
+        >
+          {copied && <span className="text-label-12">Copied!</span>}
+        </Button>
+        {showModelMenu && (
+          <ModelMenu
+            promptText={promptText}
+            onCopy={onCopy}
+            onClose={() => onToggleModelMenu(false)}
+          />
+        )}
+      </div>
 
       <Button
         onClick={onShare}
@@ -105,7 +137,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         )}
       </div>
 
-      <div className="w-px h-geist-4 bg-geist-accents-2 mx-geist-0 -mx-0.5" />
+      <div className="w-px h-geist-4 bg-geist-accents-2 -mx-0.5" />
 
       <Button
         onClick={onUndo}

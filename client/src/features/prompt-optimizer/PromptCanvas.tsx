@@ -193,6 +193,7 @@ export function PromptCanvas({
 
   // UI state (simple boolean flags - could be moved to reducer if needed)
   const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
+  const [showModelMenu, setShowModelMenu] = React.useState<boolean>(false);
   const [showLegend, setShowLegend] = React.useState<boolean>(false);
 
   // Text selection hook
@@ -352,6 +353,9 @@ export function PromptCanvas({
               onRedo={onRedo}
               canUndo={canUndo}
               canRedo={canRedo}
+              promptText={displayedPrompt ?? ''}
+              showModelMenu={showModelMenu}
+              onToggleModelMenu={setShowModelMenu}
             />
           </div>
         </div>
