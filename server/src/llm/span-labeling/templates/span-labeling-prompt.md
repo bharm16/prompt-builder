@@ -60,6 +60,35 @@ Label spans for AI video prompt elements using our unified taxonomy system.
    - Input: "child with a joyful smile"
    - ✅ CORRECT: "child" → `subject.identity`, "joyful smile" → `subject.emotion`
 
+## CRITICAL: Always Use Specific Attributes (Read Fourth)
+
+**USE ATTRIBUTES, NOT PARENT CATEGORIES when the meaning is clear:**
+
+1. **Camera movements MUST use `camera.movement`** - NEVER just `camera`
+   - ✅ "The camera pans left" → `camera.movement`
+   - ✅ "camera slowly tracks the subject" → `camera.movement`
+   - ❌ "The camera pans left" → `camera` (WRONG - too generic)
+   - If ANY camera verb is present (pan, dolly, track, zoom, crane, tilt), use `camera.movement`
+
+2. **Subject actions MUST use `action.movement`** - NEVER just `action`
+   - ✅ "walks across the room" → `action.movement`
+   - ✅ "runs through the forest" → `action.movement`
+   - ❌ "walks across" → `action` (WRONG - too generic)
+
+3. **Shot types MUST use `shot.type`** - NEVER just `shot`
+   - ✅ "Close-up shot" → `shot.type`
+   - ✅ "wide establishing shot" → `shot.type`
+
+4. **Adverbs belong with their verbs - include in the span:**
+   - ✅ "slowly pans left" → ONE span `camera.movement`
+   - ❌ "slowly" → `action.movement` + "pans left" → `camera.movement` (WRONG - fragmented)
+
+5. **Direction words in subject actions stay with the action:**
+   - ✅ "walks across the room" → ONE span `action.movement`
+   - ❌ "walks" → `action.movement` + "across" → `environment.location` (WRONG - "across" is part of action)
+
+**RULE: Only use parent categories (`camera`, `action`, `shot`) when you genuinely cannot determine the specific attribute.**
+
 ## Taxonomy Structure
 
 Our taxonomy aligns to the Universal Prompt Framework with priority slots (Shot > Subject > Action > Setting > Camera Behavior > Lighting > Style > Technical > Audio).
@@ -91,12 +120,12 @@ Our taxonomy aligns to the Universal Prompt Framework with priority slots (Shot 
 **PDF Design B: These rules resolve the "Visual-Semantic Gap" by providing explicit disambiguation for ambiguous terms**
 
 **RULE 1: Camera vs Action Disambiguation**
-- IF text explicitly mentions "camera" as the agent → `camera.movement`
+- IF text explicitly mentions "camera" as the agent → `camera.movement` (NOT just `camera`)
 - IF text describes camera-specific verbs (pan, dolly, truck, crane, zoom, tilt) → `camera.movement`
 - IF text describes subject motion (walks, runs, jumps, sits) → `action.movement`
 - Example: "The camera pans left" → `camera.movement`
 - Example: "Chef pans the vegetables" → `action.movement`
-- **Critical: Camera verbs ALWAYS take precedence over action interpretation**
+- **Critical: Camera verbs ALWAYS take precedence AND always use `camera.movement`, never just `camera`**
 
 **RULE 2: Shot Type vs Camera Movement**
 - IF text describes static framing (close-up, wide shot, medium shot) → `shot.type`

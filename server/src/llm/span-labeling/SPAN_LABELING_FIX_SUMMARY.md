@@ -2,146 +2,106 @@
 
 ## Date: Session continuation
 
-## Problems Identified
+## Round 1 Fixes
 
-Based on diagnostic testing:
+Initial fixes addressed:
+- Function words being labeled ("a", "through")
+- Composite phrases not split ("detective's weathered hands")
+- Camera movements fragmented
 
-| Issue | Rate | Impact |
-|-------|------|--------|
-| **Wrong categories** | 40% | Composite phrases not split (e.g., "detective's weathered hands" kept as one span) |
-| **Fragmentation** | 40% | Function words labeled ("a", "through") + related phrases split unnecessarily |
-| Missing spans | 0% | ✅ Working |
-| Hallucinations | 0% | ✅ Working |
-| JSON failures | 0% | ✅ Working |
-| Repair loop triggers | 0% | ✅ Working |
+**Results after Round 1:**
+| Metric | Before | After Round 1 | Change |
+|--------|--------|---------------|--------|
+| Wrong Categories | 40% | 20% | ✅ -50% |
+| Fragmentation | 40% | 20% | ✅ -50% |
+| Function Words | 40% | 0% | ✅ -100% |
+| Composite Splitting | 40% | 0% | ✅ -100% |
+| JSON Parse Failures | 0% | 20% | ❌ +20% |
 
-## Root Causes Found
+## Round 2 Fixes (This Session)
 
-### 1. Invalid Few-Shot Examples (CRITICAL BUG)
-**Files:** `routing/examples/creative.js`, `routing/examples/technical.js`
+### Remaining Issues After Round 1
+1. **Parent category usage:** Model using `camera` instead of `camera.movement`
+2. **Adverb fragmentation:** "slowly" labeled as `action.movement` separately from camera verb
+3. **Direction word fragmentation:** "across" labeled as `environment.location` instead of part of action
+4. **Weather fragmentation:** Still splitting weather descriptions
 
-These files taught the model **completely wrong taxonomy IDs** that don't exist:
-- `metaphor.simile`, `metaphor.personification`, `metaphor.verb`
-- `camera.technique`, `camera.settings`, `camera.direction`
-- `lighting.setup`, `lighting.behavior`, `lighting.atmosphere`
-- `subject.object`, `subject.attribute`, `subject.auditory`
-- `mood.quality`, `mood.atmosphere`
-- `production.crew` (not even close to the taxonomy)
+### Root Cause
+The prompt said "use parent category if unsure" but never explicitly stated that camera verbs should ALWAYS use `camera.movement`. The model was technically following instructions but producing suboptimal results.
 
-**Impact:** Model learned to output invalid categories from context-specific examples.
+### Fix Applied
 
-### 2. No Explicit Function Word Exclusion
-The prompt mentioned "fewer meaningful spans > many trivial ones" but never explicitly listed articles/prepositions as forbidden.
+**File:** `templates/span-labeling-prompt.md`
 
-### 3. Fragmentation Guidance Buried
-The "PREFER COMPLETE PHRASES" rule was at the bottom of a 400+ line prompt. 8B models prioritize early instructions.
+Added new section "CRITICAL: Always Use Specific Attributes (Read Fourth)" immediately after the other CRITICAL sections:
 
-### 4. No Composite Phrase Split Pattern
-No guidance for splitting "[Person]'s [body part]" into identity + appearance.
+```markdown
+## CRITICAL: Always Use Specific Attributes (Read Fourth)
 
-## Fixes Applied
+**USE ATTRIBUTES, NOT PARENT CATEGORIES when the meaning is clear:**
 
-### Fix 1: Disabled Broken Example Injection
-**File:** `utils/promptBuilder.ts`
+1. **Camera movements MUST use `camera.movement`** - NEVER just `camera`
+   - ✅ "The camera pans left" → `camera.movement`
+   - ❌ "The camera pans left" → `camera` (WRONG - too generic)
+   - If ANY camera verb is present (pan, dolly, track, zoom, crane, tilt), use `camera.movement`
 
-Changed `useRouter` default from `true` to `false` to prevent invalid taxonomy examples from being injected.
+2. **Subject actions MUST use `action.movement`** - NEVER just `action`
+   - ✅ "walks across the room" → `action.movement`
 
-```typescript
-// Before
-export function buildSystemPrompt(text: string = '', useRouter: boolean = true)
+3. **Shot types MUST use `shot.type`** - NEVER just `shot`
 
-// After  
-export function buildSystemPrompt(text: string = '', useRouter: boolean = false)
+4. **Adverbs belong with their verbs - include in the span:**
+   - ✅ "slowly pans left" → ONE span `camera.movement`
+   - ❌ "slowly" → `action.movement` + "pans left" → `camera.movement` (WRONG)
+
+5. **Direction words in subject actions stay with the action:**
+   - ✅ "walks across the room" → ONE span `action.movement`
+   - ❌ "walks" + "across" → (WRONG - "across" is part of action)
 ```
 
-**TODO:** Fix the example banks with valid taxonomy IDs, then re-enable.
+Also updated RULE 1 in Disambiguation Rules:
+```markdown
+- **Critical: Camera verbs ALWAYS take precedence AND always use `camera.movement`, never just `camera`**
+```
 
-### Fix 2: Added Critical Guidance at Top of Prompt
-**File:** `templates/span-labeling-prompt.md`
+## Expected Results After Round 2
 
-Added three new sections immediately after Core Instructions (where 8B model will prioritize them):
-
-#### "CRITICAL: What NOT to Label"
-Explicit list of forbidden spans:
-- Articles: "a", "an", "the"
-- Prepositions: "in", "on", "at", "through", "from", "to", "with", "by", "of"
-- Conjunctions: "and", "or", "but", "as", "while"
-- Pronouns: "he", "she", "it", "they", "him", "her"
-
-Includes explicit WRONG vs CORRECT examples.
-
-#### "CRITICAL: Phrase Boundaries"
-Explicit guidance to keep related phrases as single spans:
-- Camera movements with modifiers → ONE span
-- Weather/atmosphere phrases → ONE span
-- Complete action phrases → ONE span
-
-Includes explicit WRONG vs CORRECT examples.
-
-#### "CRITICAL: Composite Phrase Splitting"
-Explicit patterns to split:
-- "[Person]'s [body part/trait]" → identity + appearance
-- "[Person] in [clothing]" → identity + wardrobe
-- "[Person] with [emotion]" → identity + emotion
-
-### Fix 3: Updated Rules Section
-**File:** `templates/span-labeling-prompt.md`
-
-Added:
-- Complete list of VALID taxonomy IDs
-- "DO NOT INVENT TAXONOMY IDs" rule
-- Reinforced "NEVER label articles" rule
-- "Camera movements include ALL modifiers" rule
-
-### Fix 4: Updated Example Output
-**File:** `templates/span-labeling-prompt.md`
-
-Changed example to demonstrate:
-- Splitting "detective's weathered hands" into identity + appearance
-- Keeping "camera slowly pans back to reveal the scene" as single span
-- NOT labeling articles "a" and "the"
-
-## Expected Improvements
-
-| Issue | Before | After |
-|-------|--------|-------|
-| Function words labeled | 40% | ~0% (explicit exclusion list) |
-| Camera movements fragmented | 40% | ~5% (explicit merge guidance) |
-| Composite phrases not split | 40% | ~10% (explicit split patterns) |
-| Invalid taxonomy IDs | Unknown | ~0% (examples disabled + ID list) |
+| Metric | Round 1 | Expected Round 2 |
+|--------|---------|------------------|
+| Wrong Categories | 20% | ~5% |
+| Fragmentation | 20% | ~5% |
+| Function Words | 0% | 0% |
+| Composite Splitting | 0% | 0% |
+| JSON Parse Failures | 20% | ~0% |
 
 ## Testing Recommendations
 
-Run the same 5 test cases:
-1. Simple technical prompt
-2. Complex cinematography prompt  
-3. Structured metadata prompt (TECHNICAL SPECS)
-4. Ambiguous terms prompt
-5. Creative/atmospheric prompt
+Run same 5 test cases and check specifically:
 
-Check specifically:
-- [ ] No "a", "an", "the" spans
-- [ ] No standalone preposition spans
-- [ ] Camera movements as single spans
-- [ ] "[person]'s [trait]" split correctly
-- [ ] All taxonomy IDs are valid
+1. **Camera movements use `camera.movement`** - NOT `camera`
+   - "The camera pans" → `camera.movement`
+   - "camera slowly tracks" → `camera.movement`
 
-## Future Work
+2. **Adverbs stay with verbs**
+   - "slowly pans" = ONE span
+   - "quickly zooms" = ONE span
 
-### Priority 1: Fix Example Banks
-Files to fix:
-- `routing/examples/creative.js` - Replace all invalid IDs
-- `routing/examples/technical.js` - Replace all invalid IDs
-- `routing/examples/academic.js` - Audit for invalid IDs
-- `routing/examples/conversational.js` - Audit for invalid IDs
+3. **Direction words stay with actions**
+   - "walks across" = ONE span
+   - "runs through" = ONE span
 
-Then re-enable SemanticRouter in `promptBuilder.ts`.
+4. **Weather phrases unified**
+   - "fallen leaves swirl around him in the brisk wind" = ONE span
 
-### Priority 2: Validation-Side Improvements
-Consider adding:
-- Pre-merge check for function words (auto-remove "a", "the", etc.)
-- More aggressive merge heuristics for camera movements
-- Taxonomy ID validation (reject invalid IDs)
+## Files Modified
+
+### Round 1
+- `utils/promptBuilder.ts` - Disabled broken SemanticRouter example injection
+- `templates/span-labeling-prompt.md` - Added CRITICAL sections for function words, phrase boundaries, composite splitting
+
+### Round 2
+- `templates/span-labeling-prompt.md` - Added "CRITICAL: Always Use Specific Attributes" section
+- `templates/span-labeling-prompt.md` - Updated RULE 1 disambiguation guidance
 
 ## Rollback Plan
 
@@ -149,4 +109,19 @@ If issues occur:
 1. Revert `templates/span-labeling-prompt.md` to previous version
 2. Revert `utils/promptBuilder.ts` to previous version
 
-Both changes are isolated to the span labeling system.
+## Future Work
+
+### Priority 1: Fix Example Banks
+Files to fix with valid taxonomy IDs:
+- `routing/examples/creative.js`
+- `routing/examples/technical.js`
+- `routing/examples/academic.js`
+- `routing/examples/conversational.js`
+
+Then re-enable SemanticRouter in `promptBuilder.ts`.
+
+### Priority 2: Validation-Side Improvements
+Consider adding:
+- Auto-upgrade parent categories to attributes when context is clear (e.g., `camera` → `camera.movement` if camera verb detected)
+- Pre-merge check for function words (auto-remove "a", "the", etc.)
+- More aggressive merge heuristics for weather/camera phrases

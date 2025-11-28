@@ -2,8 +2,8 @@
   "results": [
     {
       "testName": "Camera vs Action Disambiguation",
-      "duration": 1603,
-      "spanCount": 7,
+      "duration": 1798,
+      "spanCount": 5,
       "textMismatch": {
         "exactMatchRate": 0,
         "fuzzyMatchRate": 0,
@@ -18,15 +18,8 @@
         }
       },
       "wrongCategories": {
-        "wrongCategories": [
-          {
-            "text": "camera",
-            "expectedRole": "camera.movement",
-            "actualRole": "camera",
-            "type": "wrong_category"
-          }
-        ],
-        "wrongCategoryCount": 1,
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
         "missingSpanCount": 0,
         "antiPatternCount": 0
       },
@@ -39,7 +32,7 @@
         "hallucinatedSpans": []
       },
       "jsonParse": {
-        "hasSchemaErrors": true,
+        "hasSchemaErrors": false,
         "repairTriggered": false,
         "jsonParseError": false
       },
@@ -53,37 +46,23 @@
       "repairTriggered": false,
       "spans": [
         {
-          "text": "camera",
-          "role": "camera",
-          "confidence": 0.95,
-          "start": 4,
-          "end": 10
-        },
-        {
-          "text": "slowly",
-          "role": "action.movement",
-          "confidence": 0.9,
-          "start": 11,
-          "end": 17
-        },
-        {
-          "text": "pans right",
+          "text": "camera slowly pans right",
           "role": "camera.movement",
-          "confidence": 0.9,
-          "start": 18,
+          "confidence": 0.8812500000000001,
+          "start": 4,
           "end": 28
         },
         {
           "text": "the actor",
           "role": "subject.identity",
-          "confidence": 0.8500000000000001,
+          "confidence": 0.825,
           "start": 32,
           "end": 41
         },
         {
           "text": "walks",
           "role": "action.movement",
-          "confidence": 0.92,
+          "confidence": 0.9,
           "start": 42,
           "end": 47
         },
@@ -105,7 +84,7 @@
     },
     {
       "testName": "Shot Type Detection",
-      "duration": 559,
+      "duration": 478,
       "spanCount": 4,
       "textMismatch": {
         "exactMatchRate": 0,
@@ -180,7 +159,7 @@
     },
     {
       "testName": "Technical Specs Extraction",
-      "duration": 457,
+      "duration": 544,
       "spanCount": 4,
       "textMismatch": {
         "exactMatchRate": 0,
@@ -226,28 +205,28 @@
         {
           "text": "4-8s",
           "role": "technical.duration",
-          "confidence": 0.95,
+          "confidence": 1,
           "start": 36,
           "end": 40
         },
         {
           "text": "16:9",
           "role": "technical.aspectRatio",
-          "confidence": 0.95,
+          "confidence": 1,
           "start": 61,
           "end": 65
         },
         {
           "text": "24fps",
           "role": "technical.frameRate",
-          "confidence": 0.95,
+          "confidence": 1,
           "start": 84,
           "end": 89
         },
         {
           "text": "Natural ambience",
           "role": "audio.score",
-          "confidence": 0.95,
+          "confidence": 1,
           "start": 103,
           "end": 119
         }
@@ -255,7 +234,7 @@
     },
     {
       "testName": "Fragmentation Test",
-      "duration": 1323,
+      "duration": 1044,
       "spanCount": 4,
       "textMismatch": {
         "exactMatchRate": 0,
@@ -306,32 +285,32 @@
           "end": 11
         },
         {
-          "text": "dog",
-          "role": "subject.identity",
-          "confidence": 0.9,
-          "start": 17,
+          "text": "a dog",
+          "role": "subject.wardrobe",
+          "confidence": 0.8,
+          "start": 15,
           "end": 20
         },
         {
-          "text": "running",
+          "text": "running through",
           "role": "action.movement",
-          "confidence": 0.9,
+          "confidence": 0.81,
           "start": 21,
-          "end": 28
+          "end": 36
         },
         {
-          "text": "through a park",
+          "text": "park",
           "role": "environment.location",
-          "confidence": 0.9,
-          "start": 29,
+          "confidence": 0.85,
+          "start": 39,
           "end": 43
         }
       ]
     },
     {
       "testName": "Complex Multi-Section",
-      "duration": 1757,
-      "spanCount": 13,
+      "duration": 1808,
+      "spanCount": 14,
       "textMismatch": {
         "exactMatchRate": 0,
         "fuzzyMatchRate": 0,
@@ -368,10 +347,10 @@
         "fragmentationIssues": [
           {
             "fragments": [
-              "fallen leaves swirl around him",
+              "as fallen leaves swirl around him",
               "in the brisk wind"
             ],
-            "merged": "fallen leaves swirl around him in the brisk wind",
+            "merged": "as fallen leaves swirl around him in the brisk wind",
             "gap": " ",
             "role": "environment.weather"
           },
@@ -409,7 +388,7 @@
         {
           "text": "standing amidst a leaf-strewn battlefield",
           "role": "environment.location",
-          "confidence": 0.85,
+          "confidence": 0.9,
           "start": 75,
           "end": 116
         },
@@ -421,24 +400,31 @@
           "end": 137
         },
         {
-          "text": "gestures emphatically to soldiers",
+          "text": "He gestures emphatically",
           "role": "action.movement",
-          "confidence": 0.88,
-          "start": 142,
+          "confidence": 0.9,
+          "start": 139,
+          "end": 163
+        },
+        {
+          "text": "to soldiers",
+          "role": "subject.identity",
+          "confidence": 0.8,
+          "start": 164,
           "end": 175
         },
         {
           "text": "rallying their spirits",
-          "role": "subject.emotion",
-          "confidence": 0.85,
+          "role": "action.movement",
+          "confidence": 0.8,
           "start": 177,
           "end": 199
         },
         {
-          "text": "fallen leaves swirl around him",
+          "text": "as fallen leaves swirl around him",
           "role": "environment.weather",
-          "confidence": 0.8,
-          "start": 203,
+          "confidence": 0.85,
+          "start": 200,
           "end": 233
         },
         {
@@ -451,14 +437,14 @@
         {
           "text": "The camera slowly pans in from a distance",
           "role": "camera.movement",
-          "confidence": 0.92,
+          "confidence": 0.8500000000000001,
           "start": 253,
           "end": 294
         },
         {
           "text": "capturing the tension and urgency of the moment",
-          "role": "camera.angle",
-          "confidence": 0.9,
+          "role": "camera.movement",
+          "confidence": 0.85,
           "start": 296,
           "end": 343
         },
@@ -493,8 +479,8 @@
       "rate": 0
     },
     "wrongCategories": {
-      "count": 1,
-      "rate": 0.2
+      "count": 0,
+      "rate": 0
     },
     "missingSpans": {
       "count": 0,
@@ -505,8 +491,8 @@
       "rate": 0
     },
     "jsonParseFailures": {
-      "count": 1,
-      "rate": 0.2
+      "count": 0,
+      "rate": 0
     },
     "fragmentation": {
       "count": 1,
@@ -517,15 +503,15 @@
       "rate": 0
     },
     "performance": {
-      "avg": 1139.8,
-      "p95": 1757,
-      "p99": 1757,
+      "avg": 1134.4,
+      "p95": 1808,
+      "p99": 1808,
       "timings": [
-        1603,
-        559,
-        457,
-        1323,
-        1757
+        1798,
+        478,
+        544,
+        1044,
+        1808
       ]
     }
   }
