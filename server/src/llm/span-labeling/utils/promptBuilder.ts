@@ -34,9 +34,13 @@ function extractRulesSection(template: string): string {
  * Build system prompt dynamically from taxonomy.js
  * Generates the taxonomy structure section while preserving detection patterns from template
  * 
- * PDF Design B: Optionally injects context-aware few-shot examples via SemanticRouter
+ * NOTE: SemanticRouter example injection is DISABLED because the example banks
+ * contain invalid taxonomy IDs (e.g., metaphor.simile, camera.technique, etc.)
+ * that teach the model wrong categories. Re-enable after fixing example banks.
+ * 
+ * @see routing/examples/*.js - These files need taxonomy ID fixes before re-enabling
  */
-export function buildSystemPrompt(text: string = '', useRouter: boolean = true): string {
+export function buildSystemPrompt(text: string = '', useRouter: boolean = false): string {
   // Generate taxonomy structure from shared/taxonomy.js
   const parentCategories = Object.values(TAXONOMY)
     .map(cat => `- \`${cat.id}\` - ${cat.description}`)
@@ -79,14 +83,15 @@ ${detectionPatterns}
 ${rulesSection}
 `.trim();
 
-  // PDF Design B: Inject context-aware few-shot examples if enabled
-  if (useRouter && text) {
-    const router = new SemanticRouter();
-    const examples = router.formatExamplesForPrompt(text);
-    if (examples) {
-      systemPrompt += examples;
-    }
-  }
+  // PDF Design B: Example injection DISABLED - example banks have invalid taxonomy IDs
+  // TODO: Fix routing/examples/*.js to use valid taxonomy IDs, then re-enable:
+  // if (useRouter && text) {
+  //   const router = new SemanticRouter();
+  //   const examples = router.formatExamplesForPrompt(text);
+  //   if (examples) {
+  //     systemPrompt += examples;
+  //   }
+  // }
 
   return systemPrompt;
 }
