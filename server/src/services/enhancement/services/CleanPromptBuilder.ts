@@ -7,8 +7,6 @@ import type {
   BrainstormContext,
 } from './types.js';
 
-const UNIVERSAL_ORDER = 'Shot Type > Subject > Action > Setting > Camera Behavior > Lighting > Style';
-
 /**
  * Prompt builder for span-level replacements aligned to
  * "Prompt Engineering for Video Prompts" (single source of truth).
@@ -43,7 +41,7 @@ export class CleanPromptBuilder {
       `Full prompt snapshot: "${promptPreview}"`,
       `Highlighted: "${inline}"`,
       `Custom request: ${customRequest}`,
-      `Universal order: ${UNIVERSAL_ORDER}.`,
+      'Maintain the grammatical flow and style of the surrounding sentence.',
       'Generate 12 drop-in replacements that satisfy the request, stay grammatical, and remain camera-visible.',
       isVideoPrompt
         ? '- Keep subject and tense unless the request explicitly changes them.'
@@ -131,7 +129,7 @@ export class CleanPromptBuilder {
       `Full prompt snapshot: "${promptPreview}"`,
       modelLine,
       sectionLine,
-      `Universal prompt order: ${UNIVERSAL_ORDER}. Stay in the current slot.`,
+      'Maintain the grammatical flow and style of the surrounding sentence.',
       `Slot: ${slotLabel}. This is Design 1 (Orthogonal Attribute Injector).`,
       'Goal: Generate 12 drop-in replacements that vary one technical attribute each.',
       'Rules:',
@@ -176,7 +174,7 @@ export class CleanPromptBuilder {
       `Full prompt snapshot: "${promptPreview}"`,
       modelLine,
       sectionLine,
-      `Universal prompt order: ${UNIVERSAL_ORDER}. Stay in the current slot.`,
+      'Maintain the grammatical flow and style of the surrounding sentence.',
       `Slot: ${slotLabel}. This is Design 2 (Visual Decomposition Expander).`,
       'Rules:',
       '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
@@ -219,7 +217,7 @@ export class CleanPromptBuilder {
       `Full prompt snapshot: "${promptPreview}"`,
       modelLine,
       sectionLine,
-      `Universal prompt order: ${UNIVERSAL_ORDER}. Stay in the current slot.`,
+      'Maintain the grammatical flow and style of the surrounding sentence.',
       `Slot: ${slotLabel}. This is Design 3 (One Clip, One Action).`,
       'Rules:',
       '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
