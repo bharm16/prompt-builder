@@ -48,13 +48,13 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   }, [showExportMenu, onToggleExportMenu]);
 
   return (
-    <div className="flex items-center justify-end gap-geist-1 mt-geist-4 -mb-geist-2">
+    <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
       <Button
         onClick={onCopy}
         svgOnly
         variant="ghost"
-        prefix={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-        className={copied ? 'text-green-600 bg-green-50' : ''}
+        prefix={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        className={copied ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
         aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
         title="Copy"
       />
@@ -63,18 +63,18 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         onClick={onShare}
         svgOnly
         variant="ghost"
-        prefix={shared ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-        className={shared ? 'text-green-600 bg-green-50' : ''}
+        prefix={shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+        className={shared ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
       />
 
-      <div className="relative" ref={exportMenuRef}>
+      <div className="relative -mx-0.5" ref={exportMenuRef}>
         <Button
           onClick={() => onToggleExportMenu(!showExportMenu)}
           svgOnly
           variant="ghost"
-          prefix={<Download className="h-4 w-4" />}
+          prefix={<Download className="h-3 w-3" />}
           aria-expanded={showExportMenu}
           title="Export"
         />
@@ -105,14 +105,15 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         )}
       </div>
 
-      <div className="w-px h-geist-4 bg-geist-accents-2 mx-geist-1" />
+      <div className="w-px h-geist-4 bg-geist-accents-2 mx-geist-0 -mx-0.5" />
 
       <Button
         onClick={onUndo}
         disabled={!canUndo}
         svgOnly
         variant="ghost"
-        prefix={<RotateCcw className="h-4 w-4" />}
+        prefix={<RotateCcw className="h-3 w-3" />}
+        className="-mx-0.5"
         title="Undo"
       />
       <Button
@@ -120,7 +121,8 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         disabled={!canRedo}
         svgOnly
         variant="ghost"
-        prefix={<RotateCw className="h-4 w-4" />}
+        prefix={<RotateCw className="h-3 w-3" />}
+        className="-mx-0.5"
         title="Redo"
       />
     </div>

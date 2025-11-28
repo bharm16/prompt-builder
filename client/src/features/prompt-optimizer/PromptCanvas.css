@@ -245,8 +245,8 @@
   gap: 0 !important;
 }
 
-/* Responsive content padding - 0.5vw on both sides */
+/* Responsive content padding - 0.75vw on both sides */
 .prompt-canvas-content-wrapper {
-  padding-left: 0.5vw !important;
-  padding-right: 0.5vw !important;
+  padding-left: 0.75vw !important;
+  padding-right: 0.75vw !important;
 }
