@@ -1,25 +1,9 @@
-import { ROLE_SET } from '../config/roles.js';
-import { wordCount } from '../utils/textUtils.js';
-import { normalizeSpan } from '../processing/SpanNormalizer.js';
 import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
 import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
 import { resolveOverlaps } from '../processing/OverlapResolver.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
-
-/**
- * Lightly sanitize span text before alignment to improve hit rate on
- * minor formatting differences (quotes, markdown emphasis, extra spaces).
- */
-function normalizeSpanTextForLookup(value) {
-  if (typeof value !== 'string') return '';
-
-  return value
-    .replace(/[`"'“”]/g, '')
-    .replace(/\*\*/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
 
 /**
  * Comprehensive span validation and processing
@@ -62,108 +46,13 @@ export function validateSpans({
   cache,
   isAdversarial = false,
 }) {
-  const errors = [];
-  const validationNotes = [];
-  const autoFixNotes = [];
-  const sanitized = [];
   const lenient = attempt > 1;
 
-  // Phase 1: Validate and correct individual spans
-  spans.forEach((originalSpan, index) => {
-    const label = `span[${index}]`;
-    const span = originalSpan ? { ...originalSpan } : originalSpan;
-
-    // Check for text field
-    if (typeof span.text !== 'string' || span.text.length === 0) {
-      if (!lenient) errors.push(`${label} missing text`);
-      else validationNotes.push(`${label} dropped: missing text`);
-      return;
-    }
-
-    // Find correct indices in source text
-    const preferredStart = Number.isInteger(span.start) ? span.start : 0;
-    let corrected = cache.findBestMatch(text, span.text, preferredStart);
-
-    // Retry with normalized text (remove quotes/markdown, collapse spaces) if no direct hit
-    if (!corrected) {
-      const cleanedText = normalizeSpanTextForLookup(span.text);
-      if (cleanedText && cleanedText !== span.text) {
-        corrected = cache.findBestMatch(text, cleanedText, preferredStart);
-      }
-    }
-
-    // Last-resort case-insensitive search to catch minor casing mismatches
-    if (!corrected) {
-      const loweredSource = text.toLowerCase();
-      const loweredTarget = normalizeSpanTextForLookup(span.text).toLowerCase();
-      const idx = loweredTarget ? loweredSource.indexOf(loweredTarget) : -1;
-      if (idx !== -1) {
-        corrected = { start: idx, end: idx + loweredTarget.length };
-      }
-    }
-
-    if (!corrected) {
-      if (!lenient) {
-        errors.push(`${label} text "${span.text}" not found in source`);
-      } else {
-        validationNotes.push(`${label} dropped: text not found in source`);
-      }
-      return;
-    }
-
-    // Apply auto-corrected indices
-    if (span.start !== corrected.start || span.end !== corrected.end) {
-      autoFixNotes.push(
-        `${label} indices auto-adjusted from ${span.start}-${span.end} to ${corrected.start}-${corrected.end}`
-      );
-    }
-
-    // Create corrected span (immutable)
-    const correctedSpan = {
-      ...span,
-      start: corrected.start,
-      end: corrected.end,
-    };
-
-    // Normalize role and confidence (includes ID generation)
-    const normalized = normalizeSpan(correctedSpan, text, lenient);
-    if (!normalized || !normalized.role) {
-      if (!lenient) {
-        errors.push(
-          `${label} role "${span.role}" is not in the allowed set (${Array.from(ROLE_SET).join(', ')})`
-        );
-      }
-      return;
-    }
-
-    // Check if role is a technical category (should be exempt from word limit)
-    const isExemptCategory = 
-      normalized.role.startsWith('technical') || 
-      normalized.role.startsWith('style') || 
-      normalized.role.startsWith('camera') ||
-      normalized.role.startsWith('audio') ||
-      normalized.role.startsWith('lighting') ||
-      normalized.role === 'Specs' || // Keep legacy for safety
-      normalized.role === 'Style';
-
-    // Check word limit for non-exempt spans only
-    if (
-      !isExemptCategory &&
-      policy.nonTechnicalWordLimit > 0 &&
-      wordCount(normalized.text) > policy.nonTechnicalWordLimit
-    ) {
-      if (!lenient) {
-        errors.push(
-          `${label} exceeds non-technical word limit (${policy.nonTechnicalWordLimit} words)`
-        );
-      } else {
-        validationNotes.push(`${label} dropped: exceeds non-technical word limit`);
-      }
-      return;
-    }
-
-    sanitized.push(normalized);
-  });
+  // Phase 1: Normalize and correct individual spans
+  const phase1Result = normalizeAndCorrectSpans(spans, text, policy, cache, lenient);
+  const sanitized = phase1Result.sanitized;
+  const errors = phase1Result.errors;
+  const phase1Notes = phase1Result.notes;
 
   // Phase 2: Sort by position
   sanitized.sort((a, b) => {
@@ -201,8 +90,7 @@ export function validateSpans({
     ...(Array.isArray(meta?.notes) ? meta.notes : []),
     ...(typeof meta?.notes === 'string' && meta.notes ? [meta.notes] : []),
     ...(isAdversarial ? ['input flagged as adversarial'] : []),
-    ...validationNotes,
-    ...autoFixNotes,
+    ...phase1Notes,
     ...mergeNotes,
     ...dedupeNotes,
     ...overlapNotes,

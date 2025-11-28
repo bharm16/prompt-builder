@@ -1,4 +1,6 @@
 import { logger } from '@infrastructure/Logger';
+import { extractResponseText, extractAndParse } from './JsonExtractor.js';
+import { RetryPolicy } from './RetryPolicy.js';
 
 interface EnforceJSONOptions {
   schema?: {
@@ -55,13 +57,10 @@ export class StructuredOutputEnforcer {
     // Add structured output enforcement to system prompt
     let currentSystemPrompt = this._enhancePromptForJSON(systemPrompt, isArray);
 
-    let lastError: Error | null = null;
-    let attempt = 0;
-
-    while (attempt <= maxRetries) {
-      try {
+    // Use RetryPolicy to wrap JSON extraction
+    return RetryPolicy.execute(
+      async () => {
         logger.debug('Attempting structured output extraction', {
-          attempt: attempt + 1,
           maxRetries: maxRetries + 1,
         });
 
@@ -74,25 +73,19 @@ export class StructuredOutputEnforcer {
         );
 
         // Extract text from response
-        const responseText = StructuredOutputEnforcer.extractResponseText(response);
+        const responseText = extractResponseText(response);
 
-        // Extract and clean JSON from response
-        const cleanedText = this._cleanJSONResponse(
-          responseText,
-          isArray
-        );
-
-        // Parse JSON
+        // Extract and parse JSON (mechanism)
         let parsedJSON: T;
         try {
-          parsedJSON = JSON.parse(cleanedText) as T;
+          parsedJSON = extractAndParse<T>(responseText, isArray);
         } catch (parseError) {
           // Log the actual response to debug
           const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
           logger.error('Failed to parse JSON response', {
             error: errorMessage,
-            cleanedResponse: cleanedText.substring(0, 200),
-            fullLength: cleanedText.length,
+            cleanedResponse: responseText.substring(0, 200),
+            fullLength: responseText.length,
           });
           throw parseError;
         }
@@ -103,62 +96,28 @@ export class StructuredOutputEnforcer {
         }
 
         logger.debug('Successfully extracted structured output', {
-          attempt: attempt + 1,
           type: isArray ? 'array' : 'object',
         });
 
         return parsedJSON;
-      } catch (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        lastError = errorObj;
-
-        // Don't retry API errors (rate limits, auth errors, etc.) - throw immediately
-        const apiError = errorObj as Error & { name?: string; statusCode?: number };
-        if (apiError.name === 'APIError' || apiError.statusCode) {
-          logger.warn('API error encountered, not retrying', {
-            error: errorObj.message,
-            statusCode: apiError.statusCode,
-          });
-          throw errorObj;
-        }
-
-        attempt++;
-
-        logger.warn('Structured output extraction failed', {
-          attempt,
-          error: errorObj.message,
-          willRetry: attempt <= maxRetries,
-        });
-
-        // If not last attempt, enhance prompt with error feedback
-        if (attempt <= maxRetries) {
+      },
+      {
+        maxRetries,
+        shouldRetry: RetryPolicy.createApiErrorFilter(),
+        onRetry: (error, attempt) => {
+          // Enhance prompt with error feedback for next attempt
           currentSystemPrompt = this._enhancePromptWithErrorFeedback(
             systemPrompt, // Use original system prompt
-            errorObj.message,
+            error.message,
             isArray
           );
-        }
+          logger.warn('Structured output extraction failed, retrying', {
+            attempt,
+            error: error.message,
+          });
+        },
       }
-    }
-
-    // All retries exhausted
-    logger.error('All structured output extraction attempts failed', {
-      attempts: maxRetries + 1,
-      lastError: lastError?.message,
-    });
-
-    // Create error and preserve statusCode if original error had one
-    const finalError = new Error(
-      `Failed to extract valid JSON after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`
     );
-
-    // Preserve statusCode from APIError
-    const lastErrorWithStatus = lastError as Error & { statusCode?: number };
-    if (lastErrorWithStatus.statusCode) {
-      (finalError as Error & { statusCode?: number }).statusCode = lastErrorWithStatus.statusCode;
-    }
-
-    throw finalError;
   }
 
   /**
@@ -216,64 +175,6 @@ export class StructuredOutputEnforcer {
     return response;
   }
 
-  /**
-   * Extract text from AI service response
-   * Handles both { text: string } and { content: [{ text: string }] } formats
-   * @private
-   */
-  static extractResponseText(response: AIServiceResponse): string {
-    if (response.text) {
-      return response.text;
-    }
-    if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-      return response.content[0]?.text || '';
-    }
-    return '';
-  }
-
-  /**
-   * Clean JSON response by removing markdown and extra text
-   * @private
-   */
-  private static _cleanJSONResponse(text: string, isArray: boolean): string {
-    // Add more aggressive cleaning before parsing
-    let cleanedResponse = text
-      .replace(/```json\n?/gi, '')  // Case-insensitive markdown removal
-      .replace(/```\n?/gi, '')       // Case-insensitive markdown removal
-      .trim();
-
-    // Remove common preambles
-    cleanedResponse = cleanedResponse.replace(
-      /^(Here is|Here's|This is|The|Output:|Response:)\s*/i,
-      ''
-    );
-
-    // If it starts with explanation text, find the array/object
-    const startChar = isArray ? '[' : '{';
-    if (!cleanedResponse.startsWith(startChar)) {
-      const arrayStart = cleanedResponse.indexOf(startChar);
-      if (arrayStart !== -1) {
-        cleanedResponse = cleanedResponse.substring(arrayStart);
-      }
-    }
-
-    // Find the actual JSON start and end
-    const endChar = isArray ? ']' : '}';
-
-    const startIndex = cleanedResponse.indexOf(startChar);
-    const lastIndex = cleanedResponse.lastIndexOf(endChar);
-
-    if (startIndex === -1 || lastIndex === -1 || lastIndex < startIndex) {
-      throw new Error(
-        `Invalid JSON structure: Expected ${startChar}...${endChar}`
-      );
-    }
-
-    // Extract only the JSON portion
-    cleanedResponse = cleanedResponse.substring(startIndex, lastIndex + 1);
-
-    return cleanedResponse;
-  }
 
   /**
    * Validate JSON against schema

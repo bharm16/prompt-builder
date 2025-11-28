@@ -4,8 +4,8 @@
  * Handles errors during span labeling requests with fallback to cached results.
  */
 
-import { spanLabelingCache } from '../services/index.ts';
 import type { SpanLabelingPayload, SpanLabelingState, SpanMeta, LabeledSpan } from '../hooks/types.ts';
+import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache.ts';
 
 export interface ErrorHandlerOptions {
   requestId: number;
@@ -46,15 +46,20 @@ export function shouldHandleError(options: ErrorHandlerOptions): boolean {
  */
 export function createFallbackResult(
   payload: SpanLabelingPayload,
-  error: Error
+  error: Error,
+  cacheService: SpanLabelingCacheService | null
 ): FallbackResult | null {
-  const fallback = spanLabelingCache.get(payload);
+  if (!cacheService) {
+    return null;
+  }
+
+  const fallback = cacheService.get(payload);
 
   if (!fallback) {
     return null;
   }
 
-  const cacheAge = Date.now() - (fallback.timestamp || 0);
+  const cacheAge = fallback.timestamp ? Date.now() - fallback.timestamp : 0;
 
   return {
     spans: Array.isArray(fallback.spans) ? fallback.spans : [],

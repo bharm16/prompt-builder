@@ -1,169 +1,22 @@
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { SubstringPositionCache } from './cache/SubstringPositionCache.js';
 import SpanLabelingConfig from './config/SpanLabelingConfig.js';
-import { sanitizePolicy, sanitizeOptions, buildTaskDescription } from './utils/policyUtils.js';
-import { parseJson, buildUserPayload } from './utils/jsonUtils.js';
-import { formatValidationErrors } from './utils/textUtils.js';
-import { validateSchemaOrThrow } from './validation/SchemaValidator.js';
-import { validateSpans } from './validation/SpanValidator.js';
-import { TAXONOMY } from '#shared/taxonomy.js';
+import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
-import { SemanticRouter } from './routing/SemanticRouter.js';
-import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '@services/nlp/NlpSpanService.js';
-import type { LabelSpansParams, LabelSpansResult, LLMResponse, AIService } from './types.js';
+import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
+import { RobustLlmClient } from './services/RobustLlmClient.js';
+import type { LabelSpansParams, LabelSpansResult } from './types.js';
 import type { AIService as BaseAIService } from '../../types.js';
-
-// Load detection patterns and rules from template file
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const promptTemplatePath = join(__dirname, 'templates', 'span-labeling-prompt.md');
-const PROMPT_TEMPLATE = readFileSync(promptTemplatePath, 'utf-8');
 
 /**
  * Span Labeling Service - Refactored Architecture
  *
  * Orchestrates LLM-based span labeling with validation and optional repair.
  * This service is a thin orchestrator delegating to specialized modules:
- * - Config: Centralized configuration
- * - Utils: Text, JSON, and policy utilities
- * - Cache: Performance-optimized substring position caching
+ * - NlpSpanStrategy: NLP fast-path extraction
+ * - RobustLlmClient: LLM-based extraction with repair loop
  * - Validation: Schema and span validation
  * - Processing: Pipeline of span transformations (dedupe, overlap, filter, truncate)
- * - Router: Context-aware few-shot example injection (PDF Design B)
- * 
- * DYNAMIC TAXONOMY GENERATION:
- * The system prompt is now generated from taxonomy.js at runtime to prevent drift.
- * Changes to the taxonomy automatically propagate to the LLM's instructions.
- * 
- * PDF DESIGN B INTEGRATION:
- * SemanticRouter analyzes input characteristics and injects targeted few-shot examples
- * to improve accuracy on technical terminology and ambiguous terms.
  */
-
-/**
- * Wrap user input in XML tags for adversarial safety (PDF Section 1.6)
- * This creates a clear boundary between system instructions and user data
- */
-function wrapUserInput(text: string): string {
-  return `<user_input>\n${text}\n</user_input>`;
-}
-
-/**
- * Extract the detection patterns section from the template
- * This keeps the detailed role definitions and examples from the template file
- */
-function extractDetectionPatterns(template: string): string {
-  // Extract everything from "## Role Definitions" to "## Rules"
-  const match = template.match(/## Role Definitions with Detection Patterns([\s\S]*?)## Critical Instructions/);
-  return match ? match[1].trim() : '';
-}
-
-/**
- * Extract the rules and examples section from the template
- * This keeps the operational guidelines from the template file
- */
-function extractRulesSection(template: string): string {
-  // Extract everything from "## Critical Instructions" onwards
-  const match = template.match(/## Critical Instructions([\s\S]*)/);
-  return match ? match[0].trim() : '';
-}
-
-/**
- * Build system prompt dynamically from taxonomy.js
- * Generates the taxonomy structure section while preserving detection patterns from template
- * 
- * PDF Design B: Optionally injects context-aware few-shot examples via SemanticRouter
- */
-function buildSystemPrompt(text: string = '', useRouter: boolean = true): string {
-  // Generate taxonomy structure from shared/taxonomy.js
-  const parentCategories = Object.values(TAXONOMY)
-    .map(cat => `- \`${cat.id}\` - ${cat.description}`)
-    .join('\n');
-
-  const attributeSections = Object.values(TAXONOMY)
-    .map(cat => {
-      if (!cat.attributes || Object.keys(cat.attributes).length === 0) {
-        return null;
-      }
-      const attrs = Object.values(cat.attributes).map(id => `\`${id}\``).join(', ');
-      return `- ${cat.label}: ${attrs}`;
-    })
-    .filter((section): section is string => section !== null)
-    .join('\n');
-
-  // Load detection patterns from template
-  const detectionPatterns = extractDetectionPatterns(PROMPT_TEMPLATE);
-  const rulesSection = extractRulesSection(PROMPT_TEMPLATE);
-
-  // Build complete system prompt
-  let systemPrompt = `# Span Labeling System Prompt
-
-Label spans for AI video prompt elements using our unified taxonomy system.
-
-**IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanatory text, just pure JSON.**
-
-## Taxonomy Structure
-
-Our taxonomy has **${Object.keys(TAXONOMY).length} parent categories**, each with specific attributes:
-
-**PARENT CATEGORIES (use when general):**
-${parentCategories}
-
-**ATTRIBUTES (use when specific):**
-${attributeSections}
-
-${detectionPatterns}
-
-${rulesSection}
-`.trim();
-
-  // PDF Design B: Inject context-aware few-shot examples if enabled
-  if (useRouter && text) {
-    const router = new SemanticRouter();
-    const examples = router.formatExamplesForPrompt(text);
-    if (examples) {
-      systemPrompt += examples;
-    }
-  }
-
-  return systemPrompt;
-}
-
-// Generate base system prompt at service initialization (without context-specific examples)
-const BASE_SYSTEM_PROMPT = buildSystemPrompt('', false);
-
-interface CallModelParams {
-  systemPrompt: string;
-  userPayload: string;
-  aiService: BaseAIService;
-  maxTokens: number;
-}
-
-/**
- * Call LLM with system prompt and user payload using AIModelService
- */
-async function callModel({ systemPrompt, userPayload, aiService, maxTokens }: CallModelParams): Promise<string> {
-  const response = await aiService.execute('span_labeling', {
-    systemPrompt,
-    userMessage: userPayload,
-    maxTokens,
-    jsonMode: true, // Enforce structured output per PDF guidance
-    // temperature is configured in modelConfig.js
-  });
-  
-  // Extract text from response
-  // Response format: { text: string, metadata: {...} }
-  // Handle both formats for backward compatibility
-  if (response.text) {
-    return response.text;
-  }
-  if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-    return response.content[0]?.text || '';
-  }
-  return '';
-}
 
 /**
  * Label spans using an LLM with validation and optional repair attempt.
@@ -216,272 +69,26 @@ async function labelSpansSingle(
       templateVersion: params.templateVersion,
     });
 
-    // ============================================================================
-    // NLP FAST-PATH: Dictionary + Symbolic NLP extraction (Phase 0 + Phase 1)
-    // ============================================================================
-    // Attempt to extract spans using:
-    // 1. Symbolic NLP (POS tagging, chunking, SRL, frames) - if enabled
-    // 2. Dictionary matching (technical terms) - fallback
-    // This bypasses expensive LLM calls for 60-80% of requests
-    
-    const startTime = Date.now();
-    let nlpSpans: unknown[] = [];
-    let nlpMetadata: Record<string, unknown> = {};
-    let usedNlpFastPath = false;
-    let nlpSource = 'none';
-    
-    // ============================================================================
-    // PHASE 1: Neuro-Symbolic NLP (Aho-Corasick + GLiNER)
-    // ============================================================================
-    if (SpanLabelingConfig.NEURO_SYMBOLIC && SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED) {
-      try {
-        // extractSemanticSpans runs both:
-        // - Tier 1: Aho-Corasick for closed vocabulary (technical terms)
-        // - Tier 2: GLiNER for open vocabulary (semantic entities)
-        const semanticResult = await extractSemanticSpans(params.text);
-        
-        const hasSpans = semanticResult.spans && semanticResult.spans.length > 0;
-        
-        if (hasSpans) {
-          nlpSpans = semanticResult.spans as unknown[];
-          nlpSource = (semanticResult.stats as { phase?: string } | undefined)?.phase || 'neuro-symbolic';
-          nlpMetadata = {
-            closedVocab: (semanticResult.stats as { closedVocabSpans?: number } | undefined)?.closedVocabSpans || 0,
-            openVocab: (semanticResult.stats as { openVocabSpans?: number } | undefined)?.openVocabSpans || 0,
-            tier1Latency: (semanticResult.stats as { tier1Latency?: number } | undefined)?.tier1Latency || 0,
-            tier2Latency: (semanticResult.stats as { tier2Latency?: number } | undefined)?.tier2Latency || 0,
-          };
-          
-          console.log(`[Neuro-Symbolic] Extracted ${nlpSpans.length} spans (closed: ${nlpMetadata.closedVocab}, open: ${nlpMetadata.openVocab}, latency: ${(nlpMetadata.tier1Latency as number) + (nlpMetadata.tier2Latency as number)}ms)`);
-        }
-      } catch (error) {
-        const err = error as Error;
-        console.warn('[Neuro-Symbolic] Error during extraction, falling back:', err.message);
-      }
-    }
-    
-    // ============================================================================
-    // PHASE 0: Fallback to Dictionary-only if neuro-symbolic didn't run or failed
-    // ============================================================================
-    if (nlpSpans.length === 0 && SpanLabelingConfig.NLP_FAST_PATH.ENABLED) {
-      try {
-        nlpSpans = extractKnownSpans(params.text) as unknown[];
-        nlpSource = 'dictionary';
-      } catch (error) {
-        const err = error as Error;
-        console.warn('[Dictionary] Error during extraction:', err.message);
-      }
-    }
-    
-    // ============================================================================
-    // Check if we have sufficient coverage to skip LLM
-    // ============================================================================
-    if (nlpSpans.length > 0) {
-      const meetsThreshold = nlpSpans.length >= SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
-      
-      if (meetsThreshold) {
-        const nlpEndTime = Date.now();
-        const nlpLatency = nlpEndTime - startTime;
-        
-        // Validate NLP spans through the same pipeline
-        const validation = validateSpans({
-          spans: nlpSpans,
-          meta: {
-            version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
-            notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
-            source: nlpSource,
-            latency: nlpLatency,
-            ...nlpMetadata,
-            vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
-          },
-          text: params.text,
-          policy,
-          options: sanitizedOptions,
-          attempt: 1,
-          cache,
-          isAdversarial: false,
-        });
-        
-        if (validation.ok) {
-          usedNlpFastPath = true;
-          
-          // Log telemetry if enabled
-          if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
-            console.log(`[NLP Fast-Path] Bypassed LLM call | Spans: ${nlpSpans.length} | Latency: ${nlpLatency}ms | Estimated savings: $0.0005`);
-          }
-          
-          return validation.result;
-        }
-      }
-    }
-    
-    // ============================================================================
-    // LLM FALLBACK: Continue with standard LLM-based processing
-    // ============================================================================
-    
-    const estimatedMaxTokens = SpanLabelingConfig.estimateMaxTokens(
-      sanitizedOptions.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
-    );
+    // Try NLP fast-path first
+    const nlpStrategy = new NlpSpanStrategy();
+    const nlpResult = await nlpStrategy.extractSpans(params.text, policy, sanitizedOptions, cache);
 
-    const task = buildTaskDescription(sanitizedOptions.maxSpans, policy);
-
-    const basePayload = {
-      task,
-      policy,
-      text: params.text,
-      templateVersion: sanitizedOptions.templateVersion,
-    };
-
-    // PDF Design B: Use context-aware system prompt with semantic routing
-    const contextAwareSystemPrompt = buildSystemPrompt(params.text, true);
-
-    // Primary LLM call
-    const primaryResponse = await callModel({
-      systemPrompt: contextAwareSystemPrompt,
-      userPayload: buildUserPayload(basePayload),
-      aiService,
-      maxTokens: estimatedMaxTokens,
-    });
-
-    const parsedPrimary = parseJson(primaryResponse);
-    if (!parsedPrimary.ok) {
-      throw new Error(parsedPrimary.error);
+    if (nlpResult) {
+      // NLP fast-path succeeded
+      return nlpResult;
     }
 
-    // DEFENSIVE: Inject default meta if LLM omitted it
-    // Groq/Llama models sometimes optimize by omitting "optional" fields
-    // This ensures schema validation always passes
-    if (parsedPrimary.value) {
-      if (!parsedPrimary.value.meta || typeof parsedPrimary.value.meta !== 'object') {
-        parsedPrimary.value.meta = {
-          version: sanitizedOptions.templateVersion || 'v1',
-          notes: `Labeled ${parsedPrimary.value.spans?.length || 0} spans`,
-        };
-      } else {
-        // Ensure meta has required sub-fields
-        if (!parsedPrimary.value.meta.version) {
-          parsedPrimary.value.meta.version = sanitizedOptions.templateVersion || 'v1';
-        }
-        if (typeof parsedPrimary.value.meta.notes !== 'string') {
-          parsedPrimary.value.meta.notes = '';
-        }
-      }
-      
-      // Add NLP attempt metrics if tracking is enabled
-      if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS && nlpSpans.length > 0) {
-        parsedPrimary.value.meta.nlpAttempted = true;
-        parsedPrimary.value.meta.nlpSpansFound = nlpSpans.length;
-        parsedPrimary.value.meta.nlpBypassFailed = true;
-      }
-    }
-
-    // Validate schema (should pass now with defensive meta injection)
-    validateSchemaOrThrow(parsedPrimary.value);
-
-    const isAdversarial =
-      parsedPrimary.value?.isAdversarial === true ||
-      parsedPrimary.value?.is_adversarial === true;
-
-    if (isAdversarial) {
-      // Immediately exit with an empty set while preserving the adversarial flag
-      const validation = validateSpans({
-        spans: [],
-        meta: parsedPrimary.value.meta,
-        text: params.text,
-        policy,
-        options: sanitizedOptions,
-        attempt: 1,
-        cache,
-        isAdversarial: true,
-      });
-
-      return validation.result;
-    }
-
-    // Validate spans (strict mode)
-    let validation = validateSpans({
-      spans: parsedPrimary.value.spans || [],
-      meta: parsedPrimary.value.meta,
+    // Fall back to LLM-based extraction with repair loop
+    const llmClient = new RobustLlmClient();
+    return await llmClient.getSpans({
       text: params.text,
       policy,
       options: sanitizedOptions,
-      attempt: 1,
-      cache,
-      isAdversarial,
-    });
-
-    if (validation.ok) {
-      return validation.result;
-    }
-
-    // Handle validation failure
-    const enableRepair = params.enableRepair === true;
-
-    if (!enableRepair) {
-      // Lenient mode - drop invalid spans instead of failing
-      validation = validateSpans({
-        spans: parsedPrimary.value.spans || [],
-        meta: parsedPrimary.value.meta,
-        text: params.text,
-        policy,
-        options: sanitizedOptions,
-        attempt: 2, // Lenient mode
-        cache,
-        isAdversarial,
-      });
-
-      return validation.result;
-    }
-
-    // Repair attempt
-    const validationErrors = validation.errors;
-    const repairPayload = {
-      ...basePayload,
-      validation: {
-        errors: validationErrors,
-        originalResponse: parsedPrimary.value,
-        instructions:
-          'Fix the indices and roles described above without changing span text. Do not invent new spans.',
-      },
-    };
-
-    const repairResponse = await callModel({
-      systemPrompt: `${BASE_SYSTEM_PROMPT}
-
-If validation feedback is provided, correct the issues without altering span text.`,
-      userPayload: buildUserPayload(repairPayload),
+      enableRepair: params.enableRepair === true,
       aiService,
-      maxTokens: estimatedMaxTokens,
-    });
-
-    const parsedRepair = parseJson(repairResponse);
-    if (!parsedRepair.ok) {
-      throw new Error(parsedRepair.error);
-    }
-
-    // Validate repair schema
-    validateSchemaOrThrow(parsedRepair.value);
-
-    // Validate repair spans (lenient mode)
-    validation = validateSpans({
-      spans: parsedRepair.value.spans || [],
-      meta: parsedRepair.value.meta,
-      text: params.text,
-      policy,
-      options: sanitizedOptions,
-      attempt: 2,
       cache,
-      isAdversarial:
-        parsedRepair.value?.isAdversarial === true ||
-        parsedRepair.value?.is_adversarial === true,
+      nlpSpansAttempted: 0, // Could track NLP attempt count if needed
     });
-
-    if (!validation.ok) {
-      const errorMessage = formatValidationErrors(validation.errors);
-      throw new Error(`Repair attempt failed validation:\n${errorMessage}`);
-    }
-
-    return validation.result;
   } catch (error) {
     // Re-throw errors to let caller handle them
     throw error;

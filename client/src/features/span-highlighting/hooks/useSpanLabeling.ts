@@ -14,14 +14,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_POLICY, DEFAULT_OPTIONS } from '../config/index.ts';
 import { sanitizeText, hashString } from '../utils/index.ts';
-import { spanLabelingCache } from '../services/index.ts';
 import { SpanLabelingApi } from '../api/index.ts';
-import {
-  checkCache,
-  calculateEffectiveDebounce,
-  createDisabledState,
-  createLoadingState,
-} from '../utils/spanLabelingScheduler.ts';
+import { createDisabledState, createLoadingState } from '../utils/spanLabelingScheduler.ts';
 import {
   shouldHandleError,
   createFallbackResult,
@@ -29,6 +23,9 @@ import {
   createErrorState,
   logErrorWarning,
 } from '../utils/spanLabelingErrorHandler.ts';
+import { useAsyncScheduler } from './useAsyncScheduler.ts';
+import { useSpanLabelingCache } from './useSpanLabelingCache.ts';
+import { useSpanLabelingCacheService } from '../context/SpanLabelingContext.tsx';
 import type {
   LabeledSpan,
   SpanMeta,
@@ -61,7 +58,55 @@ export const createHighlightSignature = (text: string | null | undefined): strin
 };
 
 /**
+ * Deep compare memoization helper
+ * Stabilizes object references by comparing JSON serialization
+ * Used internally to prevent infinite loops from unstable callers
+ */
+function useDeepCompareMemoize<T>(value: T): T {
+  const ref = useRef<T>(value);
+  const signalRef = useRef<number>(0);
+
+  if (JSON.stringify(value) !== JSON.stringify(ref.current)) {
+    ref.current = value;
+    signalRef.current += 1;
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => ref.current, [signalRef.current]);
+}
+
+/**
  * Hook to call the /llm/label-spans endpoint with debounce + cancellation.
+ *
+ * @example
+ * ```tsx
+ * // ✅ RECOMMENDED: Use useMemo for policy to ensure referential stability
+ * // This is especially important if you plan to add user-configurable settings later
+ * const policy = useMemo(() => ({
+ *   allowOverlap: true,
+ *   nonTechnicalWordLimit: 10
+ * }), []); // Empty deps if static, or [userSetting] if dynamic
+ *
+ * useSpanLabeling({
+ *   text: input,
+ *   policy
+ * });
+ * ```
+ *
+ * @example
+ * ```tsx
+ * // ✅ Also works: Dynamic policy based on user settings
+ * const policy = useMemo(() => ({
+ *   allowOverlap: userSettings.allowOverlaps,
+ *   nonTechnicalWordLimit: userSettings.wordLimit
+ * }), [userSettings.allowOverlaps, userSettings.wordLimit]);
+ * ```
+ *
+ * **Why useMemo?**
+ * - Ensures referential stability (object identity doesn't change on every render)
+ * - Future-proofs for user-configurable settings
+ * - Follows React best practices for object dependencies
+ * - Prevents unnecessary re-renders and cache invalidation
  */
 export function useSpanLabeling({
   text,
@@ -97,28 +142,44 @@ export function useSpanLabeling({
     onResultRef.current = onResult;
   }, [onResult]);
 
+  // 1. Stabilize the Policy internally using deep comparison
+  // This prevents infinite loops even if caller forgets to useMemo
+  const stablePolicy = useDeepCompareMemoize(policy);
   const mergedPolicy = useMemo((): SpanLabelingPolicy => {
-    if (!policy || typeof policy !== 'object') {
+    if (!stablePolicy || typeof stablePolicy !== 'object') {
       return { ...DEFAULT_POLICY };
     }
     return {
       ...DEFAULT_POLICY,
-      ...policy,
-      allowOverlap: policy.allowOverlap === true,
+      ...stablePolicy,
+      allowOverlap: stablePolicy.allowOverlap === true,
     };
-  }, [policy]);
+  }, [stablePolicy]);
 
-  const cancelPending = useCallback((): void => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
+  // 2. Stabilize initialData using signature-based comparison
+  // This prevents infinite loops if caller passes new object with same content
+  const initialDataRef = useRef(initialData);
+  const stableInitialData = useMemo(() => {
+    const current = initialDataRef.current;
+
+    // Check if identity changed but content signature is identical
+    if (
+      initialData !== current &&
+      initialData?.signature === current?.signature &&
+      initialData?.meta?.version === current?.meta?.version
+    ) {
+      // Return the OLD reference to prevent effect firing
+      return current;
     }
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-    requestVersionRef.current += 1;
-  }, []);
+
+    // Content actually changed, update ref and return new reference
+    initialDataRef.current = initialData;
+    return initialData;
+  }, [initialData]);
+
+  // Get cache service from context (dependency injection)
+  const cacheService = useSpanLabelingCacheService();
+  const { checkCache: checkCacheForPayload, setCache: setCacheForPayload } = useSpanLabelingCache(cacheService);
 
   const performRequest = useCallback(
     async (
@@ -168,11 +229,88 @@ export function useSpanLabeling({
     []
   );
 
+  // Memoize callbacks to prevent recreating the schedule function on every render
+  const onLoadingState = useCallback(
+    (immediate: boolean) => {
+      setState((prev) => createLoadingState(immediate, prev.status, prev.spans, prev.meta));
+    },
+    []
+  );
+
+  const onSuccess = useCallback(
+    (result: unknown, payload: SpanLabelingPayload) => {
+      const apiResult = result as { spans: LabeledSpan[]; meta: SpanMeta | null };
+      const signature = hashString(payload.text ?? '');
+      const normalizedResult = {
+        spans: apiResult.spans,
+        meta: apiResult.meta,
+        signature,
+      };
+
+      setState({
+        spans: normalizedResult.spans,
+        meta: normalizedResult.meta,
+        status: 'success',
+        error: null,
+      });
+
+      setCacheForPayload(payload, normalizedResult);
+      emitResult(
+        {
+          spans: normalizedResult.spans,
+          meta: normalizedResult.meta,
+          text: payload.text,
+          cacheId: payload.cacheId ?? null,
+          signature,
+        },
+        'network'
+      );
+    },
+    [setCacheForPayload, emitResult]
+  );
+
+  const onError = useCallback(
+    (error: Error, payload: SpanLabelingPayload) => {
+      const fallbackResult = createFallbackResult(payload, error, cacheService);
+
+      if (fallbackResult) {
+        setState(createErrorStateWithFallback(fallbackResult, error));
+        logErrorWarning(error, payload, fallbackResult.meta.cacheAge);
+        emitResult(fallbackResult, 'cache-fallback');
+        return;
+      }
+
+      setState(createErrorState(error));
+    },
+    [emitResult, cacheService]
+  );
+
+  // Stabilize callbacks object to prevent infinite re-renders
+  const callbacks = useMemo(
+    () => ({
+      onExecute: performRequest,
+      onLoadingState,
+      onSuccess,
+      onError,
+    }),
+    [performRequest, onLoadingState, onSuccess, onError]
+  );
+
+  // Use async scheduler for debouncing and abort management
+  // Note: Stale request checking is handled inside useAsyncScheduler before callbacks are invoked
+  const { schedule: scheduleRequest, cancelPending } = useAsyncScheduler(
+    {
+      enabled,
+      debounceMs,
+      useSmartDebounce,
+      immediate,
+    },
+    callbacks
+  );
+
   const schedule = useCallback(
     (payload: SpanLabelingPayload, immediate = false): void => {
       performance.mark('span-labeling-start');
-
-      cancelPending();
 
       if (!enabled) {
         lastPayloadRef.current = null;
@@ -184,7 +322,7 @@ export function useSpanLabeling({
 
       // Check cache if not immediate
       if (!immediate) {
-        const cacheResult = checkCache(payload);
+        const cacheResult = checkCacheForPayload(payload);
 
         if (cacheResult.cached) {
           performance.mark('span-cache-hit');
@@ -216,116 +354,10 @@ export function useSpanLabeling({
         }
       }
 
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      const requestVersion = requestVersionRef.current;
-
-      setState((prev) =>
-        createLoadingState(immediate, prev.status, prev.spans, prev.meta)
-      );
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      const run = async (controller: AbortController): Promise<void> => {
-        try {
-          performance.mark('span-api-start');
-
-          const result = await performRequest(payload, controller.signal);
-
-          performance.mark('span-api-complete');
-          performance.measure(
-            'span-api-duration',
-            'span-api-start',
-            'span-api-complete'
-          );
-          performance.measure(
-            'span-labeling-total',
-            'span-labeling-start',
-            'span-api-complete'
-          );
-
-          // Check for stale requests
-          if (
-            requestId !== requestIdRef.current ||
-            requestVersion !== requestVersionRef.current
-          ) {
-            return;
-          }
-
-          const signature = hashString(payload.text ?? '');
-          const normalizedResult = {
-            spans: result.spans,
-            meta: result.meta,
-            signature,
-          };
-
-          setState({
-            spans: normalizedResult.spans,
-            meta: normalizedResult.meta,
-            status: 'success',
-            error: null,
-          });
-
-          spanLabelingCache.set(payload, normalizedResult);
-          emitResult(
-            {
-              spans: normalizedResult.spans,
-              meta: normalizedResult.meta,
-              text: payload.text,
-              cacheId: payload.cacheId ?? null,
-              signature,
-            },
-            'network'
-          );
-        } catch (error) {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
-
-          if (
-            !shouldHandleError({
-              requestId,
-              requestVersion,
-              currentRequestId: requestIdRef.current,
-              currentRequestVersion: requestVersionRef.current,
-              controllerAborted: controller.signal.aborted,
-            })
-          ) {
-            return;
-          }
-
-          const fallbackResult = createFallbackResult(payload, errorObj);
-
-          if (fallbackResult) {
-            setState(createErrorStateWithFallback(fallbackResult, errorObj));
-            logErrorWarning(errorObj, payload, fallbackResult.meta.cacheAge);
-            emitResult(fallbackResult, 'cache-fallback');
-            return;
-          }
-
-          setState(createErrorState(errorObj));
-        } finally {
-          if (abortRef.current === controller) {
-            abortRef.current = null;
-          }
-        }
-      };
-
-      const effectiveDebounce = calculateEffectiveDebounce(payload, {
-        enabled,
-        debounceMs,
-        useSmartDebounce,
-        immediate,
-      });
-
-      if (effectiveDebounce === 0) {
-        run(controller);
-      } else {
-        debounceRef.current = setTimeout(() => {
-          run(controller);
-        }, effectiveDebounce);
-      }
+      // Schedule API request
+      scheduleRequest(payload, immediate);
     },
-    [cancelPending, debounceMs, useSmartDebounce, enabled, performRequest, emitResult]
+    [enabled, checkCacheForPayload, scheduleRequest, emitResult]
   );
 
   useEffect(() => {
@@ -347,33 +379,34 @@ export function useSpanLabeling({
 
     lastPayloadRef.current = payload;
 
+    // Use stableInitialData to prevent infinite loops
     const initialMatch =
-      initialData &&
-      Array.isArray(initialData.spans) &&
-      initialData.spans.length > 0 &&
-      initialData.signature === hashString(normalized ?? '') &&
-      initialData.meta?.version === templateVersion;
+      stableInitialData &&
+      Array.isArray(stableInitialData.spans) &&
+      stableInitialData.spans.length > 0 &&
+      stableInitialData.signature === hashString(normalized ?? '') &&
+      stableInitialData.meta?.version === templateVersion;
 
     if (initialMatch) {
       cancelPending();
       setState({
-        spans: initialData.spans,
-        meta: initialData.meta ?? null,
+        spans: stableInitialData.spans,
+        meta: stableInitialData.meta ?? null,
         status: 'success',
         error: null,
       });
-      spanLabelingCache.set(payload, {
-        spans: initialData.spans,
-        meta: initialData.meta ?? null,
-        signature: initialData.signature ?? hashString(normalized ?? ''),
+      setCacheForPayload(payload, {
+        spans: stableInitialData.spans,
+        meta: stableInitialData.meta ?? null,
+        signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       emitResult(
         {
-          spans: initialData.spans,
-          meta: initialData.meta,
+          spans: stableInitialData.spans,
+          meta: stableInitialData.meta,
           text: normalized,
           cacheId: payload.cacheId ?? null,
-          signature: initialData.signature,
+          signature: stableInitialData.signature,
         },
         'initial'
       );
@@ -387,12 +420,12 @@ export function useSpanLabeling({
     enabled,
     maxSpans,
     minConfidence,
-    mergedPolicy,
+    mergedPolicy, // Now stable via useDeepCompareMemoize
     templateVersion,
     schedule,
     cancelPending,
     cacheKey,
-    initialData,
+    stableInitialData, // DEPEND ON THIS, NOT initialData - prevents infinite loops
     initialDataVersion,
     emitResult,
     immediate,
@@ -414,10 +447,5 @@ export function useSpanLabeling({
   };
 }
 
-export const __clearSpanLabelingCache = (): void => {
-  spanLabelingCache.clear();
-};
-
-export const __getSpanLabelingCacheSnapshot = (): unknown => {
-  return spanLabelingCache.getSnapshot();
-};
+// Note: Cache clearing/snapshot functions moved to cache service
+// Access via useSpanLabelingCacheService() hook if needed

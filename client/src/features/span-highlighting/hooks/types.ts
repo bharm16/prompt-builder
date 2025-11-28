@@ -91,6 +91,20 @@ export interface SpanLabelingState {
   error: Error | null;
 }
 
+/**
+ * Span labeling policy configuration
+ *
+ * **Important:** When passing this to `useSpanLabeling`, wrap it in `useMemo` for referential stability.
+ * This prevents unnecessary re-renders and cache invalidation.
+ *
+ * @example
+ * ```tsx
+ * const policy = useMemo(() => ({
+ *   allowOverlap: true,
+ *   nonTechnicalWordLimit: 10
+ * }), []);
+ * ```
+ */
 export interface SpanLabelingPolicy {
   nonTechnicalWordLimit?: number;
   allowOverlap: boolean;
