@@ -84,7 +84,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-geist-accents-4">
-            <span className="text-sm">Type to generate preview...</span>
+            <span className="text-sm">Click regenerate to generate preview</span>
           </div>
         )}
       </div>

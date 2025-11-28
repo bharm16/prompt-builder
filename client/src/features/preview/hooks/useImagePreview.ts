@@ -117,7 +117,8 @@ export function useImagePreview({
   }, [prompt, generateImage]);
 
   /**
-   * Effect: Generate preview when prompt changes and is visible
+   * Effect: Clear image when prompt becomes empty or visibility changes
+   * (Automatic generation disabled - use regenerate button instead)
    */
   useEffect(() => {
     // Clear any existing debounce timer
@@ -126,13 +127,13 @@ export function useImagePreview({
       debounceTimerRef.current = null;
     }
 
-    // Don't generate if not visible
+    // Don't generate if not visible - clear state
     if (!isVisible) {
       setLoading(false);
       return;
     }
 
-    // Don't generate if prompt is empty
+    // Clear image if prompt is empty
     if (!prompt || prompt.trim().length === 0) {
       setImageUrl(null);
       setError(null);
@@ -140,21 +141,8 @@ export function useImagePreview({
       return;
     }
 
-    // Debounce the generation
-    debounceTimerRef.current = setTimeout(() => {
-      generateImage(prompt, false);
-    }, debounceMs);
-
-    // Cleanup
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [prompt, isVisible, debounceMs, generateImage]);
+    // No automatic generation - user must click regenerate button
+  }, [prompt, isVisible]);
 
   /**
    * Cleanup on unmount
