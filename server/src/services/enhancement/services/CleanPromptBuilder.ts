@@ -1,5 +1,6 @@
 import { extractSemanticSpans } from '../../nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
+import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples.js';
 import type {
   PromptBuildParams,
   CustomPromptParams,
@@ -8,9 +9,16 @@ import type {
 } from './types.js';
 
 /**
- * Prompt builder for span-level replacements aligned to
- * "Prompt Engineering for Video Prompts" (single source of truth).
- *
+ * CleanPromptBuilder - Optimized for Llama 3.1 8B
+ * 
+ * BALANCE: Keep prompts focused but INCLUDE ESSENTIAL CONTEXT.
+ * 
+ * Key learnings:
+ * - Llama 8B needs simpler instructions (fewer rules, less verbosity)
+ * - BUT it still needs the actual context to generate relevant suggestions
+ * - Few-shot examples help with FORMAT but can mislead on CONTENT
+ * - The full prompt preview is ESSENTIAL for contextually appropriate suggestions
+ * 
  * Implements PDF designs:
  * - Design 1: Orthogonal Attribute Injector (technical slots)
  * - Design 2: Visual Decomposition Expander (descriptors/style/appearance)
@@ -29,29 +37,29 @@ export class CleanPromptBuilder {
     return this._buildSpanPrompt({ ...params, mode: 'placeholder' });
   }
 
-  /**
-   * Build prompt for custom request path
-   */
   buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): string {
-    const promptPreview = this._trim(fullPrompt, 800);
-    const inline = this._inlineContext('', highlightedText, '');
+    const promptPreview = this._trim(fullPrompt, 600);
 
     return [
-      'You are a span-level video prompt editor. Use the PDF-aligned rules.',
-      `Full prompt snapshot: "${promptPreview}"`,
-      `Highlighted: "${inline}"`,
-      `Custom request: ${customRequest}`,
-      'Maintain the grammatical flow and style of the surrounding sentence.',
-      'Generate 12 drop-in replacements that satisfy the request, stay grammatical, and remain camera-visible.',
-      isVideoPrompt
-        ? '- Keep subject and tense unless the request explicitly changes them.'
-        : '- Keep tone and grammar; avoid conversational fillers.',
-      'Return ONLY JSON array of {"text","category":"custom","explanation":"visual rationale"}',
+      'Generate 12 replacement phrases for the highlighted text.',
+      '',
+      `FULL PROMPT CONTEXT:`,
+      `"${promptPreview}"`,
+      '',
+      `REPLACE THIS PHRASE: "${highlightedText}"`,
+      `CUSTOM REQUEST: ${customRequest}`,
+      '',
+      'RULES:',
+      '1. Replacements must fit the context of the full prompt',
+      '2. Keep the same subject/topic - just vary the description',
+      '3. Return ONLY the replacement phrase, not the full sentence',
+      '',
+      'Output JSON: [{"text":"replacement","category":"custom","explanation":"why this fits"}]',
     ].join('\n');
   }
 
   /**
-   * Core builder with routing to PDF designs
+   * Core builder
    */
   private _buildSpanPrompt(params: PromptBuildParams): string {
     const {
@@ -80,7 +88,7 @@ export class CleanPromptBuilder {
     });
     const design = this._pickDesign(slot, isVideoPrompt, mode);
 
-    const shared = this._sharedContext({
+    const ctx = this._buildContext({
       highlightedText,
       contextBefore,
       contextAfter,
@@ -95,146 +103,124 @@ export class CleanPromptBuilder {
       mode,
     });
 
+    // Select prompt based on design
     if (design === 'orthogonal') {
-      return this._buildOrthogonalAttributePrompt(shared);
+      return this._buildTechnicalPrompt(ctx);
     }
     if (design === 'narrative') {
-      return this._buildNarrativeEditorPrompt(shared);
+      return this._buildActionPrompt(ctx);
     }
-    return this._buildVisualDecompositionPrompt(shared);
+    return this._buildVisualPrompt(ctx);
   }
 
-  private _buildOrthogonalAttributePrompt(ctx: SharedPromptContext): string {
-    const {
-      slotLabel,
-      inlineContext,
-      prefix,
-      suffix,
-      promptPreview,
-      constraintLine,
-      modelLine,
-      sectionLine,
-      guidance,
-      replacementInstruction,
-      highlightedText,
-    } = ctx;
-
+  /**
+   * Design 1: Technical/Camera/Lighting slots
+   * 
+   * KEY: Include full context so suggestions are contextually appropriate
+   */
+  private _buildTechnicalPrompt(ctx: SharedPromptContext): string {
     return [
-      'You are an expert Cinematographer and Prompt Engineer for span-level replacements.',
-      replacementInstruction,
-      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
-      `Context sentence: "${inlineContext}"`,
-      `Prefix to preserve: "${prefix}"`,
-      `Suffix to preserve: "${suffix}"`,
-      `Full prompt snapshot: "${promptPreview}"`,
-      modelLine,
-      sectionLine,
-      'Maintain the grammatical flow and style of the surrounding sentence.',
-      `Slot: ${slotLabel}. This is Design 1 (Orthogonal Attribute Injector).`,
-      'Goal: Generate 12 drop-in replacements that vary one technical attribute each.',
-      'Rules:',
-      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
-      '- Stay inside the same slot; do not alter subject or main action.',
-      '- Use Director\'s Lexicon: shot types, lens specs, camera moves, lighting patterns.',
-      '- Each option must be visually orthogonal (different direction/quality/source/move/focal length).',
-      '- One clip, one action: avoid sequences or multi-sentence phrasing.',
-      '- Keep grammar identical to the surrounding sentence; no leading verbs unless the slot is an action.',
-      constraintLine,
-      guidance || '',
-      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual change on screen"}].`,
-      'Make explanations act as visual rationales (how the frame changes).',
-      'Force diversity: later options must avoid reusing nouns/verbs from earlier ones.',
-    ]
-      .filter(Boolean)
-      .join('\n');
+      // Task
+      'Generate 12 alternative TECHNICAL phrases for video prompts.',
+      '',
+      // CRITICAL: Full prompt context so model knows what the video is about
+      'FULL PROMPT CONTEXT:',
+      `"${ctx.promptPreview}"`,
+      '',
+      // What to replace
+      `REPLACE THIS: "${ctx.highlightedText}"`,
+      `SURROUNDING TEXT: "${ctx.inlineContext}"`,
+      '',
+      // Rules (kept minimal)
+      'RULES:',
+      '1. Keep the same SUBJECT - only change the technical/camera approach',
+      '2. Use cinematography terms (angles, lenses, movements, lighting)',
+      '3. Each option should create a different visual effect',
+      '4. Return ONLY the replacement phrase (2-20 words)',
+      '',
+      // Constraints
+      ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      '',
+      // Output format with inline example
+      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]`,
+      '',
+      'Example item: {"text":"low-angle tracking shot","category":"camera","explanation":"emphasizes subject power"}',
+    ].filter(Boolean).join('\n');
   }
 
-  private _buildVisualDecompositionPrompt(ctx: SharedPromptContext): string {
-    const {
-      slotLabel,
-      inlineContext,
-      prefix,
-      suffix,
-      promptPreview,
-      constraintLine,
-      modelLine,
-      sectionLine,
-      guidance,
-      replacementInstruction,
-      highlightedText,
-    } = ctx;
-
+  /**
+   * Design 2: Visual/Style/Subject slots
+   * 
+   * KEY: Context-aware suggestions that stay on-topic
+   */
+  private _buildVisualPrompt(ctx: SharedPromptContext): string {
     return [
-      'You are a Visual Director translating abstract descriptors into grounded, camera-visible details.',
-      replacementInstruction,
-      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
-      `Context sentence: "${inlineContext}"`,
-      `Prefix to preserve: "${prefix}"`,
-      `Suffix to preserve: "${suffix}"`,
-      `Full prompt snapshot: "${promptPreview}"`,
-      modelLine,
-      sectionLine,
-      'Maintain the grammatical flow and style of the surrounding sentence.',
-      `Slot: ${slotLabel}. This is Design 2 (Visual Decomposition Expander).`,
-      'Rules:',
-      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
-      '- Provide 12 replacements that fit grammatically in the sentence.',
-      '- Show, don\'t tell: convert abstract terms into physical cues (materials, silhouette, lighting, movement).',
-      '- Ensure visual variance across style, mood, composition, and texture; avoid synonym collapse.',
-      '- Keep replacements as noun/adjective phrases when the original span is not a verb.',
-      '- Do not introduce new subjects or actions unless the span is a placeholder.',
-      constraintLine,
-      guidance || '',
-      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual rationale"}].`,
-      'Make explanations clear: what the viewer sees change on screen.',
-    ]
-      .filter(Boolean)
-      .join('\n');
+      // Task
+      'Generate 12 alternative VISUAL DESCRIPTIONS for the highlighted phrase.',
+      '',
+      // CRITICAL: Full prompt context
+      'FULL PROMPT CONTEXT:',
+      `"${ctx.promptPreview}"`,
+      '',
+      // What to replace
+      `REPLACE THIS: "${ctx.highlightedText}"`,
+      `SURROUNDING TEXT: "${ctx.inlineContext}"`,
+      '',
+      // Rules - CRITICAL: Stay on topic!
+      'RULES:',
+      '1. Keep the SAME SUBJECT/TOPIC - just vary HOW it is described',
+      '2. Add visual details: textures, materials, lighting, colors',
+      '3. Each option should look different but stay contextually appropriate',
+      '4. Return ONLY the replacement phrase (2-20 words)',
+      '',
+      // Constraints
+      ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      '',
+      // Output format
+      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`,
+      '',
+      // Context-appropriate example hint
+      `IMPORTANT: If replacing "${ctx.highlightedText}", suggestions should still be about "${ctx.highlightedText}" with different visual details.`,
+    ].filter(Boolean).join('\n');
   }
 
-  private _buildNarrativeEditorPrompt(ctx: SharedPromptContext): string {
-    const {
-      slotLabel,
-      inlineContext,
-      prefix,
-      suffix,
-      promptPreview,
-      constraintLine,
-      modelLine,
-      sectionLine,
-      guidance,
-      replacementInstruction,
-      highlightedText,
-    } = ctx;
-
+  /**
+   * Design 3: Action/Verb slots
+   */
+  private _buildActionPrompt(ctx: SharedPromptContext): string {
     return [
-      'You are a Grammar-Constrained Narrative Editor for video prompts.',
-      replacementInstruction,
-      `HIGHLIGHTED PHRASE TO REPLACE: "${highlightedText}"`,
-      `Context sentence: "${inlineContext}"`,
-      `Prefix to preserve: "${prefix}"`,
-      `Suffix to preserve: "${suffix}"`,
-      `Full prompt snapshot: "${promptPreview}"`,
-      modelLine,
-      sectionLine,
-      'Maintain the grammatical flow and style of the surrounding sentence.',
-      `Slot: ${slotLabel}. This is Design 3 (One Clip, One Action).`,
-      'Rules:',
-      '- REPLACE ONLY the highlighted phrase above. Return ONLY the replacement phrase, NOT the full sentence.',
-      '- Generate 12 replacements that keep the same tense and grammatical structure.',
-      '- One continuous action/state only; forbid sequences ("and then", "after", "starts to").',
-      '- Keep subject and setting intact; replacements must be camera-visible physical behavior.',
-      '- Avoid auxiliary clutter; single concise clause.',
-      constraintLine,
-      guidance || '',
-      `Output JSON array only: [{"text":"REPLACEMENT PHRASE ONLY (not full sentence)","category":"${slotLabel}","explanation":"visual change"}].`,
-      'Explanations should describe how the motion or tempo changes on screen.',
-    ]
-      .filter(Boolean)
-      .join('\n');
+      // Task
+      'Generate 12 alternative ACTION phrases for video prompts.',
+      '',
+      // CRITICAL: Full prompt context
+      'FULL PROMPT CONTEXT:',
+      `"${ctx.promptPreview}"`,
+      '',
+      // What to replace
+      `REPLACE THIS: "${ctx.highlightedText}"`,
+      `SURROUNDING TEXT: "${ctx.inlineContext}"`,
+      '',
+      // Rules
+      'RULES:',
+      '1. Keep the same SUBJECT doing the action - only change the action itself',
+      '2. One continuous action only (no sequences like "walks then runs")',
+      '3. Actions must be camera-visible physical behavior',
+      '4. Return ONLY the replacement phrase (2-20 words)',
+      '',
+      // Constraints
+      ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      '',
+      // Output format
+      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]`,
+    ].filter(Boolean).join('\n');
   }
 
-  private _sharedContext({
+  /**
+   * Build context object
+   * 
+   * KEY CHANGE: Longer context windows to preserve meaning
+   */
+  private _buildContext({
     highlightedText,
     contextBefore,
     contextAfter,
@@ -261,102 +247,53 @@ export class CleanPromptBuilder {
     slot: string;
     mode: 'rewrite' | 'placeholder';
   }): SharedPromptContext {
-    const inlineContext = this._inlineContext(contextBefore, highlightedText, contextAfter);
-    const prefix = this._trim(contextBefore, 220, true);
-    const suffix = this._trim(contextAfter, 220);
-    const promptPreview = this._trim(fullPrompt, 800);
+    // LONGER context windows - context is critical for relevance
+    const prefix = this._trim(contextBefore, 150, true);
+    const suffix = this._trim(contextAfter, 150);
+    const inlineContext = `${prefix}[${highlightedText}]${suffix}`;
+    
+    // Longer prompt preview - the model needs to understand the full scene
+    const promptPreview = this._trim(fullPrompt, 600);
 
-    const anchors: string[] = [];
-    if (brainstormContext?.elements) {
-      const entries = Object.entries(brainstormContext.elements)
-        .filter(([, v]) => v)
-        .map(([k, v]) => `${k}: ${v}`);
-      if (entries.length) {
-        anchors.push(`Creative anchors: ${entries.join(', ')}`);
-      }
-    }
-    if (editHistory?.length) {
-      const rejected = editHistory
-        .slice(-3)
-        .map((e) => e.original)
-        .filter(Boolean) as string[];
-      if (rejected.length) {
-        anchors.push(`Avoid previously rejected: ${rejected.join('; ')}`);
-      }
-    }
-
-    const lengthHint = Number.isFinite(highlightWordCount)
-      ? ` Aim for roughly ${highlightWordCount} words (drop-in parity).`
-      : '';
-
+    // Build constraint line
     let constraintLine = '';
     if (videoConstraints) {
       const parts: string[] = [];
-      
-      // Basic constraints
-      parts.push(`Length: ${videoConstraints.minWords || 0}-${videoConstraints.maxWords || 25} words`);
-      parts.push(`Max sentences: ${videoConstraints.maxSentences ?? 1}`);
-      
-      // Mode-specific requirements
-      if (videoConstraints.formRequirement) {
-        parts.push(`Form: ${videoConstraints.formRequirement}`);
+      if (videoConstraints.minWords || videoConstraints.maxWords) {
+        parts.push(`${videoConstraints.minWords || 2}-${videoConstraints.maxWords || 20} words`);
       }
-      
-      if (videoConstraints.focusGuidance && Array.isArray(videoConstraints.focusGuidance)) {
-        parts.push(`Focus: ${videoConstraints.focusGuidance.join('; ')}`);
-      }
-      
-      if (videoConstraints.extraRequirements && Array.isArray(videoConstraints.extraRequirements) && videoConstraints.extraRequirements.length > 0) {
-        parts.push(`Requirements: ${videoConstraints.extraRequirements.join('; ')}`);
-      }
-      
-      // Micro mode specific restrictions
       if (videoConstraints.mode === 'micro') {
-        parts.push('CRITICAL: No punctuation (no periods, colons, semicolons). Max 1 comma allowed. No verbs (is, are, was, were, be, being, been, am). Must be a noun phrase only.');
+        parts.push('noun phrases only');
       }
-      
-      // Disallow terminal punctuation
-      if (videoConstraints.disallowTerminalPunctuation) {
-        parts.push('No terminal punctuation (no period, exclamation, or question mark at the end).');
-      }
-      
-      constraintLine = `Constraints: ${parts.join(' | ')}.${lengthHint}`;
-    } else {
-      constraintLine = `Keep a single concise span (no multi-sentence output).${lengthHint}`;
+      constraintLine = parts.join(', ');
     }
 
-    const modelLine = modelTarget ? `Target model: ${modelTarget}.` : '';
-    const sectionLine = promptSection ? `Prompt section: ${promptSection}.` : '';
-    const slotLabel = slot || 'subject';
-    const guidance = anchors.length
-      ? `Context notes: ${anchors.join(' | ')}`
-      : '';
-
-    // Critical instruction: Only replace the highlighted phrase
-    const replacementInstruction = `CRITICAL: You are replacing ONLY the highlighted phrase "${highlightedText}". 
-Your output must be ONLY the replacement phrase (2-25 words), NOT the entire sentence or prompt.
-Return ONLY the replacement text that will be inserted in place of the highlighted phrase.`;
+    // Add word count hint
+    if (Number.isFinite(highlightWordCount) && highlightWordCount) {
+      constraintLine = constraintLine 
+        ? `${constraintLine}; aim for ~${highlightWordCount} words`
+        : `aim for ~${highlightWordCount} words`;
+    }
 
     return {
+      highlightedText,
       inlineContext,
       prefix,
       suffix,
       promptPreview,
       constraintLine,
-      modelLine,
-      sectionLine,
-      slotLabel,
-      guidance,
+      modelLine: modelTarget ? `Target: ${modelTarget}` : '',
+      sectionLine: promptSection ? `Section: ${promptSection}` : '',
+      slotLabel: slot || 'subject',
+      guidance: '',
       highlightWordCount,
       mode,
-      replacementInstruction,
-      highlightedText,
+      replacementInstruction: '',
     };
   }
 
   /**
-   * Resolve slot using taxonomy directly (single source of truth)
-   * Priority: highlightedCategory > phraseRole > NLP inference > default
+   * Resolve slot using taxonomy
    */
   private _resolveSlot({ highlightedText, phraseRole, highlightedCategory }: {
     highlightedText: string;
@@ -365,28 +302,20 @@ Return ONLY the replacement text that will be inserted in place of the highlight
     contextBefore: string;
     contextAfter: string;
   }): string {
-    // PRIORITY 1: Use category from span labeling (already computed)
     if (highlightedCategory) {
       const parent = getParentCategory(highlightedCategory);
       if (parent) return parent;
     }
 
-    // PRIORITY 2: Use phraseRole if provided
     if (phraseRole) {
       const parent = getParentCategory(phraseRole);
       if (parent) return parent;
     }
 
-    // PRIORITY 3: Run compromise.js on the text (manual selection fallback)
-    // Note: extractSemanticSpans is async but original code calls it synchronously
-    // This preserves original behavior - may need async refactor in future
     if (highlightedText) {
-      // Type assertion: treating as sync to match original behavior
-      // In practice, this may work if the function has sync fallback or cache
       const result = extractSemanticSpans(highlightedText) as unknown as { spans: Array<{ role: string; confidence: number }> };
       const spans = 'spans' in result ? result.spans : [];
       if (spans.length > 0) {
-        // Use highest confidence span
         const bestSpan = spans.reduce((a, b) => (a.confidence > b.confidence ? a : b));
         const parent = getParentCategory(bestSpan.role);
         if (parent) return parent;
@@ -404,12 +333,7 @@ Return ONLY the replacement text that will be inserted in place of the highlight
     if (slot === 'camera' || slot === 'shot' || slot === 'lighting' || slot === 'technical') {
       return 'orthogonal';
     }
-    if (!isVideoPrompt) return 'visual';
     return 'visual';
-  }
-
-  private _inlineContext(before: string, highlight: string, after: string): string {
-    return `${before || ''}${highlight || ''}${after || ''}`;
   }
 
   private _trim(text: string, length: number, fromEnd = false): string {
@@ -418,4 +342,3 @@ Return ONLY the replacement text that will be inserted in place of the highlight
     return fromEnd ? text.slice(-length) : text.slice(0, length);
   }
 }
-

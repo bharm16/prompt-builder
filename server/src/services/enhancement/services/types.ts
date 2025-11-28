@@ -160,19 +160,20 @@ export interface CustomPromptParams {
 
 /**
  * Shared context for prompt building
+ * SIMPLIFIED for 8B models - only essential fields
  */
 export interface SharedPromptContext {
-  slotLabel: string;
-  inlineContext: string;
-  prefix: string;
-  suffix: string;
-  promptPreview: string;
-  constraintLine: string;
-  modelLine: string;
-  sectionLine: string;
-  guidance: string;
-  replacementInstruction: string;
-  highlightedText: string;
+  highlightedText: string;          // The text being replaced
+  slotLabel: string;                // Category/slot (subject, action, camera, etc.)
+  inlineContext: string;            // Short context around highlight
+  prefix: string;                   // Text before highlight (trimmed)
+  suffix: string;                   // Text after highlight (trimmed)
+  promptPreview: string;            // Full prompt (trimmed)
+  constraintLine: string;           // Simplified constraints
+  modelLine: string;                // Target model (optional)
+  sectionLine: string;              // Prompt section (optional)
+  guidance: string;                 // Creative guidance (optional)
+  replacementInstruction: string;   // Deprecated - kept for compatibility
   highlightWordCount?: number | null;
   mode: 'rewrite' | 'placeholder';
 }

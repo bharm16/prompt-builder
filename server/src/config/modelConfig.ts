@@ -120,11 +120,18 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   /**
    * Main enhancement suggestion generation
    * Uses fast draft model for real-time suggestions
+   * 
+   * IMPORTANT: Llama 3.1 8B requires:
+   * - Lower temperature (0.5) for reliable JSON output
+   * - Simplified prompts (8B can't handle complex multi-part instructions)
+   * - Few-shot examples for format guidance
+   * 
+   * Reference: Groq docs recommend "simplify complex queries" and "include examples"
    */
   enhance_suggestions: {
     client: process.env.ENHANCE_PROVIDER || 'groq',
     model: process.env.ENHANCE_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.8, // Higher creativity for suggestions
+    temperature: 0.5, // Lower for reliable JSON; diversity via prompt variations
     maxTokens: 1024,
     timeout: 8000,
     responseFormat: 'json_object', // Requires JSON for structured output

@@ -27,10 +27,13 @@ export class ContrastiveDiversityEnforcer {
   };
 
   constructor(private readonly ai: AIService) {
-    // Configuration from PDF recommendations
+    // Configuration optimized for Llama 3.1 8B
+    // IMPORTANT: 8B models are "quite sensitive to temperature" (Groq docs)
+    // We use lower temperatures for reliable JSON output
+    // Diversity comes from negative constraints, not high temperature
     this.config = {
       batchSizes: [4, 4, 4], // Total: 12 suggestions
-      temperatures: [0.7, 0.9, 1.0], // Increasing creativity
+      temperatures: [0.4, 0.5, 0.6], // Lower temps for reliable output
       enabled: true,
     };
   }
@@ -238,7 +241,7 @@ export class ContrastiveDiversityEnforcer {
   /**
    * Augment system prompt with negative constraint
    * 
-   * Injects the constraint prominently so the model respects it
+   * SIMPLIFIED for 8B models - short, direct instruction
    * 
    * @param basePrompt - Original system prompt
    * @param constraint - Negative constraint to add
@@ -250,32 +253,9 @@ export class ContrastiveDiversityEnforcer {
       return basePrompt;
     }
 
-    // Insert constraint prominently after the main instructions
-    const constraintSection = `
-
-**CRITICAL DIVERSITY CONSTRAINT:**
-${constraint}
-
-You MUST generate options that explore completely different semantic directions.
-Think orthogonally - different visual angles, different narrative approaches, different stylistic choices.
-Avoid synonyms or minor variations of the above concepts.
-
----
-
-`;
-
-    // Insert after first paragraph/section
-    const firstBreakIndex = basePrompt.indexOf('\n\n');
-    if (firstBreakIndex > 0) {
-      return (
-        basePrompt.substring(0, firstBreakIndex) +
-        constraintSection +
-        basePrompt.substring(firstBreakIndex)
-      );
-    }
-
-    // Fallback: prepend to prompt
-    return constraintSection + basePrompt;
+    // Simple, direct constraint for 8B model
+    // Don't add verbose instructions - just the rule
+    return `${basePrompt}\n\nAVOID: ${constraint}\nGenerate completely different options.`;
   }
 
   /**

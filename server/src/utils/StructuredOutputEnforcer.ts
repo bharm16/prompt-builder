@@ -122,38 +122,23 @@ export class StructuredOutputEnforcer {
 
   /**
    * Enhance prompt to enforce JSON output
+   * SIMPLIFIED for 8B models - short, direct instruction
    * @private
    */
   private static _enhancePromptForJSON(systemPrompt: string, isArray: boolean): string {
-    const jsonType = isArray ? 'JSON array' : 'JSON object';
-    const example = isArray ? '[...]': '{...}';
-
-    return `${systemPrompt}` +
-           `\n**CRITICAL OUTPUT REQUIREMENT:**\n` +
-           `You MUST respond with ONLY a valid ${jsonType}. No other text, no markdown code blocks, no explanations, no preamble.\n\n` +
-           `❌ INVALID: \n${example}\n` +
-           `❌ INVALID: "Here is the ${jsonType}:" followed by ${jsonType}` +
-           `❌ INVALID: Any text before or after the ${jsonType}` +
-           `✅ VALID: Start immediately with ${isArray ? '[' : '{'} and end with ${isArray ? ']' : '}'}` +
-           `\nYour response MUST begin with the opening ${isArray ? 'bracket [' : 'brace {'} character.`;
+    // Keep it short for 8B models
+    const start = isArray ? '[' : '{';
+    return `${systemPrompt}\n\nRespond with ONLY valid JSON. Start with ${start} - no other text.`;
   }
 
   /**
    * Enhance prompt with error feedback for retry
+   * SIMPLIFIED for 8B models
    * @private
    */
   private static _enhancePromptWithErrorFeedback(systemPrompt: string, errorMessage: string, isArray: boolean): string {
-    return `${systemPrompt}` +
-           `\n**IMPORTANT - PREVIOUS ATTEMPT FAILED:**\n` +
-           `The previous response failed to parse with error: "${errorMessage}"` +
-           `\nCommon issues to avoid:` +
-           `\n- Including markdown code blocks (\`\`\`json\`\`\`)` +
-           `\n- Adding explanatory text before or after the JSON` +
-           `\n- Using single quotes instead of double quotes` +
-           `\n- Including trailing commas` +
-           `\n- Missing required closing ${isArray ? 'brackets ]' : 'braces }'}` +
-           `\n- Improperly escaped strings` +
-           `\nPlease try again, ensuring you return ONLY valid ${isArray ? 'JSON array starting with [' : 'JSON object starting with {'}.`;
+    const start = isArray ? '[' : '{';
+    return `${systemPrompt}\n\nPrevious attempt failed: ${errorMessage}\nRespond with ONLY valid JSON starting with ${start}. No markdown, no text.`;
   }
 
   /**
