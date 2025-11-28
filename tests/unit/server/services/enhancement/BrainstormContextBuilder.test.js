@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { BrainstormContextBuilder } from '../../../../../server/src/services/enhancement/BrainstormContextBuilder.js';
+import { BrainstormContextBuilder } from '../../../../../server/src/services/enhancement/services/BrainstormContextBuilder.js';
 
 describe('BrainstormContextBuilder', () => {
   let builder;

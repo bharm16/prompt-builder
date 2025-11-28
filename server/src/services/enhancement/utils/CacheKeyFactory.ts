@@ -1,4 +1,4 @@
-import { cacheService } from '../../../cache/CacheService.js';
+import { cacheService } from '../../cache/CacheService.js';
 import type { VideoConstraints } from '../services/types.js';
 
 export interface EnhancementCacheParams {

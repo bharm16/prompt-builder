@@ -5,6 +5,12 @@ import path from 'path';
 export default defineConfig({
   root: path.resolve(__dirname, '../../'),
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@shared': path.resolve(__dirname, '../../shared'),
+      '@config': path.resolve(__dirname, '../../config'),
+    },
+  },
   esbuild: {
     jsx: 'automatic',
     jsxImportSource: 'react',
