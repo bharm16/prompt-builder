@@ -2,6 +2,35 @@
 import vocab from '../../nlp/vocab.json' with { type: "json" };
 
 /**
+ * Examples to "teach" the model the correct format via the API
+ * These few-shot examples demonstrate natural language output without structural arrows
+ */
+export const VIDEO_FEW_SHOT_EXAMPLES = [
+  {
+    role: "user",
+    content: 'User Concept: "A cybernetic cat in a neon city"'
+  },
+  {
+    role: "assistant",
+    content: JSON.stringify({
+      _creative_strategy: "Chosen Low-Angle to emphasize the cat's dominance in the environment. Deep focus (f/11) maintains clarity across the neon-lit alleyway, while 24fps provides cinematic motion blur.",
+      shot_type: "Low-Angle Shot",
+      prompt: "A Low-Angle Shot captures a cybernetic cat prowling through a rain-slicked neon alleyway. The cat's metallic fur reflects the pink and blue holographic advertisements buzzing above. It pauses to look directly at the lens, its mechanical eye glowing red. The camera tracks low to the ground, following the cat's movement. Atmospheric steam rises from the vents, diffused by the soft glow of the city lights, creating a cyberpunk noir aesthetic.",
+      technical_specs: {
+        lighting: "Neon cityscape with atmospheric fog",
+        camera: "Low-angle tracking shot on 35mm",
+        style: "Cyberpunk Noir, Blade Runner aesthetic",
+        duration: "5s",
+        aspect_ratio: "16:9",
+        frame_rate: "24fps",
+        audio: "Distant city hum and rain"
+      },
+      variations: []
+    })
+  }
+];
+
+/**
  * Generate an optimized, production-ready video prompt for AI video generation models.
  * This template combines the "Director's Treatment" reasoning approach with the 
  * "Universal Prompt Framework" structure to ensure both intelligent shot selection
@@ -76,8 +105,15 @@ You have access to the following cinematic vocabulary. DO NOT DEFAULT to "Eye-Le
 8) **Consistency Check**: Review the generated prompt. Does the camera behavior, lighting, and style logically support the subject and action? For example, if the subject mentions "white gloves," the camera should not be focused exclusively on the "feet." Resolve any contradictions.
 
 ## PRODUCTION ASSEMBLY (write the output)
-Write ONE paragraph (STRICT 100-150 words) that strictly follows:
-**[Shot Type] → [Subject with 2-3 visible details] → [Action (ONE ONLY)] → [Setting/time] → [Camera behavior] → [Lighting] → [Style]**
+Write ONE paragraph (STRICT 100-150 words) that follows this internal structure:
+
+**Internal Structure (Mental Only):** Shot Type + Subject + Action + Setting + Camera + Lighting + Style.
+
+**Output Rule:** The "prompt" field must be a single, natural paragraph written as standard prose. DO NOT use arrows (→), brackets [], or structural labels in the final text.
+
+- **Bad:** "Wide Shot → A dog → Running..."
+- **Good:** "A Wide Shot captures a dog running..."
+
 - If subject or action is null, OMIT it. Do not invent a subject/action; lean on camera move + visual focus instead.
 - HARD RULE: ONE ACTION ONLY. If multiple actions appear, rewrite to one.
 - Describe only what the camera can SEE. Translate mood/emotion into visible cues (lighting, pose, texture, environment).
@@ -87,9 +123,19 @@ Write ONE paragraph (STRICT 100-150 words) that strictly follows:
 
 ## OUTPUT INSTRUCTIONS
 Generate a production-ready video prompt JSON.
+
+**1. The "prompt" field must be a single, natural paragraph.**
+   - **Internal Structure (Mental Only):** Shot Type + Subject + Action + Setting + Camera + Lighting + Style.
+   - **Output Rule:** DO NOT use arrows (→), brackets [], or labels in the final text. Write it as standard prose.
+   - **Bad:** "Wide Shot → A dog → Running..."
+   - **Good:** "A Wide Shot captures a dog running..."
+
+**2. Logic Rules:**
+   - IF Wide Shot -> Use Deep Focus (f/11)
+   - IF Close-Up -> Use Shallow Focus (f/1.8)
+
 - **_creative_strategy**: Explain WHY you chose the specific Angle, Lens, and Move.
-- **prompt**: Write one paragraph (100-150 words). 
-  - Structure: [Shot Type] -> [Subject] -> [Action] -> [Setting] -> [Camera] -> [Lighting] -> [Style].
+- **prompt**: Write one paragraph (100-150 words) as natural prose without structural markers.
   - DO NOT use generic terms like "High quality". Use specific dictionary terms.
 `;
 
@@ -129,7 +175,7 @@ Return ONLY JSON (no markdown, no prose):
 }
 
 // Export default for backwards compatibility
-export default { generateUniversalVideoPrompt };
+export default { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES };
 
 // Also export with old name for backwards compatibility
 export const generateVideoPrompt = generateUniversalVideoPrompt;

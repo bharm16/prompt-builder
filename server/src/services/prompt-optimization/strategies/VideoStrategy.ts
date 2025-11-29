@@ -1,6 +1,7 @@
 import { logger } from '@infrastructure/Logger.js';
 import OptimizationConfig from '@config/OptimizationConfig.js';
-import { generateUniversalVideoPrompt } from './videoPromptOptimizationTemplate.js';
+// Import the examples along with the generator
+import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan } from '../types.js';
 
@@ -95,27 +96,35 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
    * Optimize prompt for video generation
    * Uses progressive enhancement: attempts native Structured Outputs first,
    * falls back to StructuredOutputEnforcer for unsupported providers
+   * Uses Few-Shot Prompting to prevent structural arrows in output
    */
   async optimize({ prompt, shotPlan = null }: OptimizationRequest): Promise<string> {
-    logger.info('Optimizing prompt with video strategy (progressive enhancement)');
+    logger.info('Optimizing prompt with video strategy (Strict Schema + Few-Shot)');
     const config = this.getConfig();
 
     // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {
-      // Get system instructions only (rules & dictionary)
+      // 1. Get the System Prompt (The Rules)
       const systemInstructions = generateUniversalVideoPrompt("", null, true);
-      
-      // Build user message with actual input
-      const userMessage = `User Concept: "${prompt}"\n${
-        shotPlan ? `Shot Plan: ${JSON.stringify(shotPlan)}` : ''
-      }`;
 
-      logger.debug('Attempting Native Strict Schema generation');
+      // 2. Build the Message Chain (The Structured Way)
+      // We explicitly teach the model: Rules -> Example Input -> Example Output -> Real Input
+      const messages = [
+        { role: 'system', content: systemInstructions },
+        ...VIDEO_FEW_SHOT_EXAMPLES, // <--- Inject the "training" examples
+        { 
+          role: 'user', 
+          content: `User Concept: "${prompt}"\n${shotPlan ? `Shot Plan: ${JSON.stringify(shotPlan)}` : ''}` 
+        }
+      ];
 
-      // Call AI service directly with schema (bypasses enforcer)
+      logger.debug('Attempting Native Strict Schema generation with Few-Shot examples');
+
+      // 3. Call AI with strict schema AND the message chain
+      // systemPrompt is required by the API, but messages array takes precedence in adapters
       const response = await this.ai.execute('optimize_standard', {
-        systemPrompt: systemInstructions,
-        userMessage: userMessage,
+        systemPrompt: systemInstructions, // Required by API, but messages array is used by adapters
+        messages: messages, // <--- Pass the full chain here
         schema: VIDEO_PROMPT_SCHEMA,
         maxTokens: config.maxTokens,
         temperature: config.temperature,
