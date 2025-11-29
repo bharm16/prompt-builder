@@ -57,15 +57,15 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Fast draft generation (speed-focused)
-   * Uses Groq Llama 3.1 8B for sub-second response times
+   * Uses OpenAI GPT-4o-mini for fast response times
    */
   optimize_draft: {
-    client: process.env.DRAFT_PROVIDER || 'groq',
-    model: process.env.DRAFT_MODEL || 'llama-3.1-8b-instant',
+    client: process.env.DRAFT_PROVIDER || 'openai',
+    model: process.env.DRAFT_MODEL || 'gpt-4o-mini',
     temperature: 0.7,
     maxTokens: 500, // Keep drafts concise
-    timeout: 5000, // 5 seconds
-    fallbackTo: 'openai', // Fallback to OpenAI if Groq unavailable
+    timeout: 15000, // 15 seconds (ChatGPT is slower than Groq but still fast)
+    fallbackTo: 'groq', // Fallback to Groq if OpenAI unavailable
   },
 
   /**

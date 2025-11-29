@@ -71,9 +71,9 @@ export class PromptOptimizationService {
   }
 
   /**
-   * Two-stage optimization: Fast draft with Groq + Quality refinement with primary model
+   * Two-stage optimization: Fast draft with ChatGPT + Quality refinement with primary model
    *
-   * Stage 1 (Groq): Generate concise draft in ~200-500ms
+   * Stage 1 (ChatGPT): Generate concise draft in ~1-3s
    * Stage 2 (Primary Model): Refine draft in background
    */
   async optimizeTwoStage({
@@ -102,7 +102,7 @@ export class PromptOptimizationService {
       });
     }
 
-    // Check if draft operation supports streaming (Groq available)
+    // Check if draft operation supports streaming (ChatGPT available)
     if (!this.ai.supportsStreaming?.('optimize_draft')) {
       logger.warn('Draft streaming not available, falling back to single-stage optimization');
       const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext });
@@ -112,9 +112,9 @@ export class PromptOptimizationService {
     const startTime = Date.now();
 
     try {
-      // STAGE 1: Generate fast draft with Groq + parallel span labeling (200-500ms)
+      // STAGE 1: Generate fast draft with ChatGPT + parallel span labeling (1-3s)
       const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan);
-      logger.debug('Generating draft with Groq', { mode: finalMode });
+      logger.debug('Generating draft with ChatGPT', { mode: finalMode });
       const draftStartTime = Date.now();
 
       // Start operations in parallel
@@ -164,6 +164,10 @@ export class PromptOptimizationService {
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
         context,
+        context: {
+          ...(context || {}),
+          originalUserPrompt: prompt, // Pass original prompt for consistency check
+        },
         brainstormContext,
         shotPlan,
       });
@@ -411,7 +415,7 @@ export class PromptOptimizationService {
   }
 
   /**
-   * Get draft system prompt for Groq generation
+   * Get draft system prompt for ChatGPT generation
    */
   private getDraftSystemPrompt(mode: OptimizationMode, shotPlan: ShotPlan | null = null): string {
     const planSummary = shotPlan

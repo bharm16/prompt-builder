@@ -101,7 +101,7 @@ interface CacheConfig {
 export const OptimizationConfig = {
   // API timeout settings (in milliseconds)
   timeouts: {
-    draft: 5000,           // Groq draft generation
+    draft: 15000,          // ChatGPT draft generation (slower than Groq but still fast)
     contextInference: 15000, // Context inference from prompt
     modeDetection: 10000,   // Mode detection
     qualityAssessment: 10000, // Quality assessment

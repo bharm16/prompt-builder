@@ -68,7 +68,7 @@ export class TwoStageOptimizationService {
   private readonly spanLabeler: SpanLabeler | null;
 
   constructor({ draftClient = null, refinementClient, logger = null, spanLabeler = null }: TwoStageOptimizationOptions) {
-    this.draftClient = draftClient; // Fast client (e.g., Groq)
+    this.draftClient = draftClient; // Fast client (e.g., ChatGPT)
     this.refinementClient = refinementClient; // Quality client (e.g., OpenAI)
     this.logger = logger;
     this.spanLabeler = spanLabeler;
