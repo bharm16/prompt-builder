@@ -31,10 +31,10 @@ export const CATEGORY_GUIDANCE = {
    */
   camera: [
     'Movement: dolly in/out, crane up/down, pan left/right, tilt up/down, tracking shot',
-    'Lens choice: 24mm wide, 35mm, 50mm normal, 85mm portrait, 200mm telephoto',
+    'Lens choice: 24mm (wide/deep focus), 50mm (normal), 85mm (portrait/shallow focus)',
     "Angle: eye-level, high angle, low angle, Dutch tilt, bird's-eye view, worm's-eye",
     'Shot size: extreme close-up (ECU), close-up (CU), medium (MS), wide (WS), extreme wide (EWS)',
-    'Focus technique: shallow DOF f/1.4, deep focus f/16, rack focus transition, selective focus',
+    'Focus Rule: Wide shots = Deep Focus (f/11). Close-ups = Shallow Focus (f/1.8).',
   ],
 
   /**
@@ -108,7 +108,7 @@ export const CATEGORY_GUIDANCE = {
    */
   technical: [
     'Duration: specific length (4s, 8s, 15s, 30s clip)',
-    'Frame rate: 24fps cinematic, 30fps standard, 60fps smooth, 120fps slow-motion',
+    'Frame rate: 24fps (cinematic), 30fps (standard), 60fps (high action/sports)',
     'Resolution: 1080p, 4K, 8K, aspect ratio (16:9, 2.39:1 anamorphic)',
     'Camera body: RED, ARRI, Sony Venice, Blackmagic',
     'Technical effects: time-remapping, speed ramping, freeze frame',

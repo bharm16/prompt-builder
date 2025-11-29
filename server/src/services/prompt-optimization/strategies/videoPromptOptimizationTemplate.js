@@ -11,6 +11,27 @@
  * @returns {string} A formatted system prompt that requests structured JSON output.
  */
 export function generateUniversalVideoPrompt(userConcept, shotPlan = null) {
+  // Define the vocabulary inline to ensure the model has access to the full "Technical Dictionary"
+  const VOCABULARY = {
+    cameraMovements: [
+      "Pan", "Tilt", "Roll", "Dolly", "Truck", "Pedestal", "Arc Move", "Push In", "Pull Back", 
+      "Zoom", "Crash Zoom", "Dolly Zoom", "Whip Pan", "Rack Focus", "Steadicam", "Handheld", 
+      "Shoulder Mount", "Body Mount", "Snorricam", "Gimbal", "Jib", "Crane", "Technocrane", 
+      "Slider", "Dolly Track", "Cable Cam", "Motion Control", "Drone", "FPV Drone", "Car Mount", 
+      "Process Trailer", "Stabilized Head", "Remote Head", "Time-Lapse Move", "Hyperlapse"
+    ],
+    shotTypes: [
+      "Extreme Close-Up", "Close-Up", "Medium Close-Up", "Medium Shot", "Medium Long Shot",
+      "Cowboy Shot", "Full Shot", "Wide Shot", "Extreme Wide Shot", "Establishing Shot",
+      "Master Shot", "Clean Single", "Dirty Single", "Two-Shot", "Three-Shot", "Group Shot",
+      "Over-the-Shoulder Shot", "Point-of-View Shot", "Objective Shot", "Insert Shot",
+      "Cutaway Shot", "Reaction Shot", "Eye-Level Shot", "Low-Angle Shot", "High-Angle Shot",
+      "Bird's-Eye View", "Worm's-Eye View", "Dutch Angle", "Profile Shot", "Fisheye Shot",
+      "Macro Shot", "Wide-Angle Shot", "Telephoto Shot", "Telephoto Compression", "Deep Focus",
+      "Shallow Focus", "Split Diopter Shot", "Tilt-Shift Shot", "360-Degree Shot"
+    ]
+  };
+
   const interpretedPlan = shotPlan
     ? `Pre-interpreted shot plan (do NOT hallucinate missing fields):
 - shot_type: ${shotPlan.shot_type || 'unknown'}
@@ -33,12 +54,25 @@ ${interpretedPlan}
 
 ---
 
+## TECHNICAL DICTIONARY (Use these specific terms)
+You have access to the following cinematic vocabulary. DO NOT DEFAULT to "Eye-Level" or "Medium Shot" unless it specifically serves the intent.
+
+- **Camera Moves**: ${VOCABULARY.cameraMovements.join(', ')}
+
+- **Shot Types/Angles**: ${VOCABULARY.shotTypes.join(', ')}
+
 ## DIRECTOR'S TREATMENT (think before you write)
 1) Identify genre/vibe and core intent.
-2) Choose one primary shot type and one camera behavior that best serve the intent.
-3) Enforce ONE action (if any). If none exists, keep the camera move as the hero.
-4) Select lighting that matches the mood and keeps the scene readable.
-5) Lock style/aesthetic with concrete references (film stock/genre/medium), not vague words.
+2) **Select a Shot Type/Angle** from the Technical Dictionary that amplifies the emotion (e.g., Low-Angle for power, High-Angle for vulnerability, Dutch Angle for unease, Bird's-Eye for scale).
+3) **Determine Focus & Frame Rate**:
+   - **Depth of Field**: Use "Deep Focus (f/11-f/16)" for Wide/Establishing shots (we need to see the world). Use "Shallow Focus (f/1.8-f/2.8)" ONLY for Close-ups/Portraits.
+   - **Frame Rate**: Use 60fps for high-speed action/sports. Use 24fps for narrative/cinema. Use 30fps for broadcast/documentary.
+4) Choose a **Camera Behavior** from the Dictionary that matches the energy (e.g., Handheld for chaos, Steadicam for flow, Crash Zoom for shock).
+5) Enforce ONE action (if any). If none exists, keep the camera move as the hero.
+6) Select lighting that matches the mood and keeps the scene readable.
+7) Lock style/aesthetic with concrete references (film stock/genre/medium), not vague words.
+
+8) **Consistency Check**: Review the generated prompt. Does the camera behavior, lighting, and style logically support the subject and action? For example, if the subject mentions "white gloves," the camera should not be focused exclusively on the "feet." Resolve any contradictions.
 
 ## PRODUCTION ASSEMBLY (write the output)
 Write ONE paragraph (STRICT 100-150 words) that strictly follows:
@@ -53,20 +87,20 @@ Write ONE paragraph (STRICT 100-150 words) that strictly follows:
 ## OUTPUT FORMAT (STRICT JSON)
 Return ONLY JSON (no markdown, no prose):
 {
-  "_creative_strategy": "Brief summary of the director's treatment and why these choices serve the intent",
-  "shot_type": "Shot/framing chosen (e.g., 'Low-angle wide shot', 'Overhead establishing', 'Tracking pan')",
+  "_creative_strategy": "Brief summary of why you chose this specific Angle, DOF, and FPS to serve the intent",
+  "shot_type": "Shot/framing chosen (Must use term from Technical Dictionary, e.g., 'Low-Angle Shot', 'Dutch Angle', 'Bird's-Eye View')",
   "technical_specs": {
     "lighting": "Precise setup with source, direction, quality, and color temp",
-    "camera": "Camera behavior + angle + lens/DOF (e.g., 'Handheld eye-level tracking on 35mm, shallow DOF f/1.8')",
+    "camera": "Camera behavior + angle + lens + aperture. (Examples: 'Wide shot on 16mm with deep focus f/11' OR 'Close-up on 85mm with shallow focus f/1.8'). MATCH APERTURE TO SHOT TYPE.",
     "style": "Film stock/genre/medium reference (e.g., 'Shot on 35mm, film noir aesthetic', 'Pencil storyboard panel')",
     "aspect_ratio": "16:9 | 9:16 | 2.39:1 (pick best fit)",
-    "frame_rate": "24fps (cinematic) or 30fps (standard)",
+    "frame_rate": "24fps | 30fps | 60fps (Choose 60fps for smooth action, 24fps for cinematic feel)",
     "duration": "4-8s",
     "audio": "Short audio note if relevant (otherwise 'mute' or 'natural ambience')"
   },
   "prompt": "Main paragraph, 100-150 words, following the exact structure above and honoring any null fields by omitting them",
   "variations": [
-    {"label": "Alternative Camera", "prompt": "40-50 words, same concept, different camera angle/move; keep core identifiers"},
+    {"label": "Alternative Angle", "prompt": "40-50 words using a radically different angle from the Dictionary (e.g., if main is Low-Angle, try Bird's-Eye)"},
     {"label": "Alternative Lighting", "prompt": "40-50 words, same concept, different lighting/mood; keep core identifiers"}
   ],
   "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : 'null'}

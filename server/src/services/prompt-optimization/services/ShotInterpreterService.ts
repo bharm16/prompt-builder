@@ -102,7 +102,7 @@ Output ONLY valid JSON with these keys:
   "mood": "emotional tone in visual terms",
   "style": "aesthetic reference if hinted (film stock/genre/medium)",
   "camera_move": "pan/tilt/dolly/truck/static if hinted; else null",
-  "camera_angle": "low/high/eye-level/overhead if hinted; else null",
+  "camera_angle": "Any specific angle from cinematic vocabulary (e.g., Low-Angle, High-Angle, Dutch, Bird's-Eye, Worm's-Eye, POV) if hinted; else null",
   "lighting": "lighting cue if hinted",
   "audio": "audio hint if explicitly provided; else null",
   "duration_hint": "duration if provided",
