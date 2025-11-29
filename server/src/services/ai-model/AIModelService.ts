@@ -56,6 +56,7 @@ interface ExecuteParams extends CompletionOptions {
   timeout?: number;
   jsonMode?: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
+  schema?: Record<string, unknown>;
   signal?: AbortSignal;
   priority?: boolean;
 }
@@ -85,6 +86,7 @@ interface RequestOptions extends CompletionOptions {
   timeout: number;
   jsonMode: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
+  schema?: Record<string, unknown>;
 }
 
 export class AIModelService {
@@ -153,16 +155,40 @@ export class AIModelService {
     const client = this._getClient(config);
 
     // Merge operation config with request params (params override config)
+    // Native Structured Outputs: Convert schema to responseFormat if provided
+    let responseFormat: { type: string; [key: string]: unknown } | undefined;
+    let jsonMode = false;
+    
+    if (params.schema) {
+      // Convert schema to OpenAI's json_schema response_format format
+      responseFormat = {
+        type: "json_schema",
+        json_schema: {
+          name: "video_prompt_response",
+          strict: true,
+          schema: params.schema
+        }
+      };
+      jsonMode = false; // Strict mode replaces json mode
+    } else if (params.responseFormat) {
+      responseFormat = params.responseFormat;
+      jsonMode = false;
+    } else if (config.responseFormat === 'json_object') {
+      responseFormat = { type: 'json_object' };
+      jsonMode = true;
+    } else {
+      jsonMode = params.jsonMode || false;
+    }
+
     const requestOptions: RequestOptions = {
       ...params,
       model: (params.model as string | undefined) || config.model,
       temperature: params.temperature !== undefined ? params.temperature : config.temperature,
       maxTokens: params.maxTokens || config.maxTokens,
       timeout: params.timeout || config.timeout,
-      // PDF Design C: Support structured outputs (response_format with json_schema)
-      // If params.responseFormat is provided, use it; otherwise fall back to config
-      jsonMode: params.responseFormat ? false : (config.responseFormat === 'json_object' || params.jsonMode || false),
-      responseFormat: params.responseFormat || (config.responseFormat === 'json_object' ? { type: 'json_object' } : undefined),
+      jsonMode,
+      responseFormat,
+      schema: params.schema, // Pass schema through so adapter can access it directly
     };
 
     try {

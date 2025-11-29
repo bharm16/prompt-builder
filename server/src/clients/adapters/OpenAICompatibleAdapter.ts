@@ -12,6 +12,7 @@ interface CompletionOptions {
   jsonMode?: boolean;
   isArray?: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
+  schema?: Record<string, unknown>;
   messages?: Array<{ role: string; content: string }>;
   onChunk?: (chunk: string) => void;
 }
@@ -79,10 +80,18 @@ export class OpenAICompatibleAdapter {
         temperature: options.temperature !== undefined ? options.temperature : 0.7,
       };
 
-      // PDF Design C: Grammar-constrained decoding with structured outputs
-      // If responseFormat is provided (e.g., json_schema), use it directly
-      // Otherwise fall back to basic json_object mode if jsonMode is true
-      if (options.responseFormat) {
+      // Native Structured Outputs: Support strict json_schema mode
+      // Priority: schema > responseFormat > jsonMode
+      if (options.schema) {
+        payload.response_format = {
+          type: "json_schema",
+          json_schema: {
+            name: "video_prompt_response",
+            strict: true,
+            schema: options.schema
+          }
+        };
+      } else if (options.responseFormat) {
         payload.response_format = options.responseFormat;
       } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
@@ -142,9 +151,19 @@ export class OpenAICompatibleAdapter {
         stream: true,
       };
 
-      // PDF Design C: Grammar-constrained decoding with structured outputs
+      // Native Structured Outputs: Support strict json_schema mode
       // Note: Streaming with json_schema may not be supported by all providers
-      if (options.responseFormat) {
+      // Priority: schema > responseFormat > jsonMode
+      if (options.schema) {
+        payload.response_format = {
+          type: "json_schema",
+          json_schema: {
+            name: "video_prompt_response",
+            strict: true,
+            schema: options.schema
+          }
+        };
+      } else if (options.responseFormat) {
         payload.response_format = options.responseFormat;
       } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };

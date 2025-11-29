@@ -6,6 +6,7 @@
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "types": ["node"],
+    "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": ".",
     "baseUrl": ".",

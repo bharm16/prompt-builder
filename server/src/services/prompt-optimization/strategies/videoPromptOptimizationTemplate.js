@@ -1,3 +1,6 @@
+// Import vocabulary from centralized vocab.json
+import vocab from '../../nlp/vocab.json' with { type: "json" };
+
 /**
  * Generate an optimized, production-ready video prompt for AI video generation models.
  * This template combines the "Director's Treatment" reasoning approach with the 
@@ -8,28 +11,15 @@
  *
  * @param {string} userConcept - The user's core creative idea for the video clip.
  * @param {Object|null} shotPlan - Optional interpreted shot metadata from ShotInterpreterService.
+ * @param {boolean} instructionsOnly - If true, return only instructions without user concept.
  * @returns {string} A formatted system prompt that requests structured JSON output.
  */
-export function generateUniversalVideoPrompt(userConcept, shotPlan = null) {
-  // Define the vocabulary inline to ensure the model has access to the full "Technical Dictionary"
-  const VOCABULARY = {
-    cameraMovements: [
-      "Pan", "Tilt", "Roll", "Dolly", "Truck", "Pedestal", "Arc Move", "Push In", "Pull Back", 
-      "Zoom", "Crash Zoom", "Dolly Zoom", "Whip Pan", "Rack Focus", "Steadicam", "Handheld", 
-      "Shoulder Mount", "Body Mount", "Snorricam", "Gimbal", "Jib", "Crane", "Technocrane", 
-      "Slider", "Dolly Track", "Cable Cam", "Motion Control", "Drone", "FPV Drone", "Car Mount", 
-      "Process Trailer", "Stabilized Head", "Remote Head", "Time-Lapse Move", "Hyperlapse"
-    ],
-    shotTypes: [
-      "Extreme Close-Up", "Close-Up", "Medium Close-Up", "Medium Shot", "Medium Long Shot",
-      "Cowboy Shot", "Full Shot", "Wide Shot", "Extreme Wide Shot", "Establishing Shot",
-      "Master Shot", "Clean Single", "Dirty Single", "Two-Shot", "Three-Shot", "Group Shot",
-      "Over-the-Shoulder Shot", "Point-of-View Shot", "Objective Shot", "Insert Shot",
-      "Cutaway Shot", "Reaction Shot", "Eye-Level Shot", "Low-Angle Shot", "High-Angle Shot",
-      "Bird's-Eye View", "Worm's-Eye View", "Dutch Angle", "Profile Shot", "Fisheye Shot",
-      "Macro Shot", "Wide-Angle Shot", "Telephoto Shot", "Telephoto Compression", "Deep Focus",
-      "Shallow Focus", "Split Diopter Shot", "Tilt-Shift Shot", "360-Degree Shot"
-    ]
+export function generateUniversalVideoPrompt(userConcept, shotPlan = null, instructionsOnly = false) {
+  // Extract vocabulary arrays from vocab.json
+  const VOCAB = {
+    movements: vocab["camera.movement"].join(", "),
+    shots: vocab["shot.type"].join(", "),
+    styles: vocab["style.filmStock"].slice(0, 20).join(", ") // Limit to top 20 to save tokens
   };
 
   const interpretedPlan = shotPlan
@@ -46,27 +36,38 @@ export function generateUniversalVideoPrompt(userConcept, shotPlan = null) {
 If subject or action is null, lean on camera move + visual focus instead of inventing new entities.`
     : 'No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.';
 
-  return `
-You are an elite Film Director and Cinematographer. Engineer a production-ready AI video prompt that obeys the research-backed universal structure.
+  const instructions = `
+You are an elite Film Director and Cinematographer.
 
-User Concept: "${userConcept}"
-${interpretedPlan}
-
----
-
-## TECHNICAL DICTIONARY (Use these specific terms)
+## TECHNICAL DICTIONARY (Strict Adherence Required)
 You have access to the following cinematic vocabulary. DO NOT DEFAULT to "Eye-Level" or "Medium Shot" unless it specifically serves the intent.
 
-- **Camera Moves**: ${VOCABULARY.cameraMovements.join(', ')}
+- **Camera Moves**: ${VOCAB.movements}
 
-- **Shot Types/Angles**: ${VOCABULARY.shotTypes.join(', ')}
+- **Shot Types**: ${VOCAB.shots}
+
+- **Film Stocks**: ${VOCAB.styles}
+
+## LOGIC RULES (Follow These blindly)
+
+1. **Focus Logic**: 
+   - IF Shot is Wide/Extreme Wide -> MUST use "Deep Focus (f/11-f/16)"
+   - IF Shot is Close-Up/Macro -> MUST use "Shallow Focus (f/1.8-f/2.8)"
+   - IF Shot is Medium -> Choose based on intent.
+
+2. **Frame Rate Logic**:
+   - IF Action/Sports -> MUST use "60fps"
+   - IF Cinematic/Narrative -> MUST use "24fps"
+   - IF Broadcast/TV -> MUST use "30fps"
+
+3. **Camera Move Logic**:
+   - IF Static/Calm -> Use "Tripod", "Dolly", or "Slow Pan"
+   - IF Chaos/Action -> Use "Handheld", "Whip Pan", or "Crash Zoom"
 
 ## DIRECTOR'S TREATMENT (think before you write)
 1) Identify genre/vibe and core intent.
 2) **Select a Shot Type/Angle** from the Technical Dictionary that amplifies the emotion (e.g., Low-Angle for power, High-Angle for vulnerability, Dutch Angle for unease, Bird's-Eye for scale).
-3) **Determine Focus & Frame Rate**:
-   - **Depth of Field**: Use "Deep Focus (f/11-f/16)" for Wide/Establishing shots (we need to see the world). Use "Shallow Focus (f/1.8-f/2.8)" ONLY for Close-ups/Portraits.
-   - **Frame Rate**: Use 60fps for high-speed action/sports. Use 24fps for narrative/cinema. Use 30fps for broadcast/documentary.
+3) **Determine Focus & Frame Rate** using the Logic Rules above.
 4) Choose a **Camera Behavior** from the Dictionary that matches the energy (e.g., Handheld for chaos, Steadicam for flow, Crash Zoom for shock).
 5) Enforce ONE action (if any). If none exists, keep the camera move as the hero.
 6) Select lighting that matches the mood and keeps the scene readable.
@@ -80,9 +81,28 @@ Write ONE paragraph (STRICT 100-150 words) that strictly follows:
 - If subject or action is null, OMIT it. Do not invent a subject/action; lean on camera move + visual focus instead.
 - HARD RULE: ONE ACTION ONLY. If multiple actions appear, rewrite to one.
 - Describe only what the camera can SEE. Translate mood/emotion into visible cues (lighting, pose, texture, environment).
-- ABSOLUTELY NO negative phrasing (“don’t show/avoid/no people”). State what to show instead.
+- ABSOLUTELY NO negative phrasing ("don't show/avoid/no people"). State what to show instead.
 - Keep language professional: dolly, truck, rack focus, shallow DOF, f/1.8, Rembrandt lighting, etc.
 - If any required component is missing from concept and shotPlan, leave it out rather than hallucinating.
+
+## OUTPUT INSTRUCTIONS
+Generate a production-ready video prompt JSON.
+- **_creative_strategy**: Explain WHY you chose the specific Angle, Lens, and Move.
+- **prompt**: Write one paragraph (100-150 words). 
+  - Structure: [Shot Type] -> [Subject] -> [Action] -> [Setting] -> [Camera] -> [Lighting] -> [Style].
+  - DO NOT use generic terms like "High quality". Use specific dictionary terms.
+`;
+
+  // If instructionsOnly is true, return only the instructions without user concept
+  if (instructionsOnly) {
+    return instructions;
+  }
+
+  // Legacy format: include user concept and shot plan
+  return `${instructions}
+
+User Concept: "${userConcept}"
+${interpretedPlan}
 
 ## OUTPUT FORMAT (STRICT JSON)
 Return ONLY JSON (no markdown, no prose):

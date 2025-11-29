@@ -13,6 +13,7 @@ export interface CompletionOptions {
   temperature?: number;
   timeout?: number;
   signal?: AbortSignal;
+  schema?: Record<string, unknown>;
   [key: string]: unknown;
 }
 

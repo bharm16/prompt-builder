@@ -32,6 +32,7 @@ export const CATEGORY_GUIDANCE = {
   camera: [
     'Movement: dolly in/out, crane up/down, pan left/right, tilt up/down, tracking shot',
     'Lens choice: 24mm (wide/deep focus), 50mm (normal), 85mm (portrait/shallow focus)',
+    'Lens/Focus Pairing: 16-24mm (Wide/Deep Focus), 35-50mm (Medium/Normal), 85mm+ (Long/Shallow Focus)',
     "Angle: eye-level, high angle, low angle, Dutch tilt, bird's-eye view, worm's-eye",
     'Shot size: extreme close-up (ECU), close-up (CU), medium (MS), wide (WS), extreme wide (EWS)',
     'Focus Rule: Wide shots = Deep Focus (f/11). Close-ups = Shallow Focus (f/1.8).',

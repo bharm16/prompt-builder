@@ -27,6 +27,56 @@ interface VideoPromptResponse {
 }
 
 /**
+ * Strict JSON Schema for video prompt generation (OpenAI Structured Outputs)
+ * Uses additionalProperties: false for strict mode compliance
+ */
+const VIDEO_PROMPT_SCHEMA = {
+  type: "object",
+  properties: {
+    _creative_strategy: {
+      type: "string",
+      description: "Brief reasoning for why this shot type and camera move were chosen."
+    },
+    shot_type: {
+      type: "string",
+      description: "The specific shot type chosen from the dictionary."
+    },
+    prompt: {
+      type: "string",
+      description: "The final, 100-150 word video generation prompt."
+    },
+    technical_specs: {
+      type: "object",
+      properties: {
+        lighting: { type: "string" },
+        camera: { type: "string" },
+        style: { type: "string" },
+        duration: { type: "string" },
+        aspect_ratio: { type: "string" },
+        frame_rate: { type: "string" },
+        audio: { type: "string" }
+      },
+      required: ["lighting", "camera", "style", "duration", "aspect_ratio", "frame_rate", "audio"],
+      additionalProperties: false
+    },
+    variations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          prompt: { type: "string" }
+        },
+        required: ["label", "prompt"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["_creative_strategy", "shot_type", "prompt", "technical_specs", "variations"],
+  additionalProperties: false
+};
+
+/**
  * Strategy for optimizing video generation prompts
  * Uses specialized video prompt template with Chain-of-Thought reasoning
  * Returns structured JSON internally but assembles to text for backward compatibility
@@ -43,63 +93,94 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
 
   /**
    * Optimize prompt for video generation
-   * Uses StructuredOutputEnforcer to get JSON with cinematographic analysis
+   * Uses progressive enhancement: attempts native Structured Outputs first,
+   * falls back to StructuredOutputEnforcer for unsupported providers
    */
   async optimize({ prompt, shotPlan = null }: OptimizationRequest): Promise<string> {
-    logger.info('Optimizing prompt with video strategy (CoT + structured output)');
-
-    // Generate the system prompt with Chain-of-Thought instructions
-    const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan as ShotPlan | null);
-
-    // Define the expected JSON schema
-    const schema = {
-      type: 'object',
-      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations'],
-    };
-
-    // Get configuration
+    logger.info('Optimizing prompt with video strategy (progressive enhancement)');
     const config = this.getConfig();
 
+    // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {
-      // Use StructuredOutputEnforcer to get validated JSON response
-      const parsedResponse = await StructuredOutputEnforcer.enforceJSON(
-        this.ai,
-        systemPrompt,
-        {
-          operation: 'optimize_standard',
-          schema,
-          isArray: false,
-          maxRetries: 2,
-          maxTokens: config.maxTokens,
-          temperature: config.temperature,
-          timeout: config.timeout,
-        }
-      ) as VideoPromptResponse;
+      // Get system instructions only (rules & dictionary)
+      const systemInstructions = generateUniversalVideoPrompt("", null, true);
+      
+      // Build user message with actual input
+      const userMessage = `User Concept: "${prompt}"\n${
+        shotPlan ? `Shot Plan: ${JSON.stringify(shotPlan)}` : ''
+      }`;
 
-      // Log the cinematographic reasoning and shot type for debugging/monitoring
-      logger.info('Video optimization complete with CoT reasoning', {
+      logger.debug('Attempting Native Strict Schema generation');
+
+      // Call AI service directly with schema (bypasses enforcer)
+      const response = await this.ai.execute('optimize_standard', {
+        systemPrompt: systemInstructions,
+        userMessage: userMessage,
+        schema: VIDEO_PROMPT_SCHEMA,
+        maxTokens: config.maxTokens,
+        temperature: config.temperature,
+        timeout: config.timeout,
+      });
+
+      const parsedResponse = JSON.parse(response.text) as VideoPromptResponse;
+
+      logger.info('Video optimization complete with native structured outputs', {
         originalLength: prompt.length,
         shotType: parsedResponse.shot_type,
         strategy: parsedResponse._creative_strategy,
         promptLength: parsedResponse.prompt?.length || 0
       });
 
-      // Reassemble into the expected text format for backward compatibility
-      const reassembled = this._reassembleOutput(parsedResponse);
-
-      logger.debug('Output reassembled for backward compatibility', {
-        reassembledLength: reassembled.length
-      });
-
-      return reassembled;
+      return this._reassembleOutput(parsedResponse);
 
     } catch (error) {
-      logger.error('Failed to generate structured video prompt', {
-        error: (error as Error).message,
-        originalPrompt: prompt.substring(0, 100)
+      // Strategy 2: Fallback to StructuredOutputEnforcer (Robustness)
+      logger.warn('Native Strict Mode failed, falling back to Enforcer', {
+        error: (error as Error).message
       });
-      throw error;
+
+      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config);
     }
+  }
+
+  /**
+   * Fallback method using StructuredOutputEnforcer for unsupported providers
+   */
+  private async _fallbackOptimization(
+    prompt: string,
+    shotPlan: ShotPlan | null,
+    config: { maxTokens: number; temperature: number; timeout: number }
+  ): Promise<string> {
+    // Generate full system prompt (legacy format)
+    const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan);
+
+    // Simpler schema for non-strict fallback
+    const looseSchema = {
+      type: 'object',
+      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations'],
+    };
+
+    const parsedResponse = await StructuredOutputEnforcer.enforceJSON(
+      this.ai,
+      systemPrompt,
+      {
+        operation: 'optimize_standard',
+        schema: looseSchema,
+        isArray: false,
+        maxRetries: 2,
+        maxTokens: config.maxTokens,
+        temperature: config.temperature,
+        timeout: config.timeout,
+      }
+    ) as VideoPromptResponse;
+
+    logger.info('Video optimization complete with fallback enforcer', {
+      originalLength: prompt.length,
+      shotType: parsedResponse.shot_type,
+      strategy: parsedResponse._creative_strategy,
+    });
+
+    return this._reassembleOutput(parsedResponse);
   }
 
   /**
