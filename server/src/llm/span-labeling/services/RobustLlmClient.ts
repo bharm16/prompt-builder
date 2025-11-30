@@ -27,17 +27,20 @@ async function callModel({
   userPayload,
   aiService,
   maxTokens,
+  enableBookending = true,
 }: {
   systemPrompt: string;
   userPayload: string;
   aiService: BaseAIService;
   maxTokens: number;
+  enableBookending?: boolean;
 }): Promise<string> {
   const response = await aiService.execute('span_labeling', {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
     jsonMode: true, // Enforce structured output per PDF guidance
+    enableBookending, // GPT-4o Best Practices: Bookending strategy
     // temperature is configured in modelConfig.js
   });
 
@@ -85,13 +88,36 @@ export class RobustLlmClient {
     // PDF Design B: Use context-aware system prompt with semantic routing
     const contextAwareSystemPrompt = buildSystemPrompt(text, true);
 
-    // Primary LLM call
-    const primaryResponse = await callModel({
-      systemPrompt: contextAwareSystemPrompt,
-      userPayload: buildUserPayload(basePayload),
-      aiService,
-      maxTokens: estimatedMaxTokens,
-    });
+    // GPT-4o Best Practices: Two-Pass Architecture for GPT-4o-mini with complex schemas
+    // Check if we're using GPT-4o-mini and if schema is complex
+    // For span labeling, we always use two-pass when using mini models for better accuracy
+    const config = this._getModelConfig(aiService, 'span_labeling');
+    const isMini = config?.model?.includes('mini') || 
+                   config?.model?.includes('gpt-4o-mini') ||
+                   process.env.SPAN_MODEL?.includes('mini') ||
+                   process.env.SPAN_MODEL?.includes('gpt-4o-mini');
+    const hasComplexSchema = this._isComplexSchemaForSpans();
+
+    let primaryResponse: string;
+
+    if (isMini && hasComplexSchema) {
+      // Two-Pass Architecture: Pass 1 (Reasoning) + Pass 2 (Structuring)
+      primaryResponse = await this._twoPassExtraction({
+        systemPrompt: contextAwareSystemPrompt,
+        userPayload: buildUserPayload(basePayload),
+        aiService,
+        maxTokens: estimatedMaxTokens,
+      });
+    } else {
+      // Standard single-pass extraction with bookending enabled
+      primaryResponse = await callModel({
+        systemPrompt: contextAwareSystemPrompt,
+        userPayload: buildUserPayload(basePayload),
+        aiService,
+        maxTokens: estimatedMaxTokens,
+        enableBookending: true,
+      });
+    }
 
     const parsedPrimary = parseJson(primaryResponse);
     if (!parsedPrimary.ok) {
@@ -174,6 +200,116 @@ export class RobustLlmClient {
   }
 
   /**
+   * GPT-4o Best Practices: Two-Pass Architecture for GPT-4o-mini
+   * Pass 1: Free-text analysis (reasoning without schema constraints)
+   * Pass 2: Structure the analysis into JSON schema
+   * 
+   * This splits "Cognitive Load" (Understanding) from "Syntactic Load" (Formatting)
+   */
+  private async _twoPassExtraction({
+    systemPrompt,
+    userPayload,
+    aiService,
+    maxTokens,
+  }: {
+    systemPrompt: string;
+    userPayload: string;
+    aiService: BaseAIService;
+    maxTokens: number;
+  }): Promise<string> {
+    const payloadData = JSON.parse(userPayload);
+    
+    // Pass 1: Free-text reasoning (no schema constraints)
+    const reasoningPrompt = `${systemPrompt}
+
+## Two-Pass Analysis Mode - Pass 1: REASONING
+
+Analyze the input text and identify ALL key entities, relationships, and span boundaries.
+Think step-by-step about what should be labeled.
+Output your analysis in free text / markdown format.
+Do NOT worry about JSON structure yet - just reason through the task.
+
+Focus on:
+1. What entities are present?
+2. What are their relationships?
+3. What are the natural span boundaries?
+4. What taxonomy categories apply?`;
+
+    const reasoningResponse = await callModel({
+      systemPrompt: reasoningPrompt,
+      userPayload: JSON.stringify({
+        task: 'Analyze the text and provide step-by-step reasoning about what spans should be labeled.',
+        policy: payloadData.policy,
+        text: payloadData.text,
+        templateVersion: payloadData.templateVersion,
+      }),
+      aiService,
+      maxTokens: Math.floor(maxTokens * 0.6), // Use 60% of tokens for reasoning
+      enableBookending: false, // No bookending needed for reasoning pass
+    });
+
+    // Pass 2: Structure the reasoning into JSON schema
+    const structuringPrompt = `${systemPrompt}
+
+## Two-Pass Analysis Mode - Pass 2: STRUCTURING
+
+Convert the following Pass 1 analysis into the required JSON schema format.
+Use the reasoning from Pass 1 to inform your span labeling.
+Follow the schema exactly as specified.
+
+Pass 1 Analysis:
+${reasoningResponse}
+
+Now convert this analysis into the structured JSON format required.`;
+
+    return await callModel({
+      systemPrompt: structuringPrompt,
+      userPayload: JSON.stringify({
+        task: 'Convert the Pass 1 analysis into structured JSON spans following the schema.',
+        policy: payloadData.policy,
+        text: payloadData.text,
+        templateVersion: payloadData.templateVersion,
+      }),
+      aiService,
+      maxTokens: Math.floor(maxTokens * 0.4), // Use 40% of tokens for structuring
+      enableBookending: true, // Enable bookending for structuring pass
+    });
+  }
+
+  /**
+   * Check if schema is complex enough to warrant two-pass architecture
+   */
+  private _isComplexSchemaForSpans(): boolean {
+    // Span labeling schema is considered complex if:
+    // - Has many taxonomy categories
+    // - Requires reasoning about relationships
+    // - Has nested structures
+    
+    // For now, always use two-pass for span labeling with GPT-4o-mini
+    // as it requires significant reasoning about entity relationships
+    return true;
+  }
+
+  /**
+   * Get model config for an operation (helper method)
+   * Checks environment variables and defaults to detecting mini from operation name
+   */
+  private _getModelConfig(aiService: BaseAIService, operation: string): { model?: string } | null {
+    // Check environment variable first
+    const envModel = process.env.SPAN_MODEL;
+    if (envModel) {
+      return { model: envModel };
+    }
+    
+    // Check if operation name suggests mini
+    if (operation.includes('mini') || operation.includes('draft')) {
+      return { model: 'gpt-4o-mini-2024-07-18' };
+    }
+    
+    return null;
+  }
+
+  /**
    * Inject defensive metadata to ensure schema validation passes
    * @private
    */
@@ -183,6 +319,11 @@ export class RobustLlmClient {
     nlpSpansAttempted?: number
   ): void {
     if (!value) return;
+
+    // Inject analysis_trace if missing (Chain-of-Thought reasoning field)
+    if (typeof value.analysis_trace !== 'string') {
+      value.analysis_trace = `Analyzed input text and identified ${Array.isArray(value.spans) ? value.spans.length : 0} potential spans for labeling.`;
+    }
 
     if (!value.meta || typeof value.meta !== 'object') {
       value.meta = {

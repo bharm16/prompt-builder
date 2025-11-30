@@ -15,6 +15,8 @@ interface CompletionOptions {
   schema?: Record<string, unknown>;
   messages?: Array<{ role: string; content: string }>;
   onChunk?: (chunk: string) => void;
+  developerMessage?: string; // GPT-4o Best Practices: Developer role for hard constraints
+  enableBookending?: boolean; // GPT-4o Best Practices: Bookending strategy for long prompts
 }
 
 interface AdapterConfig {
@@ -73,11 +75,20 @@ export class OpenAICompatibleAdapter {
 
     try {
       const messages = this._buildMessages(systemPrompt, options);
+      
+      // Determine if this is a structured output request
+      const isStructuredOutput = !!(options.schema || options.responseFormat || options.jsonMode);
+      
+      // For structured outputs, use deterministic temperature (0.0-0.2 range per GPT-4o best practices)
+      // For creative generation, allow higher temperatures
+      const defaultTemp = isStructuredOutput ? 0.0 : 0.7;
+      const temperature = options.temperature !== undefined ? options.temperature : defaultTemp;
+      
       const payload: Record<string, unknown> = {
         model: options.model || this.defaultModel,
         messages,
         max_tokens: options.maxTokens || 2048,
-        temperature: options.temperature !== undefined ? options.temperature : 0.7,
+        temperature,
       };
 
       // Native Structured Outputs: Support strict json_schema mode
@@ -95,6 +106,17 @@ export class OpenAICompatibleAdapter {
         payload.response_format = options.responseFormat;
       } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
+      }
+
+      // GPT-4o Best Practices: Set frequency_penalty to 0 for structured outputs
+      // Prevents refusal loops caused by penalizing structural tokens ({, }, ", :)
+      if (isStructuredOutput) {
+        payload.frequency_penalty = 0;
+      }
+
+      // GPT-4o Best Practices: Set top_p to 1.0 when temperature is 0 for deterministic output
+      if (temperature === 0) {
+        payload.top_p = 1.0;
       }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -143,11 +165,20 @@ export class OpenAICompatibleAdapter {
 
     try {
       const messages = this._buildMessages(systemPrompt, options);
+      
+      // Determine if this is a structured output request
+      const isStructuredOutput = !!(options.schema || options.responseFormat || options.jsonMode);
+      
+      // For structured outputs, use deterministic temperature (0.0-0.2 range per GPT-4o best practices)
+      // For creative generation, allow higher temperatures
+      const defaultTemp = isStructuredOutput ? 0.0 : 0.7;
+      const temperature = options.temperature !== undefined ? options.temperature : defaultTemp;
+      
       const payload: Record<string, unknown> = {
         model: options.model || this.defaultModel,
         messages,
         max_tokens: options.maxTokens || 2048,
-        temperature: options.temperature !== undefined ? options.temperature : 0.7,
+        temperature,
         stream: true,
       };
 
@@ -167,6 +198,17 @@ export class OpenAICompatibleAdapter {
         payload.response_format = options.responseFormat;
       } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
+      }
+
+      // GPT-4o Best Practices: Set frequency_penalty to 0 for structured outputs
+      // Prevents refusal loops caused by penalizing structural tokens ({, }, ", :)
+      if (isStructuredOutput) {
+        payload.frequency_penalty = 0;
+      }
+
+      // GPT-4o Best Practices: Set top_p to 1.0 when temperature is 0 for deterministic output
+      if (temperature === 0) {
+        payload.top_p = 1.0;
       }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -276,15 +318,110 @@ export class OpenAICompatibleAdapter {
     };
   }
 
+  /**
+   * Estimate token count (rough approximation: ~4 characters per token)
+   * GPT-4o Best Practices: Use bookending for prompts >30k tokens
+   */
+  private _estimateTokens(text: string): number {
+    // Rough approximation: ~4 characters per token for English text
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Build messages array with support for developer role and bookending strategy
+   * GPT-4o Best Practices:
+   * - Developer role for hard constraints (security, schema)
+   * - Bookending: Repeat critical instructions at end for long prompts (>30k tokens)
+   */
   private _buildMessages(systemPrompt: string, options: CompletionOptions): Array<{ role: string; content: string }> {
     if (options.messages && Array.isArray(options.messages)) {
+      // If custom messages provided, still apply bookending if enabled
+      if (options.enableBookending) {
+        const totalTokens = options.messages.reduce((sum, msg) => 
+          sum + this._estimateTokens(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)), 0
+        );
+        
+        if (totalTokens > 30000) {
+          // Find critical instructions from system message
+          const systemMsg = options.messages.find(m => m.role === 'system');
+          const criticalInstructions = systemMsg?.content 
+            ? this._extractCriticalInstructions(systemMsg.content)
+            : 'Remember to follow the format constraints defined in the system message.';
+          
+          // Append bookending message
+          return [
+            ...options.messages,
+            { 
+              role: 'user', 
+              content: `Based on the context above, perform the requested task. ${criticalInstructions}` 
+            }
+          ];
+        }
+      }
       return options.messages;
     }
 
-    return [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: options.userMessage || 'Please proceed.' },
+    const messages: Array<{ role: string; content: string }> = [];
+
+    // GPT-4o Best Practices: Developer role for hard constraints (highest priority)
+    if (options.developerMessage) {
+      messages.push({ role: 'developer', content: options.developerMessage });
+    }
+
+    // System message (immutable sovereign)
+    messages.push({ role: 'system', content: systemPrompt });
+
+    // User message
+    const userMessage = options.userMessage || 'Please proceed.';
+    messages.push({ role: 'user', content: userMessage });
+
+    // GPT-4o Best Practices: Bookending strategy for long prompts
+    if (options.enableBookending) {
+      const totalTokens = this._estimateTokens(systemPrompt + userMessage);
+      if (totalTokens > 30000) {
+        const criticalInstructions = this._extractCriticalInstructions(systemPrompt);
+        messages.push({
+          role: 'user',
+          content: `Based on the context above, perform the requested task. ${criticalInstructions}`
+        });
+      }
+    }
+
+    return messages;
+  }
+
+  /**
+   * Extract critical instructions from system prompt for bookending
+   * Looks for format constraints, output requirements, and validation rules
+   */
+  private _extractCriticalInstructions(systemPrompt: string): string {
+    const criticalPatterns = [
+      /respond\s+only\s+with\s+valid\s+json/i,
+      /output\s+only\s+valid\s+json/i,
+      /no\s+markdown/i,
+      /follow\s+the\s+format\s+constraints/i,
+      /required\s+fields/i,
+      /validation\s+requirements/i,
     ];
+
+    const matches: string[] = [];
+    for (const pattern of criticalPatterns) {
+      const match = systemPrompt.match(pattern);
+      if (match) {
+        // Extract surrounding context (up to 100 chars)
+        const index = systemPrompt.indexOf(match[0]);
+        const start = Math.max(0, index - 50);
+        const end = Math.min(systemPrompt.length, index + match[0].length + 50);
+        matches.push(systemPrompt.substring(start, end).trim());
+      }
+    }
+
+    if (matches.length > 0) {
+      return matches[0]; // Return first critical instruction found
+    }
+
+    // Fallback: Generic reminder
+    return 'Remember to follow the format constraints defined in the system message.';
   }
 
   private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {

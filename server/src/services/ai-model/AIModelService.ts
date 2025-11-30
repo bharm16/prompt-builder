@@ -59,6 +59,8 @@ interface ExecuteParams extends CompletionOptions {
   schema?: Record<string, unknown>;
   signal?: AbortSignal;
   priority?: boolean;
+  developerMessage?: string; // GPT-4o Best Practices: Developer role for hard constraints
+  enableBookending?: boolean; // GPT-4o Best Practices: Bookending strategy for long prompts
 }
 
 interface StreamParams extends Omit<ExecuteParams, 'responseFormat'> {
@@ -189,6 +191,8 @@ export class AIModelService {
       jsonMode,
       responseFormat,
       schema: params.schema, // Pass schema through so adapter can access it directly
+      developerMessage: params.developerMessage, // GPT-4o Best Practices: Developer role support
+      enableBookending: params.enableBookending !== undefined ? params.enableBookending : true, // Default to enabled
     };
 
     try {

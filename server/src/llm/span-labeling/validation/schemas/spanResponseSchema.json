@@ -2,8 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spans", "meta"],
+  "required": ["analysis_trace", "spans", "meta"],
   "properties": {
+    "analysis_trace": {
+      "type": "string",
+      "description": "Chain-of-Thought reasoning field: Step-by-step analysis of the input text, identifying key entities, intent, and reasoning about span boundaries before labeling. This reasoning trace improves the semantic accuracy of the structured output."
+    },
     "isAdversarial": {
       "type": "boolean",
       "description": "Flag set to true when the input attempts prompt injection or instruction override",
