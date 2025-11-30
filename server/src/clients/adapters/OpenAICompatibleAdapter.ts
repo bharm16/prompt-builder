@@ -335,30 +335,37 @@ export class OpenAICompatibleAdapter {
    */
   private _buildMessages(systemPrompt: string, options: CompletionOptions): Array<{ role: string; content: string }> {
     if (options.messages && Array.isArray(options.messages)) {
+      const messages: Array<{ role: string; content: string }> = [];
+      
+      // GPT-4o Best Practices: Developer role for hard constraints (highest priority)
+      if (options.developerMessage) {
+        messages.push({ role: 'developer', content: options.developerMessage });
+      }
+      
+      // Add existing messages
+      messages.push(...options.messages);
+      
       // If custom messages provided, still apply bookending if enabled
       if (options.enableBookending) {
-        const totalTokens = options.messages.reduce((sum, msg) => 
+        const totalTokens = messages.reduce((sum, msg) => 
           sum + this._estimateTokens(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)), 0
         );
         
         if (totalTokens > 30000) {
           // Find critical instructions from system message
-          const systemMsg = options.messages.find(m => m.role === 'system');
+          const systemMsg = messages.find(m => m.role === 'system');
           const criticalInstructions = systemMsg?.content 
             ? this._extractCriticalInstructions(systemMsg.content)
             : 'Remember to follow the format constraints defined in the system message.';
           
           // Append bookending message
-          return [
-            ...options.messages,
-            { 
-              role: 'user', 
-              content: `Based on the context above, perform the requested task. ${criticalInstructions}` 
-            }
-          ];
+          messages.push({ 
+            role: 'user', 
+            content: `Based on the context above, perform the requested task. ${criticalInstructions}` 
+          });
         }
       }
-      return options.messages;
+      return messages;
     }
 
     const messages: Array<{ role: string; content: string }> = [];

@@ -8,7 +8,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../../shared'),
-      '@config': path.resolve(__dirname, '../../config'),
+      '@config': path.resolve(__dirname, '../../server/src/config'),
+      '@infrastructure': path.resolve(__dirname, '../../server/src/infrastructure'),
+      '@interfaces': path.resolve(__dirname, '../../server/src/interfaces'),
     },
   },
   esbuild: {
