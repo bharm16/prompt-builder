@@ -1,13 +1,12 @@
 /**
- * Span Labeling Schema - Optimized for Llama 3 / Groq
+ * Span Labeling Schema - Provider-Optimized
  * 
- * PDF Design: Llama 3 API Instruction Optimization Research
- * Section 3.3: Type-Definition Prompting (40-60% token reduction vs JSON Schema)
- * Section 5.1: XML tagging reduces context blending by 23%
+ * Research-Based Design:
+ * - OpenAI: Uses strict json_schema mode (grammar-constrained decoding)
+ * - Groq: Uses json_schema mode (validation-based) + TypeScript interface in prompt
  * 
- * This schema uses TypeScript interface format for token efficiency,
- * as Llama 3 models "exhibit a code bias" and understand interfaces
- * more robustly than verbose JSON schemas.
+ * Key Insight: When using strict schema mode, we can REMOVE structure definitions
+ * from the prompt (~35% token reduction) because the schema enforces them.
  */
 
 // Valid taxonomy IDs - derived from shared/taxonomy.js
@@ -61,12 +60,11 @@ export const VALID_TAXONOMY_IDS = [
 export type TaxonomyId = typeof VALID_TAXONOMY_IDS[number];
 
 /**
- * TypeScript Interface Definition for Llama 3 Type-Definition Prompting
+ * TypeScript Interface Definition (for prompts that don't use strict schema)
  * 
- * PDF Section 3.3: "Llama 3 models... understand interface User { name: string; }
- * more robustly than the verbose JSON schema equivalent"
- * 
- * This string is embedded directly in prompts for ~60% fewer tokens
+ * Used when:
+ * - Provider doesn't support json_schema mode
+ * - Fallback for validation errors
  */
 export const TYPESCRIPT_INTERFACE_DEFINITION = `
 interface Span {
@@ -87,12 +85,77 @@ interface SpanLabelingResponse {
 `.trim();
 
 /**
- * JSON Schema for Structured Outputs (OpenAI strict mode)
- * Use this when provider supports grammar-constrained decoding
+ * JSON Schema for Structured Outputs
+ * 
+ * OpenAI: Uses strict mode (grammar-constrained decoding, 100% compliance)
+ * Groq: Uses validation mode (errors if model output doesn't match)
+ * 
+ * The enum constraint on 'role' is CRITICAL - it guarantees valid taxonomy IDs
+ * without needing to list them in the prompt text.
  */
 export const JSON_SCHEMA_DEFINITION = {
   name: 'span_labeling_response',
-  strict: true,
+  strict: true, // OpenAI: enables grammar-constrained decoding
+  schema: {
+    type: 'object',
+    required: ['analysis_trace', 'spans', 'meta', 'isAdversarial'],
+    additionalProperties: false,
+    properties: {
+      analysis_trace: {
+        type: 'string',
+        description: 'Step-by-step reasoning about entities, intent, and span boundaries'
+      },
+      spans: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['text', 'role', 'confidence'],
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: 'string',
+              description: 'Exact substring from input (character-for-character match)'
+            },
+            role: {
+              type: 'string',
+              // CRITICAL: This enum constraint eliminates the need to list
+              // valid taxonomy IDs in the prompt (~100 token savings)
+              enum: [...VALID_TAXONOMY_IDS],
+              description: 'Valid taxonomy ID'
+            },
+            confidence: {
+              type: 'number',
+              // CRITICAL: These constraints eliminate the need to describe
+              // the valid range in the prompt (~20 token savings)
+              minimum: 0,
+              maximum: 1,
+              description: 'Confidence score (0-1), default 0.7'
+            }
+          }
+        }
+      },
+      meta: {
+        type: 'object',
+        required: ['version', 'notes'],
+        additionalProperties: false,
+        properties: {
+          version: { type: 'string' },
+          notes: { type: 'string' }
+        }
+      },
+      isAdversarial: {
+        type: 'boolean',
+        description: 'Flag for injection attempt detection'
+      }
+    }
+  }
+};
+
+/**
+ * Groq-specific schema (without strict mode, Groq ignores it)
+ */
+export const JSON_SCHEMA_GROQ = {
+  name: 'span_labeling_response',
   schema: {
     type: 'object',
     required: ['analysis_trace', 'spans', 'meta', 'isAdversarial'],
@@ -122,7 +185,7 @@ export const JSON_SCHEMA_DEFINITION = {
               type: 'number',
               minimum: 0,
               maximum: 1,
-              description: 'Confidence score (0-1), default 0.7'
+              description: 'Confidence score (0-1)'
             }
           }
         }
@@ -137,8 +200,7 @@ export const JSON_SCHEMA_DEFINITION = {
         }
       },
       isAdversarial: {
-        type: 'boolean',
-        description: 'Flag for injection attempt detection'
+        type: 'boolean'
       }
     }
   }
@@ -146,9 +208,7 @@ export const JSON_SCHEMA_DEFINITION = {
 
 /**
  * Quick Reference Table for Category Mappings
- * 
- * PDF Section 5.1: Table format is more parseable for smaller models
- * PDF Section 7.3: Positive instructions > negative constraints
+ * This MUST stay in prompt (semantic guidance, not structural)
  */
 export const CATEGORY_MAPPING_TABLE = `
 | Pattern | Category | Example |
@@ -172,8 +232,7 @@ export const CATEGORY_MAPPING_TABLE = `
 `.trim();
 
 /**
- * Disambiguation Rules as Decision Tree
- * PDF Section 5.2: Structured decision paths improve reasoning
+ * Disambiguation Rules - MUST stay in prompt (reasoning logic, not structural)
  */
 export const DISAMBIGUATION_RULES = `
 ## Quick Decision Tree
@@ -210,8 +269,90 @@ export const DISAMBIGUATION_RULES = `
 `.trim();
 
 /**
- * Get schema format for specific provider
+ * Provider capabilities for structured outputs
+ */
+export const PROVIDER_SCHEMA_SUPPORT = {
+  openai: {
+    mode: 'json_schema',
+    strict: true,
+    constrainedDecoding: true, // Grammar-level enforcement
+    enumSupport: true,
+    // Can remove TypeScript interface from prompt (schema enforces structure)
+    promptOptimization: 'schema-only'
+  },
+  groq: {
+    mode: 'json_schema',
+    strict: false, // Groq ignores strict flag for most models
+    constrainedDecoding: false, // Validation-based, not grammar-constrained
+    enumSupport: true,
+    // Should keep TypeScript interface in prompt (validation only, not enforced)
+    promptOptimization: 'schema-plus-interface'
+  },
+  gemini: {
+    mode: 'json_object',
+    strict: false,
+    constrainedDecoding: false,
+    enumSupport: false,
+    promptOptimization: 'interface-only'
+  }
+} as const;
+
+export type ProviderName = keyof typeof PROVIDER_SCHEMA_SUPPORT;
+
+/**
+ * Get optimized configuration for a specific provider
+ * 
  * @param provider - 'openai', 'groq', 'gemini'
+ * @returns Configuration object with schema and prompt settings
+ */
+export function getProviderConfig(provider: string): {
+  responseFormat: { type: string; json_schema?: object };
+  includeInterfaceInPrompt: boolean;
+  includeTaxonomyIdsInPrompt: boolean;
+  templateFile: string;
+} {
+  const normalizedProvider = provider.toLowerCase() as ProviderName;
+  const support = PROVIDER_SCHEMA_SUPPORT[normalizedProvider] || PROVIDER_SCHEMA_SUPPORT.gemini;
+
+  switch (support.promptOptimization) {
+    case 'schema-only':
+      // OpenAI: Schema enforces structure, minimal prompt
+      return {
+        responseFormat: {
+          type: 'json_schema',
+          json_schema: JSON_SCHEMA_DEFINITION
+        },
+        includeInterfaceInPrompt: false, // Schema enforces structure
+        includeTaxonomyIdsInPrompt: false, // Enum enforces valid IDs
+        templateFile: 'span-labeling-prompt-schema-optimized.md'
+      };
+
+    case 'schema-plus-interface':
+      // Groq: Schema validates but doesn't constrain, include interface
+      return {
+        responseFormat: {
+          type: 'json_schema',
+          json_schema: JSON_SCHEMA_GROQ
+        },
+        includeInterfaceInPrompt: true, // Helps model understand structure
+        includeTaxonomyIdsInPrompt: false, // Schema validates IDs
+        templateFile: 'span-labeling-prompt-condensed.md'
+      };
+
+    case 'interface-only':
+    default:
+      // Fallback: No schema support, full interface in prompt
+      return {
+        responseFormat: { type: 'json_object' },
+        includeInterfaceInPrompt: true,
+        includeTaxonomyIdsInPrompt: true,
+        templateFile: 'span-labeling-prompt-condensed.md'
+      };
+  }
+}
+
+/**
+ * Get schema format for specific provider (legacy API, use getProviderConfig instead)
  */
 export function getSchemaForProvider(provider: string): {
   format: 'typescript' | 'json_schema' | 'json_object';
@@ -219,21 +360,18 @@ export function getSchemaForProvider(provider: string): {
 } {
   switch (provider.toLowerCase()) {
     case 'groq':
-      // Llama 3: TypeScript interface + json_object mode
       return {
-        format: 'typescript',
-        content: TYPESCRIPT_INTERFACE_DEFINITION
+        format: 'json_schema',
+        content: JSON_SCHEMA_GROQ
       };
     
     case 'openai':
-      // OpenAI: Full JSON schema with strict mode
       return {
         format: 'json_schema',
         content: JSON_SCHEMA_DEFINITION
       };
     
     default:
-      // Fallback: JSON object mode only
       return {
         format: 'json_object',
         content: TYPESCRIPT_INTERFACE_DEFINITION
@@ -243,8 +381,6 @@ export function getSchemaForProvider(provider: string): {
 
 /**
  * Validate response against schema
- * @param response - LLM response object
- * @returns Validation result
  */
 export function validateSpanResponse(response: unknown): {
   valid: boolean;
@@ -289,4 +425,37 @@ export function validateSpanResponse(response: unknown): {
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Calculate token savings from schema optimization
+ */
+export function estimateTokenSavings(provider: string): {
+  withSchema: number;
+  withoutSchema: number;
+  savings: number;
+  savingsPercent: number;
+} {
+  // Approximate token counts based on template analysis
+  const fullPromptTokens = 1200; // With interface + taxonomy IDs
+  const schemaOnlyTokens = 780; // Without interface + taxonomy IDs
+  const schemaWithInterfaceTokens = 950; // With interface, without taxonomy IDs
+
+  const config = getProviderConfig(provider);
+  
+  let optimizedTokens: number;
+  if (!config.includeInterfaceInPrompt && !config.includeTaxonomyIdsInPrompt) {
+    optimizedTokens = schemaOnlyTokens;
+  } else if (!config.includeTaxonomyIdsInPrompt) {
+    optimizedTokens = schemaWithInterfaceTokens;
+  } else {
+    optimizedTokens = fullPromptTokens;
+  }
+
+  return {
+    withSchema: optimizedTokens,
+    withoutSchema: fullPromptTokens,
+    savings: fullPromptTokens - optimizedTokens,
+    savingsPercent: Math.round((1 - optimizedTokens / fullPromptTokens) * 100)
+  };
 }

@@ -113,6 +113,7 @@ export class GroqLlamaAdapter {
     this.capabilities = { 
       streaming: true, 
       jsonMode: true,
+      jsonSchema: true, // Groq supports json_schema mode (validation-based)
       logprobs: true, // Groq supports logprobs
       seed: true, // Groq supports seed parameter
     };
@@ -264,11 +265,38 @@ export class GroqLlamaAdapter {
         payload.presence_penalty = 0;
       }
 
-      // JSON Mode handling
-      if (options.jsonMode && !options.isArray) {
-        payload.response_format = { type: 'json_object' };
-      } else if (options.responseFormat) {
+      /**
+       * Structured Output Mode Selection
+       * 
+       * Groq now supports json_schema mode (validation-based, not grammar-constrained).
+       * Priority order:
+       * 1. Explicit schema provided → use json_schema mode
+       * 2. responseFormat with json_schema → pass through
+       * 3. jsonMode only → use json_object mode (basic validation)
+       * 
+       * Benefits of json_schema over json_object:
+       * - Enum constraints enforce valid taxonomy IDs
+       * - Required fields are validated
+       * - Type constraints (number min/max) are checked
+       */
+      if (options.schema) {
+        // Full schema provided - use json_schema mode for validation
+        payload.response_format = {
+          type: 'json_schema',
+          json_schema: {
+            name: (options.schema as { name?: string }).name || 'structured_response',
+            schema: (options.schema as { schema?: unknown }).schema || options.schema
+          }
+        };
+      } else if (options.responseFormat?.type === 'json_schema') {
+        // responseFormat already specifies json_schema - pass through
         payload.response_format = options.responseFormat;
+      } else if (options.responseFormat) {
+        // Other responseFormat - pass through (e.g., json_object)
+        payload.response_format = options.responseFormat;
+      } else if (options.jsonMode && !options.isArray) {
+        // Basic JSON mode - no schema validation, just valid JSON
+        payload.response_format = { type: 'json_object' };
       }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -346,7 +374,20 @@ export class GroqLlamaAdapter {
         payload.presence_penalty = 0;
       }
 
-      if (options.jsonMode && !options.isArray) {
+      // Structured Output Mode (same logic as _executeRequest)
+      if (options.schema) {
+        payload.response_format = {
+          type: 'json_schema',
+          json_schema: {
+            name: (options.schema as { name?: string }).name || 'structured_response',
+            schema: (options.schema as { schema?: unknown }).schema || options.schema
+          }
+        };
+      } else if (options.responseFormat?.type === 'json_schema') {
+        payload.response_format = options.responseFormat;
+      } else if (options.responseFormat) {
+        payload.response_format = options.responseFormat;
+      } else if (options.jsonMode && !options.isArray) {
         payload.response_format = { type: 'json_object' };
       }
 

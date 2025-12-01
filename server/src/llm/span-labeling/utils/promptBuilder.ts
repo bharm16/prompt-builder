@@ -1,163 +1,141 @@
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { TAXONOMY, VALID_CATEGORIES } from '#shared/taxonomy.js';
-import { SemanticRouter } from '../routing/SemanticRouter.js';
-import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
-import { 
-  TYPESCRIPT_INTERFACE_DEFINITION, 
-  CATEGORY_MAPPING_TABLE,
-  DISAMBIGUATION_RULES,
-  VALID_TAXONOMY_IDS 
-} from '../schemas/SpanLabelingSchema.js';
+/**
+ * Span Labeling Prompt Builder
+ * 
+ * Provider-Specific Implementations:
+ * 
+ * OpenAI/GPT-4o:
+ * - Grammar-constrained decoding (strict: true)
+ * - Schema descriptions ARE processed during generation
+ * - Minimal prompt + rich schema descriptions
+ * - ~400 tokens prompt + ~600 tokens schema
+ * 
+ * Groq/Llama 3:
+ * - Validation-only schema (not grammar-constrained)
+ * - Llama 3 does NOT process descriptions during generation
+ * - Full rules in system prompt (GAtt attention mechanism)
+ * - Schema for enum/type validation only
+ * - ~1000 tokens prompt + ~200 tokens schema
+ */
 
-// Load condensed prompt template
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const condensedPromptPath = join(__dirname, '..', 'templates', 'span-labeling-prompt-condensed.md');
-const CONDENSED_PROMPT_TEMPLATE = readFileSync(condensedPromptPath, 'utf-8');
+import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
+import { logger } from '@infrastructure/Logger';
+
+// OpenAI-specific imports
+import {
+  OPENAI_ENRICHED_SCHEMA,
+  OPENAI_MINIMAL_PROMPT,
+  OPENAI_FEW_SHOT_EXAMPLES,
+  VALID_TAXONOMY_IDS
+} from '../schemas/OpenAISchema.js';
+
+// Groq/Llama 3-specific imports
+import {
+  GROQ_VALIDATION_SCHEMA,
+  GROQ_FULL_SYSTEM_PROMPT,
+  GROQ_FEW_SHOT_EXAMPLES,
+  GROQ_SANDWICH_REMINDER
+} from '../schemas/GroqSchema.js';
 
 /**
- * Build system prompt using condensed template with schema injection
- * 
- * Llama 3 PDF Best Practices Applied:
- * - Section 3.3: TypeScript interface for token efficiency (60% reduction)
- * - Section 5.1: XML tagging structure
- * - Section 3.1: All constraints in system block (GAtt mechanism)
- * 
- * @param text - Input text (used for semantic routing if enabled)
- * @param useRouter - Whether to use semantic router for example injection
- * @param provider - Provider name for schema format selection ('groq' | 'openai')
+ * Provider type
+ */
+export type Provider = 'openai' | 'groq' | 'gemini';
+
+/**
+ * Build system prompt optimized for specific provider
  */
 export function buildSystemPrompt(
-  text: string = '', 
+  text: string = '',
   useRouter: boolean = false,
   provider: string = 'groq'
 ): string {
-  // Generate taxonomy ID list from VALID_TAXONOMY_IDS
-  const taxonomyIdList = VALID_TAXONOMY_IDS.map(id => `\`${id}\``).join(', ');
+  const normalizedProvider = provider.toLowerCase();
   
-  // Build condensed prompt with schema injection
-  let systemPrompt = CONDENSED_PROMPT_TEMPLATE
-    .replace('{{{TYPESCRIPT_INTERFACE}}}', TYPESCRIPT_INTERFACE_DEFINITION)
-    .replace('{{{TAXONOMY_IDS}}}', taxonomyIdList)
-    .replace('{{{CATEGORY_TABLE}}}', CATEGORY_MAPPING_TABLE)
-    .replace('{{{DISAMBIGUATION_RULES}}}', DISAMBIGUATION_RULES);
+  let basePrompt: string;
   
-  // Add security preamble (GPT-4o Best Practices Section 2.1)
-  systemPrompt = `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${systemPrompt}`;
-
-  // PDF Design B: Example injection DISABLED - example banks have invalid taxonomy IDs
-  // TODO: Fix routing/examples/*.js to use valid taxonomy IDs, then re-enable:
-  // if (useRouter && text) {
-  //   const router = new SemanticRouter();
-  //   const examples = router.formatExamplesForPrompt(text);
-  //   if (examples) {
-  //     systemPrompt += examples;
-  //   }
-  // }
-
-  return systemPrompt.trim();
+  if (normalizedProvider === 'openai') {
+    // OpenAI: Minimal prompt, rules in schema descriptions
+    basePrompt = OPENAI_MINIMAL_PROMPT;
+    logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
+  } else {
+    // Groq/Llama 3: Full prompt, rules in system message
+    basePrompt = GROQ_FULL_SYSTEM_PROMPT;
+    logger.debug('Using Groq full prompt (rules in system message for GAtt)');
+  }
+  
+  // Add security preamble
+  return `${IMMUTABLE_SOVEREIGN_PREAMBLE}\n\n${basePrompt}`.trim();
 }
 
 /**
- * Build few-shot examples as message array (not embedded in system prompt)
- * 
- * Llama 3 PDF Section 3.3: "Multi-Part Prompting: Instead of one massive prompt..."
- * Examples as user/assistant pairs are more effective than embedded in system prompt
- * 
- * @returns Array of few-shot example messages
+ * Get schema for specific provider
  */
-export function buildFewShotExamples(): Array<{ role: 'user' | 'assistant'; content: string }> {
-  return [
-    // Example 1: Basic span labeling with split pattern
-    {
-      role: 'user',
-      content: '<user_input>Close-up shot of weathered hands</user_input>'
-    },
-    {
-      role: 'assistant',
-      content: JSON.stringify({
-        analysis_trace: "Identified shot type and physical appearance. 'Close-up shot' is shot framing. 'weathered hands' describes physical traits.",
-        spans: [
-          { text: "Close-up shot", role: "shot.type", confidence: 0.95 },
-          { text: "weathered hands", role: "subject.appearance", confidence: 0.9 }
-        ],
-        meta: { version: "v3", notes: "Split shot type from appearance" },
-        isAdversarial: false
-      }, null, 2)
-    },
-    
-    // Example 2: Camera movement (disambiguation)
-    {
-      role: 'user',
-      content: '<user_input>camera slowly pans left</user_input>'
-    },
-    {
-      role: 'assistant',
-      content: JSON.stringify({
-        analysis_trace: "Camera verb 'pans' with modifiers indicates camera.movement. Keep entire phrase together.",
-        spans: [
-          { text: "camera slowly pans left", role: "camera.movement", confidence: 0.95 }
-        ],
-        meta: { version: "v3", notes: "Kept camera movement as single span with modifiers" },
-        isAdversarial: false
-      }, null, 2)
-    },
-    
-    // Example 3: Technical specs extraction
-    {
-      role: 'user',
-      content: '<user_input>**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Frame Rate:** 24fps</user_input>'
-    },
-    {
-      role: 'assistant',
-      content: JSON.stringify({
-        analysis_trace: "Technical metadata section. Extract values: duration and frame rate.",
-        spans: [
-          { text: "4-8s", role: "technical.duration", confidence: 0.95 },
-          { text: "24fps", role: "technical.frameRate", confidence: 0.95 }
-        ],
-        meta: { version: "v3", notes: "Extracted technical values only, not labels" },
-        isAdversarial: false
-      }, null, 2)
-    }
-  ];
+export function getSchema(provider: string): object {
+  const normalizedProvider = provider.toLowerCase();
+  
+  if (normalizedProvider === 'openai') {
+    // OpenAI: Rich descriptions, strict mode
+    return OPENAI_ENRICHED_SCHEMA;
+  }
+  
+  // Groq: Basic validation schema
+  return GROQ_VALIDATION_SCHEMA;
+}
+
+/**
+ * Get response format for API call
+ */
+export function getResponseFormat(provider: string): { 
+  type: string; 
+  json_schema?: object 
+} {
+  const schema = getSchema(provider);
+  
+  return {
+    type: 'json_schema',
+    json_schema: schema
+  };
+}
+
+/**
+ * Get few-shot examples for provider
+ */
+export function getFewShotExamples(provider: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+  const normalizedProvider = provider.toLowerCase();
+  
+  if (normalizedProvider === 'openai') {
+    // OpenAI: Fewer examples needed (rules in schema)
+    return OPENAI_FEW_SHOT_EXAMPLES;
+  }
+  
+  // Groq: More examples needed
+  return GROQ_FEW_SHOT_EXAMPLES;
 }
 
 /**
  * Build complete message array for span labeling
- * 
- * Llama 3 PDF Section 3.2: Sandwich prompting structure
- * 1. System: Full constraints
- * 2. Few-shot examples
- * 3. Actual user input
- * 4. Sandwich reminder (format constraint)
- * 
- * @param text - User input text to label
- * @param includeFewShot - Whether to include few-shot examples
- * @param provider - Provider name for optimization
  */
 export function buildSpanLabelingMessages(
   text: string,
   includeFewShot: boolean = true,
   provider: string = 'groq'
 ): Array<{ role: string; content: string }> {
+  const normalizedProvider = provider.toLowerCase();
   const messages: Array<{ role: string; content: string }> = [];
   
-  // 1. System prompt with all constraints
+  // 1. System prompt (provider-specific)
   messages.push({
     role: 'system',
     content: buildSystemPrompt(text, false, provider)
   });
   
-  // 2. Few-shot examples (if enabled)
+  // 2. Few-shot examples
   if (includeFewShot) {
-    const examples = buildFewShotExamples();
+    const examples = getFewShotExamples(provider);
     messages.push(...examples);
   }
   
-  // 3. Actual user input wrapped in XML tags
+  // 3. User input wrapped in XML tags
   messages.push({
     role: 'user',
     content: `<user_input>
@@ -167,19 +145,96 @@ ${text}
 Process the text above and return the span labels as JSON.`
   });
   
-  // 4. Sandwich reminder for format adherence (Llama 3 PDF Section 3.2)
-  if (provider === 'groq') {
+  // 4. Sandwich reminder (Groq/Llama 3 only - Section 3.2)
+  if (normalizedProvider === 'groq') {
     messages.push({
       role: 'user',
-      content: 'Output ONLY valid JSON. No markdown code blocks, no explanatory text.'
+      content: GROQ_SANDWICH_REMINDER
     });
   }
   
   return messages;
 }
 
-// Generate base system prompt at module initialization
-export const BASE_SYSTEM_PROMPT = buildSystemPrompt('', false, 'groq');
+/**
+ * Get provider-specific configuration summary
+ */
+export function getProviderConfig(provider: string): {
+  provider: string;
+  strategy: string;
+  promptTokens: number;
+  schemaTokens: number;
+  totalTokens: number;
+  features: string[];
+} {
+  const normalizedProvider = provider.toLowerCase();
+  
+  if (normalizedProvider === 'openai') {
+    return {
+      provider: 'openai',
+      strategy: 'description-enriched',
+      promptTokens: 400,
+      schemaTokens: 600,
+      totalTokens: 1000,
+      features: [
+        'grammar-constrained-decoding',
+        'schema-descriptions-processed',
+        'strict-mode',
+        'minimal-prompt'
+      ]
+    };
+  }
+  
+  return {
+    provider: 'groq',
+    strategy: 'prompt-centric',
+    promptTokens: 1000,
+    schemaTokens: 200,
+    totalTokens: 1200,
+    features: [
+      'validation-only-schema',
+      'gatt-attention-mechanism',
+      'sandwich-prompting',
+      'prefill-assistant',
+      'xml-wrapping',
+      'full-rules-in-prompt'
+    ]
+  };
+}
 
-// Re-export for backward compatibility
+/**
+ * Get adapter options for span labeling request
+ */
+export function getAdapterOptions(provider: string): Record<string, unknown> {
+  const normalizedProvider = provider.toLowerCase();
+  
+  if (normalizedProvider === 'openai') {
+    return {
+      schema: OPENAI_ENRICHED_SCHEMA,
+      jsonMode: true,
+      logprobs: true,
+      topLogprobs: 3,
+      seed: undefined, // Will be auto-generated from prompt hash
+      retryOnValidationFailure: true,
+      maxRetries: 2
+    };
+  }
+  
+  // Groq/Llama 3
+  return {
+    schema: GROQ_VALIDATION_SCHEMA,
+    jsonMode: true,
+    enableSandwich: true,   // Llama 3 PDF Section 3.2
+    enablePrefill: true,    // Llama 3 PDF Section 3.3
+    logprobs: true,
+    topLogprobs: 3,
+    seed: undefined,        // Will be auto-generated
+    retryOnValidationFailure: true,
+    maxRetries: 2
+  };
+}
+
+// Re-exports for backward compatibility
+export const BASE_SYSTEM_PROMPT = buildSystemPrompt('', false, 'groq');
 export { buildSystemPrompt as buildContextAwareSystemPrompt };
+export { VALID_TAXONOMY_IDS };
