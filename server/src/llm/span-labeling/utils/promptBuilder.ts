@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { SemanticRouter } from '../routing/SemanticRouter.js';
+import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
 
 // Load detection patterns and rules from template file
 const __filename = fileURLToPath(import.meta.url);
@@ -61,8 +62,9 @@ export function buildSystemPrompt(text: string = '', useRouter: boolean = false)
   const detectionPatterns = extractDetectionPatterns(PROMPT_TEMPLATE);
   const rulesSection = extractRulesSection(PROMPT_TEMPLATE);
 
-  // Build complete system prompt
-  let systemPrompt = `# Span Labeling System Prompt
+  // Build complete system prompt with security hardening
+  // GPT-4o Best Practices (Section 2.1): System Message as "Immutable Sovereign"
+  let systemPrompt = `${IMMUTABLE_SOVEREIGN_PREAMBLE}# Span Labeling System Prompt
 
 Label spans for AI video prompt elements using our unified taxonomy system.
 

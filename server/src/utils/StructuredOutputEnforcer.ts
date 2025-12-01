@@ -143,6 +143,7 @@ export class StructuredOutputEnforcer {
 
   /**
    * Call AI Service to get a completion
+   * GPT-4o Best Practices (Section 4.1): Pass schema for strict JSON Schema mode
    * @private
    */
   private static async _callAIService(
@@ -151,11 +152,23 @@ export class StructuredOutputEnforcer {
     systemPrompt: string,
     options: Record<string, unknown>
   ): Promise<AIServiceResponse> {
-    const response = await aiService.execute(operation, {
+    // GPT-4o Best Practices: Convert schema to strict json_schema format
+    // This enables grammar-constrained decoding for 100% type safety
+    const executeOptions: Record<string, unknown> = {
       systemPrompt,
       userMessage: 'Please provide the output as specified.',
       ...options,
-    });
+    };
+
+    // If schema is provided, pass it through for strict mode
+    // The adapter will convert this to response_format: { type: "json_schema", ... }
+    if (options.schema) {
+      executeOptions.schema = options.schema;
+      // Remove jsonMode since strict schema mode supersedes it
+      delete executeOptions.jsonMode;
+    }
+
+    const response = await aiService.execute(operation, executeOptions);
 
     return response;
   }
