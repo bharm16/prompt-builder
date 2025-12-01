@@ -14,13 +14,62 @@ export interface CompletionOptions {
   timeout?: number;
   signal?: AbortSignal;
   schema?: Record<string, unknown>;
+  jsonMode?: boolean;
+  isArray?: boolean;
+  responseFormat?: { type: string; [key: string]: unknown };
+  messages?: Array<{ role: string; content: string }>;
+  developerMessage?: string;
+  enableBookending?: boolean;
+  enableSandwich?: boolean;
+  enablePrefill?: boolean;
+  seed?: number;
+  logprobs?: boolean;
+  topLogprobs?: number;
+  prediction?: { type: 'content'; content: string };
+  retryOnValidationFailure?: boolean;
+  maxRetries?: number;
   [key: string]: unknown;
+}
+
+/**
+ * Logprob information for a single token
+ */
+export interface LogprobInfo {
+  token: string;
+  logprob: number;
+  probability: number; // Math.exp(logprob)
+}
+
+/**
+ * Validation result from ResponseValidator
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  parsed?: unknown;
+  confidence: number;
+  isRefusal: boolean;
+  isTruncated: boolean;
+  hasPreamble: boolean;
+  hasPostamble: boolean;
+  cleanedText?: string;
 }
 
 export interface AIResponseMetadata {
   model?: string;
   tokens?: number;
   finishReason?: string;
+  usage?: unknown;
+  raw?: unknown;
+  _original?: unknown;
+  provider?: string;
+  systemFingerprint?: string;
+  requestId?: string;
+  optimizations?: string[];
+  logprobs?: LogprobInfo[];
+  averageConfidence?: number;
+  validation?: ValidationResult;
   [key: string]: unknown;
 }
 
@@ -46,5 +95,30 @@ export interface IAIClient {
    * Complete a prompt with the AI model
    */
   complete(systemPrompt: string, options?: CompletionOptions): Promise<AIResponse>;
-}
 
+  /**
+   * Stream completion (optional - not all clients support this)
+   */
+  streamComplete?(
+    systemPrompt: string, 
+    options: CompletionOptions & { onChunk: (chunk: string) => void }
+  ): Promise<string>;
+
+  /**
+   * Health check (optional)
+   */
+  healthCheck?(): Promise<{ healthy: boolean; provider: string; error?: string }>;
+
+  /**
+   * Capabilities declaration (optional)
+   */
+  capabilities?: {
+    streaming?: boolean;
+    jsonMode?: boolean;
+    logprobs?: boolean;
+    seed?: boolean;
+    predictedOutputs?: boolean;
+    developerRole?: boolean;
+    structuredOutputs?: boolean;
+  };
+}
