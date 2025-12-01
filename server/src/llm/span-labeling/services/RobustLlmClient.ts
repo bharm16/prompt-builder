@@ -56,13 +56,20 @@ async function callModel({
   // More effective than embedding examples in system prompt
   if (useFewShot) {
     const fewShotExamples = buildFewShotExamples();
+    // Parse the JSON payload to extract the raw text
+    const payloadObj = JSON.parse(userPayload);
+    // payloadObj.text is already XML-wrapped from buildUserPayload
+    // Match the few-shot format exactly (just the XML-wrapped text)
+    
     requestOptions.messages = [
       { role: 'system', content: systemPrompt },
       ...fewShotExamples,
-      { role: 'user', content: userPayload }
+      { role: 'user', content: payloadObj.text }
     ];
-    // Clear systemPrompt since it's now in messages
-    delete requestOptions.systemPrompt;
+    // Enable sandwich prompting for JSON format adherence
+    requestOptions.enableSandwich = true;
+    // Note: Keep systemPrompt in requestOptions for AIModelService validation
+    // The adapter will use messages array when provided
   }
 
   const response = await aiService.execute('span_labeling', requestOptions);

@@ -61,6 +61,7 @@ interface ExecuteParams extends CompletionOptions {
   priority?: boolean;
   developerMessage?: string; // GPT-4o Best Practices: Developer role for hard constraints
   enableBookending?: boolean; // GPT-4o Best Practices: Bookending strategy for long prompts
+  enableSandwich?: boolean; // Llama 3 PDF Section 3.2: Sandwich prompting for format adherence
 }
 
 interface StreamParams extends Omit<ExecuteParams, 'responseFormat'> {
@@ -89,6 +90,7 @@ interface RequestOptions extends CompletionOptions {
   jsonMode: boolean;
   responseFormat?: { type: string; [key: string]: unknown };
   schema?: Record<string, unknown>;
+  enableSandwich?: boolean; // Llama 3 PDF Section 3.2: Sandwich prompting
 }
 
 export class AIModelService {
