@@ -5,7 +5,7 @@ import { parseJson, buildUserPayload } from '../utils/jsonUtils.js';
 import { formatValidationErrors } from '../utils/textUtils.js';
 import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
 import { validateSpans } from '../validation/SpanValidator.js';
-import { buildSystemPrompt, BASE_SYSTEM_PROMPT } from '../utils/promptBuilder.ts';
+import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, buildFewShotExamples } from '../utils/promptBuilder.js';
 import type { LabelSpansParams, LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';
 import type { AIService as BaseAIService } from '../../../types.js';
 
@@ -21,6 +21,11 @@ interface LlmSpanParams {
 
 /**
  * Call LLM with system prompt and user payload using AIModelService
+ * 
+ * Llama 3 PDF Best Practices:
+ * - Section 3.2: Sandwich prompting (handled by GroqLlamaAdapter)
+ * - Section 3.3: Few-shot examples as message array (more effective)
+ * - Section 5.1: XML tagging for user input (handled by adapter)
  */
 async function callModel({
   systemPrompt,
@@ -28,21 +33,39 @@ async function callModel({
   aiService,
   maxTokens,
   enableBookending = true,
+  useFewShot = false,
 }: {
   systemPrompt: string;
   userPayload: string;
   aiService: BaseAIService;
   maxTokens: number;
   enableBookending?: boolean;
+  useFewShot?: boolean;
 }): Promise<string> {
-  const response = await aiService.execute('span_labeling', {
+  // Build request options
+  const requestOptions: Record<string, unknown> = {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
     jsonMode: true, // Enforce structured output per PDF guidance
     enableBookending, // GPT-4o Best Practices: Bookending strategy
     // temperature is configured in modelConfig.js
-  });
+  };
+
+  // Llama 3 PDF Section 3.3: Few-shot examples as message array
+  // More effective than embedding examples in system prompt
+  if (useFewShot) {
+    const fewShotExamples = buildFewShotExamples();
+    requestOptions.messages = [
+      { role: 'system', content: systemPrompt },
+      ...fewShotExamples,
+      { role: 'user', content: userPayload }
+    ];
+    // Clear systemPrompt since it's now in messages
+    delete requestOptions.systemPrompt;
+  }
+
+  const response = await aiService.execute('span_labeling', requestOptions);
 
   // Extract text from response
   // Response format: { text: string, metadata: {...} }
@@ -86,7 +109,8 @@ export class RobustLlmClient {
     };
 
     // PDF Design B: Use context-aware system prompt with semantic routing
-    const contextAwareSystemPrompt = buildSystemPrompt(text, true);
+    // Llama 3 PDF: Use condensed prompt with schema-enforced taxonomy
+    const contextAwareSystemPrompt = buildSystemPrompt(text, true, 'groq');
 
     // GPT-4o Best Practices: Two-Pass Architecture for GPT-4o-mini with complex schemas
     // Check if we're using GPT-4o-mini and if schema is complex
@@ -100,6 +124,11 @@ export class RobustLlmClient {
 
     let primaryResponse: string;
 
+    // Determine provider for optimization selection
+    const isGroq = config?.model?.includes('llama') || 
+                   process.env.SPAN_PROVIDER === 'groq' ||
+                   !process.env.SPAN_PROVIDER; // Default is Groq
+
     if (isMini && hasComplexSchema) {
       // Two-Pass Architecture: Pass 1 (Reasoning) + Pass 2 (Structuring)
       primaryResponse = await this._twoPassExtraction({
@@ -109,13 +138,15 @@ export class RobustLlmClient {
         maxTokens: estimatedMaxTokens,
       });
     } else {
-      // Standard single-pass extraction with bookending enabled
+      // Standard single-pass extraction
+      // Llama 3 PDF Section 3.3: Use few-shot examples as message array for Groq
       primaryResponse = await callModel({
         systemPrompt: contextAwareSystemPrompt,
         userPayload: buildUserPayload(basePayload),
         aiService,
         maxTokens: estimatedMaxTokens,
-        enableBookending: true,
+        enableBookending: !isGroq, // Groq adapter handles its own sandwiching
+        useFewShot: isGroq, // Use few-shot for Groq/Llama
       });
     }
 

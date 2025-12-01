@@ -129,6 +129,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * - Simplified prompts (8B can't handle complex multi-part instructions)
    * - Few-shot examples for format guidance
    * 
+   * Llama 3 PDF Best Practices Applied (via GroqLlamaAdapter):
+   * - Temperature 0.5 (slightly higher for creative suggestions)
+   * - top_p 0.9 for natural variation
+   * - Sandwich prompting for format adherence
+   * - XML tagging for data segmentation
+   * 
    * Reference: Groq docs recommend "simplify complex queries" and "include examples"
    */
   enhance_suggestions: {
@@ -326,11 +332,20 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Label spans in video prompts (technical, style, subject, etc.)
+   * 
+   * Llama 3 PDF Best Practices Applied (via GroqLlamaAdapter):
+   * - Temperature 0.1 (adapter default for structured output)
+   * - top_p 0.95 for strict instruction following
+   * - Sandwich prompting for format adherence
+   * - XML tagging for data segmentation (23% less context blending)
+   * 
+   * Note: The GroqLlamaAdapter overrides temperature to 0.1 for JSON output
+   * to avoid Llama 3's repetition loop issue at temperature 0.0
    */
   span_labeling: {
     client: process.env.SPAN_PROVIDER || 'groq',
     model: process.env.SPAN_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.2, // Very low for accurate labeling
+    temperature: 0.1, // Llama 3 PDF: Use 0.1, not 0.0 (avoids repetition loops)
     maxTokens: 4096, // Larger for detailed span data
     timeout: 30000,
     responseFormat: 'json_object', // Requires JSON for span offsets/labels

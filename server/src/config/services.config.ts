@@ -16,6 +16,7 @@ import { metricsService } from '@infrastructure/MetricsService';
 // Import generic LLM client
 import { LLMClient } from '../clients/LLMClient.ts';
 import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.ts';
+import { GroqLlamaAdapter } from '../clients/adapters/GroqLlamaAdapter.ts';
 import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.ts';
 import { openAILimiter } from '../services/concurrency/ConcurrencyService.ts';
 
@@ -153,7 +154,12 @@ export function configureServices(): DIContainer {
   );
 
   // Groq client (OPTIONAL - for two-stage optimization)
-  // Using generic LLMClient configured for Groq
+  // Using GroqLlamaAdapter optimized for Llama 3.x models
+  // Implements Llama 3 PDF best practices:
+  // - Temperature 0.1 (not 0.0 - avoids repetition loops)
+  // - top_p 0.95 for strict instruction following
+  // - Sandwich prompting for format adherence
+  // - XML tagging for data segmentation
   // Factory returns null if not configured
   container.register(
     'groqClient',
@@ -163,12 +169,10 @@ export function configureServices(): DIContainer {
         return null;
       }
       return new LLMClient({
-        adapter: new OpenAICompatibleAdapter({
+        adapter: new GroqLlamaAdapter({
           apiKey: config.groq.apiKey,
-          baseURL: 'https://api.groq.com/openai/v1',
           defaultModel: config.groq.model,
           defaultTimeout: config.groq.timeout,
-          providerName: 'groq',
         }),
         providerName: 'groq',
         defaultTimeout: config.groq.timeout,
