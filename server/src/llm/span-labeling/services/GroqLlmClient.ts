@@ -2,17 +2,19 @@
  * Groq-specific LLM Client
  * 
  * Extends RobustLlmClient with Groq/Llama 3 optimizations:
- * - Logprobs-based confidence adjustment
+ * - Logprobs-based confidence adjustment (Section 4.1)
+ * - Few-shot examples as message array (Section 3.3)
  * - Seed passthrough for reproducibility
- * - Min-P and stop sequence support (handled by adapter)
+ * - Min-P and stop sequences (handled by GroqLlamaAdapter)
  * 
  * Llama 3 PDF References:
  * - Section 4.1: Logprobs more reliable than self-reported confidence
+ * - Section 3.3: Few-shot examples improve instruction following
  * - Section 4.1: Min-P for dynamic truncation
  * - Section 4.3: Stop sequences prevent runaway generation
  */
 
-import { RobustLlmClient } from './RobustLlmClient.js';
+import { RobustLlmClient, ProviderRequestOptions, ModelResponse } from './RobustLlmClient.js';
 import type { LlmSpanParams, ILlmClient } from './ILlmClient.js';
 import type { LabelSpansResult, LLMSpan } from '../types.js';
 import { logger } from '@infrastructure/Logger';
@@ -21,59 +23,138 @@ import { logger } from '@infrastructure/Logger';
  * Groq/Llama 3 optimized LLM client
  * 
  * Key Groq-specific optimizations:
- * 1. Logprobs confidence adjustment: Uses token-level confidence to validate
- *    self-reported confidence scores
- * 2. Seed passthrough: Ensures reproducibility for caching and debugging
- * 3. Provider-specific request options forwarded to GroqLlamaAdapter
- * 
- * The base class handles most of the logic, but this subclass can be
- * extended with additional Groq-specific behavior as needed.
+ * 1. Logprobs confidence adjustment: Uses token-level probabilities to validate
+ *    and cap self-reported confidence scores
+ * 2. Few-shot examples: Sent as message array per Llama 3 best practices
+ * 3. Seed passthrough: Ensures reproducibility for caching and debugging
+ * 4. Provider-specific options forwarded to GroqLlamaAdapter (min_p, stop sequences)
  */
 export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
   
   /**
-   * Get spans using Groq/Llama 3 with provider-specific optimizations
+   * HOOK: Configure Groq-specific request options
    * 
-   * Optimizations are handled by:
-   * 1. GroqLlamaAdapter (min_p, stop sequences, sandwich prompting)
-   * 2. Base class _postProcessResult (logprobs confidence adjustment)
-   * 3. modelConfig.js (temperature 0.1, seed)
+   * Llama 3 PDF Best Practices:
+   * - useFewShot: Section 3.3 - Few-shot examples as message array
+   * - enableLogprobs: Section 4.1 - Token-level confidence
+   * - useSeedFromConfig: Reproducibility for caching
+   * - enableBookending: false - Groq adapter handles sandwich prompting
    */
-  async getSpans(params: LlmSpanParams): Promise<LabelSpansResult> {
-    logger.debug('GroqLlmClient.getSpans called', {
-      textLength: params.text?.length,
-      enableRepair: params.enableRepair,
-    });
-
-    // Call base implementation - it handles Groq-specific logic via isGroq flag
-    const result = await super.getSpans(params);
-
-    // Add Groq-specific metadata for debugging
-    if (result.meta) {
-      result.meta._clientType = 'GroqLlmClient';
-    }
-
-    return result;
+  protected _getProviderRequestOptions(): ProviderRequestOptions {
+    return {
+      enableBookending: false, // GroqLlamaAdapter handles sandwich prompting
+      useFewShot: true, // Llama 3 PDF Section 3.3
+      useSeedFromConfig: true, // Enable seed for reproducibility
+      enableLogprobs: true, // Llama 3 PDF Section 4.1
+    };
   }
 
   /**
-   * Override post-process to ensure Groq optimizations are applied
+   * HOOK: Provider name for logging and prompt building
+   */
+  protected _getProviderName(): string {
+    return 'groq';
+  }
+
+  /**
+   * HOOK: Post-process result with logprobs confidence adjustment
    * 
    * Llama 3 PDF Section 4.1: Logprobs Confidence
    * "Token-level probabilities are more reliable than asking the model
    * to self-report confidence. The model's actual certainty is revealed
    * in the logprobs, not in generated confidence scores."
+   * 
+   * Strategy: Use Math.min(selfReported, logprobsAverage) to prevent
+   * overconfident predictions. This caps confidence at what the model
+   * actually believes based on token probabilities.
    */
-  protected _postProcessResult(result: LabelSpansResult, isGroq: boolean): LabelSpansResult {
-    // Force isGroq to true since we're the Groq client
-    // This ensures logprobs adjustment is always applied
-    const processedResult = super._postProcessResult(result, true);
-
-    // Add additional Groq-specific metadata
-    if (processedResult.meta && this._lastResponseMetadata?.optimizations) {
-      processedResult.meta._groqOptimizations = this._lastResponseMetadata.optimizations;
+  protected _postProcessResult(result: LabelSpansResult): LabelSpansResult {
+    const metadata = this._lastResponseMetadata;
+    
+    // Skip if no logprobs data available
+    if (!metadata?.averageConfidence) {
+      logger.debug('GroqLlmClient: No logprobs data for confidence adjustment', {
+        hasMetadata: !!metadata,
+        spanCount: result.spans?.length || 0,
+      });
+      return this._addProviderMetadata(result, false);
     }
 
-    return processedResult;
+    const averageConfidence = metadata.averageConfidence;
+    
+    // Skip if no spans to adjust
+    if (!result.spans?.length) {
+      return this._addProviderMetadata(result, false);
+    }
+
+    // Adjust confidence for each span
+    const adjustedSpans = result.spans.map((span: LLMSpan) => {
+      const originalConfidence = span.confidence ?? 1.0;
+      
+      // Use minimum of self-reported and logprobs-derived confidence
+      // This prevents overconfident predictions where the model claims
+      // high confidence but token probabilities suggest uncertainty
+      const adjustedConfidence = Math.min(originalConfidence, averageConfidence);
+      
+      // Log significant adjustments for debugging
+      if (originalConfidence - adjustedConfidence > 0.1) {
+        logger.debug('GroqLlmClient: Significant confidence adjustment', {
+          spanText: span.text?.substring(0, 30),
+          original: originalConfidence,
+          adjusted: adjustedConfidence,
+          logprobsAvg: averageConfidence,
+        });
+      }
+      
+      return {
+        ...span,
+        confidence: adjustedConfidence,
+        // Store original for debugging
+        _originalConfidence: originalConfidence,
+      };
+    });
+
+    logger.info('GroqLlmClient: Applied logprobs confidence adjustment', {
+      spanCount: adjustedSpans.length,
+      averageLogprobsConfidence: averageConfidence,
+      adjustedCount: adjustedSpans.filter(
+        (s: LLMSpan & { _originalConfidence?: number }) => 
+          s._originalConfidence && s._originalConfidence > s.confidence
+      ).length,
+    });
+
+    return this._addProviderMetadata(
+      {
+        ...result,
+        spans: adjustedSpans,
+      },
+      true,
+      averageConfidence
+    );
+  }
+
+  /**
+   * Add Groq-specific metadata to result
+   */
+  private _addProviderMetadata(
+    result: LabelSpansResult,
+    logprobsApplied: boolean,
+    averageConfidence?: number
+  ): LabelSpansResult {
+    const metadata = this._lastResponseMetadata;
+    
+    return {
+      ...result,
+      meta: {
+        ...result.meta,
+        _clientType: 'GroqLlmClient',
+        _providerOptimizations: {
+          provider: 'groq',
+          logprobsAdjustment: logprobsApplied,
+          averageLogprobsConfidence: averageConfidence,
+          optimizations: metadata?.optimizations || [],
+        },
+      },
+    };
   }
 }
