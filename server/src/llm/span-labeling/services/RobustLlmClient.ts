@@ -5,7 +5,7 @@ import { parseJson, buildUserPayload } from '../utils/jsonUtils.js';
 import { formatValidationErrors } from '../utils/textUtils.js';
 import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
 import { validateSpans } from '../validation/SpanValidator.js';
-import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, buildFewShotExamples } from '../utils/promptBuilder.js';
+import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, getFewShotExamples } from '../utils/promptBuilder.js';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
 import { logger } from '@infrastructure/Logger';
 import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan } from '../types.js';
@@ -36,6 +36,7 @@ export interface ProviderRequestOptions {
   useSeedFromConfig: boolean;
   enableLogprobs: boolean;
   developerMessage?: string;
+  providerName?: string;
 }
 
 /**
@@ -72,7 +73,7 @@ async function callModel({
 
   // Few-shot examples as message array (Llama 3 best practice)
   if (providerOptions.useFewShot) {
-    const fewShotExamples = buildFewShotExamples();
+    const fewShotExamples = getFewShotExamples(providerOptions.providerName || 'groq');
     const payloadObj = JSON.parse(userPayload);
     
     requestOptions.messages = [
@@ -136,9 +137,12 @@ export class RobustLlmClient implements ILlmClient {
       templateVersion: options.templateVersion || SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion,
     };
 
-    // Get provider-specific options from subclass
-    const providerOptions = this._getProviderRequestOptions();
+    // Get provider-specific options from subclass (merge providerName for few-shot lookup)
     const providerName = this._getProviderName();
+    const providerOptions: ProviderRequestOptions = {
+      ...this._getProviderRequestOptions(),
+      providerName,
+    };
 
     // Build system prompt
     const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName);

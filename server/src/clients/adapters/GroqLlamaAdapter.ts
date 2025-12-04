@@ -245,10 +245,23 @@ export class GroqLlamaAdapter {
        * 
        * More reliable than asking the model to self-report confidence.
        * The model's token probabilities reveal actual certainty.
+       * 
+       * NOTE: Only supported on larger models (70b variants), not instant/8b models.
+       * Check model name before enabling to avoid API errors.
        */
       if (options.logprobs) {
-        payload.logprobs = true;
-        payload.top_logprobs = options.topLogprobs ?? 3;
+        const modelName = (options.model || this.defaultModel).toLowerCase();
+        // Logprobs is only supported on larger models (70b, versatile), not instant/8b models
+        const supportsLogprobs = !modelName.includes('instant') && 
+                                 !modelName.includes('8b') &&
+                                 (modelName.includes('70b') || modelName.includes('versatile'));
+        
+        if (supportsLogprobs) {
+          payload.logprobs = true;
+          payload.top_logprobs = options.topLogprobs ?? 3;
+        }
+        // Silently skip logprobs for models that don't support it
+        // This allows GroqLlmClient to request it without breaking
       }
 
       /**
@@ -277,23 +290,33 @@ export class GroqLlamaAdapter {
        * - Faster responses (fewer tokens generated)
        * - Replaces prompt-based "no markdown" instructions
        */
+      /**
+       * Groq API Constraint: Maximum 4 stop sequences
+       * Prioritizing the most common failure patterns:
+       * - ``` (markdown code blocks)
+       * - \n\n\n (excessive whitespace)
+       * - Note: (explanatory postamble)
+       * - I hope (conversational postamble)
+       */
       if (isStructuredOutput) {
-        payload.stop = ['```', '\n\n\n', 'Note:', 'I hope', 'Let me know'];
+        payload.stop = ['```', '\n\n\n', 'Note:', 'I hope'];
       }
 
       /**
        * Llama 3 PDF Section 4.1: Min-P Sampling
        * 
+       * NOTE: min_p is NOT supported by Groq's API (returns 400 error).
+       * The Llama 3 research paper mentions it, but Groq hasn't implemented it.
+       * We rely on top_p + temperature for output consistency instead.
+       * 
        * Dynamic nucleus that adapts to the model's confidence distribution.
        * - High confidence (peaked distribution): More restrictive filtering
        * - Low confidence (flat distribution): Allows more diversity
-       * 
-       * This works alongside top_p for better structured output consistency.
-       * Value of 0.05 filters tokens with <5% of the top token's probability.
        */
-      if (isStructuredOutput) {
-        payload.min_p = 0.05;
-      }
+      // DISABLED: Groq API does not support min_p parameter
+      // if (isStructuredOutput) {
+      //   payload.min_p = 0.05;
+      // }
 
       /**
        * Structured Output Mode Selection
@@ -404,10 +427,10 @@ export class GroqLlamaAdapter {
         payload.presence_penalty = 0;
       }
 
-      // Stop sequences and Min-P (same logic as _executeRequest)
+      // Stop sequences (same logic as _executeRequest)
+      // NOTE: Groq API allows max 4 stop sequences
       if (isStructuredOutput) {
-        payload.stop = ['```', '\n\n\n', 'Note:', 'I hope', 'Let me know'];
-        payload.min_p = 0.05;
+        payload.stop = ['```', '\n\n\n', 'Note:', 'I hope'];
       }
 
       // Structured Output Mode (same logic as _executeRequest)

@@ -125,7 +125,42 @@ export class AIModelService {
     }
 
     const config = this._getConfig(operation);
-    const client = this._getClient(config);
+    
+    // Try to get the primary client, falling back if unavailable
+    let client: IAIClient;
+    try {
+      client = this._getClient(config);
+    } catch (clientError) {
+      // Primary client unavailable - try fallback immediately
+      if (config.fallbackTo && this.clients[config.fallbackTo]) {
+        logger.warn('Primary client unavailable, using fallback', {
+          operation,
+          primary: config.client,
+          fallback: config.fallbackTo,
+        });
+        
+        // Build minimal request options for fallback
+        const fallbackOptions: RequestOptions = {
+          ...params,
+          model: config.fallbackConfig?.model || '',
+          temperature: params.temperature !== undefined ? params.temperature : config.temperature,
+          maxTokens: params.maxTokens || config.maxTokens,
+          timeout: config.fallbackConfig?.timeout || params.timeout || config.timeout,
+          jsonMode: config.responseFormat === 'json_object' || params.jsonMode || false,
+        };
+        
+        return await this._executeFallback(
+          config.fallbackTo, 
+          operation, 
+          params.systemPrompt, 
+          fallbackOptions,
+          config.fallbackConfig
+        );
+      }
+      
+      // No fallback available, re-throw
+      throw clientError;
+    }
 
     // Detect provider capabilities
     const { provider, capabilities } = detectAndGetCapabilities({
@@ -244,7 +279,13 @@ export class AIModelService {
           operation,
           fallbackTo: config.fallbackTo,
         });
-        return await this._executeFallback(config.fallbackTo, operation, params.systemPrompt, requestOptions);
+        return await this._executeFallback(
+          config.fallbackTo, 
+          operation, 
+          params.systemPrompt, 
+          requestOptions,
+          config.fallbackConfig
+        );
       }
 
       logger.error('AI operation failed with no fallback', error instanceof Error ? error : undefined, {
@@ -366,17 +407,23 @@ export class AIModelService {
 
   /**
    * Execute fallback request on alternative client
+   * 
+   * Uses fallbackConfig from ModelConfig when available to set the correct
+   * model and timeout for the fallback provider.
+   * 
    * @private
    */
   private async _executeFallback(
     fallbackClient: string,
     operation: string,
     systemPrompt: string,
-    requestOptions: RequestOptions
+    requestOptions: RequestOptions,
+    fallbackConfig?: { model: string; timeout: number }
   ): Promise<AIResponse> {
     logger.info('Attempting fallback to alternative client', {
       operation,
       fallbackClient,
+      fallbackModel: fallbackConfig?.model,
     });
 
     try {
@@ -386,14 +433,22 @@ export class AIModelService {
         throw new Error(`Fallback client '${fallbackClient}' not available`);
       }
       
-      // Don't pass the primary client's model to the fallback client
+      // Build fallback options with fallbackConfig when available
+      // This ensures we use the correct model for the fallback provider
       const fallbackOptions: CompletionOptions = {
         ...requestOptions,
-        model: undefined,
-        developerMessage: undefined, // Fallback client may not support this
+        // Use fallbackConfig.model if provided, otherwise let the client use its default
+        model: fallbackConfig?.model || undefined,
+        // Use fallbackConfig.timeout if provided
+        timeout: fallbackConfig?.timeout || requestOptions.timeout,
+        // Clear provider-specific options that may not be supported
+        developerMessage: undefined,
       };
       
-      delete fallbackOptions.model;
+      // If no fallbackConfig model, clear model entirely to use client default
+      if (!fallbackConfig?.model) {
+        delete fallbackOptions.model;
+      }
       delete (fallbackOptions as { developerMessage?: string }).developerMessage;
       
       const response = await client.complete(systemPrompt, fallbackOptions);
@@ -401,6 +456,7 @@ export class AIModelService {
       logger.info('Fallback succeeded', {
         operation,
         fallbackClient,
+        model: fallbackConfig?.model || 'client-default',
       });
 
       return response;
@@ -411,6 +467,7 @@ export class AIModelService {
       logger.error('Fallback also failed', fallbackError instanceof Error ? fallbackError : undefined, {
         operation,
         fallbackClient,
+        fallbackModel: fallbackConfig?.model,
         error: err.message,
       });
       throw fallbackError;
@@ -451,25 +508,30 @@ export class AIModelService {
 
   /**
    * Get client for a configuration
+   * 
+   * IMPORTANT: This method does NOT silently fallback.
+   * If the configured client is unavailable, it throws an error.
+   * The caller (execute/stream) should catch and use _executeFallback() properly.
+   * 
+   * Why no silent fallback:
+   * - Silent fallback was using wrong model (e.g., llama model on OpenAI)
+   * - The proper fallback in _executeFallback() correctly clears the model
+   * - Configured fallbackTo in ModelConfig should be respected, not bypassed
+   * 
    * @private
    */
   private _getClient(config: ModelConfigEntry): IAIClient {
     const client = this.clients[config.client];
 
     if (!client) {
-      const defaultClient = this.clients[DEFAULT_CONFIG.client];
-      
-      if (defaultClient) {
-        logger.warn('Configured client not available, using default', {
-          requested: config.client,
-          using: DEFAULT_CONFIG.client,
-        });
-        return defaultClient;
-      }
-
+      // DO NOT silently fallback here - this was causing model mismatch bugs
+      // (e.g., trying to use llama-3.1-8b-instant on OpenAI API)
+      // Let the caller handle fallback via _executeFallback() which correctly
+      // respects the fallbackTo config and clears the model.
       throw new Error(
-        `No API client available for configuration '${config.client}'. ` +
-        `Available clients: ${Object.keys(this.clients).filter(k => this.clients[k]).join(', ')}`
+        `Client '${config.client}' is not available. ` +
+        `Available clients: ${Object.keys(this.clients).filter(k => this.clients[k]).join(', ')}. ` +
+        `Configure fallbackTo in ModelConfig if automatic fallback is desired.`
       );
     }
 

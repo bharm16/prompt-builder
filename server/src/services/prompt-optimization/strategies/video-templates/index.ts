@@ -74,6 +74,7 @@ export function createVideoTemplateBuilder(provider: 'openai' | 'groq'): BaseVid
 }
 
 // Re-export types and classes
-export { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
+export { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder.js';
+export type { VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
 export { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder.js';
 export { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder.js';
