@@ -51,6 +51,8 @@ interface ExecuteParams extends CompletionOptions {
   enableSandwich?: boolean; // Llama 3: Sandwich prompting for format adherence
   seed?: number; // Explicit seed for reproducibility
   useSeedFromConfig?: boolean; // Use seed based on config
+  logprobs?: boolean; // Groq: Enable logprobs for confidence scoring
+  topLogprobs?: number; // Groq: Number of top logprobs to return
 }
 
 interface StreamParams extends Omit<ExecuteParams, 'responseFormat'> {
@@ -84,6 +86,8 @@ interface RequestOptions extends CompletionOptions {
   enableSandwich?: boolean;
   developerMessage?: string;
   seed?: number;
+  logprobs?: boolean;
+  topLogprobs?: number;
 }
 
 export class AIModelService {
@@ -189,6 +193,14 @@ export class AIModelService {
     } else if (shouldUseSeed(operation) || params.useSeedFromConfig) {
       // Generate deterministic seed from prompt
       requestOptions.seed = this._hashString(params.systemPrompt) % 2147483647;
+    }
+
+    // Add logprobs for Groq confidence scoring
+    if (params.logprobs !== undefined) {
+      requestOptions.logprobs = params.logprobs;
+      if (params.topLogprobs !== undefined) {
+        requestOptions.topLogprobs = params.topLogprobs;
+      }
     }
 
     try {

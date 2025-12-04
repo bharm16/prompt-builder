@@ -3,7 +3,7 @@ import SpanLabelingConfig from './config/SpanLabelingConfig.js';
 import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
-import { RobustLlmClient } from './services/RobustLlmClient.js';
+import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
 import type { LabelSpansParams, LabelSpansResult } from './types.js';
 import type { AIService as BaseAIService } from '../../types.js';
 
@@ -13,9 +13,14 @@ import type { AIService as BaseAIService } from '../../types.js';
  * Orchestrates LLM-based span labeling with validation and optional repair.
  * This service is a thin orchestrator delegating to specialized modules:
  * - NlpSpanStrategy: NLP fast-path extraction
- * - RobustLlmClient: LLM-based extraction with repair loop
+ * - LlmClientFactory: Creates provider-specific LLM clients (Groq, OpenAI)
  * - Validation: Schema and span validation
  * - Processing: Pipeline of span transformations (dedupe, overlap, filter, truncate)
+ * 
+ * Provider Isolation:
+ * - Groq/Llama 3: Uses GroqLlmClient with logprobs confidence, min_p, stop sequences
+ * - OpenAI/GPT-4o: Uses OpenAILlmClient with strict schema, developer role
+ * - Provider selection via SPAN_PROVIDER env var or auto-detection
  */
 
 /**
@@ -39,7 +44,8 @@ export async function labelSpans(
   const maxWordsPerChunk = SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK;
   
   if (wordCount > maxWordsPerChunk) {
-    console.log(`[SpanLabeling] Large text detected (${wordCount} words), using chunked processing`);
+    const provider = getCurrentSpanProvider();
+    console.log(`[SpanLabeling] Large text detected (${wordCount} words), using chunked processing with ${provider} provider`);
     return labelSpansChunked(params, aiService);
   }
   
@@ -49,6 +55,10 @@ export async function labelSpans(
 
 /**
  * Label spans for a single chunk of text (original implementation)
+ * 
+ * Uses provider-specific LLM client via factory pattern:
+ * - Groq: GroqLlmClient with Llama 3 optimizations
+ * - OpenAI: OpenAILlmClient with GPT-4o optimizations
  */
 async function labelSpansSingle(
   params: LabelSpansParams,
@@ -79,7 +89,9 @@ async function labelSpansSingle(
     }
 
     // Fall back to LLM-based extraction with repair loop
-    const llmClient = new RobustLlmClient();
+    // Use factory to get provider-specific client
+    const llmClient = createLlmClient({ operation: 'span_labeling' });
+    
     return await llmClient.getSpans({
       text: params.text,
       policy,
@@ -115,7 +127,8 @@ async function labelSpansChunked(
   const chunks = chunker.chunkText(params.text);
   
   const wordCount = countWords(params.text);
-  console.log(`[SpanLabeling] Processing ${wordCount} words in ${chunks.length} chunks`);
+  const provider = getCurrentSpanProvider();
+  console.log(`[SpanLabeling] Processing ${wordCount} words in ${chunks.length} chunks (provider: ${provider})`);
   
   // Process chunks (parallel or serial based on config)
   const processChunk = async (chunk: { text: string; startOffset: number }): Promise<ChunkResult> => {
@@ -179,6 +192,7 @@ async function labelSpansChunked(
     chunked: true,
     chunkCount: chunks.length,
     totalWords: wordCount,
+    provider,
   };
   
   console.log(`[SpanLabeling] Chunked processing complete: ${mergedSpans.length} spans from ${chunks.length} chunks`);
@@ -189,4 +203,3 @@ async function labelSpansChunked(
     isAdversarial,
   };
 }
-

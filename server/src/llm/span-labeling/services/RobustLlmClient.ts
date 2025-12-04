@@ -7,17 +7,22 @@ import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
 import { validateSpans } from '../validation/SpanValidator.js';
 import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, buildFewShotExamples } from '../utils/promptBuilder.js';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
-import type { LabelSpansParams, LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';
+import type { LabelSpansParams, LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan } from '../types.js';
 import type { AIService as BaseAIService } from '../../../types.js';
+import type { LlmSpanParams, ILlmClient } from './ILlmClient.js';
 
-interface LlmSpanParams {
+/**
+ * Response from callModel with full metadata
+ */
+interface ModelResponse {
   text: string;
-  policy: ValidationPolicy;
-  options: ProcessingOptions;
-  enableRepair: boolean;
-  aiService: BaseAIService;
-  cache: SubstringPositionCache;
-  nlpSpansAttempted?: number;
+  metadata?: {
+    averageConfidence?: number;
+    logprobs?: unknown[];
+    provider?: string;
+    optimizations?: string[];
+    [key: string]: unknown;
+  };
 }
 
 /**
@@ -28,8 +33,10 @@ interface LlmSpanParams {
  * - Section 3.3: Few-shot examples as message array (more effective)
  * - Section 5.1: XML tagging for user input (handled by adapter)
  *
- * GPT-4o Best Practices (NEW):
+ * GPT-4o Best Practices:
  * - Developer role for hard constraints (highest priority)
+ * 
+ * @returns Full response including metadata for provider-specific post-processing
  */
 async function callModel({
   systemPrompt,
@@ -39,6 +46,8 @@ async function callModel({
   enableBookending = true,
   useFewShot = false,
   developerMessage,
+  useSeedFromConfig = false,
+  enableLogprobs = false,
 }: {
   systemPrompt: string;
   userPayload: string;
@@ -47,7 +56,9 @@ async function callModel({
   enableBookending?: boolean;
   useFewShot?: boolean;
   developerMessage?: string;
-}): Promise<string> {
+  useSeedFromConfig?: boolean;
+  enableLogprobs?: boolean;
+}): Promise<ModelResponse> {
   // Build request options
   const requestOptions: Record<string, unknown> = {
     systemPrompt,
@@ -56,6 +67,8 @@ async function callModel({
     jsonMode: true, // Enforce structured output per PDF guidance
     enableBookending, // GPT-4o Best Practices: Bookending strategy
     developerMessage, // GPT-4o Best Practices: Developer role for hard constraints
+    useSeedFromConfig, // Groq optimization: Enable seed for reproducibility
+    logprobs: enableLogprobs, // Groq optimization: Enable logprobs for confidence
     // temperature is configured in modelConfig.js
   };
 
@@ -81,16 +94,19 @@ async function callModel({
 
   const response = await aiService.execute('span_labeling', requestOptions);
 
-  // Extract text from response
+  // Extract text and metadata from response
   // Response format: { text: string, metadata: {...} }
-  // Handle both formats for backward compatibility
+  let text = '';
   if (response.text) {
-    return response.text;
+    text = response.text;
+  } else if (response.content && Array.isArray(response.content) && response.content.length > 0) {
+    text = response.content[0]?.text || '';
   }
-  if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-    return response.content[0]?.text || '';
-  }
-  return '';
+
+  return {
+    text,
+    metadata: response.metadata || {},
+  };
 }
 
 /**
@@ -98,8 +114,16 @@ async function callModel({
  *
  * Encapsulates the "try, validate, repair" cycle for LLM-based span labeling.
  * Handles defensive metadata injection, validation, and repair attempts.
+ * 
+ * Designed for extension by provider-specific clients (GroqLlmClient, OpenAILlmClient)
+ * which can override hooks for provider-specific optimizations.
  */
-export class RobustLlmClient {
+export class RobustLlmClient implements ILlmClient {
+  /**
+   * Last response metadata - available for subclass post-processing
+   */
+  protected _lastResponseMetadata: ModelResponse['metadata'] = {};
+
   /**
    * Get spans using LLM with validation and optional repair
    *
@@ -136,7 +160,7 @@ export class RobustLlmClient {
                    process.env.SPAN_MODEL?.includes('gpt-4o-mini');
     const hasComplexSchema = this._isComplexSchemaForSpans();
 
-    let primaryResponse: string;
+    let primaryResponse: ModelResponse;
 
     // Determine provider for optimization selection
     const isGroq = config?.model?.includes('llama') || 
@@ -150,6 +174,7 @@ export class RobustLlmClient {
         userPayload: buildUserPayload(basePayload),
         aiService,
         maxTokens: estimatedMaxTokens,
+        isGroq,
       });
     } else {
       // Standard single-pass extraction
@@ -161,10 +186,15 @@ export class RobustLlmClient {
         maxTokens: estimatedMaxTokens,
         enableBookending: !isGroq, // Groq adapter handles its own sandwiching
         useFewShot: isGroq, // Use few-shot for Groq/Llama
+        useSeedFromConfig: true, // Enable seed for all operations (reproducibility)
+        enableLogprobs: isGroq, // Enable logprobs for Groq (confidence adjustment)
       });
     }
 
-    const parsedPrimary = parseJson(primaryResponse);
+    // Store metadata for subclass access
+    this._lastResponseMetadata = primaryResponse.metadata;
+
+    const parsedPrimary = parseJson(primaryResponse.text);
     if (!parsedPrimary.ok) {
       throw new Error(parsedPrimary.error);
     }
@@ -194,7 +224,7 @@ export class RobustLlmClient {
         isAdversarial: true,
       });
 
-      return validation.result;
+      return this._postProcessResult(validation.result, isGroq);
     }
 
     // Validate spans (strict mode)
@@ -210,7 +240,7 @@ export class RobustLlmClient {
     });
 
     if (validation.ok) {
-      return validation.result;
+      return this._postProcessResult(validation.result, isGroq);
     }
 
     // Handle validation failure
@@ -227,11 +257,11 @@ export class RobustLlmClient {
         isAdversarial,
       });
 
-      return validation.result;
+      return this._postProcessResult(validation.result, isGroq);
     }
 
     // Repair attempt
-    return this._attemptRepair({
+    const repairResult = await this._attemptRepair({
       basePayload,
       validationErrors: validation.errors,
       originalResponse: parsedPrimary.value,
@@ -242,6 +272,56 @@ export class RobustLlmClient {
       cache,
       estimatedMaxTokens,
     });
+
+    return this._postProcessResult(repairResult, isGroq);
+  }
+
+  /**
+   * Post-process result with provider-specific optimizations
+   * 
+   * This method applies provider-specific adjustments:
+   * - Groq: Logprobs-based confidence adjustment
+   * - OpenAI: No adjustments (strict schema handles everything)
+   * 
+   * Llama 3 PDF Section 4.1: Logprobs Confidence
+   * "Token-level probabilities are more reliable than asking the model
+   * to self-report confidence."
+   */
+  protected _postProcessResult(result: LabelSpansResult, isGroq: boolean): LabelSpansResult {
+    // Apply Groq-specific logprobs confidence adjustment
+    if (isGroq && this._lastResponseMetadata?.averageConfidence !== undefined) {
+      const averageConfidence = this._lastResponseMetadata.averageConfidence;
+      
+      if (result.spans?.length > 0) {
+        const adjustedSpans = result.spans.map((span: LLMSpan) => {
+          const originalConfidence = span.confidence ?? 1.0;
+          
+          // Use the minimum of self-reported and logprobs-derived confidence
+          // This prevents overconfident predictions
+          const adjustedConfidence = Math.min(originalConfidence, averageConfidence);
+          
+          return {
+            ...span,
+            confidence: adjustedConfidence,
+          };
+        });
+
+        return {
+          ...result,
+          spans: adjustedSpans,
+          meta: {
+            ...result.meta,
+            _providerOptimizations: {
+              provider: 'groq',
+              logprobsAdjustment: true,
+              averageLogprobsConfidence: averageConfidence,
+            },
+          },
+        };
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -256,12 +336,14 @@ export class RobustLlmClient {
     userPayload,
     aiService,
     maxTokens,
+    isGroq = false,
   }: {
     systemPrompt: string;
     userPayload: string;
     aiService: BaseAIService;
     maxTokens: number;
-  }): Promise<string> {
+    isGroq?: boolean;
+  }): Promise<ModelResponse> {
     const payloadData = JSON.parse(userPayload);
     
     // Pass 1: Free-text reasoning (no schema constraints)
@@ -291,6 +373,7 @@ Focus on:
       aiService,
       maxTokens: Math.floor(maxTokens * 0.6), // Use 60% of tokens for reasoning
       enableBookending: false, // No bookending needed for reasoning pass
+      useSeedFromConfig: true,
     });
 
     // Pass 2: Structure the reasoning into JSON schema
@@ -303,7 +386,7 @@ Use the reasoning from Pass 1 to inform your span labeling.
 Follow the schema exactly as specified.
 
 Pass 1 Analysis:
-${reasoningResponse}
+${reasoningResponse.text}
 
 Now convert this analysis into the structured JSON format required.`;
 
@@ -317,7 +400,9 @@ Now convert this analysis into the structured JSON format required.`;
       }),
       aiService,
       maxTokens: Math.floor(maxTokens * 0.4), // Use 40% of tokens for structuring
-      enableBookending: true, // Enable bookending for structuring pass
+      enableBookending: !isGroq, // Enable bookending for structuring pass (OpenAI only)
+      useSeedFromConfig: true,
+      enableLogprobs: isGroq, // Enable logprobs for Groq
     });
   }
 
@@ -339,7 +424,7 @@ Now convert this analysis into the structured JSON format required.`;
    * Get model config for an operation (helper method)
    * Checks environment variables and defaults to detecting mini from operation name
    */
-  private _getModelConfig(aiService: BaseAIService, operation: string): { model?: string } | null {
+  protected _getModelConfig(aiService: BaseAIService, operation: string): { model?: string } | null {
     // Check environment variable first
     const envModel = process.env.SPAN_MODEL;
     if (envModel) {
@@ -437,9 +522,13 @@ If validation feedback is provided, correct the issues without altering span tex
       userPayload: buildUserPayload(repairPayload),
       aiService,
       maxTokens: estimatedMaxTokens,
+      useSeedFromConfig: true,
     });
 
-    const parsedRepair = parseJson(repairResponse);
+    // Update metadata with repair response
+    this._lastResponseMetadata = repairResponse.metadata;
+
+    const parsedRepair = parseJson(repairResponse.text);
     if (!parsedRepair.ok) {
       throw new Error(parsedRepair.error);
     }
@@ -469,4 +558,3 @@ If validation feedback is provided, correct the issues without altering span tex
     return validation.result;
   }
 }
-
