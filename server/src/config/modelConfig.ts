@@ -8,6 +8,11 @@
  * - Each operation maps to a specific client + model configuration
  * - Supports automatic fallback to alternative providers
  * - Environment variables override defaults for production flexibility
+ * 
+ * Provider-Specific Optimizations:
+ * - OpenAI: Temperature 0.0 for structured outputs (grammar-constrained)
+ * - Groq/Llama: Temperature 0.1 for structured outputs (avoids repetition loops)
+ * - Seed parameter for reproducibility where determinism matters
  */
 
 interface ModelConfigEntry {
@@ -22,6 +27,10 @@ interface ModelConfigEntry {
     timeout: number;
   };
   responseFormat?: 'json_object';
+  /** Enable seed-based reproducibility for this operation */
+  useSeed?: boolean;
+  /** Use developer message for hard constraints (OpenAI only) */
+  useDeveloperMessage?: boolean;
 }
 
 type OperationName = keyof typeof ModelConfig;
@@ -36,6 +45,8 @@ type OperationName = keyof typeof ModelConfig;
  * - maxTokens: Maximum tokens to generate
  * - timeout: Request timeout in milliseconds
  * - fallbackTo: (Optional) Alternative client if primary fails
+ * - useSeed: (Optional) Enable seed-based reproducibility
+ * - useDeveloperMessage: (Optional) Use developer role for constraints
  */
 export const ModelConfig: Record<string, ModelConfigEntry> = {
   // ============================================================================
@@ -52,22 +63,24 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     model: process.env.OPTIMIZE_MODEL || 'gpt-4o-2024-08-06',
     temperature: 0.7,
     maxTokens: 4096,
-    timeout: 60000, // 60 seconds
-    fallbackTo: 'groq', // Fallback to Groq if OpenAI fails
+    timeout: 60000,
+    fallbackTo: 'groq',
+    useDeveloperMessage: true, // GPT-4o: Use developer role for format constraints
   },
 
   /**
    * Fast draft generation (speed-focused)
    * Uses OpenAI GPT-4o-mini for fast response times
-   * Note: Temperature kept at 0.7 for creative text generation (not structured output)
    */
   optimize_draft: {
     client: process.env.DRAFT_PROVIDER || 'openai',
     model: process.env.DRAFT_MODEL || 'gpt-4o-mini-2024-07-18',
     temperature: 0.7,
-    maxTokens: 500, // Keep drafts concise
-    timeout: 15000, // 15 seconds (ChatGPT is slower than Groq but still fast)
-    fallbackTo: 'groq', // Fallback to Groq if OpenAI unavailable
+    maxTokens: 500,
+    timeout: 15000,
+    fallbackTo: 'groq',
+    useSeed: true, // Same concept should draft similarly
+    useDeveloperMessage: true,
   },
 
   /**
@@ -75,10 +88,11 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    */
   optimize_context_inference: {
     client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18', // Faster model for analysis
-    temperature: 0.2, // Lower temp for more focused analysis (structured output range)
+    model: 'gpt-4o-mini-2024-07-18',
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 30000,
+    useSeed: true, // Deterministic context detection
   },
 
   /**
@@ -87,9 +101,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   optimize_mode_detection: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent detection (structured output range)
+    temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
+    useSeed: true, // Same prompt should detect same mode
   },
 
   /**
@@ -98,14 +113,15 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   optimize_quality_assessment: {
     client: 'openai',
     model: 'gpt-4o-mini',
-    temperature: 0.2, // Very low temp for consistent scoring
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 30000,
+    useSeed: true, // Consistent quality scores
   },
 
   /**
    * Shot interpretation (maps raw concept to flexible shot plan)
-   * Uses structured output - temperature must be 0.0-0.2 per GPT-4o best practices
+   * Uses structured output - temperature 0.0 per GPT-4o best practices
    */
   optimize_shot_interpreter: {
     client: 'openai',
@@ -114,6 +130,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 600,
     timeout: 15000,
     responseFormat: 'json_object',
+    useSeed: true, // Same concept should produce same shot plan
+    useDeveloperMessage: true,
   },
 
   // ============================================================================
@@ -122,34 +140,28 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Main enhancement suggestion generation
-   * Uses fast draft model for real-time suggestions
    * 
-   * IMPORTANT: Llama 3.1 8B requires:
-   * - Lower temperature (0.5) for reliable JSON output
-   * - Simplified prompts (8B can't handle complex multi-part instructions)
-   * - Few-shot examples for format guidance
+   * Provider-specific temperature:
+   * - OpenAI (when used): 0.0 for structured output
+   * - Groq/Llama: 0.1 (configured here, adapter may override)
    * 
-   * Llama 3 PDF Best Practices Applied (via GroqLlamaAdapter):
-   * - Temperature 0.5 (slightly higher for creative suggestions)
-   * - top_p 0.9 for natural variation
-   * - Sandwich prompting for format adherence
-   * - XML tagging for data segmentation
-   * 
-   * Reference: Groq docs recommend "simplify complex queries" and "include examples"
+   * Diversity is achieved through:
+   * - Prompt: "Generate 12 DIVERSE alternatives"
+   * - ContrastiveDiversityEnforcer post-processing
    */
   enhance_suggestions: {
     client: process.env.ENHANCE_PROVIDER || 'groq',
     model: process.env.ENHANCE_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.5, // Lower for reliable JSON; diversity via prompt variations
+    temperature: 0.1, // Llama 3: 0.1 for reliable JSON (diversity via prompting)
     maxTokens: 1024,
     timeout: 8000,
-    responseFormat: 'json_object', // Requires JSON for structured output
+    responseFormat: 'json_object',
     fallbackTo: 'openai',
+    // Note: Seed not used - we want variation in suggestions
   },
 
   /**
    * Style transfer for enhancement suggestions
-   * Note: Temperature kept at 0.7 for creative text generation (not structured output)
    */
   enhance_style_transfer: {
     client: 'openai',
@@ -165,9 +177,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   enhance_diversity: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent deduplication (structured output range)
+    temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
+    useSeed: true, // Consistent deduplication
   },
 
   // ============================================================================
@@ -176,20 +189,19 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Video concept suggestion generation
-   * Note: Temperature kept at 0.8 for creative text generation (not structured output)
    */
   video_concept_suggestions: {
     client: process.env.VIDEO_PROVIDER || 'openai',
     model: process.env.VIDEO_MODEL || 'gpt-4o-2024-08-06',
-    temperature: 0.8, // High creativity for video concepts
+    temperature: 0.8,
     maxTokens: 2048,
     timeout: 45000,
     fallbackTo: 'groq',
+    useDeveloperMessage: true,
   },
 
   /**
    * Scene completion (fill empty elements)
-   * Note: Temperature kept at 0.7 for creative text generation (not structured output)
    */
   video_scene_completion: {
     client: 'openai',
@@ -201,32 +213,33 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Scene variation generation
-   * Note: Temperature kept at 0.9 for creative text generation (not structured output)
+   * Note: High temperature for creativity, no seed (want variation)
    */
   video_scene_variation: {
     client: 'openai',
     model: 'gpt-4o-2024-08-06',
-    temperature: 0.9, // Very high creativity for variations
+    temperature: 0.9,
     maxTokens: 1536,
     timeout: 40000,
   },
 
   /**
    * Concept parsing (text to structured elements)
-   * Uses structured output - temperature must be 0.0-0.2 per GPT-4o best practices
+   * Temperature 0.0 for deterministic parsing
    */
   video_concept_parsing: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.0, // Deterministic parsing for structured output
+    temperature: 0.0,
     maxTokens: 1024,
     timeout: 25000,
-    responseFormat: 'json_object', // Requires JSON for structured data
+    responseFormat: 'json_object',
+    useSeed: true, // Same concept should parse identically
+    useDeveloperMessage: true,
   },
 
   /**
    * Element refinement for coherence
-   * Note: Temperature kept at 0.6 for creative text generation (not structured output)
    */
   video_refinement: {
     client: 'openai',
@@ -242,9 +255,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   video_technical_params: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent technical output (structured output range)
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
+    useSeed: true, // Consistent technical params
   },
 
   /**
@@ -253,9 +267,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   video_validation: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent validation (structured output range)
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
+    useSeed: true, // Consistent validation
   },
 
   /**
@@ -264,9 +279,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   video_compatibility: {
     client: 'openai',
     model: 'gpt-4o-mini',
-    temperature: 0.2, // Very low for consistent scoring
+    temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
+    useSeed: true, // Consistent compatibility scores
   },
 
   /**
@@ -275,9 +291,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   video_conflict_detection: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent detection (structured output range)
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
+    useSeed: true, // Consistent conflict detection
   },
 
   /**
@@ -286,9 +303,10 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   video_scene_detection: {
     client: 'openai',
     model: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for consistent detection (structured output range)
+    temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
+    useSeed: true, // Consistent scene detection
   },
 
   // ============================================================================
@@ -297,16 +315,18 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Generate clarifying questions for prompt improvement
-   * Uses structured output - temperature must be 0.0-0.2 per GPT-4o best practices
+   * Temperature 0.0 for structured output
    */
   question_generation: {
     client: process.env.QUESTION_PROVIDER || 'openai',
     model: process.env.QUESTION_MODEL || 'gpt-4o-mini-2024-07-18',
-    temperature: 0.2, // Lower temp for structured output
+    temperature: 0.0, // Deterministic question generation
     maxTokens: 2048,
     timeout: 30000,
-    responseFormat: 'json_object', // Requires JSON for question array
+    responseFormat: 'json_object',
     fallbackTo: 'groq',
+    useSeed: true, // Same prompt should generate same questions
+    useDeveloperMessage: true,
   },
 
   // ============================================================================
@@ -315,15 +335,17 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Categorize text into taxonomy
-   * Uses structured output - temperature must be 0.0-0.2 per GPT-4o best practices
+   * Temperature 0.0 for deterministic categorization
    */
   text_categorization: {
     client: process.env.CATEGORIZE_PROVIDER || 'openai',
     model: process.env.CATEGORIZE_MODEL || 'gpt-4o-mini-2024-07-18',
-    temperature: 0.0, // Deterministic categorization for structured output
+    temperature: 0.0,
     maxTokens: 1024,
     timeout: 25000,
-    responseFormat: 'json_object', // Requires JSON for deterministic output
+    responseFormat: 'json_object',
+    useSeed: true, // Same text should categorize identically
+    useDeveloperMessage: true,
   },
 
   // ============================================================================
@@ -331,85 +353,87 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   // ============================================================================
 
   /**
-   * Label spans in video prompts (technical, style, subject, etc.)
+   * Label spans in video prompts
    * 
-   * Llama 3 PDF Best Practices Applied (via GroqLlamaAdapter):
-   * - Temperature 0.1 (adapter default for structured output)
-   * - top_p 0.95 for strict instruction following
+   * Llama 3 PDF Best Practices:
+   * - Temperature 0.1 (not 0.0 - avoids repetition loops)
    * - Sandwich prompting for format adherence
-   * - XML tagging for data segmentation (23% less context blending)
-   * 
-   * Note: The GroqLlamaAdapter overrides temperature to 0.1 for JSON output
-   * to avoid Llama 3's repetition loop issue at temperature 0.0
+   * - XML tagging for data segmentation
    */
   span_labeling: {
     client: process.env.SPAN_PROVIDER || 'groq',
     model: process.env.SPAN_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.1, // Llama 3 PDF: Use 0.1, not 0.0 (avoids repetition loops)
-    maxTokens: 4096, // Larger for detailed span data
+    temperature: 0.1, // Llama 3: Use 0.1, not 0.0
+    maxTokens: 4096,
     timeout: 30000,
-    responseFormat: 'json_object', // Requires JSON for span offsets/labels
+    responseFormat: 'json_object',
     fallbackTo: 'gemini',
     fallbackConfig: {
       model: 'gemini-2.5-flash',
-      timeout: 45000,  // Gemini needs more time than Groq but less than OpenAI
+      timeout: 45000,
     },
+    useSeed: true, // Same text should label identically
   },
 
   /**
-   * Role classification for spans (categorize into taxonomy)
-   * Uses structured output - temperature must be 0.0-0.2 per GPT-4o best practices
+   * Role classification for spans
+   * Temperature 0.0 for deterministic classification
    */
   role_classification: {
     client: process.env.ROLE_PROVIDER || 'openai',
     model: process.env.ROLE_MODEL || 'gpt-4o-mini-2024-07-18',
-    temperature: 0, // Zero temp for deterministic classification
+    temperature: 0,
     maxTokens: 600,
     timeout: 20000,
     fallbackTo: 'groq',
+    useSeed: true, // Same spans should classify identically
+    useDeveloperMessage: true,
   },
 
   // ============================================================================
-  // LLM-as-a-Judge Operations (PDF Enhancement)
+  // LLM-as-a-Judge Operations
   // ============================================================================
 
   /**
    * LLM-as-a-Judge for video prompt evaluation
-   * Uses high-capability model (GPT-4o) for quality assessment
    */
   llm_judge_video: {
     client: process.env.JUDGE_PROVIDER || 'openai',
     model: process.env.JUDGE_MODEL || 'gpt-4o-2024-08-06',
-    temperature: 0.2, // Low temp for consistent evaluation
+    temperature: 0.2,
     maxTokens: 2048,
     timeout: 45000,
     fallbackTo: 'anthropic',
+    useSeed: true, // Consistent evaluation scores
+    useDeveloperMessage: true,
   },
 
   /**
    * LLM-as-a-Judge for general text evaluation
-   * Can use Claude for detailed qualitative analysis
    */
   llm_judge_general: {
     client: process.env.JUDGE_GENERAL_PROVIDER || 'anthropic',
     model: process.env.JUDGE_GENERAL_MODEL || 'claude-sonnet-4',
-    temperature: 0.3, // Slightly higher for nuanced evaluation
+    temperature: 0.3,
     maxTokens: 2048,
     timeout: 45000,
     fallbackTo: 'openai',
+    useSeed: true, // Consistent evaluation
   },
 };
 
 /**
  * Default configuration for operations not explicitly defined
- * Note: Default temperature is 0.0 for structured outputs (override if creative generation needed)
+ * Temperature 0.0 for structured outputs by default
  */
 export const DEFAULT_CONFIG: ModelConfigEntry = {
   client: 'openai',
   model: 'gpt-4o-mini-2024-07-18',
-  temperature: 0.0, // Default to deterministic for structured outputs
+  temperature: 0.0,
   maxTokens: 2048,
   timeout: 30000,
+  useSeed: false,
+  useDeveloperMessage: false,
 };
 
 /**
@@ -426,3 +450,18 @@ export function listOperations(): string[] {
   return Object.keys(ModelConfig);
 }
 
+/**
+ * Check if an operation should use seed for reproducibility
+ */
+export function shouldUseSeed(operation: string): boolean {
+  const config = ModelConfig[operation];
+  return config?.useSeed ?? false;
+}
+
+/**
+ * Check if an operation should use developer message (OpenAI)
+ */
+export function shouldUseDeveloperMessage(operation: string): boolean {
+  const config = ModelConfig[operation];
+  return config?.useDeveloperMessage ?? false;
+}

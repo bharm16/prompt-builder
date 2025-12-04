@@ -6,6 +6,7 @@ import { formatValidationErrors } from '../utils/textUtils.js';
 import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
 import { validateSpans } from '../validation/SpanValidator.js';
 import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, buildFewShotExamples } from '../utils/promptBuilder.js';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
 import type { LabelSpansParams, LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';
 import type { AIService as BaseAIService } from '../../../types.js';
 
@@ -21,11 +22,14 @@ interface LlmSpanParams {
 
 /**
  * Call LLM with system prompt and user payload using AIModelService
- * 
+ *
  * Llama 3 PDF Best Practices:
  * - Section 3.2: Sandwich prompting (handled by GroqLlamaAdapter)
  * - Section 3.3: Few-shot examples as message array (more effective)
  * - Section 5.1: XML tagging for user input (handled by adapter)
+ *
+ * GPT-4o Best Practices (NEW):
+ * - Developer role for hard constraints (highest priority)
  */
 async function callModel({
   systemPrompt,
@@ -34,6 +38,7 @@ async function callModel({
   maxTokens,
   enableBookending = true,
   useFewShot = false,
+  developerMessage,
 }: {
   systemPrompt: string;
   userPayload: string;
@@ -41,6 +46,7 @@ async function callModel({
   maxTokens: number;
   enableBookending?: boolean;
   useFewShot?: boolean;
+  developerMessage?: string;
 }): Promise<string> {
   // Build request options
   const requestOptions: Record<string, unknown> = {
@@ -49,6 +55,7 @@ async function callModel({
     maxTokens,
     jsonMode: true, // Enforce structured output per PDF guidance
     enableBookending, // GPT-4o Best Practices: Bookending strategy
+    developerMessage, // GPT-4o Best Practices: Developer role for hard constraints
     // temperature is configured in modelConfig.js
   };
 

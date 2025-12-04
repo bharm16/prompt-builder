@@ -3,20 +3,42 @@
  *
  * Generates enhancement suggestions using contrastive decoding or standard generation.
  * Handles AI service calls, contrastive diversity enforcement, and poisonous pattern detection.
+ * 
+ * Provider-Aware Optimizations:
+ * - OpenAI: Uses strict schema + developer role for hard constraints
+ * - Groq: Uses validation-based schema + embedded constraints
  */
 
 import { logger } from '@infrastructure/Logger.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { POISONOUS_PATTERNS } from '../constants.js';
+import { getEnhancementSchema } from '../config/schemas.js';
 import type {
   AIService,
   Suggestion,
   EnhancementMetrics,
 } from './types.js';
 import type { ContrastiveDiversityEnforcer } from './ContrastiveDiversityEnforcer.js';
+import type { PromptBuildResult } from './prompt-builders/index.js';
 
 export interface SuggestionGenerationParams {
   systemPrompt: string;
+  schema: Record<string, unknown>;
+  isVideoPrompt: boolean;
+  isPlaceholder: boolean;
+  highlightedText: string;
+  temperature: number;
+  metrics: EnhancementMetrics;
+  /** Provider for optimization selection */
+  provider?: 'openai' | 'groq';
+  /** Developer message for OpenAI (hard constraints) */
+  developerMessage?: string;
+  /** Whether to use strict schema mode (OpenAI) */
+  useStrictSchema?: boolean;
+}
+
+export interface SuggestionGenerationParamsV2 {
+  promptResult: PromptBuildResult;
   schema: Record<string, unknown>;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
@@ -41,12 +63,35 @@ export class SuggestionGenerationService {
   ) {}
 
   /**
+   * Generate suggestions using the new provider-aware prompt result
+   */
+  async generateSuggestionsV2(
+    params: SuggestionGenerationParamsV2
+  ): Promise<SuggestionGenerationResult> {
+    const { promptResult, schema, isVideoPrompt, isPlaceholder, highlightedText, temperature, metrics } = params;
+
+    return this.generateSuggestions({
+      systemPrompt: promptResult.systemPrompt,
+      schema,
+      isVideoPrompt,
+      isPlaceholder,
+      highlightedText,
+      temperature,
+      metrics,
+      provider: promptResult.provider,
+      developerMessage: promptResult.developerMessage,
+      useStrictSchema: promptResult.useStrictSchema,
+    });
+  }
+
+  /**
    * Generate suggestions using contrastive decoding or standard generation
    */
   async generateSuggestions(
     params: SuggestionGenerationParams
   ): Promise<SuggestionGenerationResult> {
     const groqStart = Date.now();
+    const { provider = 'groq', developerMessage, useStrictSchema } = params;
 
     // PDF Enhancement: Try contrastive decoding for enhanced diversity
     let suggestions: Suggestion[] | null =
@@ -65,10 +110,24 @@ export class SuggestionGenerationService {
       // Create adapter for StructuredOutputEnforcer compatibility
       const aiAdapter = {
         execute: async (operation: string, options: Record<string, unknown>) => {
-          const response = await this.ai.execute(operation, {
+          // Build execute options
+          const executeOptions: Record<string, unknown> = {
             systemPrompt: options.systemPrompt as string,
             ...options,
-          } as Parameters<AIService['execute']>[1]);
+          };
+
+          // Add OpenAI-specific options
+          if (provider === 'openai') {
+            if (developerMessage) {
+              executeOptions.developerMessage = developerMessage;
+            }
+            // Use the strict schema
+            if (useStrictSchema && options.schema) {
+              executeOptions.schema = options.schema;
+            }
+          }
+
+          const response = await this.ai.execute(operation, executeOptions as Parameters<AIService['execute']>[1]);
           // Convert AIResponse to AIServiceResponse format
           return {
             text: response.text,
@@ -77,18 +136,23 @@ export class SuggestionGenerationService {
         },
       };
 
+      // Get provider-specific schema
+      const providerSchema = getEnhancementSchema(params.isPlaceholder, provider);
+
       suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
         aiAdapter,
         params.systemPrompt,
         {
-          schema: params.schema as
-            | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] } }
+          schema: providerSchema as
+            | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
             | null,
           isArray: true,
           maxTokens: 2048,
           maxRetries: 2,
           temperature: params.temperature,
           operation: 'enhance_suggestions',
+          provider,
+          useStrictSchema: useStrictSchema && provider === 'openai',
         }
       );
     } else {
@@ -123,13 +187,16 @@ export class SuggestionGenerationService {
       ? suggestions.slice(0, 3).map((s) => s.text)
       : [];
 
-    logger.info('Raw suggestions from Claude', {
+    logger.info('Raw suggestions from LLM', {
       isPlaceholder: params.isPlaceholder,
       suggestionsCount: Array.isArray(suggestions) ? suggestions.length : 0,
       hasCategory: suggestions?.[0]?.category !== undefined,
       zeroShotActive: true,
       hasPoisonousText,
       sampleSuggestions,
+      provider,
+      usedStrictSchema: useStrictSchema && provider === 'openai',
+      usedDeveloperRole: !!(developerMessage && provider === 'openai'),
     });
 
     if (hasPoisonousText && Array.isArray(suggestions)) {
@@ -149,4 +216,3 @@ export class SuggestionGenerationService {
     };
   }
 }
-

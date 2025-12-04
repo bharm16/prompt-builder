@@ -3,6 +3,9 @@ import OptimizationConfig from '@config/OptimizationConfig.js';
 // Import the examples along with the generator
 import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { getVideoTemplateBuilder } from './video-templates/index.js';
+import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory.js';
+import { detectProvider } from '@utils/provider/ProviderDetector.js';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan } from '../types.js';
 
 /**
@@ -94,38 +97,72 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
 
   /**
    * Optimize prompt for video generation
+   *
+   * Provider-Aware Optimization (NEW):
+   * - Detects provider (OpenAI vs Groq)
+   * - Uses provider-specific template builder
+   * - OpenAI: developerMessage + strict schema (~1,300 tokens)
+   * - Groq: embedded instructions + sandwich prompting (~2,000 tokens)
+   *
    * Uses progressive enhancement: attempts native Structured Outputs first,
    * falls back to StructuredOutputEnforcer for unsupported providers
    * Uses Few-Shot Prompting to prevent structural arrows in output
    */
   async optimize({ prompt, shotPlan = null }: OptimizationRequest): Promise<string> {
-    logger.info('Optimizing prompt with video strategy (Strict Schema + Few-Shot)');
+    logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
+
+    // Detect provider for this operation
+    const provider = detectProvider({
+      operation: 'optimize_standard',
+      client: process.env.OPTIMIZE_PROVIDER
+    });
+
+    logger.debug('Provider detected for video optimization', { provider });
 
     // Strategy 1: Attempt Native Strict Structured Outputs (Best Quality)
     try {
-      // 1. Get the System Prompt (The Rules)
-      const systemInstructions = generateUniversalVideoPrompt("", null, true);
+      // Get provider-specific template builder
+      const templateBuilder = getVideoTemplateBuilder({
+        operation: 'optimize_standard',
+        client: provider,
+      });
 
-      // 2. Build the Message Chain (The Structured Way)
+      // Build provider-optimized template
+      const template = templateBuilder.buildTemplate({
+        userConcept: prompt,
+        interpretedPlan: shotPlan || undefined,
+        includeInstructions: true,
+      });
+
+      // Get provider-specific schema
+      const schema = getVideoOptimizationSchema({
+        operation: 'optimize_standard',
+        provider,
+      });
+
+      logger.debug('Using provider-specific template', {
+        provider: template.provider,
+        hasDeveloperMessage: !!template.developerMessage,
+        systemPromptLength: template.systemPrompt.length,
+      });
+
+      // Build the Message Chain (The Structured Way)
       // We explicitly teach the model: Rules -> Example Input -> Example Output -> Real Input
       const messages = [
-        { role: 'system', content: systemInstructions },
+        { role: 'system', content: template.systemPrompt },
         ...VIDEO_FEW_SHOT_EXAMPLES, // <--- Inject the "training" examples
-        { 
-          role: 'user', 
-          content: `User Concept: "${prompt}"\n${shotPlan ? `Shot Plan: ${JSON.stringify(shotPlan)}` : ''}` 
-        }
+        { role: 'user', content: template.userMessage }
       ];
 
       logger.debug('Attempting Native Strict Schema generation with Few-Shot examples');
 
-      // 3. Call AI with strict schema AND the message chain
-      // systemPrompt is required by the API, but messages array takes precedence in adapters
+      // Call AI with provider-specific optimizations
       const response = await this.ai.execute('optimize_standard', {
-        systemPrompt: systemInstructions, // Required by API, but messages array is used by adapters
+        systemPrompt: template.systemPrompt, // Required by API
         messages: messages, // <--- Pass the full chain here
-        schema: VIDEO_PROMPT_SCHEMA,
+        schema: schema,
+        developerMessage: template.developerMessage, // OpenAI only
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
@@ -137,7 +174,9 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         originalLength: prompt.length,
         shotType: parsedResponse.shot_type,
         strategy: parsedResponse._creative_strategy,
-        promptLength: parsedResponse.prompt?.length || 0
+        promptLength: parsedResponse.prompt?.length || 0,
+        provider,
+        usedDeveloperMessage: !!template.developerMessage,
       });
 
       return this._reassembleOutput(parsedResponse);
