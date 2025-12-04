@@ -15,6 +15,9 @@
  * - Full rules in system prompt (GAtt attention mechanism)
  * - Schema for enum/type validation only
  * - ~1000 tokens prompt + ~200 tokens schema
+ * - NEW: Stop sequences and min_p for better structured output
+ * - NEW: Conditional format instructions when json_schema mode active
+ *   Pass useJsonSchema=true to save ~50-100 tokens per request
  */
 
 import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
@@ -33,7 +36,9 @@ import {
   GROQ_VALIDATION_SCHEMA,
   GROQ_FULL_SYSTEM_PROMPT,
   GROQ_FEW_SHOT_EXAMPLES,
-  GROQ_SANDWICH_REMINDER
+  GROQ_SANDWICH_REMINDER,
+  getGroqSystemPrompt,
+  getGroqSandwichReminder
 } from '../schemas/GroqSchema.js';
 
 /**
@@ -43,11 +48,17 @@ export type Provider = 'openai' | 'groq' | 'gemini';
 
 /**
  * Build system prompt optimized for specific provider
+ * 
+ * @param text - Input text (currently unused but kept for API compatibility)
+ * @param useRouter - Whether to use router (currently unused)
+ * @param provider - LLM provider ('openai' or 'groq')
+ * @param useJsonSchema - Whether json_schema response format is active (Groq optimization)
  */
 export function buildSystemPrompt(
   text: string = '',
   useRouter: boolean = false,
-  provider: string = 'groq'
+  provider: string = 'groq',
+  useJsonSchema: boolean = false
 ): string {
   const normalizedProvider = provider.toLowerCase();
   
@@ -59,8 +70,12 @@ export function buildSystemPrompt(
     logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
   } else {
     // Groq/Llama 3: Full prompt, rules in system message
-    basePrompt = GROQ_FULL_SYSTEM_PROMPT;
-    logger.debug('Using Groq full prompt (rules in system message for GAtt)');
+    // When json_schema is active, remove redundant format instructions
+    basePrompt = getGroqSystemPrompt(useJsonSchema);
+    logger.debug('Using Groq prompt', { 
+      useJsonSchema, 
+      optimized: useJsonSchema ? 'format-instructions-removed' : 'full-prompt'
+    });
   }
   
   // Add security preamble
@@ -114,11 +129,17 @@ export function getFewShotExamples(provider: string): Array<{ role: 'user' | 'as
 
 /**
  * Build complete message array for span labeling
+ * 
+ * @param text - Input text to label
+ * @param includeFewShot - Whether to include few-shot examples
+ * @param provider - LLM provider ('openai' or 'groq')
+ * @param useJsonSchema - Whether json_schema response format is active (Groq optimization)
  */
 export function buildSpanLabelingMessages(
   text: string,
   includeFewShot: boolean = true,
-  provider: string = 'groq'
+  provider: string = 'groq',
+  useJsonSchema: boolean = false
 ): Array<{ role: string; content: string }> {
   const normalizedProvider = provider.toLowerCase();
   const messages: Array<{ role: string; content: string }> = [];
@@ -126,7 +147,7 @@ export function buildSpanLabelingMessages(
   // 1. System prompt (provider-specific)
   messages.push({
     role: 'system',
-    content: buildSystemPrompt(text, false, provider)
+    content: buildSystemPrompt(text, false, provider, useJsonSchema)
   });
   
   // 2. Few-shot examples
@@ -146,10 +167,12 @@ Process the text above and return the span labels as JSON.`
   });
   
   // 4. Sandwich reminder (Groq/Llama 3 only - Section 3.2)
+  // When json_schema is active, use minimal reminder since format is validated server-side
   if (normalizedProvider === 'groq') {
+    const sandwichReminder = getGroqSandwichReminder(useJsonSchema);
     messages.push({
       role: 'user',
-      content: GROQ_SANDWICH_REMINDER
+      content: sandwichReminder
     });
   }
   
@@ -197,7 +220,10 @@ export function getProviderConfig(provider: string): {
       'sandwich-prompting',
       'prefill-assistant',
       'xml-wrapping',
-      'full-rules-in-prompt'
+      'full-rules-in-prompt',
+      'stop-sequences',
+      'min-p-sampling',
+      'conditional-format-instructions'
     ]
   };
 }

@@ -304,4 +304,55 @@ export const GROQ_FEW_SHOT_EXAMPLES = [
  */
 export const GROQ_SANDWICH_REMINDER = 'Output ONLY valid JSON. No markdown code blocks, no explanatory text, just pure JSON.';
 
+/**
+ * Get Groq system prompt with conditional format instructions
+ * 
+ * When json_schema mode is active, Groq validates output server-side,
+ * making prompt-based format enforcement redundant. Removing these
+ * instructions saves ~50-100 tokens and reduces potential conflicts.
+ * 
+ * @param useJsonSchema - Whether json_schema response_format is enabled
+ * @returns System prompt optimized for the given mode
+ */
+export function getGroqSystemPrompt(useJsonSchema: boolean): string {
+  if (!useJsonSchema) {
+    // No schema validation - keep all format instructions
+    return GROQ_FULL_SYSTEM_PROMPT;
+  }
+  
+  // json_schema mode active - remove redundant format enforcement
+  // The schema validates output server-side, so these are unnecessary:
+  // 1. "Output ONLY valid JSON" in opening line
+  // 2. "**Remember:** Output ONLY valid JSON..." at the end
+  return GROQ_FULL_SYSTEM_PROMPT
+    // Remove "Output ONLY valid JSON" from opening line, keep the rest
+    .replace(
+      /^Label video prompt elements using the taxonomy\. Output ONLY valid JSON matching the SpanLabelingResponse interface\./,
+      'Label video prompt elements using the taxonomy. Match the SpanLabelingResponse interface.'
+    )
+    // Remove the "Remember" reminder at the end
+    .replace(
+      /\n\n\*\*Remember:\*\* Output ONLY valid JSON\. No markdown, no explanatory text\.$/,
+      ''
+    )
+    .trim();
+}
+
+/**
+ * Get sandwich reminder conditionally
+ * 
+ * When json_schema mode is active, sandwich prompting for format
+ * is less critical since the API validates the response.
+ * 
+ * @param useJsonSchema - Whether json_schema response_format is enabled
+ * @returns Sandwich reminder or empty string
+ */
+export function getGroqSandwichReminder(useJsonSchema: boolean): string {
+  if (useJsonSchema) {
+    // Schema handles validation - minimal reminder only
+    return 'Respond with the JSON object now.';
+  }
+  return GROQ_SANDWICH_REMINDER;
+}
+
 export { VALID_TAXONOMY_IDS };
