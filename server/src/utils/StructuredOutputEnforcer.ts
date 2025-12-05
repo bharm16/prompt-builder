@@ -93,7 +93,8 @@ export class StructuredOutputEnforcer {
       systemPrompt, 
       isArray, 
       hasStrictSchema,
-      capabilities.needsPromptFormatInstructions
+      capabilities.needsPromptFormatInstructions,
+      schema
     );
 
     // Use RetryPolicy to wrap JSON extraction
@@ -123,9 +124,12 @@ export class StructuredOutputEnforcer {
         const responseText = extractResponseText(response);
 
         // Extract and parse JSON (mechanism)
+        // When schema specifies type, use it for extraction instead of isArray flag
+        // This handles Groq's wrapper format: {"suggestions": [...]}
+        const extractAsArray = schema?.type === 'array' ? true : (schema?.type === 'object' ? false : isArray);
         let parsedJSON: T;
         try {
-          parsedJSON = extractAndParse<T>(responseText, isArray);
+          parsedJSON = extractAndParse<T>(responseText, extractAsArray);
         } catch (parseError) {
           const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
           logger.error('Failed to parse JSON response', {
@@ -136,6 +140,13 @@ export class StructuredOutputEnforcer {
             hasStrictSchema,
           });
           throw parseError;
+        }
+
+        // Validate against schema if provided
+        // NOTE: This validates the raw parsed response BEFORE auto-unwrapping,
+        // since the schema describes the wire format (e.g., {"suggestions": [...]} for Groq)
+        if (schema) {
+          this._validateSchema(parsedJSON, schema);
         }
 
         /**
@@ -155,11 +166,6 @@ export class StructuredOutputEnforcer {
           }
         }
 
-        // Validate against schema if provided
-        if (schema) {
-          this._validateSchema(parsedJSON, schema);
-        }
-
         logger.debug('Successfully extracted structured output', {
           type: isArray ? 'array' : 'object',
           provider,
@@ -177,7 +183,8 @@ export class StructuredOutputEnforcer {
             systemPrompt,
             error.message,
             isArray,
-            capabilities.needsPromptFormatInstructions
+            capabilities.needsPromptFormatInstructions,
+            schema
           );
           logger.warn('Structured output extraction failed, retrying', {
             attempt,
@@ -196,13 +203,18 @@ export class StructuredOutputEnforcer {
    * - OpenAI with strict schema: Skip format instructions (grammar handles it)
    * - All other cases: Add minimal format instruction
    * 
+   * IMPORTANT: Uses schema.type to determine format, not isArray flag.
+   * This handles Groq's json_object mode which requires top-level object
+   * even when the final result should be an array (wrapped in {"suggestions": [...]})
+   * 
    * @private
    */
   private static _enhancePromptForJSON(
     systemPrompt: string, 
     isArray: boolean,
     hasStrictSchema: boolean,
-    needsPromptFormatInstructions: boolean
+    needsPromptFormatInstructions: boolean,
+    schema?: { type: 'object' | 'array'; [key: string]: unknown } | null
   ): string {
     // If using strict schema mode (OpenAI), grammar-constrained decoding
     // handles format enforcement automatically. Adding text instructions
@@ -213,8 +225,13 @@ export class StructuredOutputEnforcer {
     }
 
     // For providers without strict schema (Groq/Llama, etc.),
-    // add minimal format instruction
-    const start = isArray ? '[' : '{';
+    // add minimal format instruction.
+    // 
+    // CRITICAL: Use schema.type to determine format character, not isArray.
+    // Groq's json_object mode requires top-level object, so even when we want
+    // an array result, the schema may specify type: 'object' with a wrapper.
+    const schemaExpectsObject = schema?.type === 'object';
+    const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
     return `${systemPrompt}\n\nRespond with ONLY valid JSON. Start with ${start} - no other text.`;
   }
 
@@ -222,15 +239,20 @@ export class StructuredOutputEnforcer {
    * Enhance prompt with error feedback for retry
    * Always adds feedback regardless of provider (retry needs guidance)
    * 
+   * IMPORTANT: Uses schema.type to determine format, not isArray flag.
+   * 
    * @private
    */
   private static _enhancePromptWithErrorFeedback(
     systemPrompt: string, 
     errorMessage: string, 
     isArray: boolean,
-    needsPromptFormatInstructions: boolean
+    needsPromptFormatInstructions: boolean,
+    schema?: { type: 'object' | 'array'; [key: string]: unknown } | null
   ): string {
-    const start = isArray ? '[' : '{';
+    // Use schema.type to determine format character, not isArray
+    const schemaExpectsObject = schema?.type === 'object';
+    const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
     
     // On retry, always provide explicit format guidance
     // The previous attempt failed, so we need stronger direction
