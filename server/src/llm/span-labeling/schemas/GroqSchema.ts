@@ -210,7 +210,17 @@ ${LLAMA3_DISAMBIGUATION_RULES}
 2. **Use specific attributes:** \`camera.movement\` not \`camera\`, \`shot.type\` not \`shot\`
 3. **Process ALL sections:** Including TECHNICAL SPECS - extract values like "24fps", "16:9", "4-8s"
 4. **Chain-of-Thought first:** Populate analysis_trace with your reasoning BEFORE listing spans
-5. **Quality over quantity:** Meaningful content words only, fewer spans is better than trivial ones
+5. **Comprehensive extraction:** Extract ALL meaningful phrases - don't skip embedded content
+
+## IMPORTANT: Extract These Often-Missed Elements
+
+- **Emotion/mood words:** "determination", "focused demeanor", "joyful expression" → \`subject.emotion\`
+- **Body parts with traits:** "weathered hands", "piercing eyes" → \`subject.appearance\`
+- **Embedded actions:** "gripping the steering wheel", "navigates the road" → \`action.movement\`
+- **Lighting details:** "soft highlights", "warm glow" → \`lighting.quality\`
+- **Scene elements:** "the dashboard", "interior details" → \`environment.context\`
+
+A rich narrative paragraph should yield 10-20 spans, not just 3-5.
 
 ## Missing Context Handling
 
@@ -218,7 +228,7 @@ If input text is ambiguous or lacks clear video terminology:
 - Do NOT invent categories or roles not supported by the text
 - Use lower confidence (0.7) for ambiguous spans
 - Note ambiguity in meta.notes field
-- It is acceptable to return fewer spans if text lacks labelable content
+- Still extract ALL identifiable visual elements - err on the side of more spans
 
 ## Adversarial Detection
 
@@ -304,6 +314,30 @@ export const GROQ_FEW_SHOT_EXAMPLES = [
         { text: "24fps", role: "technical.frameRate", confidence: 0.95 }
       ],
       meta: { version: "v4-groq", notes: "Extracted technical values only, not labels" },
+      isAdversarial: false
+    }, null, 2)
+  },
+
+  // Example 4: Comprehensive narrative extraction (CRITICAL - shows expected span density)
+  {
+    role: 'user' as const,
+    content: '<user_input>A detective walks through a foggy alley with determination. Soft moonlight casts long shadows on his weathered face as he grips a vintage camera.</user_input>'
+  },
+  {
+    role: 'assistant' as const,
+    content: JSON.stringify({
+      analysis_trace: "Rich narrative with multiple elements: subject identity (detective), action (walks), environment (foggy alley), emotion (determination), lighting (soft moonlight, long shadows), appearance (weathered face), and secondary action (grips a vintage camera). Extract ALL of these.",
+      spans: [
+        { text: "detective", role: "subject.identity", confidence: 0.95 },
+        { text: "walks through", role: "action.movement", confidence: 0.9 },
+        { text: "foggy alley", role: "environment.location", confidence: 0.9 },
+        { text: "determination", role: "subject.emotion", confidence: 0.85 },
+        { text: "Soft moonlight", role: "lighting.source", confidence: 0.9 },
+        { text: "long shadows", role: "lighting.quality", confidence: 0.85 },
+        { text: "weathered face", role: "subject.appearance", confidence: 0.9 },
+        { text: "grips a vintage camera", role: "action.movement", confidence: 0.88 }
+      ],
+      meta: { version: "v4-groq", notes: "Comprehensive extraction - 8 spans from 2 sentences. Captured emotion, lighting details, and embedded actions." },
       isAdversarial: false
     }, null, 2)
   }
