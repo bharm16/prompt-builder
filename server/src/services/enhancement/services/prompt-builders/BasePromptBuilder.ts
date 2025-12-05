@@ -5,6 +5,7 @@
  * Provider-specific builders extend this class and override methods as needed.
  */
 
+import { logger } from '@infrastructure/Logger';
 import { extractSemanticSpans } from '../../../nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
 import type {
@@ -17,6 +18,8 @@ import type { SharedPromptContext } from './IPromptBuilder.js';
  * Base class with shared prompt building logic
  */
 export abstract class BasePromptBuilder {
+  protected readonly log = logger.child({ service: 'BasePromptBuilder' });
+
   /**
    * Resolve the semantic slot for the highlighted text
    */
@@ -27,14 +30,37 @@ export abstract class BasePromptBuilder {
     contextBefore: string;
     contextAfter: string;
   }): string {
+    const operation = '_resolveSlot';
+    
+    this.log.debug('Resolving semantic slot', {
+      operation,
+      hasHighlightedCategory: !!highlightedCategory,
+      hasPhraseRole: !!phraseRole,
+      highlightLength: highlightedText.length,
+    });
+    
     if (highlightedCategory) {
       const parent = getParentCategory(highlightedCategory);
-      if (parent) return parent;
+      if (parent) {
+        this.log.debug('Resolved slot from category', {
+          operation,
+          category: highlightedCategory,
+          slot: parent,
+        });
+        return parent;
+      }
     }
 
     if (phraseRole) {
       const parent = getParentCategory(phraseRole);
-      if (parent) return parent;
+      if (parent) {
+        this.log.debug('Resolved slot from phrase role', {
+          operation,
+          phraseRole,
+          slot: parent,
+        });
+        return parent;
+      }
     }
 
     if (highlightedText) {
@@ -43,9 +69,22 @@ export abstract class BasePromptBuilder {
       if (spans.length > 0) {
         const bestSpan = spans.reduce((a, b) => (a.confidence > b.confidence ? a : b));
         const parent = getParentCategory(bestSpan.role);
-        if (parent) return parent;
+        if (parent) {
+          this.log.debug('Resolved slot from semantic spans', {
+            operation,
+            role: bestSpan.role,
+            confidence: bestSpan.confidence,
+            slot: parent,
+          });
+          return parent;
+        }
       }
     }
+
+    this.log.debug('Using default slot', {
+      operation,
+      slot: 'subject',
+    });
 
     return 'subject';
   }
@@ -58,14 +97,29 @@ export abstract class BasePromptBuilder {
     isVideoPrompt: boolean, 
     mode: 'rewrite' | 'placeholder'
   ): 'orthogonal' | 'narrative' | 'visual' {
+    const operation = '_pickDesign';
+    
+    let design: 'orthogonal' | 'narrative' | 'visual';
+    
     if (mode === 'placeholder') {
-      return slot === 'action' ? 'narrative' : 'visual';
+      design = slot === 'action' ? 'narrative' : 'visual';
+    } else if (slot === 'action') {
+      design = 'narrative';
+    } else if (slot === 'camera' || slot === 'shot' || slot === 'lighting' || slot === 'technical') {
+      design = 'orthogonal';
+    } else {
+      design = 'visual';
     }
-    if (slot === 'action') return 'narrative';
-    if (slot === 'camera' || slot === 'shot' || slot === 'lighting' || slot === 'technical') {
-      return 'orthogonal';
-    }
-    return 'visual';
+    
+    this.log.debug('Design pattern selected', {
+      operation,
+      slot,
+      mode,
+      isVideoPrompt,
+      design,
+    });
+    
+    return design;
   }
 
   /**

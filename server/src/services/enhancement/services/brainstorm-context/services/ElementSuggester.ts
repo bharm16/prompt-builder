@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import {
   MISSING_ELEMENT_RULES,
   NARRATIVE_MISSING_ELEMENT_RULES,
@@ -17,6 +18,8 @@ import type {
  * Single Responsibility: Gap analysis and relationship mapping.
  */
 export class ElementSuggester {
+  private readonly log = logger.child({ service: 'ElementSuggester' });
+
   constructor() {
     // No dependencies - pure logic
   }
@@ -33,9 +36,20 @@ export class ElementSuggester {
     intent: CreativeIntent | null,
     elements: Record<string, string> | null | undefined
   ): MissingElement[] {
+    const operation = 'suggestMissingElements';
+    
     if (!intent || !intent.primaryIntent) {
+      this.log.debug('No intent provided for missing element suggestions', {
+        operation,
+      });
       return [];
     }
+    
+    this.log.debug('Suggesting missing elements', {
+      operation,
+      primaryIntent: intent.primaryIntent,
+      elementCount: elements ? Object.keys(elements).length : 0,
+    });
 
     const suggestions: MissingElement[] = [];
 
@@ -83,6 +97,11 @@ export class ElementSuggester {
       }
     }
 
+    this.log.debug('Missing element suggestions complete', {
+      operation,
+      suggestionCount: suggestions.length,
+    });
+
     return suggestions;
   }
 
@@ -98,9 +117,21 @@ export class ElementSuggester {
     element: string,
     intent: CreativeIntent | null
   ): ComplementaryElement[] {
+    const operation = 'getComplementaryElements';
+    
     if (!element || typeof element !== 'string') {
+      this.log.debug('Invalid element provided for complementary lookup', {
+        operation,
+      });
       return [];
     }
+    
+    this.log.debug('Finding complementary elements', {
+      operation,
+      element,
+      hasIntent: !!intent,
+      primaryIntent: intent?.primaryIntent || null,
+    });
 
     const elementLower = element.toLowerCase();
     const complements: ComplementaryElement[] = [];
@@ -121,6 +152,11 @@ export class ElementSuggester {
         }
       }
     }
+
+    this.log.debug('Complementary elements found', {
+      operation,
+      complementCount: complements.length,
+    });
 
     return complements;
   }

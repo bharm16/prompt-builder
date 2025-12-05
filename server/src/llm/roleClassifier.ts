@@ -4,6 +4,7 @@
 
 import crypto from 'crypto';
 import NodeCache from 'node-cache';
+import { logger } from '@infrastructure/Logger';
 import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.js';
 import type { InputSpan, LabeledSpan, AIService } from './types.js';
 
@@ -80,8 +81,13 @@ export const ROLE_SET = VALID_CATEGORIES;
  * Normalize and validate a role against the taxonomy
  */
 function normalizeRole(role: string | null | undefined): string {
+  const log = logger.child({ service: 'roleClassifier' });
+  
   if (!role || typeof role !== 'string') {
-    console.warn('[roleClassifier] Invalid role type, defaulting to subject');
+    log.warn('Invalid role type, defaulting to subject', {
+      operation: 'normalizeRole',
+      role: role || null,
+    });
     return TAXONOMY.SUBJECT.id;
   }
 
@@ -91,7 +97,10 @@ function normalizeRole(role: string | null | undefined): string {
   }
 
   // Log warning for unknown roles
-  console.warn(`[roleClassifier] Unknown role "${role}", defaulting to subject`);
+  log.warn('Unknown role, defaulting to subject', {
+    operation: 'normalizeRole',
+    role,
+  });
   return TAXONOMY.SUBJECT.id;
 }
 
@@ -154,8 +163,10 @@ export async function roleClassify(
     return labeled;
   } catch (error) {
     const err = error as Error;
-    console.warn('roleClassify fallback to deterministic labels', {
-      message: err?.message,
+    const log = logger.child({ service: 'roleClassifier' });
+    log.warn('roleClassify fallback to deterministic labels', {
+      operation: 'roleClassify',
+      error: err?.message,
     });
     return spans.map((span) => ({
       ...span,

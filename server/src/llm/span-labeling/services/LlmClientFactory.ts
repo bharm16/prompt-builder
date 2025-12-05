@@ -8,6 +8,7 @@
  * The factory pattern ensures this by routing to completely separate implementations.
  */
 
+import { logger } from '@infrastructure/Logger';
 import { RobustLlmClient } from './RobustLlmClient.js';
 import { GroqLlmClient } from './GroqLlmClient.js';
 import { OpenAILlmClient } from './OpenAILlmClient.js';
@@ -51,7 +52,10 @@ export function createLlmClient(options: LlmClientFactoryOptions = {}): ILlmClie
     default:
       // Default to RobustLlmClient which has generic handling
       // This is safer than guessing wrong
-      console.warn(`[LlmClientFactory] Unknown provider '${provider}', using default RobustLlmClient`);
+      logger.warn('Unknown provider, using default RobustLlmClient', {
+        operation: 'createLlmClient',
+        provider,
+      });
       return new RobustLlmClient();
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { getFallbackModes } from '../../config/fallbackStrategy.js';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../../types.js';
 
@@ -5,6 +6,8 @@ import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../
  * Service responsible for determining fallback constraints when suggestions fail
  */
 export class FallbackStrategyService {
+  private readonly log = logger.child({ service: 'FallbackStrategyService' });
+
   /**
    * Determine the next fallback constraint mode to try
    */

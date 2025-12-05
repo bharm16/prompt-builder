@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { CreativeIntentAnalyzer } from './brainstorm-context/services/CreativeIntentAnalyzer.js';
 import { ElementSuggester } from './brainstorm-context/services/ElementSuggester.js';
 import { BrainstormFormatter } from './brainstorm-context/services/BrainstormFormatter.js';
@@ -24,6 +25,7 @@ export class BrainstormContextBuilder {
   private intentAnalyzer: CreativeIntentAnalyzer;
   private elementSuggester: ElementSuggester;
   private formatter: BrainstormFormatter;
+  private readonly log = logger.child({ service: 'BrainstormContextBuilder' });
 
   constructor() {
     // Instantiate specialized services
@@ -201,11 +203,24 @@ export class BrainstormContextBuilder {
     brainstormContext: BrainstormContext | null | undefined,
     options: { includeCategoryGuidance?: boolean; isVideoPrompt?: boolean } = {}
   ): string {
+    const startTime = performance.now();
+    const operation = 'buildBrainstormContextSection';
+    
     if (!brainstormContext || typeof brainstormContext !== 'object') {
+      this.log.debug('Empty brainstorm context, returning empty string', {
+        operation,
+      });
       return '';
     }
 
     const { includeCategoryGuidance = false, isVideoPrompt = false } = options;
+    
+    this.log.debug('Building brainstorm context section', {
+      operation,
+      includeCategoryGuidance,
+      isVideoPrompt,
+      hasElements: !!(brainstormContext.elements && Object.keys(brainstormContext.elements).length > 0),
+    });
     const elements = brainstormContext.elements || {};
     const metadata = brainstormContext.metadata || {};
 
@@ -347,6 +362,17 @@ export class BrainstormContextBuilder {
       section +=
         'Translate these anchors into cinematic details that serve the narrative direction.\n';
     }
+
+    const duration = Math.round(performance.now() - startTime);
+    
+    this.log.info('Brainstorm context section built', {
+      operation,
+      duration,
+      sectionLength: section.length,
+      hasIntent: !!intent,
+      conflictCount: conflicts.length,
+      missingElementCount: missingElements.length,
+    });
 
     return section;
   }

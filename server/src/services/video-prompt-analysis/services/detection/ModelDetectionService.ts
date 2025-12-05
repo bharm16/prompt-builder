@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { normalizeText } from '../../utils/textHelpers.js';
 
 /**

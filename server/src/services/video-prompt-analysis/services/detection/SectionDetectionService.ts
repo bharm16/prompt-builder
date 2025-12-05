@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { normalizeText } from '../../utils/textHelpers.js';
 
 /**
@@ -100,6 +101,8 @@ interface SectionPatterns {
  * Service responsible for detecting prompt template section
  */
 export class SectionDetectionService {
+  private readonly log = logger.child({ service: 'SectionDetectionService' });
+
   /**
    * Detect which section of the prompt template is being edited
    */
@@ -108,9 +111,20 @@ export class SectionDetectionService {
     fullPrompt: string | null | undefined,
     contextBefore: string = ''
   ): SectionId {
+    const operation = 'detectSection';
+    
     if (!highlightedText || !fullPrompt) {
+      this.log.debug('Missing input, returning default section', {
+        operation,
+      });
       return 'main_prompt'; // Default
     }
+    
+    this.log.debug('Detecting prompt section', {
+      operation,
+      highlightLength: highlightedText.length,
+      fullPromptLength: fullPrompt.length,
+    });
 
     const normalizedPrompt = normalizeText(fullPrompt);
     const normalizedContext = normalizeText(contextBefore);

@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { MODEL_CONFIG } from '../config/modelConfig.js';
 import { calculateAverage, calculateTrend } from '../utils/statisticsHelpers.js';
 import type { FeedbackEntry, QualityStatistics } from '../types.js';
@@ -9,6 +10,7 @@ export class FeedbackRepository {
   private readonly storage: Map<string, FeedbackEntry[]>;
   private readonly maxEntriesPerService: number;
   private readonly minDataPoints: number;
+  private readonly log = logger.child({ service: 'FeedbackRepository' });
 
   constructor() {
     this.storage = new Map();
@@ -20,7 +22,13 @@ export class FeedbackRepository {
    * Store a feedback entry
    */
   store(entry: FeedbackEntry): void {
+    const operation = 'store';
     const service = entry.service || 'default';
+
+    this.log.debug('Storing feedback entry', {
+      operation,
+      service,
+    });
 
     if (!this.storage.has(service)) {
       this.storage.set(service, []);
@@ -32,7 +40,18 @@ export class FeedbackRepository {
     // Limit storage per service (FIFO)
     if (serviceData.length > this.maxEntriesPerService) {
       serviceData.shift(); // Remove oldest
+      this.log.debug('Removed oldest feedback entry (FIFO)', {
+        operation,
+        service,
+        currentCount: serviceData.length,
+      });
     }
+    
+    this.log.info('Feedback entry stored', {
+      operation,
+      service,
+      totalEntries: serviceData.length,
+    });
   }
 
   /**

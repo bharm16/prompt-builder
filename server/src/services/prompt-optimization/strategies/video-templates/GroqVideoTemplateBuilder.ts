@@ -17,10 +17,12 @@
  * - CoT reasoning improves accuracy at negligible latency cost
  */
 
+import { logger } from '@infrastructure/Logger';
 import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
 import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
 
 export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
+  protected readonly log = logger.child({ service: 'GroqVideoTemplateBuilder' });
   /**
    * Build Groq-optimized template
    *
@@ -30,19 +32,50 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * - No developer message (not available for Groq)
    */
   buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
+    const startTime = performance.now();
+    const operation = 'buildTemplate';
+    
     const { userConcept, interpretedPlan, includeInstructions = true } = context;
 
-    // System prompt: All instructions embedded (8B model needs explicit guidance)
-    const systemPrompt = this.buildSystemPrompt(includeInstructions);
+    this.log.debug('Building Groq video template', {
+      operation,
+      includeInstructions,
+      hasInterpretedPlan: !!interpretedPlan,
+      conceptLength: userConcept.length,
+    });
 
-    // User message: Data + format reminder (sandwich prompting)
-    const userMessage = this.buildUserMessage(userConcept, interpretedPlan);
+    try {
+      // System prompt: All instructions embedded (8B model needs explicit guidance)
+      const systemPrompt = this.buildSystemPrompt(includeInstructions);
 
-    return {
-      systemPrompt,
-      userMessage,
-      provider: 'groq',
-    };
+      // User message: Data + format reminder (sandwich prompting)
+      const userMessage = this.buildUserMessage(userConcept, interpretedPlan);
+
+      const duration = Math.round(performance.now() - startTime);
+
+      this.log.info('Groq video template built', {
+        operation,
+        duration,
+        systemPromptLength: systemPrompt.length,
+        userMessageLength: userMessage.length,
+      });
+
+      return {
+        systemPrompt,
+        userMessage,
+        provider: 'groq',
+      };
+    } catch (error) {
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Failed to build Groq video template', error as Error, {
+        operation,
+        duration,
+        conceptLength: userConcept.length,
+      });
+      
+      throw error;
+    }
   }
 
   /**

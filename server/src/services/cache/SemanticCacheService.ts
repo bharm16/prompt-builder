@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { logger } from '@infrastructure/Logger';
 import type { GenerateKeyOptions, Logger } from './types.js';
 
 /**
@@ -80,6 +81,8 @@ export interface CacheStatsForRecommendations {
  * service with complex business logic, not a simple utility function.
  */
 export class SemanticCacheEnhancer {
+  private static readonly log = logger.child({ service: 'SemanticCacheEnhancer' });
+
   /**
    * Generate normalized cache key with semantic awareness
    */
@@ -88,7 +91,16 @@ export class SemanticCacheEnhancer {
     data: Record<string, unknown>,
     options: GenerateKeyOptions = {}
   ): string {
+    const operation = 'generateSemanticKey';
     const { normalizeWhitespace = true, ignoreCase = true, sortKeys = true } = options;
+
+    this.log.debug('Generating semantic cache key', {
+      operation,
+      namespace,
+      normalizeWhitespace,
+      ignoreCase,
+      sortKeys,
+    });
 
     // Normalize the data for better semantic matching
     const normalized = this._normalizeData(data, {
@@ -104,7 +116,15 @@ export class SemanticCacheEnhancer {
       .digest('hex')
       .substring(0, 16);
 
-    return `${namespace}:semantic:${hash}`;
+    const key = `${namespace}:semantic:${hash}`;
+    
+    this.log.debug('Semantic cache key generated', {
+      operation,
+      namespace,
+      keyHash: hash,
+    });
+
+    return key;
   }
 
   /**
@@ -140,6 +160,14 @@ export class SemanticCacheEnhancer {
    * Calculate similarity score between two prompts
    */
   static calculateSimilarity(prompt1: string, prompt2: string): number {
+    const operation = 'calculateSimilarity';
+    
+    this.log.debug('Calculating similarity between prompts', {
+      operation,
+      prompt1Length: prompt1.length,
+      prompt2Length: prompt2.length,
+    });
+
     const features1 = this.extractSemanticFeatures(prompt1);
     const features2 = this.extractSemanticFeatures(prompt2);
 
@@ -159,6 +187,13 @@ export class SemanticCacheEnhancer {
 
     // Combined score (weighted)
     const similarityScore = 0.7 * jaccardScore + 0.3 * lengthScore;
+
+    this.log.debug('Similarity calculation complete', {
+      operation,
+      similarityScore,
+      jaccardScore,
+      lengthScore,
+    });
 
     return similarityScore;
   }
@@ -239,10 +274,19 @@ export class SemanticCacheEnhancer {
   static getCacheOptimizationRecommendations(
     currentStats: CacheStatsForRecommendations
   ): CacheOptimizationRecommendations {
+    const operation = 'getCacheOptimizationRecommendations';
     const recommendations: CacheRecommendation[] = [];
     const { hitRate, keys, hits, misses } = currentStats;
 
     const numericHitRate = parseFloat(hitRate) || 0;
+
+    this.log.debug('Generating cache optimization recommendations', {
+      operation,
+      currentHitRate: hitRate,
+      keys,
+      hits,
+      misses,
+    });
 
     // Analyze hit rate
     if (numericHitRate < 30) {
@@ -290,22 +334,38 @@ export class SemanticCacheEnhancer {
       });
     }
 
-    return {
+    const result = {
       overall: numericHitRate < 40 ? 'needs-improvement' : 'good',
       currentHitRate: hitRate,
       targetHitRate: '60%+',
       recommendations,
     };
+
+    this.log.info('Cache optimization recommendations generated', {
+      operation,
+      overall: result.overall,
+      recommendationCount: recommendations.length,
+      currentHitRate: hitRate,
+    });
+
+    return result;
   }
 
   /**
    * Generate cache warming strategies
    */
   static generateCacheWarmingStrategy(commonPrompts: string[]): CacheWarmingStrategy {
+    const operation = 'generateCacheWarmingStrategy';
+    
+    this.log.debug('Generating cache warming strategy', {
+      operation,
+      promptCount: commonPrompts.length,
+    });
+
     // Cluster similar prompts
     const clusters = this._clusterPrompts(commonPrompts);
 
-    return {
+    const strategy = {
       clusters: clusters.length,
       strategy: 'Pre-cache common variations of popular prompts',
       prompts: clusters.map((cluster) => ({
@@ -313,6 +373,14 @@ export class SemanticCacheEnhancer {
         variations: cluster.length,
       })),
     };
+
+    this.log.debug('Cache warming strategy generated', {
+      operation,
+      clusterCount: clusters.length,
+      totalPrompts: commonPrompts.length,
+    });
+
+    return strategy;
   }
 
   /**

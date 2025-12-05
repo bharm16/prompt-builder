@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories, resolveCategory } from '#shared/taxonomy.ts';
 import type { Span, ValidationIssue, AttributeExistenceCheck } from '../types.js';
 
@@ -9,6 +10,8 @@ import type { Span, ValidationIssue, AttributeExistenceCheck } from '../types.js
  * Example: 'wardrobe' requires 'subject' to be present
  */
 export class HierarchyValidator {
+  private readonly log = logger.child({ service: 'HierarchyValidator' });
+
   /**
    * Validate that all attribute spans have their parent entities
    */

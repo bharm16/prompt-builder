@@ -99,7 +99,7 @@ router.post('/evaluate', async (req, res) => {
     const operation = 'evaluateSuggestions';
     const requestId = req.id;
     
-    logger.error(`${operation} failed`, error as Error, {
+    logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
       operation,
       requestId,
       duration: responseTime,

@@ -18,6 +18,8 @@ interface ValidationService {
  * Single Responsibility: Category validation and fallback management
  */
 export class CategoryAlignmentService {
+  private readonly log = logger.child({ service: 'CategoryAlignmentService' });
+
   constructor(private readonly validationService: ValidationService) {}
 
   /**
@@ -28,13 +30,33 @@ export class CategoryAlignmentService {
    * @returns Result with suggestions and metadata
    */
   enforceCategoryAlignment(suggestions: Suggestion[], params: ValidationParams): CategoryAlignmentResult {
+    const operation = 'enforceCategoryAlignment';
     const { highlightedText, highlightedCategory } = params;
+
+    this.log.debug('Enforcing category alignment', {
+      operation,
+      suggestionCount: suggestions.length,
+      category: highlightedCategory || null,
+    });
 
     // Check if we need fallbacks
     const needsFallback = this.shouldUseFallback(suggestions, highlightedText, highlightedCategory);
 
     if (needsFallback) {
+      this.log.warn('Fallback required due to category mismatch or low confidence', {
+        operation,
+        originalSuggestionCount: suggestions.length,
+        category: highlightedCategory || null,
+      });
+      
       const fallbacks = this.getCategoryFallbacks(highlightedText, highlightedCategory);
+      
+      this.log.info('Fallback suggestions applied', {
+        operation,
+        fallbackCount: fallbacks.length,
+        category: highlightedCategory || null,
+      });
+      
       return {
         suggestions: fallbacks,
         fallbackApplied: true,
@@ -53,6 +75,14 @@ export class CategoryAlignmentService {
       highlightedCategory || ''
     );
 
+    this.log.info('Category alignment completed', {
+      operation,
+      originalCount: suggestions.length,
+      validCount: validSuggestions.length,
+      category: highlightedCategory || null,
+      fallbackApplied: false,
+    });
+
     return {
       suggestions: validSuggestions,
       fallbackApplied: false,
@@ -69,10 +99,21 @@ export class CategoryAlignmentService {
    * @returns True if fallbacks should be used
    */
   shouldUseFallback(suggestions: Suggestion[], highlightedText: string, category?: string): boolean {
+    const operation = 'shouldUseFallback';
+    
     // Use fallback if no suggestions or very low count
-    if (!suggestions || suggestions.length < 2) return true;
+    if (!suggestions || suggestions.length < 2) {
+      this.log.debug('Fallback needed: insufficient suggestions', {
+        operation,
+        suggestionCount: suggestions?.length || 0,
+      });
+      return true;
+    }
 
-    if (!category) return false;
+    if (!category) {
+      this.log.debug('No category specified, fallback not needed', { operation });
+      return false;
+    }
 
     // Check for category mismatches
     if (category === 'technical' && CATEGORY_CONSTRAINTS.technical) {
@@ -83,7 +124,19 @@ export class CategoryAlignmentService {
           const validCount = suggestions.filter(s =>
             constraint.pattern.test(s.text)
           ).length;
-          return validCount < suggestions.length * 0.5;
+          const needsFallback = validCount < suggestions.length * 0.5;
+          
+          if (needsFallback) {
+            this.log.warn('Category mismatch detected in technical subcategory', {
+              operation,
+              subcategory,
+              validCount,
+              totalCount: suggestions.length,
+              validRatio: validCount / suggestions.length,
+            });
+          }
+          
+          return needsFallback;
         }
       }
     }
@@ -94,7 +147,15 @@ export class CategoryAlignmentService {
         /audio|sound|music|score/i.test(s.text) ||
         (s.category && s.category.toLowerCase().includes('audio'))
       ).length;
-      if (audioCount > 0) return true;
+      if (audioCount > 0) {
+        this.log.warn('Audio suggestions detected in non-audio category', {
+          operation,
+          category,
+          audioCount,
+          totalCount: suggestions.length,
+        });
+        return true;
+      }
     }
 
     // Check for lighting suggestions in style descriptors
@@ -103,9 +164,26 @@ export class CategoryAlignmentService {
         /light|shadow|glow|illuminat/i.test(s.text) ||
         (s.category && s.category.toLowerCase().includes('light'))
       ).length;
-      return lightingCount > suggestions.length * 0.5;
+      const needsFallback = lightingCount > suggestions.length * 0.5;
+      
+      if (needsFallback) {
+        this.log.warn('Lighting suggestions detected in descriptive category', {
+          operation,
+          lightingCount,
+          totalCount: suggestions.length,
+          lightingRatio: lightingCount / suggestions.length,
+        });
+      }
+      
+      return needsFallback;
     }
 
+    this.log.debug('No fallback needed, suggestions are valid', {
+      operation,
+      category,
+      suggestionCount: suggestions.length,
+    });
+    
     return false;
   }
 
@@ -117,7 +195,15 @@ export class CategoryAlignmentService {
    * @returns Fallback suggestions
    */
   getCategoryFallbacks(highlightedText: string, category?: string): Suggestion[] {
+    const operation = 'getCategoryFallbacks';
+    
+    this.log.debug('Getting category fallbacks', {
+      operation,
+      category: category || null,
+    });
+
     if (!category) {
+      this.log.debug('No category specified, using generic fallbacks', { operation });
       return this._getGenericFallbacks();
     }
 
@@ -127,17 +213,30 @@ export class CategoryAlignmentService {
     if (category === 'technical' && subcategory && CATEGORY_CONSTRAINTS.technical) {
       const constraint = CATEGORY_CONSTRAINTS.technical[subcategory as keyof typeof CATEGORY_CONSTRAINTS.technical];
       if (constraint && 'fallbacks' in constraint && Array.isArray(constraint.fallbacks)) {
-        return constraint.fallbacks as Suggestion[];
+        const fallbacks = constraint.fallbacks as Suggestion[];
+        this.log.debug('Using technical subcategory fallbacks', {
+          operation,
+          subcategory,
+          fallbackCount: fallbacks.length,
+        });
+        return fallbacks;
       }
     }
 
     // Get fallbacks for other categories
     const categoryConstraints = CATEGORY_CONSTRAINTS[category as keyof typeof CATEGORY_CONSTRAINTS];
     if (categoryConstraints && 'fallbacks' in categoryConstraints) {
-      return (categoryConstraints as { fallbacks: Suggestion[] }).fallbacks;
+      const fallbacks = (categoryConstraints as { fallbacks: Suggestion[] }).fallbacks;
+      this.log.debug('Using category-specific fallbacks', {
+        operation,
+        category,
+        fallbackCount: fallbacks.length,
+      });
+      return fallbacks;
     }
 
     // Generic fallbacks as last resort
+    this.log.debug('Using generic fallbacks as last resort', { operation, category });
     return this._getGenericFallbacks(category);
   }
 

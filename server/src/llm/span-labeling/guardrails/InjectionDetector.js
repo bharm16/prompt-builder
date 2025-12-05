@@ -1,3 +1,5 @@
+import { logger } from '@infrastructure/Logger';
+
 /**
  * Lightweight Injection Detector
  * 
@@ -19,6 +21,7 @@
 
 export class InjectionDetector {
   constructor() {
+    this.log = logger.child({ service: 'InjectionDetector' });
     // Direct instruction override attempts
     this.instructionOverridePatterns = [
       /ignore\s+(previous|all|prior|system)\s+(instructions?|prompts?|rules?|commands?)/i,
@@ -192,7 +195,8 @@ export class InjectionDetector {
     
     if (result.detected) {
       // Log the attempt
-      console.warn('[Security] Injection attempt detected:', {
+      this.log.warn('Injection attempt detected', {
+        operation: 'check',
         type: result.type,
         pattern: result.pattern.slice(0, 100),
         textPreview: text.slice(0, 100),
@@ -212,7 +216,8 @@ export class InjectionDetector {
     const heuristics = this.analyzeHeuristics(text);
     
     if (heuristics.suspicious) {
-      console.warn('[Security] Suspicious input detected:', {
+      this.log.warn('Suspicious input detected', {
+        operation: 'check',
         score: heuristics.score,
         indicators: heuristics.indicators,
         textPreview: text.slice(0, 100)

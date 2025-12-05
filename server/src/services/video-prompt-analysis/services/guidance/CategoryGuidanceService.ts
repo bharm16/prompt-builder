@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '../../config/categoryGuidance.js';
 import { TAXONOMY } from '#shared/taxonomy.js';
 import { normalizeText } from '../../utils/textHelpers.js';
@@ -8,6 +9,8 @@ import type { GuidanceSpan, EditHistoryEntry, ExistingElements, CategoryRelation
  * Transformed from static lists to intelligent, prescriptive recommendations
  */
 export class CategoryGuidanceService {
+  private readonly log = logger.child({ service: 'CategoryGuidanceService' });
+
   /**
    * Get context-aware category-specific focus guidance
    * NEW: Analyzes existing context to provide prescriptive, gap-filling guidance
@@ -19,7 +22,21 @@ export class CategoryGuidanceService {
     allSpans: GuidanceSpan[] = [],
     editHistory: EditHistoryEntry[] = []
   ): string[] | null {
-    if (!phraseRole) return null;
+    const operation = 'getCategoryFocusGuidance';
+    
+    this.log.debug('Starting guidance generation', {
+      operation,
+      phraseRole: phraseRole || null,
+      categoryHint: categoryHint || null,
+      hasContext: !!fullContext,
+      spansCount: allSpans.length,
+      editHistoryCount: editHistory.length,
+    });
+
+    if (!phraseRole) {
+      this.log.debug('No phrase role provided, returning null', { operation });
+      return null;
+    }
 
     const role = normalizeText(phraseRole);
     const hint = normalizeText(categoryHint);
@@ -35,6 +52,11 @@ export class CategoryGuidanceService {
       );
       
       if (contextAwareGuidance && contextAwareGuidance.length > 0) {
+        this.log.info('Context-aware guidance generated', {
+          operation,
+          guidanceCount: contextAwareGuidance.length,
+          category: categoryHint || phraseRole,
+        });
         return contextAwareGuidance;
       }
     }
@@ -42,9 +64,18 @@ export class CategoryGuidanceService {
     // Fallback to static guidance
     const guidanceKey = this._findGuidanceKey(role, hint);
     if (guidanceKey) {
-      return CATEGORY_GUIDANCE[guidanceKey as keyof typeof CATEGORY_GUIDANCE] || null;
+      const staticGuidance = CATEGORY_GUIDANCE[guidanceKey as keyof typeof CATEGORY_GUIDANCE] || null;
+      if (staticGuidance) {
+        this.log.info('Static guidance returned', {
+          operation,
+          guidanceKey,
+          guidanceCount: staticGuidance.length,
+        });
+      }
+      return staticGuidance;
     }
 
+    this.log.debug('No guidance found, returning null', { operation });
     return null;
   }
 
@@ -59,9 +90,17 @@ export class CategoryGuidanceService {
     allSpans: GuidanceSpan[],
     editHistory: EditHistoryEntry[]
   ): string[] | null {
+    const operation = 'getContextAwareGuidance';
     const guidance: string[] = [];
     const normalized = normalizeText(fullContext);
     const category = (categoryHint || phraseRole || '').toLowerCase();
+
+    this.log.debug('Analyzing context for guidance', {
+      operation,
+      category,
+      contextLength: fullContext.length,
+      spansCount: allSpans.length,
+    });
 
     // Analyze existing elements
     const existingElements = this.analyzeExistingElements(fullContext, allSpans);
@@ -71,6 +110,14 @@ export class CategoryGuidanceService {
     
     // Analyze relationships with existing elements
     const relationships = this.analyzeRelationships(category, existingElements);
+
+    this.log.debug('Context analysis complete', {
+      operation,
+      category,
+      gapsCount: gaps.length,
+      opportunitiesCount: relationships.opportunities.length,
+      constraintsCount: relationships.constraints.length,
+    });
 
     // Build prescriptive guidance based on analysis (using TAXONOMY)
     if (category === TAXONOMY.LIGHTING.id || category.includes('lighting')) {
@@ -85,6 +132,16 @@ export class CategoryGuidanceService {
       guidance.push(...this._buildLocationGuidance(existingElements, gaps, relationships));
     } else if (category.includes('mood') || category.includes('atmosphere')) {
       guidance.push(...this._buildMoodGuidance(existingElements, gaps, relationships, editHistory));
+    }
+
+    if (guidance.length > 0) {
+      this.log.info('Context-aware guidance generated', {
+        operation,
+        category,
+        guidanceCount: guidance.length,
+      });
+    } else {
+      this.log.debug('No guidance generated for category', { operation, category });
     }
 
     return guidance.length > 0 ? guidance : null;

@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { HierarchyValidator } from './services/HierarchyValidator.js';
 import { OrphanDetector } from './services/OrphanDetector.js';
 import { ValidationReporter } from './services/ValidationReporter.js';
@@ -34,6 +35,7 @@ export class TaxonomyValidationService {
   private readonly hierarchyValidator: HierarchyValidator;
   private readonly orphanDetector: OrphanDetector;
   private readonly reporter: ValidationReporter;
+  private readonly log = logger.child({ service: 'TaxonomyValidationService' });
 
   constructor() {
     this.hierarchyValidator = new HierarchyValidator();
@@ -46,11 +48,22 @@ export class TaxonomyValidationService {
    * Main public API method
    */
   validateSpans(spans: Span[], options: ValidationOptions = {}): ValidationResult {
+    const startTime = performance.now();
+    const operation = 'validateSpans';
+    
     const {
       strictMode = false,
       checkConsistency = false,
       ignoreCategories = []
     } = options;
+
+    this.log.debug('Validating spans', {
+      operation,
+      spanCount: spans.length,
+      strictMode,
+      checkConsistency,
+      ignoreCategoriesCount: ignoreCategories.length,
+    });
 
     // Filter out ignored categories
     const filteredSpans = ignoreCategories.length > 0
@@ -75,6 +88,18 @@ export class TaxonomyValidationService {
     if (strictMode && result.hasWarnings) {
       result.isValid = false;
     }
+
+    const duration = Math.round(performance.now() - startTime);
+    
+    this.log.info('Span validation complete', {
+      operation,
+      duration,
+      spanCount: spans.length,
+      isValid: result.isValid,
+      hasWarnings: result.hasWarnings,
+      issueCount: result.issues.length,
+      orphanCount: orphans.length,
+    });
 
     return result;
   }

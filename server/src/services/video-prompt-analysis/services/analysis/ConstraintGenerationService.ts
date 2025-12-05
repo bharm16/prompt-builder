@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { CONSTRAINT_MODES, CONSTRAINT_THRESHOLDS } from '../../config/constraintModes.js';
 import { countWords, isSentence } from '../../utils/textHelpers.js';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../../types.js';
@@ -6,6 +7,8 @@ import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../
  * Service responsible for generating replacement constraints for video prompts
  */
 export class ConstraintGenerationService {
+  private readonly log = logger.child({ service: 'ConstraintGenerationService' });
+
   /**
    * Resolve video replacement constraints based on highlight context
    */

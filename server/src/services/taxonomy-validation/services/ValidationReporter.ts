@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { TAXONOMY } from '#shared/taxonomy.ts';
 import type { 
   ValidationIssue, 
@@ -15,6 +16,8 @@ import type {
  * Generates API responses and user-facing guidance for taxonomy violations
  */
 export class ValidationReporter {
+  private readonly log = logger.child({ service: 'ValidationReporter' });
+
   /**
    * Format validation issues for API response
    */

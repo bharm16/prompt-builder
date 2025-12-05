@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import {
   PRIMARY_INTENT_PATTERNS,
   NARRATIVE_DIRECTION_PATTERNS,
@@ -13,6 +14,8 @@ import type { CreativeIntent, StyleConflict } from '../../types.js';
  * Single Responsibility: Pattern matching and semantic analysis of creative direction.
  */
 export class CreativeIntentAnalyzer {
+  private readonly log = logger.child({ service: 'CreativeIntentAnalyzer' });
+
   constructor() {
     // No dependencies - pure logic
   }
@@ -27,9 +30,19 @@ export class CreativeIntentAnalyzer {
   inferCreativeIntent(
     elements: Record<string, string> | null | undefined
   ): CreativeIntent | null {
+    const operation = 'inferCreativeIntent';
+    
     if (!elements || typeof elements !== 'object') {
+      this.log.debug('No elements provided for intent inference', {
+        operation,
+      });
       return null;
     }
+    
+    this.log.debug('Inferring creative intent', {
+      operation,
+      elementCount: Object.keys(elements).length,
+    });
 
     const analysis: CreativeIntent = {
       primaryIntent: null,
@@ -70,7 +83,23 @@ export class CreativeIntentAnalyzer {
     }
 
     // Return null if no intent was detected
-    return analysis.primaryIntent ? analysis : null;
+    const result = analysis.primaryIntent ? analysis : null;
+    
+    if (result) {
+      this.log.debug('Creative intent inferred', {
+        operation,
+        primaryIntent: result.primaryIntent,
+        narrativeDirection: result.narrativeDirection,
+        emotionalTone: result.emotionalTone,
+        supportingThemesCount: result.supportingThemes.length,
+      });
+    } else {
+      this.log.debug('No creative intent detected', {
+        operation,
+      });
+    }
+    
+    return result;
   }
 
   /**
@@ -83,9 +112,19 @@ export class CreativeIntentAnalyzer {
   detectStyleConflicts(
     elements: Record<string, string> | null | undefined
   ): StyleConflict[] {
+    const operation = 'detectStyleConflicts';
+    
     if (!elements || typeof elements !== 'object') {
+      this.log.debug('No elements provided for conflict detection', {
+        operation,
+      });
       return [];
     }
+    
+    this.log.debug('Detecting style conflicts', {
+      operation,
+      elementCount: Object.keys(elements).length,
+    });
 
     const conflicts: StyleConflict[] = [];
 
@@ -114,6 +153,11 @@ export class CreativeIntentAnalyzer {
         });
       }
     }
+
+    this.log.debug('Style conflict detection complete', {
+      operation,
+      conflictCount: conflicts.length,
+    });
 
     return conflicts;
   }

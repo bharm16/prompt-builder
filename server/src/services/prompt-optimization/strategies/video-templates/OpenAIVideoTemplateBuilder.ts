@@ -12,10 +12,12 @@
  * - Grammar-constrained decoding with strict schema handles format enforcement
  */
 
+import { logger } from '@infrastructure/Logger';
 import vocab from '../../../nlp/vocab.json' with { type: "json" };
 import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
 
 export class OpenAIVideoTemplateBuilder extends BaseVideoTemplateBuilder {
+  protected readonly log = logger.child({ service: 'OpenAIVideoTemplateBuilder' });
   /**
    * Build OpenAI-optimized template
    *
@@ -25,23 +27,55 @@ export class OpenAIVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * - User Message: XML-wrapped user concept + interpreted plan
    */
   buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
+    const startTime = performance.now();
+    const operation = 'buildTemplate';
+    
     const { userConcept, interpretedPlan, includeInstructions = true } = context;
 
-    // Developer message: Hard constraints (highest priority)
-    const developerMessage = this.buildDeveloperMessage();
+    this.log.debug('Building OpenAI video template', {
+      operation,
+      includeInstructions,
+      hasInterpretedPlan: !!interpretedPlan,
+      conceptLength: userConcept.length,
+    });
 
-    // System prompt: Creative guidance only
-    const systemPrompt = this.buildSystemPrompt(includeInstructions);
+    try {
+      // Developer message: Hard constraints (highest priority)
+      const developerMessage = this.buildDeveloperMessage();
 
-    // User message: Data to process
-    const userMessage = this.wrapUserConcept(userConcept, interpretedPlan);
+      // System prompt: Creative guidance only
+      const systemPrompt = this.buildSystemPrompt(includeInstructions);
 
-    return {
-      systemPrompt,
-      developerMessage,
-      userMessage,
-      provider: 'openai',
-    };
+      // User message: Data to process
+      const userMessage = this.wrapUserConcept(userConcept, interpretedPlan);
+
+      const duration = Math.round(performance.now() - startTime);
+
+      this.log.info('OpenAI video template built', {
+        operation,
+        duration,
+        systemPromptLength: systemPrompt.length,
+        developerMessageLength: developerMessage.length,
+        userMessageLength: userMessage.length,
+      });
+
+      return {
+        systemPrompt,
+        developerMessage,
+        userMessage,
+        provider: 'openai',
+      };
+    } catch (error) {
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Failed to build OpenAI video template', error as Error, {
+        operation,
+        duration,
+        conceptLength: userConcept.length,
+      });
+      
+      throw error;
+    }
   }
 
   /**

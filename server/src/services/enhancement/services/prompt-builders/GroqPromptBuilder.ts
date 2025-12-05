@@ -18,11 +18,15 @@ import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
 import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
 import type { PromptBuildParams, CustomPromptParams } from '../types.js';
 
+import { logger } from '@infrastructure/Logger';
+
 /**
  * Groq/Llama-optimized prompt builder
  * Embeds all constraints in system prompt since Llama doesn't support developer role
  */
 export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuilder {
+  private readonly log = logger.child({ service: 'GroqPromptBuilder' });
+
   getProvider(): 'groq' {
     return 'groq';
   }
@@ -40,6 +44,16 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
   }
 
   buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): PromptBuildResult {
+    const startTime = performance.now();
+    const operation = 'buildCustomPrompt';
+    
+    this.log.debug('Building custom Groq prompt', {
+      operation,
+      isVideoPrompt,
+      highlightLength: highlightedText.length,
+      fullPromptLength: fullPrompt.length,
+    });
+    
     const promptPreview = this._trim(fullPrompt, 600);
 
     // Include all constraints in system prompt for Llama
@@ -142,11 +156,22 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       systemPrompt = this._buildVisualPrompt(ctx);
     }
 
-    return {
+    const duration = Math.round(performance.now() - startTime);
+    const result = {
       systemPrompt,
       useStrictSchema: false,
-      provider: 'groq',
+      provider: 'groq' as const,
     };
+    
+    this.log.info('Groq span prompt built', {
+      operation,
+      duration,
+      design,
+      slot,
+      systemPromptLength: systemPrompt.length,
+    });
+    
+    return result;
   }
 
   /**

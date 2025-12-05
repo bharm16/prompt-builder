@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { extractSemanticSpans } from '../../nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
 import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples.js';
@@ -36,6 +37,8 @@ import type {
  * - Design 3: Grammar-Constrained Narrative Editor (actions/verbs)
  */
 export class CleanPromptBuilder {
+  private readonly log = logger.child({ service: 'CleanPromptBuilder' });
+
   buildPrompt(params: PromptBuildParams = {}): string {
     return this._buildSpanPrompt({ ...params, mode: params?.isPlaceholder ? 'placeholder' : 'rewrite' });
   }
@@ -49,6 +52,16 @@ export class CleanPromptBuilder {
   }
 
   buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): string {
+    const startTime = performance.now();
+    const operation = 'buildCustomPrompt';
+    
+    this.log.debug('Building custom prompt', {
+      operation,
+      isVideoPrompt,
+      highlightLength: highlightedText.length,
+      fullPromptLength: fullPrompt.length,
+    });
+    
     const promptPreview = this._trim(fullPrompt, 600);
 
     // Get provider-aware security prefix
@@ -82,12 +95,26 @@ export class CleanPromptBuilder {
       'Output JSON: [{"text":"replacement","category":"custom","explanation":"why this fits"}]',
       formatInstruction,
     ].filter(Boolean).join('\n');
+    
+    const duration = Math.round(performance.now() - startTime);
+    const promptLength = result.length;
+    
+    this.log.info('Custom prompt built', {
+      operation,
+      duration,
+      promptLength,
+    });
+    
+    return result;
   }
 
   /**
    * Core builder
    */
   private _buildSpanPrompt(params: PromptBuildParams): string {
+    const startTime = performance.now();
+    const operation = '_buildSpanPrompt';
+    
     const {
       highlightedText = '',
       contextBefore = '',
@@ -105,6 +132,14 @@ export class CleanPromptBuilder {
       mode = 'rewrite',
     } = params;
 
+    this.log.debug('Building span prompt', {
+      operation,
+      mode,
+      isVideoPrompt,
+      hasBrainstormContext: !!brainstormContext,
+      highlightLength: highlightedText.length,
+    });
+
     const slot = this._resolveSlot({
       highlightedText,
       phraseRole,
@@ -113,6 +148,12 @@ export class CleanPromptBuilder {
       contextAfter,
     });
     const design = this._pickDesign(slot, isVideoPrompt, mode);
+    
+    this.log.debug('Resolved slot and design', {
+      operation,
+      slot,
+      design,
+    });
 
     const ctx = this._buildContext({
       highlightedText,
@@ -130,13 +171,26 @@ export class CleanPromptBuilder {
     });
 
     // Select prompt based on design
+    let result: string;
     if (design === 'orthogonal') {
-      return this._buildTechnicalPrompt(ctx);
+      result = this._buildTechnicalPrompt(ctx);
+    } else if (design === 'narrative') {
+      result = this._buildActionPrompt(ctx);
+    } else {
+      result = this._buildVisualPrompt(ctx);
     }
-    if (design === 'narrative') {
-      return this._buildActionPrompt(ctx);
-    }
-    return this._buildVisualPrompt(ctx);
+    
+    const duration = Math.round(performance.now() - startTime);
+    
+    this.log.info('Span prompt built', {
+      operation,
+      duration,
+      design,
+      slot,
+      promptLength: result.length,
+    });
+    
+    return result;
   }
 
   /**

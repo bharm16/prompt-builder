@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { DETECTION_MARKERS, DETECTION_THRESHOLDS } from '../../config/detectionMarkers.js';
 import { normalizeText } from '../../utils/textHelpers.js';
 
@@ -5,10 +6,20 @@ import { normalizeText } from '../../utils/textHelpers.js';
  * Service responsible for detecting if a prompt is a video prompt
  */
 export class VideoPromptDetectionService {
+  private readonly log = logger.child({ service: 'VideoPromptDetectionService' });
+
   /**
    * Check if this is a video prompt
    */
   isVideoPrompt(fullPrompt: string | null | undefined): boolean {
+    const operation = 'isVideoPrompt';
+    
+    if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
+      this.log.debug('Empty prompt, not a video prompt', {
+        operation,
+      });
+      return false;
+    }
     if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
       return false;
     }
@@ -27,9 +38,16 @@ export class VideoPromptDetectionService {
 
     // Check technical field patterns
     if (this._hasTechnicalFields(normalized)) {
+      this.log.debug('Video prompt detected via technical fields', {
+        operation,
+      });
       return true;
     }
 
+    this.log.debug('Not detected as video prompt', {
+      operation,
+    });
+    
     return false;
   }
 

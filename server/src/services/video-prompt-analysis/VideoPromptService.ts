@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService.js';
 import { PhraseRoleAnalysisService } from './services/analysis/PhraseRoleAnalysisService.js';
 import { ConstraintGenerationService } from './services/analysis/ConstraintGenerationService.js';
@@ -29,6 +30,7 @@ export class VideoPromptService {
   private readonly modelDetector: ModelDetectionService;
   private readonly sectionDetector: SectionDetectionService;
   private readonly taxonomyValidator: TaxonomyValidationService;
+  private readonly log = logger.child({ service: 'VideoPromptService' });
 
   constructor() {
     this.detector = new VideoPromptDetectionService();
@@ -52,7 +54,21 @@ export class VideoPromptService {
    * Check if this is a video prompt
    */
   isVideoPrompt(fullPrompt: string | null | undefined): boolean {
-    return this.detector.isVideoPrompt(fullPrompt);
+    const operation = 'isVideoPrompt';
+    
+    this.log.debug('Checking if prompt is video prompt', {
+      operation,
+      promptLength: fullPrompt?.length || 0,
+    });
+    
+    const result = this.detector.isVideoPrompt(fullPrompt);
+    
+    this.log.debug('Video prompt detection complete', {
+      operation,
+      isVideoPrompt: result,
+    });
+    
+    return result;
   }
 
   /**

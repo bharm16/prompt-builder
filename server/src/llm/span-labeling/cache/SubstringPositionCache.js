@@ -1,3 +1,5 @@
+import { logger } from '@infrastructure/Logger';
+
 /**
  * Optimized substring position finder with caching
  *
@@ -13,6 +15,7 @@ export class SubstringPositionCache {
   constructor() {
     this.cache = new Map();
     this.currentText = null;
+    this.log = logger.child({ service: 'SubstringPositionCache' });
     // Telemetry for Phase 1
     this.telemetry = {
       exactMatches: 0,
@@ -213,14 +216,24 @@ export class SubstringPositionCache {
       const idx = loweredTarget ? loweredSource.indexOf(loweredTarget) : -1;
       if (idx === -1) {
         // Fuzzy fallback for minor typos or spacing differences (Design A - anchored substring extraction)
-        console.log(`[SubstringCache] Fuzzy matching required for: "${substring.slice(0, 50)}..."`);
+        this.log.debug('Fuzzy matching required', {
+          operation: 'find',
+          substringPreview: substring.slice(0, 50),
+        });
         const result = this._fuzzyFind(text, substring);
         if (result) {
           this.telemetry.fuzzyMatches++;
-          console.log(`[SubstringCache] ✓ Fuzzy match found at [${result.start}:${result.end}]`);
+          this.log.debug('Fuzzy match found', {
+            operation: 'find',
+            start: result.start,
+            end: result.end,
+          });
         } else {
           this.telemetry.failures++;
-          console.warn(`[SubstringCache] ✗ No match found for: "${substring.slice(0, 50)}"`);
+          this.log.warn('No match found for substring', {
+            operation: 'find',
+            substringPreview: substring.slice(0, 50),
+          });
         }
         return result;
       }
@@ -279,7 +292,12 @@ export class SubstringPositionCache {
 
     this.telemetry.exactMatches++; // Multiple occurrences, but we found the best one
     if (preferred !== 0 && bestDistance > 100) {
-      console.log(`[SubstringCache] Large offset difference: LLM suggested ${preferred}, found at ${best} (distance: ${bestDistance})`);
+      this.log.debug('Large offset difference detected', {
+        operation: 'find',
+        preferred,
+        found: best,
+        distance: bestDistance,
+      });
     }
     return { start: best, end: best + substring.length };
   }

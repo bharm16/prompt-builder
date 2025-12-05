@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
 
@@ -10,6 +11,8 @@ import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService 
  * Single Responsibility: Suggestion validation and sanitization
  */
 export class SuggestionValidationService {
+  private readonly log = logger.child({ service: 'SuggestionValidationService' });
+
   constructor(private readonly videoService: VideoService) {}
 
   /**
@@ -22,9 +25,22 @@ export class SuggestionValidationService {
     suggestions: Suggestion[] | string[],
     context: SanitizationContext
   ): Suggestion[] {
+    const startTime = performance.now();
+    const operation = 'sanitizeSuggestions';
+    
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      this.log.debug('Empty suggestions array, returning empty', {
+        operation,
+      });
       return [];
     }
+    
+    this.log.debug('Sanitizing suggestions', {
+      operation,
+      inputCount: suggestions.length,
+      isVideoPrompt: context.isVideoPrompt,
+      isPlaceholder: context.isPlaceholder,
+    });
 
     const sanitized: Suggestion[] = [];
     const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
@@ -163,6 +179,16 @@ export class SuggestionValidationService {
       });
     });
 
+    const duration = Math.round(performance.now() - startTime);
+    
+    this.log.info('Suggestions sanitized', {
+      operation,
+      duration,
+      inputCount: suggestions.length,
+      outputCount: sanitized.length,
+      filteredCount: suggestions.length - sanitized.length,
+    });
+
     return sanitized;
   }
 
@@ -174,11 +200,25 @@ export class SuggestionValidationService {
    * @returns Validated suggestions
    */
   validateSuggestions(suggestions: Suggestion[], highlightedText: string, category: string): Suggestion[] {
-    if (!suggestions || !Array.isArray(suggestions)) return [];
+    const operation = 'validateSuggestions';
+    
+    if (!suggestions || !Array.isArray(suggestions)) {
+      this.log.debug('Invalid suggestions input, returning empty', {
+        operation,
+      });
+      return [];
+    }
+    
+    this.log.debug('Validating suggestions', {
+      operation,
+      suggestionCount: suggestions.length,
+      category,
+      highlightLength: highlightedText.length,
+    });
 
     const subcategory = detectSubcategory(highlightedText, category);
 
-    return suggestions.filter(suggestion => {
+    const validated = suggestions.filter(suggestion => {
       // Basic validation
       if (!suggestion.text || typeof suggestion.text !== 'string') return false;
 
@@ -192,6 +232,15 @@ export class SuggestionValidationService {
       // Validate against video template requirements
       return validateAgainstVideoTemplate(suggestion, category, subcategory);
     });
+    
+    this.log.info('Suggestions validated', {
+      operation,
+      inputCount: suggestions.length,
+      outputCount: validated.length,
+      category,
+    });
+    
+    return validated;
   }
 
   /**

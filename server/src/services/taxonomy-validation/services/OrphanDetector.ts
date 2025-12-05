@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, getParentCategory, isAttribute, resolveCategory } from '#shared/taxonomy.ts';
 import type { Span, OrphanedAttributeGroup, Severity } from '../types.js';
 
@@ -9,6 +10,8 @@ import type { Span, OrphanedAttributeGroup, Severity } from '../types.js';
  * that exists without its required parent entity (like subject)
  */
 export class OrphanDetector {
+  private readonly log = logger.child({ service: 'OrphanDetector' });
+
   /**
    * Find all orphaned attributes in spans
    */

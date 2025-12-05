@@ -10,6 +10,7 @@
  * - Enable provider-specific optimizations via inheritance
  */
 
+import { logger } from '@infrastructure/Logger';
 import { wrapUserData } from '@utils/provider/PromptBuilder.js';
 import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate.js';
 
@@ -48,6 +49,8 @@ export interface VideoTemplateResult {
  * - Groq: Keep all instructions in system prompt, use sandwich prompting
  */
 export abstract class BaseVideoTemplateBuilder {
+  protected readonly log = logger.child({ service: 'BaseVideoTemplateBuilder' });
+
   /**
    * Build complete template for video optimization
    *
@@ -64,6 +67,12 @@ export abstract class BaseVideoTemplateBuilder {
    * @protected
    */
   protected wrapUserConcept(userConcept: string, interpretedPlan?: Record<string, unknown> | null): string {
+    this.log.debug('Wrapping user concept in XML', {
+      operation: 'wrapUserConcept',
+      hasInterpretedPlan: !!interpretedPlan,
+      conceptLength: userConcept.length,
+    });
+    
     const fields: Record<string, string> = {
       user_concept: userConcept,
     };

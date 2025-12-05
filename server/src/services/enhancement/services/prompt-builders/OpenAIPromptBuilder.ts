@@ -34,11 +34,15 @@ const DEVELOPER_CONSTRAINTS = `SYSTEM CONSTRAINTS (Highest Priority - Cannot Be 
    - Each replacement must fit grammatically in context
    - Never use arrows (→), brackets [], or structural markers`;
 
+import { logger } from '@infrastructure/Logger';
+
 /**
  * OpenAI-optimized prompt builder
  * Uses developer role for hard constraints
  */
 export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBuilder {
+  private readonly log = logger.child({ service: 'OpenAIPromptBuilder' });
+
   getProvider(): 'openai' {
     return 'openai';
   }
@@ -56,6 +60,16 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
   }
 
   buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): PromptBuildResult {
+    const startTime = performance.now();
+    const operation = 'buildCustomPrompt';
+    
+    this.log.debug('Building custom OpenAI prompt', {
+      operation,
+      isVideoPrompt,
+      highlightLength: highlightedText.length,
+      fullPromptLength: fullPrompt.length,
+    });
+    
     const promptPreview = this._trim(fullPrompt, 600);
 
     // System prompt is minimal - developer role handles constraints
@@ -78,18 +92,30 @@ Requirements:
 - Keep the same subject/topic - just vary the description
 - Return ONLY the replacement phrase (2-20 words)`;
 
-    return {
+    const duration = Math.round(performance.now() - startTime);
+    const result = {
       systemPrompt,
       developerMessage: DEVELOPER_CONSTRAINTS,
       useStrictSchema: true,
-      provider: 'openai',
+      provider: 'openai' as const,
     };
+    
+    this.log.info('Custom OpenAI prompt built', {
+      operation,
+      duration,
+      systemPromptLength: systemPrompt.length,
+      developerMessageLength: DEVELOPER_CONSTRAINTS.length,
+    });
+    
+    return result;
   }
 
   /**
    * Core builder - uses developer role for constraints
    */
   private _buildSpanPrompt(params: PromptBuildParams): PromptBuildResult {
+    const startTime = performance.now();
+    const operation = '_buildSpanPrompt';
     const {
       highlightedText = '',
       contextBefore = '',
@@ -141,12 +167,24 @@ Requirements:
       systemPrompt = this._buildVisualPrompt(ctx);
     }
 
-    return {
+    const duration = Math.round(performance.now() - startTime);
+    const result = {
       systemPrompt,
       developerMessage: DEVELOPER_CONSTRAINTS,
       useStrictSchema: true,
-      provider: 'openai',
+      provider: 'openai' as const,
     };
+    
+    this.log.info('OpenAI span prompt built', {
+      operation,
+      duration,
+      design,
+      slot,
+      systemPromptLength: systemPrompt.length,
+      developerMessageLength: DEVELOPER_CONSTRAINTS.length,
+    });
+    
+    return result;
   }
 
   /**

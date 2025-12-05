@@ -1,3 +1,5 @@
+import { logger } from '@infrastructure/Logger';
+
 /**
  * PlaceholderDetectionService
  * 
@@ -7,6 +9,8 @@
  * Single Responsibility: Placeholder identification and categorization
  */
 export class PlaceholderDetectionService {
+  private readonly log = logger.child({ service: 'PlaceholderDetectionService' });
+
   constructor() {
     // No dependencies - pure logic
   }
@@ -25,7 +29,17 @@ export class PlaceholderDetectionService {
     contextAfter: string,
     fullPrompt: string
   ): boolean {
+    const operation = 'detectPlaceholder';
+    
+    this.log.debug('Starting placeholder detection', {
+      operation,
+      highlightedTextLength: highlightedText?.length || 0,
+      contextBeforeLength: contextBefore.length,
+      contextAfterLength: contextAfter.length,
+    });
+
     if (!highlightedText || typeof highlightedText !== 'string') {
+      this.log.debug('Invalid highlighted text, returning false', { operation });
       return false;
     }
 
@@ -82,10 +96,20 @@ export class PlaceholderDetectionService {
 
     // Check if it's a material or style (very likely to be a placeholder value)
     if (materialKeywords.includes(text) || styleKeywords.includes(text)) {
+      const matchedPattern = materialKeywords.includes(text) ? 'material' : 'style';
+      this.log.info('Placeholder detected via material/style pattern', {
+        operation,
+        matchedPattern,
+        text,
+      });
       return true;
     }
 
     if (text.split(/\s+/).length <= 2 && placeholderKeywords.includes(text)) {
+      this.log.info('Placeholder detected via keyword pattern', {
+        operation,
+        matchedKeyword: text,
+      });
       return true;
     }
 
@@ -96,6 +120,10 @@ export class PlaceholderDetectionService {
       contextBefore.includes('[') ||
       contextAfter.startsWith(']')
     ) {
+      this.log.info('Placeholder detected via parentheses/brackets pattern', {
+        operation,
+        text,
+      });
       return true;
     }
 
@@ -108,11 +136,15 @@ export class PlaceholderDetectionService {
       'including',
       'specify',
     ];
-    if (
-      precedingPhrases.some((phrase) =>
-        contextBefore.toLowerCase().includes(phrase)
-      )
-    ) {
+    const matchedPhrase = precedingPhrases.find((phrase) =>
+      contextBefore.toLowerCase().includes(phrase)
+    );
+    if (matchedPhrase) {
+      this.log.info('Placeholder detected via preceding phrase pattern', {
+        operation,
+        matchedPhrase,
+        text,
+      });
       return true;
     }
 
@@ -126,6 +158,10 @@ export class PlaceholderDetectionService {
       (contextBefore.includes(':') || contextBefore.includes('-')) &&
       text.split(/\s+/).length <= 3
     ) {
+      this.log.info('Placeholder detected via list/colon pattern', {
+        operation,
+        text,
+      });
       return true;
     }
 
@@ -133,15 +169,24 @@ export class PlaceholderDetectionService {
     const includePattern =
       /\b(include|set|choose|specify|add|provide|give)\s+[^,\n]{0,20}$/i;
     if (includePattern.test(contextBefore)) {
+      this.log.info('Placeholder detected via include/set pattern', {
+        operation,
+        text,
+      });
       return true;
     }
 
     // Pattern 8: Adjective describing a physical property
     const physicalPropertyContext = /\b(desk|table|chair|wall|floor|surface|object|item|piece|structure)\b/i;
     if (physicalPropertyContext.test(contextAfter) && text.split(/\s+/).length <= 2) {
+      this.log.info('Placeholder detected via physical property pattern', {
+        operation,
+        text,
+      });
       return true;
     }
 
+    this.log.debug('No placeholder patterns matched', { operation, text });
     return false;
   }
 
@@ -157,31 +202,42 @@ export class PlaceholderDetectionService {
     contextBefore: string,
     contextAfter: string
   ): 'material' | 'style' | 'location' | 'time' | 'person' | 'general' {
+    const operation = 'detectPlaceholderType';
     const text = highlightedText.toLowerCase();
     const combinedContext = (contextBefore + ' ' + contextAfter).toLowerCase();
 
+    this.log.debug('Detecting placeholder type', {
+      operation,
+      highlightedText,
+    });
+
     // Material context
     if (/\b(desk|table|chair|furniture|surface|made of|constructed|built)\b/.test(combinedContext)) {
+      this.log.debug('Placeholder type detected: material', { operation });
       return 'material';
     }
 
     // Style context
     if (/\b(style|design|aesthetic|look|appearance|decorated|themed)\b/.test(combinedContext)) {
+      this.log.debug('Placeholder type detected: style', { operation });
       return 'style';
     }
 
     // Location context
     if (/\b(location|place|venue|setting|room|space|area|environment)\b/.test(combinedContext)) {
+      this.log.debug('Placeholder type detected: location', { operation });
       return 'location';
     }
 
     // Time context
     if (/\b(time|when|period|era|age|century|year|season)\b/.test(combinedContext)) {
+      this.log.debug('Placeholder type detected: time', { operation });
       return 'time';
     }
 
     // Person context
     if (/\b(person|character|individual|speaker|audience|role)\b/.test(combinedContext)) {
+      this.log.debug('Placeholder type detected: person', { operation });
       return 'person';
     }
 
@@ -190,10 +246,20 @@ export class PlaceholderDetectionService {
     const styleWords = ['modern', 'vintage', 'classic', 'rustic', 'minimalist'];
     const locationWords = ['location', 'place', 'venue', 'room'];
 
-    if (materialWords.some(w => text.includes(w))) return 'material';
-    if (styleWords.some(w => text.includes(w))) return 'style';
-    if (locationWords.some(w => text.includes(w))) return 'location';
+    if (materialWords.some(w => text.includes(w))) {
+      this.log.debug('Placeholder type detected via text analysis: material', { operation });
+      return 'material';
+    }
+    if (styleWords.some(w => text.includes(w))) {
+      this.log.debug('Placeholder type detected via text analysis: style', { operation });
+      return 'style';
+    }
+    if (locationWords.some(w => text.includes(w))) {
+      this.log.debug('Placeholder type detected via text analysis: location', { operation });
+      return 'location';
+    }
 
+    this.log.debug('Placeholder type detected: general (default)', { operation });
     return 'general';
   }
 }

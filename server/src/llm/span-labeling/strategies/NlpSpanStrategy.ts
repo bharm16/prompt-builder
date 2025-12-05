@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import SpanLabelingConfig from '../config/SpanLabelingConfig.js';
 import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '@services/nlp/NlpSpanService.js';
 import { validateSpans } from '../validation/SpanValidator.js';
@@ -14,6 +15,8 @@ import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../t
  * Returns null if fast-path should be skipped (insufficient coverage or disabled)
  */
 export class NlpSpanStrategy {
+  private readonly log = logger.child({ service: 'NlpSpanStrategy' });
+
   /**
    * Extract spans using NLP fast-path
    *
@@ -56,13 +59,20 @@ export class NlpSpanStrategy {
             tier2Latency: (semanticResult.stats as { tier2Latency?: number } | undefined)?.tier2Latency || 0,
           };
 
-          console.log(
-            `[Neuro-Symbolic] Extracted ${nlpSpans.length} spans (closed: ${nlpMetadata.closedVocab}, open: ${nlpMetadata.openVocab}, latency: ${(nlpMetadata.tier1Latency as number) + (nlpMetadata.tier2Latency as number)}ms)`
-          );
+          this.log.info('Neuro-Symbolic spans extracted', {
+            operation: 'extractSpans',
+            spanCount: nlpSpans.length,
+            closedVocab: nlpMetadata.closedVocab,
+            openVocab: nlpMetadata.openVocab,
+            latency: (nlpMetadata.tier1Latency as number) + (nlpMetadata.tier2Latency as number),
+          });
         }
       } catch (error) {
         const err = error as Error;
-        console.warn('[Neuro-Symbolic] Error during extraction, falling back:', err.message);
+        this.log.warn('Neuro-Symbolic extraction error, falling back', {
+          operation: 'extractSpans',
+          error: err.message,
+        });
       }
     }
 
@@ -75,7 +85,10 @@ export class NlpSpanStrategy {
         nlpSource = 'dictionary';
       } catch (error) {
         const err = error as Error;
-        console.warn('[Dictionary] Error during extraction:', err.message);
+        this.log.warn('Dictionary extraction error', {
+          operation: 'extractSpans',
+          error: err.message,
+        });
       }
     }
 
@@ -111,9 +124,12 @@ export class NlpSpanStrategy {
         if (validation.ok) {
           // Log telemetry if enabled
           if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
-            console.log(
-              `[NLP Fast-Path] Bypassed LLM call | Spans: ${nlpSpans.length} | Latency: ${nlpLatency}ms | Estimated savings: $0.0005`
-            );
+            this.log.info('NLP Fast-Path bypassed LLM call', {
+              operation: 'extractSpans',
+              spanCount: nlpSpans.length,
+              latency: nlpLatency,
+              estimatedSavings: '$0.0005',
+            });
           }
 
           return {

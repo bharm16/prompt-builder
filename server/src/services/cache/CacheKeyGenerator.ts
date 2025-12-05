@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { logger } from '@infrastructure/Logger';
 import type { SemanticEnhancer, GenerateKeyOptions, CacheKeyGeneratorOptions } from './types.js';
 
 /**
@@ -9,6 +10,7 @@ import type { SemanticEnhancer, GenerateKeyOptions, CacheKeyGeneratorOptions } f
  * - OCP: Can be extended with new generation strategies
  */
 export class CacheKeyGenerator {
+  private readonly log = logger.child({ service: 'CacheKeyGenerator' });
   private readonly semanticEnhancer: SemanticEnhancer | null;
 
   constructor({ semanticEnhancer = null }: CacheKeyGeneratorOptions = {}) {
@@ -19,6 +21,7 @@ export class CacheKeyGenerator {
    * Generate cache key from data
    */
   generate(namespace: string, data: Record<string, unknown>, options: GenerateKeyOptions = {}): string {
+    const operation = 'generate';
     const {
       useSemantic = true,
       normalizeWhitespace = true,
@@ -26,13 +29,28 @@ export class CacheKeyGenerator {
       sortKeys = true
     } = options;
 
+    this.log.debug('Generating cache key', {
+      operation,
+      namespace,
+      useSemantic,
+      hasSemanticEnhancer: !!this.semanticEnhancer,
+    });
+
     // Use semantic caching if enhancer available
     if (useSemantic && this.semanticEnhancer && typeof this.semanticEnhancer.generateSemanticKey === 'function') {
-      return this.semanticEnhancer.generateSemanticKey(namespace, data, {
+      const key = this.semanticEnhancer.generateSemanticKey(namespace, data, {
         normalizeWhitespace,
         ignoreCase,
         sortKeys,
       });
+      
+      this.log.debug('Semantic cache key generated', {
+        operation,
+        namespace,
+        keyType: 'semantic',
+      });
+      
+      return key;
     }
 
     // Fallback to standard hashing
@@ -42,7 +60,16 @@ export class CacheKeyGenerator {
       .digest('hex')
       .substring(0, 16);
 
-    return `${namespace}:${hash}`;
+    const key = `${namespace}:${hash}`;
+    
+    this.log.debug('Standard cache key generated', {
+      operation,
+      namespace,
+      keyType: 'standard',
+      keyHash: hash,
+    });
+
+    return key;
   }
 }
 

@@ -10,10 +10,13 @@
  * - Returns appropriate builder (OpenAI vs Groq)
  */
 
+import { logger } from '../../../../infrastructure/Logger.js';
 import { detectProvider } from '@utils/provider/ProviderDetector.js';
 import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder.js';
 import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder.js';
 import type { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder.js';
+
+const log = logger.child({ service: 'VideoTemplateBuilderFactory' });
 
 // Singleton instances (initialized on first use)
 let openaiBuilder: OpenAIVideoTemplateBuilder | null = null;
@@ -43,20 +46,47 @@ export function getVideoTemplateBuilder(options: {
   model?: string;
   client?: string;
 }): BaseVideoTemplateBuilder {
+  const operation = 'getVideoTemplateBuilder';
+  
+  log.debug('Getting video template builder', {
+    operation,
+    options,
+  });
+  
   const provider = detectProvider(options);
 
   if (provider === 'openai') {
     if (!openaiBuilder) {
+      log.debug('Creating OpenAI video template builder instance', {
+        operation,
+        provider,
+      });
       openaiBuilder = new OpenAIVideoTemplateBuilder();
     }
+    
+    log.debug('Returning OpenAI video template builder', {
+      operation,
+      provider,
+    });
+    
     return openaiBuilder;
   }
 
   // Default to Groq for all other providers
   // (Anthropic, Gemini, and unknown providers use Groq template)
   if (!groqBuilder) {
+    log.debug('Creating Groq video template builder instance', {
+      operation,
+      provider,
+    });
     groqBuilder = new GroqVideoTemplateBuilder();
   }
+  
+  log.debug('Returning Groq video template builder', {
+    operation,
+    provider,
+  });
+  
   return groqBuilder;
 }
 
@@ -67,6 +97,13 @@ export function getVideoTemplateBuilder(options: {
  * @returns New template builder instance
  */
 export function createVideoTemplateBuilder(provider: 'openai' | 'groq'): BaseVideoTemplateBuilder {
+  const operation = 'createVideoTemplateBuilder';
+  
+  log.debug('Creating new video template builder instance', {
+    operation,
+    provider,
+  });
+  
   if (provider === 'openai') {
     return new OpenAIVideoTemplateBuilder();
   }

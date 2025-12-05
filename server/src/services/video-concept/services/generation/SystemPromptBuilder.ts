@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import {
   buildAnalysisProcessTemplate,
   getElementPromptTemplate,
@@ -47,6 +48,8 @@ interface ContextAnalysis {
  * Handles all prompt construction logic with context awareness.
  */
 export class PromptBuilderService {
+  private readonly log = logger.child({ service: 'SystemPromptBuilder' });
+
   /**
    * Build system prompt for creative suggestions with multi-level context analysis
    */
@@ -57,17 +60,38 @@ export class PromptBuilderService {
     context?: Record<string, string>;
     concept?: string;
   }): string {
+    const startTime = performance.now();
+    const operation = 'buildSystemPrompt';
+    
+    this.log.debug('Building system prompt', {
+      operation,
+      elementType: params.elementType,
+      hasCurrentValue: !!params.currentValue,
+      hasContext: !!params.context,
+      hasConcept: !!params.concept,
+    });
+    
     // Check if this is a subject descriptor
     const isDescriptor = params.elementType === 'subjectDescriptor';
 
     // If it's a descriptor, use specialized descriptor prompt
     if (isDescriptor) {
-      return this.buildDescriptorPrompt({
+      const result = this.buildDescriptorPrompt({
         currentValue: params.currentValue,
         context: params.context,
         concept: params.concept,
         taxonomyScope: params.taxonomyScope,
       });
+      
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.info('Descriptor system prompt built', {
+        operation,
+        duration,
+        promptLength: result.length,
+      });
+      
+      return result;
     }
 
     const elementLabel =
@@ -182,6 +206,19 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "specific suggestion 7", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"},
   {"text": "specific suggestion 8", "explanation": "${isCompletion ? 'how this completes the user input while following video prompt principles' : 'why this works with the context'}"}
 ]`;
+    
+    const duration = Math.round(performance.now() - startTime);
+    const prompt = result;
+    
+    this.log.info('System prompt built', {
+      operation,
+      duration,
+      promptLength: prompt.length,
+      elementType: params.elementType,
+      isCompletion,
+    });
+    
+    return prompt;
   }
 
   /**
@@ -193,7 +230,15 @@ Return ONLY a JSON array (no markdown, no code blocks):
     concept?: string;
     taxonomyScope?: string;
   }): string {
+    const operation = 'buildDescriptorPrompt';
     const isCompletion = !!(params.currentValue && params.currentValue.trim().length > 0);
+    
+    this.log.debug('Building descriptor prompt', {
+      operation,
+      isCompletion,
+      hasContext: !!params.context,
+      hasConcept: !!params.concept,
+    });
 
     // Detect category from current value or context
     const detection = params.currentValue ? detectDescriptorCategory(params.currentValue) : null;
@@ -285,6 +330,15 @@ Return ONLY a JSON array (no markdown, no code blocks):
   {"text": "descriptor 7", "explanation": "why this specific detail works"},
   {"text": "descriptor 8", "explanation": "what makes this visually compelling"}
 ]`;
+    
+    this.log.debug('Descriptor prompt built', {
+      operation,
+      promptLength: result.length,
+      categoryHint: detection?.category || null,
+      hasSubject: !!params.context?.subject,
+    });
+    
+    return result;
   }
 
   /**

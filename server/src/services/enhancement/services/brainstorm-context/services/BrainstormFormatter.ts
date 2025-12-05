@@ -1,3 +1,5 @@
+import { logger } from '@infrastructure/Logger';
+
 /**
  * Brainstorm Formatter
  *
@@ -5,6 +7,8 @@
  * Single Responsibility: String formatting and output presentation.
  */
 export class BrainstormFormatter {
+  private readonly log = logger.child({ service: 'BrainstormFormatter' });
+
   constructor() {
     // No dependencies - pure logic
   }

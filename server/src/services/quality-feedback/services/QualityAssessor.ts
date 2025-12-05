@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { QUALITY_METRICS } from '../config/qualityMetrics.js';
 import { clamp } from '../utils/statisticsHelpers.js';
 import type { FeatureContext } from '../types.js';
@@ -6,6 +7,8 @@ import type { FeatureContext } from '../types.js';
  * Service responsible for assessing quality of outputs
  */
 export class QualityAssessor {
+  private readonly log = logger.child({ service: 'QualityAssessor' });
+
   /**
    * Assess the final quality of output
    */

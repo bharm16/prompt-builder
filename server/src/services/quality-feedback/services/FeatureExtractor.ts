@@ -1,3 +1,4 @@
+import { logger } from '@infrastructure/Logger';
 import { FEATURE_WEIGHTS } from '../config/qualityMetrics.js';
 import {
   calculateSpecificity,
@@ -17,6 +18,8 @@ import type { FeatureVector, FeatureContext } from '../types.js';
  * Service responsible for extracting features from suggestions
  */
 export class FeatureExtractor {
+  private readonly log = logger.child({ service: 'FeatureExtractor' });
+
   /**
    * Extract all features from a suggestion
    */

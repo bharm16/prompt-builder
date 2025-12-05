@@ -7,6 +7,8 @@
  * - OCP: Works with any mode through IOptimizationMode interface
  */
 
+import { logger } from '@infrastructure/Logger';
+
 interface AIClient {
   complete(prompt: string, options: {
     userMessage?: string;
@@ -22,12 +24,6 @@ interface OptimizationMode {
   generateSystemPrompt(prompt: string, context: unknown, shotPlan: unknown): string;
 }
 
-interface Logger {
-  info?: (message: string, meta?: Record<string, unknown>) => void;
-  warn?: (message: string, meta?: Record<string, unknown>) => void;
-  error?: (message: string, error: Error) => void;
-}
-
 interface SpanLabeler {
   labelSpans?(text: string): Promise<unknown>;
 }
@@ -35,7 +31,6 @@ interface SpanLabeler {
 interface TwoStageOptimizationOptions {
   draftClient?: AIClient | null;
   refinementClient: AIClient;
-  logger?: Logger | null;
   spanLabeler?: SpanLabeler | null;
 }
 
@@ -64,13 +59,12 @@ interface TwoStageOptimizationResult {
 export class TwoStageOptimizationService {
   private readonly draftClient: AIClient | null;
   private readonly refinementClient: AIClient;
-  private readonly logger: Logger | null;
   private readonly spanLabeler: SpanLabeler | null;
+  private readonly log = logger.child({ service: 'TwoStageOptimizationService' });
 
-  constructor({ draftClient = null, refinementClient, logger = null, spanLabeler = null }: TwoStageOptimizationOptions) {
+  constructor({ draftClient = null, refinementClient, spanLabeler = null }: TwoStageOptimizationOptions) {
     this.draftClient = draftClient; // Fast client (e.g., ChatGPT)
     this.refinementClient = refinementClient; // Quality client (e.g., OpenAI)
-    this.logger = logger;
     this.spanLabeler = spanLabeler;
   }
 
@@ -78,29 +72,49 @@ export class TwoStageOptimizationService {
    * Perform two-stage optimization
    */
   async optimize({ prompt, mode, context, onDraft }: TwoStageOptimizationParams): Promise<TwoStageOptimizationResult> {
-    this.logger?.info?.('Starting two-stage optimization', {
-      mode: mode.getName(),
+    const startTime = performance.now();
+    const operation = 'optimize';
+    const modeName = mode.getName();
+
+    this.log.debug('Starting two-stage optimization', {
+      operation,
+      mode: modeName,
       hasDraftClient: !!this.draftClient,
+      promptLength: prompt.length,
     });
 
     // Fallback to single-stage if no draft client
     if (!this.draftClient) {
-      this.logger?.warn?.('No draft client available, using single-stage');
+      this.log.warn('No draft client available, using single-stage', {
+        operation,
+        mode: modeName,
+      });
+      const fallbackResult = await this._singleStageOptimization(prompt, mode, context);
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.info('Single-stage optimization complete', {
+        operation,
+        mode: modeName,
+        duration,
+        usedFallback: true,
+      });
+      
       return {
-        draft: await this._singleStageOptimization(prompt, mode, context),
-        refined: await this._singleStageOptimization(prompt, mode, context),
+        draft: fallbackResult,
+        refined: fallbackResult,
         usedFallback: true,
       };
     }
 
-    const startTime = Date.now();
-
     try {
       // STAGE 1: Generate draft
+      const draftStartTime = performance.now();
       const draftResult = await this._generateDraft(prompt, mode, context);
-      const draftDuration = Date.now() - startTime;
+      const draftDuration = Math.round(performance.now() - draftStartTime);
 
-      this.logger?.info?.('Draft generated', {
+      this.log.debug('Draft generated', {
+        operation: 'generateDraft',
+        mode: modeName,
         duration: draftDuration,
         draftLength: draftResult.draft.length,
         hasSpans: !!draftResult.spans,
@@ -112,16 +126,20 @@ export class TwoStageOptimizationService {
       }
 
       // STAGE 2: Refine draft
-      const refinementStartTime = Date.now();
+      const refinementStartTime = performance.now();
       const refined = await this._refineDraft(draftResult.draft, mode, context);
-      const refinementDuration = Date.now() - refinementStartTime;
+      const refinementDuration = Math.round(performance.now() - refinementStartTime);
 
-      const totalDuration = Date.now() - startTime;
+      const totalDuration = Math.round(performance.now() - startTime);
 
-      this.logger?.info?.('Two-stage optimization complete', {
+      this.log.info('Two-stage optimization complete', {
+        operation,
+        mode: modeName,
         draftDuration,
         refinementDuration,
         totalDuration,
+        draftLength: draftResult.draft.length,
+        refinedLength: refined.length,
       });
 
       return {
@@ -138,57 +156,179 @@ export class TwoStageOptimizationService {
       };
 
     } catch (error) {
-      this.logger?.error?.('Two-stage optimization failed', error as Error);
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Two-stage optimization failed', error as Error, {
+        operation,
+        mode: modeName,
+        duration,
+        promptLength: prompt.length,
+      });
       
       // Fallback to single-stage
-      const fallback = await this._singleStageOptimization(prompt, mode, context);
-      return {
-        draft: fallback,
-        refined: fallback,
-        usedFallback: true,
-        error: (error as Error).message,
-      };
+      try {
+        const fallback = await this._singleStageOptimization(prompt, mode, context);
+        const fallbackDuration = Math.round(performance.now() - startTime);
+        
+        this.log.info('Fallback single-stage optimization complete', {
+          operation: 'fallbackOptimization',
+          mode: modeName,
+          duration: fallbackDuration,
+          usedFallback: true,
+        });
+        
+        return {
+          draft: fallback,
+          refined: fallback,
+          usedFallback: true,
+          error: (error as Error).message,
+        };
+      } catch (fallbackError) {
+        const fallbackDuration = Math.round(performance.now() - startTime);
+        
+        this.log.error('Fallback optimization also failed', fallbackError as Error, {
+          operation: 'fallbackOptimization',
+          mode: modeName,
+          duration: fallbackDuration,
+        });
+        
+        throw fallbackError;
+      }
     }
   }
 
   private async _generateDraft(prompt: string, mode: OptimizationMode, context: unknown): Promise<{ draft: string; spans: unknown | null }> {
-    const draftPrompt = mode.generateDraftPrompt(prompt, context);
+    const startTime = performance.now();
+    const operation = '_generateDraft';
+    const modeName = mode.getName();
     
-    const response = await this.draftClient!.complete(draftPrompt, {
-      userMessage: prompt,
-      maxTokens: mode.getName() === 'video' ? 300 : 200,
-      temperature: 0.7,
-      timeout: 5000,
+    this.log.debug('Generating draft', {
+      operation,
+      mode: modeName,
     });
+    
+    try {
+      const draftPrompt = mode.generateDraftPrompt(prompt, context);
+      
+      const response = await this.draftClient!.complete(draftPrompt, {
+        userMessage: prompt,
+        maxTokens: modeName === 'video' ? 300 : 200,
+        temperature: 0.7,
+        timeout: 5000,
+      });
 
-    return {
-      draft: response.text,
-      spans: null,
-    };
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.debug('Draft generation completed', {
+        operation,
+        mode: modeName,
+        duration,
+        draftLength: response.text.length,
+      });
+
+      return {
+        draft: response.text,
+        spans: null,
+      };
+    } catch (error) {
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Draft generation failed', error as Error, {
+        operation,
+        mode: modeName,
+        duration,
+      });
+      
+      throw error;
+    }
   }
 
   private async _refineDraft(draft: string, mode: OptimizationMode, context: unknown): Promise<string> {
-    const systemPrompt = mode.generateSystemPrompt(draft, context, null);
+    const startTime = performance.now();
+    const operation = '_refineDraft';
+    const modeName = mode.getName();
     
-    const response = await this.refinementClient.complete(systemPrompt, {
-      maxTokens: 4096,
-      temperature: 0.7,
-      timeout: mode.getName() === 'video' ? 90000 : 30000,
+    this.log.debug('Refining draft', {
+      operation,
+      mode: modeName,
+      draftLength: draft.length,
     });
+    
+    try {
+      const systemPrompt = mode.generateSystemPrompt(draft, context, null);
+      
+      const response = await this.refinementClient.complete(systemPrompt, {
+        maxTokens: 4096,
+        temperature: 0.7,
+        timeout: modeName === 'video' ? 90000 : 30000,
+      });
 
-    return response.text;
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.debug('Draft refinement completed', {
+        operation,
+        mode: modeName,
+        duration,
+        refinedLength: response.text.length,
+      });
+
+      return response.text;
+    } catch (error) {
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Draft refinement failed', error as Error, {
+        operation,
+        mode: modeName,
+        duration,
+        draftLength: draft.length,
+      });
+      
+      throw error;
+    }
   }
 
   private async _singleStageOptimization(prompt: string, mode: OptimizationMode, context: unknown): Promise<string> {
-    const systemPrompt = mode.generateSystemPrompt(prompt, context, null);
+    const startTime = performance.now();
+    const operation = '_singleStageOptimization';
+    const modeName = mode.getName();
     
-    const response = await this.refinementClient.complete(systemPrompt, {
-      maxTokens: 4096,
-      temperature: 0.7,
-      timeout: mode.getName() === 'video' ? 90000 : 30000,
+    this.log.debug('Performing single-stage optimization', {
+      operation,
+      mode: modeName,
+      promptLength: prompt.length,
     });
+    
+    try {
+      const systemPrompt = mode.generateSystemPrompt(prompt, context, null);
+      
+      const response = await this.refinementClient.complete(systemPrompt, {
+        maxTokens: 4096,
+        temperature: 0.7,
+        timeout: modeName === 'video' ? 90000 : 30000,
+      });
 
-    return response.text;
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.debug('Single-stage optimization completed', {
+        operation,
+        mode: modeName,
+        duration,
+        resultLength: response.text.length,
+      });
+
+      return response.text;
+    } catch (error) {
+      const duration = Math.round(performance.now() - startTime);
+      
+      this.log.error('Single-stage optimization failed', error as Error, {
+        operation,
+        mode: modeName,
+        duration,
+        promptLength: prompt.length,
+      });
+      
+      throw error;
+    }
   }
 }
 
