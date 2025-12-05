@@ -42,6 +42,7 @@ interface AIService {
  * - OpenAI with strict schema: Skip prompt format instructions (grammar-constrained)
  * - OpenAI with developerMessage: Use developer role for hard constraints
  * - Groq/Llama: Use sandwich prompting and format instructions
+ * - Auto-unwrap: Handles `{"suggestions": [...]}` wrapper for json_object mode
  * 
  * Performance Improvements:
  * - ~10-15% faster for OpenAI with strict schema (fewer constraint tokens)
@@ -135,6 +136,23 @@ export class StructuredOutputEnforcer {
             hasStrictSchema,
           });
           throw parseError;
+        }
+
+        /**
+         * Auto-unwrap array from object wrapper
+         * 
+         * Groq's json_object mode requires top-level object, so prompts use:
+         * {"suggestions": [...]} instead of bare [...]
+         * 
+         * This unwraps automatically when isArray=true but we get an object
+         * with a "suggestions" key containing an array.
+         */
+        if (isArray && !Array.isArray(parsedJSON) && typeof parsedJSON === 'object' && parsedJSON !== null) {
+          const wrapped = parsedJSON as Record<string, unknown>;
+          if (Array.isArray(wrapped.suggestions)) {
+            logger.debug('Auto-unwrapping suggestions array from object wrapper');
+            parsedJSON = wrapped.suggestions as T;
+          }
         }
 
         // Validate against schema if provided

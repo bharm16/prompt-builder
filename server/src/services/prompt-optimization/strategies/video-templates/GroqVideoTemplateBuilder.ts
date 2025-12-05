@@ -5,12 +5,16 @@
  * - System Prompt: Simplified instructions (8B model needs focused, concise guidance)
  * - User Message: Sandwich prompting (format reminder at end for better adherence)
  * - No Developer Role: Not available for Groq, embed all constraints in system
+ * - Output-oriented verbs ("Return/Output" not "Generate/Create")
+ * - Chain-of-Thought reasoning (free on Groq's fast inference)
+ * - Anti-hallucination instructions for missing context
  *
  * Why this works:
  * - Smaller models lose focus with complex multi-part instructions
  * - Sandwich prompting reinforces format requirements
  * - Simpler vocabulary list reduces cognitive load
  * - Clear, numbered rules easier for 8B to follow
+ * - CoT reasoning improves accuracy at negligible latency cost
  */
 
 import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
@@ -57,7 +61,17 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
 You are an expert video prompt optimizer. Transform user concepts into professional video prompts.
 
 ## CORE TASK
-Create a structured video prompt with technical specs for AI video generators.
+Return a structured video prompt with technical specs for AI video generators.
+
+## THINK STEP-BY-STEP (Chain-of-Thought)
+Before writing the prompt:
+1. What is the core subject/action the user wants to capture?
+2. What shot type best serves this creative intent?
+3. What aperture matches the shot type (Wide=f/11, Close-up=f/1.8)?
+4. What frame rate fits the motion (24fps cinematic, 60fps action)?
+5. What lighting setup enhances the mood?
+
+Document your reasoning in _creative_strategy.
 
 ## KEY RULES (Simplified for Llama 3.1)
 
@@ -81,10 +95,10 @@ Create a structured video prompt with technical specs for AI video generators.
    - Write like describing to a cinematographer
    - Example: "A Close-Up captures..." not "Close-Up → captures..."
 
-5. **100-150 Words for Main Prompt**:
-   - Natural paragraph
-   - Camera-visible details only
-   - Professional terminology
+5. **75-125 Words for Main Prompt**:
+   - Empirically validated optimal range (shorter prompts with precise terminology outperform verbose ones)
+   - Natural paragraph, camera-visible details only
+   - Professional terminology, no filler words
 
 ## TECHNICAL VOCABULARY (Use These Terms)
 
@@ -99,12 +113,19 @@ Create a structured video prompt with technical specs for AI video generators.
 - 30fps: Broadcast, standard
 - 60fps: Action, smooth motion
 
+## MISSING CONTEXT HANDLING
+If the user concept is vague or missing details:
+- Do NOT invent specific subjects, locations, or actions not implied
+- Use generic but professional descriptions (e.g., "the subject" not "a woman in red")
+- Note ambiguity in _creative_strategy
+- Ask clarifying questions in the notes field if critical info is missing
+
 ## OUTPUT FORMAT
 
 Return JSON with:
-- **_creative_strategy**: Why you chose this angle/aperture/fps
+- **_creative_strategy**: Your step-by-step reasoning for angle/aperture/fps choices
 - **shot_type**: From vocabulary above
-- **prompt**: 100-150 word natural paragraph
+- **prompt**: 75-125 word natural paragraph
 - **technical_specs**: {lighting, camera, style, aspect_ratio, frame_rate, duration, audio}
 - **variations**: [{label, prompt}] (2 variations: different angle, different lighting)
 

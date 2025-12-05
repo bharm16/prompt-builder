@@ -8,6 +8,8 @@
  * - Section 3.3: Pre-fill assistant response for guaranteed JSON start
  * - Section 4.1: Temperature 0.1, top_p 0.95 for structured output
  * - Section 5.1: XML tagging reduces context blending by 23%
+ * - Section 8.2: Output-oriented verbs ("Return/Output" not "Generate/Analyze")
+ * - Section 5.2: Anti-hallucination instructions for missing context
  * 
  * Key Difference from OpenAI:
  * - Groq uses validation-based schema (NOT grammar-constrained)
@@ -170,7 +172,7 @@ export const LLAMA3_DISAMBIGUATION_RULES = `
  * This is ~1000 tokens but necessary for Llama 3 accuracy.
  */
 export const GROQ_FULL_SYSTEM_PROMPT = `
-Label video prompt elements using the taxonomy. Output ONLY valid JSON matching the SpanLabelingResponse interface.
+Return labeled video prompt elements using the taxonomy. Output ONLY valid JSON matching the SpanLabelingResponse interface.
 
 ## Response Interface
 
@@ -209,6 +211,14 @@ ${LLAMA3_DISAMBIGUATION_RULES}
 3. **Process ALL sections:** Including TECHNICAL SPECS - extract values like "24fps", "16:9", "4-8s"
 4. **Chain-of-Thought first:** Populate analysis_trace with your reasoning BEFORE listing spans
 5. **Quality over quantity:** Meaningful content words only, fewer spans is better than trivial ones
+
+## Missing Context Handling
+
+If input text is ambiguous or lacks clear video terminology:
+- Do NOT invent categories or roles not supported by the text
+- Use lower confidence (0.7) for ambiguous spans
+- Note ambiguity in meta.notes field
+- It is acceptable to return fewer spans if text lacks labelable content
 
 ## Adversarial Detection
 
@@ -327,8 +337,8 @@ export function getGroqSystemPrompt(useJsonSchema: boolean): string {
   return GROQ_FULL_SYSTEM_PROMPT
     // Remove "Output ONLY valid JSON" from opening line, keep the rest
     .replace(
-      /^Label video prompt elements using the taxonomy\. Output ONLY valid JSON matching the SpanLabelingResponse interface\./,
-      'Label video prompt elements using the taxonomy. Match the SpanLabelingResponse interface.'
+      /^Return labeled video prompt elements using the taxonomy\. Output ONLY valid JSON matching the SpanLabelingResponse interface\./,
+      'Return labeled video prompt elements using the taxonomy. Match the SpanLabelingResponse interface.'
     )
     // Remove the "Remember" reminder at the end
     .replace(

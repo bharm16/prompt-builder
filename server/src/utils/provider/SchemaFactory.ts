@@ -112,6 +112,8 @@ function getOpenAIEnhancementSchema(isPlaceholder: boolean): JSONSchema {
  * Groq/Llama Enhancement Schema
  * 
  * Features:
+ * - Object wrapper for json_object mode compatibility
+ *   (Groq's json_object mode requires top-level object, not array)
  * - Simpler structure for 8B model
  * - No strict mode (validation-based)
  * - Minimal descriptions to save tokens
@@ -124,16 +126,22 @@ function getGroqEnhancementSchema(isPlaceholder: boolean): JSONSchema {
   }
 
   return {
-    type: 'array',
-    items: {
-      type: 'object',
-      required,
-      properties: {
-        text: { type: 'string' },
-        category: { type: 'string' },
-        explanation: { type: 'string' },
-        slot: { type: 'string' },
-        visual_focus: { type: 'string' },
+    type: 'object',
+    required: ['suggestions'],
+    properties: {
+      suggestions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required,
+          properties: {
+            text: { type: 'string' },
+            category: { type: 'string' },
+            explanation: { type: 'string' },
+            slot: { type: 'string' },
+            visual_focus: { type: 'string' },
+          },
+        },
       },
     },
   };
@@ -176,15 +184,21 @@ export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSche
     };
   }
 
-  // Groq/Llama - simpler schema
+  // Groq/Llama - object wrapper for json_object mode
   return {
-    type: 'array',
-    items: {
-      required: ['text'],
-      properties: {
-        text: { type: 'string' },
-        category: { type: 'string' },
-        explanation: { type: 'string' },
+    type: 'object',
+    required: ['suggestions'],
+    properties: {
+      suggestions: {
+        type: 'array',
+        items: {
+          required: ['text'],
+          properties: {
+            text: { type: 'string' },
+            category: { type: 'string' },
+            explanation: { type: 'string' },
+          },
+        },
       },
     },
   };
