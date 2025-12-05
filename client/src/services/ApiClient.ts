@@ -109,8 +109,10 @@ export { ApiError } from './http/ApiError';
 
 export const apiClient = new ApiClient();
 
+// Enable logging in development
 if ((import.meta as { env?: { MODE?: string } }).env?.MODE === 'development') {
-  apiClient.addRequestInterceptor((config) => config);
-  apiClient.addResponseInterceptor((response) => response);
+  import('./http/LoggingInterceptors').then(({ setupApiLogging }) => {
+    setupApiLogging(apiClient);
+  });
 }
 
