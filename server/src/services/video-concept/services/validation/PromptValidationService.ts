@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import {
   validatePromptOutputSchema,
@@ -35,9 +36,11 @@ export interface ValidationResult {
  */
 export class PromptValidationService {
   private readonly ai: AIService;
+  private readonly log: ILogger;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    this.log = logger.child({ service: 'PromptValidationService' });
   }
 
   /**
@@ -47,7 +50,14 @@ export class PromptValidationService {
     elements: Record<string, string>;
     concept?: string;
   }): Promise<ValidationResult> {
-    logger.info('Validating prompt quality');
+    const startTime = performance.now();
+    const operation = 'validatePrompt';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementCount: Object.keys(params.elements).length,
+      hasConcept: !!params.concept,
+    });
 
     const prompt = `Evaluate the quality and completeness of this video prompt.
 
@@ -89,9 +99,20 @@ Return ONLY a JSON object:
           temperature: 0.3,
         }
       ) as ValidationResult;
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        score: validation.score,
+        feedbackCount: validation.feedback.length,
+      });
+      
       return validation;
     } catch (error) {
-      logger.error('Failed to validate prompt', { error });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return {
         score: 50,
         breakdown: {
@@ -114,7 +135,14 @@ Return ONLY a JSON object:
     elementType: string;
     existingElements: Record<string, string>;
   }): Promise<{ defaults: string[] }> {
-    logger.info('Getting smart defaults', { elementType: params.elementType });
+    const startTime = performance.now();
+    const operation = 'getSmartDefaults';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementType: params.elementType,
+      existingElementCount: Object.keys(params.existingElements).length,
+    });
 
     const dependencies = Object.entries(params.existingElements)
       .filter(([_, v]) => v)
@@ -122,6 +150,10 @@ Return ONLY a JSON object:
       .join('\n');
 
     if (!dependencies) {
+      this.log.debug(`${operation} skipped - no dependencies`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return { defaults: [] };
     }
 
@@ -150,9 +182,20 @@ Return ONLY a JSON array:
           temperature: 0.6,
         }
       ) as string[];
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        defaultCount: defaults.length,
+      });
+      
       return { defaults };
     } catch (error) {
-      logger.error('Failed to get smart defaults', { error });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        elementType: params.elementType,
+      });
       return { defaults: [] };
     }
   }

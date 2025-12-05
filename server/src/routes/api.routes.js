@@ -42,16 +42,47 @@ export function createAPIRoutes(services) {
     '/optimize',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'optimize';
+      
       const { prompt, mode, context, brainstormContext } = req.body;
 
-      const optimizedPrompt = await promptOptimizationService.optimize({
-        prompt,
+      logger.info('Optimize request received', {
+        operation,
+        requestId,
+        promptLength: prompt?.length || 0,
         mode,
-        context,
-        brainstormContext, // Pass brainstorm context to service
+        hasContext: !!context,
+        hasBrainstormContext: !!brainstormContext,
       });
 
-      res.json({ optimizedPrompt });
+      try {
+        const optimizedPrompt = await promptOptimizationService.optimize({
+          prompt,
+          mode,
+          context,
+          brainstormContext, // Pass brainstorm context to service
+        });
+
+        logger.info('Optimize request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          inputLength: prompt?.length || 0,
+          outputLength: optimizedPrompt?.length || 0,
+        });
+
+        res.json({ optimizedPrompt });
+      } catch (error) {
+        logger.error('Optimize request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          promptLength: prompt?.length || 0,
+        });
+        throw error;
+      }
     })
   );
 
@@ -74,6 +105,19 @@ export function createAPIRoutes(services) {
         res.write(`event: ${eventType}\n`);
         res.write(`data: ${JSON.stringify(data)}\n\n`);
       };
+
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'optimize-stream';
+
+      logger.info('Optimize-stream request received', {
+        operation,
+        requestId,
+        promptLength: prompt?.length || 0,
+        mode,
+        hasContext: !!context,
+        hasBrainstormContext: !!brainstormContext,
+      });
 
       try {
         // Start two-stage optimization with parallel span labeling
@@ -127,9 +171,21 @@ export function createAPIRoutes(services) {
           usedFallback: result.usedFallback || false,
         });
 
+        logger.info('Optimize-stream request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          usedFallback: result.usedFallback || false,
+        });
+
         res.end();
       } catch (error) {
-        logger.error('Streaming optimization failed', { error: error.message });
+        logger.error('Optimize-stream request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          promptLength: prompt?.length || 0,
+        });
 
         sendEvent('error', {
           error: error.message,
@@ -146,14 +202,46 @@ export function createAPIRoutes(services) {
     '/video/suggestions',
     validateRequest(creativeSuggestionSchema),
     asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'video-suggestions';
+      
       const { elementType, currentValue, context, concept } = req.body;
-      const result = await videoConceptService.getCreativeSuggestions({
+
+      logger.info('Video suggestions request received', {
+        operation,
+        requestId,
         elementType,
-        currentValue,
-        context,
-        concept,
+        hasCurrentValue: !!currentValue,
+        hasContext: !!context,
+        hasConcept: !!concept,
       });
-      res.json(result);
+
+      try {
+        const result = await videoConceptService.getCreativeSuggestions({
+          elementType,
+          currentValue,
+          context,
+          concept,
+        });
+
+        logger.info('Video suggestions request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          suggestionCount: result.suggestions?.length || 0,
+        });
+
+        res.json(result);
+      } catch (error) {
+        logger.error('Video suggestions request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          elementType,
+        });
+        throw error;
+      }
     })
   );
 
@@ -236,12 +324,36 @@ export function createAPIRoutes(services) {
     '/video/semantic-parse',
     validateRequest(semanticParseSchema),
     asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'semantic-parse';
+      
       const { text } = req.body;
+
+      logger.info('Semantic parse request received', {
+        operation,
+        requestId,
+        textLength: text?.length || 0,
+      });
+
       try {
         const spans = await textCategorizerService.parseText({ text });
+        
+        logger.info('Semantic parse request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          spanCount: spans?.length || 0,
+        });
+
         res.json({ spans });
       } catch (error) {
-        logger.error('Semantic parse failed', { error: error.message });
+        logger.error('Semantic parse request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          textLength: text?.length || 0,
+        });
         res.status(error.statusCode || 500).json({
           error: 'Categorization failed',
           message: 'Unable to parse text into semantic spans',
@@ -256,6 +368,10 @@ export function createAPIRoutes(services) {
     perfMonitor.trackRequest.bind(perfMonitor),
     validateRequest(suggestionSchema),
     asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'get-enhancement-suggestions';
+      
       const {
         highlightedText,
         contextBefore,
@@ -271,35 +387,65 @@ export function createAPIRoutes(services) {
         editHistory, // NEW: Edit history for consistency
       } = req.body;
 
+      logger.info('Enhancement suggestions request received', {
+        operation,
+        requestId,
+        highlightedTextLength: highlightedText?.length || 0,
+        fullPromptLength: fullPrompt?.length || 0,
+        highlightedCategory,
+        highlightedCategoryConfidence,
+        hasBrainstormContext: !!brainstormContext,
+        spanCount: allLabeledSpans?.length || 0,
+      });
+
       // Track service call timing
       if (req.perfMonitor) {
         req.perfMonitor.start('service_call');
       }
 
-      const result = await enhancementService.getEnhancementSuggestions({
-        highlightedText,
-        contextBefore,
-        contextAfter,
-        fullPrompt,
-        originalUserPrompt,
-        brainstormContext,
-        highlightedCategory,
-        highlightedCategoryConfidence,
-        highlightedPhrase,
-        allLabeledSpans, // Pass to service
-        nearbySpans, // Pass to service
-        editHistory, // NEW: Pass to service
-      });
+      try {
+        const result = await enhancementService.getEnhancementSuggestions({
+          highlightedText,
+          contextBefore,
+          contextAfter,
+          fullPrompt,
+          originalUserPrompt,
+          brainstormContext,
+          highlightedCategory,
+          highlightedCategoryConfidence,
+          highlightedPhrase,
+          allLabeledSpans, // Pass to service
+          nearbySpans, // Pass to service
+          editHistory, // NEW: Pass to service
+        });
 
-      // Track metadata
-      if (req.perfMonitor) {
-        req.perfMonitor.end('service_call');
-        req.perfMonitor.addMetadata('cacheHit', result.fromCache || false);
-        req.perfMonitor.addMetadata('suggestionCount', result.suggestions?.length || 0);
-        req.perfMonitor.addMetadata('category', highlightedCategory || 'unknown');
+        // Track metadata
+        if (req.perfMonitor) {
+          req.perfMonitor.end('service_call');
+          req.perfMonitor.addMetadata('cacheHit', result.fromCache || false);
+          req.perfMonitor.addMetadata('suggestionCount', result.suggestions?.length || 0);
+          req.perfMonitor.addMetadata('category', highlightedCategory || 'unknown');
+        }
+
+        logger.info('Enhancement suggestions request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          suggestionCount: result.suggestions?.length || 0,
+          fromCache: result.fromCache || false,
+          category: highlightedCategory,
+        });
+
+        res.json(result);
+      } catch (error) {
+        logger.error('Enhancement suggestions request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          highlightedCategory,
+        });
+        throw error;
       }
-
-      res.json(result);
     })
   );
 
@@ -308,15 +454,43 @@ export function createAPIRoutes(services) {
     '/get-custom-suggestions',
     validateRequest(customSuggestionSchema),
     asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'get-custom-suggestions';
+      
       const { highlightedText, customRequest, fullPrompt } = req.body;
 
-      const result = await enhancementService.getCustomSuggestions({
-        highlightedText,
-        customRequest,
-        fullPrompt,
+      logger.info('Custom suggestions request received', {
+        operation,
+        requestId,
+        highlightedTextLength: highlightedText?.length || 0,
+        customRequestLength: customRequest?.length || 0,
+        fullPromptLength: fullPrompt?.length || 0,
       });
 
-      res.json(result);
+      try {
+        const result = await enhancementService.getCustomSuggestions({
+          highlightedText,
+          customRequest,
+          fullPrompt,
+        });
+
+        logger.info('Custom suggestions request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          suggestionCount: result.suggestions?.length || 0,
+        });
+
+        res.json(result);
+      } catch (error) {
+        logger.error('Custom suggestions request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+        });
+        throw error;
+      }
     })
   );
 

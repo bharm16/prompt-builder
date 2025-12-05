@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { parseConceptOutputSchema } from '@utils/validation.js';
 import type { AIService } from '../../prompt-optimization/types.js';
@@ -11,16 +12,24 @@ import type { AIService } from '../../prompt-optimization/types.js';
  */
 export class ConceptParsingService {
   private readonly ai: AIService;
+  private readonly log: ILogger;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    this.log = logger.child({ service: 'ConceptParsingService' });
   }
 
   /**
    * Parse a concept description into individual elements
    */
   async parseConcept(params: { concept: string }): Promise<{ elements: Record<string, string> }> {
-    logger.info('Parsing concept into elements');
+    const startTime = performance.now();
+    const operation = 'parseConcept';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      conceptLength: params.concept.length,
+    });
 
     const prompt = `Break down this video concept into structured elements.
 
@@ -59,9 +68,19 @@ Return ONLY a JSON object with ALL elements:
           temperature: 0.5,
         }
       ) as Record<string, string>;
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        elementCount: Object.keys(elements).length,
+      });
+      
       return { elements };
     } catch (error) {
-      logger.error('Failed to parse concept', { error });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return {
         elements: {
           subject: '',

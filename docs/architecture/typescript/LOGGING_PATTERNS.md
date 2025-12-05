@@ -6,6 +6,27 @@ This document defines the logging standards for the Prompt Builder codebase. Pro
 
 ---
 
+## ⚠️ STOP - READ THIS FIRST
+
+> **The #1 logging bug in this codebase:**
+> ```typescript
+> // ❌ WRONG - warn() does NOT take an Error argument
+> log.warn('Something failed', error, { context });
+> 
+> // ✅ CORRECT - Only error() takes an Error argument
+> log.error('Something failed', error, { context });
+> 
+> // ✅ CORRECT - For warn(), put error info in meta
+> log.warn('Something failed', { error: error.message, context });
+> ```
+>
+> **Only `error()` accepts an Error object as the 2nd parameter.**  
+> All other methods (`debug`, `info`, `warn`) take only `(message, meta)`.
+>
+> See [Section 2: Method Signatures](#2-method-signatures-critical) for details.
+
+---
+
 ## Why Structured Logging?
 
 ```typescript
@@ -65,7 +86,157 @@ console.log('debugging');
 
 ---
 
-## 2. Log Levels
+## 2. Method Signatures (CRITICAL)
+
+### ⚠️ READ THIS CAREFULLY - Common Source of Bugs
+
+The logging methods have **different signatures**. **Only `error()` accepts an Error object as a parameter.** Using the wrong signature will cause TypeScript errors or silent failures.
+
+### Method Signature Reference
+
+```
+┌──────────┬─────────────────────────────────────────────────────────────┬───────────────┐
+│  METHOD  │  SIGNATURE                                                  │  ERROR ARG?   │
+├──────────┼─────────────────────────────────────────────────────────────┼───────────────┤
+│  debug() │  (message: string, meta?: Record<string, unknown>)          │  ❌ NO        │
+│  info()  │  (message: string, meta?: Record<string, unknown>)          │  ❌ NO        │
+│  warn()  │  (message: string, meta?: Record<string, unknown>)          │  ❌ NO        │
+│  error() │  (message: string, error?: Error, meta?: Record<...>)       │  ✅ YES       │
+└──────────┴─────────────────────────────────────────────────────────────┴───────────────┘
+```
+
+| Method | Arguments | Can pass Error object? |
+|--------|-----------|------------------------|
+| `debug()` | `(message, meta?)` | ❌ **NO** |
+| `info()` | `(message, meta?)` | ❌ **NO** |
+| `warn()` | `(message, meta?)` | ❌ **NO** |
+| `error()` | `(message, error?, meta?)` | ✅ **YES** |
+
+### ✅ Correct Usage
+
+```typescript
+// debug - 2 args max: (message, meta)
+log.debug('Processing request', { userId, requestId });
+
+// info - 2 args max: (message, meta)
+log.info('Operation completed', { duration: 123, count: 5 });
+
+// warn - 2 args max: (message, meta)  ⚠️ NO ERROR ARGUMENT
+log.warn('Falling back to default', { reason: 'timeout', retryCount: 3 });
+
+// error - 3 args max: (message, error, meta) ← ONLY error() takes Error object
+log.error('Operation failed', error, { userId, operation: 'process' });
+log.error('Operation failed', new Error('Something broke'), { context: 'test' });
+```
+
+### ❌ WRONG - These Are Bugs
+
+```typescript
+// ❌ WRONG - warn() does NOT accept Error as 2nd argument
+log.warn('Connection failed', error, { retryCount: 3 });
+//                            ^^^^^ BUG: warn() signature is (message, meta)
+
+// ❌ WRONG - info() does NOT accept Error as 2nd argument  
+log.info('Retrying operation', error, { attempt: 2 });
+//                             ^^^^^ BUG: info() signature is (message, meta)
+
+// ❌ WRONG - debug() does NOT accept Error as 2nd argument
+log.debug('Caught exception', error, { context: 'handler' });
+//                            ^^^^^ BUG: debug() signature is (message, meta)
+
+// ❌ WRONG - Passing error as 3rd argument to non-error methods
+log.warn('Failed', { context: 'test' }, error);
+//                                      ^^^^^ BUG: warn() only takes 2 args
+```
+
+### ✅ How to Fix: Include Error Info in Meta Object
+
+When you need to log error details but it's NOT an `error()` level log, put the error information inside the meta object:
+
+```typescript
+// ✅ CORRECT - Put error details in the meta object
+log.warn('Connection failed, retrying', {
+  error: error.message,           // Just the message string
+  errorName: error.name,          // Error type (e.g., "TypeError")
+  retryCount: 3,
+});
+
+// ✅ CORRECT - For more detail, include stack in meta
+log.warn('Recoverable error occurred', {
+  error: error.message,
+  stack: error.stack,             // Include stack trace if needed for debugging
+  context: 'database connection',
+});
+
+// ✅ CORRECT - If it's actually a failure, use error()
+log.error('Connection failed', error, { retryCount: 3 });
+```
+
+### When to Use Each Level
+
+| Situation | Method | Example |
+|-----------|--------|---------|
+| Operation **failed**, needs investigation | `error()` | `log.error('Payment failed', error, { orderId })` |
+| Something unexpected but **handled** | `warn()` | `log.warn('Rate limited', { error: e.message })` |
+| Normal **business event** completed | `info()` | `log.info('Order shipped', { orderId })` |
+| **Debugging** details (dev only) | `debug()` | `log.debug('Cache miss', { key })` |
+
+### Decision Flowchart
+
+```
+Is the operation a FAILURE that needs attention?
+├── YES → Use error(message, error, meta)
+└── NO → Is it unexpected/degraded behavior?
+         ├── YES → Use warn(message, { error: e.message, ...meta })
+         └── NO → Is it a significant business event?
+                  ├── YES → Use info(message, meta)
+                  └── NO → Use debug(message, meta)
+```
+
+### Copy-Paste Templates
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════════════
+// ERROR - Operation failed (3 args: message, Error, meta)
+// ═══════════════════════════════════════════════════════════════════════════
+log.error('Description of failure', error, {
+  operation: 'methodName',
+  userId,
+  // ... additional context
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WARN - Handled gracefully (2 args: message, meta)
+// ⚠️ NOTE: Error info goes INSIDE meta object, NOT as 2nd argument!
+// ═══════════════════════════════════════════════════════════════════════════
+log.warn('Description of issue', {
+  error: error.message,        // ← Error message as string property
+  errorName: error.name,       // ← Optional: error type
+  operation: 'methodName',
+  // ... additional context
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INFO - Business events (2 args: message, meta)
+// ═══════════════════════════════════════════════════════════════════════════
+log.info('Description of event', {
+  operation: 'methodName',
+  duration: 123,
+  // ... additional context
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEBUG - Troubleshooting (2 args: message, meta)
+// ═══════════════════════════════════════════════════════════════════════════
+log.debug('Description of state', {
+  operation: 'methodName',
+  // ... debugging details
+});
+```
+
+---
+
+## 3. Log Levels
 
 ### Level Definitions
 
@@ -79,17 +250,18 @@ console.log('debugging');
 ### Choosing the Right Level
 
 ```typescript
-// ERROR - Something broke, needs investigation
+// ERROR - Something broke, needs investigation (CAN pass error object)
 logger.error('Failed to generate suggestions', error, {
   userId,
   promptId,
 });
 
-// WARN - Something unexpected but handled
+// WARN - Something unexpected but handled (CANNOT pass error object)
+// ⚠️ Put error info in meta object!
 logger.warn('Falling back to default model', {
+  error: rateLimitError.message,  // ← error info goes HERE
   requestedModel: 'gpt-4',
   fallbackModel: 'gpt-3.5-turbo',
-  reason: 'Rate limited',
 });
 
 // INFO - Significant business event
@@ -133,7 +305,7 @@ logger.info('Batch processing complete', {
 
 ---
 
-## 3. Structured Metadata
+## 4. Structured Metadata
 
 ### Rule: Always Include Context
 
@@ -163,7 +335,7 @@ logger.error('Request failed', error, {
 | `requestId` | string | For HTTP requests |
 | `traceId` | string | For distributed tracing |
 | `duration` | number | For timed operations |
-| `error` | Error | When logging errors |
+| `error` | string | When logging errors in warn/info/debug |
 
 ### Metadata Best Practices
 
@@ -192,6 +364,7 @@ class EnhancementService {
       
       return result;
     } catch (error) {
+      // ✅ error() CAN take Error object as 2nd argument
       this.log.error('Suggestion generation failed', error as Error, {
         operation: 'generateSuggestions',
         duration: Date.now() - startTime,
@@ -205,7 +378,7 @@ class EnhancementService {
 
 ---
 
-## 4. Error Logging
+## 5. Error Logging
 
 ### Rule: Always Include Stack Traces
 
@@ -266,9 +439,29 @@ async function handleRequest(req: Request): Promise<Response> {
 }
 ```
 
+### Catching and Warning (NOT error level)
+
+When you catch an error but handle it gracefully, use `warn()` with error info in meta:
+
+```typescript
+async function fetchWithFallback(url: string): Promise<Data> {
+  try {
+    return await primaryFetch(url);
+  } catch (error) {
+    // ⚠️ This is warn(), so error info goes in META object
+    logger.warn('Primary fetch failed, using fallback', {
+      error: (error as Error).message,    // ← String, not Error object
+      errorName: (error as Error).name,
+      url,
+    });
+    return await fallbackFetch(url);
+  }
+}
+```
+
 ---
 
-## 5. Sensitive Data
+## 6. Sensitive Data
 
 ### Rule: Never Log Secrets or PII
 
@@ -351,7 +544,7 @@ logger.debug('Processing payload', {
 
 ---
 
-## 6. Performance Logging
+## 7. Performance Logging
 
 ### Rule: Log Duration for Async Operations
 
@@ -378,6 +571,7 @@ async function optimizePrompt(prompt: string): Promise<string> {
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
     
+    // ✅ error() takes Error as 2nd arg
     logger.error(`${operation} failed`, error as Error, {
       operation,
       duration,
@@ -409,6 +603,7 @@ export function withTiming<T>(
       return result;
     })
     .catch((error) => {
+      // ✅ error() takes Error as 2nd arg
       log.error(`${operation} failed`, error, {
         operation,
         duration: Math.round(performance.now() - startTime),
@@ -427,7 +622,7 @@ const result = await withTiming(
 
 ---
 
-## 7. Frontend Logging
+## 8. Frontend Logging
 
 ### Component Logging
 
@@ -497,6 +692,7 @@ async function customFetch(url: string, options: RequestInit): Promise<Response>
     
     return response;
   } catch (error) {
+    // ✅ error() takes Error as 2nd arg
     logger.error('Custom fetch failed', error as Error, { url });
     throw error;
   } finally {
@@ -507,7 +703,7 @@ async function customFetch(url: string, options: RequestInit): Promise<Response>
 
 ---
 
-## 8. Request Tracing
+## 9. Request Tracing
 
 ### Backend: Request ID
 
@@ -562,7 +758,7 @@ async function complexOperation(): Promise<void> {
 
 ---
 
-## 9. Configuration
+## 10. Configuration
 
 ### Backend (`server/.env`)
 
@@ -596,7 +792,7 @@ VITE_LOG_LEVEL=debug
 
 ---
 
-## 10. Service Logging Template
+## 11. Service Logging Template
 
 ### Backend Service
 
@@ -637,6 +833,7 @@ export class FeatureService {
       return result;
       
     } catch (error) {
+      // ✅ error() takes Error as 2nd arg
       this.log.error(`${operation} failed`, error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
@@ -670,6 +867,7 @@ export function useFeature() {
       
     } catch (error) {
       logger.endTimer('doSomething');
+      // ✅ error() takes Error as 2nd arg
       log.error('doSomething failed', error as Error);
       throw error;
     }
@@ -683,6 +881,33 @@ export function useFeature() {
 
 ## Anti-Patterns
 
+### ❌ #1 Bug: Passing Error to warn/info/debug
+
+This is the most common logging bug in this codebase:
+
+```typescript
+// ❌ WRONG - warn() does NOT take Error as 2nd argument
+log.warn('Request failed', error, { context: 'api' });
+//                         ^^^^^ BUG!
+
+// ❌ WRONG - info() does NOT take Error as 2nd argument
+log.info('Retrying', error, { attempt: 2 });
+//                   ^^^^^ BUG!
+
+// ❌ WRONG - debug() does NOT take Error as 2nd argument
+log.debug('Caught', error, { handler: 'global' });
+//                  ^^^^^ BUG!
+
+// ✅ CORRECT - Put error info in meta object for warn/info/debug
+log.warn('Request failed', { 
+  error: error.message,
+  context: 'api',
+});
+
+// ✅ CORRECT - Only error() takes Error as 2nd argument
+log.error('Request failed', error, { context: 'api' });
+```
+
 ### ❌ Console Logging in Production Code
 
 ```typescript
@@ -695,7 +920,7 @@ console.debug('data:', data);
 // ✅ ALWAYS - Use the logger
 logger.debug('debugging');
 logger.error('Error occurred', error);
-logger.warn('Warning condition');
+logger.warn('Warning condition', { error: error.message });
 logger.debug('Data received', { data: summarize(data) });
 ```
 
@@ -758,6 +983,19 @@ logger.info('Prompt created', { userId, promptId, timestamp });
 
 ## Quick Reference
 
+### ⚠️ Method Signatures - Memorize This
+
+```typescript
+// ONLY error() takes an Error object as 2nd argument
+log.debug(message, meta);              // 2 args
+log.info(message, meta);               // 2 args
+log.warn(message, meta);               // 2 args  ← NO Error arg!
+log.error(message, error, meta);       // 3 args  ← CAN have Error arg
+
+// When you need error info in warn/info/debug:
+log.warn('Something failed', { error: e.message, ...otherMeta });
+```
+
 ### Import Patterns
 
 ```typescript
@@ -770,14 +1008,14 @@ import { logger } from '@/services/LoggingService';
 const log = logger.child('ComponentName');
 ```
 
-### Log Levels
+### Log Levels Quick Reference
 
-| Level | Use For | Example |
-|-------|---------|---------|
-| `error` | Failures | `log.error('Failed', error, ctx)` |
-| `warn` | Degraded | `log.warn('Fallback used', ctx)` |
-| `info` | Events | `log.info('Completed', ctx)` |
-| `debug` | Details | `log.debug('Processing', ctx)` |
+| Level | Use For | Signature | Example |
+|-------|---------|-----------|---------|
+| `error` | Failures | `(msg, err?, meta?)` | `log.error('Failed', error, ctx)` |
+| `warn` | Degraded | `(msg, meta?)` | `log.warn('Fallback', { error: e.message })` |
+| `info` | Events | `(msg, meta?)` | `log.info('Done', ctx)` |
+| `debug` | Details | `(msg, meta?)` | `log.debug('State', ctx)` |
 
 ### Standard Context Fields
 
@@ -788,7 +1026,7 @@ const log = logger.child('ComponentName');
   duration: 1234,              // For timed operations
   requestId: 'req-xxx',        // For HTTP requests
   userId: 'user-xxx',          // When available
-  error: errorObject,          // For error logs
+  error: 'error message',      // For warn/info/debug with error context
 }
 ```
 
@@ -803,7 +1041,7 @@ try {
   });
   return result;
 } catch (error) {
-  log.error('Operation failed', error, { 
+  log.error('Operation failed', error as Error, { 
     duration: Math.round(performance.now() - startTime),
   });
   throw error;
@@ -827,6 +1065,18 @@ copy(window.__logger.exportLogs())
 // Clear logs
 window.__logger.clearStoredLogs()
 ```
+
+---
+
+## Checklist Before Committing
+
+- [ ] No `console.log/warn/error/debug` statements
+- [ ] All `warn()`, `info()`, `debug()` calls have only 2 arguments
+- [ ] All `error()` calls pass Error object as 2nd argument (if available)
+- [ ] Error info in `warn()`/`info()`/`debug()` is in the meta object
+- [ ] No sensitive data (passwords, tokens, PII) in logs
+- [ ] Structured metadata instead of string concatenation
+- [ ] Child logger created with service/component context
 
 ---
 

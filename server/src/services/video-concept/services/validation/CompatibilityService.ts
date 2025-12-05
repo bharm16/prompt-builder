@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { compatibilityOutputSchema } from '@utils/validation.js';
 import type { AIService } from '../../../prompt-optimization/types.js';
@@ -23,10 +24,12 @@ export class CompatibilityService {
   private readonly ai: AIService;
   private readonly cacheService: CacheService;
   private readonly semanticCache: Map<string, number> = new Map();
+  private readonly log: ILogger;
 
   constructor(aiService: AIService, cacheService: CacheService) {
     this.ai = aiService;
     this.cacheService = cacheService;
+    this.log = logger.child({ service: 'CompatibilityService' });
   }
 
   /**
@@ -36,12 +39,24 @@ export class CompatibilityService {
     suggestion: Suggestion,
     existingElements: Record<string, unknown>
   ): Promise<number> {
+    const startTime = performance.now();
+    const operation = 'scoreSemanticCompatibility';
     const cacheKey = `${suggestion.text}_${JSON.stringify(existingElements)}`;
 
     // Check cache first
     if (this.semanticCache.has(cacheKey)) {
+      this.log.debug(`${operation} cache hit`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return this.semanticCache.get(cacheKey)!;
     }
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      suggestionLength: suggestion.text.length,
+      elementCount: Object.keys(existingElements).length,
+    });
 
     const compatibilityPrompt = `Analyze the semantic and thematic compatibility between this suggestion and the existing creative elements.
 
@@ -79,9 +94,18 @@ Score:`;
       const normalizedScore = isNaN(score) ? 0.5 : Math.min(1, Math.max(0, score));
       this.semanticCache.set(cacheKey, normalizedScore);
 
+      this.log.debug(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        score: normalizedScore,
+      });
+
       return normalizedScore;
     } catch (error) {
-      logger.warn('Failed to score semantic compatibility', { error });
+      this.log.warn(`${operation} failed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      }, error as Error);
       return 0.5; // Default neutral score on error
     }
   }
@@ -97,6 +121,16 @@ Score:`;
       concept?: string;
     }
   ): Promise<Suggestion[]> {
+    const startTime = performance.now();
+    const operation = 'filterBySemanticCompatibility';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      suggestionCount: suggestions.length,
+      elementType: params.elementType,
+      hasContext: !!params.context,
+    });
+
     // Build existing elements object
     const existingElements = {
       elementType: params.elementType,
@@ -122,13 +156,21 @@ Score:`;
       .sort((a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0));
 
     // Ensure we return at least 4 suggestions
-    if (filtered.length < 4) {
-      return scoredSuggestions
-        .sort((a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0))
-        .slice(0, 8);
-    }
+    const result = filtered.length < 4
+      ? scoredSuggestions
+          .sort((a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0))
+          .slice(0, 8)
+      : filtered;
 
-    return filtered;
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
+      inputCount: suggestions.length,
+      outputCount: result.length,
+      filtered: suggestions.length - filtered.length,
+    });
+
+    return result;
   }
 
   /**
@@ -139,9 +181,21 @@ Score:`;
     value: string;
     existingElements: Record<string, string>;
   }): Promise<CompatibilityResult> {
-    logger.info('Checking element compatibility', { elementType: params.elementType });
+    const startTime = performance.now();
+    const operation = 'checkCompatibility';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementType: params.elementType,
+      valueLength: params.value.length,
+      existingElementCount: Object.keys(params.existingElements).length,
+    });
 
     if (!params.value || Object.keys(params.existingElements).length === 0) {
+      this.log.debug(`${operation} skipped - no value or elements`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return { score: 1, feedback: 'No conflicts detected' };
     }
 
@@ -170,7 +224,7 @@ Respond with ONLY a JSON object:
 }`;
 
     try {
-      return await StructuredOutputEnforcer.enforceJSON(
+      const result = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
@@ -180,8 +234,21 @@ Respond with ONLY a JSON object:
           temperature: 0.3,
         }
       ) as CompatibilityResult;
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        score: result.score,
+        hasConflicts: !!result.conflicts && result.conflicts.length > 0,
+      });
+      
+      return result;
     } catch (error) {
-      logger.error('Failed to check compatibility', { error });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        elementType: params.elementType,
+      });
       return { score: 0.5, feedback: 'Unable to determine compatibility' };
     }
   }

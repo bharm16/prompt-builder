@@ -12,6 +12,7 @@
 import { useCallback } from 'react';
 import { useToast } from '../components/Toast';
 import { promptOptimizationApiV2 } from '../services';
+import { logger } from '../services/LoggingService';
 import { usePromptOptimizerState, type SpansData } from './usePromptOptimizerState';
 import {
   markOptimizationStart,
@@ -24,13 +25,7 @@ import {
 } from './utils/performanceMetrics';
 import type { Toast } from './types';
 
-// Simple logger for client-side debugging
-const logger = {
-  debug: (msg: string, data?: unknown) => console.debug(`[usePromptOptimizer] ${msg}`, data),
-  info: (msg: string, data?: unknown) => console.info(`[usePromptOptimizer] ${msg}`, data),
-  warn: (msg: string, data?: unknown) => console.warn(`[usePromptOptimizer] ${msg}`, data),
-  error: (msg: string, data?: unknown) => console.error(`[usePromptOptimizer] ${msg}`, data),
-};
+const log = logger.child('usePromptOptimizer');
 
 export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = true) => {
   const toast = useToast() as Toast;
@@ -54,6 +49,14 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
 
   const analyzeAndOptimize = useCallback(
     async (prompt: string, context: unknown | null = null, brainstormContext: unknown | null = null) => {
+      log.debug('analyzeAndOptimize called', {
+        promptLength: prompt.length,
+        mode: selectedMode,
+        hasContext: !!context,
+        hasBrainstormContext: !!brainstormContext,
+      });
+      logger.startTimer('analyzeAndOptimize');
+      
       try {
         const data = await promptOptimizationApiV2.optimizeLegacy({
           prompt,
@@ -61,9 +64,17 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           context,
           brainstormContext,
         });
+        
+        const duration = logger.endTimer('analyzeAndOptimize');
+        log.info('analyzeAndOptimize completed', {
+          duration,
+          outputLength: data.optimizedPrompt?.length || 0,
+        });
+        
         return data.optimizedPrompt;
       } catch (error) {
-        console.error('Error calling optimization API:', error);
+        logger.endTimer('analyzeAndOptimize');
+        log.error('analyzeAndOptimize failed', error as Error);
         throw error;
       }
     },
@@ -80,6 +91,15 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
         toast.warning('Please enter a prompt');
         return null;
       }
+
+      log.debug('optimize called', {
+        promptLength: promptToOptimize.length,
+        mode: selectedMode,
+        useTwoStage,
+        hasContext: !!context,
+        hasBrainstormContext: !!brainstormContext,
+      });
+      logger.startTimer('optimize');
 
       startOptimization();
       setIsProcessing(true);
@@ -125,13 +145,13 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
 
               if (source === 'draft') {
                 setDraftSpans(spansData);
-                logger.debug('Draft spans received', {
+                log.debug('Draft spans received', {
                   spanCount: Array.isArray(spans) ? spans.length : 0,
                   source,
                 });
               } else if (source === 'refined') {
                 setRefinedSpans(spansData);
-                logger.debug('Refined spans received', {
+                log.debug('Refined spans received', {
                   spanCount: Array.isArray(spans) ? spans.length : 0,
                   source,
                 });
@@ -190,10 +210,18 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             toast.warning(`Prompt could be improved. Score: ${score}%`);
           }
 
+          const duration = logger.endTimer('optimize');
+          log.info('optimize completed (single-stage)', {
+            duration,
+            score,
+            outputLength: optimized?.length || 0,
+          });
+
           return { optimized, score };
         }
       } catch (error) {
-        console.error('Optimization failed:', error);
+        logger.endTimer('optimize');
+        log.error('optimize failed', error as Error);
         toast.error('Failed to optimize. Make sure the server is running.');
         return null;
       } finally {

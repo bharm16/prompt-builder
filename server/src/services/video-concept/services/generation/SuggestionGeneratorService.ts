@@ -65,6 +65,7 @@ export class SuggestionGeneratorService {
   private readonly compatibilityService: CompatibilityService;
   private readonly promptBuilder: PromptBuilderService;
   private readonly cacheConfig: { ttl: number; namespace: string };
+  private readonly log: ILogger;
 
   constructor(
     aiService: AIService,
@@ -78,6 +79,7 @@ export class SuggestionGeneratorService {
     this.compatibilityService = compatibilityService;
     this.promptBuilder = new PromptBuilderService();
     this.cacheConfig = cacheService.getConfig('creative');
+    this.log = logger.child({ service: 'SuggestionGeneratorService' });
   }
 
   /**
@@ -90,6 +92,9 @@ export class SuggestionGeneratorService {
     concept?: string;
     userId?: string;
   }): Promise<{ suggestions: Suggestion[] }> {
+    const startTime = performance.now();
+    const operation = 'getCreativeSuggestions';
+    
     const normalizedElementType = (SUBJECT_DESCRIPTOR_KEYS as readonly string[]).includes(params.elementType)
       ? 'subjectDescriptor'
       : params.elementType;
@@ -100,10 +105,13 @@ export class SuggestionGeneratorService {
       ? TAXONOMY.SUBJECT.id 
       : FIELD_CATEGORY_MAP[params.elementType];
 
-    logger.info('Generating creative suggestions', { 
-      elementType: params.elementType, 
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementType: params.elementType,
       normalizedElementType,
-      taxonomyScope 
+      taxonomyScope,
+      hasContext: !!params.context,
+      hasConcept: !!params.concept,
     });
 
     // Check cache
@@ -117,7 +125,11 @@ export class SuggestionGeneratorService {
 
     const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'creative-suggestions');
     if (cached) {
-      logger.debug('Cache hit for creative suggestions');
+      this.log.debug(`${operation} cache hit`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        suggestionCount: cached.suggestions.length,
+      });
       return cached;
     }
 
@@ -181,7 +193,9 @@ export class SuggestionGeneratorService {
       ttl: this.cacheConfig.ttl,
     });
 
-    logger.info('Creative suggestions generated', {
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
       elementType: normalizedElementType,
       count: rankedSuggestions.length,
       filtered: suggestions.length - filteredSuggestions.length,
@@ -264,7 +278,14 @@ export class SuggestionGeneratorService {
     elementType: string;
     value: string;
   }): Promise<{ alternatives: AlternativePhrasing[] }> {
-    logger.info('Getting alternative phrasings', { elementType: params.elementType, value: params.value });
+    const startTime = performance.now();
+    const operation = 'getAlternativePhrasings';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementType: params.elementType,
+      valueLength: params.value.length,
+    });
 
     const prompt = `Provide 5 alternative ways to phrase this ${params.elementType}.
 
@@ -302,9 +323,20 @@ Return ONLY a JSON array:
           temperature: 0.7,
         }
       ) as AlternativePhrasing[];
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        alternativeCount: alternatives.length,
+      });
+      
       return { alternatives };
     } catch (error) {
-      logger.error('Failed to get alternatives', { error });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        elementType: params.elementType,
+      });
       return { alternatives: [] };
     }
   }

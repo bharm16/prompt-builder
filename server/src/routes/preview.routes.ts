@@ -41,10 +41,29 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
+      const startTime = performance.now();
+      const operation = 'generatePreview';
+      const requestId = (req as Request & { id?: string }).id;
+      
+      logger.debug(`Starting ${operation}`, {
+        operation,
+        requestId,
+        userId,
+        promptLength: typeof prompt === 'string' ? prompt.length : 0,
+        aspectRatio,
+      });
+
       try {
         const result = await imageGenerationService.generatePreview(prompt, {
           aspectRatio,
           userId,
+        });
+
+        logger.info(`${operation} completed`, {
+          operation,
+          requestId,
+          userId,
+          duration: Math.round(performance.now() - startTime),
         });
 
         res.json({
@@ -57,11 +76,13 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
                           (errorMessage.includes('402') ? 402 : 
                            errorMessage.includes('429') ? 429 : 500);
         
-        logger.error('Preview generation failed', {
-          error: errorMessage,
-          statusCode,
+        logger.error(`${operation} failed`, error as Error, {
+          operation,
+          requestId,
           userId,
-          prompt: prompt.substring(0, 100),
+          duration: Math.round(performance.now() - startTime),
+          statusCode,
+          promptPreview: typeof prompt === 'string' ? prompt.substring(0, 100) : undefined,
         });
 
         // Check if it's a configuration error

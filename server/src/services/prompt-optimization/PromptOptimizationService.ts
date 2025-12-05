@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { cacheService } from '../cache/CacheService.js';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '@utils/ConstitutionalAI.js';
@@ -47,9 +48,11 @@ export class PromptOptimizationService {
   private readonly shotInterpreter: ShotInterpreterService;
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly templateVersions: Record<string, string>;
+  private readonly log: ILogger;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    this.log = logger.child({ service: 'PromptOptimizationService' });
 
     // Initialize specialized services
     this.contextInference = new ContextInferenceService(aiService);
@@ -64,7 +67,8 @@ export class PromptOptimizationService {
     // Template versions (moved to config)
     this.templateVersions = OptimizationConfig.templateVersions;
 
-    logger.info('PromptOptimizationService initialized with refactored architecture', {
+    this.log.info('PromptOptimizationService initialized with refactored architecture', {
+      operation: 'constructor',
       availableClients: this.ai.getAvailableClients?.(),
       strategies: this.strategyFactory.getSupportedModes()
     });
@@ -83,39 +87,56 @@ export class PromptOptimizationService {
     brainstormContext = null,
     onDraft = null
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
+    const startTime = performance.now();
+    const operation = 'optimizeTwoStage';
+    
     // Default to video mode (only mode supported)
     let finalMode: OptimizationMode = mode || 'video';
     if (finalMode !== 'video') {
-      logger.warn('Non-video mode specified, defaulting to video', { requestedMode: mode });
+      this.log.warn('Non-video mode specified, defaulting to video', {
+        operation,
+        requestedMode: mode,
+      });
       finalMode = 'video';
     }
 
-    logger.info('Starting two-stage optimization', { mode: finalMode });
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      mode: finalMode,
+      promptLength: prompt.length,
+      hasContext: !!context,
+      hasBrainstormContext: !!brainstormContext,
+    });
 
     // Pre-interpret the raw concept into a flexible shot plan (no hard validation on user input)
     let shotPlan: ShotPlan | null = null;
     try {
       shotPlan = await this.shotInterpreter.interpret(prompt);
     } catch (interpError) {
-      logger.warn('Shot interpretation failed, proceeding without shot plan', {
-        error: (interpError as Error).message
+      this.log.warn('Shot interpretation failed, proceeding without shot plan', {
+        operation,
+        error: (interpError as Error).message,
       });
     }
 
     // Check if draft operation supports streaming (ChatGPT available)
     if (!this.ai.supportsStreaming?.('optimize_draft')) {
-      logger.warn('Draft streaming not available, falling back to single-stage optimization');
+      this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
+        operation,
+      });
       const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext });
       return { draft: result, refined: result, metadata: { usedFallback: true } };
     }
 
-    const startTime = Date.now();
-
     try {
       // STAGE 1: Generate fast draft with ChatGPT + parallel span labeling (1-3s)
       const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan);
-      logger.debug('Generating draft with ChatGPT', { mode: finalMode });
-      const draftStartTime = Date.now();
+      this.log.debug('Generating draft with ChatGPT', {
+        operation,
+        mode: finalMode,
+        hasShotPlan: !!shotPlan,
+      });
+      const draftStartTime = performance.now();
 
       // Start operations in parallel
       const operations = [
@@ -133,7 +154,10 @@ export class PromptOptimizationService {
           minConfidence: OptimizationConfig.spanLabeling.minConfidence,
           templateVersion: OptimizationConfig.spanLabeling.templateVersion,
         }, this.ai).catch(err => {
-          logger.warn('Parallel span labeling failed, will retry after draft', { error: (err as Error).message });
+          this.log.warn('Parallel span labeling failed, will retry after draft', {
+            operation,
+            error: (err as Error).message,
+          });
           return null;
         }) : Promise.resolve(null)
       ];
@@ -141,13 +165,14 @@ export class PromptOptimizationService {
       const [draftResponse, initialSpans] = await Promise.all(operations);
 
       const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
-      const draftDuration = Date.now() - draftStartTime;
+      const draftDuration = Math.round(performance.now() - draftStartTime);
 
-      logger.info('Draft generated successfully', {
+      this.log.info('Draft generated successfully', {
+        operation,
         duration: draftDuration,
         draftLength: draft.length,
         hasSpans: !!initialSpans,
-        mode: finalMode
+        mode: finalMode,
       });
 
       // Call onDraft callback
@@ -157,8 +182,11 @@ export class PromptOptimizationService {
       }
 
       // STAGE 2: Refine with primary model (background)
-      logger.debug('Starting refinement with primary model', { mode: finalMode });
-      const refinementStartTime = Date.now();
+      this.log.debug('Starting refinement with primary model', {
+        operation,
+        mode: finalMode,
+      });
+      const refinementStartTime = performance.now();
 
       const refined = await this.optimize({
         prompt: draft, // Use draft as input for refinement
@@ -172,15 +200,18 @@ export class PromptOptimizationService {
         shotPlan,
       });
 
-      const refinementDuration = Date.now() - refinementStartTime;
-      const totalDuration = Date.now() - startTime;
+      const refinementDuration = Math.round(performance.now() - refinementStartTime);
+      const totalDuration = Math.round(performance.now() - startTime);
 
-      logger.info('Two-stage optimization complete', {
+      this.log.info('Two-stage optimization complete', {
+        operation,
         draftDuration,
         refinementDuration,
         totalDuration,
         mode: finalMode,
-        hasSpans: !!initialSpans
+        hasSpans: !!initialSpans,
+        draftLength: draft.length,
+        refinedLength: refined.length,
       });
 
       return {
@@ -199,9 +230,10 @@ export class PromptOptimizationService {
       };
 
     } catch (error) {
-      logger.error('Two-stage optimization failed, falling back to single-stage', {
-        error: (error as Error).message,
-        mode: finalMode
+      this.log.error('Two-stage optimization failed, falling back to single-stage', error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        mode: finalMode,
       });
 
       const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext, shotPlan });
@@ -231,17 +263,34 @@ export class PromptOptimizationService {
     useConstitutionalAI = false,
     useIterativeRefinement = false
   }: OptimizationRequest): Promise<string> {
+    const startTime = performance.now();
+    const operation = 'optimize';
+    
     // Default to video mode (only mode supported)
     let finalMode: OptimizationMode = mode || 'video';
     if (!finalMode) {
       finalMode = 'video';
-      logger.debug('Mode not specified, defaulting to video');
+      this.log.debug('Mode not specified, defaulting to video', {
+        operation,
+      });
     } else if (finalMode !== 'video') {
-      logger.warn('Non-video mode specified, defaulting to video', { requestedMode: mode });
+      this.log.warn('Non-video mode specified, defaulting to video', {
+        operation,
+        requestedMode: mode,
+      });
       finalMode = 'video';
     }
 
-    logger.info('Starting optimization', { mode: finalMode, hasContext: !!context });
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      mode: finalMode,
+      promptLength: prompt.length,
+      hasContext: !!context,
+      hasBrainstormContext: !!brainstormContext,
+      hasShotPlan: !!shotPlan,
+      useConstitutionalAI,
+      useIterativeRefinement,
+    });
 
     // Interpret shot plan if not already provided
     let interpretedShotPlan: ShotPlan | null = shotPlan;
@@ -249,7 +298,8 @@ export class PromptOptimizationService {
       try {
         interpretedShotPlan = await this.shotInterpreter.interpret(prompt);
       } catch (interpError) {
-        logger.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
+        this.log.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
+          operation,
           error: (interpError as Error).message,
         });
       }
@@ -259,7 +309,11 @@ export class PromptOptimizationService {
     const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext);
     const cached = await cacheService.get<string>(cacheKey);
     if (cached) {
-      logger.info('Returning cached optimization result', { mode: finalMode });
+      this.log.debug('Returning cached optimization result', {
+        operation,
+        mode: finalMode,
+        duration: Math.round(performance.now() - startTime),
+      });
       return cached;
     }
 
@@ -305,13 +359,24 @@ export class PromptOptimizationService {
       // Log metrics
       this.logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
 
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        mode: finalMode,
+        inputLength: prompt.length,
+        outputLength: optimizedPrompt.length,
+        useConstitutionalAI,
+        useIterativeRefinement,
+      });
+
       return optimizedPrompt;
 
     } catch (error) {
-      logger.error('Optimization failed', {
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
         mode: finalMode,
-        error: (error as Error).message,
-        stack: (error as Error).stack
+        promptLength: prompt.length,
       });
       throw error;
     }
@@ -327,7 +392,14 @@ export class PromptOptimizationService {
     brainstormContext: Record<string, unknown> | null,
     useConstitutionalAI: boolean
   ): Promise<string> {
-    logger.info('Starting iterative optimization', { mode });
+    const startTime = performance.now();
+    const operation = 'optimizeIteratively';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      mode,
+      promptLength: prompt.length,
+    });
 
     const maxIterations = OptimizationConfig.iterativeRefinement.maxIterations;
     const targetScore = OptimizationConfig.quality.targetScore;
@@ -338,7 +410,11 @@ export class PromptOptimizationService {
     let bestScore = 0;
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
-      logger.debug('Iteration starting', { iteration, currentScore: bestScore });
+      this.log.debug('Iteration starting', {
+        operation,
+        iteration,
+        currentScore: bestScore,
+      });
 
       // Optimize
       const strategy = this.strategyFactory.getStrategy(mode);
@@ -364,27 +440,41 @@ export class PromptOptimizationService {
       if (assessment.score > bestScore) {
         bestScore = assessment.score;
         bestPrompt = finalOptimized;
-        logger.info('Iteration improved quality', { iteration, score: bestScore });
+        this.log.debug('Iteration improved quality', {
+          operation,
+          iteration,
+          score: bestScore,
+        });
       }
 
       // Stop if target reached
       if (assessment.score >= targetScore) {
-        logger.info('Target quality reached', { iteration, score: bestScore });
+        this.log.info('Target quality reached', {
+          operation,
+          iteration,
+          score: bestScore,
+          duration: Math.round(performance.now() - startTime),
+        });
         break;
       }
 
       // Stop if improvement is marginal
       if (iteration > 0 && (assessment.score - bestScore) < improvementThreshold) {
-        logger.info('Marginal improvement, stopping', { iteration });
+        this.log.debug('Marginal improvement, stopping', {
+          operation,
+          iteration,
+        });
         break;
       }
 
       currentPrompt = finalOptimized;
     }
 
-    logger.info('Iterative optimization complete', {
+    this.log.info(`${operation} complete`, {
+      operation,
       finalScore: bestScore,
-      iterations: maxIterations
+      iterations: maxIterations,
+      duration: Math.round(performance.now() - startTime),
     });
 
     return bestPrompt;
@@ -394,22 +484,39 @@ export class PromptOptimizationService {
    * Apply constitutional AI review to optimized prompt
    */
   private async applyConstitutionalAI(prompt: string, mode: OptimizationMode): Promise<string> {
-    logger.debug('Applying constitutional AI review', { mode });
+    const startTime = performance.now();
+    const operation = 'applyConstitutionalAI';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      mode,
+      promptLength: prompt.length,
+    });
 
     try {
       const constitutionalAI = new ConstitutionalAI(this.ai);
       const reviewResult = await constitutionalAI.review(prompt);
 
       if (reviewResult.revised) {
-        logger.info('Constitutional AI suggested revisions', {
-          violationCount: reviewResult.violations?.length || 0
+        this.log.info('Constitutional AI suggested revisions', {
+          operation,
+          violationCount: reviewResult.violations?.length || 0,
+          duration: Math.round(performance.now() - startTime),
         });
         return reviewResult.revised;
       }
 
+      this.log.debug(`${operation} completed - no revisions needed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
+
       return prompt;
     } catch (error) {
-      logger.error('Constitutional AI review failed', { error: (error as Error).message });
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return prompt; // Return original on failure
     }
   }

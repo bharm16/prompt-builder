@@ -2,6 +2,7 @@ import AhoCorasick from 'ahocorasick';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { logger } from '@infrastructure/Logger.js';
 import { TAXONOMY } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig.js';
 import type {
@@ -36,7 +37,10 @@ let VOCAB: Record<string, string[]> = {};
 try {
   VOCAB = JSON.parse(readFileSync(vocabPath, 'utf-8'));
 } catch (e) {
-  console.warn("⚠️ NLP Service: Could not load vocab.json. Technical tagging will fail.");
+  logger.warn('NLP Service: Could not load vocab.json. Technical tagging will fail.', {
+    error: e instanceof Error ? e.message : String(e),
+    vocabPath,
+  });
 }
 
 // ============================================================================
@@ -196,15 +200,25 @@ class RobustGLiNER {
       const modelPath = join(modelDir, 'model.onnx');
       
       if (!existsSync(modelPath)) {
-        console.warn('[RobustGLiNER] Model file not found at:', modelPath);
+        logger.warn('RobustGLiNER: Model file not found', {
+          modelPath,
+          service: 'RobustGLiNER',
+        });
         this.initFailed = true;
         return false;
       }
       
-      console.log('[RobustGLiNER] Loading tokenizer...');
+      logger.debug('RobustGLiNER: Loading tokenizer', {
+        service: 'RobustGLiNER',
+        operation: 'initialize',
+      });
       this.tokenizer = await AutoTokenizer.from_pretrained('onnx-community/gliner_small-v2.1') as unknown as Tokenizer;
       
-      console.log('[RobustGLiNER] Loading ONNX model...');
+      logger.debug('RobustGLiNER: Loading ONNX model', {
+        service: 'RobustGLiNER',
+        operation: 'initialize',
+        modelPath,
+      });
       this.session = await InferenceSession.create(modelPath, {
         executionProviders: ['cpu'],
         graphOptimizationLevel: 'all'
@@ -212,10 +226,16 @@ class RobustGLiNER {
       
       this.Tensor = onnxModule.Tensor as typeof Tensor;
       this.initialized = true;
-      console.log('[RobustGLiNER] ✅ Initialized successfully');
+      logger.info('RobustGLiNER: Initialized successfully', {
+        service: 'RobustGLiNER',
+        operation: 'initialize',
+      });
       return true;
     } catch (error) {
-      console.warn('[RobustGLiNER] Failed to initialize:', (error as Error).message);
+      logger.error('RobustGLiNER: Failed to initialize', error as Error, {
+        service: 'RobustGLiNER',
+        operation: 'initialize',
+      });
       this.initFailed = true;
       return false;
     }
@@ -373,15 +393,21 @@ class RobustGLiNER {
       // Decode output
       const entities = this._decodeOutput(results, text, words, spanIndices, labels, threshold);
       
-      // Debug logging - remove after verification
       if (entities.length > 0) {
-        console.log(`[GLiNER] Found ${entities.length} entities:`, 
-          entities.map(e => `"${e.text}" (${e.label}: ${e.score})`).join(', '));
+        logger.debug('RobustGLiNER: Found entities', {
+          service: 'RobustGLiNER',
+          operation: 'extract',
+          entityCount: entities.length,
+          entities: entities.map(e => ({ text: e.text, label: e.label, score: e.score })),
+        });
       }
       
       return entities;
     } catch (error) {
-      console.warn('[RobustGLiNER] Extraction error:', (error as Error).message);
+      logger.warn('RobustGLiNER: Extraction error', {
+        service: 'RobustGLiNER',
+        operation: 'extract',
+      }, error as Error);
       return [];
     }
   }

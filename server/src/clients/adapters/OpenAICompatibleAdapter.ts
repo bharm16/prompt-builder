@@ -21,6 +21,7 @@
 
 import { APIError, TimeoutError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
 import { validateLLMResponse, ValidationResult } from './ResponseValidator.js';
 
@@ -102,6 +103,7 @@ export class OpenAICompatibleAdapter {
   private defaultModel: string;
   private defaultTimeout: number;
   private providerName: string;
+  private readonly log: ILogger;
   public capabilities: { 
     streaming: boolean; 
     logprobs: boolean; 
@@ -118,6 +120,7 @@ export class OpenAICompatibleAdapter {
     defaultTimeout = 60000,
     providerName = 'openai',
   }: AdapterConfig) {
+    this.log = logger.child({ service: 'OpenAICompatibleAdapter', provider: providerName });
     if (!apiKey) {
       throw new Error(`API key required for ${providerName}`);
     }
@@ -147,10 +150,21 @@ export class OpenAICompatibleAdapter {
    * Complete a chat request with GPT-4o optimizations
    */
   async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
+    const startTime = performance.now();
+    const operation = 'complete';
     const maxRetries = options.maxRetries ?? 2;
     const shouldRetry = options.retryOnValidationFailure ?? true;
     let lastError: Error | null = null;
     let attempt = 0;
+
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      model: options.model || this.defaultModel,
+      maxTokens: options.maxTokens,
+      hasSchema: !!options.schema,
+      jsonMode: options.jsonMode,
+      attempt: attempt + 1,
+    });
 
     while (attempt <= maxRetries) {
       try {
@@ -165,7 +179,8 @@ export class OpenAICompatibleAdapter {
 
           if (!validation.isValid) {
             if (shouldRetry && attempt < maxRetries) {
-              logger.warn('OpenAI response validation failed, retrying', {
+              this.log.warn('OpenAI response validation failed, retrying', {
+                operation,
                 attempt: attempt + 1,
                 errors: validation.errors,
                 responsePreview: response.text.substring(0, 200),
@@ -180,20 +195,36 @@ export class OpenAICompatibleAdapter {
           }
         }
 
+        this.log.info(`${operation} completed`, {
+          operation,
+          duration: Math.round(performance.now() - startTime),
+          attempt: attempt + 1,
+          responseLength: response.text?.length || 0,
+          model: options.model || this.defaultModel,
+        });
+
         return response;
       } catch (error) {
         lastError = error as Error;
         
         if (error instanceof APIError && error.isRetryable && attempt < maxRetries) {
-          logger.warn('OpenAI API error, retrying', {
+          this.log.warn('OpenAI API error, retrying', {
+            operation,
             attempt: attempt + 1,
             status: error.status,
-            message: error.message,
+            error: error.message,
           });
           attempt++;
           await this._sleep(Math.pow(2, attempt) * 500);
           continue;
         }
+        
+        this.log.error(`${operation} failed`, error as Error, {
+          operation,
+          duration: Math.round(performance.now() - startTime),
+          attempt: attempt + 1,
+          maxRetries,
+        });
         
         throw error;
       }
@@ -309,11 +340,20 @@ export class OpenAICompatibleAdapter {
       if (!response.ok) {
         const errorBody = await response.text();
         const isRetryable = response.status >= 500 || response.status === 429;
-        throw new APIError(
+        const apiError = new APIError(
           `${this.providerName} API error: ${response.status} - ${errorBody}`,
           response.status,
           isRetryable
         );
+        
+        this.log.warn('OpenAI API request failed', {
+          operation: '_executeRequest',
+          status: response.status,
+          isRetryable,
+          error: errorBody.substring(0, 200),
+        });
+        
+        throw apiError;
       }
 
       const data = await response.json() as OpenAIResponseData;
@@ -323,8 +363,17 @@ export class OpenAICompatibleAdapter {
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        this.log.warn('OpenAI API request timeout', {
+          operation: '_executeRequest',
+          timeout,
+        });
+        throw timeoutError;
       }
+
+      this.log.error('OpenAI API request error', errorObj, {
+        operation: '_executeRequest',
+      });
 
       throw errorObj;
     }

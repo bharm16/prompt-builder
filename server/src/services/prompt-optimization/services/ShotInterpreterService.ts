@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import type { AIService, ShotPlan } from '../types.js';
 
@@ -16,16 +17,32 @@ import type { AIService, ShotPlan } from '../types.js';
  */
 export class ShotInterpreterService {
   private readonly ai: AIService;
+  private readonly log: ILogger;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    this.log = logger.child({ service: 'ShotInterpreterService' });
   }
 
   /**
    * Interpret a raw concept into a structured shot plan
    */
   async interpret(prompt: string): Promise<ShotPlan | null> {
-    if (!prompt || !prompt.trim()) return null;
+    const startTime = performance.now();
+    const operation = 'interpret';
+    
+    if (!prompt || !prompt.trim()) {
+      this.log.debug(`${operation} skipped - empty prompt`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
+      return null;
+    }
+
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      promptLength: prompt.length,
+    });
 
     const systemPrompt = this._buildSystemPrompt(prompt);
 
@@ -62,11 +79,19 @@ export class ShotInterpreterService {
         maxTokens: 400,
       });
 
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        shotType: parsed.shot_type,
+        confidence: parsed.confidence,
+      });
+
       return parsed as ShotPlan;
     } catch (error) {
-      logger.warn('Shot interpretation failed - continuing without structured plan', {
-        error: (error as Error).message,
-      });
+      this.log.warn(`${operation} failed - continuing without structured plan`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      }, error as Error);
       return null;
     }
   }

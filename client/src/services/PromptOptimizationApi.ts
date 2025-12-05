@@ -6,6 +6,9 @@
  */
 
 import { ApiClient, ApiError } from './ApiClient';
+import { logger } from './LoggingService';
+
+const log = logger.child('PromptOptimizationApi');
 
 interface OptimizeOptions {
   prompt: string;
@@ -173,7 +176,9 @@ export class PromptOptimizationApi {
                 break;
             }
           } catch (parseError) {
-            console.error('Error parsing streaming event:', parseError);
+            log.error('Error parsing streaming event', parseError as Error, {
+              event,
+            });
           }
         },
         onError: (error) => {
@@ -252,7 +257,10 @@ export class PromptOptimizationApi {
               const data = JSON.parse(dataStr) as Record<string, unknown>;
               onMessage(currentEvent, data);
             } catch (e) {
-              console.warn('Failed to parse SSE data:', dataStr);
+              log.warn('Failed to parse SSE data', {
+                dataStr: dataStr.substring(0, 100),
+                error: (e as Error).message,
+              });
             }
           }
         }
@@ -267,7 +275,7 @@ export class PromptOptimizationApi {
         err.status = statusValue !== undefined ? statusValue : null;
       }
 
-      console.error('Streaming fetch error:', error);
+      log.error('Streaming fetch error', err);
       onError(err);
     }
   }
@@ -285,7 +293,10 @@ export class PromptOptimizationApi {
       return await this.optimizeWithStreaming(options);
     } catch (error) {
       streamingError = error as Error;
-      console.warn('Streaming failed, falling back to legacy API:', error);
+      log.warn('Streaming failed, falling back to legacy API', {
+        promptLength: options.prompt?.length || 0,
+        error: (error as Error).message,
+      });
 
       if (this._shouldUseOfflineFallback(error)) {
         return this._handleOfflineFallback(options, error);

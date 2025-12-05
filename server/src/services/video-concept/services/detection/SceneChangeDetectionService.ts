@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger';
 import { cacheService } from '@services/cache/CacheService.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
@@ -25,10 +26,12 @@ export interface SceneChangeResult {
 export class SceneChangeDetectionService {
   private readonly ai: AIService;
   private readonly cacheConfig: { ttl: number; namespace: string };
+  private readonly log: ILogger;
 
   constructor(aiService: AIService) {
     this.ai = aiService;
     this.cacheConfig = cacheService.getConfig('sceneDetection');
+    this.log = logger.child({ service: 'SceneChangeDetectionService' });
   }
 
   /**
@@ -43,10 +46,15 @@ export class SceneChangeDetectionService {
     sectionHeading?: string | null;
     sectionContext?: string | null;
   }): Promise<SceneChangeResult> {
-    logger.info('Detecting scene change', {
+    const startTime = performance.now();
+    const operation = 'detectSceneChange';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
       changedField: params.changedField,
       hasOldValue: !!params.oldValue,
       hasNewValue: !!params.newValue,
+      affectedFieldCount: params.affectedFields.length,
     });
 
     // Check cache
@@ -60,7 +68,11 @@ export class SceneChangeDetectionService {
 
     const cached = await cacheService.get<SceneChangeResult>(cacheKey, 'scene-detection');
     if (cached) {
-      logger.debug('Cache hit for scene detection');
+      this.log.debug(`${operation} cache hit`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        isSceneChange: cached.isSceneChange,
+      });
       return cached;
     }
 
@@ -98,9 +110,12 @@ export class SceneChangeDetectionService {
       ttl: this.cacheConfig.ttl,
     });
 
-    logger.info('Scene change detection completed', {
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
       isSceneChange: result.isSceneChange,
       confidence: result.confidence,
+      suggestedUpdateCount: Object.keys(result.suggestedUpdates).length,
     });
 
     return result;

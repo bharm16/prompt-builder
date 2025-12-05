@@ -1,6 +1,7 @@
 import NodeCache from 'node-cache';
 import crypto from 'crypto';
 import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
 import { metricsService } from '@infrastructure/MetricsService';
 import { SemanticCacheEnhancer } from './SemanticCacheService.js';
 
@@ -65,8 +66,11 @@ export class CacheService {
     sets: number;
   };
   private readonly config: CacheConfig;
+  private readonly log: ILogger;
 
   constructor(config: CacheConfig = {}) {
+    this.log = logger.child({ service: 'CacheService' });
+    
     this.cache = new NodeCache({
       stdTTL: config.defaultTTL || 3600, // Default 1 hour
       checkperiod: 600, // Check for expired keys every 10 minutes
@@ -90,10 +94,14 @@ export class CacheService {
 
     // Log cache events
     this.cache.on('expired', (key: string) => {
-      logger.debug('Cache key expired', { key });
+      this.log.debug('Cache key expired', {
+        operation: 'expired',
+        key,
+      });
     });
 
-    logger.info('Cache service initialized', {
+    this.log.info('Cache service initialized', {
+      operation: 'constructor',
       defaultTTL: config.defaultTTL || 3600,
     });
   }
@@ -166,9 +174,16 @@ export class CacheService {
 
     if (success) {
       this.stats.sets++;
-      logger.debug('Cache set', { key, ttl });
+      this.log.debug('Cache set', {
+        operation: 'set',
+        key,
+        ttl,
+      });
     } else {
-      logger.warn('Cache set failed', { key });
+      this.log.warn('Cache set failed', {
+        operation: 'set',
+        key,
+      });
     }
 
     return success;
@@ -182,7 +197,10 @@ export class CacheService {
   async delete(key: string): Promise<number> {
     const deleted = this.cache.del(key);
     if (deleted > 0) {
-      logger.debug('Cache key deleted', { key });
+      this.log.debug('Cache key deleted', {
+        operation: 'delete',
+        key,
+      });
     }
     return deleted;
   }
@@ -192,7 +210,9 @@ export class CacheService {
    */
   async flush(): Promise<void> {
     this.cache.flushAll();
-    logger.info('Cache flushed');
+    this.log.info('Cache flushed', {
+      operation: 'flush',
+    });
   }
 
   /**
@@ -242,7 +262,9 @@ export class CacheService {
         stats: this.getCacheStats(),
       };
     } catch (error: unknown) {
-      logger.error('Cache health check failed', error instanceof Error ? error : undefined, {});
+      this.log.error('Cache health check failed', error instanceof Error ? error : new Error(String(error)), {
+        operation: 'isHealthy',
+      });
       return {
         healthy: false,
         error: error instanceof Error ? error.message : String(error),

@@ -59,6 +59,20 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       templateVersion,
     };
 
+    const startTime = performance.now();
+    const operation = 'labelSpans';
+    const requestId = (req as Request & { id?: string }).id;
+    
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
+      textLength: text.length,
+      maxSpans: safeMaxSpans,
+      minConfidence: safeMinConfidence,
+      policy,
+      templateVersion,
+    });
+
     try {
       // Cache-aside pattern: Check cache first
       // This reduces API calls by 70-90% and provides <5ms response time for cached results
@@ -66,17 +80,21 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       let cacheHit = false;
 
       if (spanLabelingCache) {
-        const startTime = Date.now();
+        const cacheStartTime = performance.now();
         const cached = await spanLabelingCache.get(text, policy, templateVersion);
 
         if (cached) {
           result = cached;
           cacheHit = true;
 
-          const cacheTime = Date.now() - startTime;
+          const cacheTime = Math.round(performance.now() - cacheStartTime);
           logger.debug('Span labeling cache hit', {
+            operation,
+            requestId,
             cacheTime,
             textLength: text.length,
+            spanCount: cached.spans.length,
+            duration: Math.round(performance.now() - startTime),
           });
 
           // Add cache hit header for monitoring
@@ -87,12 +105,12 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       // Cache miss: use AIModelService (configured in modelConfig.js)
       if (!result) {
-        const startTime = Date.now();
+        const apiStartTime = performance.now();
 
         // Use AIModelService which respects modelConfig.js configuration
         result = await labelSpans(payload, aiService);
 
-        const apiTime = Date.now() - startTime;
+        const apiTime = Math.round(performance.now() - apiStartTime);
 
         // Store in cache for future requests
         if (spanLabelingCache) {
@@ -101,10 +119,14 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
           await spanLabelingCache.set(text, policy, templateVersion, result, { ttl });
         }
 
-        logger.info('Span labeling completed', {
+        logger.info(`${operation} completed`, {
+          operation,
+          requestId,
+          duration: Math.round(performance.now() - startTime),
           apiTime,
           textLength: text.length,
           spanCount: result.spans?.length || 0,
+          cacheHit: false,
         });
 
         // Add cache miss headers for monitoring
@@ -114,7 +136,10 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       return res.json(result);
     } catch (error) {
-      logger.warn('label-spans request failed', {
+      logger.error(`${operation} failed`, error as Error, {
+        operation,
+        requestId,
+        duration: Math.round(performance.now() - startTime),
         error: (error as { message?: string })?.message,
         stack: (error as { stack?: string })?.stack,
         textLength: text?.length,

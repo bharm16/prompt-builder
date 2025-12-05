@@ -1,5 +1,6 @@
 import { APIError, TimeoutError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
 
 interface CompletionOptions {
@@ -57,6 +58,7 @@ export class GeminiAdapter {
   private defaultModel: string;
   private defaultTimeout: number;
   private providerName: string;
+  private readonly log: ILogger;
   public capabilities: { streaming: boolean };
 
   constructor({
@@ -78,12 +80,22 @@ export class GeminiAdapter {
     this.defaultModel = defaultModel;
     this.defaultTimeout = defaultTimeout;
     this.providerName = providerName;
+    this.log = logger.child({ service: 'GeminiAdapter' });
     this.capabilities = { streaming: true };
   }
 
   async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
+    const startTime = performance.now();
+    const operation = 'complete';
     const timeout = options.timeout || this.defaultTimeout;
     const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      model: options.model || this.defaultModel,
+      maxTokens: options.maxTokens,
+      jsonMode: options.jsonMode,
+    });
 
     try {
       const payload = this._buildPayload(systemPrompt, options);
@@ -103,22 +115,50 @@ export class GeminiAdapter {
       if (!response.ok) {
         const errorBody = await response.text();
         const isRetryable = response.status >= 500 || response.status === 429;
-        throw new APIError(
+        const apiError = new APIError(
           `${this.providerName} API error: ${response.status} - ${errorBody}`,
           response.status,
           isRetryable
         );
+        
+        this.log.warn('Gemini API request failed', {
+          operation,
+          status: response.status,
+          isRetryable,
+          error: errorBody.substring(0, 200),
+        });
+        
+        throw apiError;
       }
 
       const data = await response.json() as GeminiResponse;
-      return this._normalizeResponse(data);
+      const result = this._normalizeResponse(data);
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        responseLength: result.text?.length || 0,
+        model: options.model || this.defaultModel,
+      });
+      
+      return result;
     } catch (error) {
       clearTimeout(timeoutId);
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+        this.log.warn('Gemini API request timeout', {
+          operation,
+          timeout,
+        });
+        throw timeoutError;
       }
+
+      this.log.error(`${operation} failed`, errorObj, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
 
       throw errorObj;
     }
@@ -192,7 +232,10 @@ export class GeminiAdapter {
                 options.onChunk(content);
               }
             } catch (e) {
-              logger.debug('Skipping malformed Gemini SSE chunk', { chunk: data.substring(0, 100) });
+              this.log.debug('Skipping malformed Gemini SSE chunk', {
+                operation: 'streamComplete',
+                chunk: data.substring(0, 100),
+              });
             }
           }
         }

@@ -1,6 +1,7 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
+import { logger } from '@infrastructure/Logger.js';
 
 /**
  * Create health check routes
@@ -13,6 +14,12 @@ export function createHealthRoutes(dependencies) {
 
   // GET /health - Basic health check
   router.get('/health', (req, res) => {
+    const requestId = req.id;
+    logger.debug('Health check request', {
+      operation: 'health',
+      requestId,
+    });
+    
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -24,6 +31,15 @@ export function createHealthRoutes(dependencies) {
   router.get(
     '/health/ready',
     asyncHandler(async (req, res) => {
+      const startTime = performance.now();
+      const operation = 'healthReady';
+      const requestId = req.id;
+      
+      logger.debug(`Starting ${operation}`, {
+        operation,
+        requestId,
+      });
+      
       // Avoid external network calls on readiness to prevent abuse/DoS
       // Use internal indicators only (cache health and circuit breaker state)
       const cacheHealth = cacheService.isHealthy();
@@ -61,6 +77,14 @@ export function createHealthRoutes(dependencies) {
         (c) => c.healthy !== false
       );
 
+      logger.info(`${operation} completed`, {
+        operation,
+        requestId,
+        duration: Math.round(performance.now() - startTime),
+        status: allHealthy ? 'ready' : 'not ready',
+        checks,
+      });
+
       res.status(allHealthy ? 200 : 503).json({
         status: allHealthy ? 'ready' : 'not ready',
         timestamp: new Date().toISOString(),
@@ -71,6 +95,12 @@ export function createHealthRoutes(dependencies) {
 
   // GET /health/live - Liveness check (always returns OK if server is running)
   router.get('/health/live', (req, res) => {
+    const requestId = req.id;
+    logger.debug('Liveness check request', {
+      operation: 'healthLive',
+      requestId,
+    });
+    
     res.json({
       status: 'alive',
       timestamp: new Date().toISOString(),
@@ -90,10 +120,25 @@ export function createHealthRoutes(dependencies) {
 
   // GET /stats - Application statistics (JSON format, protected)
   router.get('/stats', metricsAuthMiddleware, (req, res) => {
+    const startTime = performance.now();
+    const operation = 'stats';
+    const requestId = req.id;
+    
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
+    });
+    
     const cacheStats = cacheService.getCacheStats();
     const claudeStats = claudeClient.getStats();
     const groqStats = groqClient ? groqClient.getStats() : null;
     const geminiStats = geminiClient ? geminiClient.getStats() : null;
+
+    logger.info(`${operation} completed`, {
+      operation,
+      requestId,
+      duration: Math.round(performance.now() - startTime),
+    });
 
     res.json({
       timestamp: new Date().toISOString(),

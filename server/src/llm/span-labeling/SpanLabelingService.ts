@@ -4,6 +4,7 @@ import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
 import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
+import { logger } from '@infrastructure/Logger.js';
 import type { LabelSpansParams, LabelSpansResult } from './types.js';
 import type { AIService as BaseAIService } from '../../types.js';
 
@@ -45,7 +46,11 @@ export async function labelSpans(
   
   if (wordCount > maxWordsPerChunk) {
     const provider = getCurrentSpanProvider();
-    console.log(`[SpanLabeling] Large text detected (${wordCount} words), using chunked processing with ${provider} provider`);
+    logger.debug('Large text detected, using chunked processing', {
+      operation: 'labelSpans',
+      wordCount,
+      provider,
+    });
     return labelSpansChunked(params, aiService);
   }
   
@@ -128,7 +133,12 @@ async function labelSpansChunked(
   
   const wordCount = countWords(params.text);
   const provider = getCurrentSpanProvider();
-  console.log(`[SpanLabeling] Processing ${wordCount} words in ${chunks.length} chunks (provider: ${provider})`);
+  logger.debug('Processing chunks', {
+    operation: 'labelSpansChunked',
+    wordCount,
+    chunkCount: chunks.length,
+    provider,
+  });
   
   // Process chunks (parallel or serial based on config)
   const processChunk = async (chunk: { text: string; startOffset: number }): Promise<ChunkResult> => {
@@ -146,7 +156,11 @@ async function labelSpansChunked(
       };
     } catch (error) {
       const err = error as Error;
-      console.error(`[SpanLabeling] Error processing chunk at offset ${chunk.startOffset}:`, err.message);
+      logger.error('Error processing chunk', err as Error, {
+        operation: 'labelSpansChunked',
+        chunkOffset: chunk.startOffset,
+        provider,
+      });
       // Return empty spans for failed chunks to avoid blocking entire request
       return {
         spans: [],
@@ -195,7 +209,12 @@ async function labelSpansChunked(
     provider,
   };
   
-  console.log(`[SpanLabeling] Chunked processing complete: ${mergedSpans.length} spans from ${chunks.length} chunks`);
+  logger.info('Chunked processing complete', {
+    operation: 'labelSpansChunked',
+    spanCount: mergedSpans.length,
+    chunkCount: chunks.length,
+    provider,
+  });
   
   return {
     spans: mergedSpans,

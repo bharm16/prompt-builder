@@ -99,28 +99,18 @@ export class EnhancementMetricsService {
    * @private
    */
   private _logToConsole(metrics: EnhancementMetrics): void {
-    console.log('\n=== Enhancement Service Performance ===');
-    console.log(`Total: ${metrics.total}ms`);
-    console.log(`Prompt Mode: ${metrics.promptMode}`);
-    console.log(`Cache: ${metrics.cache ? 'HIT' : 'MISS'} (${metrics.cacheCheck}ms)`);
-
-    if (metrics.modelDetection > 0) {
-      console.log(`Model Detection: ${metrics.modelDetection}ms`);
-    }
-    if (metrics.sectionDetection > 0) {
-      console.log(`Section Detection: ${metrics.sectionDetection}ms`);
-    }
-    if (metrics.promptBuild > 0) {
-      console.log(`Prompt Build: ${metrics.promptBuild}ms`);
-    }
-    if (metrics.groqCall > 0) {
-      console.log(`Groq Call: ${metrics.groqCall}ms`);
-    }
-    if (metrics.postProcessing > 0) {
-      console.log(`Post-Processing: ${metrics.postProcessing}ms`);
-    }
-    
-    console.log('======================================\n');
+    logger.debug('Enhancement Service Performance', {
+      operation: 'logMetrics',
+      total: metrics.total,
+      promptMode: metrics.promptMode,
+      cache: metrics.cache ? 'HIT' : 'MISS',
+      cacheCheck: metrics.cacheCheck,
+      modelDetection: metrics.modelDetection,
+      sectionDetection: metrics.sectionDetection,
+      promptBuild: metrics.promptBuild,
+      groqCall: metrics.groqCall,
+      postProcessing: metrics.postProcessing,
+    });
   }
 
   /**

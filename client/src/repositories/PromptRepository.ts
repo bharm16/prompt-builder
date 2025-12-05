@@ -29,7 +29,10 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../services/LoggingService';
 import type { PromptHistoryEntry } from '../hooks/types';
+
+const log = logger.child('PromptRepository');
 
 export interface PromptData {
   highlightCache?: unknown | null;
@@ -139,7 +142,7 @@ export class PromptRepository {
 
       return { id: docRef.id, uuid };
     } catch (error) {
-      console.error('Error saving prompt:', error);
+      log.error('Error saving prompt', error as Error);
       throw new PromptRepositoryError('Failed to save prompt', error);
     }
   }
@@ -164,7 +167,7 @@ export class PromptRepository {
         return [];
       }
 
-      console.error('Error fetching prompts:', error);
+      log.error('Error fetching prompts', error as Error);
       throw new PromptRepositoryError('Failed to fetch user prompts', error);
     }
   }
@@ -189,7 +192,7 @@ export class PromptRepository {
       const doc = querySnapshot.docs[0];
       return this._mapDocumentToPrompt(doc);
     } catch (error) {
-      console.error('Error fetching prompt by UUID:', error);
+      log.error('Error fetching prompt by UUID', error as Error);
       throw new PromptRepositoryError('Failed to fetch prompt by UUID', error);
     }
   }
@@ -203,7 +206,7 @@ export class PromptRepository {
 
       // Guard against uninitialized db
       if (!this.db) {
-        console.warn('Firestore db not initialized, skipping highlight update');
+        log.warn('Firestore db not initialized, skipping highlight update');
         return;
       }
 
@@ -240,11 +243,11 @@ export class PromptRepository {
       // The app continues to work locally even without Firestore write permissions.
       // This graceful degradation prevents crashes while maintaining security.
       if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
-        console.warn('Skipping highlight update due to insufficient Firestore permissions.');
+        log.warn('Skipping highlight update due to insufficient Firestore permissions');
         return;
       }
 
-      console.error('Error updating prompt highlights:', error);
+      log.error('Error updating prompt highlights', error as Error);
       throw new PromptRepositoryError('Failed to update highlights', error);
     }
   }
@@ -271,11 +274,11 @@ export class PromptRepository {
       // The app continues to work locally even without Firestore write permissions.
       // This graceful degradation prevents crashes while maintaining security.
       if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
-        console.warn('Skipping output update due to insufficient Firestore permissions.');
+        log.warn('Skipping output update due to insufficient Firestore permissions');
         return;
       }
 
-      console.error('Error updating prompt output:', error);
+      log.error('Error updating prompt output', error as Error);
       throw new PromptRepositoryError('Failed to update output', error);
     }
   }
@@ -292,7 +295,7 @@ export class PromptRepository {
       const docRef = doc(this.db, this.collectionName, docId);
       await deleteDoc(docRef);
     } catch (error) {
-      console.error('Error deleting prompt:', error);
+      log.error('Error deleting prompt', error as Error);
       throw new PromptRepositoryError('Failed to delete prompt', error);
     }
   }
@@ -383,7 +386,7 @@ export class LocalStoragePromptRepository {
 
       return { uuid, id: entry.id };
     } catch (error) {
-      console.error('Error saving to localStorage:', error);
+      log.error('Error saving to localStorage', error as Error);
       throw new PromptRepositoryError('Failed to save to local storage', error);
     }
   }
@@ -396,7 +399,7 @@ export class LocalStoragePromptRepository {
       const history = this._getHistory();
       return history.slice(0, limitCount);
     } catch (error) {
-      console.error('Error loading from localStorage:', error);
+      log.error('Error loading from localStorage', error as Error);
       return [];
     }
   }
@@ -409,7 +412,7 @@ export class LocalStoragePromptRepository {
       const history = this._getHistory();
       return history.find(entry => entry.uuid === uuid) || null;
     } catch (error) {
-      console.error('Error fetching from localStorage:', error);
+      log.error('Error fetching from localStorage', error as Error);
       return null;
     }
   }
@@ -433,13 +436,15 @@ export class LocalStoragePromptRepository {
           // Try to save with fewer items, keeping the updated one
           const trimmed = updated.slice(0, 50);
           localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          console.warn('Storage limit reached, keeping only 50 most recent items');
+          log.warn('Storage limit reached, keeping only 50 most recent items');
         } else {
           throw storageError;
         }
       }
     } catch (error) {
-      console.warn('Unable to persist highlights to localStorage:', error);
+      log.warn('Unable to persist highlights to localStorage', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -464,13 +469,15 @@ export class LocalStoragePromptRepository {
           // Try to save with fewer items, keeping the updated one
           const trimmed = updated.slice(0, 50);
           localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          console.warn('Storage limit reached, keeping only 50 most recent items');
+          log.warn('Storage limit reached, keeping only 50 most recent items');
         } else {
           throw storageError;
         }
       }
     } catch (error) {
-      console.warn('Unable to persist output update to localStorage:', error);
+      log.warn('Unable to persist output update to localStorage', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -492,11 +499,11 @@ export class LocalStoragePromptRepository {
       try {
         localStorage.setItem(this.storageKey, JSON.stringify(filtered));
       } catch (storageError) {
-        console.error('Error deleting from localStorage:', storageError);
+        log.error('Error deleting from localStorage', storageError as Error);
         throw storageError;
       }
     } catch (error) {
-      console.error('Error deleting prompt from localStorage:', error);
+      log.error('Error deleting prompt from localStorage', error as Error);
       throw new PromptRepositoryError('Failed to delete from local storage', error);
     }
   }
@@ -513,7 +520,7 @@ export class LocalStoragePromptRepository {
       const parsed = JSON.parse(savedHistory) as unknown;
       return Array.isArray(parsed) ? parsed as PromptHistoryEntry[] : [];
     } catch (error) {
-      console.error('Error parsing localStorage history:', error);
+      log.error('Error parsing localStorage history', error as Error);
       localStorage.removeItem(this.storageKey);
       return [];
     }

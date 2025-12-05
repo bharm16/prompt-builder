@@ -1,4 +1,5 @@
 import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger.js';
 import { cacheService } from '../cache/CacheService.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
@@ -62,6 +63,7 @@ export class EnhancementService {
   private readonly videoContextDetection: VideoContextDetectionService;
   private readonly suggestionGeneration: SuggestionGenerationService;
   private readonly suggestionProcessing: SuggestionProcessingService;
+  private readonly log: ILogger;
 
   constructor(
     aiService: AIService,
@@ -83,6 +85,7 @@ export class EnhancementService {
     this.diversityEnforcer = diversityEnforcer;
     this.categoryAligner = categoryAligner;
     this.metricsService = metricsService;
+    this.log = logger.child({ service: 'EnhancementService' });
     this.cacheConfig = cacheService.getConfig('enhancement') || {
       ttl: 3600,
       namespace: 'enhancement',
@@ -146,14 +149,16 @@ export class EnhancementService {
     let modelTarget: string | null = null;
     let promptSection: string | null = null;
 
+    const operation = 'getEnhancementSuggestions';
+    
     try {
-      logger.info('Getting enhancement suggestions', {
+      this.log.debug(`Starting ${operation}`, {
+        operation,
         highlightedLength: highlightedText?.length,
         highlightedCategory: highlightedCategory || null,
         categoryConfidence: highlightedCategoryConfidence ?? null,
-        highlightedPhrasePreview: highlightedPhrase
-          ? String(highlightedPhrase).slice(0, 80)
-          : undefined,
+        hasBrainstormContext: !!brainstormContext,
+        editHistoryLength: editHistory?.length || 0,
       });
 
       const videoContext = this.videoContextDetection.detectVideoContext({
@@ -205,10 +210,12 @@ export class EnhancementService {
           modelTarget,
           promptSection,
         });
-        logger.debug('Cache hit for enhancement suggestions', {
+        this.log.debug('Cache hit for enhancement suggestions', {
+          operation,
           cacheCheckTime: metrics.cacheCheck,
           totalTime: metrics.total,
           promptMode: metrics.promptMode,
+          suggestionCount: cached.suggestions?.length || 0,
         });
         return cached;
       }
@@ -319,6 +326,17 @@ export class EnhancementService {
       });
       this.metricsLogger.checkLatency(metrics);
 
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: metrics.total,
+        suggestionCount: result.suggestions?.length || 0,
+        fromCache: metrics.cache,
+        isVideoPrompt,
+        isPlaceholder,
+        modelTarget,
+        promptSection,
+      });
+
       return result;
     } catch (error) {
       metrics.total = Date.now() - startTotal;
@@ -333,6 +351,13 @@ export class EnhancementService {
         },
         error as Error
       );
+      
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: metrics.total,
+        highlightedCategory: highlightedCategory ?? null,
+        isVideoPrompt,
+      });
       throw error;
     }
   }
@@ -345,8 +370,12 @@ export class EnhancementService {
     customRequest, 
     fullPrompt 
   }: CustomSuggestionRequestParams): Promise<{ suggestions: Suggestion[] }> {
-    logger.info('Getting custom suggestions', {
-      request: customRequest,
+    const startTime = performance.now();
+    const operation = 'getCustomSuggestions';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      customRequestLength: customRequest?.length || 0,
       highlightedLength: highlightedText?.length,
     });
 
@@ -359,7 +388,11 @@ export class EnhancementService {
 
     const cached = await cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
     if (cached) {
-      logger.debug('Cache hit for custom suggestions');
+      this.log.debug('Cache hit for custom suggestions', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        suggestionCount: cached.suggestions?.length || 0,
+      });
       return cached;
     }
 
@@ -424,7 +457,9 @@ export class EnhancementService {
       ttl: this.cacheConfig.ttl,
     });
 
-    logger.info('Custom suggestions generated', {
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
       count: diverseSuggestions.length,
       diversityEnforced: diverseSuggestions.length !== suggestions.length,
     });

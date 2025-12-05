@@ -139,25 +139,13 @@ export class PerformanceMonitor {
    * @private
    */
   _logDevelopmentMetrics(route, metrics) {
-    console.log('\n=== Request Performance ===');
-    console.log(`Route: ${route}`);
-    console.log(`Total: ${metrics.total}ms`);
-    
-    if (Object.keys(metrics.operations).length > 0) {
-      console.log('\nOperations:');
-      Object.entries(metrics.operations).forEach(([name, duration]) => {
-        console.log(`  ${name}: ${duration}ms`);
-      });
-    }
-
-    if (Object.keys(metrics.metadata).length > 0) {
-      console.log('\nMetadata:');
-      Object.entries(metrics.metadata).forEach(([key, value]) => {
-        console.log(`  ${key}: ${value}`);
-      });
-    }
-    
-    console.log('==========================\n');
+    logger.debug('Request performance metrics', {
+      operation: '_logDevelopmentMetrics',
+      route,
+      total: metrics.total,
+      operations: metrics.operations,
+      metadata: metrics.metadata,
+    });
   }
 
   /**

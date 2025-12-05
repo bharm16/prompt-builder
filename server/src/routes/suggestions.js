@@ -43,7 +43,7 @@ export function createSuggestionsRoute(aiService) {
  * }
  */
 router.post('/evaluate', async (req, res) => {
-  const startTime = Date.now();
+  const startTime = performance.now();
   
   try {
     const { suggestions, context, rubric } = req.body;
@@ -63,7 +63,12 @@ router.post('/evaluate', async (req, res) => {
       });
     }
 
-    logger.info('Evaluation request received', {
+    const operation = 'evaluateSuggestions';
+    const requestId = req.id;
+    
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
       suggestionCount: suggestions.length,
       rubric: rubric || 'auto-detect',
       isVideoPrompt: context.isVideoPrompt,
@@ -76,11 +81,13 @@ router.post('/evaluate', async (req, res) => {
       rubricType: rubric,
     });
 
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
 
-    logger.info('Evaluation completed successfully', {
+    logger.info(`${operation} completed`, {
+      operation,
+      requestId,
+      duration: responseTime,
       overallScore: evaluation.overallScore,
-      responseTime,
     });
 
     res.json({
@@ -88,12 +95,14 @@ router.post('/evaluate', async (req, res) => {
       responseTime,
     });
   } catch (error) {
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
+    const operation = 'evaluateSuggestions';
+    const requestId = req.id;
     
-    logger.error('Evaluation request failed', {
-      error: error.message,
-      stack: error.stack,
-      responseTime,
+    logger.error(`${operation} failed`, error as Error, {
+      operation,
+      requestId,
+      duration: responseTime,
     });
 
     res.status(500).json({
@@ -117,7 +126,7 @@ router.post('/evaluate', async (req, res) => {
  * }
  */
 router.post('/evaluate/single', async (req, res) => {
-  const startTime = Date.now();
+  const startTime = performance.now();
   
   try {
     const { suggestion, context, rubric } = req.body;
@@ -136,7 +145,12 @@ router.post('/evaluate/single', async (req, res) => {
       });
     }
 
-    logger.info('Single suggestion evaluation request received', {
+    const operation = 'evaluateSingleSuggestion';
+    const requestId = req.id;
+    
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
       suggestionLength: suggestion.length,
       rubric: rubric || 'auto-detect',
     });
@@ -147,14 +161,23 @@ router.post('/evaluate/single', async (req, res) => {
       rubric
     );
 
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
+    const operation = 'evaluateSingleSuggestion';
+    const requestId = req.id;
+
+    logger.info(`${operation} completed`, {
+      operation,
+      requestId,
+      duration: responseTime,
+      overallScore: evaluation.overallScore,
+    });
 
     res.json({
       evaluation,
       responseTime,
     });
   } catch (error) {
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
     
     logger.error('Single suggestion evaluation failed', {
       error: error.message,
@@ -213,7 +236,12 @@ router.post('/evaluate/compare', async (req, res) => {
       });
     }
 
-    logger.info('Comparison evaluation request received', {
+    const operation = 'compareSuggestionSets';
+    const requestId = req.id;
+    
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
       setACount: setA.length,
       setBCount: setB.length,
     });
@@ -225,14 +253,24 @@ router.post('/evaluate/compare', async (req, res) => {
       rubric
     );
 
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
+    const operation = 'compareSuggestionSets';
+    const requestId = req.id;
+
+    logger.info(`${operation} completed`, {
+      operation,
+      requestId,
+      duration: responseTime,
+      winner: comparison.winner,
+      scoreDifference: comparison.scoreDifference,
+    });
 
     res.json({
       comparison,
       responseTime,
     });
   } catch (error) {
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
     
     logger.error('Comparison evaluation failed', {
       error: error.message,
