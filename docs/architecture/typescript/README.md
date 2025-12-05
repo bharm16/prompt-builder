@@ -12,6 +12,7 @@ This directory contains all documentation for migrating the Prompt Builder codeb
 | [TSCONFIG_GUIDE.md](./TSCONFIG_GUIDE.md) | Compiler configuration reference | Setting up or debugging TS config |
 | [PATH_ALIASES.md](./PATH_ALIASES.md) | Path alias setup and migration | Fixing relative import hell |
 | [ZOD_PATTERNS.md](./ZOD_PATTERNS.md) | Runtime validation with Zod | Working with API responses or forms |
+| [LOGGING_PATTERNS.md](./LOGGING_PATTERNS.md) | Structured logging standards | Adding debugging, tracing, monitoring |
 | [CLAUDE_CODE_TEMPLATES.md](./CLAUDE_CODE_TEMPLATES.md) | Copy-paste templates for Claude Code | Requesting features via Claude Code |
 | [TEST_PATTERNS.md](./TEST_PATTERNS.md) | TypeScript-specific testing patterns | Writing tests for TS code |
 
@@ -21,6 +22,12 @@ This directory contains all documentation for migrating the Prompt Builder codeb
 1. Read [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md)
 2. Copy template from [CLAUDE_CODE_TEMPLATES.md](./CLAUDE_CODE_TEMPLATES.md)
 3. Follow [STYLE_RULES.md](./STYLE_RULES.md)
+4. Add logging per [LOGGING_PATTERNS.md](./LOGGING_PATTERNS.md)
+
+### For Debugging
+1. Run `./scripts/enable-debug.sh` to enable debug logging
+2. Follow patterns in [LOGGING_PATTERNS.md](./LOGGING_PATTERNS.md)
+3. Use browser console commands: `window.__logger.getStoredLogs()`
 
 ### For Migration
 1. Read [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
@@ -54,12 +61,14 @@ Track migration progress here:
 3. **No `any`**: Use `unknown` and narrow, never `any`
 4. **Strict Mode**: All compiler strictness options enabled
 5. **Incremental Migration**: JS and TS coexist during transition
+6. **Structured Logging**: Use logger service, never `console.log`
 
 ## Related Documentation
 
 - [../REFACTORING_STANDARD.md](../REFACTORING_STANDARD.md) - File size limits (still apply)
 - [../CLAUDE_CODE_TEMPLATES.md](../CLAUDE_CODE_TEMPLATES.md) - Original JS templates
 - [../CLAUDE_CODE_TEST_TEMPLATES.md](../CLAUDE_CODE_TEST_TEMPLATES.md) - Testing patterns
+- [../../DEBUGGING_GUIDE.md](../../DEBUGGING_GUIDE.md) - Full debugging guide (quick start, browser commands)
 
 ---
 
