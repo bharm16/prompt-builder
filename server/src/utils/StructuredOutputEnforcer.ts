@@ -214,7 +214,7 @@ export class StructuredOutputEnforcer {
     isArray: boolean,
     hasStrictSchema: boolean,
     needsPromptFormatInstructions: boolean,
-    schema?: { type: 'object' | 'array'; [key: string]: unknown } | null
+    schema?: { type: 'object' | 'array'; required?: string[]; [key: string]: unknown } | null
   ): string {
     // If using strict schema mode (OpenAI), grammar-constrained decoding
     // handles format enforcement automatically. Adding text instructions
@@ -225,12 +225,19 @@ export class StructuredOutputEnforcer {
     }
 
     // For providers without strict schema (Groq/Llama, etc.),
-    // add minimal format instruction.
+    // add format instruction.
     // 
     // CRITICAL: Use schema.type to determine format character, not isArray.
     // Groq's json_object mode requires top-level object, so even when we want
     // an array result, the schema may specify type: 'object' with a wrapper.
     const schemaExpectsObject = schema?.type === 'object';
+    
+    // For Groq's wrapper format, be explicit about the structure
+    // This prevents the LLM from returning bare arrays
+    if (schemaExpectsObject && schema?.required?.includes('suggestions')) {
+      return `${systemPrompt}\n\nIMPORTANT: Return ONLY valid JSON in this exact wrapper format:\n{"suggestions": [...your suggestions array here...]}`;
+    }
+    
     const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
     return `${systemPrompt}\n\nRespond with ONLY valid JSON. Start with ${start} - no other text.`;
   }
@@ -248,10 +255,23 @@ export class StructuredOutputEnforcer {
     errorMessage: string, 
     isArray: boolean,
     needsPromptFormatInstructions: boolean,
-    schema?: { type: 'object' | 'array'; [key: string]: unknown } | null
+    schema?: { type: 'object' | 'array'; required?: string[]; [key: string]: unknown } | null
   ): string {
     // Use schema.type to determine format character, not isArray
     const schemaExpectsObject = schema?.type === 'object';
+    
+    // For Groq's wrapper format, be explicit about the structure on retry
+    if (schemaExpectsObject && schema?.required?.includes('suggestions')) {
+      return `${systemPrompt}
+
+Previous attempt failed: ${errorMessage}
+
+RETRY - USE THIS EXACT FORMAT:
+{"suggestions": [array of suggestion objects]}
+
+Do NOT return a bare array. Wrap it in {"suggestions": ...}`;
+    }
+    
     const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
     
     // On retry, always provide explicit format guidance

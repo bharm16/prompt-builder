@@ -188,6 +188,8 @@ export class ContrastiveDiversityEnforcer {
           maxRetries: 2,
           temperature,
           operation: 'enhance_suggestions',
+          provider: 'groq',
+          model: 'llama-3.1-8b-instant',
         }
       ) as Suggestion[];
 
