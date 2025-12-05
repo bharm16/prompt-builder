@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useCallback, useEffect } from 'react';
 
 // External libraries
 import { useToast } from '../../components/Toast';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Internal absolute imports
 import { ExportService } from '../../services/exportService';
@@ -65,6 +66,13 @@ export function PromptCanvas({
   draftSpans = null,
   refinedSpans = null,
 }: PromptCanvasProps): React.ReactElement {
+  // Debug logging
+  const debug = useDebugLogger('PromptCanvas', {
+    mode: selectedMode,
+    hasPrompt: !!displayedPrompt,
+    hasHighlights: !!initialHighlights,
+  });
+
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -106,11 +114,15 @@ export function PromptCanvas({
       if (!enableMLHighlighting || !result) {
         return;
       }
+      debug.logAction('labelingComplete', {
+        spanCount: result.spans.length,
+        hasMeta: !!result.meta,
+      });
       if (onHighlightsPersist) {
         onHighlightsPersist(result);
       }
     },
-    [enableMLHighlighting, onHighlightsPersist]
+    [enableMLHighlighting, onHighlightsPersist, debug]
   );
 
   // Track if this is the first time seeing this text (skip debounce for initial optimization)
@@ -188,8 +200,12 @@ export function PromptCanvas({
   useEffect(() => {
     if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
       performance.mark('prompt-displayed-on-screen');
+      debug.logEffect('Prompt displayed on screen', {
+        promptLength: displayedPrompt.length,
+        mlHighlighting: enableMLHighlighting,
+      });
     }
-  }, [displayedPrompt, enableMLHighlighting]);
+  }, [displayedPrompt, enableMLHighlighting, debug]);
 
   // UI state (simple boolean flags - could be moved to reducer if needed)
   const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
@@ -229,29 +245,41 @@ export function PromptCanvas({
 
   // Event handlers
   const handleCopy = useCallback((): void => {
+    debug.logAction('copy', { promptLength: displayedPrompt?.length ?? 0 });
     copy(displayedPrompt ?? '');
-  }, [copy, displayedPrompt]);
+  }, [copy, displayedPrompt, debug]);
 
   const handleShare = useCallback((): void => {
     if (promptUuid) {
+      debug.logAction('share', { promptUuid });
       share(promptUuid);
     }
-  }, [share, promptUuid]);
+  }, [share, promptUuid, debug]);
 
   const handleExport = useCallback(
     (format: ExportFormat): void => {
+      debug.logAction('export', { format, mode: selectedMode });
+      debug.startTimer('export');
+      
       const exportFormat = convertExportFormat(format);
 
-      ExportService.export(exportFormat, {
-        inputPrompt,
-        displayedPrompt: displayedPrompt ?? '',
-        ...(qualityScore !== null && { qualityScore }),
-        selectedMode,
-      });
-      setShowExportMenu(false);
-      toast.success(`Exported as ${exportFormat.toUpperCase()}`);
+      try {
+        ExportService.export(exportFormat, {
+          inputPrompt,
+          displayedPrompt: displayedPrompt ?? '',
+          ...(qualityScore !== null && { qualityScore }),
+          selectedMode,
+        });
+        setShowExportMenu(false);
+        debug.endTimer('export', `Export as ${exportFormat} successful`);
+        toast.success(`Exported as ${exportFormat.toUpperCase()}`);
+      } catch (error) {
+        debug.endTimer('export');
+        debug.logError('Export failed', error as Error);
+        toast.error('Export failed');
+      }
     },
-    [inputPrompt, displayedPrompt, qualityScore, selectedMode, toast]
+    [inputPrompt, displayedPrompt, qualityScore, selectedMode, toast, debug]
   );
 
   const handleCopyEvent = useCallback(
@@ -272,11 +300,15 @@ export function PromptCanvas({
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
       const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
+      debug.logAction('textEdit', { 
+        newLength: newText.length,
+        oldLength: displayedPrompt?.length ?? 0,
+      });
       if (onDisplayedPromptChange) {
         onDisplayedPromptChange(newText);
       }
     },
-    [onDisplayedPromptChange]
+    [onDisplayedPromptChange, displayedPrompt, debug]
   );
 
   // Render the component

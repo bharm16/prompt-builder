@@ -16,6 +16,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Star as Sparkles, ArrowRight, Zap as Brain, BookOpen, Zap as Wand2, Info } from '@geist-ui/icons';
 import { Button } from './Button';
+import { logger } from '../services/LoggingService';
+import { useDebugLogger } from '../hooks/useDebugLogger';
 
 // State and Hooks
 import { useVideoConceptState } from './VideoConceptBuilder/hooks/useVideoConceptState';
@@ -83,6 +85,10 @@ export default function VideoConceptBuilder({
   onConceptComplete,
   initialConcept = '',
 }: VideoConceptBuilderProps): React.ReactElement {
+  const debug = useDebugLogger('VideoConceptBuilder', { 
+    hasInitialConcept: !!initialConcept 
+  });
+
   // ===========================
   // STATE MANAGEMENT
   // ===========================
@@ -135,6 +141,7 @@ export default function VideoConceptBuilder({
   // ===========================
   const handleElementChange = useCallback(
     (key: ElementKey, value: string): void => {
+      debug.logAction('elementChange', { key, valueLength: value.length });
       dispatch({ type: 'SET_ELEMENT', payload: { key, value } });
 
       // Trigger compatibility check
@@ -167,11 +174,14 @@ export default function VideoConceptBuilder({
   );
 
   const handleCompleteScene = async (): Promise<void> => {
+    const startTime = performance.now();
     const emptyElements = ELEMENT_CARD_ORDER.filter(
       (key) => !composedElements[key]
     );
     if (emptyElements.length === 0) return;
 
+    debug.logAction('completeScene', { emptyElementsCount: emptyElements.length });
+    debug.startTimer('completeScene');
     dispatch({ type: 'SUGGESTIONS_LOADING' });
 
     try {
@@ -180,8 +190,15 @@ export default function VideoConceptBuilder({
         concept
       );
       dispatch({ type: 'APPLY_ELEMENTS', payload: suggestedElements });
+      debug.endTimer('completeScene', 'Scene completed successfully');
     } catch (error) {
-      console.error('Error completing scene:', error);
+      debug.endTimer('completeScene');
+      logger.error('Error completing scene', error as Error, {
+        component: 'VideoConceptBuilder',
+        operation: 'handleCompleteScene',
+        duration: Math.round(performance.now() - startTime),
+        emptyElementsCount: emptyElements.length,
+      });
     } finally {
       dispatch({ type: 'SUGGESTIONS_LOADED', payload: [] });
     }
@@ -190,14 +207,24 @@ export default function VideoConceptBuilder({
   const handleParseConcept = async (): Promise<void> => {
     if (!concept) return;
 
+    const startTime = performance.now();
+    debug.logAction('parseConcept', { conceptLength: concept.length });
+    debug.startTimer('parseConcept');
     dispatch({ type: 'SUGGESTIONS_LOADING' });
 
     try {
       const parsedElements = await VideoConceptApi.parseConcept(concept);
       dispatch({ type: 'APPLY_ELEMENTS', payload: parsedElements });
       dispatch({ type: 'SET_MODE', payload: 'element' });
+      debug.endTimer('parseConcept', 'Concept parsed successfully');
     } catch (error) {
-      console.error('Error parsing concept:', error);
+      debug.endTimer('parseConcept');
+      logger.error('Error parsing concept', error as Error, {
+        component: 'VideoConceptBuilder',
+        operation: 'handleParseConcept',
+        duration: Math.round(performance.now() - startTime),
+        conceptLength: concept.length,
+      });
     } finally {
       dispatch({ type: 'SUGGESTIONS_LOADED', payload: [] });
     }

@@ -1,6 +1,7 @@
 import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
+import { extractUserId } from '../utils/requestHelpers.js';
 import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
 import { spanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 import type { AIModelService } from '../services/ai-model/AIModelService.js';
@@ -62,10 +63,12 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
     const startTime = performance.now();
     const operation = 'labelSpans';
     const requestId = (req as Request & { id?: string }).id;
+    const userId = extractUserId(req);
     
     logger.debug(`Starting ${operation}`, {
       operation,
       requestId,
+      userId,
       textLength: text.length,
       maxSpans: safeMaxSpans,
       minConfidence: safeMinConfidence,
@@ -91,6 +94,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
           logger.debug('Span labeling cache hit', {
             operation,
             requestId,
+            userId,
             cacheTime,
             textLength: text.length,
             spanCount: cached.spans.length,
@@ -122,6 +126,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
         logger.info(`${operation} completed`, {
           operation,
           requestId,
+          userId,
           duration: Math.round(performance.now() - startTime),
           apiTime,
           textLength: text.length,
@@ -139,6 +144,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       logger.error(`${operation} failed`, error as Error, {
         operation,
         requestId,
+        userId,
         duration: Math.round(performance.now() - startTime),
         error: (error as { message?: string })?.message,
         stack: (error as { stack?: string })?.stack,

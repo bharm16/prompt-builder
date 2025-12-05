@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { fetchCustomSuggestions } from '../api/customSuggestionsApi';
+import { logger } from '@/services/LoggingService';
 
 import type { SuggestionItem } from './types';
 
@@ -42,6 +43,10 @@ export function useCustomRequest({
   const handleCustomRequest = useCallback(async (): Promise<void> => {
     if (!customRequest.trim()) return;
 
+    const startTime = performance.now();
+    const operation = 'handleCustomRequest';
+    logger.startTimer(operation);
+    
     setIsCustomLoading(true);
     try {
       // If custom handler provided, use it
@@ -66,8 +71,23 @@ export function useCustomRequest({
 
         setSuggestions(suggestionItems, undefined);
       }
+      
+      const duration = logger.endTimer(operation);
+      logger.info('Custom suggestions fetched successfully', {
+        hook: 'useCustomRequest',
+        operation,
+        duration,
+        suggestionCount: setSuggestions ? 'unknown' : 0,
+      });
     } catch (error) {
-      console.error('Error fetching custom suggestions:', error);
+      const duration = logger.endTimer(operation);
+      logger.error('Error fetching custom suggestions', error as Error, {
+        hook: 'useCustomRequest',
+        operation,
+        duration,
+        customRequestLength: customRequest.trim().length,
+        selectedTextLength: selectedText.length,
+      });
       if (setSuggestions) {
         setSuggestions(
           [{ text: 'Failed to load custom suggestions. Please try again.' }],

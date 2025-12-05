@@ -7,6 +7,7 @@
 import { useCallback, useRef, type Dispatch } from 'react';
 import { VideoConceptApi } from '../api/videoConceptApi';
 import { PRIMARY_ELEMENT_KEYS } from '../config/constants';
+import { logger } from '@/services/LoggingService';
 import type { VideoConceptAction, Elements } from './types';
 
 /**
@@ -39,7 +40,11 @@ export function useTechnicalParams(
 
         return params;
       } catch (error) {
-        console.error('Error generating technical parameters:', error);
+        logger.error('Error generating technical parameters', error as Error, {
+          hook: 'useTechnicalParams',
+          operation: 'fetchTechnicalParams',
+          filledCount,
+        });
         if (requestIdRef.current === requestId) {
           dispatch({ type: 'TECHNICAL_PARAMS_CLEAR' });
         }

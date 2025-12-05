@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { logger } from '../services/LoggingService';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -43,10 +44,18 @@ interface ToastProviderProps {
 // Toast Provider Component
 export function ToastProvider({ children }: ToastProviderProps): React.ReactElement {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const log = logger.child('ToastProvider');
 
   const addToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000): number => {
     const id = Date.now() + Math.random();
     const toast: Toast = { id, message, type, duration };
+
+    log.debug('Toast created', { 
+      type, 
+      messageLength: message.length,
+      duration,
+      toastCount: toasts.length + 1,
+    });
 
     setToasts((prev) => [...prev, toast]);
 
@@ -58,11 +67,12 @@ export function ToastProvider({ children }: ToastProviderProps): React.ReactElem
     }
 
     return id;
-  }, []);
+  }, [log, toasts.length]);
 
   const removeToast = useCallback((id: number): void => {
+    log.debug('Toast removed', { id });
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
+  }, [log]);
 
   const toast: ToastContextValue = {
     success: (message: string, duration?: number) => addToast(message, 'success', duration),
@@ -111,8 +121,10 @@ interface ToastItemProps {
 // Individual Toast Component
 function ToastItem({ id, message, type, onClose }: ToastItemProps): React.ReactElement {
   const [isExiting, setIsExiting] = useState(false);
+  const log = logger.child('ToastItem');
 
   const handleClose = (): void => {
+    log.debug('Toast dismissed by user', { id, type });
     setIsExiting(true);
     setTimeout(onClose, 200); // Match animation duration
   };

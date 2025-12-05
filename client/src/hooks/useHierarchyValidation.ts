@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { TAXONOMY, getParentCategory, isAttribute } from '@shared/taxonomy';
+import { logger } from '../services/LoggingService';
 import type {
   Span,
   ValidationResult,
@@ -8,6 +9,8 @@ import type {
   ValidationIssue,
   ValidationSuggestion,
 } from './types';
+
+const log = logger.child('useHierarchyValidation');
 
 interface OrphanGroup {
   missingParent: string;
@@ -37,6 +40,11 @@ export function useHierarchyValidation(
   const validation = useMemo(() => {
     // Skip validation if disabled or no spans
     if (!enabled || !Array.isArray(spans) || spans.length === 0) {
+      log.debug('Validation skipped', {
+        operation: 'useHierarchyValidation',
+        enabled,
+        spanCount: spans?.length || 0,
+      });
       return {
         warnings: [],
         errors: [],
@@ -46,6 +54,13 @@ export function useHierarchyValidation(
         orphanCount: 0,
       };
     }
+
+    log.debug('Starting hierarchy validation', {
+      operation: 'useHierarchyValidation',
+      spanCount: spans.length,
+      strictMode,
+      showSuggestions,
+    });
 
     const warnings: ValidationIssue[] = [];
     const errors: ValidationIssue[] = [];
@@ -93,6 +108,27 @@ export function useHierarchyValidation(
     }
 
     const isValid = strictMode ? errors.length === 0 && warnings.length === 0 : errors.length === 0;
+    const orphanCount = orphanedGroups.reduce((sum, o) => sum + o.count, 0);
+
+    // Log validation results
+    if (errors.length > 0 || warnings.length > 0) {
+      log.warn('Hierarchy validation issues detected', {
+        operation: 'useHierarchyValidation',
+        errorCount: errors.length,
+        warningCount: warnings.length,
+        orphanCount,
+        spanCount: spans.length,
+        isValid,
+      });
+    } else {
+      log.debug('Hierarchy validation completed', {
+        operation: 'useHierarchyValidation',
+        spanCount: spans.length,
+        isValid,
+        hasOrphans: orphanedGroups.length > 0,
+        suggestionCount: suggestions.length,
+      });
+    }
 
     return {
       warnings,
@@ -100,7 +136,7 @@ export function useHierarchyValidation(
       suggestions,
       isValid,
       hasOrphans: orphanedGroups.length > 0,
-      orphanCount: orphanedGroups.reduce((sum, o) => sum + o.count, 0),
+      orphanCount,
     };
   }, [spans, enabled, strictMode, showSuggestions]);
 

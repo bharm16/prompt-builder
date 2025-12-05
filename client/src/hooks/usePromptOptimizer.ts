@@ -93,6 +93,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
       }
 
       log.debug('optimize called', {
+        operation: 'optimize',
         promptLength: promptToOptimize.length,
         mode: selectedMode,
         useTwoStage,
@@ -109,14 +110,29 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
 
         // Use two-stage optimization if enabled
         if (useTwoStage) {
+          log.debug('Starting two-stage optimization', {
+            operation: 'optimize',
+            stage: 'two-stage',
+          });
+
           const result = await promptOptimizationApiV2.optimizeWithFallback({
             prompt: promptToOptimize,
             mode: selectedMode,
             context,
             brainstormContext,
             onDraft: (draft: string) => {
+              const draftDuration = logger.endTimer('optimize');
+              logger.startTimer('optimize'); // Restart for refinement phase
+              
               markDraftReady();
               measureOptimizeToDraft();
+
+              log.debug('Draft callback triggered', {
+                operation: 'optimize',
+                stage: 'draft',
+                draftLength: draft.length,
+                duration: draftDuration,
+              });
 
               // Draft is ready - show it immediately
               setDraftPrompt(draft);
@@ -130,10 +146,25 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               const draftScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, draft);
               setQualityScore(draftScore);
 
+              log.info('Draft ready', {
+                operation: 'optimize',
+                stage: 'draft',
+                duration: draftDuration,
+                score: draftScore,
+                outputLength: draft.length,
+              });
+
               toast.info('Draft ready! Refining in background...');
             },
             onSpans: (spans: unknown[], source: string, meta?: unknown) => {
               markSpansReceived(source);
+
+              log.debug('Spans callback triggered', {
+                operation: 'optimize',
+                stage: source,
+                spanCount: Array.isArray(spans) ? spans.length : 0,
+                hasMeta: !!meta,
+              });
 
               // Store spans based on source (draft or refined)
               const spansData: SpansData = {
@@ -145,22 +176,33 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
 
               if (source === 'draft') {
                 setDraftSpans(spansData);
-                log.debug('Draft spans received', {
+                log.debug('Draft spans stored', {
+                  operation: 'optimize',
                   spanCount: Array.isArray(spans) ? spans.length : 0,
                   source,
                 });
               } else if (source === 'refined') {
                 setRefinedSpans(spansData);
-                log.debug('Refined spans received', {
+                log.debug('Refined spans stored', {
+                  operation: 'optimize',
                   spanCount: Array.isArray(spans) ? spans.length : 0,
                   source,
                 });
               }
             },
             onRefined: (refined: string) => {
+              const refinementDuration = logger.endTimer('optimize');
+              
               markRefinementComplete();
               measureDraftToRefined();
               measureOptimizeToRefinedTotal();
+
+              log.debug('Refinement callback triggered', {
+                operation: 'optimize',
+                stage: 'refined',
+                refinedLength: refined.length,
+                duration: refinementDuration,
+              });
 
               // Refinement complete - upgrade to refined version
               const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);
@@ -174,6 +216,14 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               setQualityScore(refinedScore);
               setIsRefining(false);
 
+              log.info('Refinement complete', {
+                operation: 'optimize',
+                stage: 'refined',
+                duration: refinementDuration,
+                score: refinedScore,
+                outputLength: refined.length,
+              });
+
               if (refinedScore >= 80) {
                 toast.success(`Excellent prompt! Quality score: ${refinedScore}%`);
               } else if (refinedScore >= 60) {
@@ -184,16 +234,34 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             },
           });
 
+          const totalDuration = logger.endTimer('optimize');
+
           // Check if two-stage fell back to single-stage
           if (result.usedFallback) {
+            log.info('Two-stage optimization fell back to single-stage', {
+              operation: 'optimize',
+              usedFallback: true,
+            });
             toast.warning('Fast optimization unavailable. Using standard optimization (this may take longer).');
           }
+
+          log.info('Two-stage optimization completed', {
+            operation: 'optimize',
+            duration: totalDuration,
+            usedFallback: result.usedFallback,
+            outputLength: result.refined?.length || 0,
+          });
 
           return {
             optimized: result.refined,
             score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),
           };
         } else {
+          log.debug('Starting single-stage optimization', {
+            operation: 'optimize',
+            stage: 'single-stage',
+          });
+
           // Fallback to legacy single-stage optimization
           const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
           const score = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, optimized);
@@ -212,6 +280,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
 
           const duration = logger.endTimer('optimize');
           log.info('optimize completed (single-stage)', {
+            operation: 'optimize',
             duration,
             score,
             outputLength: optimized?.length || 0,
@@ -220,8 +289,13 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           return { optimized, score };
         }
       } catch (error) {
-        logger.endTimer('optimize');
-        log.error('optimize failed', error as Error);
+        const duration = logger.endTimer('optimize');
+        log.error('optimize failed', error as Error, {
+          operation: 'optimize',
+          duration,
+          mode: selectedMode,
+          useTwoStage,
+        });
         toast.error('Failed to optimize. Make sure the server is running.');
         return null;
       } finally {

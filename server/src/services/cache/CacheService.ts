@@ -169,19 +169,24 @@ export class CacheService {
    * @returns Success status
    */
   async set<T = unknown>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
+    const startTime = performance.now();
+    const operation = 'set';
     const ttl = options.ttl || this.cache.options.stdTTL || 3600;
     const success = this.cache.set(key, value, ttl);
 
+    const duration = Math.round(performance.now() - startTime);
     if (success) {
       this.stats.sets++;
       this.log.debug('Cache set', {
-        operation: 'set',
+        operation,
+        duration,
         key,
         ttl,
       });
     } else {
       this.log.warn('Cache set failed', {
-        operation: 'set',
+        operation,
+        duration,
         key,
       });
     }
@@ -195,10 +200,15 @@ export class CacheService {
    * @returns Number of deleted keys
    */
   async delete(key: string): Promise<number> {
+    const startTime = performance.now();
+    const operation = 'delete';
     const deleted = this.cache.del(key);
+    const duration = Math.round(performance.now() - startTime);
+    
     if (deleted > 0) {
       this.log.debug('Cache key deleted', {
-        operation: 'delete',
+        operation,
+        duration,
         key,
       });
     }
@@ -209,9 +219,14 @@ export class CacheService {
    * Clear all cache
    */
   async flush(): Promise<void> {
+    const startTime = performance.now();
+    const operation = 'flush';
     this.cache.flushAll();
+    const duration = Math.round(performance.now() - startTime);
+    
     this.log.info('Cache flushed', {
-      operation: 'flush',
+      operation,
+      duration,
     });
   }
 
@@ -251,19 +266,31 @@ export class CacheService {
    * Check if cache is healthy
    */
   isHealthy(): HealthCheckResult {
+    const startTime = performance.now();
+    const operation = 'isHealthy';
+    
     try {
       const testKey = 'health-check';
       this.cache.set(testKey, 'ok', 1);
       const value = this.cache.get<string>(testKey);
       this.cache.del(testKey);
 
+      const duration = Math.round(performance.now() - startTime);
+      this.log.debug('Cache health check completed', {
+        operation,
+        duration,
+        healthy: value === 'ok',
+      });
+
       return {
         healthy: value === 'ok',
         stats: this.getCacheStats(),
       };
     } catch (error: unknown) {
+      const duration = Math.round(performance.now() - startTime);
       this.log.error('Cache health check failed', error instanceof Error ? error : new Error(String(error)), {
-        operation: 'isHealthy',
+        operation,
+        duration,
       });
       return {
         healthy: false,

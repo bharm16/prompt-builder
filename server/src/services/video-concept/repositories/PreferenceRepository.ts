@@ -87,7 +87,7 @@ export class PreferenceRepository {
       const preferences = await this.storage.get(userId, elementType);
       return preferences || { chosen: [], rejected: [] };
     } catch (error) {
-      logger.error('Failed to get preferences', { userId, elementType, error });
+      logger.error('Failed to get preferences', error as Error, { userId, elementType });
       return { chosen: [], rejected: [] };
     }
   }
@@ -126,7 +126,7 @@ export class PreferenceRepository {
 
       return { success: true };
     } catch (error) {
-      logger.error('Failed to record preference', { userId, elementType, error });
+      logger.error('Failed to record preference', error as Error, { userId, elementType });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -144,7 +144,7 @@ export class PreferenceRepository {
       logger.info('Cleared preferences', { userId, elementType });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to clear preferences', { userId, elementType, error });
+      logger.error('Failed to clear preferences', error as Error, { userId, elementType });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -156,7 +156,7 @@ export class PreferenceRepository {
     try {
       return await (this.storage as InMemoryStorage).getAllForUser(userId);
     } catch (error) {
-      logger.error('Failed to get all preferences', { userId, error });
+      logger.error('Failed to get all preferences', error as Error, { userId });
       return {};
     }
   }

@@ -50,6 +50,10 @@ export function createRequestLoggingInterceptor() {
 
     logger.setTraceId(traceId);
     logger.debug(`→ ${request.init.method || 'GET'} ${endpoint}`, {
+      operation: 'apiRequest',
+      requestId: traceId,
+      method: request.init.method || 'GET',
+      endpoint,
       url: request.url,
       headers: Object.fromEntries(
         Object.entries(request.init.headers || {}).filter(
@@ -90,24 +94,40 @@ export function createResponseLoggingInterceptor() {
 
         if (response.ok) {
           logger.debug(`← ${response.status} ${endpoint}`, {
-            duration: `${duration}ms`,
+            operation: 'apiResponse',
+            requestId: metadata?.traceId,
+            status: response.status,
+            endpoint,
+            duration,
             response: summarizePayload(body),
           });
         } else {
           logger.warn(`← ${response.status} ${endpoint}`, {
-            duration: `${duration}ms`,
+            operation: 'apiResponse',
+            requestId: metadata?.traceId,
+            status: response.status,
+            endpoint,
+            duration,
             error: body,
           });
         }
       } else {
         logger.debug(`← ${response.status} ${endpoint}`, {
-          duration: `${duration}ms`,
+          operation: 'apiResponse',
+          requestId: metadata?.traceId,
+          status: response.status,
+          endpoint,
+          duration,
           contentType,
         });
       }
     } catch {
       logger.debug(`← ${response.status} ${endpoint}`, {
-        duration: `${duration}ms`,
+        operation: 'apiResponse',
+        requestId: metadata?.traceId,
+        status: response.status,
+        endpoint,
+        duration,
         note: 'Could not parse response body',
       });
     }
@@ -123,6 +143,7 @@ export function createResponseLoggingInterceptor() {
 export function createErrorLoggingInterceptor() {
   return (error: Error): never => {
     logger.error('API Request Failed', error, {
+      operation: 'apiRequest',
       type: error.name,
       message: error.message,
     });
@@ -178,5 +199,7 @@ export function setupApiLogging(apiClient: {
   apiClient.addRequestInterceptor(createRequestLoggingInterceptor());
   apiClient.addResponseInterceptor(createResponseLoggingInterceptor());
 
-  logger.info('API logging interceptors initialized');
+  logger.info('API logging interceptors initialized', {
+    operation: 'setupApiLogging',
+  });
 }

@@ -14,8 +14,9 @@
  * Following VideoConceptBuilder pattern: VideoConceptBuilder.tsx
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Hooks
 import { useSuggestionsState } from './hooks/useSuggestionsState';
@@ -82,6 +83,12 @@ interface SuggestionsPanelProps {
 export function SuggestionsPanel({
   suggestionsData = {},
 }: SuggestionsPanelProps): React.ReactElement {
+  // Debug logging
+  const debug = useDebugLogger('SuggestionsPanel', {
+    show: suggestionsData.show,
+    suggestionCount: suggestionsData.suggestions?.length ?? 0,
+  });
+
   // ===========================
   // PROPS DESTRUCTURING
   // ===========================
@@ -153,8 +160,21 @@ export function SuggestionsPanel({
   // HANDLERS
   // ===========================
   const handleCategoryChange = (category: string): void => {
+    debug.logAction('categoryChange', { category, previousCategory: activeCategory });
     dispatch({ type: actions.SET_ACTIVE_CATEGORY, payload: category });
   };
+
+  // Log panel open/close
+  useEffect(() => {
+    if (show) {
+      debug.logEffect('Panel opened', {
+        suggestionCount: suggestions.length,
+        hasSelectedText: !!selectedText,
+      });
+    } else {
+      debug.logEffect('Panel closed');
+    }
+  }, [show, suggestions.length, selectedText, debug]);
 
   // ===========================
   // COMPUTED VALUES

@@ -1,5 +1,6 @@
 import React, { type ReactNode, type ComponentType } from 'react';
 import * as Sentry from '@sentry/react';
+import { logger } from '../../services/LoggingService';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -32,10 +33,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log error to console in development
-    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
-      console.error('Error caught by boundary:', error, errorInfo);
-    }
+    // Log error with full context
+    logger.error('Error caught by boundary', error, {
+      component: 'ErrorBoundary',
+      componentStack: errorInfo.componentStack,
+      isDev: (import.meta as { env?: { DEV?: boolean } }).env?.DEV,
+    });
 
     // Capture error in Sentry with React component stack
     const eventId = Sentry.captureException(error, {

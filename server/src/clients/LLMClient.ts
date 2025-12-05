@@ -310,7 +310,7 @@ export class LLMClient implements IAIClient {
         throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
       }
 
-      logger.error(`${this.providerName} streaming failed`, { error: errorObj.message });
+      logger.error(`${this.providerName} streaming failed`, errorObj);
       throw errorObj;
     }
   }

@@ -46,9 +46,8 @@ export class TemplateService {
 
       return this.render(templateContent, variables);
     } catch (error) {
-      logger.error('Failed to load template', {
+      logger.error('Failed to load template', error as Error, {
         templateName,
-        error: (error as Error).message,
       });
       throw new Error(`Template not found: ${templateName}`);
     }

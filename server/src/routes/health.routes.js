@@ -112,6 +112,12 @@ export function createHealthRoutes(dependencies) {
     '/metrics',
     metricsAuthMiddleware,
     asyncHandler(async (req, res) => {
+      const requestId = req.id;
+      logger.debug('Metrics request', {
+        operation: 'metrics',
+        requestId,
+      });
+      
       res.set('Content-Type', metricsService.register.contentType);
       const metrics = await metricsService.getMetrics();
       res.end(metrics);

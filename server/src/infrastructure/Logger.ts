@@ -14,8 +14,11 @@ export class Logger implements ILogger {
   private logger: pino.Logger;
 
   constructor(config: LoggerConfig = {}) {
+    // Default to 'debug' in development, 'info' in production (Requirement 8.1, 8.2)
+    const defaultLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+    
     this.logger = pino({
-      level: config.level || process.env.LOG_LEVEL || 'info',
+      level: config.level || process.env.LOG_LEVEL || defaultLevel,
       transport: process.env.NODE_ENV !== 'production' ? {
         target: 'pino-pretty',
         options: {

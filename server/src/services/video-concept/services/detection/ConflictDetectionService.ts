@@ -24,9 +24,14 @@ export interface Conflict {
  */
 export class ConflictDetectionService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'ConflictDetectionService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('ConflictDetectionService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
@@ -35,11 +40,23 @@ export class ConflictDetectionService {
   async detectConflicts(params: {
     elements: Record<string, string>;
   }): Promise<{ conflicts: Conflict[] }> {
-    logger.info('Detecting element conflicts');
-
+    const operation = 'detectConflicts';
+    const startTime = performance.now();
+    
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      filledElementCount: filledElements.length,
+      totalElements: Object.keys(params.elements).length,
+    });
+
     if (filledElements.length < 2) {
+      this.log.debug(`${operation}: Insufficient elements for conflict detection`, {
+        operation,
+        filledElementCount: filledElements.length,
+        duration: Math.round(performance.now() - startTime),
+      });
       return { conflicts: [] };
     }
 
@@ -103,9 +120,23 @@ Return ONLY a JSON array of conflicts (empty array if none):
       // Combine all conflicts
       const allConflicts = [...conflicts, ...descriptorConflicts];
 
+      const duration = Math.round(performance.now() - startTime);
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
+        llmConflictCount: conflicts.length,
+        descriptorConflictCount: descriptorConflicts.length,
+        totalConflictCount: allConflicts.length,
+      });
+
       return { conflicts: allConflicts };
     } catch (error) {
-      logger.error('Failed to detect conflicts', { error });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        filledElementCount: filledElements.length,
+      });
       return { conflicts: [] };
     }
   }

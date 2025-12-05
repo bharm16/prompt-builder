@@ -696,48 +696,85 @@ const { labels: GLINER_LABELS } = generateGlinerLabels();
  * Extract semantic spans using neuro-symbolic pipeline
  */
 export async function extractSemanticSpans(text: string, options: ExtractionOptions = {}): Promise<ExtractionResult> {
-  if (!text || typeof text !== 'string') return { spans: [], stats: { phase: 'empty-input', totalSpans: 0, closedVocabSpans: 0, openVocabSpans: 0, tier1Latency: 0, tier2Latency: 0, totalLatency: 0 } };
+  const operation = 'extractSemanticSpans';
+  const startTime = performance.now();
   
-  const { useGliner = true } = options;
-  const startTime = Date.now();
-  
-  // Tier 1: Closed vocabulary (Aho-Corasick) - always runs
-  const closedSpans = extractClosedVocabulary(text);
-  const tier1Time = Date.now() - startTime;
-  
-  // Tier 2: Open vocabulary (GLiNER) - optional
-  let openSpans: NlpSpan[] = [];
-  let tier2Time = 0;
-  
-  if (useGliner) {
-    const tier2Start = Date.now();
-    openSpans = await extractOpenVocabulary(text);
-    tier2Time = Date.now() - tier2Start;
+  if (!text || typeof text !== 'string') {
+    logger.debug(`${operation}: Empty or invalid input`, {
+      operation,
+      textType: typeof text,
+    });
+    return { spans: [], stats: { phase: 'empty-input', totalSpans: 0, closedVocabSpans: 0, openVocabSpans: 0, tier1Latency: 0, tier2Latency: 0, totalLatency: 0 } };
   }
   
-  // Merge with closed vocabulary priority
-  const mergedSpans = mergeSpans(closedSpans, openSpans);
+  const { useGliner = true } = options;
   
-  // Deduplicate using longest-match strategy
-  const uniqueSpans = deduplicateSpans(mergedSpans);
+  logger.debug(`Starting ${operation}`, {
+    operation,
+    textLength: text.length,
+    useGliner,
+  });
   
-  // Remove source field from output
-  const outputSpans = uniqueSpans.map(({ source, ...span }) => span);
-  
-  const totalTime = Date.now() - startTime;
-  
-  return {
-    spans: outputSpans,
-    stats: {
-      phase: 'neuro-symbolic',
+  try {
+    // Tier 1: Closed vocabulary (Aho-Corasick) - always runs
+    const tier1Start = performance.now();
+    const closedSpans = extractClosedVocabulary(text);
+    const tier1Time = Math.round(performance.now() - tier1Start);
+    
+    // Tier 2: Open vocabulary (GLiNER) - optional
+    let openSpans: NlpSpan[] = [];
+    let tier2Time = 0;
+    
+    if (useGliner) {
+      const tier2Start = performance.now();
+      openSpans = await extractOpenVocabulary(text);
+      tier2Time = Math.round(performance.now() - tier2Start);
+    }
+    
+    // Merge with closed vocabulary priority
+    const mergedSpans = mergeSpans(closedSpans, openSpans);
+    
+    // Deduplicate using longest-match strategy
+    const uniqueSpans = deduplicateSpans(mergedSpans);
+    
+    // Remove source field from output
+    const outputSpans = uniqueSpans.map(({ source, ...span }) => span);
+    
+    const totalTime = Math.round(performance.now() - startTime);
+    
+    logger.info(`${operation} completed`, {
+      operation,
+      duration: totalTime,
       totalSpans: outputSpans.length,
       closedVocabSpans: closedSpans.length,
       openVocabSpans: openSpans.length,
       tier1Latency: tier1Time,
       tier2Latency: tier2Time,
-      totalLatency: totalTime,
-    }
-  };
+      textLength: text.length,
+    });
+    
+    return {
+      spans: outputSpans,
+      stats: {
+        phase: 'neuro-symbolic',
+        totalSpans: outputSpans.length,
+        closedVocabSpans: closedSpans.length,
+        openVocabSpans: openSpans.length,
+        tier1Latency: tier1Time,
+        tier2Latency: tier2Time,
+        totalLatency: totalTime,
+      }
+    };
+  } catch (error) {
+    const duration = Math.round(performance.now() - startTime);
+    logger.error(`${operation} failed`, error as Error, {
+      operation,
+      duration,
+      textLength: text.length,
+      useGliner,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -745,10 +782,44 @@ export async function extractSemanticSpans(text: string, options: ExtractionOpti
  * For backward compatibility and fast-path scenarios
  */
 export function extractKnownSpans(text: string): NlpSpan[] {
-  if (!text || typeof text !== 'string') return [];
+  const operation = 'extractKnownSpans';
+  const startTime = performance.now();
   
-  const closedSpans = extractClosedVocabulary(text);
-  return deduplicateSpans(closedSpans).map(({ source, ...span }) => span);
+  if (!text || typeof text !== 'string') {
+    logger.debug(`${operation}: Empty or invalid input`, {
+      operation,
+      textType: typeof text,
+    });
+    return [];
+  }
+  
+  logger.debug(`Starting ${operation}`, {
+    operation,
+    textLength: text.length,
+  });
+  
+  try {
+    const closedSpans = extractClosedVocabulary(text);
+    const result = deduplicateSpans(closedSpans).map(({ source, ...span }) => span);
+    const duration = Math.round(performance.now() - startTime);
+    
+    logger.info(`${operation} completed`, {
+      operation,
+      duration,
+      spanCount: result.length,
+      textLength: text.length,
+    });
+    
+    return result;
+  } catch (error) {
+    const duration = Math.round(performance.now() - startTime);
+    logger.error(`${operation} failed`, error as Error, {
+      operation,
+      duration,
+      textLength: text.length,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -794,13 +865,39 @@ export function estimateCoverage(text: string): number {
  * Pre-warm GLiNER model (call on server startup)
  */
 export async function warmupGliner(): Promise<WarmupResult> {
+  const operation = 'warmupGliner';
+  const startTime = performance.now();
+  
+  logger.debug(`Starting ${operation}`, { operation });
+  
   try {
     const ready = await glinerInstance.initialize();
+    const duration = Math.round(performance.now() - startTime);
+    
+    if (ready) {
+      logger.info(`${operation} completed`, {
+        operation,
+        duration,
+        success: true,
+      });
+    } else {
+      logger.warn(`${operation}: GLiNER model not available`, {
+        operation,
+        duration,
+        success: false,
+      });
+    }
+    
     return { 
       success: ready, 
       message: ready ? 'RobustGLiNER initialized' : 'GLiNER model not available'
     };
   } catch (error) {
+    const duration = Math.round(performance.now() - startTime);
+    logger.error(`${operation} failed`, error as Error, {
+      operation,
+      duration,
+    });
     return { success: false, message: (error as Error).message };
   }
 }

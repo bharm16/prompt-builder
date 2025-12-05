@@ -11,9 +11,14 @@ import type { AIService } from '../../prompt-optimization/types.js';
  */
 export class SceneCompletionService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'SceneCompletionService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('SceneCompletionService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
@@ -23,13 +28,27 @@ export class SceneCompletionService {
     existingElements: Record<string, string>;
     concept: string;
   }): Promise<{ suggestions: Record<string, string> }> {
-    logger.info('Completing scene with AI suggestions');
-
+    const operation = 'completeScene';
+    const startTime = performance.now();
+    
     const emptyElements = Object.entries(params.existingElements)
       .filter(([_, value]) => !value)
       .map(([key]) => key);
 
+    const filledCount = Object.keys(params.existingElements).length - emptyElements.length;
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      emptyElementCount: emptyElements.length,
+      filledElementCount: filledCount,
+      hasConcept: !!params.concept,
+    });
+
     if (emptyElements.length === 0) {
+      this.log.debug(`${operation}: No empty elements to complete`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return { suggestions: params.existingElements };
     }
 
@@ -69,9 +88,25 @@ Return ONLY a JSON object with the missing elements:
           temperature: 0.7,
         }
       ) as Record<string, string>;
+      
+      const duration = Math.round(performance.now() - startTime);
+      const completedCount = Object.keys(suggestions).length;
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
+        emptyElementCount: emptyElements.length,
+        completedCount,
+      });
+      
       return { suggestions: { ...params.existingElements, ...suggestions } };
     } catch (error) {
-      logger.error('Failed to complete scene', { error });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        emptyElementCount: emptyElements.length,
+      });
       return { suggestions: params.existingElements };
     }
   }

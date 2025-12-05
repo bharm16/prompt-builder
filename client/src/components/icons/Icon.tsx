@@ -8,6 +8,7 @@
 import React from 'react';
 import * as GeistIcons from '@geist-ui/icons';
 import { iconSizes } from '@/styles/tokens';
+import { logger } from '@/services/LoggingService';
 import type { CSSProperties } from 'react';
 
 export type IconSize = keyof typeof iconSizes;
@@ -72,7 +73,10 @@ export function Icon({
   const GeistIcon = GeistIcons[name];
   
   if (!GeistIcon) {
-    console.warn(`Geist icon "${name}" not found`);
+    logger.warn('Geist icon not found', {
+      component: 'Icon',
+      iconName: name,
+    });
     return null;
   }
   

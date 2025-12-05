@@ -114,7 +114,7 @@ export class LLMJudgeService {
 
       return result;
     } catch (error) {
-      logger.error('LLM-as-a-Judge evaluation failed', { error });
+      logger.error('LLM-as-a-Judge evaluation failed', error as Error);
       
       // Return fallback evaluation
       return this._getFallbackEvaluation(rubric);

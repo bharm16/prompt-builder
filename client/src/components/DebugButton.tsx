@@ -1,5 +1,6 @@
 import React, { type CSSProperties } from 'react';
 import { usePromptDebugger } from '../hooks/usePromptDebugger';
+import { logger } from '../services/LoggingService';
 import type { PromptDebuggerState } from '../hooks/types';
 
 interface DebugButtonProps {
@@ -51,7 +52,10 @@ export default function DebugButton({
       await capturePromptData();
       // Data is automatically logged to console and saved
     } catch (error) {
-      console.error('Failed to capture debug data:', error);
+      logger.error('Failed to capture debug data', error as Error, {
+        component: 'DebugButton',
+        operation: 'handleCapture',
+      });
       alert('Failed to capture debug data. Check console for details.');
     }
   };
@@ -60,7 +64,10 @@ export default function DebugButton({
     try {
       exportToFile();
     } catch (error) {
-      console.error('Failed to export debug data:', error);
+      logger.error('Failed to export debug data', error as Error, {
+        component: 'DebugButton',
+        operation: 'handleExport',
+      });
       alert('No debug data to export. Capture data first.');
     }
   };

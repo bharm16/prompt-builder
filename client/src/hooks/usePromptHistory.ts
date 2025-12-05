@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '../components/Toast';
 import { getPromptRepositoryForUser } from '../repositories';
+import { logger } from '../services/LoggingService';
 import type { User, PromptHistoryEntry, Toast } from './types';
 
 export const usePromptHistory = (user: User | null) => {
@@ -13,7 +14,15 @@ export const usePromptHistory = (user: User | null) => {
   // Load history from repository
   const loadHistoryFromFirestore = useCallback(
     async (userId: string) => {
+      const startTime = performance.now();
       setIsLoadingHistory(true);
+      
+      logger.debug('Loading history from Firestore', {
+        operation: 'loadHistoryFromFirestore',
+        userId,
+      });
+      logger.startTimer('loadHistoryFromFirestore');
+
       try {
         const repository = getPromptRepositoryForUser(true); // Authenticated
         const prompts = await repository.getUserPrompts(userId, 100);
@@ -25,6 +34,13 @@ export const usePromptHistory = (user: User | null) => {
           versions: entry.versions ?? [],
         }));
         setHistory(normalizedPrompts);
+
+        const duration = logger.endTimer('loadHistoryFromFirestore');
+        logger.info('History loaded successfully', {
+          operation: 'loadHistoryFromFirestore',
+          entryCount: normalizedPrompts.length,
+          duration,
+        });
 
         // Also update localStorage with the latest from Firestore
         if (normalizedPrompts.length > 0) {
@@ -38,16 +54,31 @@ export const usePromptHistory = (user: User | null) => {
                 localStorage.setItem('promptHistory', JSON.stringify(trimmed));
                 toast.warning('Storage limit reached. Keeping only recent 50 items.');
               } catch (retryError) {
-                console.error('Unable to save to localStorage even after trimming:', retryError);
+                logger.error('Unable to save to localStorage even after trimming', retryError as Error, {
+                  hook: 'usePromptHistory',
+                  operation: 'loadHistoryFromFirestore',
+                  userId,
+                });
                 toast.error('Browser storage full. Please clear browser data.');
               }
             } else {
-              console.warn('Could not save to localStorage:', e);
+              logger.warn('Could not save to localStorage', {
+                hook: 'usePromptHistory',
+                operation: 'loadHistoryFromFirestore',
+                error: e instanceof Error ? e.message : String(e),
+                errorName: e instanceof Error ? e.name : undefined,
+              });
             }
           }
         }
       } catch (error) {
-        console.error('Error loading history:', error);
+        logger.endTimer('loadHistoryFromFirestore');
+        logger.error('Error loading history', error as Error, {
+          hook: 'usePromptHistory',
+          operation: 'loadHistoryFromFirestore',
+          userId,
+          duration: Math.round(performance.now() - startTime),
+        });
 
         // Try to load from localStorage as fallback
         try {
@@ -61,7 +92,11 @@ export const usePromptHistory = (user: User | null) => {
           }));
           setHistory(normalizedHistory);
         } catch (localError) {
-          console.error('Error loading from localStorage fallback:', localError);
+          logger.error('Error loading from localStorage fallback', localError as Error, {
+            hook: 'usePromptHistory',
+            operation: 'loadHistoryFromFirestore',
+            userId,
+          });
         }
       } finally {
         setIsLoadingHistory(false);
@@ -94,7 +129,10 @@ export const usePromptHistory = (user: User | null) => {
           }));
           setHistory(normalizedHistory);
         } catch (error) {
-          console.error('Error loading history from localStorage:', error);
+          logger.error('Error loading history from localStorage', error as Error, {
+            hook: 'usePromptHistory',
+            operation: 'loadLocalHistory',
+          });
         }
       };
       loadLocalHistory();
@@ -111,6 +149,17 @@ export const usePromptHistory = (user: User | null) => {
       brainstormContext: unknown = null,
       highlightCache: unknown = null
     ): Promise<{ uuid: string; id: string } | null> => {
+      const startTime = performance.now();
+      
+      logger.debug('Saving to history', {
+        operation: 'saveToHistory',
+        mode: selectedMode,
+        hasUser: !!user,
+        inputLength: input.length,
+        outputLength: output.length,
+      });
+      logger.startTimer('saveToHistory');
+
       const newEntry: Omit<PromptHistoryEntry, 'id' | 'uuid' | 'timestamp'> = {
         input,
         output,
@@ -131,9 +180,24 @@ export const usePromptHistory = (user: User | null) => {
           ...newEntry,
         };
         setHistory((prevHistory) => [entryWithId, ...prevHistory].slice(0, 100));
+        
+        const duration = logger.endTimer('saveToHistory');
+        logger.info('Saved to history successfully', {
+          operation: 'saveToHistory',
+          uuid: result.uuid,
+          duration,
+        });
+        
         return { uuid: result.uuid, id: result.id };
       } catch (error) {
-        console.error('Error saving to history:', error);
+        logger.endTimer('saveToHistory');
+        logger.error('Error saving to history', error as Error, {
+          hook: 'usePromptHistory',
+          operation: 'saveToHistory',
+          userId: user?.uid,
+          mode: selectedMode,
+          duration: Math.round(performance.now() - startTime),
+        });
         toast.error(user ? 'Failed to save to cloud' : 'Failed to save to history');
         return null;
       }
@@ -153,7 +217,13 @@ export const usePromptHistory = (user: User | null) => {
           options: { highlightCache?: unknown; versionEntry?: unknown }
         ) => Promise<void>;
         updateFn(uuid, { highlightCache }).catch((error) => {
-          console.warn('Unable to persist updated highlights:', error);
+          logger.warn('Unable to persist updated highlights', {
+            hook: 'usePromptHistory',
+            operation: 'updateEntryHighlight',
+            uuid,
+            error: error instanceof Error ? error.message : String(error),
+            errorName: error instanceof Error ? error.name : undefined,
+          });
         });
       }
 
@@ -182,13 +252,26 @@ export const usePromptHistory = (user: User | null) => {
           // Firestore repository - use docId
           const updateFn = repository.updateOutput as (docId: string, output: string) => Promise<void>;
           updateFn(docId, output).catch((error) => {
-            console.warn('Unable to persist updated output:', error);
+            logger.warn('Unable to persist updated output', {
+              hook: 'usePromptHistory',
+              operation: 'updateEntryOutput',
+              uuid,
+              docId,
+              error: error instanceof Error ? error.message : String(error),
+              errorName: error instanceof Error ? error.name : undefined,
+            });
           });
         } else {
           // LocalStorage repository - use uuid
           const updateFn = repository.updateOutput as (uuid: string, output: string) => Promise<void>;
           updateFn(uuid, output).catch((error) => {
-            console.warn('Unable to persist updated output:', error);
+            logger.warn('Unable to persist updated output', {
+              hook: 'usePromptHistory',
+              operation: 'updateEntryOutput',
+              uuid,
+              error: error instanceof Error ? error.message : String(error),
+              errorName: error instanceof Error ? error.name : undefined,
+            });
           });
         }
       }
@@ -205,18 +288,43 @@ export const usePromptHistory = (user: User | null) => {
 
   // Clear all history
   const clearHistory = useCallback(async () => {
+    const startTime = performance.now();
+    
+    logger.debug('Clearing history', {
+      operation: 'clearHistory',
+      hasUser: !!user,
+      currentCount: history.length,
+    });
+    logger.startTimer('clearHistory');
+
     const repository = getPromptRepositoryForUser(!!user);
     // Note: clear() method may not exist on all repository types
     if ('clear' in repository && typeof repository.clear === 'function') {
       await repository.clear();
     }
     setHistory([]);
+    
+    const duration = logger.endTimer('clearHistory');
+    logger.info('History cleared successfully', {
+      operation: 'clearHistory',
+      duration,
+    });
+    
     toast.success('History cleared');
-  }, [user, toast]);
+  }, [user, toast, history.length]);
 
   // Delete a single prompt from history
   const deleteFromHistory = useCallback(
     async (entryId: string) => {
+      const startTime = performance.now();
+      
+      logger.debug('Deleting from history', {
+        operation: 'deleteFromHistory',
+        entryId,
+        hasUser: !!user,
+      });
+      logger.startTimer('deleteFromHistory');
+
       const repository = getPromptRepositoryForUser(!!user);
 
       // Optimistic update - remove from UI immediately
@@ -224,9 +332,24 @@ export const usePromptHistory = (user: User | null) => {
 
       try {
         await repository.deleteById(entryId);
+        
+        const duration = logger.endTimer('deleteFromHistory');
+        logger.info('Deleted from history successfully', {
+          operation: 'deleteFromHistory',
+          entryId,
+          duration,
+        });
+        
         toast.success('Prompt deleted');
       } catch (error) {
-        console.error('Error deleting prompt:', error);
+        logger.endTimer('deleteFromHistory');
+        logger.error('Error deleting prompt', error as Error, {
+          hook: 'usePromptHistory',
+          operation: 'deleteFromHistory',
+          entryId,
+          userId: user?.uid,
+          duration: Math.round(performance.now() - startTime),
+        });
 
         // Revert optimistic update on error
         if (user) {

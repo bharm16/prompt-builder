@@ -6,6 +6,7 @@
 
 import { useCallback, useRef, useEffect, type Dispatch } from 'react';
 import { VideoConceptApi } from '../api/videoConceptApi';
+import { logger } from '@/services/LoggingService';
 import type { VideoConceptAction, ElementKey } from './types';
 
 const DEBOUNCE_MS = 500;
@@ -41,6 +42,10 @@ export function useCompatibilityScores(
 
       // Debounce compatibility check
       timersRef.current[elementKey] = setTimeout(async () => {
+        const startTime = performance.now();
+        const operation = 'checkCompatibility';
+        logger.startTimer(`${operation}-${elementKey}`);
+        
         try {
           const score = await VideoConceptApi.checkCompatibility(
             elementKey,
@@ -48,12 +53,28 @@ export function useCompatibilityScores(
             elements || composedElements
           );
 
+          const duration = logger.endTimer(`${operation}-${elementKey}`);
+          logger.info('Compatibility check completed', {
+            hook: 'useCompatibilityScores',
+            operation,
+            duration,
+            elementKey,
+            score,
+          });
+
           dispatch({
             type: 'SET_COMPATIBILITY_SCORE',
             payload: { key: elementKey, score },
           });
         } catch (error) {
-          console.error('Error checking compatibility:', error);
+          const duration = logger.endTimer(`${operation}-${elementKey}`);
+          logger.error('Error checking compatibility', error as Error, {
+            hook: 'useCompatibilityScores',
+            operation,
+            duration,
+            elementKey,
+            valueLength: value.length,
+          });
           dispatch({
             type: 'SET_COMPATIBILITY_SCORE',
             payload: { key: elementKey, score: 0.5 },

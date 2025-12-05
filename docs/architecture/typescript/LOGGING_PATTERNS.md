@@ -486,25 +486,159 @@ logger.info('User registered', {
   emailDomain: user.email.split('@')[1], // Only domain
   hasPhone: !!user.phone,                 // Boolean only
 });
+```
 
-// ✅ CORRECT - Sanitize headers
-function sanitizeHeaders(headers: Record<string, string>): Record<string, string> {
-  const sanitized = { ...headers };
-  const sensitiveKeys = ['authorization', 'x-api-key', 'cookie'];
-  
-  for (const key of sensitiveKeys) {
-    if (sanitized[key]) {
-      sanitized[key] = '[REDACTED]';
-    }
-  }
-  
-  return sanitized;
-}
+### Built-in Sanitization Utilities
+
+The codebase provides sanitization utilities to help prevent accidental exposure of sensitive data:
+
+```typescript
+// Backend
+import { 
+  sanitizeHeaders, 
+  summarize, 
+  redactSensitiveFields,
+  sanitizeUserData,
+  getEmailDomain,
+} from '@utils/logging';
+
+// Frontend (includes additional sanitizeError utility)
+import { 
+  sanitizeHeaders, 
+  summarize, 
+  redactSensitiveFields,
+  sanitizeUserData,
+  getEmailDomain,
+  sanitizeError,
+} from '@/utils/logging';
+```
+
+### Sanitize Headers
+
+Use `sanitizeHeaders()` to redact sensitive HTTP headers:
+
+```typescript
+import { sanitizeHeaders } from '@utils/logging';
 
 logger.debug('Request received', {
   headers: sanitizeHeaders(req.headers),
+  // Automatically redacts: authorization, x-api-key, cookie, etc.
 });
 ```
+
+### Summarize Large Payloads
+
+Use `summarize()` to prevent logging massive data structures:
+
+```typescript
+import { summarize } from '@utils/logging';
+
+logger.debug('Processing payload', {
+  payload: summarize(largePayload), // Truncates strings, samples arrays/objects
+});
+
+// String: "abc..." (500 chars)
+// Array: { type: 'array', length: 100, sample: [1, 2, 3] }
+// Object: { type: 'object', keys: ['a', 'b', ...], keyCount: 50 }
+```
+
+### Redact Sensitive Fields
+
+Use `redactSensitiveFields()` to automatically redact sensitive object properties:
+
+```typescript
+import { redactSensitiveFields } from '@utils/logging';
+
+const requestData = {
+  username: 'john',
+  password: 'secret123',
+  apiKey: 'key-abc',
+  data: { nested: 'value' },
+};
+
+logger.debug('Request data', {
+  data: redactSensitiveFields(requestData),
+  // Result: { username: 'john', password: '[REDACTED]', apiKey: '[REDACTED]', data: {...} }
+});
+
+// Add custom sensitive fields
+logger.debug('Custom data', {
+  data: redactSensitiveFields(obj, ['customSecret', 'internalId']),
+});
+```
+
+### Sanitize User Data
+
+Use `sanitizeUserData()` to log user information safely:
+
+```typescript
+import { sanitizeUserData } from '@utils/logging';
+
+logger.info('User action', {
+  user: sanitizeUserData(user),
+  // Includes: userId, emailDomain, role, status
+  // Excludes: email, password, phone, etc.
+});
+```
+
+### Extract Email Domain
+
+Use `getEmailDomain()` for analytics without exposing full emails:
+
+```typescript
+import { getEmailDomain } from '@utils/logging';
+
+logger.info('User signup', {
+  emailDomain: getEmailDomain(user.email), // 'example.com' instead of 'user@example.com'
+  userId: user.id,
+});
+```
+
+### Sanitize Error Objects (Frontend Only)
+
+Use `sanitizeError()` to safely log error information in the frontend:
+
+```typescript
+import { sanitizeError } from '@/utils/logging';
+
+try {
+  await riskyOperation();
+} catch (error) {
+  logger.error('Operation failed', error as Error, {
+    errorInfo: sanitizeError(error),
+    // Preserves: message, name, stack
+    // Removes: any potential sensitive data from error messages
+  });
+}
+
+// Works with unknown error types
+catch (error) {
+  const errorInfo = sanitizeError(error);
+  logger.warn('Unexpected error', {
+    error: errorInfo.message,
+    errorName: errorInfo.name,
+  });
+}
+```
+
+**Note**: This utility is frontend-only. The backend logger automatically handles Error objects correctly when passed to `error()` method.
+
+### Existing Protection: Error Handler
+
+The error handler middleware automatically redacts sensitive data from request bodies:
+
+```javascript
+// server/src/middleware/errorHandler.js
+// Automatically redacts:
+// - Email addresses
+// - SSN patterns
+// - Credit card numbers
+// - Phone numbers
+// - API keys (long alphanumeric strings)
+// - Sensitive field names (password, token, apiKey, secret, etc.)
+```
+
+This protection is **always active** for all error logs, even in development mode.
 
 ### Data Summarization Pattern
 
@@ -541,6 +675,33 @@ logger.debug('Processing payload', {
   payload: summarize(largePayload),
 });
 ```
+
+### Sensitive Data Checklist
+
+**Never log these:**
+- ❌ Passwords
+- ❌ API keys / tokens
+- ❌ Authorization headers (full value)
+- ❌ Cookie values
+- ❌ Credit card numbers
+- ❌ CVV codes
+- ❌ SSN / national IDs
+- ❌ Full email addresses (use domain only)
+- ❌ Phone numbers
+- ❌ Physical addresses
+- ❌ Biometric data
+
+**Safe to log:**
+- ✅ User IDs (non-PII identifiers)
+- ✅ Email domains (not full emails)
+- ✅ Request IDs / trace IDs
+- ✅ Timestamps
+- ✅ Counts and aggregates
+- ✅ Status codes
+- ✅ Durations
+- ✅ Boolean flags (hasEmail, isVerified)
+- ✅ Sanitized headers
+- ✅ Summarized payloads
 
 ---
 

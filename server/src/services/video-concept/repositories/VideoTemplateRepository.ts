@@ -88,7 +88,7 @@ export class VideoTemplateRepository {
 
       return { template, success: true };
     } catch (error) {
-      logger.error('Failed to save template', { name: params.name, userId: params.userId, error });
+      logger.error('Failed to save template', error as Error, { name: params.name, userId: params.userId });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -100,7 +100,7 @@ export class VideoTemplateRepository {
     try {
       return await this.storage.get(templateId);
     } catch (error) {
-      logger.error('Failed to get template', { templateId, error });
+      logger.error('Failed to get template', error as Error, { templateId });
       return null;
     }
   }
@@ -112,7 +112,7 @@ export class VideoTemplateRepository {
     try {
       return await this.storage.getByUser(userId);
     } catch (error) {
-      logger.error('Failed to get user templates', { userId, error });
+      logger.error('Failed to get user templates', error as Error, { userId });
       return [];
     }
   }
@@ -137,7 +137,7 @@ export class VideoTemplateRepository {
 
       return { recommendations };
     } catch (error) {
-      logger.error('Failed to get template recommendations', { userId: params.userId, error });
+      logger.error('Failed to get template recommendations', error as Error, { userId: params.userId });
       return { recommendations: [] };
     }
   }
@@ -153,7 +153,7 @@ export class VideoTemplateRepository {
       logger.info('Incremented template usage', { templateId });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to increment usage', { templateId, error });
+      logger.error('Failed to increment usage', error as Error, { templateId });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -177,7 +177,7 @@ export class VideoTemplateRepository {
       logger.info('Deleted template', { templateId });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to delete template', { templateId, error });
+      logger.error('Failed to delete template', error as Error, { templateId });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -211,7 +211,7 @@ export class VideoTemplateRepository {
       logger.info('Updated template', { templateId });
       return { template: updatedTemplate, success: true };
     } catch (error) {
-      logger.error('Failed to update template', { templateId, error });
+      logger.error('Failed to update template', error as Error, { templateId });
       return { success: false, error: (error as Error).message };
     }
   }

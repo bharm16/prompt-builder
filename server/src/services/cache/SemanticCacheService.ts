@@ -160,6 +160,7 @@ export class SemanticCacheEnhancer {
    * Calculate similarity score between two prompts
    */
   static calculateSimilarity(prompt1: string, prompt2: string): number {
+    const startTime = performance.now();
     const operation = 'calculateSimilarity';
     
     this.log.debug('Calculating similarity between prompts', {
@@ -188,8 +189,10 @@ export class SemanticCacheEnhancer {
     // Combined score (weighted)
     const similarityScore = 0.7 * jaccardScore + 0.3 * lengthScore;
 
+    const duration = Math.round(performance.now() - startTime);
     this.log.debug('Similarity calculation complete', {
       operation,
+      duration,
       similarityScore,
       jaccardScore,
       lengthScore,
@@ -274,6 +277,7 @@ export class SemanticCacheEnhancer {
   static getCacheOptimizationRecommendations(
     currentStats: CacheStatsForRecommendations
   ): CacheOptimizationRecommendations {
+    const startTime = performance.now();
     const operation = 'getCacheOptimizationRecommendations';
     const recommendations: CacheRecommendation[] = [];
     const { hitRate, keys, hits, misses } = currentStats;
@@ -341,8 +345,10 @@ export class SemanticCacheEnhancer {
       recommendations,
     };
 
+    const duration = Math.round(performance.now() - startTime);
     this.log.info('Cache optimization recommendations generated', {
       operation,
+      duration,
       overall: result.overall,
       recommendationCount: recommendations.length,
       currentHitRate: hitRate,
@@ -355,6 +361,7 @@ export class SemanticCacheEnhancer {
    * Generate cache warming strategies
    */
   static generateCacheWarmingStrategy(commonPrompts: string[]): CacheWarmingStrategy {
+    const startTime = performance.now();
     const operation = 'generateCacheWarmingStrategy';
     
     this.log.debug('Generating cache warming strategy', {
@@ -374,8 +381,10 @@ export class SemanticCacheEnhancer {
       })),
     };
 
+    const duration = Math.round(performance.now() - startTime);
     this.log.debug('Cache warming strategy generated', {
       operation,
+      duration,
       clusterCount: clusters.length,
       totalPrompts: commonPrompts.length,
     });

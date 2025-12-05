@@ -7,6 +7,7 @@
 import { useCallback, useRef, type Dispatch } from 'react';
 import { VideoConceptApi } from '../api/videoConceptApi';
 import { PRIMARY_ELEMENT_KEYS } from '../config/constants';
+import { logger } from '@/services/LoggingService';
 import type { VideoConceptAction, Elements } from './types';
 
 /**
@@ -20,6 +21,8 @@ export function useConflictDetection(
 
   const detectConflicts = useCallback(
     async (elements: Elements): Promise<void> => {
+      const startTime = performance.now();
+      const operation = 'detectConflicts';
       const filledCount = PRIMARY_ELEMENT_KEYS.filter((key) => elements[key]).length;
 
       if (filledCount < 2) {
@@ -30,16 +33,31 @@ export function useConflictDetection(
       const requestId = Date.now();
       requestIdRef.current = requestId;
       dispatch({ type: 'CONFLICTS_LOADING' });
+      logger.startTimer(operation);
 
       try {
         const data = await VideoConceptApi.validateElements(elements);
 
         if (requestIdRef.current === requestId) {
+          const duration = logger.endTimer(operation);
           const conflicts = Array.isArray(data.conflicts) ? data.conflicts : [];
+          logger.info('Conflict detection completed', {
+            hook: 'useConflictDetection',
+            operation,
+            duration,
+            filledCount,
+            conflictCount: conflicts.length,
+          });
           dispatch({ type: 'CONFLICTS_LOADED', payload: conflicts });
         }
       } catch (error) {
-        console.error('Error detecting conflicts:', error);
+        const duration = logger.endTimer(operation);
+        logger.error('Error detecting conflicts', error as Error, {
+          hook: 'useConflictDetection',
+          operation,
+          duration,
+          filledCount,
+        });
         if (requestIdRef.current === requestId) {
           dispatch({ type: 'CONFLICTS_CLEAR' });
         }

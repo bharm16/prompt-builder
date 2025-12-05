@@ -6,6 +6,8 @@ import { useToast } from './Toast';
 import { Button } from './Button';
 import { PromptContext } from '../utils/PromptContext';
 import { formatTextToHTML } from '../features/prompt-optimizer/utils/textFormatting';
+import { logger } from '../services/LoggingService';
+import { useDebugLogger } from '../hooks/useDebugLogger';
 import '../features/prompt-optimizer/PromptCanvas.css';
 
 interface PromptData {
@@ -21,6 +23,7 @@ type PromptMode = 'optimize' | 'reasoning' | 'research' | 'socratic' | 'video';
 
 const SharedPrompt = (): React.ReactElement => {
   const { uuid } = useParams<{ uuid: string }>();
+  const debug = useDebugLogger('SharedPrompt', { uuid });
   const navigate = useNavigate();
   const toast = useToast();
   const [prompt, setPrompt] = useState<PromptData | null>(null);
@@ -31,6 +34,8 @@ const SharedPrompt = (): React.ReactElement => {
 
   useEffect(() => {
     const fetchPrompt = async (): Promise<void> => {
+      debug.logEffect('Fetching shared prompt', [uuid]);
+      debug.startTimer('fetchPrompt');
       if (!uuid) {
         setError('Invalid prompt ID');
         setLoading(false);
@@ -43,6 +48,7 @@ const SharedPrompt = (): React.ReactElement => {
         const promptData = (await promptRepository.getByUuid(uuid)) as PromptData | null;
         if (promptData) {
           setPrompt(promptData);
+          debug.endTimer('fetchPrompt', 'Prompt loaded successfully');
           if (promptData.brainstormContext) {
             try {
               const contextData =
@@ -51,8 +57,13 @@ const SharedPrompt = (): React.ReactElement => {
                   : promptData.brainstormContext;
               const restoredContext = PromptContext.fromJSON(contextData);
               setPromptContext(restoredContext);
+              debug.logAction('contextRestored');
             } catch (contextError) {
-              console.error('Failed to restore prompt context from shared prompt:', contextError);
+              logger.error('Failed to restore prompt context from shared prompt', contextError as Error, {
+                component: 'SharedPrompt',
+                operation: 'fetchPrompt',
+                uuid,
+              });
               setPromptContext(null);
               // Add user-friendly error notification
               toast.warning('Some context data could not be loaded. The prompt will still display.');
@@ -61,11 +72,18 @@ const SharedPrompt = (): React.ReactElement => {
             setPromptContext(null);
           }
         } else {
+          debug.endTimer('fetchPrompt');
+          debug.logAction('promptNotFound', { uuid });
           setError('Prompt not found');
           setPromptContext(null);
         }
       } catch (err) {
-        console.error('Error fetching prompt:', err);
+        debug.endTimer('fetchPrompt');
+        logger.error('Error fetching prompt', err as Error, {
+          component: 'SharedPrompt',
+          operation: 'fetchPrompt',
+          uuid,
+        });
         setError('Failed to load prompt');
         setPromptContext(null);
       } finally {
@@ -91,6 +109,7 @@ const SharedPrompt = (): React.ReactElement => {
   const handleCopy = async (): Promise<void> => {
     if (!prompt?.output) return;
 
+    debug.logAction('copy', { outputLength: prompt.output.length });
     try {
       await navigator.clipboard.writeText(prompt.output);
       setCopied(true);

@@ -7,6 +7,7 @@
 import type { Router, Request, Response } from 'express';
 import express from 'express';
 import { logger } from '@infrastructure/Logger';
+import { extractUserId } from '../utils/requestHelpers.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import type { PreviewRoutesServices } from './types.js';
 
@@ -23,9 +24,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
     '/generate',
     asyncHandler(async (req: Request, res: Response) => {
       const { prompt, aspectRatio } = req.body as { prompt?: unknown; aspectRatio?: string };
-      const userId = (req as Request & { user?: { uid?: string }; apiKey?: string }).user?.uid || 
-                     (req as Request & { apiKey?: string }).apiKey || 
-                     'anonymous';
+      const userId = extractUserId(req);
 
       if (!prompt) {
         return res.status(400).json({

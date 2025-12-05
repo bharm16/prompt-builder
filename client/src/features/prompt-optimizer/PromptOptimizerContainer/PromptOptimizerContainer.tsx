@@ -20,6 +20,7 @@ import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { getAuthRepository } from '@/repositories';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -35,9 +36,12 @@ import type { User } from '../context/types';
  * Inner component with access to PromptStateContext
  */
 function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
+  const debug = useDebugLogger('PromptOptimizerContent', { user: user ? 'authenticated' : 'anonymous' });
+
   // Force light mode immediately
   React.useEffect(() => {
     document.documentElement.classList.remove('dark');
+    debug.logEffect('Light mode enforced');
   }, []);
 
   const toast = useToast();
@@ -218,30 +222,57 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // Keyboard Shortcuts
   // ============================================================================
   useKeyboardShortcuts({
-    openShortcuts: () => setShowShortcuts(true),
-    openSettings: () => setShowSettings(true),
-    createNew: handleCreateNew,
-    optimize: () => !promptOptimizer.isProcessing && showResults === false && handleOptimize(),
-    improveFirst: handleImproveFirst,
+    openShortcuts: () => {
+      debug.logAction('openShortcuts');
+      setShowShortcuts(true);
+    },
+    openSettings: () => {
+      debug.logAction('openSettings');
+      setShowSettings(true);
+    },
+    createNew: () => {
+      debug.logAction('createNew');
+      handleCreateNew();
+    },
+    optimize: () => {
+      if (!promptOptimizer.isProcessing && showResults === false) {
+        debug.logAction('optimize', { mode: selectedMode });
+        handleOptimize();
+      }
+    },
+    improveFirst: () => {
+      debug.logAction('improveFirst');
+      handleImproveFirst();
+    },
     canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),
     copy: () => {
+      debug.logAction('copy', { promptLength: promptOptimizer.displayedPrompt.length });
       navigator.clipboard.writeText(promptOptimizer.displayedPrompt);
       toast.success('Copied to clipboard!');
     },
-    export: () => showResults && toast.info('Use export button in canvas'),
-    toggleSidebar: () => setShowHistory(!showHistory),
+    export: () => {
+      debug.logAction('export');
+      showResults && toast.info('Use export button in canvas');
+    },
+    toggleSidebar: () => {
+      debug.logAction('toggleSidebar', { newState: !showHistory });
+      setShowHistory(!showHistory);
+    },
     switchMode: () => {
+      debug.logAction('switchMode');
       // Implementation from original
     },
     applySuggestion: (index: number) => {
       if (suggestionsData && typeof suggestionsData === 'object' && 'suggestions' in suggestionsData) {
         const suggestions = (suggestionsData as { suggestions: unknown[] }).suggestions;
         if (suggestions[index]) {
+          debug.logAction('applySuggestion', { index });
           handleSuggestionClick(suggestions[index]);
         }
       }
     },
     closeModal: () => {
+      debug.logAction('closeModal');
       if (showSettings) setShowSettings(false);
       else if (showShortcuts) setShowShortcuts(false);
       else if (showImprover) setShowImprover(false);
@@ -364,15 +395,24 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
  * Outer component with auth state management
  */
 function PromptOptimizerContainer(): React.ReactElement {
+  const debug = useDebugLogger('PromptOptimizerContainer');
   const [user, setUser] = React.useState<User | null>(null);
 
   // Listen for auth state changes
   React.useEffect(() => {
+    debug.logEffect('Auth state listener initialized');
     const authRepository = getAuthRepository();
     const unsubscribe = authRepository.onAuthStateChanged((currentUser) => {
+      debug.logAction('authStateChanged', { 
+        authenticated: !!currentUser,
+        userId: currentUser?.uid 
+      });
       setUser(currentUser);
     });
-    return () => unsubscribe();
+    return () => {
+      debug.logEffect('Auth state listener cleanup');
+      unsubscribe();
+    };
   }, []);
 
   return (

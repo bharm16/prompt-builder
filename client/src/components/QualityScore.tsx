@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 
 type ScoreColor = 'success' | 'info' | 'warning' | 'error';
 
@@ -88,16 +89,29 @@ export default function QualityScore({
   outputPrompt = '',
   animated = true,
 }: QualityScoreProps): React.ReactElement {
+  const debug = useDebugLogger('QualityScore', { 
+    score, 
+    showDetails,
+    improvement: previousScore !== null ? score - previousScore : null,
+  });
+  
   const [displayScore, setDisplayScore] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Animate score on mount or when score changes
   useEffect(() => {
+    debug.logEffect('Score updated', { 
+      score, 
+      animated,
+      previousScore,
+    });
+    
     if (!animated) {
       setDisplayScore(score);
       return;
     }
 
+    debug.startTimer('scoreAnimation');
     let currentScore = 0;
     const increment = score / 50; // Animate over ~50 frames
     const interval = setInterval(() => {
@@ -105,13 +119,14 @@ export default function QualityScore({
       if (currentScore >= score) {
         setDisplayScore(score);
         clearInterval(interval);
+        debug.endTimer('scoreAnimation', 'Score animation complete');
       } else {
         setDisplayScore(Math.floor(currentScore));
       }
     }, 20);
 
     return () => clearInterval(interval);
-  }, [score, animated]);
+  }, [score, animated, previousScore, debug]);
 
   const scoreColor = getScoreColor(score);
   const scoreLabel = getScoreLabel(score);
@@ -177,13 +192,17 @@ export default function QualityScore({
             flex items-center gap-3 px-4 py-3 rounded-lg border-2 ${colors.bg} ${colors.border}
             transition-all duration-300 hover:shadow-md cursor-pointer
           `}
-          onClick={() => setShowTooltip(!showTooltip)}
+          onClick={() => {
+            debug.logAction('toggleTooltip', { newState: !showTooltip });
+            setShowTooltip(!showTooltip);
+          }}
           role="button"
           tabIndex={0}
           aria-label={`Quality score: ${score}%. ${scoreLabel}. Click for details.`}
           onKeyPress={(e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
+              debug.logAction('toggleTooltipViaKeyboard', { newState: !showTooltip });
               setShowTooltip(!showTooltip);
             }
           }}

@@ -79,7 +79,7 @@ Return ONLY a JSON array of 3 variations:
       ) as SceneVariation[];
       return { variations };
     } catch (error) {
-      logger.error('Failed to generate variations', { error });
+      logger.error('Failed to generate variations', error as Error);
       return { variations: [] };
     }
   }

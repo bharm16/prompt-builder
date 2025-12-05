@@ -19,7 +19,7 @@ import { logger } from '../services/LoggingService';
 
 interface DebugLogger {
   logState: (name: string, value: unknown) => void;
-  logEffect: (description: string, deps?: unknown[]) => void;
+  logEffect: (description: string, deps?: unknown[] | Record<string, unknown>) => void;
   logAction: (action: string, payload?: unknown) => void;
   logError: (message: string, error?: Error) => void;
   startTimer: (operationId: string) => void;
@@ -94,8 +94,14 @@ export function useDebugLogger(
   );
 
   const logEffect = useCallback(
-    (description: string, deps?: unknown[]) => {
-      log.debug(`Effect: ${description}`, deps ? { deps: deps.map(summarize) } : undefined);
+    (description: string, deps?: unknown[] | Record<string, unknown>) => {
+      if (!deps) {
+        log.debug(`Effect: ${description}`);
+      } else if (Array.isArray(deps)) {
+        log.debug(`Effect: ${description}`, { deps: deps.map(summarize) });
+      } else {
+        log.debug(`Effect: ${description}`, deps);
+      }
     },
     [componentName]
   );

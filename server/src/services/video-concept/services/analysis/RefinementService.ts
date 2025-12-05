@@ -11,9 +11,14 @@ import type { AIService } from '../../prompt-optimization/types.js';
  */
 export class RefinementService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'RefinementService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('RefinementService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
@@ -22,11 +27,23 @@ export class RefinementService {
   async getRefinementSuggestions(params: {
     elements: Record<string, string>;
   }): Promise<{ refinements: Record<string, string[]> }> {
-    logger.info('Getting refinement suggestions');
-
+    const operation = 'getRefinementSuggestions';
+    const startTime = performance.now();
+    
     const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      filledElementCount: filledElements.length,
+      totalElements: Object.keys(params.elements).length,
+    });
+
     if (filledElements.length < 2) {
+      this.log.debug(`${operation}: Insufficient elements for refinement`, {
+        operation,
+        filledElementCount: filledElements.length,
+        duration: Math.round(performance.now() - startTime),
+      });
       return { refinements: {} };
     }
 
@@ -57,9 +74,25 @@ Return ONLY a JSON object:
           temperature: 0.6,
         }
       ) as Record<string, string[]>;
+      
+      const duration = Math.round(performance.now() - startTime);
+      const refinementCount = Object.values(refinements).reduce((sum, arr) => sum + arr.length, 0);
+      
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
+        elementCount: Object.keys(refinements).length,
+        refinementCount,
+      });
+      
       return { refinements };
     } catch (error) {
-      logger.error('Failed to get refinements', { error });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        filledElementCount: filledElements.length,
+      });
       return { refinements: {} };
     }
   }

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { detectAndApplySceneChange } from '../utils/sceneChange';
 import { API_CONFIG } from '../config/api.config';
+import { logger } from '../services/LoggingService';
+import { useDebugLogger } from '../hooks/useDebugLogger';
 
 export interface HighlightMetadata {
   category: string | null;
@@ -39,6 +41,10 @@ export default function PromptEnhancementEditor({
   originalUserPrompt,
   onShowSuggestionsChange,
 }: PromptEnhancementEditorProps): React.ReactElement {
+  const debug = useDebugLogger('PromptEnhancementEditor', {
+    promptLength: promptContent.length
+  });
+
   const [selectedText, setSelectedText] = useState<string>('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -157,6 +163,13 @@ export default function PromptEnhancementEditor({
 
   // Fetch enhancement suggestions from API
   const fetchEnhancementSuggestions = async (highlightedText: string, metadata: HighlightMetadata | null = null): Promise<void> => {
+    debug.logAction('fetchSuggestions', { 
+      textLength: highlightedText.length,
+      category: metadata?.category,
+      confidence: metadata?.confidence
+    });
+    debug.startTimer('fetchSuggestions');
+
     setIsLoading(true);
     setShowSuggestions(true);
     setSuggestions([]);
@@ -220,8 +233,15 @@ export default function PromptEnhancementEditor({
       // Pass the suggestions directly - they may be grouped or flat
       setSuggestions(data.suggestions || []);
       setIsPlaceholder(data.isPlaceholder || false);
+      debug.endTimer('fetchSuggestions', `Fetched ${data.suggestions?.length || 0} suggestions`);
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      debug.endTimer('fetchSuggestions');
+      logger.error('Error fetching suggestions', error as Error, {
+        component: 'PromptEnhancementEditor',
+        operation: 'fetchEnhancementSuggestions',
+        highlightedText,
+        highlightCategory,
+      });
       setSuggestions([
         { text: 'Failed to load suggestions. Please try again.' },
       ]);

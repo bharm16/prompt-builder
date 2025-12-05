@@ -1,6 +1,7 @@
 import { logger } from '@infrastructure/Logger.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
 import { technicalParamsOutputSchema } from '@utils/validation.js';
+import type { ILogger } from '@interfaces/ILogger.js';
 import type { AIService } from '../../../prompt-optimization/types.js';
 
 /**
@@ -12,9 +13,14 @@ import type { AIService } from '../../../prompt-optimization/types.js';
  */
 export class TechnicalParameterService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'TechnicalParameterService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('TechnicalParameterService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
@@ -23,7 +29,15 @@ export class TechnicalParameterService {
   async generateTechnicalParams(params: {
     elements: Record<string, string>;
   }): Promise<{ technicalParams: Record<string, unknown> }> {
-    logger.info('Generating technical parameters');
+    const operation = 'generateTechnicalParams';
+    const startTime = performance.now();
+    
+    const elementCount = Object.entries(params.elements).filter(([_, v]) => v).length;
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      elementCount,
+    });
 
     const prompt = `Generate technical video parameters based on these creative elements.
 
@@ -83,9 +97,23 @@ Return ONLY a JSON object:
           temperature: 0.5,
         }
       ) as Record<string, unknown>;
+      
+      const duration = Math.round(performance.now() - startTime);
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
+        elementCount,
+        paramCount: Object.keys(technicalParams).length,
+      });
+      
       return { technicalParams };
     } catch (error) {
-      logger.error('Failed to generate technical params', { error });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        elementCount,
+      });
       return { technicalParams: {} };
     }
   }

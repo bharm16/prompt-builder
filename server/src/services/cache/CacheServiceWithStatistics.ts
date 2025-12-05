@@ -21,6 +21,7 @@ export class CacheServiceWithStatistics implements ICacheService {
   }
 
   async get<T>(key: string, cacheType: string = 'default'): Promise<T | null> {
+    const startTime = performance.now();
     const operation = 'get';
     
     this.log.debug('Cache get operation', {
@@ -30,11 +31,13 @@ export class CacheServiceWithStatistics implements ICacheService {
     });
 
     const value = await this.cacheService.get<T>(key);
+    const duration = Math.round(performance.now() - startTime);
     
     if (value !== null) {
       this.statisticsTracker.recordHit(cacheType);
       this.log.debug('Cache hit', {
         operation,
+        duration,
         key,
         cacheType,
       });
@@ -42,6 +45,7 @@ export class CacheServiceWithStatistics implements ICacheService {
       this.statisticsTracker.recordMiss(cacheType);
       this.log.debug('Cache miss', {
         operation,
+        duration,
         key,
         cacheType,
       });
@@ -51,6 +55,7 @@ export class CacheServiceWithStatistics implements ICacheService {
   }
 
   async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
+    const startTime = performance.now();
     const operation = 'set';
     
     this.log.debug('Cache set operation', {
@@ -60,16 +65,19 @@ export class CacheServiceWithStatistics implements ICacheService {
     });
 
     const success = await this.cacheService.set(key, value, options);
+    const duration = Math.round(performance.now() - startTime);
     
     if (success) {
       this.statisticsTracker.recordSet();
       this.log.debug('Cache set successful', {
         operation,
+        duration,
         key,
       });
     } else {
       this.log.debug('Cache set failed', {
         operation,
+        duration,
         key,
       });
     }
@@ -78,6 +86,7 @@ export class CacheServiceWithStatistics implements ICacheService {
   }
 
   async delete(key: string): Promise<number> {
+    const startTime = performance.now();
     const operation = 'delete';
     
     this.log.debug('Cache delete operation', {
@@ -86,9 +95,11 @@ export class CacheServiceWithStatistics implements ICacheService {
     });
 
     const deletedCount = await this.cacheService.delete(key);
+    const duration = Math.round(performance.now() - startTime);
     
     this.log.debug('Cache delete completed', {
       operation,
+      duration,
       key,
       deletedCount,
     });

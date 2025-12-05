@@ -8,6 +8,7 @@
 import { useCallback, useRef, type Dispatch } from 'react';
 import { VideoConceptApi } from '../api/videoConceptApi';
 import { formatLabel } from '../utils/formatting';
+import { logger } from '@/services/LoggingService';
 import type { VideoConceptAction, ElementKey } from './types';
 
 const COOLDOWN_MS = 800;
@@ -112,7 +113,12 @@ export function useElementSuggestions(
         if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
-        console.error('Error fetching suggestions:', error);
+        logger.error('Error fetching suggestions', error as Error, {
+          hook: 'useElementSuggestions',
+          operation: 'fetchSuggestions',
+          elementType,
+          contextSummaryLength: contextSummary.length,
+        });
         dispatch({ type: 'SUGGESTIONS_CLEAR' });
       } finally {
         isFetchingRef.current = false;

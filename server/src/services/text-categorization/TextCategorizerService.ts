@@ -126,21 +126,42 @@ const computeSpans = (
 export class TextCategorizerService {
   private readonly ai: AIService;
   private readonly cacheTTL: number;
+  private readonly log = logger.child({ service: 'TextCategorizerService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
     this.cacheTTL = cacheService.getConfig('creative')?.ttl ?? 3600;
+    
+    this.log.debug('TextCategorizerService initialized', {
+      operation: 'constructor',
+      cacheTTL: this.cacheTTL,
+    });
   }
 
   async parseText({ text }: { text: string | null | undefined }): Promise<CategorizedSpan[]> {
+    const operation = 'parseText';
+    const startTime = performance.now();
+    
     const normalizedText = typeof text === 'string' ? text.normalize('NFC') : '';
     if (!normalizedText.trim()) {
+      this.log.debug(`${operation}: Empty input`, {
+        operation,
+        textType: typeof text,
+      });
       return [];
     }
 
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      textLength: normalizedText.length,
+    });
+
     const categories = await getCategoryDefinitions();
     if (!Array.isArray(categories) || categories.length === 0) {
-      logger.warn('[TextCategorizerService] No categories available; returning empty spans');
+      this.log.warn(`${operation}: No categories available`, {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+      });
       return [];
     }
 
@@ -152,7 +173,13 @@ export class TextCategorizerService {
 
     const cached = await cacheService.get(cacheKey, CACHE_TYPE) as CategorizedSpan[] | null;
     if (cached) {
-      logger.debug('[TextCategorizerService] Cache hit', { cacheKey });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.debug(`${operation}: Cache hit`, {
+        operation,
+        duration,
+        cacheKey,
+        spanCount: cached.length,
+      });
       return cached;
     }
 
@@ -232,7 +259,16 @@ ${toDeterministicJSON(promptPayload)}`;
       },
     };
 
+    this.log.debug(`${operation}: Calling LLM for categorization`, {
+      operation,
+      textLength: normalizedText.length,
+      categoryCount: categories.length,
+      temperature: MODEL_TEMPERATURE,
+      maxTokens: MAX_TOKENS,
+    });
+
     let llmResult: LLMParseResult;
+    const llmStartTime = performance.now();
     try {
       llmResult = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
@@ -245,18 +281,38 @@ ${toDeterministicJSON(promptPayload)}`;
           operation: 'text_categorization', // Route through aiService
         }
       ) as LLMParseResult;
+      
+      const llmDuration = Math.round(performance.now() - llmStartTime);
+      this.log.debug(`${operation}: LLM call completed`, {
+        operation,
+        llmDuration,
+        tagCount: llmResult.tags?.length ?? 0,
+      });
     } catch (error) {
-      const err = error as Error;
-      logger.error('[TextCategorizerService] LLM parsing failed', { error: err.message });
+      const duration = Math.round(performance.now() - startTime);
+      const llmDuration = Math.round(performance.now() - llmStartTime);
+      this.log.error(`${operation}: LLM parsing failed`, error as Error, {
+        operation,
+        duration,
+        llmDuration,
+        textLength: normalizedText.length,
+        categoryCount: categories.length,
+      });
       throw error;
     }
 
     const spans = computeSpans(normalizedText, llmResult.tags ?? [], categories);
 
     await cacheService.set(cacheKey, spans, { ttl: this.cacheTTL });
-    logger.info('[TextCategorizerService] Parsed spans', {
+    
+    const duration = Math.round(performance.now() - startTime);
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration,
       spanCount: spans.length,
       textLength: normalizedText.length,
+      categoryCount: categories.length,
+      cached: false,
     });
 
     return spans;

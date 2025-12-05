@@ -208,7 +208,7 @@ export class ContrastiveDiversityEnforcer {
 
       return batch;
     } catch (error) {
-      logger.error(`Failed to generate batch ${batchNumber}`, { error });
+      logger.error(`Failed to generate batch ${batchNumber}`, error as Error);
       throw error;
     }
   }

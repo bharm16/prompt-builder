@@ -8,16 +8,28 @@ import type { AIService, OptimizationMode, QualityAssessment } from '../types.js
  */
 export class QualityAssessmentService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'QualityAssessmentService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('QualityAssessmentService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
    * Assess the quality of a prompt
    */
   async assessQuality(prompt: string, mode: OptimizationMode): Promise<QualityAssessment> {
-    logger.info('Assessing prompt quality', { mode, promptLength: prompt.length });
+    const operation = 'assessQuality';
+    const startTime = performance.now();
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      mode,
+      promptLength: prompt.length,
+    });
 
     try {
       const assessmentPrompt = this.buildAssessmentPrompt(prompt, mode);
@@ -32,14 +44,24 @@ export class QualityAssessmentService {
       const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
       const assessment = this.parseAssessment(rawOutput);
 
-      logger.info('Quality assessment complete', {
+      const duration = Math.round(performance.now() - startTime);
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
         overallScore: assessment.score,
-        mode
+        mode,
+        promptLength: prompt.length,
       });
 
       return assessment;
     } catch (error) {
-      logger.error('Quality assessment failed', { error: (error as Error).message });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        mode,
+        promptLength: prompt.length,
+      });
       // Return neutral assessment on failure
       return {
         score: 0.7,
@@ -60,6 +82,14 @@ export class QualityAssessmentService {
    * Identify specific weaknesses in a prompt
    */
   async identifyWeaknesses(prompt: string, assessment: QualityAssessment): Promise<string[]> {
+    const operation = 'identifyWeaknesses';
+    const startTime = performance.now();
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      overallScore: assessment.score,
+    });
+    
     const weaknesses: string[] = [];
     const thresholds = OptimizationConfig.quality.componentThresholds;
 
@@ -78,6 +108,13 @@ export class QualityAssessmentService {
     if (assessment.details.actionability < thresholds.actionability) {
       weaknesses.push('Low actionability - unclear what output or action is needed');
     }
+
+    const duration = Math.round(performance.now() - startTime);
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration,
+      weaknessCount: weaknesses.length,
+    });
 
     return weaknesses;
   }
@@ -163,7 +200,10 @@ Output only the JSON, nothing else:`;
         weaknesses: parsed.weaknesses || []
       };
     } catch (error) {
-      logger.warn('Failed to parse assessment JSON', { error: (error as Error).message });
+      this.log.warn('Failed to parse assessment JSON', {
+        error: (error as Error).message,
+        errorName: (error as Error).name,
+      });
       // Return defaults on parse failure
       return {
         score: 0.7,

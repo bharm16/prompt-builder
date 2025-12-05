@@ -8,16 +8,27 @@ import type { AIService, InferredContext } from '../types.js';
  */
 export class ContextInferenceService {
   private readonly ai: AIService;
+  private readonly log = logger.child({ service: 'ContextInferenceService' });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
+    
+    this.log.debug('ContextInferenceService initialized', {
+      operation: 'constructor',
+    });
   }
 
   /**
    * Automatically infer context from prompt using Claude
    */
   async inferContext(prompt: string): Promise<InferredContext> {
-    logger.info('Inferring context from prompt', { promptLength: prompt.length });
+    const operation = 'inferContext';
+    const startTime = performance.now();
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      promptLength: prompt.length,
+    });
 
     try {
       const inferencePrompt = this.buildInferencePrompt(prompt);
@@ -30,19 +41,32 @@ export class ContextInferenceService {
       });
 
       const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
-      logger.debug('Raw inference output', { rawOutput: rawOutput.substring(0, 200) });
+      this.log.debug(`${operation}: Received LLM response`, {
+        operation,
+        outputLength: rawOutput.length,
+        outputPreview: rawOutput.substring(0, 200),
+      });
 
       // Extract and parse JSON from response
       const context = this.parseContextFromResponse(rawOutput);
 
-      logger.info('Context inference successful', {
+      const duration = Math.round(performance.now() - startTime);
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration,
         backgroundLevel: context.backgroundLevel,
         intendedUse: context.intendedUse,
+        promptLength: prompt.length,
       });
 
       return context;
     } catch (error) {
-      logger.error('Context inference failed', { error: (error as Error).message });
+      const duration = Math.round(performance.now() - startTime);
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration,
+        promptLength: prompt.length,
+      });
       // Return sensible defaults on failure
       return {
         specificAspects: '',
@@ -143,7 +167,10 @@ Output only the JSON, nothing else:`;
         intendedUse: context.intendedUse,
       };
     } catch (error) {
-      logger.warn('Failed to parse context JSON', { error: (error as Error).message });
+      this.log.warn('Failed to parse context JSON', {
+        error: (error as Error).message,
+        errorName: (error as Error).name,
+      });
       // Return defaults on parse failure
       return {
         specificAspects: '',

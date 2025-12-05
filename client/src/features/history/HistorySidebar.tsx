@@ -15,6 +15,7 @@ import { getAuthRepository } from '../../repositories';
 import { HistoryEmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 import { Button } from '../../components/Button';
+import { useDebugLogger } from '../../hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '../../hooks/types';
 import type { Mode } from '../prompt-optimizer/context/types';
 
@@ -243,6 +244,11 @@ export function HistorySidebar({
   onDelete,
   modes
 }: HistorySidebarProps): React.ReactElement {
+  const debug = useDebugLogger('HistorySidebar', {
+    historyCount: history.length,
+    isExpanded: showHistory,
+    isAuthenticated: !!user
+  });
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = React.useState<boolean>(false);
   const INITIAL_HISTORY_LIMIT = 5;
@@ -253,24 +259,30 @@ export function HistorySidebar({
     : filteredHistory.slice(0, INITIAL_HISTORY_LIMIT);
 
   const handleSignIn = async (): Promise<void> => {
+    debug.logAction('signIn');
+    debug.startTimer('signIn');
     try {
       const authRepository = getAuthRepository();
       const signedInUser = await authRepository.signInWithGoogle();
       const displayName = typeof signedInUser.displayName === 'string' ? signedInUser.displayName : 'User';
+      debug.endTimer('signIn', 'Sign in successful');
       toast.success(`Welcome, ${displayName}!`);
     } catch (error) {
-      console.error('Sign in failed:', error);
+      debug.endTimer('signIn');
+      debug.logError('Sign in failed', error as Error);
       toast.error('Failed to sign in. Please try again.');
     }
   };
 
   const handleSignOut = async (): Promise<void> => {
+    debug.logAction('signOut');
     try {
       const authRepository = getAuthRepository();
       await authRepository.signOut();
+      debug.logAction('signOutComplete');
       toast.success('Signed out successfully');
     } catch (error) {
-      console.error('Sign out failed:', error);
+      debug.logError('Sign out failed', error as Error);
       toast.error('Failed to sign out');
     }
   };

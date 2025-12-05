@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Video } from 'lucide-react';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
 import { createHighlightSignature } from '../hooks/useSpanLabeling';
 import type {
@@ -37,6 +38,9 @@ export function usePromptState(): PromptStateContextValue {
  * Prompt State Provider
  */
 export function PromptStateProvider({ children, user }: PromptStateProviderProps): React.ReactElement {
+  const debug = useDebugLogger('PromptStateProvider', { 
+    user: user ? 'authenticated' : 'anonymous' 
+  });
   const navigate = useNavigate();
   const { uuid } = useParams<{ uuid?: string }>();
 
@@ -120,6 +124,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   // Create new prompt
   const handleCreateNew = useCallback((): void => {
+    debug.logAction('createNew');
     skipLoadFromUrlRef.current = true;
     promptOptimizer.resetPrompt();
     setShowResults(false);
@@ -132,10 +137,19 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     persistedSignatureRef.current = null;
     resetEditStacks();
     navigate('/', { replace: true });
+    debug.logAction('createNewComplete');
   }, [promptOptimizer, navigate, applyInitialHighlightSnapshot, resetEditStacks]);
 
   // Load from history
   const loadFromHistory = useCallback((entry: PromptHistoryEntry): void => {
+    debug.logAction('loadFromHistory', { 
+      uuid: entry.uuid, 
+      mode: entry.mode,
+      hasContext: !!entry.brainstormContext,
+      hasHighlightCache: !!entry.highlightCache
+    });
+    debug.startTimer('loadFromHistory');
+
     skipLoadFromUrlRef.current = true;
     setCurrentPromptUuid(entry.uuid || null);
     setCurrentPromptDocId(entry.id || null);
@@ -164,8 +178,9 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
             : entry.brainstormContext;
         const restoredContext = PromptContext.fromJSON(contextData);
         setPromptContext(restoredContext);
+        debug.logAction('contextRestored');
       } catch (contextError) {
-        console.error('Failed to restore prompt context from history entry:', contextError);
+        debug.logError('Failed to restore prompt context from history entry', contextError as Error);
         setPromptContext(null);
       }
     } else {
@@ -181,6 +196,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         skipLoadFromUrlRef.current = false;
+        debug.endTimer('loadFromHistory', 'History entry loaded');
       });
     });
   }, [promptOptimizer, setDisplayedPromptSilently, applyInitialHighlightSnapshot, resetEditStacks, navigate]);

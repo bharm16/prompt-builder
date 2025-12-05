@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { ModeDropdownProps, PromptInputProps } from './types';
 
 /**
@@ -28,7 +29,13 @@ const ModeDropdown = memo<ModeDropdownProps>(({ modes, selectedMode, onModeChang
     }
   }, [isOpen]);
 
+  const debug = useDebugLogger('ModeDropdown', { selectedMode });
+
   const handleModeSelect = (modeId: string): void => {
+    debug.logAction('modeSelect', { 
+      previousMode: selectedMode, 
+      newMode: modeId 
+    });
     onModeChange(modeId);
     setIsOpen(false);
   };
@@ -108,6 +115,11 @@ export const PromptInput = ({
   aiNames,
   currentAIIndex,
 }: PromptInputProps): React.ReactElement => {
+  const debug = useDebugLogger('PromptInput', { 
+    mode: selectedMode, 
+    hasInput: !!inputPrompt,
+    isProcessing,
+  });
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -115,6 +127,11 @@ export const PromptInput = ({
       // For other modes, require Cmd/Ctrl+Enter
       if (selectedMode === 'optimize' || e.metaKey || e.ctrlKey) {
         e.preventDefault();
+        debug.logAction('optimizeViaKeyboard', { 
+          mode: selectedMode,
+          promptLength: inputPrompt.length,
+          modifier: e.metaKey ? 'cmd' : e.ctrlKey ? 'ctrl' : 'none',
+        });
         onOptimize();
       }
     }
@@ -125,6 +142,10 @@ export const PromptInput = ({
     e.stopPropagation();
     
     if (inputPrompt && inputPrompt.trim()) {
+      debug.logAction('optimizeViaButton', { 
+        mode: selectedMode,
+        promptLength: inputPrompt.length,
+      });
       onOptimize();
     }
   };

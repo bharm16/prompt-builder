@@ -7,6 +7,7 @@
  */
 
 import * as GeistIcons from '@geist-ui/icons';
+import { logger } from '@/services/LoggingService';
 
 /**
  * Mapping from Lucide icon names to Geist icon names
@@ -121,13 +122,20 @@ export const iconMapping: Record<string, keyof typeof GeistIcons> = {
 export function getGeistIcon(lucideIconName: string): React.ComponentType<any> | null {
   const geistIconName = iconMapping[lucideIconName];
   if (!geistIconName) {
-    console.warn(`No Geist icon mapping found for: ${lucideIconName}`);
+    logger.warn('No Geist icon mapping found', {
+      component: 'iconMapping',
+      lucideIconName,
+    });
     return null;
   }
   
   const GeistIcon = GeistIcons[geistIconName];
   if (!GeistIcon) {
-    console.warn(`Geist icon "${geistIconName}" not found in @geist-ui/icons`);
+    logger.warn('Geist icon not found in @geist-ui/icons', {
+      component: 'iconMapping',
+      geistIconName,
+      lucideIconName,
+    });
     return null;
   }
   

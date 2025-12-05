@@ -22,6 +22,7 @@ export class FeedbackRepository {
    * Store a feedback entry
    */
   store(entry: FeedbackEntry): void {
+    const startTime = performance.now();
     const operation = 'store';
     const service = entry.service || 'default';
 
@@ -47,8 +48,10 @@ export class FeedbackRepository {
       });
     }
     
+    const duration = Math.round(performance.now() - startTime);
     this.log.info('Feedback entry stored', {
       operation,
+      duration,
       service,
       totalEntries: serviceData.length,
     });

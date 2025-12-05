@@ -1,5 +1,6 @@
 import express from 'express';
 import { logger } from '@infrastructure/Logger';
+import { extractUserId } from '../utils/requestHelpers.js';
 import { LLMJudgeService } from '../services/quality-feedback/services/LLMJudgeService.js';
 
 /**
@@ -65,10 +66,12 @@ router.post('/evaluate', async (req, res) => {
 
     const operation = 'evaluateSuggestions';
     const requestId = req.id;
+    const userId = extractUserId(req);
     
     logger.debug(`Starting ${operation}`, {
       operation,
       requestId,
+      userId,
       suggestionCount: suggestions.length,
       rubric: rubric || 'auto-detect',
       isVideoPrompt: context.isVideoPrompt,
@@ -86,6 +89,7 @@ router.post('/evaluate', async (req, res) => {
     logger.info(`${operation} completed`, {
       operation,
       requestId,
+      userId,
       duration: responseTime,
       overallScore: evaluation.overallScore,
     });
@@ -98,6 +102,7 @@ router.post('/evaluate', async (req, res) => {
     const responseTime = Math.round(performance.now() - startTime);
     const operation = 'evaluateSuggestions';
     const requestId = req.id;
+    const userId = extractUserId(req);
     
     logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
       operation,
@@ -127,6 +132,9 @@ router.post('/evaluate', async (req, res) => {
  */
 router.post('/evaluate/single', async (req, res) => {
   const startTime = performance.now();
+  const operation = 'evaluateSingleSuggestion';
+  const requestId = req.id;
+  const userId = extractUserId(req);
   
   try {
     const { suggestion, context, rubric } = req.body;
@@ -144,13 +152,11 @@ router.post('/evaluate/single', async (req, res) => {
         message: 'context.highlightedText is required',
       });
     }
-
-    const operation = 'evaluateSingleSuggestion';
-    const requestId = req.id;
     
     logger.debug(`Starting ${operation}`, {
       operation,
       requestId,
+      userId,
       suggestionLength: suggestion.length,
       rubric: rubric || 'auto-detect',
     });
@@ -162,12 +168,11 @@ router.post('/evaluate/single', async (req, res) => {
     );
 
     const responseTime = Math.round(performance.now() - startTime);
-    const operation = 'evaluateSingleSuggestion';
-    const requestId = req.id;
 
     logger.info(`${operation} completed`, {
       operation,
       requestId,
+      userId,
       duration: responseTime,
       overallScore: evaluation.overallScore,
     });
@@ -179,9 +184,11 @@ router.post('/evaluate/single', async (req, res) => {
   } catch (error) {
     const responseTime = Math.round(performance.now() - startTime);
     
-    logger.error('Single suggestion evaluation failed', {
-      error: error.message,
-      responseTime,
+    logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
+      operation,
+      requestId,
+      userId,
+      duration: responseTime,
     });
 
     res.status(500).json({
@@ -217,7 +224,9 @@ router.post('/evaluate/single', async (req, res) => {
  * }
  */
 router.post('/evaluate/compare', async (req, res) => {
-  const startTime = Date.now();
+  const startTime = performance.now();
+  const operation = 'compareSuggestionSets';
+  const requestId = req.id;
   
   try {
     const { setA, setB, context, rubric } = req.body;
@@ -235,9 +244,6 @@ router.post('/evaluate/compare', async (req, res) => {
         message: 'context.highlightedText is required',
       });
     }
-
-    const operation = 'compareSuggestionSets';
-    const requestId = req.id;
     
     logger.debug(`Starting ${operation}`, {
       operation,
@@ -254,8 +260,6 @@ router.post('/evaluate/compare', async (req, res) => {
     );
 
     const responseTime = Math.round(performance.now() - startTime);
-    const operation = 'compareSuggestionSets';
-    const requestId = req.id;
 
     logger.info(`${operation} completed`, {
       operation,
@@ -272,9 +276,10 @@ router.post('/evaluate/compare', async (req, res) => {
   } catch (error) {
     const responseTime = Math.round(performance.now() - startTime);
     
-    logger.error('Comparison evaluation failed', {
-      error: error.message,
-      responseTime,
+    logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
+      operation,
+      requestId,
+      duration: responseTime,
     });
 
     res.status(500).json({
@@ -299,6 +304,14 @@ router.post('/evaluate/compare', async (req, res) => {
  * }
  */
 router.get('/rubrics', (req, res) => {
+  const requestId = req.id;
+  const operation = 'getRubrics';
+  
+  logger.debug('Rubrics request received', {
+    operation,
+    requestId,
+  });
+  
   const { VIDEO_RUBRIC, GENERAL_RUBRIC } = require('../services/quality-feedback/config/judgeRubrics.js');
   
   res.json({

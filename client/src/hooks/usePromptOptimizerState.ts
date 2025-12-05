@@ -6,6 +6,9 @@
  */
 
 import { useReducer, useCallback } from 'react';
+import { logger } from '../services/LoggingService';
+
+const log = logger.child('usePromptOptimizerState');
 
 export interface SpansData {
   spans: unknown[];
@@ -64,6 +67,19 @@ function reducer(
   state: PromptOptimizerState,
   action: PromptOptimizerAction
 ): PromptOptimizerState {
+  // Log state transitions for debugging
+  log.debug('State transition', {
+    action: action.type,
+    previousState: {
+      isProcessing: state.isProcessing,
+      isDraftReady: state.isDraftReady,
+      isRefining: state.isRefining,
+      hasOptimizedPrompt: !!state.optimizedPrompt,
+      hasDraftSpans: !!state.draftSpans,
+      hasRefinedSpans: !!state.refinedSpans,
+    },
+  });
+
   switch (action.type) {
     case 'SET_INPUT_PROMPT':
       return { ...state, inputPrompt: action.payload };
@@ -90,6 +106,9 @@ function reducer(
     case 'SET_IS_PROCESSING':
       return { ...state, isProcessing: action.payload };
     case 'START_OPTIMIZATION':
+      log.debug('Starting optimization - resetting state', {
+        action: 'START_OPTIMIZATION',
+      });
       return {
         ...state,
         isProcessing: true,
@@ -104,6 +123,9 @@ function reducer(
         refinedSpans: null,
       };
     case 'RESET':
+      log.debug('Resetting state to initial', {
+        action: 'RESET',
+      });
       return initialState;
     default:
       return state;

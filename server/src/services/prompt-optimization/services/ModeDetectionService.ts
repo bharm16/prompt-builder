@@ -34,7 +34,7 @@ export class ModeDetectionService {
       return claudeMode;
 
     } catch (error) {
-      logger.error('Mode detection failed, using default', { error: (error as Error).message });
+      logger.error('Mode detection failed, using default', error as Error);
       return OptimizationConfig.modeDetection.defaultMode as OptimizationMode;
     }
   }
