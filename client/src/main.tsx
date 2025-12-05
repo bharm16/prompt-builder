@@ -9,7 +9,7 @@ import { loadGeistFonts } from './utils/loadGeistFonts';
 loadGeistFonts();
 
 // Initialize Sentry before rendering
-initSentry();
+// initSentry(); // Disabled
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

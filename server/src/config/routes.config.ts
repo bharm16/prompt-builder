@@ -115,7 +115,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
  */
 export function registerErrorHandlers(app: Application): void {
   // Sentry error handler (must be before other error handlers)
-  Sentry.setupExpressErrorHandler(app);
+  // Sentry.setupExpressErrorHandler(app); // Disabled
 
   // Optional fallthrough error handler
   app.use(function onError(

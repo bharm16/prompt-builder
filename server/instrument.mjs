@@ -10,6 +10,8 @@ const SENTRY_DSN = process.env.SENTRY_DSN;
 const ENVIRONMENT = process.env.NODE_ENV || 'development';
 const RELEASE = process.env.APP_VERSION || 'unknown';
 
+// Sentry initialization disabled
+/*
 Sentry.init({
   dsn: SENTRY_DSN || "https://e612da64218e595ffd763abab1fbfb16@o4506655473074176.ingest.us.sentry.io/4510247711539200",
   // Setting this option to true will send default PII data to Sentry.
@@ -63,6 +65,7 @@ Sentry.init({
     'Too many requests',
   ],
 });
+*/
 
-console.log(`✓ Sentry initialized (env: ${ENVIRONMENT})`);
+// console.log(`✓ Sentry initialized (env: ${ENVIRONMENT})`);
 
