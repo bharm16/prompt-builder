@@ -462,13 +462,13 @@ describe('GroqSchema', () => {
       expect(hasSkipExample).toBe(true);
     });
 
-    it('should extract renderable facial expressions like "jaw set"', () => {
+    it('should extract renderable facial expressions like "focused demeanor"', () => {
       const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
-      const hasJawSet = assistantMessages.some(msg => {
+      const hasFocusedDemeanor = assistantMessages.some(msg => {
         const parsed = JSON.parse(msg.content);
-        return parsed.spans.some((s: { text: string }) => s.text.toLowerCase().includes('jaw set'));
+        return parsed.spans.some((s: { text: string }) => s.text.toLowerCase().includes('focused demeanor'));
       });
-      expect(hasJawSet).toBe(true);
+      expect(hasFocusedDemeanor).toBe(true);
     });
 
     it('should have a negative example showing what NOT to extract', () => {
@@ -489,6 +489,35 @@ describe('GroqSchema', () => {
         return trace.includes('skip') || trace.includes('abstract') || trace.includes('internal state');
       });
       expect(hasExplanation).toBe(true);
+    });
+
+    it('should have a comprehensive example with 15+ spans for rich prompts', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      const hasComprehensiveExample = assistantMessages.some(msg => {
+        const parsed = JSON.parse(msg.content);
+        return parsed.spans.length >= 15;
+      });
+      expect(hasComprehensiveExample).toBe(true);
+    });
+
+    it('should extract technical specs (duration, fps, aspect ratio) in comprehensive example', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      // Find the comprehensive example (15+ spans)
+      const comprehensiveExample = assistantMessages.find(msg => {
+        const parsed = JSON.parse(msg.content);
+        return parsed.spans.length >= 15;
+      });
+      
+      expect(comprehensiveExample).toBeDefined();
+      if (comprehensiveExample) {
+        const parsed = JSON.parse(comprehensiveExample.content);
+        const spanTexts = parsed.spans.map((s: { text: string }) => s.text);
+        
+        // Should have technical specs
+        expect(spanTexts).toContain('4-8s');
+        expect(spanTexts).toContain('16:9');
+        expect(spanTexts).toContain('60fps');
+      }
     });
   });
 

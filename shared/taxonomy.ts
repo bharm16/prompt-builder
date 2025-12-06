@@ -160,6 +160,9 @@ export const TAXONOMY: Taxonomy = {
       
       /** Time of day: "Golden hour", "Night", "Dawn" */
       TIME: 'lighting.timeOfDay',
+      
+      /** Color temperature: "5500K", "3200K", "warm", "cool" */
+      COLOR_TEMP: 'lighting.colorTemp',
     }
   },
 
@@ -189,6 +192,9 @@ export const TAXONOMY: Taxonomy = {
       
       /** Camera angle: "Low angle", "Overhead", "Eye level" */
       ANGLE: 'camera.angle',
+      
+      /** Focus/aperture: "f/2.8", "deep focus", "shallow depth of field" */
+      FOCUS: 'camera.focus',
     }
   },
 
@@ -208,6 +214,9 @@ export const TAXONOMY: Taxonomy = {
       
       /** Film medium: "Kodak Portra", "35mm film", "Digital" */
       FILM_STOCK: 'style.filmStock',
+      
+      /** Color grading: "warm tones", "desaturated", "vibrant colors" */
+      COLOR_GRADE: 'style.colorGrade',
     }
   },
 
@@ -251,7 +260,10 @@ export const TAXONOMY: Taxonomy = {
       SCORE: 'audio.score',
       
       /** Sound effects: "Footsteps", "Wind", "Traffic" */
-      SFX: 'audio.soundEffect'
+      SFX: 'audio.soundEffect',
+      
+      /** Ambient sounds: "Natural ambience", "City sounds", "Forest sounds" */
+      AMBIENT: 'audio.ambient'
     }
   }
 } as const;
@@ -325,6 +337,8 @@ export const LEGACY_ID_MAP: Record<string, string> = {
   'timeOfDay': 'lighting.timeOfDay',
   'timeofday': 'lighting.timeOfDay',
   'timeday': 'lighting.timeOfDay',
+  'colorTemp': 'lighting.colorTemp',
+  'color_temp': 'lighting.colorTemp',
   
   // Camera attributes
   'framing': 'shot.type',
@@ -335,11 +349,16 @@ export const LEGACY_ID_MAP: Record<string, string> = {
   'movement': 'camera.movement',
   'lens': 'camera.lens',
   'angle': 'camera.angle',
+  'focus': 'camera.focus',
+  'aperture': 'camera.focus',
+  'depth_of_field': 'camera.focus',
   
   // Style attributes
   'aesthetic': 'style.aesthetic',
   'film_stock': 'style.filmStock',
   'filmStock': 'style.filmStock',
+  'colorGrade': 'style.colorGrade',
+  'color_grade': 'style.colorGrade',
   
   // Technical attributes
   'aspect_ratio': 'technical.aspectRatio',
@@ -356,6 +375,8 @@ export const LEGACY_ID_MAP: Record<string, string> = {
   'sound_effect': 'audio.soundEffect',
   'soundEffect': 'audio.soundEffect',
   'sfx': 'audio.soundEffect',
+  'ambient': 'audio.ambient',
+  'ambience': 'audio.ambient',
 } as const;
 
 /**

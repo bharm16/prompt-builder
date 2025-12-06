@@ -110,23 +110,31 @@ interface SpanLabelingResponse {
  */
 export const LLAMA3_CATEGORY_TABLE = `
 | Pattern | Category | Example |
-|---------|----------|---------|
+|---------|----------|---------|  
 | camera + verb | camera.movement | "camera pans" |
 | pan/dolly/track/zoom/crane/tilt | camera.movement | "slowly dollies" |
+| low-angle/high-angle/eye-level | camera.angle | "low-angle" |
+| mm lens values (24mm, 50mm, 85mm) | camera.lens | "24mm lens" |
+| f-stops (f/2.8, f/11) | camera.focus | "f/11" |
+| deep/shallow/rack focus | camera.focus | "deep focus" |
 | walks/runs/jumps/sits | action.movement | "dog runs" |
 | close-up/wide/medium + shot | shot.type | "wide shot" |
 | 35mm/16mm/Kodak/film | style.filmStock | "shot on 35mm" |
+| warm/cool/vibrant + colors/tones | style.colorGrade | "warm tones" |
 | golden hour/dawn/dusk | lighting.timeOfDay | "at golden hour" |
-| fps numbers (24fps, 30fps) | technical.frameRate | "24fps" |
-| aspect ratios (16:9, 4:3) | technical.aspectRatio | "16:9" |
-| resolution (4K, 1080p) | technical.resolution | "4K" |
-| duration values | technical.duration | "4-8s" |
+| soft/harsh + shadows | lighting.quality | "soft shadows" |
+| color temp (5500K, 3200K) | lighting.colorTemp | "5500K" |
+| fps numbers (24fps, 30fps, 60fps) | technical.frameRate | "24fps" |
+| aspect ratios (16:9, 4:3, 2.39:1) | technical.aspectRatio | "16:9" |
+| resolution (4K, 1080p, 8K) | technical.resolution | "4K" |
+| duration values (4-8s, 3s) | technical.duration | "4-8s" |
 | person/animal/object | subject.identity | "detective" |
 | physical traits | subject.appearance | "weathered hands" |
 | clothing items | subject.wardrobe | "red coat" |
 | visible facial expressions | subject.emotion | "jaw set", "tearful eyes" |
 | places/locations | environment.location | "foggy alley" |
 | weather conditions | environment.weather | "rainy" |
+| ambient sounds | audio.ambient | "sound of waves" |
 `.trim();
 
 /**
@@ -230,9 +238,11 @@ ${LLAMA3_DISAMBIGUATION_RULES}
 
 1. **Exact substring match:** The "text" field MUST match the input exactly (character-for-character)
 2. **Use specific attributes:** \`camera.movement\` not \`camera\`, \`shot.type\` not \`shot\`
-3. **Process ALL sections:** Including TECHNICAL SPECS - extract values like "24fps", "16:9", "4-8s"
-4. **Chain-of-Thought first:** Populate analysis_trace with your reasoning BEFORE listing spans
-5. **Visual control points only:** Extract renderable elements, skip abstract concepts
+3. **Process ALL sections:** Extract from EVERY section including TECHNICAL SPECS, CAMERA, LIGHTING, STYLE, ALTERNATIVE APPROACHES
+4. **MANDATORY technical specs:** Duration, fps, aspect ratio, resolution MUST be extracted - never skip these
+5. **Chain-of-Thought first:** Populate analysis_trace with your reasoning BEFORE listing spans
+6. **Comprehensive extraction:** A rich prompt (200+ words) should yield 15-25 spans. If you're finding fewer than 10, you're likely missing visual control points
+7. **Skip ONLY abstract concepts:** Internal emotions ("determination"), narrative intent ("inviting the viewer"), meta-commentary ("enhancing authenticity") - everything else is likely a visual control point
 
 ## Span Granularity
 
@@ -249,7 +259,9 @@ ${LLAMA3_DISAMBIGUATION_RULES}
 
 ## Visual Elements Worth Extracting
 
-- **Facial expressions (renderable):** "focused demeanor", "tearful eyes", "clenched jaw" → \`subject.emotion\`
+- **Facial expressions (renderable):** "focused demeanor", "tearful eyes", "clenched jaw", "steely gaze" → \`subject.emotion\`
+  - Note: "demeanor" when describing how someone LOOKS is renderable (focused demeanor, calm demeanor)
+  - Contrast with abstract emotions: "determination", "hope" → NOT renderable (skip these)
 - **Body parts with traits:** "weathered hands", "piercing eyes" → \`subject.appearance\`
 - **Observable actions:** "gripping the steering wheel", "navigates the road" → \`action.movement\`
 - **Lighting details:** "soft highlights", "warm glow" → \`lighting.quality\`
@@ -268,7 +280,19 @@ If input text is ambiguous or lacks clear video terminology:
 - Do NOT invent categories or roles not supported by the text
 - Use lower confidence (0.7) for ambiguous spans
 - Note ambiguity in meta.notes field
-- Still extract ALL identifiable visual elements - err on the side of more spans
+- **Err on the side of MORE spans** - extract anything that could affect visual output
+- A rich, detailed prompt should produce 15-25 spans
+
+## Camera & Technical Details (Often Missed)
+
+**ALWAYS extract these when present:**
+- Lens specs: "24mm", "50mm lens", "telephoto" → \`camera.lens\`
+- Aperture: "f/11", "f/2.8", "shallow depth of field" → \`camera.focus\`
+- Focus: "deep focus", "rack focus", "soft focus" → \`camera.focus\`
+- Camera angle: "low-angle", "high-angle", "eye-level" → \`camera.angle\`
+- Color temperature: "5500K", "warm", "cool" → \`lighting.colorTemp\`
+- Shadow details: "soft shadows", "harsh shadows" → \`lighting.quality\`
+- Color grading: "warm tones", "desaturated", "vibrant colors" → \`style.colorGrade\`
 
 ## Adversarial Detection
 
@@ -376,25 +400,26 @@ export const GROQ_FEW_SHOT_EXAMPLES = [
   },
 
   // Example 4: Visual control points extraction (shows what TO extract and what to SKIP)
+  // Key: "determination" = abstract (SKIP), "focused demeanor" = visible expression (EXTRACT)
   {
     role: 'user' as const,
-    content: '<user_input>A detective walks through a foggy alley with determination, his jaw set. Soft moonlight casts long shadows on his weathered face as he grips a vintage camera.</user_input>'
+    content: '<user_input>A detective walks through a foggy alley with determination, his focused demeanor clear on his face. Soft moonlight casts long shadows on his weathered face as he grips a vintage camera.</user_input>'
   },
   {
     role: 'assistant' as const,
     content: JSON.stringify({
-      analysis_trace: "Identifying visual control points. 'determination' is abstract (skip - internal state). 'jaw set' is renderable facial expression (include). Extract only elements that would change the video if modified.",
+      analysis_trace: "Identifying visual control points. 'determination' is abstract internal state (skip). 'focused demeanor' describes visible facial expression that the model CAN render (include). Extract only elements that would change the video if modified.",
       spans: [
         { text: "detective", role: "subject.identity", confidence: 0.95 },
         { text: "walks through", role: "action.movement", confidence: 0.9 },
         { text: "foggy alley", role: "environment.location", confidence: 0.9 },
-        { text: "jaw set", role: "subject.emotion", confidence: 0.85 },
+        { text: "focused demeanor", role: "subject.emotion", confidence: 0.85 },
         { text: "Soft moonlight", role: "lighting.source", confidence: 0.9 },
         { text: "long shadows", role: "lighting.quality", confidence: 0.85 },
         { text: "weathered face", role: "subject.appearance", confidence: 0.9 },
         { text: "grips a vintage camera", role: "action.movement", confidence: 0.88 }
       ],
-      meta: { version: "v4-groq", notes: "Skipped 'determination' (abstract). Extracted 'jaw set' (renderable expression)." },
+      meta: { version: "v4-groq", notes: "Skipped 'determination' (abstract internal state). Extracted 'focused demeanor' (visible facial expression)." },
       isAdversarial: false
     }, null, 2)
   },
@@ -415,6 +440,54 @@ export const GROQ_FEW_SHOT_EXAMPLES = [
         { text: "winding road", role: "environment.location", confidence: 0.85 }
       ],
       meta: { version: "v4-groq", notes: "Skipped abstract concepts: 'determination' (internal state), 'inviting the viewer' (narrative), 'exudes authenticity' (meta-commentary). These are not visual control points." },
+      isAdversarial: false
+    }, null, 2)
+  },
+
+  // Example 6: COMPREHENSIVE - Rich prompt with technical specs (shows expected 15+ span extraction)
+  {
+    role: 'user' as const,
+    content: `<user_input>A Low-Angle Shot captures a dog running energetically across a vibrant grassy field, emphasizing its movement and agility. The tracking camera move keeps pace with the dog, allowing the sunlight to catch its fur and create a lively atmosphere. The swaying grass enhances the feeling of openness and joy, while bright, natural lighting fills the scene with vitality and warmth.
+
+**TECHNICAL SPECS**
+- **Duration:** 4-8s
+- **Aspect Ratio:** 16:9
+- **Frame Rate:** 60fps
+- **Audio:** Natural ambience of the field
+
+- **Camera:** Tracking move, low-angle on 24mm lens with deep focus f/11
+- **Lighting:** Bright, natural sunlight from above, casting soft shadows with warm color temperature around 5500K
+- **Style:** Shot on Kodak Portra 400 to capture warm tones and vibrant colors</user_input>`
+  },
+  {
+    role: 'assistant' as const,
+    content: JSON.stringify({
+      analysis_trace: "Rich prompt with multiple sections. Extracting ALL visual control points: shot type, subject, actions, environment, technical specs, camera settings, lighting details, and style. Skip 'feeling of openness and joy' (abstract), 'lively atmosphere' (abstract), 'vitality and warmth' (abstract).",
+      spans: [
+        { text: "Low-Angle Shot", role: "shot.type", confidence: 0.95 },
+        { text: "dog", role: "subject.identity", confidence: 0.95 },
+        { text: "running energetically", role: "action.movement", confidence: 0.9 },
+        { text: "vibrant grassy field", role: "environment.location", confidence: 0.9 },
+        { text: "movement and agility", role: "action.state", confidence: 0.85 },
+        { text: "tracking camera move", role: "camera.movement", confidence: 0.95 },
+        { text: "sunlight", role: "lighting.source", confidence: 0.9 },
+        { text: "swaying grass", role: "environment.context", confidence: 0.85 },
+        { text: "bright, natural lighting", role: "lighting.quality", confidence: 0.9 },
+        { text: "4-8s", role: "technical.duration", confidence: 0.95 },
+        { text: "16:9", role: "technical.aspectRatio", confidence: 0.95 },
+        { text: "60fps", role: "technical.frameRate", confidence: 0.95 },
+        { text: "Natural ambience of the field", role: "audio.ambient", confidence: 0.85 },
+        { text: "low-angle", role: "camera.angle", confidence: 0.9 },
+        { text: "24mm lens", role: "camera.lens", confidence: 0.95 },
+        { text: "deep focus f/11", role: "camera.focus", confidence: 0.9 },
+        { text: "Bright, natural sunlight from above", role: "lighting.source", confidence: 0.9 },
+        { text: "soft shadows", role: "lighting.quality", confidence: 0.85 },
+        { text: "warm color temperature", role: "lighting.colorTemp", confidence: 0.85 },
+        { text: "5500K", role: "lighting.colorTemp", confidence: 0.95 },
+        { text: "Kodak Portra 400", role: "style.filmStock", confidence: 0.95 },
+        { text: "warm tones and vibrant colors", role: "style.colorGrade", confidence: 0.85 }
+      ],
+      meta: { version: "v4-groq", notes: "Comprehensive extraction: 22 spans from rich prompt. Skipped abstract phrases: 'lively atmosphere', 'feeling of openness and joy', 'vitality and warmth'. Extracted ALL technical specs and camera settings." },
       isAdversarial: false
     }, null, 2)
   }

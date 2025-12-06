@@ -40,13 +40,16 @@ export const VALID_TAXONOMY_IDS = [
   'lighting.source',
   'lighting.quality',
   'lighting.timeOfDay',
+  'lighting.colorTemp',
   // Camera attributes
   'camera.movement',
   'camera.lens',
   'camera.angle',
+  'camera.focus',
   // Style attributes
   'style.aesthetic',
   'style.filmStock',
+  'style.colorGrade',
   // Technical attributes
   'technical.aspectRatio',
   'technical.frameRate',
@@ -54,7 +57,8 @@ export const VALID_TAXONOMY_IDS = [
   'technical.duration',
   // Audio attributes
   'audio.score',
-  'audio.soundEffect'
+  'audio.soundEffect',
+  'audio.ambient'
 ] as const;
 
 export type TaxonomyId = typeof VALID_TAXONOMY_IDS[number];
