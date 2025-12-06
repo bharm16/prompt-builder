@@ -34,7 +34,9 @@ import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
  * @param {Object} params.options - Processing options
  * @param {number} params.attempt - Validation attempt (1 = strict, 2 = lenient)
  * @param {SubstringPositionCache} params.cache - Position cache for span correction
- * @returns {Object} {ok: boolean, errors: Array, result: {spans: Array, meta: Object}}
+ * @param {boolean} params.isAdversarial - Whether input was flagged as adversarial
+ * @param {string} params.analysisTrace - Chain-of-thought reasoning from LLM
+ * @returns {Object} {ok: boolean, errors: Array, result: {spans: Array, meta: Object, analysisTrace: string}}
  */
 export function validateSpans({
   spans,
@@ -45,6 +47,7 @@ export function validateSpans({
   attempt = 1,
   cache,
   isAdversarial = false,
+  analysisTrace = null,
 }) {
   const lenient = attempt > 1;
 
@@ -111,6 +114,7 @@ export function validateSpans({
         notes: combinedNotes.join(' | '),
       },
       isAdversarial: Boolean(isAdversarial),
+      analysisTrace: analysisTrace || null,
     },
   };
 }

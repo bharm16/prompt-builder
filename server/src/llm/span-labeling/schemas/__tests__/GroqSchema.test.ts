@@ -73,10 +73,10 @@ describe('GroqSchema', () => {
         const optimizedPrompt = getGroqSystemPrompt(true);
 
         // Assert
-        // Full prompt starts with: "Label video prompt elements using the taxonomy. Output ONLY valid JSON..."
-        expect(fullPrompt).toMatch(/^Label video prompt elements using the taxonomy\. Output ONLY valid JSON/);
+        // Full prompt starts with: "Return labeled video prompt elements using the taxonomy. Output ONLY valid JSON..."
+        expect(fullPrompt).toMatch(/^Return labeled video prompt elements using the taxonomy\. Output ONLY valid JSON/);
         // Optimized prompt should NOT have "Output ONLY valid JSON" in opening
-        expect(optimizedPrompt).toMatch(/^Label video prompt elements using the taxonomy\. Match the SpanLabelingResponse interface\./);
+        expect(optimizedPrompt).toMatch(/^Return labeled video prompt elements using the taxonomy\. Match the SpanLabelingResponse interface\./);
       });
 
       it('should remove the "Remember" reminder from the end', () => {
@@ -94,7 +94,7 @@ describe('GroqSchema', () => {
         // Assert - Essential sections should remain
         expect(result).toContain('## Response Interface');
         expect(result).toContain('## Valid Taxonomy IDs');
-        expect(result).toContain('## What TO Label');
+        expect(result).toContain('## What IS a Visual Control Point?');
         expect(result).toContain('## Category Quick Reference');
         expect(result).toContain('## Decision Tree');
         expect(result).toContain('## Critical Rules');
@@ -371,10 +371,124 @@ describe('GroqSchema', () => {
       expect(VALID_TAXONOMY_IDS).toContain('environment.location');
     });
 
-    it('should have taxonomy IDs in dot notation format', () => {
+    it('should have taxonomy IDs in dot notation format or parent category', () => {
       for (const id of VALID_TAXONOMY_IDS) {
-        expect(id).toMatch(/^[a-z]+\.[a-zA-Z]+$/);
+        // Either dot notation (e.g., camera.movement) or parent category (e.g., camera)
+        expect(id).toMatch(/^[a-z]+(\.?[a-zA-Z]*)$/);
       }
+    });
+  });
+
+  // ============================================
+  // Visual Control Point Tests
+  // ============================================
+
+  describe('Visual Control Point Prompt Content', () => {
+    it('should contain visual control point framing', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Visual Control Point');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('would produce a visually different video');
+    });
+
+    it('should list abstract concepts to EXCLUDE', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('EXCLUDE');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('determination');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('hope');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('urgency');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Internal states');
+    });
+
+    it('should list narrative intent phrases to skip', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Narrative intent');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('inviting the viewer');
+    });
+
+    it('should list meta-commentary to skip', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Meta-commentary');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('enhancing the authenticity');
+    });
+
+    it('should distinguish renderable emotions from abstract ones', () => {
+      // Renderable facial expressions should be included
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('focused demeanor');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('tearful eyes');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('clenched jaw');
+    });
+
+    it('should contain the visual control point test examples', () => {
+      // Positive examples (should extract)
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('✅');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('soft highlights on the contours');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('gripping the steering wheel');
+      
+      // Negative examples (should skip)
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('❌');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('abstract internal state');
+    });
+
+    it('should contain granularity guidance', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Span Granularity');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Too Fine');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Just Right');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Too Coarse');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Replaceable unit');
+    });
+
+    it('should contain "What to SKIP" section', () => {
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('What to SKIP');
+      expect(GROQ_FULL_SYSTEM_PROMPT).toContain('Not Visual Control Points');
+    });
+  });
+
+  describe('Few-Shot Examples - Visual Control Points', () => {
+    it('should NOT extract "determination" in any example', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      for (const msg of assistantMessages) {
+        const parsed = JSON.parse(msg.content);
+        const spanTexts = parsed.spans.map((s: { text: string }) => s.text.toLowerCase());
+        expect(spanTexts).not.toContain('determination');
+      }
+    });
+
+    it('should have at least one example that demonstrates skipping abstract concepts', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      const hasSkipExample = assistantMessages.some(msg => {
+        const parsed = JSON.parse(msg.content);
+        const notes = parsed.meta?.notes?.toLowerCase() || '';
+        const trace = parsed.analysis_trace?.toLowerCase() || '';
+        return (notes.includes('skip') || trace.includes('skip')) && 
+               (notes.includes('abstract') || trace.includes('abstract') || 
+                notes.includes('determination') || trace.includes('determination'));
+      });
+      expect(hasSkipExample).toBe(true);
+    });
+
+    it('should extract renderable facial expressions like "jaw set"', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      const hasJawSet = assistantMessages.some(msg => {
+        const parsed = JSON.parse(msg.content);
+        return parsed.spans.some((s: { text: string }) => s.text.toLowerCase().includes('jaw set'));
+      });
+      expect(hasJawSet).toBe(true);
+    });
+
+    it('should have a negative example showing what NOT to extract', () => {
+      const userMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'user');
+      // Look for the negative example about determination/inviting the viewer
+      const hasNegativeExample = userMessages.some(msg => 
+        msg.content.includes('determination') && 
+        msg.content.includes('inviting the viewer')
+      );
+      expect(hasNegativeExample).toBe(true);
+    });
+
+    it('should explain reasoning in analysis_trace for skipped concepts', () => {
+      const assistantMessages = GROQ_FEW_SHOT_EXAMPLES.filter(m => m.role === 'assistant');
+      const hasExplanation = assistantMessages.some(msg => {
+        const parsed = JSON.parse(msg.content);
+        const trace = parsed.analysis_trace?.toLowerCase() || '';
+        return trace.includes('skip') || trace.includes('abstract') || trace.includes('internal state');
+      });
+      expect(hasExplanation).toBe(true);
     });
   });
 
@@ -402,8 +516,8 @@ describe('GroqSchema', () => {
       expect(optimizedPrompt.length).toBeGreaterThan(500);
       
       // Both should start with the expected opening
-      expect(fullPrompt).toMatch(/^Label video prompt elements/);
-      expect(optimizedPrompt).toMatch(/^Label video prompt elements/);
+      expect(fullPrompt).toMatch(/^Return labeled video prompt elements/);
+      expect(optimizedPrompt).toMatch(/^Return labeled video prompt elements/);
     });
   });
 });

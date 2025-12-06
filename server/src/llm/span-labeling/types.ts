@@ -71,6 +71,7 @@ export interface ValidationResult {
     spans: LLMSpan[];
     meta: LLMMeta;
     isAdversarial?: boolean;
+    analysisTrace?: string | null;
   };
 }
 
@@ -81,5 +82,6 @@ export interface LabelSpansResult {
   spans: LLMSpan[];
   meta: LLMMeta;
   isAdversarial?: boolean;
+  analysisTrace?: string | null;
 }
 

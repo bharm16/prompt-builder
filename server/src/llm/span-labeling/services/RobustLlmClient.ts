@@ -204,6 +204,7 @@ export class RobustLlmClient implements ILlmClient {
         attempt: 1,
         cache,
         isAdversarial: true,
+        analysisTrace: parsedPrimary.value.analysis_trace || null,
       });
 
       return this._postProcessResult(validation.result);
@@ -219,6 +220,7 @@ export class RobustLlmClient implements ILlmClient {
       attempt: 1,
       cache,
       isAdversarial,
+      analysisTrace: parsedPrimary.value.analysis_trace || null,
     });
 
     if (validation.ok) {
@@ -236,6 +238,7 @@ export class RobustLlmClient implements ILlmClient {
         attempt: 2,
         cache,
         isAdversarial,
+        analysisTrace: parsedPrimary.value.analysis_trace || null,
       });
 
       return this._postProcessResult(validation.result);
@@ -539,6 +542,7 @@ If validation feedback is provided, correct the issues without altering span tex
       isAdversarial:
         parsedRepair.value?.isAdversarial === true ||
         parsedRepair.value?.is_adversarial === true,
+      analysisTrace: parsedRepair.value.analysis_trace || null,
     });
 
     if (!validation.ok) {
