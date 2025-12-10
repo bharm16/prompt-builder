@@ -128,7 +128,9 @@ export const NLP_FAST_PATH = {
  */
 export const NEURO_SYMBOLIC = {
   // Master switch for neuro-symbolic pipeline
-  ENABLED: false,  // Disabled - using LLM-only until GLiNER word boundaries are fixed
+  // ENABLED: Now uses AHO_CORASICK for technical terms (100% accurate)
+  // then falls back to LLM for open vocabulary (subjects, actions, etc.)
+  ENABLED: true,
   
   // Tier 1: Aho-Corasick (Closed Vocabulary)
   AHO_CORASICK: {
@@ -138,7 +140,7 @@ export const NEURO_SYMBOLIC = {
   
   // Tier 2: GLiNER (Open Vocabulary)
   GLINER: {
-    // Enable GLiNER for semantic entity recognition
+    // Enabled - using official 'gliner' npm package
     ENABLED: true,
     
     // Model path (ONNX format)
