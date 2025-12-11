@@ -168,33 +168,71 @@ let glinerInitialized = false;
 let glinerInitFailed = false;
 let glinerInitPromise: Promise<boolean> | null = null;
 
-/** Labels for video prompt entity extraction */
+/** Labels for video prompt entity extraction
+ * Expanded set based on testing - covers subjects, locations, actions, time, objects, atmosphere
+ */
 const GLINER_LABELS = [
-  'person', 'character', 'animal', 'object',
-  'place', 'location', 'environment',
-  'action', 'movement', 'gesture',
-  'emotion', 'mood', 'atmosphere',
-  'style', 'aesthetic', 'lighting'
+  // Subjects
+  'person', 'character', 'animal', 'creature',
+  // Objects (distinct from subjects)
+  'object', 'item', 'vehicle', 'food', 'drink', 'clothing',
+  // Locations & Environment  
+  'place', 'location', 'environment', 'building', 'room',
+  // Actions (expanded)
+  'action', 'movement', 'gesture', 'activity',
+  // Emotions & Expression
+  'emotion', 'expression', 'mood',
+  // Atmosphere & Time
+  'atmosphere', 'weather', 'time of day', 'season',
+  // Visual Style
+  'style', 'aesthetic', 'lighting', 'color'
 ];
 
 /** Map GLiNER labels to taxonomy IDs */
 const LABEL_TO_TAXONOMY: Record<string, string> = {
+  // Subjects (people, animals, characters)
   person: 'subject.identity',
   character: 'subject.identity',
   animal: 'subject.identity',
-  object: 'subject.identity',
+  creature: 'subject.identity',
+  
+  // Objects (distinct from subjects - things, not beings)
+  object: 'subject.props',
+  item: 'subject.props',
+  vehicle: 'subject.props',
+  food: 'subject.props',
+  drink: 'subject.props',
+  clothing: 'subject.wardrobe',
+  
+  // Locations & Environment
   place: 'environment.location',
   location: 'environment.location',
-  environment: 'environment.location',
+  environment: 'environment.setting',
+  building: 'environment.location',
+  room: 'environment.location',
+  
+  // Actions
   action: 'action.movement',
   movement: 'action.movement',
   gesture: 'action.gesture',
+  activity: 'action.movement',
+  
+  // Emotions & Expression
   emotion: 'subject.emotion',
-  mood: 'style.aesthetic',
-  atmosphere: 'lighting.quality',
+  expression: 'subject.emotion',
+  mood: 'style.mood',
+  
+  // Atmosphere & Time
+  atmosphere: 'environment.atmosphere',
+  weather: 'environment.weather',
+  'time of day': 'lighting.time_of_day',
+  season: 'environment.time',
+  
+  // Visual Style
   style: 'style.aesthetic',
   aesthetic: 'style.aesthetic',
-  lighting: 'lighting.quality'
+  lighting: 'lighting.quality',
+  color: 'style.color'
 };
 
 function mapLabelToTaxonomy(label: string): string {

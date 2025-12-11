@@ -99,15 +99,16 @@ export const CHUNKING = {
  * NLP Fast-Path Configuration
  * Enables dictionary-based span extraction to bypass expensive LLM calls
  * 
- * NOTE: Currently DISABLED because GLiNER (open vocabulary) is not working,
- * so only technical terms are detected. Enabling this skips semantic
- * content like subjects, actions, environments.
- * Re-enable once RobustGLiNER is properly configured with downloaded model.
+ * Uses neuro-symbolic pipeline (Aho-Corasick + GLiNER) to extract:
+ * - Technical terms (camera movements, shot types, etc.) via Aho-Corasick
+ * - Semantic entities (subjects, locations, actions, etc.) via GLiNER
+ * 
+ * Bypasses LLM when sufficient spans are found (≥MIN_SPANS_THRESHOLD).
  */
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
   // Combines NLP technical terms with GLiNER semantic extraction
-  ENABLED: false,  // Disabled - GLiNER word boundary issues need fixing
+  ENABLED: true,  // ✅ Enabled - GLiNER is working and tested
   
   // Minimum spans to consider NLP sufficient 
   MIN_SPANS_THRESHOLD: 3,
