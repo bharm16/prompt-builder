@@ -523,7 +523,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.warn('⚠️ GLiNER warmup failed:', errorMessage);
+      logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
     }
   } else {
     logger.info('ℹ️ GLiNER warmup skipped (NEURO_SYMBOLIC disabled)');
@@ -531,4 +531,3 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   
   return container;
 }
-

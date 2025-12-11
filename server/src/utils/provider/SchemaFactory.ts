@@ -365,7 +365,7 @@ function getOpenAIVideoOptimizationSchema(): JSONSchema {
       },
       technical_specs: {
         type: 'object',
-        required: ['lighting', 'camera', 'style', 'aspect_ratio', 'frame_rate', 'duration'],
+        required: ['lighting', 'camera', 'style', 'aspect_ratio', 'frame_rate', 'duration', 'audio'],
         additionalProperties: false,
         properties: {
           lighting: {

@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger.js';
 import OptimizationConfig from '@config/OptimizationConfig.js';
+import { ModelConfig } from '@config/modelConfig.js';
 // Import the examples along with the generator
 import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate.js';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
@@ -115,7 +116,8 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
     // Detect provider for this operation
     const provider = detectProvider({
       operation: 'optimize_standard',
-      client: process.env.OPTIMIZE_PROVIDER
+      client: ModelConfig.optimize_standard.client,
+      model: ModelConfig.optimize_standard.model,
     });
 
     logger.debug('Provider detected for video optimization', { provider });
@@ -139,6 +141,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
       const schema = getVideoOptimizationSchema({
         operation: 'optimize_standard',
         provider,
+        model: ModelConfig.optimize_standard.model,
       });
 
       logger.debug('Using provider-specific template', {
@@ -297,4 +300,3 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
 }
 
 export default VideoStrategy;
-

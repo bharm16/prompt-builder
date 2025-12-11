@@ -33,13 +33,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const vocabPath = join(__dirname, 'vocab.json');
 const modelPath = join(__dirname, 'models', 'model.onnx');
+const log = logger.child({ service: 'NlpSpanService' });
 
 // Load vocabulary
 let VOCAB: Record<string, string[]> = {};
 try {
   VOCAB = JSON.parse(readFileSync(vocabPath, 'utf-8'));
 } catch (e) {
-  logger.warn('NLP Service: Could not load vocab.json', {
+  log.warn('NLP Service: Could not load vocab.json', {
     error: e instanceof Error ? e.message : String(e),
     vocabPath,
   });
@@ -250,11 +251,15 @@ async function initializeGliner(): Promise<boolean> {
   glinerInitPromise = (async () => {
     const operation = 'initializeGliner';
     const startTime = performance.now();
+    log.debug('Starting GLiNER initialization', {
+      operation,
+      modelPath,
+    });
     
     try {
       // Check for model file
       if (!existsSync(modelPath)) {
-        logger.warn(`${operation}: Model file not found`, {
+        log.warn(`${operation}: Model file not found`, {
           operation,
           modelPath,
           hint: 'Download from: https://huggingface.co/onnx-community/gliner_small-v2.1/tree/main/onnx',
@@ -284,13 +289,22 @@ async function initializeGliner(): Promise<boolean> {
       glinerInitialized = true;
       
       const duration = Math.round(performance.now() - startTime);
-      logger.info(`${operation}: GLiNER initialized`, { operation, duration });
+      log.info(`${operation}: GLiNER initialized`, { 
+        operation, 
+        duration,
+        modelPath,
+        labelCount: GLINER_LABELS.length,
+      });
       
       return true;
     } catch (error) {
       glinerInitFailed = true;
       const duration = Math.round(performance.now() - startTime);
-      logger.error(`${operation}: Failed`, error as Error, { operation, duration });
+      log.error(`${operation}: Failed`, error as Error, { 
+        operation, 
+        duration,
+        modelPath,
+      });
       return false;
     }
   })();
@@ -305,10 +319,25 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
   if (!text || typeof text !== 'string') return [];
   
   const ready = await initializeGliner();
-  if (!ready || !gliner) return [];
+  if (!ready || !gliner) {
+    log.warn('GLiNER not ready, skipping open-vocabulary extraction', {
+      operation: 'extractOpenVocabulary',
+      glinerReady: glinerInitialized && !glinerInitFailed,
+      glinerInitFailed,
+      textLength: text.length,
+    });
+    return [];
+  }
   
   try {
     const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
+    const startTime = performance.now();
+    log.debug('Starting GLiNER inference', {
+      operation: 'extractOpenVocabulary',
+      textLength: text.length,
+      threshold,
+      labelCount: GLINER_LABELS.length,
+    });
     
     const results = await gliner.inference({
       texts: [text],
@@ -319,6 +348,13 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
     });
     
     const entities = results[0] || [];
+    const duration = Math.round(performance.now() - startTime);
+    log.info('GLiNER inference completed', {
+      operation: 'extractOpenVocabulary',
+      duration,
+      entityCount: entities.length,
+      threshold,
+    });
     
     return entities.map(entity => ({
       text: entity.spanText,  // Node.js version uses spanText field
@@ -329,8 +365,9 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
       source: 'gliner' as const
     }));
   } catch (error) {
-    logger.warn('extractOpenVocabulary: Failed', {
+    log.warn('extractOpenVocabulary: Failed', {
       textLength: text.length,
+      operation: 'extractOpenVocabulary',
       error: error instanceof Error ? error.message : String(error),
     });
     return [];
@@ -439,6 +476,13 @@ export async function extractSemanticSpans(
 ): Promise<ExtractionResult> {
   const operation = 'extractSemanticSpans';
   const startTime = performance.now();
+  const useGliner = options.useGliner ?? (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false);
+  
+  log.debug('Starting semantic span extraction', {
+    operation,
+    useGliner,
+    textLength: text?.length ?? 0,
+  });
   
   if (!text || typeof text !== 'string') {
     return { 
@@ -455,8 +499,6 @@ export async function extractSemanticSpans(
     };
   }
   
-  const useGliner = options.useGliner ?? (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false);
-  
   try {
     // Tier 1: Closed vocabulary
     const tier1Start = performance.now();
@@ -471,6 +513,11 @@ export async function extractSemanticSpans(
       const tier2Start = performance.now();
       openSpans = await extractOpenVocabulary(text);
       tier2Time = Math.round(performance.now() - tier2Start);
+    } else {
+      log.debug('GLiNER disabled for semantic extraction', {
+        operation,
+        useGliner,
+      });
     }
     
     // Merge and deduplicate
@@ -480,12 +527,13 @@ export async function extractSemanticSpans(
     
     const totalTime = Math.round(performance.now() - startTime);
     
-    logger.info(`${operation} completed`, {
+    log.info(`${operation} completed`, {
       operation,
       duration: totalTime,
       totalSpans: outputSpans.length,
       closedVocabSpans: closedSpans.length,
       openVocabSpans: openSpans.length,
+      useGliner,
     });
     
     return {
@@ -501,7 +549,7 @@ export async function extractSemanticSpans(
       }
     };
   } catch (error) {
-    logger.error(`${operation} failed`, error as Error, { operation });
+    log.error(`${operation} failed`, error as Error, { operation });
     throw error;
   }
 }
@@ -566,7 +614,7 @@ export async function warmupGliner(): Promise<WarmupResult> {
     const ready = await initializeGliner();
     const duration = Math.round(performance.now() - startTime);
     
-    logger.info(`${operation} ${ready ? 'completed' : 'failed'}`, {
+    log.info(`${operation} ${ready ? 'completed' : 'failed'}`, {
       operation,
       duration,
       success: ready,
@@ -577,7 +625,7 @@ export async function warmupGliner(): Promise<WarmupResult> {
       message: ready ? 'GLiNER initialized' : 'GLiNER initialization failed'
     };
   } catch (error) {
-    logger.error(`${operation} failed`, error as Error, { operation });
+    log.error(`${operation} failed`, error as Error, { operation });
     return { 
       success: false, 
       message: error instanceof Error ? error.message : 'Unknown error' 
