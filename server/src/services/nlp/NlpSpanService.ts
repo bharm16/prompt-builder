@@ -186,7 +186,10 @@ const GLINER_LABELS = [
   // Atmosphere & Time
   'atmosphere', 'weather', 'time of day', 'season',
   // Visual Style
-  'style', 'aesthetic', 'lighting', 'color'
+  'style', 'aesthetic', 'lighting', 'color',
+  // Technical specs & camera
+  'frame rate', 'fps', 'duration', 'aspect ratio',
+  'camera movement', 'camera angle', 'focus', 'depth of field', 'color temperature'
 ];
 
 /** Map GLiNER labels to taxonomy IDs */
@@ -233,7 +236,18 @@ const LABEL_TO_TAXONOMY: Record<string, string> = {
   style: 'style.aesthetic',
   aesthetic: 'style.aesthetic',
   lighting: 'lighting.quality',
-  color: 'style.color'
+  color: 'style.color',
+  
+  // Technical specs & camera
+  'frame rate': 'technical.frameRate',
+  fps: 'technical.frameRate',
+  duration: 'technical.duration',
+  'aspect ratio': 'technical.aspectRatio',
+  'camera movement': 'camera.movement',
+  'camera angle': 'camera.angle',
+  focus: 'camera.focus',
+  'depth of field': 'camera.focus',
+  'color temperature': 'lighting.colorTemp'
 };
 
 function mapLabelToTaxonomy(label: string): string {

@@ -39,6 +39,7 @@ Label video prompt elements using the taxonomy. Output ONLY valid JSON matching 
 3. **Process ALL sections:** Including TECHNICAL SPECS - extract values like "24fps", "16:9", "4-8s"
 4. **Chain-of-Thought first:** Populate analysis_trace with your reasoning BEFORE listing spans
 5. **Quality over quantity:** Meaningful content words only, fewer spans is better than trivial ones
+6. **Must-capture controls:** Always label frame rate, duration, aspect ratio, camera movement/angle/focus, and subject expressions/emotions when present.
 
 ## Adversarial Detection
 

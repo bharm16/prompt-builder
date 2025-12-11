@@ -103,16 +103,18 @@ export class NlpSpanStrategy {
         const nlpLatency = nlpEndTime - startTime;
 
         // Validate NLP spans through the same pipeline
+        const baseMeta = {
+          version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
+          notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
+          source: nlpSource,
+          latency: nlpLatency,
+          ...nlpMetadata,
+          vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
+        };
+
         const validation = validateSpans({
           spans: nlpSpans,
-          meta: {
-            version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
-            notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
-            source: nlpSource,
-            latency: nlpLatency,
-            ...nlpMetadata,
-            vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
-          },
+          meta: baseMeta,
           text,
           policy,
           options,
@@ -138,6 +140,32 @@ export class NlpSpanStrategy {
             isAdversarial: validation.result.isAdversarial,
           };
         }
+
+        // Retry in lenient mode to preserve fast-path spans when strict checks are too tight
+        const lenientValidation = validateSpans({
+          spans: nlpSpans,
+          meta: baseMeta,
+          text,
+          policy,
+          options,
+          attempt: 2,
+          cache,
+          isAdversarial: false,
+        });
+
+        if (lenientValidation.ok) {
+          this.log.info('NLP Fast-Path accepted with lenient validation', {
+            operation: 'extractSpans',
+            spanCount: lenientValidation.result.spans.length,
+            latency: nlpLatency,
+          });
+
+          return {
+            spans: lenientValidation.result.spans,
+            meta: lenientValidation.result.meta,
+            isAdversarial: lenientValidation.result.isAdversarial,
+          };
+        }
       }
     }
 
@@ -145,4 +173,3 @@ export class NlpSpanStrategy {
     return null;
   }
 }
-

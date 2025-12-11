@@ -34,7 +34,29 @@
     "Stabilized Head",
     "Remote Head",
     "Time-Lapse Move",
-    "Hyperlapse"
+    "Hyperlapse",
+    "Tracking Shot",
+    "Follow Shot",
+    "Follow Cam",
+    "Camera Follows",
+    "Tracking Move"
+  ],
+  "camera.angle": [
+    "Low Angle",
+    "High Angle",
+    "Bird's-Eye View",
+    "Worm's-Eye View",
+    "Over-the-Shoulder",
+    "Dutch Angle",
+    "Eye Level"
+  ],
+  "camera.focus": [
+    "Shallow Depth of Field",
+    "Shallow Focus",
+    "Deep Focus",
+    "Blurred Background",
+    "Softly Blurred Background",
+    "Bokeh"
   ],
   "shot.type": [
     "Extreme Close-Up",
@@ -148,6 +170,13 @@
     "Hazy Atmosphere",
     "Smoky Atmosphere"
   ],
+  "lighting.colorTemp": [
+    "5600K",
+    "3200K",
+    "6500K",
+    "Warm",
+    "Cool"
+  ],
   "style.filmStock": [
     "Kodak Vision3 50D 5203",
     "Kodak Vision3 50D 7203",
@@ -247,6 +276,25 @@
     "2.59:1",
     "2.76:1"
   ],
+  "technical.frameRate": [
+    "23.976fps",
+    "24fps",
+    "25fps",
+    "29.97fps",
+    "30fps",
+    "48fps",
+    "50fps",
+    "59.94fps",
+    "60fps",
+    "120fps"
+  ],
+  "technical.duration": [
+    "4-8s",
+    "4s",
+    "8s",
+    "10s",
+    "15s"
+  ],
   "technical.resolution": [
     "SD 480p",
     "SD 576p",
@@ -297,4 +345,3 @@
     "200mm"
   ]
 }
-
