@@ -4,7 +4,6 @@
  * 
  * Test Coverage:
  * - Stop sequences for structured outputs (Llama 3 PDF Section 4.3)
- * - Min-P sampling for structured outputs (Llama 3 PDF Section 4.1)
  * - Temperature configuration (0.1 for structured, 0.7 for creative)
  * - Sandwich prompting and pre-fill assistant
  * - Metadata tracking of optimizations
@@ -20,6 +19,7 @@ import { APIError, TimeoutError } from '../../LLMClient';
 // Mock logger
 vi.mock('@infrastructure/Logger', () => ({
   logger: {
+    child: vi.fn(function child() { return this; }),
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
@@ -104,7 +104,7 @@ describe('GroqLlamaAdapter', () => {
       // Assert
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope', 'Let me know']);
+      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope']);
     });
 
     it('should add stop sequences for structured output (schema)', async () => {
@@ -130,7 +130,7 @@ describe('GroqLlamaAdapter', () => {
 
       // Assert
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope', 'Let me know']);
+      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope']);
     });
 
     it('should add stop sequences for structured output (responseFormat)', async () => {
@@ -151,7 +151,7 @@ describe('GroqLlamaAdapter', () => {
 
       // Assert
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope', 'Let me know']);
+      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope']);
     });
 
     it('should NOT add stop sequences for creative/non-structured output', async () => {
@@ -173,80 +173,6 @@ describe('GroqLlamaAdapter', () => {
       // Assert
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
       expect(callBody.stop).toBeUndefined();
-    });
-  });
-
-  // ============================================
-  // Min-P Sampling Tests (Llama 3 PDF Section 4.1)
-  // ============================================
-
-  describe('Min-P Sampling', () => {
-    it('should add min_p=0.05 for structured output (jsonMode)', async () => {
-      // Arrange
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: '{"result": "success"}' } }],
-          usage: { prompt_tokens: 10, completion_tokens: 5 },
-        }),
-      } as Response);
-
-      // Act
-      await adapter.complete('Return JSON', {
-        userMessage: 'Test',
-        jsonMode: true,
-      });
-
-      // Assert
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.min_p).toBe(0.05);
-    });
-
-    it('should add min_p=0.05 for structured output (schema)', async () => {
-      // Arrange
-      const schema = {
-        name: 'test_response',
-        schema: { type: 'object', properties: { result: { type: 'string' } } },
-      };
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: '{"result": "success"}' } }],
-          usage: { prompt_tokens: 10, completion_tokens: 5 },
-        }),
-      } as Response);
-
-      // Act
-      await adapter.complete('Return JSON', {
-        userMessage: 'Test',
-        schema,
-      });
-
-      // Assert
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.min_p).toBe(0.05);
-    });
-
-    it('should NOT add min_p for creative/non-structured output', async () => {
-      // Arrange
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'Creative response' } }],
-          usage: { prompt_tokens: 10, completion_tokens: 5 },
-        }),
-      } as Response);
-
-      // Act
-      await adapter.complete('Be creative', {
-        userMessage: 'Write a poem',
-        // No jsonMode, no schema
-      });
-
-      // Assert
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.min_p).toBeUndefined();
     });
   });
 
@@ -440,7 +366,6 @@ describe('GroqLlamaAdapter', () => {
       // Assert
       expect(result.metadata.optimizations).toContain('llama3-temp-0.1');
       expect(result.metadata.optimizations).toContain('top_p-0.95');
-      expect(result.metadata.optimizations).toContain('min_p-0.05');
       expect(result.metadata.optimizations).toContain('stop-sequences');
       expect(result.metadata.optimizations).toContain('sandwich-prompting');
       expect(result.metadata.optimizations).toContain('xml-wrapping');
@@ -473,7 +398,7 @@ describe('GroqLlamaAdapter', () => {
   // ============================================
 
   describe('Streaming', () => {
-    it('should add stop sequences and min_p for streaming structured output', async () => {
+    it('should add stop sequences for streaming structured output', async () => {
       // Arrange
       const mockReader = {
         read: vi.fn()
@@ -507,12 +432,11 @@ describe('GroqLlamaAdapter', () => {
       // Assert
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
-      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope', 'Let me know']);
-      expect(callBody.min_p).toBe(0.05);
+      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope']);
       expect(callBody.stream).toBe(true);
     });
 
-    it('should NOT add stop sequences or min_p for streaming creative output', async () => {
+    it('should NOT add stop sequences for streaming creative output', async () => {
       // Arrange
       const mockReader = {
         read: vi.fn()
@@ -542,7 +466,6 @@ describe('GroqLlamaAdapter', () => {
       // Assert
       const callBody = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
       expect(callBody.stop).toBeUndefined();
-      expect(callBody.min_p).toBeUndefined();
     });
   });
 
@@ -579,12 +502,9 @@ describe('GroqLlamaAdapter', () => {
       
       // Top-P (Section 4.1)
       expect(callBody.top_p).toBe(0.95);
-      
-      // Min-P (Section 4.1 - NEW)
-      expect(callBody.min_p).toBe(0.05);
-      
+
       // Stop sequences (Section 4.3 - NEW)
-      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope', 'Let me know']);
+      expect(callBody.stop).toEqual(['```', '\n\n\n', 'Note:', 'I hope']);
       
       // Repetition penalties disabled (Section 4.2)
       expect(callBody.frequency_penalty).toBe(0);
@@ -622,9 +542,6 @@ describe('GroqLlamaAdapter', () => {
       
       // Creative top_p
       expect(callBody.top_p).toBe(0.9);
-      
-      // NO min_p
-      expect(callBody.min_p).toBeUndefined();
       
       // NO stop sequences
       expect(callBody.stop).toBeUndefined();

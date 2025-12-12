@@ -24,6 +24,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 // TODO: Refactor CacheService to accept dependencies via constructor
 vi.mock('../../../../server/src/infrastructure/Logger.js', () => ({
   logger: {
+    child: vi.fn(function child() { return this; }),
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),

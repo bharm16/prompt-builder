@@ -126,6 +126,8 @@ describe('RequestCoalescingMiddleware', () => {
       expect(middleware.pendingRequests.size).toBe(1);
 
       await new Promise(resolve => setTimeout(resolve, 150));
+      // Cleanup runs on an interval; invoke once to simulate the scheduled sweep.
+      middleware._cleanupCompletedRequests();
 
       expect(middleware.pendingRequests.size).toBe(0);
     });

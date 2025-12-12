@@ -56,6 +56,8 @@ export function snapSpanToTokenBoundaries(
  * Checks if a range overlaps with any existing ranges
  */
 export function rangeOverlaps(ranges: Range[], start: number, end: number): boolean {
-  return ranges.some((range) => !(end <= range.start || start >= range.end));
+  return ranges.some((range) => {
+    if (range.end <= range.start) return false;
+    return !(end <= range.start || start >= range.end);
+  });
 }
-

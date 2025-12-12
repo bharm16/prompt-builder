@@ -7,7 +7,7 @@
  */
 export function cn(...classes: Array<string | string[] | Record<string, boolean> | undefined | null | boolean>): string {
   return classes
-    .flat()
+    .flat(Infinity)
     .filter((cls) => {
       // Filter out falsy values (undefined, null, false, '', 0)
       return Boolean(cls) && cls !== true;
@@ -18,4 +18,3 @@ export function cn(...classes: Array<string | string[] | Record<string, boolean>
 }
 
 export default cn;
-

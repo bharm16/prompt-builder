@@ -34,14 +34,21 @@ describe('apiAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when ALLOWED_API_KEYS not set', () => {
+  it('uses dev fallback key when ALLOWED_API_KEYS is not set (non-production)', () => {
     delete process.env.ALLOWED_API_KEYS;
-    const req = { headers: { 'x-api-key': 'a' }, query: {}, id: 'r2', ip: '::1', path: '/api/x', method: 'POST' };
-    const res = makeRes();
-    const next = vi.fn();
-    apiAuthMiddleware(req, res, next);
-    expect(res.statusCode).toBe(500);
-    expect(res.body.error).toBe('Server configuration error');
+
+    const badReq = { headers: { 'x-api-key': 'a' }, query: {}, id: 'r2', ip: '::1', path: '/api/x', method: 'POST' };
+    const badRes = makeRes();
+    const badNext = vi.fn();
+    apiAuthMiddleware(badReq, badRes, badNext);
+    expect(badRes.statusCode).toBe(403);
+    expect(badRes.body.error).toBe('Invalid API key');
+
+    const goodReq = { headers: { 'x-api-key': 'dev-key-12345' }, query: {}, id: 'r2b', ip: '::1', path: '/api/x', method: 'POST' };
+    const goodRes = makeRes();
+    const goodNext = vi.fn();
+    apiAuthMiddleware(goodReq, goodRes, goodNext);
+    expect(goodNext).toHaveBeenCalled();
   });
 
   it('returns 403 when key invalid', () => {

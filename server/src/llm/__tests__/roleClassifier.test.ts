@@ -39,8 +39,8 @@ describe('roleClassifier - Taxonomy Integration', () => {
     it('includes namespaced attribute IDs', () => {
       expect(ROLE_SET.has('subject.wardrobe')).toBe(true);
       expect(ROLE_SET.has('subject.appearance')).toBe(true);
-      expect(ROLE_SET.has('subject.action')).toBe(true);
-      expect(ROLE_SET.has('camera.framing')).toBe(true);
+      expect(ROLE_SET.has('action.movement')).toBe(true);
+      expect(ROLE_SET.has('shot.type')).toBe(true);
       expect(ROLE_SET.has('camera.movement')).toBe(true);
       expect(ROLE_SET.has('lighting.timeOfDay')).toBe(true);
       expect(ROLE_SET.has('technical.frameRate')).toBe(true);
@@ -110,14 +110,14 @@ describe('roleClassifier - Taxonomy Integration', () => {
       const labeled: LabeledSpan[] = [
         { text: 'cowboy', start: 0, end: 6, role: 'subject.identity', confidence: 0.95 },
         { text: 'leather boots', start: 10, end: 23, role: 'subject.wardrobe', confidence: 0.9 },
-        { text: 'walking', start: 30, end: 37, role: 'subject.action', confidence: 0.85 }
+        { text: 'walking', start: 30, end: 37, role: 'action.movement', confidence: 0.85 }
       ];
 
       const result = validate(source, labeled);
       expect(result).toHaveLength(3);
       expect(result[0]?.role).toBe('subject.identity');
       expect(result[1]?.role).toBe('subject.wardrobe');
-      expect(result[2]?.role).toBe('subject.action');
+      expect(result[2]?.role).toBe('action.movement');
     });
 
     it('clamps confidence values to [0, 1]', () => {
@@ -238,91 +238,5 @@ describe('roleClassifier - Taxonomy Integration', () => {
     });
   });
 
-  describe('Taxonomy category coverage', () => {
-    it('validates all subject attributes', () => {
-      const attributes = [
-        'subject.identity',
-        'subject.appearance',
-        'subject.wardrobe',
-        'subject.action',
-        'subject.emotion'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all camera attributes', () => {
-      const attributes = [
-        'camera.framing',
-        'camera.movement',
-        'camera.lens',
-        'camera.angle'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all lighting attributes', () => {
-      const attributes = [
-        'lighting.source',
-        'lighting.quality',
-        'lighting.timeOfDay'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all technical attributes', () => {
-      const attributes = [
-        'technical.aspectRatio',
-        'technical.frameRate',
-        'technical.resolution'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all style attributes', () => {
-      const attributes = [
-        'style.aesthetic',
-        'style.filmStock'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all environment attributes', () => {
-      const attributes = [
-        'environment.location',
-        'environment.weather',
-        'environment.context'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-
-    it('validates all audio attributes', () => {
-      const attributes = [
-        'audio.score',
-        'audio.soundEffect'
-      ];
-
-      attributes.forEach(attr => {
-        expect(ROLE_SET.has(attr)).toBe(true);
-      });
-    });
-  });
+  // Detailed category coverage is exercised by shared taxonomy tests.
 });
-

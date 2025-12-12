@@ -17,6 +17,7 @@ import { metricsService } from '@infrastructure/MetricsService';
 import { LLMClient } from '../clients/LLMClient.ts';
 import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.ts';
 import { GroqLlamaAdapter } from '../clients/adapters/GroqLlamaAdapter.ts';
+import { GroqQwenAdapter } from '../clients/adapters/GroqQwenAdapter.ts';
 import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.ts';
 import { openAILimiter } from '../services/concurrency/ConcurrencyService.ts';
 
@@ -55,6 +56,11 @@ interface ServiceConfig {
     model: string;
   };
   groq: {
+    apiKey: string | undefined;
+    timeout: number;
+    model: string;
+  };
+  qwen: {
     apiKey: string | undefined;
     timeout: number;
     model: string;
@@ -108,6 +114,11 @@ export function configureServices(): DIContainer {
       apiKey: process.env.GROQ_API_KEY,
       timeout: parseInt(process.env.GROQ_TIMEOUT_MS || '5000', 10),
       model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+    },
+    qwen: {
+      apiKey: process.env.GROQ_API_KEY, // Uses same Groq API key
+      timeout: parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
+      model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
     },
     gemini: {
       apiKey: process.env.GEMINI_API_KEY,
@@ -186,6 +197,36 @@ export function configureServices(): DIContainer {
     ['config']
   );
 
+  // Qwen client (OPTIONAL - higher quality suggestions via Qwen3 32B)
+  // Uses GroqQwenAdapter optimized for Qwen3 models:
+  // - reasoning_effort parameter for structured output
+  // - Higher temperature tolerance (0.5 for diversity)
+  // - No Llama-specific tricks needed
+  container.register(
+    'qwenClient',
+    (config: ServiceConfig) => {
+      if (!config.qwen.apiKey) {
+        logger.warn('GROQ_API_KEY not provided, Qwen client disabled');
+        return null;
+      }
+      return new LLMClient({
+        adapter: new GroqQwenAdapter({
+          apiKey: config.qwen.apiKey,
+          defaultModel: config.qwen.model,
+          defaultTimeout: config.qwen.timeout,
+        }),
+        providerName: 'qwen',
+        defaultTimeout: config.qwen.timeout,
+        circuitBreakerConfig: {
+          errorThresholdPercentage: 60,
+          resetTimeout: 15000,
+        },
+        concurrencyLimiter: null,
+      });
+    },
+    ['config']
+  );
+
   // Gemini client (OPTIONAL - fast/lightweight JSON-friendly option)
   container.register(
     'geminiClient',
@@ -226,15 +267,17 @@ export function configureServices(): DIContainer {
     (
       claudeClient: LLMClient | null,
       groqClient: LLMClient | null,
+      qwenClient: LLMClient | null,
       geminiClient: LLMClient | null
     ) => new AIModelService({
       clients: {
         openai: claudeClient,
         groq: groqClient,
+        qwen: qwenClient,
         gemini: geminiClient,
       },
     }),
-    ['claudeClient', 'groqClient', 'geminiClient']
+    ['claudeClient', 'groqClient', 'qwenClient', 'geminiClient']
   );
 
   // ============================================================================
@@ -451,6 +494,39 @@ export async function initializeServices(container: DIContainer): Promise<DICont
         }
       );
       container.registerValue('groqClient', null);
+    }
+  }
+
+  // Resolve and validate Qwen client (OPTIONAL)
+  const qwenClient = container.resolve<LLMClient | null>('qwenClient');
+  if (qwenClient) {
+    logger.info('Qwen client initialized for adapter-based routing');
+
+    try {
+      const qwenHealth = await qwenClient.healthCheck() as HealthCheckResult;
+
+      if (!qwenHealth.healthy) {
+        logger.warn(
+          '⚠️  Qwen API key validation failed - adapter disabled',
+          {
+            error: qwenHealth.error,
+          }
+        );
+        container.registerValue('qwenClient', null);
+      } else {
+        logger.info('✅ Qwen API key validated successfully', {
+          responseTime: qwenHealth.responseTime,
+        });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        '⚠️  Failed to validate Qwen API key - adapter disabled',
+        {
+          error: errorMessage,
+        }
+      );
+      container.registerValue('qwenClient', null);
     }
   }
 

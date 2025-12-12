@@ -128,9 +128,9 @@ describe('LocalStoragePromptRepository', () => {
     it('should remove entry from localStorage by id', async () => {
       // Arrange
       const mockHistory = [
-        { id: 1, input: 'Test 1', output: 'Output 1' },
-        { id: 2, input: 'Test 2', output: 'Output 2' },
-        { id: 3, input: 'Test 3', output: 'Output 3' },
+        { id: '1', input: 'Test 1', output: 'Output 1' },
+        { id: '2', input: 'Test 2', output: 'Output 2' },
+        { id: '3', input: 'Test 3', output: 'Output 3' },
       ];
       mockLocalStorage.store['testPromptHistory'] = JSON.stringify(mockHistory);
 
@@ -140,16 +140,16 @@ describe('LocalStoragePromptRepository', () => {
       // Assert
       const savedData = JSON.parse(mockLocalStorage.store['testPromptHistory']);
       expect(savedData).toHaveLength(2);
-      expect(savedData.find(entry => entry.id === 2)).toBeUndefined();
-      expect(savedData.find(entry => entry.id === 1)).toBeDefined();
-      expect(savedData.find(entry => entry.id === 3)).toBeDefined();
+      expect(savedData.find(entry => entry.id === '2')).toBeUndefined();
+      expect(savedData.find(entry => entry.id === '1')).toBeDefined();
+      expect(savedData.find(entry => entry.id === '3')).toBeDefined();
     });
 
     it('should preserve other entries when deleting one', async () => {
       // Arrange
       const mockHistory = [
-        { id: 1, input: 'Test 1', output: 'Output 1', timestamp: '2024-01-01' },
-        { id: 2, input: 'Test 2', output: 'Output 2', timestamp: '2024-01-02' },
+        { id: '1', input: 'Test 1', output: 'Output 1', timestamp: '2024-01-01' },
+        { id: '2', input: 'Test 2', output: 'Output 2', timestamp: '2024-01-02' },
       ];
       mockLocalStorage.store['testPromptHistory'] = JSON.stringify(mockHistory);
 
@@ -165,7 +165,7 @@ describe('LocalStoragePromptRepository', () => {
     it('should handle deleting non-existent entry gracefully', async () => {
       // Arrange
       const mockHistory = [
-        { id: 1, input: 'Test 1', output: 'Output 1' },
+        { id: '1', input: 'Test 1', output: 'Output 1' },
       ];
       mockLocalStorage.store['testPromptHistory'] = JSON.stringify(mockHistory);
 
@@ -193,7 +193,7 @@ describe('LocalStoragePromptRepository', () => {
     it('should handle localStorage quota exceeded error', async () => {
       // Arrange
       const mockHistory = [
-        { id: 1, input: 'Test 1', output: 'Output 1' },
+        { id: '1', input: 'Test 1', output: 'Output 1' },
       ];
       mockLocalStorage.store['testPromptHistory'] = JSON.stringify(mockHistory);
       
@@ -210,7 +210,7 @@ describe('LocalStoragePromptRepository', () => {
     it('should throw PromptRepositoryError when localStorage is unavailable', async () => {
       // Arrange
       const mockHistory = [
-        { id: 1, input: 'Test 1', output: 'Output 1' },
+        { id: '1', input: 'Test 1', output: 'Output 1' },
       ];
       mockLocalStorage.store['testPromptHistory'] = JSON.stringify(mockHistory);
       
@@ -256,4 +256,3 @@ describe('LocalStoragePromptRepository', () => {
     });
   });
 });
-
