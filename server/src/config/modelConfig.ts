@@ -11,7 +11,7 @@
  * 
  * Provider-Specific Optimizations:
  * - OpenAI: Temperature 0.0 for structured outputs (grammar-constrained)
- * - Groq/Llama: Temperature 0.1 for structured outputs (avoids repetition loops)
+ * - Groq/Qwen: Temperature 0.1 for structured outputs (avoids repetition loops)
  * - Seed parameter for reproducibility where determinism matters
  */
 
@@ -39,7 +39,7 @@ type OperationName = keyof typeof ModelConfig;
  * Model Configuration Object
  * 
  * Each operation defines:
- * - client: Which API client to use ('openai', 'groq', or 'gemini')
+ * - client: Which API client to use ('openai', 'qwen', 'groq', or 'gemini')
  * - model: Specific model identifier
  * - temperature: Sampling temperature (0-2)
  * - maxTokens: Maximum tokens to generate
@@ -64,7 +64,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     temperature: 0.7,
     maxTokens: 4096,
     timeout: 60000,
-    fallbackTo: 'groq',
+    fallbackTo: 'qwen',
     useDeveloperMessage: true, // GPT-4o: Use developer role for format constraints
   },
 
@@ -78,7 +78,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     temperature: 0.7,
     maxTokens: 500,
     timeout: 15000,
-    fallbackTo: 'groq',
+    fallbackTo: 'qwen',
     useSeed: true, // Same concept should draft similarly
     useDeveloperMessage: true,
   },
@@ -158,16 +158,16 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * 
    * Provider-specific temperature:
    * - OpenAI (when used): 0.0 for structured output
-   * - Groq/Llama: 0.1 (configured here, adapter may override)
+   * - Qwen: 0.1 (configured here, adapter may override)
    * 
    * Diversity is achieved through:
    * - Prompt: "Generate 12 DIVERSE alternatives"
    * - ContrastiveDiversityEnforcer post-processing
    */
   enhance_suggestions: {
-    client: process.env.ENHANCE_PROVIDER || 'groq',
-    model: process.env.ENHANCE_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.1, // Llama 3: 0.1 for reliable JSON (diversity via prompting)
+    client: process.env.ENHANCE_PROVIDER || 'qwen',
+    model: process.env.ENHANCE_MODEL || 'qwen/qwen3-32b',
+    temperature: 0.1, // Keep low temp for reliable JSON; diversity enforced by prompting/post-processing
     maxTokens: 1024,
     timeout: 8000,
     responseFormat: 'json_object',
@@ -211,7 +211,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     temperature: 0.8,
     maxTokens: 2048,
     timeout: 45000,
-    fallbackTo: 'groq',
+    fallbackTo: 'qwen',
     useDeveloperMessage: true,
   },
 
@@ -339,7 +339,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 2048,
     timeout: 30000,
     responseFormat: 'json_object',
-    fallbackTo: 'groq',
+    fallbackTo: 'qwen',
     useSeed: true, // Same prompt should generate same questions
     useDeveloperMessage: true,
   },
@@ -370,15 +370,15 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   /**
    * Label spans in video prompts
    * 
-   * Llama 3 PDF Best Practices:
+   * Qwen/Groq best practices (via Groq-hosted Qwen models):
    * - Temperature 0.1 (not 0.0 - avoids repetition loops)
    * - Sandwich prompting for format adherence
    * - XML tagging for data segmentation
    */
   span_labeling: {
-    client: process.env.SPAN_PROVIDER || 'groq',
-    model: process.env.SPAN_MODEL || 'llama-3.1-8b-instant',
-    temperature: 0.1, // Llama 3: Use 0.1, not 0.0
+    client: process.env.SPAN_PROVIDER || 'qwen',
+    model: process.env.SPAN_MODEL || 'qwen/qwen3-32b',
+    temperature: 0.1, // Low temperature for reliable JSON
     maxTokens: 4096,
     timeout: 30000,
     responseFormat: 'json_object',
@@ -400,7 +400,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     temperature: 0,
     maxTokens: 600,
     timeout: 20000,
-    fallbackTo: 'groq',
+    fallbackTo: 'qwen',
     useSeed: true, // Same spans should classify identically
     useDeveloperMessage: true,
   },

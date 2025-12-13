@@ -41,7 +41,7 @@ async function bootstrap() {
     // 2. Configure Dependency Injection Container
     // ========================================================================
     logger.info('Configuring dependency injection container...');
-    const container = configureServices();
+    const container = await configureServices();
     logger.info('✅ DI container configured with all service definitions');
 
     // ========================================================================
@@ -99,7 +99,7 @@ if (isTestEnv) {
   // Use top-level await (supported in ES modules)
   try {
     logger.info('Initializing application in test mode...');
-    containerInstance = configureServices();
+    containerInstance = await configureServices();
     await initializeServices(containerInstance);
     appInstance = createApp(containerInstance);
     logger.info('Application initialized successfully for testing');
@@ -125,4 +125,3 @@ export default appInstance;
 
 // Export bootstrap function and instances for programmatic use
 export { bootstrap, appInstance, containerInstance };
-

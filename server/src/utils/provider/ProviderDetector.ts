@@ -8,7 +8,7 @@
  * business logic with provider detection code.
  */
 
-export type ProviderType = 'openai' | 'groq' | 'anthropic' | 'gemini' | 'unknown';
+export type ProviderType = 'openai' | 'groq' | 'qwen' | 'anthropic' | 'gemini' | 'unknown';
 
 export interface ProviderCapabilities {
   /** Supports strict JSON schema mode (grammar-constrained decoding) */
@@ -48,6 +48,11 @@ export interface ProviderCapabilities {
  * - Temperature 0.1 (0.0 causes repetition loops)
  * - Sandwich prompting and prefill for format adherence
  * - Still needs prompt format instructions
+ * 
+ * Qwen (Groq-hosted):
+ * - Similar capabilities to Groq for JSON mode
+ * - No developer role
+ * - Benefits from sandwich prompting + format reminders
  */
 const PROVIDER_CAPABILITIES: Record<ProviderType, ProviderCapabilities> = {
   openai: {
@@ -73,6 +78,18 @@ const PROVIDER_CAPABILITIES: Record<ProviderType, ProviderCapabilities> = {
     assistantPrefill: true,
     structuredOutputTemperature: 0.1,
     needsPromptFormatInstructions: true, // Still needed
+  },
+  qwen: {
+    strictJsonSchema: false,
+    developerRole: false,
+    seed: true,
+    logprobs: true,
+    predictedOutputs: false,
+    bookending: false,
+    sandwichPrompting: true,
+    assistantPrefill: true,
+    structuredOutputTemperature: 0.1,
+    needsPromptFormatInstructions: true,
   },
   anthropic: {
     strictJsonSchema: false,
@@ -127,6 +144,7 @@ export function detectProvider(options: {
   if (client) {
     if (client.toLowerCase().includes('openai')) return 'openai';
     if (client.toLowerCase().includes('groq')) return 'groq';
+    if (client.toLowerCase().includes('qwen')) return 'qwen';
     if (client.toLowerCase().includes('anthropic')) return 'anthropic';
     if (client.toLowerCase().includes('gemini')) return 'gemini';
   }
@@ -136,6 +154,7 @@ export function detectProvider(options: {
     const envValue = process.env[providerEnvVar]?.toLowerCase();
     if (envValue === 'openai') return 'openai';
     if (envValue === 'groq') return 'groq';
+    if (envValue === 'qwen') return 'qwen';
     if (envValue === 'anthropic') return 'anthropic';
     if (envValue === 'gemini') return 'gemini';
   }
@@ -145,6 +164,9 @@ export function detectProvider(options: {
     const modelLower = model.toLowerCase();
     if (modelLower.includes('gpt') || modelLower.includes('o1') || modelLower.includes('o3')) {
       return 'openai';
+    }
+    if (modelLower.includes('qwen')) {
+      return 'qwen';
     }
     if (modelLower.includes('llama') || modelLower.includes('mixtral')) {
       return 'groq';
