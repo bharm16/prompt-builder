@@ -48,7 +48,7 @@ const VIDEO_PROMPT_SCHEMA = {
     },
     prompt: {
       type: "string",
-      description: "The final, 100-150 word video generation prompt."
+      description: "The final, 75-125 word video generation prompt."
     },
     technical_specs: {
       type: "object",

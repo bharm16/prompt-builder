@@ -134,6 +134,21 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     useDeveloperMessage: true,
   },
 
+  /**
+   * Intent preservation check (evaluation-only)
+   * Deterministic JSON output for pass/fail gating.
+   */
+  optimize_intent_check: {
+    client: 'openai',
+    model: 'gpt-4o-mini-2024-07-18',
+    temperature: 0.0,
+    maxTokens: 700,
+    timeout: 20000,
+    responseFormat: 'json_object',
+    useSeed: true,
+    useDeveloperMessage: true,
+  },
+
   // ============================================================================
   // Enhancement Operations (Suggestion Generation)
   // ============================================================================

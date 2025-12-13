@@ -17,6 +17,43 @@ import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../t
 export class NlpSpanStrategy {
   private readonly log = logger.child({ service: 'NlpSpanStrategy' });
 
+  private _calculateCoveragePercent(
+    spans: Array<{ start?: number; end?: number }> | null | undefined,
+    textLength: number
+  ): number {
+    if (!Array.isArray(spans) || spans.length === 0 || textLength <= 0) {
+      return 0;
+    }
+
+    const intervals = spans
+      .map((s) => ({
+        start: typeof s.start === 'number' ? Math.max(0, Math.min(textLength, s.start)) : null,
+        end: typeof s.end === 'number' ? Math.max(0, Math.min(textLength, s.end)) : null,
+      }))
+      .filter((i): i is { start: number; end: number } => i.start !== null && i.end !== null && i.end > i.start)
+      .sort((a, b) => a.start - b.start);
+
+    if (intervals.length === 0) return 0;
+
+    let covered = 0;
+    let curStart = intervals[0]!.start;
+    let curEnd = intervals[0]!.end;
+
+    for (let i = 1; i < intervals.length; i++) {
+      const it = intervals[i]!;
+      if (it.start > curEnd) {
+        covered += curEnd - curStart;
+        curStart = it.start;
+        curEnd = it.end;
+      } else if (it.end > curEnd) {
+        curEnd = it.end;
+      }
+    }
+
+    covered += curEnd - curStart;
+    return (covered / textLength) * 100;
+  }
+
   /**
    * Extract spans using NLP fast-path
    *
@@ -124,6 +161,18 @@ export class NlpSpanStrategy {
         });
 
         if (validation.ok) {
+          const coveragePercent = this._calculateCoveragePercent(validation.result.spans, text.length);
+          if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+            this.log.info('NLP Fast-Path coverage insufficient, falling back to LLM', {
+              operation: 'extractSpans',
+              spanCount: validation.result.spans.length,
+              coveragePercent: Math.round(coveragePercent * 10) / 10,
+              minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              source: nlpSource,
+            });
+            return null;
+          }
+
           // Log telemetry if enabled
           if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
             this.log.info('NLP Fast-Path bypassed LLM call', {
@@ -154,6 +203,18 @@ export class NlpSpanStrategy {
         });
 
         if (lenientValidation.ok) {
+          const coveragePercent = this._calculateCoveragePercent(lenientValidation.result.spans, text.length);
+          if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+            this.log.info('NLP Fast-Path coverage insufficient (lenient), falling back to LLM', {
+              operation: 'extractSpans',
+              spanCount: lenientValidation.result.spans.length,
+              coveragePercent: Math.round(coveragePercent * 10) / 10,
+              minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              source: nlpSource,
+            });
+            return null;
+          }
+
           this.log.info('NLP Fast-Path accepted with lenient validation', {
             operation: 'extractSpans',
             spanCount: lenientValidation.result.spans.length,

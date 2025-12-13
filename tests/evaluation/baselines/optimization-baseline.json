@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2025-12-12T20:45:25.785Z",
+  "runs": 3,
+  "metrics": {
+    "intentPreservation": 1,
+    "structuralCompleteness": 0.9111111111111111,
+    "wordCountCompliance": 0.2000000000000001,
+    "technicalDensity": 0.891111111111111,
+    "modelCompliance": 0.8733333333333335,
+    "totalCases": 30
+  },
+  "stats": {
+    "intentPreservation": {
+      "mean": 1,
+      "stdDev": 0,
+      "min": 1,
+      "max": 1
+    },
+    "structuralCompleteness": {
+      "mean": 0.9111111111111111,
+      "stdDev": 0.014163943093313277,
+      "min": 0.8916666666666667,
+      "max": 0.925
+    },
+    "wordCountCompliance": {
+      "mean": 0.2000000000000001,
+      "stdDev": 0,
+      "min": 0.2000000000000001,
+      "max": 0.2000000000000001
+    },
+    "technicalDensity": {
+      "mean": 0.891111111111111,
+      "stdDev": 0.029355210696939804,
+      "min": 0.8499999999999999,
+      "max": 0.9166666666666665
+    },
+    "modelCompliance": {
+      "mean": 0.8733333333333335,
+      "stdDev": 0,
+      "min": 0.8733333333333335,
+      "max": 0.8733333333333335
+    },
+    "totalCases": {
+      "mean": 30,
+      "stdDev": 0,
+      "min": 30,
+      "max": 30
+    }
+  },
+  "perRun": [
+    {
+      "intentPreservation": 1,
+      "structuralCompleteness": 0.8916666666666667,
+      "wordCountCompliance": 0.2000000000000001,
+      "technicalDensity": 0.8499999999999999,
+      "modelCompliance": 0.8733333333333335,
+      "totalCases": 30
+    },
+    {
+      "intentPreservation": 1,
+      "structuralCompleteness": 0.925,
+      "wordCountCompliance": 0.2000000000000001,
+      "technicalDensity": 0.9066666666666666,
+      "modelCompliance": 0.8733333333333335,
+      "totalCases": 30
+    },
+    {
+      "intentPreservation": 1,
+      "structuralCompleteness": 0.9166666666666666,
+      "wordCountCompliance": 0.2000000000000001,
+      "technicalDensity": 0.9166666666666665,
+      "modelCompliance": 0.8733333333333335,
+      "totalCases": 30
+    }
+  ]
+}

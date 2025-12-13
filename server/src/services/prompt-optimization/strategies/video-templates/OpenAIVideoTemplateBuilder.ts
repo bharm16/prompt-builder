@@ -118,7 +118,7 @@ CRITICAL LOGIC RULES (Follow These Blindly):
 OUTPUT CONSTRAINTS:
 - Respond with valid JSON matching the schema
 - One continuous action only (no sequences like "walks then runs")
-- Main prompt: 100-150 words, natural paragraph prose
+- Main prompt: 75-125 words, natural paragraph prose
 - NO arrows (→) or brackets [] in prose
 - Camera-visible details only
 - ABSOLUTELY NO negative phrasing ("don't show/avoid/no people")
@@ -169,7 +169,7 @@ DATA HANDLING:
    - Close-Up → f/1.8-f/2.8 (shallow DOF, subject isolation)
 
 6. **Assemble Main Prompt**:
-   - Natural paragraph, 100-150 words
+   - Natural paragraph, 75-125 words
    - Describe ONE continuous action
    - Camera-visible details only (translate emotion into visual cues)
    - NO arrows (→) or brackets []

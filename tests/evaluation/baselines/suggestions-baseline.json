@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2025-12-12T20:45:25.784Z",
+  "runs": 3,
+  "metrics": {
+    "categoryCoherence": 0.6039021164021164,
+    "diversity": 0.9339945109494557,
+    "nonRepetition": 0.8495911138024234,
+    "syntacticValidity": 0.9285714285714285,
+    "lengthAppropriateness": 0.8816807960557961,
+    "totalCases": 28
+  },
+  "stats": {
+    "categoryCoherence": {
+      "mean": 0.6039021164021164,
+      "stdDev": 0.009257920013339492,
+      "min": 0.590981240981241,
+      "max": 0.6121933621933622
+    },
+    "diversity": {
+      "mean": 0.9339945109494557,
+      "stdDev": 0.005006010807766206,
+      "min": 0.9280569263388526,
+      "max": 0.9403023200344628
+    },
+    "nonRepetition": {
+      "mean": 0.8495911138024234,
+      "stdDev": 0.0023817182731282072,
+      "min": 0.8478318903318902,
+      "max": 0.8529582388510961
+    },
+    "syntacticValidity": {
+      "mean": 0.9285714285714285,
+      "stdDev": 1.1102230246251565e-16,
+      "min": 0.9285714285714286,
+      "max": 0.9285714285714286
+    },
+    "lengthAppropriateness": {
+      "mean": 0.8816807960557961,
+      "stdDev": 0.009431030231589652,
+      "min": 0.8728968253968253,
+      "max": 0.8947646103896103
+    },
+    "totalCases": {
+      "mean": 28,
+      "stdDev": 0,
+      "min": 28,
+      "max": 28
+    }
+  },
+  "perRun": [
+    {
+      "categoryCoherence": 0.608531746031746,
+      "diversity": 0.9280569263388526,
+      "nonRepetition": 0.8529582388510961,
+      "syntacticValidity": 0.9285714285714286,
+      "lengthAppropriateness": 0.8728968253968253,
+      "totalCases": 28
+    },
+    {
+      "categoryCoherence": 0.6121933621933622,
+      "diversity": 0.9336242864750518,
+      "nonRepetition": 0.8479832122242836,
+      "syntacticValidity": 0.9285714285714286,
+      "lengthAppropriateness": 0.8947646103896103,
+      "totalCases": 28
+    },
+    {
+      "categoryCoherence": 0.590981240981241,
+      "diversity": 0.9403023200344628,
+      "nonRepetition": 0.8478318903318902,
+      "syntacticValidity": 0.9285714285714286,
+      "lengthAppropriateness": 0.8773809523809525,
+      "totalCases": 28
+    }
+  ]
+}

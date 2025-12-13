@@ -88,7 +88,7 @@ interface ServiceConfig {
  *
  * @returns Configured container
  */
-export function configureServices(): DIContainer {
+export async function configureServices(): Promise<DIContainer> {
   const container = createContainer();
 
   // ============================================================================

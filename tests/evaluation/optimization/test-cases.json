@@ -1,0 +1,191 @@
+{
+  "metadata": {
+    "name": "Optimization Quality Cases",
+    "version": "1.0.0",
+    "created": "2025-12-12",
+    "description": "Starter set for optimization quality evaluation. Expand over time."
+  },
+  "cases": [
+    {
+      "id": "opt-001",
+      "input": "dog running in park",
+      "requiredElements": ["dog", "running", "park"],
+      "forbiddenPatterns": ["violence", "explicit"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-002",
+      "input": "Close-up shot of a detective's weathered hands holding a vintage camera in a dimly lit library.",
+      "requiredElements": ["detective", "hands", "camera", "library"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-003",
+      "input": "A snowboarder carving down a steep slope at golden hour, handheld tracking shot.",
+      "requiredElements": ["snowboarder", "slope", "golden hour"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-004",
+      "input": "A bustling night market with steam rising from food stalls, the camera glides between lanterns.",
+      "requiredElements": ["night market", "food stalls", "lanterns"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-005",
+      "input": "An astronaut floats slowly through an abandoned space station corridor, eerie blue light flickering.",
+      "requiredElements": ["astronaut", "space station", "blue light"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-006",
+      "input": "cat on windowsill",
+      "requiredElements": ["cat", "windowsill"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-007",
+      "input": "two kids playing soccer",
+      "requiredElements": ["kids", "soccer"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-008",
+      "input": "rainy street at night",
+      "requiredElements": ["street", "night", "rain"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-009",
+      "input": "robot in junkyard",
+      "requiredElements": ["robot", "junkyard"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-010",
+      "input": "woman reading by candlelight",
+      "requiredElements": ["woman", "reading", "candlelight"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-011",
+      "input": "bird flying over ocean",
+      "requiredElements": ["bird", "ocean", "flying"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-012",
+      "input": "train arriving at station",
+      "requiredElements": ["train", "station", "arriving"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-013",
+      "input": "chef chopping onions",
+      "requiredElements": ["chef", "chopping", "onions"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-014",
+      "input": "skater performing kickflip",
+      "requiredElements": ["skater", "kickflip"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-015",
+      "input": "ancient temple in jungle",
+      "requiredElements": ["temple", "jungle"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-016",
+      "input": "A surfer rides a tall wave at dusk, drone tracking.",
+      "requiredElements": ["surfer", "wave", "dusk"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-017",
+      "input": "A chef sears steak in a cast-iron pan, close-up, shallow depth of field.",
+      "requiredElements": ["chef", "steak", "pan"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-018",
+      "input": "A lone hiker crosses a suspension bridge in heavy fog.",
+      "requiredElements": ["hiker", "bridge", "fog"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-019",
+      "input": "A neon-lit city street with reflections on wet asphalt, slow push-in.",
+      "requiredElements": ["city street", "neon", "wet asphalt"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-020",
+      "input": "A vintage car speeds down a desert road at sunrise, motion blur.",
+      "requiredElements": ["car", "desert road", "sunrise"],
+      "targetModel": "sora"
+    },
+    {
+      "id": "opt-021",
+      "input": "A dancer spins under a spotlight, handheld tracking.",
+      "requiredElements": ["dancer", "spotlight"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-022",
+      "input": "A skier launches off a ramp, slow motion, telephoto lens.",
+      "requiredElements": ["skier", "ramp"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-023",
+      "input": "Close-up of a jeweler polishing a ring, macro shot.",
+      "requiredElements": ["jeweler", "ring"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-024",
+      "input": "A detective walks through a dim corridor, low-key lighting, dutch angle.",
+      "requiredElements": ["detective", "corridor"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-025",
+      "input": "A train rushes past the camera, whip pan, motion blur.",
+      "requiredElements": ["train"],
+      "targetModel": "veo3"
+    },
+    {
+      "id": "opt-026",
+      "input": "A dragon circles a stone castle above storm clouds.",
+      "requiredElements": ["dragon", "castle", "storm clouds"],
+      "targetModel": "kling"
+    },
+    {
+      "id": "opt-027",
+      "input": "A robot barista pours latte art in a cozy cafe.",
+      "requiredElements": ["robot", "barista", "cafe"],
+      "targetModel": "kling"
+    },
+    {
+      "id": "opt-028",
+      "input": "A samurai stands in a bamboo grove during snowfall.",
+      "requiredElements": ["samurai", "bamboo grove", "snowfall"],
+      "targetModel": "kling"
+    },
+    {
+      "id": "opt-029",
+      "input": "A submarine glides through deep ocean trenches with bioluminescent fish.",
+      "requiredElements": ["submarine", "ocean", "fish"],
+      "targetModel": "kling"
+    },
+    {
+      "id": "opt-030",
+      "input": "A time-lapse of clouds racing over a mountain range at twilight.",
+      "requiredElements": ["clouds", "mountain range", "twilight"],
+      "targetModel": "kling"
+    }
+  ]
+}

@@ -12,9 +12,24 @@
       "text": "The camera flies through the scene as a bird flies overhead.",
       "groundTruth": {
         "spans": [
-          { "text": "camera flies through the scene", "start": 4, "end": 35, "role": "camera.movement" },
-          { "text": "bird", "start": 41, "end": 45, "role": "subject.identity" },
-          { "text": "flies overhead", "start": 46, "end": 60, "role": "action.movement" }
+          {
+            "text": "camera flies through the scene",
+            "start": 4,
+            "end": 34,
+            "role": "camera.movement"
+          },
+          {
+            "text": "bird",
+            "start": 40,
+            "end": 44,
+            "role": "subject.identity"
+          },
+          {
+            "text": "flies overhead",
+            "start": 45,
+            "end": 59,
+            "role": "action.movement"
+          }
         ]
       },
       "notes": "Disambiguation test: 'flies' applies to both camera and subject"
@@ -24,10 +39,30 @@
       "text": "A light feeling with light colors under soft light in the light of day.",
       "groundTruth": {
         "spans": [
-          { "text": "light feeling", "start": 2, "end": 15, "role": "style.aesthetic" },
-          { "text": "light colors", "start": 21, "end": 33, "role": "style.aesthetic" },
-          { "text": "soft light", "start": 40, "end": 50, "role": "lighting.quality" },
-          { "text": "light of day", "start": 58, "end": 70, "role": "lighting.timeOfDay" }
+          {
+            "text": "light feeling",
+            "start": 2,
+            "end": 15,
+            "role": "style.aesthetic"
+          },
+          {
+            "text": "light colors",
+            "start": 21,
+            "end": 33,
+            "role": "style.aesthetic"
+          },
+          {
+            "text": "soft light",
+            "start": 40,
+            "end": 50,
+            "role": "lighting.quality"
+          },
+          {
+            "text": "light of day",
+            "start": 58,
+            "end": 70,
+            "role": "lighting.timeOfDay"
+          }
         ]
       },
       "notes": "Disambiguation test: Multiple uses of 'light' with different meanings"
@@ -46,10 +81,30 @@
       "text": "Close-up shot zooming into a close-up of the subject.",
       "groundTruth": {
         "spans": [
-          { "text": "Close-up shot", "start": 0, "end": 13, "role": "shot.type" },
-          { "text": "zooming into", "start": 14, "end": 26, "role": "camera.movement" },
-          { "text": "close-up", "start": 29, "end": 37, "role": "shot.type" },
-          { "text": "subject", "start": 45, "end": 52, "role": "subject" }
+          {
+            "text": "Close-up shot",
+            "start": 0,
+            "end": 13,
+            "role": "shot.type"
+          },
+          {
+            "text": "zooming into",
+            "start": 14,
+            "end": 26,
+            "role": "camera.movement"
+          },
+          {
+            "text": "close-up",
+            "start": 29,
+            "end": 37,
+            "role": "shot.type"
+          },
+          {
+            "text": "subject",
+            "start": 45,
+            "end": 52,
+            "role": "subject"
+          }
         ]
       },
       "notes": "Disambiguation test: Shot type vs camera movement"
@@ -65,4 +120,3 @@
     }
   ]
 }
-

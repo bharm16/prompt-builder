@@ -106,7 +106,7 @@ Follow the research-backed best practices:
 - Describe only what the camera can SEE. No internal emotions without visual evidence.
 - Do not invent a subject/action if the user gave none; mark them null instead.
 - Prefer concrete camera/lighting/style hints but keep fields nullable.
-- Keep everything optimized for the 100-150 word final prompt envelope.
+- Keep everything optimized for the 75-125 word final prompt envelope.
 
 Classify shot_type using ONE of these buckets:
 - action_shot: clear subject performing a physical action
@@ -140,4 +140,3 @@ User concept (verbatim): "${userPrompt}"`;
 }
 
 export default ShotInterpreterService;
-

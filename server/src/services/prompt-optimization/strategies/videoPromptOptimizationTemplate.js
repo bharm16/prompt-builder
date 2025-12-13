@@ -107,7 +107,7 @@ You have access to the following cinematic vocabulary. DO NOT DEFAULT to "Eye-Le
 8) **Consistency Check**: Review the generated prompt. Does the camera behavior, lighting, and style logically support the subject and action? For example, if the subject mentions "white gloves," the camera should not be focused exclusively on the "feet." Resolve any contradictions.
 
 ## PRODUCTION ASSEMBLY (write the output)
-Write ONE paragraph (STRICT 100-150 words) that follows this internal structure:
+Write ONE paragraph (STRICT 75-125 words) that follows this internal structure:
 
 **Internal Structure (Mental Only):** Shot Type + Subject + Action + Setting + Camera + Lighting + Style.
 
@@ -137,7 +137,7 @@ Generate a production-ready video prompt JSON.
    - IF Close-Up -> Use Shallow Focus (f/1.8)
 
 - **_creative_strategy**: Explain WHY you chose the specific Angle, Lens, and Move.
-- **prompt**: Write one paragraph (100-150 words) as natural prose without structural markers.
+- **prompt**: Write one paragraph (75-125 words) as natural prose without structural markers.
   - DO NOT use generic terms like "High quality". Use specific dictionary terms.
 `;
 
@@ -174,7 +174,7 @@ Return ONLY JSON (no markdown, no prose):
     "duration": "4-8s",
     "audio": "Short audio note if relevant (otherwise 'mute' or 'natural ambience')"
   },
-  "prompt": "Main paragraph, 100-150 words, following the exact structure above and honoring any null fields by omitting them",
+  "prompt": "Main paragraph, 75-125 words, following the exact structure above and honoring any null fields by omitting them",
   "variations": [
     {"label": "Alternative Angle", "prompt": "40-50 words using a radically different angle from the Dictionary (e.g., if main is Low-Angle, try Bird's-Eye)"},
     {"label": "Alternative Lighting", "prompt": "40-50 words, same concept, different lighting/mood; keep core identifiers"}

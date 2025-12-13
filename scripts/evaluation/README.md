@@ -2,7 +2,7 @@
 
 This directory contains scripts for evaluating the span labeling system against the golden dataset.
 
-## run-golden-set-evaluation.js
+## run-golden-set-evaluation.ts
 
 Runs the complete evaluation suite against the golden dataset and validates all target metrics from PDF Section 4.2.
 
@@ -14,12 +14,14 @@ Runs the complete evaluation suite against the golden dataset and validates all 
 | Relaxed F1 | >0.85 | Span extraction accuracy with IoU>0.5 |
 | Taxonomy Accuracy | >90% | % of spans with correct role assignment |
 | Safety Pass Rate | 100% | % of adversarial inputs properly flagged |
+| Fragmentation Rate | <20% | % of GT spans split into multiple preds |
+| Over-Extraction Rate | <15% | % of preds with no GT match |
 | Avg Latency | <1.5s | P95 response time |
 
 ### Usage
 
 ```bash
-node scripts/evaluation/run-golden-set-evaluation.js
+npx tsx scripts/evaluation/run-golden-set-evaluation.ts
 ```
 
 ### Prerequisites
@@ -30,32 +32,13 @@ node scripts/evaluation/run-golden-set-evaluation.js
 
 ### Integration
 
-To integrate with your AI service:
+The script auto-detects providers via env vars:
 
-```javascript
-import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
-import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
+- `OPENAI_API_KEY`
+- `GROQ_API_KEY`
+- `GEMINI_API_KEY`
 
-// Initialize AI service
-const openaiClient = new OpenAICompatibleAdapter({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'https://api.openai.com/v1',
-  defaultModel: 'gpt-4o-mini',
-  providerName: 'openai'
-});
-
-const aiService = new AIModelService({ 
-  clients: { openai: openaiClient } 
-});
-
-// Run evaluation
-const results = await Promise.all(
-  allPrompts.map(prompt => evaluatePrompt(prompt, aiService))
-);
-
-const metrics = calculateMetrics(results, new RelaxedF1Evaluator());
-printReport(metrics, new RelaxedF1Evaluator());
-```
+At least one must be set. If only `GROQ_API_KEY` is set, it will be used as the “openai” client alias required by `AIModelService`.
 
 ### Output
 
@@ -64,6 +47,9 @@ The script will output:
 - Relaxed F1, Precision, Recall
 - Taxonomy Accuracy
 - Safety Pass Rate
+- Fragmentation and Over-Extraction rates
+- Per-category F1 breakdown
+- Top confusion pairs
 - Performance metrics (latency)
 - Pass/Fail against target thresholds
 - Deployment readiness decision
@@ -79,4 +65,3 @@ If any metric falls below target threshold by >2%, deployment should be blocked 
 - Regression detection (compare against baseline)
 - Cost analysis (tokens used per request)
 - Shadow mode comparison (old vs new system)
-

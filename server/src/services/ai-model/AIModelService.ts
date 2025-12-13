@@ -262,6 +262,42 @@ export class AIModelService {
     } catch (error: unknown) {
       const err = error as { message: string; statusCode?: number; isRetryable?: boolean };
       
+      // Some providers/models reject `logprobs`; retry once without it.
+      const hasLogprobs = requestOptions.logprobs === true || requestOptions.logprobs === 1;
+      const logprobsUnsupported =
+        typeof err.message === 'string' &&
+        err.message.toLowerCase().includes('logprobs') &&
+        err.message.toLowerCase().includes('not supported');
+
+      if (hasLogprobs && logprobsUnsupported) {
+        logger.warn('Retrying AI operation without logprobs', {
+          operation,
+          client: config.client,
+          model: requestOptions.model,
+        });
+
+        const retryOptions: RequestOptions = { ...requestOptions };
+        delete (retryOptions as Record<string, unknown>).logprobs;
+        delete (retryOptions as Record<string, unknown>).topLogprobs;
+
+        try {
+          const response = await client.complete(params.systemPrompt, retryOptions);
+          logger.info('AI operation succeeded after disabling logprobs', {
+            operation,
+            client: config.client,
+            model: retryOptions.model,
+          });
+          return response;
+        } catch (retryError) {
+          // Fall through to normal fallback handling using the original error.
+          logger.warn('Retry without logprobs failed', {
+            operation,
+            client: config.client,
+            error: (retryError as Error).message,
+          });
+        }
+      }
+
       logger.warn('AI operation failed on primary client', {
         operation,
         client: config.client,

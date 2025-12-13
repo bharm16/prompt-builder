@@ -1,0 +1,635 @@
+{
+  "metadata": {
+    "name": "Lighting Prompts - Golden Set",
+    "description": "Targeted coverage for complex lighting descriptions",
+    "category": "lighting",
+    "version": "1.0.0",
+    "created": "2025-12-12"
+  },
+  "prompts": [
+    {
+      "id": "lighting-001",
+      "text": "Low-angle shot of a detective in an office: a practical tungsten desk lamp casts warm pools of light while cool moonlight spills through blinds, creating striped shadows.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Low-angle shot",
+            "role": "camera.angle",
+            "start": 0,
+            "end": 14
+          },
+          {
+            "text": "detective",
+            "role": "subject.identity",
+            "start": 20,
+            "end": 29
+          },
+          {
+            "text": "office",
+            "role": "environment.location",
+            "start": 36,
+            "end": 42
+          },
+          {
+            "text": "practical tungsten desk lamp",
+            "role": "lighting.source",
+            "start": 46,
+            "end": 74
+          },
+          {
+            "text": "warm pools of light",
+            "role": "lighting.quality",
+            "start": 81,
+            "end": 100
+          },
+          {
+            "text": "cool moonlight",
+            "role": "lighting.source",
+            "start": 107,
+            "end": 121
+          },
+          {
+            "text": "striped shadows",
+            "role": "lighting.quality",
+            "start": 154,
+            "end": 169
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-002",
+      "text": "Wide shot of a dancer on a stage, rim-lit by a white follow spot with deep black fill around the edges.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Wide shot",
+            "role": "shot.type",
+            "start": 0,
+            "end": 9
+          },
+          {
+            "text": "dancer",
+            "role": "subject.identity",
+            "start": 15,
+            "end": 21
+          },
+          {
+            "text": "stage",
+            "role": "environment.location",
+            "start": 27,
+            "end": 32
+          },
+          {
+            "text": "rim-lit",
+            "role": "lighting.quality",
+            "start": 34,
+            "end": 41
+          },
+          {
+            "text": "white follow spot",
+            "role": "lighting.source",
+            "start": 47,
+            "end": 64
+          },
+          {
+            "text": "deep black fill",
+            "role": "lighting.quality",
+            "start": 70,
+            "end": 85
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-003",
+      "text": "Close-up of a watchmaker at his bench, lit by diffused skylight and a flickering candle, soft bokeh highlights in the background.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Close-up",
+            "role": "shot.type",
+            "start": 0,
+            "end": 8
+          },
+          {
+            "text": "watchmaker",
+            "role": "subject.identity",
+            "start": 14,
+            "end": 24
+          },
+          {
+            "text": "bench",
+            "role": "environment.context",
+            "start": 32,
+            "end": 37
+          },
+          {
+            "text": "diffused skylight",
+            "role": "lighting.source",
+            "start": 46,
+            "end": 63
+          },
+          {
+            "text": "flickering candle",
+            "role": "lighting.source",
+            "start": 70,
+            "end": 87
+          },
+          {
+            "text": "soft bokeh highlights",
+            "role": "lighting.quality",
+            "start": 89,
+            "end": 110
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-004",
+      "text": "Handheld tracking shot through a hallway, illuminated by intermittent neon signs and sodium street spill, alternating cyan and amber color temperature.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Handheld tracking shot",
+            "role": "camera.movement",
+            "start": 0,
+            "end": 22
+          },
+          {
+            "text": "hallway",
+            "role": "environment.location",
+            "start": 33,
+            "end": 40
+          },
+          {
+            "text": "intermittent neon signs",
+            "role": "lighting.source",
+            "start": 57,
+            "end": 80
+          },
+          {
+            "text": "sodium street spill",
+            "role": "lighting.source",
+            "start": 85,
+            "end": 104
+          },
+          {
+            "text": "cyan and amber color temperature",
+            "role": "lighting.colorTemp",
+            "start": 118,
+            "end": 150
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-005",
+      "text": "Medium shot of a chef plating food under high-key studio lighting, glossy specular highlights on the sauce.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Medium shot",
+            "role": "shot.type",
+            "start": 0,
+            "end": 11
+          },
+          {
+            "text": "chef",
+            "role": "subject.identity",
+            "start": 17,
+            "end": 21
+          },
+          {
+            "text": "plating food",
+            "role": "action.gesture",
+            "start": 22,
+            "end": 34
+          },
+          {
+            "text": "high-key studio lighting",
+            "role": "lighting.quality",
+            "start": 41,
+            "end": 65
+          },
+          {
+            "text": "glossy specular highlights",
+            "role": "lighting.quality",
+            "start": 67,
+            "end": 93
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-006",
+      "text": "A cyclist rides downhill, backlit by a low sun, lens flare streaking across the frame, silhouettes forming sharp edges.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "cyclist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 9
+          },
+          {
+            "text": "rides downhill",
+            "role": "action.movement",
+            "start": 10,
+            "end": 24
+          },
+          {
+            "text": "backlit",
+            "role": "lighting.quality",
+            "start": 26,
+            "end": 33
+          },
+          {
+            "text": "low sun",
+            "role": "lighting.timeOfDay",
+            "start": 39,
+            "end": 46
+          },
+          {
+            "text": "lens flare",
+            "role": "camera.lens",
+            "start": 48,
+            "end": 58
+          },
+          {
+            "text": "silhouettes",
+            "role": "lighting.quality",
+            "start": 87,
+            "end": 98
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-007",
+      "text": "An actor in Rembrandt lighting: one soft key light and a dim bounce fill, warm skin tones.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "actor",
+            "role": "subject.identity",
+            "start": 3,
+            "end": 8
+          },
+          {
+            "text": "Rembrandt lighting",
+            "role": "lighting.quality",
+            "start": 12,
+            "end": 30
+          },
+          {
+            "text": "soft key light",
+            "role": "lighting.source",
+            "start": 36,
+            "end": 50
+          },
+          {
+            "text": "dim bounce fill",
+            "role": "lighting.quality",
+            "start": 57,
+            "end": 72
+          },
+          {
+            "text": "warm skin tones",
+            "role": "style.colorGrade",
+            "start": 74,
+            "end": 89
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-008",
+      "text": "A traveler walks down a night street; practical lanterns create pools of warm light, while cold fog diffuses the beams into volumetric rays.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "traveler",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 10
+          },
+          {
+            "text": "walks down",
+            "role": "action.movement",
+            "start": 11,
+            "end": 21
+          },
+          {
+            "text": "night street",
+            "role": "environment.location",
+            "start": 24,
+            "end": 36
+          },
+          {
+            "text": "practical lanterns",
+            "role": "lighting.source",
+            "start": 38,
+            "end": 56
+          },
+          {
+            "text": "pools of warm light",
+            "role": "lighting.quality",
+            "start": 64,
+            "end": 83
+          },
+          {
+            "text": "cold fog",
+            "role": "environment.weather",
+            "start": 91,
+            "end": 99
+          },
+          {
+            "text": "volumetric rays",
+            "role": "lighting.quality",
+            "start": 124,
+            "end": 139
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-009",
+      "text": "Overhead shot of a surgeon, lit by a ring light with clinical, neutral color temperature and hard shadows.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Overhead shot",
+            "role": "camera.angle",
+            "start": 0,
+            "end": 13
+          },
+          {
+            "text": "surgeon",
+            "role": "subject.identity",
+            "start": 19,
+            "end": 26
+          },
+          {
+            "text": "ring light",
+            "role": "lighting.source",
+            "start": 37,
+            "end": 47
+          },
+          {
+            "text": "clinical, neutral color temperature",
+            "role": "lighting.colorTemp",
+            "start": 53,
+            "end": 88
+          },
+          {
+            "text": "hard shadows",
+            "role": "lighting.quality",
+            "start": 93,
+            "end": 105
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-010",
+      "text": "Macro shot: a gemstone sparkles under a rotating LED light, prismatic highlights dancing.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Macro shot",
+            "role": "shot.type",
+            "start": 0,
+            "end": 10
+          },
+          {
+            "text": "gemstone",
+            "role": "subject.identity",
+            "start": 14,
+            "end": 22
+          },
+          {
+            "text": "sparkles",
+            "role": "action.state",
+            "start": 23,
+            "end": 31
+          },
+          {
+            "text": "rotating LED light",
+            "role": "lighting.source",
+            "start": 40,
+            "end": 58
+          },
+          {
+            "text": "prismatic highlights",
+            "role": "lighting.quality",
+            "start": 60,
+            "end": 80
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-011",
+      "text": "A slow pan across wet asphalt, neon reflections shimmering, light scattering in the rain.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "slow pan",
+            "role": "camera.movement",
+            "start": 2,
+            "end": 10
+          },
+          {
+            "text": "wet asphalt",
+            "role": "environment.context",
+            "start": 18,
+            "end": 29
+          },
+          {
+            "text": "neon reflections",
+            "role": "lighting.quality",
+            "start": 31,
+            "end": 47
+          },
+          {
+            "text": "light scattering",
+            "role": "lighting.quality",
+            "start": 60,
+            "end": 76
+          },
+          {
+            "text": "rain",
+            "role": "environment.weather",
+            "start": 84,
+            "end": 88
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-012",
+      "text": "Golden hour portrait of a model: warm backlight, subtle rim light on hair, and soft bounce fill on the face.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "model",
+            "role": "subject.identity",
+            "start": 26,
+            "end": 31
+          },
+          {
+            "text": "Golden hour",
+            "role": "lighting.timeOfDay",
+            "start": 0,
+            "end": 11
+          },
+          {
+            "text": "warm backlight",
+            "role": "lighting.quality",
+            "start": 33,
+            "end": 47
+          },
+          {
+            "text": "rim light",
+            "role": "lighting.quality",
+            "start": 56,
+            "end": 65
+          },
+          {
+            "text": "soft bounce fill",
+            "role": "lighting.quality",
+            "start": 79,
+            "end": 95
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-013",
+      "text": "An interview subject sits in a room lit by bi-color LEDs set to 3200K, with a gentle warm to cool gradient across the wall.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "interview subject",
+            "role": "subject.identity",
+            "start": 3,
+            "end": 20
+          },
+          {
+            "text": "sits",
+            "role": "action.state",
+            "start": 21,
+            "end": 25
+          },
+          {
+            "text": "room",
+            "role": "environment.location",
+            "start": 31,
+            "end": 35
+          },
+          {
+            "text": "bi-color LEDs",
+            "role": "lighting.source",
+            "start": 43,
+            "end": 56
+          },
+          {
+            "text": "3200K",
+            "role": "lighting.colorTemp",
+            "start": 64,
+            "end": 69
+          },
+          {
+            "text": "warm to cool gradient",
+            "role": "lighting.colorTemp",
+            "start": 85,
+            "end": 106
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-014",
+      "text": "Underwater shot: caustic light patterns ripple over a diver, blue-green color cast, sunbeams piercing the surface.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Underwater shot",
+            "role": "shot.type",
+            "start": 0,
+            "end": 15
+          },
+          {
+            "text": "diver",
+            "role": "subject.identity",
+            "start": 54,
+            "end": 59
+          },
+          {
+            "text": "caustic light patterns",
+            "role": "lighting.quality",
+            "start": 17,
+            "end": 39
+          },
+          {
+            "text": "blue-green color cast",
+            "role": "lighting.colorTemp",
+            "start": 61,
+            "end": 82
+          },
+          {
+            "text": "sunbeams",
+            "role": "lighting.source",
+            "start": 84,
+            "end": 92
+          }
+        ]
+      }
+    },
+    {
+      "id": "lighting-015",
+      "text": "A cat prowls through a narrow alley in low-key lighting; a single practical bulb flickers, deep shadows swallow the corners.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "cat",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 5
+          },
+          {
+            "text": "prowls",
+            "role": "action.movement",
+            "start": 6,
+            "end": 12
+          },
+          {
+            "text": "narrow alley",
+            "role": "environment.location",
+            "start": 23,
+            "end": 35
+          },
+          {
+            "text": "low-key lighting",
+            "role": "lighting.quality",
+            "start": 39,
+            "end": 55
+          },
+          {
+            "text": "single practical bulb",
+            "role": "lighting.source",
+            "start": 59,
+            "end": 80
+          },
+          {
+            "text": "deep shadows",
+            "role": "lighting.quality",
+            "start": 91,
+            "end": 103
+          }
+        ]
+      }
+    }
+  ]
+}
