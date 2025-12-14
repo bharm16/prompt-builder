@@ -123,15 +123,11 @@ Document your reasoning in _creative_strategy.
    - NO sequences like "walks then runs"
    - Keep it simple and focused
 
-4. **Natural Prose Format**:
-   - NO arrows (→) or brackets []
-   - Write like describing to a cinematographer
-   - Example: "A Close-Up captures..." not "Close-Up → captures..."
-
-5. **75-125 Words for Main Prompt**:
-   - Empirically validated optimal range (shorter prompts with precise terminology outperform verbose ones)
-   - Natural paragraph, camera-visible details only
-   - Professional terminology, no filler words
+4. **Slot-Based Output (NO prose paragraph)**:
+   - Output structured fields only; downstream code will render the final paragraph
+   - Separate framing (Wide/Medium/Close-Up/etc) from camera angle (Low/High/Dutch/Bird's-Eye/etc)
+   - Provide 2-3 visible subject identifiers for consistency
+   - Camera-visible details only; no viewer/audience language
 
 ## TECHNICAL VOCABULARY (Use These Terms)
 
@@ -156,11 +152,18 @@ If the user concept is vague or missing details:
 ## OUTPUT FORMAT
 
 Return JSON with:
-- **_creative_strategy**: Your step-by-step reasoning for angle/aperture/fps choices
-- **shot_type**: From vocabulary above
-- **prompt**: 75-125 word natural paragraph
+- **_creative_strategy**: Why you chose framing/angle/DOF/FPS
+- **shot_framing**: Framing shot type (Wide/Medium/Close-Up/etc)
+- **camera_angle**: Camera angle/viewpoint
+- **camera_move**: Camera movement term or null
+- **subject**: Main subject or null
+- **subject_details**: 2-3 visible identifiers or null
+- **action**: ONE continuous action or null
+- **setting**: Location description or null
+- **time**: Time-of-day/era or null
+- **lighting**: Lighting description (source/direction/quality) or null
+- **style**: Specific aesthetic reference (film stock/genre/director) or null
 - **technical_specs**: {lighting, camera, style, aspect_ratio, frame_rate, duration, audio}
-- **variations**: [{label, prompt}] (2 variations: different angle, different lighting)
 
 ## DATA HANDLING
 

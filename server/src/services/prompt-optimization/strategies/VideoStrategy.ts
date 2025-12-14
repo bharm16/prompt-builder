@@ -8,78 +8,50 @@ import { getVideoTemplateBuilder } from './video-templates/index.js';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory.js';
 import { detectProvider } from '@utils/provider/ProviderDetector.js';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan } from '../types.js';
+import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes.js';
+import { lintVideoPromptSlots } from './videoPromptLinter.js';
+import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer.js';
 
-/**
- * Structured video prompt response
- */
-interface VideoPromptResponse {
-  _creative_strategy: string;
-  shot_type: string;
-  prompt: string;
-  technical_specs: {
-    duration?: string;
-    aspect_ratio?: string;
-    frame_rate?: string;
-    audio?: string;
-    camera?: string;
-    lighting?: string;
-    style?: string;
+function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
+  const normalizeStringOrNull = (value: unknown): string | null => {
+    if (value === null || typeof value === 'undefined') return null;
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
   };
-  variations?: Array<{
-    label: string;
-    prompt: string;
-  }>;
-}
 
-/**
- * Strict JSON Schema for video prompt generation (OpenAI Structured Outputs)
- * Uses additionalProperties: false for strict mode compliance
- */
-const VIDEO_PROMPT_SCHEMA = {
-  type: "object",
-  properties: {
-    _creative_strategy: {
-      type: "string",
-      description: "Brief reasoning for why this shot type and camera move were chosen."
-    },
-    shot_type: {
-      type: "string",
-      description: "The specific shot type chosen from the dictionary."
-    },
-    prompt: {
-      type: "string",
-      description: "The final, 75-125 word video generation prompt."
-    },
-    technical_specs: {
-      type: "object",
-      properties: {
-        lighting: { type: "string" },
-        camera: { type: "string" },
-        style: { type: "string" },
-        duration: { type: "string" },
-        aspect_ratio: { type: "string" },
-        frame_rate: { type: "string" },
-        audio: { type: "string" }
-      },
-      required: ["lighting", "camera", "style", "duration", "aspect_ratio", "frame_rate", "audio"],
-      additionalProperties: false
-    },
-    variations: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          label: { type: "string" },
-          prompt: { type: "string" }
-        },
-        required: ["label", "prompt"],
-        additionalProperties: false
-      }
-    }
-  },
-  required: ["_creative_strategy", "shot_type", "prompt", "technical_specs", "variations"],
-  additionalProperties: false
-};
+  const normalizeString = (value: unknown, fallback: string): string => {
+    const normalized = normalizeStringOrNull(value);
+    return normalized ?? fallback;
+  };
+
+  const normalizeStringArrayOrNull = (value: unknown): string[] | null => {
+    if (value === null || typeof value === 'undefined') return null;
+    if (!Array.isArray(value)) return null;
+    const cleaned = value
+      .filter((item) => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    return cleaned.length > 0 ? cleaned : null;
+  };
+
+  const subject = normalizeStringOrNull(raw.subject);
+  const subjectDetails = subject ? normalizeStringArrayOrNull(raw.subject_details) : null;
+
+  return {
+    shot_framing: normalizeString(raw.shot_framing, 'Wide Shot'),
+    camera_angle: normalizeString(raw.camera_angle, 'Eye-Level Shot'),
+    camera_move: normalizeStringOrNull(raw.camera_move),
+    subject,
+    subject_details: subjectDetails,
+    action: normalizeStringOrNull(raw.action),
+    setting: normalizeStringOrNull(raw.setting),
+    time: normalizeStringOrNull(raw.time),
+    lighting: normalizeStringOrNull(raw.lighting),
+    style: normalizeStringOrNull(raw.style),
+  };
+}
 
 /**
  * Strategy for optimizing video generation prompts
@@ -171,18 +143,38 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         timeout: config.timeout,
       });
 
-      const parsedResponse = JSON.parse(response.text) as VideoPromptResponse;
+      const parsedResponse = JSON.parse(response.text) as VideoPromptStructuredResponse;
+      const normalizedSlots = normalizeSlots(parsedResponse);
+
+      const lint = lintVideoPromptSlots(normalizedSlots);
+      if (!lint.ok) {
+        logger.warn('Video prompt slot lint failed (repairing)', {
+          errors: lint.errors,
+          provider,
+        });
+
+        const repaired = await this._repairSlots({
+          templateSystemPrompt: template.systemPrompt,
+          developerMessage: template.developerMessage,
+          schema,
+          userMessage: template.userMessage,
+          originalJson: parsedResponse,
+          lintErrors: lint.errors,
+          config,
+        });
+
+        return this._reassembleOutput(repaired);
+      }
 
       logger.info('Video optimization complete with native structured outputs', {
         originalLength: prompt.length,
-        shotType: parsedResponse.shot_type,
+        shotFraming: normalizedSlots.shot_framing,
         strategy: parsedResponse._creative_strategy,
-        promptLength: parsedResponse.prompt?.length || 0,
         provider,
         usedDeveloperMessage: !!template.developerMessage,
       });
 
-      return this._reassembleOutput(parsedResponse);
+      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
 
     } catch (error) {
       // Strategy 2: Fallback to StructuredOutputEnforcer (Robustness)
@@ -208,7 +200,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
     // Simpler schema for non-strict fallback
     const looseSchema = {
       type: 'object',
-      required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs', 'variations'],
+      required: ['_creative_strategy', 'shot_framing', 'camera_angle', 'camera_move', 'subject', 'subject_details', 'action', 'setting', 'time', 'lighting', 'style', 'technical_specs'],
     };
 
     const parsedResponse = await StructuredOutputEnforcer.enforceJSON(
@@ -223,53 +215,60 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         temperature: config.temperature,
         timeout: config.timeout,
       }
-    ) as VideoPromptResponse;
+    ) as VideoPromptStructuredResponse;
+
+    const normalizedSlots = normalizeSlots(parsedResponse);
+    const lint = lintVideoPromptSlots(normalizedSlots);
 
     logger.info('Video optimization complete with fallback enforcer', {
       originalLength: prompt.length,
-      shotType: parsedResponse.shot_type,
+      shotFraming: normalizedSlots.shot_framing,
       strategy: parsedResponse._creative_strategy,
+      lintOk: lint.ok,
     });
 
-    return this._reassembleOutput(parsedResponse);
+    // Fallback path: if lint fails, proceed with best-effort normalized slots (avoid a second model call here)
+    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
   }
 
   /**
    * Reassemble structured JSON into text format for backward compatibility
    */
-  private _reassembleOutput(parsed: VideoPromptResponse): string {
-    const {
-      prompt,
-      technical_specs,
-      variations
-    } = parsed;
+  private _reassembleOutput(parsed: VideoPromptStructuredResponse): string {
+    const slots = normalizeSlots(parsed);
+    const promptParagraph = renderMainVideoPrompt(slots);
 
-    let output = prompt;
+    let output = promptParagraph;
 
     // Add technical specs section with merged creative and output specs (aligned with research template)
-    if (technical_specs) {
+    if (parsed.technical_specs) {
       output += '\n\n**TECHNICAL SPECS**';
 
       // Output specs (generator-facing)
-      output += `\n- **Duration:** ${technical_specs.duration || '4-8s'}`;
-      output += `\n- **Aspect Ratio:** ${technical_specs.aspect_ratio || '16:9'}`;
-      output += `\n- **Frame Rate:** ${technical_specs.frame_rate || '24fps'}`;
-      output += `\n- **Audio:** ${technical_specs.audio || 'mute'}`;
+      output += `\n- **Duration:** ${parsed.technical_specs.duration || '4-8s'}`;
+      output += `\n- **Aspect Ratio:** ${parsed.technical_specs.aspect_ratio || '16:9'}`;
+      output += `\n- **Frame Rate:** ${parsed.technical_specs.frame_rate || '24fps'}`;
+      output += `\n- **Audio:** ${parsed.technical_specs.audio || 'mute'}`;
 
       // Creative specs (used in prompt generation)
-      if (technical_specs.camera) {
-        output += `\n- **Camera:** ${technical_specs.camera}`;
+      if (parsed.technical_specs.camera) {
+        output += `\n- **Camera:** ${parsed.technical_specs.camera}`;
       }
-      if (technical_specs.lighting) {
-        output += `\n- **Lighting:** ${technical_specs.lighting}`;
+      if (parsed.technical_specs.lighting) {
+        output += `\n- **Lighting:** ${parsed.technical_specs.lighting}`;
       }
-      if (technical_specs.style) {
-        output += `\n- **Style:** ${technical_specs.style}`;
+      if (parsed.technical_specs.style) {
+        output += `\n- **Style:** ${parsed.technical_specs.style}`;
       }
     }
 
     // Add variations section
-    if (variations && Array.isArray(variations) && variations.length > 0) {
+    const variations =
+      parsed.variations && Array.isArray(parsed.variations) && parsed.variations.length > 0
+        ? parsed.variations
+        : renderAlternativeApproaches(slots);
+
+    if (variations.length > 0) {
       output += '\n\n**ALTERNATIVE APPROACHES**';
       variations.forEach((variation, index) => {
         const varNum = index + 1;
@@ -278,6 +277,43 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
     }
 
     return output;
+  }
+
+  private async _repairSlots(options: {
+    templateSystemPrompt: string;
+    developerMessage?: string;
+    schema: Record<string, unknown>;
+    userMessage: string;
+    originalJson: VideoPromptStructuredResponse;
+    lintErrors: string[];
+    config: { maxTokens: number; temperature: number; timeout: number };
+  }): Promise<VideoPromptStructuredResponse> {
+    const repairSystemPrompt =
+      'You are a strict JSON repair assistant for video prompt slot output. Fix the JSON fields to satisfy the lint errors. Return ONLY valid JSON that matches the provided schema. Do not add any prose.';
+
+    const repairUserMessage = `${options.userMessage}
+
+<lint_errors>
+${options.lintErrors.map((e) => `- ${e}`).join('\n')}
+</lint_errors>
+
+<original_json>
+${JSON.stringify(options.originalJson, null, 2)}
+</original_json>`;
+
+    const response = await this.ai.execute('optimize_standard', {
+      systemPrompt: repairSystemPrompt,
+      userMessage: repairUserMessage,
+      schema: options.schema,
+      developerMessage: options.developerMessage,
+      maxTokens: options.config.maxTokens,
+      temperature: 0.2,
+      timeout: options.config.timeout,
+    });
+
+    const repaired = JSON.parse(response.text) as VideoPromptStructuredResponse;
+    const normalizedSlots = normalizeSlots(repaired);
+    return { ...repaired, ...normalizedSlots };
   }
 
   /**

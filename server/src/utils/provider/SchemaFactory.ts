@@ -338,30 +338,102 @@ export function getVideoOptimizationSchema(options: SchemaOptions = {}): JSONSch
  * Strict mode with descriptions that guide output
  */
 function getOpenAIVideoOptimizationSchema(): JSONSchema {
+  const SHOT_FRAMINGS = [
+    'Extreme Close-Up',
+    'Close-Up',
+    'Medium Close-Up',
+    'Medium Shot',
+    'Medium Long Shot',
+    'Cowboy Shot',
+    'Full Shot',
+    'Wide Shot',
+    'Extreme Wide Shot',
+    'Establishing Shot',
+    'Master Shot',
+    'Two-Shot',
+    'Insert Shot',
+    'Cutaway',
+  ] as const;
+
+  const CAMERA_ANGLES = [
+    'Eye-Level Shot',
+    'Low-Angle Shot',
+    'High-Angle Shot',
+    "Bird's-Eye View",
+    "Worm's-Eye View",
+    'Dutch Angle',
+    'POV Shot',
+    'Over-the-Shoulder',
+  ] as const;
+
   return {
     name: 'video_prompt_optimization',
     strict: true,
     type: 'object',
-    required: ['_creative_strategy', 'shot_type', 'prompt', 'technical_specs'],
+    required: [
+      '_creative_strategy',
+      'shot_framing',
+      'camera_angle',
+      'camera_move',
+      'subject',
+      'subject_details',
+      'action',
+      'setting',
+      'time',
+      'lighting',
+      'style',
+      'technical_specs',
+    ],
     additionalProperties: false,
     properties: {
       _creative_strategy: {
         type: 'string',
         description: 'Explain WHY you chose this specific Angle, DOF (aperture), and FPS to serve the creative intent.',
       },
-      shot_type: {
+      shot_framing: {
         type: 'string',
-        description: 'Shot/framing chosen from: Low-Angle Shot, High-Angle Shot, Dutch Angle, Bird\'s-Eye View, Worm\'s-Eye View, POV Shot, Over-the-Shoulder, Wide Shot, Medium Shot, Close-Up, Extreme Close-Up.',
-        enum: [
-          'Low-Angle Shot', 'High-Angle Shot', 'Dutch Angle', 'Bird\'s-Eye View',
-          'Worm\'s-Eye View', 'POV Shot', 'Over-the-Shoulder', 'Wide Shot',
-          'Medium Shot', 'Close-Up', 'Extreme Close-Up', 'Establishing Shot',
-          'Two-Shot', 'Insert Shot', 'Cutaway',
-        ],
+        description: 'Framing shot type (NOT camera angle). Start the prose with this (e.g., "A Wide Shot...").',
+        enum: [...SHOT_FRAMINGS],
       },
-      prompt: {
+      camera_angle: {
         type: 'string',
-        description: 'Main paragraph, 100-150 words. Natural prose, NO arrows (→) or brackets []. Describe ONE continuous action. Camera-visible details only.',
+        description: 'Camera angle/viewpoint (separate from framing). Mention this after framing (e.g., "from a low angle").',
+        enum: [...CAMERA_ANGLES],
+      },
+      camera_move: {
+        type: ['string', 'null'],
+        description: 'Camera movement (e.g., "handheld tracking", "slow dolly in", "static tripod").',
+      },
+      subject: {
+        type: ['string', 'null'],
+        description: 'Main subject if present; otherwise null.',
+      },
+      subject_details: {
+        type: ['array', 'null'],
+        description: '2-3 specific, visible subject identifiers for consistency (clothing/breed/color/accessories).',
+        minItems: 2,
+        maxItems: 3,
+        items: { type: 'string' },
+      },
+      action: {
+        type: ['string', 'null'],
+        description: 'ONE continuous, physically plausible action as a single present-participle (-ing) verb phrase (e.g., "running...", "carrying...").',
+      },
+      setting: {
+        type: ['string', 'null'],
+        description: 'Specific location/environment grounding the action (camera-visible).',
+      },
+      time: {
+        type: ['string', 'null'],
+        description: 'Time-of-day or era if relevant (e.g., "golden hour", "midnight").',
+      },
+      lighting: {
+        type: ['string', 'null'],
+        description: 'Lighting described with source, direction, quality, and color temperature if possible.',
+      },
+      style: {
+        type: ['string', 'null'],
+        description: 'Specific aesthetic reference (film stock/genre/director). Avoid generic "cinematic".',
       },
       technical_specs: {
         type: 'object',
@@ -428,11 +500,32 @@ function getOpenAIVideoOptimizationSchema(): JSONSchema {
 function getGroqVideoOptimizationSchema(): JSONSchema {
   return {
     type: 'object',
-    required: ['prompt'],
+    required: [
+      '_creative_strategy',
+      'shot_framing',
+      'camera_angle',
+      'camera_move',
+      'subject',
+      'subject_details',
+      'action',
+      'setting',
+      'time',
+      'lighting',
+      'style',
+      'technical_specs',
+    ],
     properties: {
       _creative_strategy: { type: 'string' },
-      shot_type: { type: 'string' },
-      prompt: { type: 'string' },
+      shot_framing: { type: 'string' },
+      camera_angle: { type: 'string' },
+      camera_move: { type: ['string', 'null'] },
+      subject: { type: ['string', 'null'] },
+      subject_details: { type: ['array', 'null'], items: { type: 'string' } },
+      action: { type: ['string', 'null'] },
+      setting: { type: ['string', 'null'] },
+      time: { type: ['string', 'null'] },
+      lighting: { type: ['string', 'null'] },
+      style: { type: ['string', 'null'] },
       technical_specs: {
         type: 'object',
         properties: {

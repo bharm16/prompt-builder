@@ -95,7 +95,7 @@ export abstract class BaseVideoTemplateBuilder {
     }
 
     return `Pre-interpreted shot plan (do NOT hallucinate missing fields):
-- shot_type: ${shotPlan.shot_type || 'unknown'}
+- clip_type: ${shotPlan.shot_type || 'unknown'} (bucket classification, not framing)
 - core_intent: ${shotPlan.core_intent || 'n/a'}
 - subject: ${shotPlan.subject || 'null'}
 - action: ${shotPlan.action || 'null'}
