@@ -121,12 +121,12 @@ Document your reasoning in _creative_strategy.
 
 3. **One Continuous Action**:
    - NO sequences like "walks then runs"
-   - Keep it simple and focused
+   - Keep it a short single verb phrase (4-12 words; no second verb)
 
 4. **Slot-Based Output (NO prose paragraph)**:
    - Output structured fields only; downstream code will render the final paragraph
    - Separate framing (Wide/Medium/Close-Up/etc) from camera angle (Low/High/Dutch/Bird's-Eye/etc)
-   - Provide 2-3 visible subject identifiers for consistency
+   - Provide 2-3 short subject identifiers (1-6 words each; noun phrases only; no verbs)
    - Camera-visible details only; no viewer/audience language
 
 ## TECHNICAL VOCABULARY (Use These Terms)
@@ -157,8 +157,8 @@ Return JSON with:
 - **camera_angle**: Camera angle/viewpoint
 - **camera_move**: Camera movement term or null
 - **subject**: Main subject or null
-- **subject_details**: 2-3 visible identifiers or null
-- **action**: ONE continuous action or null
+- **subject_details**: 2-3 visible identifiers (1-6 words each; noun phrases only) or null
+- **action**: ONE continuous action (single present-participle verb phrase; 4-12 words; no second verb) or null
 - **setting**: Location description or null
 - **time**: Time-of-day/era or null
 - **lighting**: Lighting description (source/direction/quality) or null

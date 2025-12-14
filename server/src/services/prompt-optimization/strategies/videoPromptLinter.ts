@@ -26,9 +26,58 @@ const MULTI_ACTION_MARKERS = [
   /\.\s+\w/, // multiple sentences
 ];
 
+const DETERMINERS = new Set(['a', 'an', 'the', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'their', 'our']);
+
+const ALLOWED_SUBJECT_DETAIL_PREFIX = [
+  /^wearing\b/i,
+  /^dressed\b/i,
+  /^dressed\s+in\b/i,
+  /^in\s+/i, // e.g., "in a red trench coat"
+];
+
+const ALLOWED_SECONDARY_ACTION_ING = new Set([
+  // State-like modifiers commonly acceptable inside one action phrase
+  'carrying',
+  'holding',
+]);
+
+const SECONDARY_ING_NOUNS = new Set([
+  // Common nouns/adjectives ending in -ing that should not be treated as extra actions
+  'building',
+  'ceiling',
+  'clothing',
+  'morning',
+  'evening',
+  'lighting', // can be a noun ("the lighting") or a verb ("lighting a candle"); first-token rule handles verb case
+  'blooming',
+  'winding',
+]);
+
 function looksLikePresentParticipleAction(action: string): boolean {
   const firstToken = action.trim().split(/\s+/)[0] || '';
   return /ing$/i.test(firstToken);
+}
+
+function findSecondaryActionVerbs(action: string): string[] {
+  const tokens = (action.toLowerCase().match(/\b[a-z']+\b/g) || []).filter(Boolean);
+  if (tokens.length <= 1) return [];
+
+  const first = tokens[0] || '';
+  const secondary: string[] = [];
+
+  for (let i = 1; i < tokens.length; i++) {
+    const token = tokens[i] || '';
+    if (!token.endsWith('ing')) continue;
+    if (token === first) continue;
+    if (ALLOWED_SECONDARY_ACTION_ING.has(token)) continue;
+    if (SECONDARY_ING_NOUNS.has(token)) continue;
+    const prev = tokens[i - 1] || '';
+    if (DETERMINERS.has(prev)) continue; // "a building", "the winding road"
+
+    secondary.push(token);
+  }
+
+  return secondary;
 }
 
 function collectStringFields(slots: Partial<VideoPromptSlots>): Array<{ key: keyof VideoPromptSlots; value: string }> {
@@ -70,6 +119,20 @@ export function lintVideoPromptSlots(slots: Partial<VideoPromptSlots>): VideoPro
     if (!subjectDetails || subjectDetails.length < 2) {
       errors.push('`subject_details` must include 2-3 visible identifiers when `subject` is present.');
     }
+    if (subjectDetails) {
+      for (const detail of subjectDetails) {
+        const trimmed = detail.trim();
+        const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+        if (wordCount > 6) {
+          errors.push(`\`subject_details\` item "${trimmed}" is too long (${wordCount} words); keep 1-6 word visible identifiers.`);
+        }
+        const startsWithIng = /^\w+ing\b/i.test(trimmed);
+        const allowedPrefix = ALLOWED_SUBJECT_DETAIL_PREFIX.some((re) => re.test(trimmed));
+        if (startsWithIng && !allowedPrefix) {
+          errors.push(`\`subject_details\` item "${trimmed}" looks like an action; keep only appearance/identifiers here.`);
+        }
+      }
+    }
   } else if (slots.subject_details !== null && typeof slots.subject_details !== 'undefined') {
     errors.push('If `subject` is null, `subject_details` must be null.');
   }
@@ -79,6 +142,10 @@ export function lintVideoPromptSlots(slots: Partial<VideoPromptSlots>): VideoPro
     if (!looksLikePresentParticipleAction(action)) {
       errors.push('`action` should start with a present-participle (-ing) verb phrase (e.g., "running...", "carrying...").');
     }
+    const actionWords = action.split(/\s+/).filter(Boolean).length;
+    if (actionWords > 12) {
+      errors.push('`action` is too long; keep a short single verb phrase (aim for 4-12 words).');
+    }
     if (action.includes(',')) {
       errors.push('`action` must be ONE continuous action (avoid comma-separated verb lists).');
     }
@@ -87,6 +154,11 @@ export function lintVideoPromptSlots(slots: Partial<VideoPromptSlots>): VideoPro
     }
     if (MULTI_ACTION_MARKERS.some((re) => re.test(action))) {
       errors.push('`action` looks like multiple actions or a sequence; keep one continuous action only.');
+    }
+
+    const secondaryVerbs = findSecondaryActionVerbs(action);
+    if (secondaryVerbs.length > 0) {
+      errors.push(`\`action\` appears to contain multiple actions (extra verb(s): ${secondaryVerbs.slice(0, 3).join(', ')}). Keep ONE action.`);
     }
   }
 

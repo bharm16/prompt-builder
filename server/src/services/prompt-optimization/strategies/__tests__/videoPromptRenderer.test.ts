@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderAlternativeApproaches, renderMainVideoPrompt } from '../videoPromptRenderer.js';
+import { renderAlternativeApproaches, renderCompactVideoPrompt, renderMainVideoPrompt } from '../videoPromptRenderer.js';
 
 describe('videoPromptRenderer', () => {
   it('renders a paragraph starting with framing and including angle phrase', () => {
@@ -61,5 +61,27 @@ describe('videoPromptRenderer', () => {
     expect(text).toMatch(/of a man\b/i);
     expect(text).toMatch(/\bwearing a sweater\b/i);
     expect(text).not.toMatch(/\bwith wearing\b/i);
+  });
+
+  it('renders compact variation prompts within the word budget', () => {
+    const text = renderCompactVideoPrompt(
+      {
+        shot_framing: 'Wide Shot',
+        camera_angle: 'High-Angle Shot',
+        camera_move: 'slow dolly in',
+        subject: 'a dog',
+        subject_details: ['golden fur', 'blue bandana'],
+        action: 'running through grass',
+        setting: 'a park with trees',
+        time: 'golden hour',
+        lighting: 'natural sunlight through tree branches, warm and diffused',
+        style: 'shot on 35mm film',
+      },
+      { maxWords: 50, require: ['camera'] }
+    );
+
+    const words = text.split(/\s+/).filter(Boolean);
+    expect(words.length).toBeLessThanOrEqual(50);
+    expect(text).toMatch(/^Wide Shot\b/);
   });
 });

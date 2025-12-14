@@ -12,6 +12,39 @@ import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPro
 import { lintVideoPromptSlots } from './videoPromptLinter.js';
 import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer.js';
 
+const DETERMINERS = new Set(['a', 'an', 'the', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'their', 'our']);
+const ALLOWED_SECONDARY_ACTION_ING = new Set(['carrying', 'holding']);
+const SECONDARY_ING_NOUNS = new Set(['building', 'ceiling', 'clothing', 'morning', 'evening', 'lighting', 'blooming', 'winding']);
+
+function findSecondaryVerbIndex(action: string): number | null {
+  const tokens = (action.toLowerCase().match(/\b[a-z']+\b/g) || []).filter(Boolean);
+  if (tokens.length <= 1) return null;
+  const first = tokens[0] || '';
+
+  for (let i = 1; i < tokens.length; i++) {
+    const token = tokens[i] || '';
+    if (!token.endsWith('ing')) continue;
+    if (token === first) continue;
+    if (ALLOWED_SECONDARY_ACTION_ING.has(token)) continue;
+    if (SECONDARY_ING_NOUNS.has(token)) continue;
+    const prev = tokens[i - 1] || '';
+    if (DETERMINERS.has(prev)) continue;
+    return i;
+  }
+
+  return null;
+}
+
+function truncateActionToSingleVerb(action: string): string {
+  const trimmed = action.trim().replace(/\s+/g, ' ');
+  const idx = findSecondaryVerbIndex(trimmed);
+  if (idx === null) return trimmed;
+
+  const tokens = (trimmed.match(/\b[\w']+\b/g) || []).filter(Boolean);
+  const truncated = tokens.slice(0, idx).join(' ').trim();
+  return truncated.replace(/[.,;:]+$/g, '').trim();
+}
+
 function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
   const normalizeStringOrNull = (value: unknown): string | null => {
     if (value === null || typeof value === 'undefined') return null;
@@ -93,6 +126,33 @@ function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
     if (subjectDetails && subjectDetails.length === 0) subjectDetails = null;
   }
 
+  if (action) {
+    action = truncateActionToSingleVerb(action);
+  }
+
+  if (subjectDetails) {
+    const normalizedDetails = subjectDetails
+      .map((d) => d.trim().replace(/\s+/g, ' '))
+      .map((d) => d.replace(/^[-*•]\s+/, ''))
+      .map((d) => d.replace(/^(?:and|with)\s+/i, ''))
+      .map((d) => d.replace(/[.]+$/g, '').trim())
+      .map((d) => {
+        const words = d.split(/\s+/).filter(Boolean);
+        return words.length > 6 ? words.slice(0, 6).join(' ') : d;
+      })
+      .filter(Boolean);
+
+    // De-dupe after normalization.
+    const seen = new Set<string>();
+    subjectDetails = normalizedDetails.filter((d) => {
+      const key = d.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    subjectDetails = subjectDetails.length > 0 ? subjectDetails.slice(0, 3) : null;
+  }
+
   return {
     shot_framing: normalizeString(raw.shot_framing, 'Wide Shot'),
     camera_angle: normalizeString(raw.camera_angle, 'Eye-Level Shot'),
@@ -120,6 +180,88 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
   constructor(aiService: AIService, templateService: TemplateService) {
     this.ai = aiService;
     this.templateService = templateService;
+  }
+
+  private _hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  private _scoreSlots(slots: VideoPromptSlots): number {
+    const wordCount = (value: string | null): number => (value ? value.trim().split(/\s+/).filter(Boolean).length : 0);
+
+    let score = 0;
+    const details = slots.subject_details || [];
+    for (const detail of details) {
+      score += Math.max(0, wordCount(detail) - 3);
+    }
+
+    score += Math.max(0, wordCount(slots.action) - 8);
+    score += Math.max(0, wordCount(slots.setting) - 10);
+    score += Math.max(0, wordCount(slots.lighting) - 18);
+    score += Math.max(0, wordCount(slots.style) - 10);
+
+    // Light penalty for repeated anchors across fields.
+    const anchors = ['window', 'door', 'street', 'park', 'alley', 'beach'];
+    const fields = [slots.action, slots.setting, slots.lighting].map((v) => (v || '').toLowerCase());
+    for (const anchor of anchors) {
+      const mentions = fields.reduce((count, f) => count + (f.includes(anchor) ? 1 : 0), 0);
+      if (mentions > 1) score += (mentions - 1);
+    }
+
+    return score;
+  }
+
+  private async _rerollSlots(options: {
+    templateSystemPrompt: string;
+    developerMessage?: string;
+    schema: Record<string, unknown>;
+    messages: Array<{ role: string; content: string }>;
+    config: { maxTokens: number; temperature: number; timeout: number };
+    baseSeed: number;
+    attempts?: number;
+  }): Promise<VideoPromptStructuredResponse | null> {
+    const attempts = Math.max(0, Math.min(options.attempts ?? 2, 4));
+    if (attempts === 0) return null;
+
+    type Candidate = { parsed: VideoPromptStructuredResponse; slots: VideoPromptSlots; score: number };
+    const candidates: Candidate[] = [];
+
+    for (let i = 0; i < attempts; i++) {
+      const seed = (options.baseSeed + i + 1) % 2147483647;
+      try {
+        const response = await this.ai.execute('optimize_standard', {
+          systemPrompt: options.templateSystemPrompt,
+          messages: options.messages,
+          schema: options.schema,
+          developerMessage: options.developerMessage,
+          maxTokens: options.config.maxTokens,
+          temperature: 0.2,
+          timeout: options.config.timeout,
+          seed,
+        });
+
+        const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
+        const slots = normalizeSlots(parsed);
+        const lint = lintVideoPromptSlots(slots);
+        if (!lint.ok) {
+          continue;
+        }
+
+        candidates.push({ parsed: { ...parsed, ...slots }, slots, score: this._scoreSlots(slots) });
+      } catch {
+        // Ignore and continue trying other seeds.
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => a.score - b.score);
+    return candidates[0]!.parsed;
   }
 
   /**
@@ -206,6 +348,20 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           errors: lint.errors,
           provider,
         });
+
+        const rerolled = await this._rerollSlots({
+          templateSystemPrompt: template.systemPrompt,
+          developerMessage: template.developerMessage,
+          schema,
+          messages,
+          config,
+          baseSeed: this._hashString(prompt),
+          attempts: 2,
+        });
+        if (rerolled) {
+          logger.info('Video prompt lint fixed via reroll', { provider });
+          return this._reassembleOutput(rerolled);
+        }
 
         const repaired = await this._repairSlots({
           templateSystemPrompt: template.systemPrompt,

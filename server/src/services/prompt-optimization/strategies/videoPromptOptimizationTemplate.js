@@ -120,7 +120,7 @@ Output ONLY structured JSON fields. Do NOT write the final prose paragraph; down
 Rules:
 - Shot framing is separate from camera angle. Choose a framing shot type first (Wide/Medium/Close-Up/etc), then an angle (Low/High/Dutch/Bird's-Eye/etc).
 - HARD RULE: ONE ACTION ONLY (single verb phrase).
-- Subject must include 2-3 visible identifiers (clothing/breed/color/accessories). If subject is null, subject_details must be null.
+- Subject must include 2-3 visible identifiers (clothing/breed/color/accessories). Each identifier must be a short noun phrase (1-6 words) with NO verbs. If subject is null, subject_details must be null.
 - Describe only what the camera can SEE. No viewer/audience language. No abstract emotions without visible cues.
 - Avoid generic style words like "cinematic". Use film stock/genre/director references.
 - ABSOLUTELY NO negative phrasing ("don't show/avoid/no people"). State what to show instead.
@@ -134,8 +134,8 @@ Required fields:
 - **camera_angle**: Camera angle/viewpoint from the dictionary.
 - **camera_move**: Camera movement term.
 - **subject**: Main subject or null.
-- **subject_details**: 2-3 visible identifiers or null.
-- **action**: ONE continuous action as a single present-participle (-ing) verb phrase or null.
+- **subject_details**: 2-3 visible identifiers (1-6 words each, noun phrases only) or null.
+- **action**: ONE continuous action as a single present-participle (-ing) verb phrase (4-12 words; no second verb) or null.
 - **setting**: Location details or null.
 - **time**: Time-of-day/era or null.
 - **lighting**: Lighting description (source, direction, quality, color temp if possible) or null.
@@ -169,8 +169,8 @@ Return ONLY JSON (no markdown, no prose):
   "camera_angle": "Camera angle/viewpoint from dictionary (e.g., 'Low-Angle Shot', 'Bird's-Eye View')",
   "camera_move": "Camera movement term (e.g., 'tracking shot', 'dolly in', 'static tripod')",
   "subject": "Main subject or null",
-  "subject_details": ["2-3 visible identifiers"],
-  "action": "ONE continuous action as a single present-participle (-ing) verb phrase (e.g., 'running...', 'carrying...') or null",
+  "subject_details": ["2-3 visible identifiers (1-6 words each; noun phrases only)"],
+  "action": "ONE continuous action as a single present-participle (-ing) verb phrase (4-12 words; no second verb) or null",
   "setting": "Specific location description or null",
   "time": "Time-of-day/era or null",
   "lighting": "Lighting description (source, direction, quality, color temp) or null",

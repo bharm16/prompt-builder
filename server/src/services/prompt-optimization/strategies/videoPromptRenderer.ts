@@ -39,6 +39,27 @@ function ensureIndefiniteArticle(nounPhrase: string): string {
   return `${article} ${trimmed}`;
 }
 
+function ensureSettingPhrase(setting: string): string {
+  const trimmed = setting.trim();
+  if (!trimmed) return trimmed;
+
+  // If it already contains a leading preposition/determiner, leave it alone.
+  if (/^(?:a|an|the|this|that|these|those|my|your|his|her|their|our)\b/i.test(trimmed)) return trimmed;
+  if (/^(?:in|at|on|inside|outside|under|over|near|by|behind|beside|within|along|across)\b/i.test(trimmed)) return trimmed;
+
+  // If the phrase ends with a capitalized word ("Times Square", "Manhattan"), treat it as a proper location.
+  if (/\b[A-Z][\w-]*$/.test(trimmed)) return trimmed;
+
+  return ensureIndefiniteArticle(trimmed);
+}
+
+function ensureTimePhrase(time: string): string {
+  const trimmed = time.trim();
+  if (!trimmed) return trimmed;
+  if (/^(?:at|in|during|before|after)\b/i.test(trimmed)) return trimmed;
+  return `at ${trimmed}`;
+}
+
 function angleToPhrase(cameraAngle: string | null): string | null {
   const angle = clean(cameraAngle);
   if (!angle) return null;
@@ -112,12 +133,38 @@ function formatSubject(subject: string | null, details: string[] | null): string
 function formatSettingTime(setting: string | null, time: string | null): string | null {
   const s = clean(setting);
   const t = clean(time);
-  if (s && t) return `${s} at ${t}`;
-  return s || t;
+  if (s && t) return `in ${ensureSettingPhrase(s)} ${ensureTimePhrase(t)}`;
+  if (s) return `in ${ensureSettingPhrase(s)}`;
+  if (t) return ensureTimePhrase(t);
+  return null;
 }
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function containsWord(text: string, word: string): boolean {
+  const re = new RegExp(`\\b${word}s?\\b`, 'i');
+  return re.test(text);
+}
+
+function stripAnchorPhrase(text: string, anchor: string): string {
+  // Remove simple redundant modifiers like ", with a window" / "by the window" / "near a window"
+  const re = new RegExp(`\\s*(?:,|and)?\\s*(?:with|near|by|beside|next\\s+to)\\s+(?:a|an|the)\\s+${anchor}s?\\b`, 'gi');
+  return text.replace(re, '').replace(/\s+/g, ' ').trim();
+}
+
+function shortenToFirstClause(text: string): string {
+  const cleaned = text.trim().replace(/\s+/g, ' ');
+  if (!cleaned) return cleaned;
+  const parts = cleaned.split(/[,;]+/);
+  return (parts[0] || cleaned).trim();
+}
+
+function compactToWordLimit(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+  return `${words.slice(0, maxWords).join(' ')}.`;
 }
 
 export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
@@ -125,12 +172,32 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
   const anglePhrase = angleToPhrase(slots.camera_angle);
   const cameraMove = clean(slots.camera_move);
   const subjectPhrase = formatSubject(slots.subject, slots.subject_details);
-  const action = clean(slots.action);
-  const settingTime = formatSettingTime(slots.setting, slots.time);
+  let action = clean(slots.action);
+  let setting = clean(slots.setting);
+  const time = clean(slots.time);
 
   const focus = focusFromFraming(shotFraming);
   const lighting = clean(slots.lighting);
   const style = clean(slots.style);
+
+  // Reduce obvious redundancy across slots (e.g., "window" repeated in setting + lighting + action).
+  const anchors = ['window', 'door', 'street', 'park', 'alley', 'beach'];
+  for (const anchor of anchors) {
+    if (!anchor) continue;
+    const inSetting = setting ? containsWord(setting, anchor) : false;
+    const inLighting = lighting ? containsWord(lighting, anchor) : false;
+    const inAction = action ? containsWord(action, anchor) : false;
+
+    if (setting && inSetting && inLighting) {
+      setting = stripAnchorPhrase(setting, anchor);
+    }
+    if (action && inAction && inSetting) {
+      const stripped = stripAnchorPhrase(action, anchor);
+      if (stripped && /^\w+ing\b/i.test(stripped)) action = stripped;
+    }
+  }
+
+  const settingTime = formatSettingTime(setting, time);
 
   const firstSentenceParts: string[] = [];
   firstSentenceParts.push(`${shotFraming}`);
@@ -142,7 +209,7 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
       firstSentenceParts.push(`as it ${action}`);
     }
   }
-  if (settingTime) firstSentenceParts.push(`in ${settingTime}`);
+  if (settingTime) firstSentenceParts.push(settingTime);
   const sentence1 = ensurePeriod(firstSentenceParts.join(' '));
 
   const sentence2Parts: string[] = [];
@@ -176,6 +243,68 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
   return paragraph;
 }
 
+export function renderCompactVideoPrompt(
+  slots: VideoPromptSlots,
+  options: { maxWords?: number; require?: Array<'camera' | 'lighting'> } = {}
+): string {
+  const maxWords = options.maxWords ?? 50;
+  const require = new Set(options.require ?? []);
+
+  const shotFraming = clean(slots.shot_framing) ?? 'Wide Shot';
+  const anglePhrase = angleToPhrase(slots.camera_angle);
+  const cameraMove = clean(slots.camera_move);
+
+  const subjectPhrase = formatSubject(slots.subject, (slots.subject_details || []).slice(0, 2));
+  const action = clean(slots.action);
+  const settingTime = formatSettingTime(clean(slots.setting), clean(slots.time));
+  const lighting = clean(slots.lighting);
+  const style = clean(slots.style);
+
+  const baseParts: string[] = [];
+  baseParts.push(`${shotFraming}`);
+  baseParts.push(`of ${subjectPhrase || 'the scene'}`);
+  if (action) {
+    baseParts.push(actionIsPresentParticiple(action) ? action : `as it ${action}`);
+  }
+  if (settingTime) baseParts.push(settingTime);
+  let text = ensurePeriod(baseParts.join(' '));
+
+  const cameraSentence = (() => {
+    if (!cameraMove && !anglePhrase) return null;
+    if (cameraMove && anglePhrase) return ensurePeriod(`The camera uses ${cameraMove} ${anglePhrase}`);
+    if (cameraMove) return ensurePeriod(`The camera uses ${cameraMove}`);
+    return ensurePeriod(`The camera holds ${anglePhrase}`);
+  })();
+
+  const lightingSentence = lighting ? ensurePeriod(`Lit by ${shortenToFirstClause(lighting)}`) : null;
+  const styleSentence = style ? ensurePeriod(`Style reference: ${shortenToFirstClause(style)}`) : null;
+
+  // Add required sections first.
+  const ordered: Array<{ key: 'camera' | 'lighting' | 'style'; sentence: string | null }> = [
+    { key: 'camera', sentence: cameraSentence },
+    { key: 'lighting', sentence: lightingSentence },
+    { key: 'style', sentence: styleSentence },
+  ];
+
+  for (const item of ordered) {
+    if (!item.sentence) continue;
+    if (!require.has(item.key)) continue;
+    text = `${text} ${item.sentence}`.trim();
+  }
+
+  // Then add optional sections if they fit.
+  for (const item of ordered) {
+    if (!item.sentence) continue;
+    if (require.has(item.key)) continue;
+    const candidate = `${text} ${item.sentence}`.trim();
+    if (countWords(candidate) <= maxWords) {
+      text = candidate;
+    }
+  }
+
+  return compactToWordLimit(text, maxWords);
+}
+
 function pickAlternativeAngle(current: string): string {
   const angle = clean(current) ?? 'Eye-Level Shot';
   const options = [
@@ -192,7 +321,7 @@ function pickAlternativeAngle(current: string): string {
 
 export function renderAlternativeApproaches(slots: VideoPromptSlots): Array<{ label: string; prompt: string }> {
   const altAngleSlots: VideoPromptSlots = { ...slots, camera_angle: pickAlternativeAngle(slots.camera_angle) };
-  const altAngle = renderMainVideoPrompt(altAngleSlots);
+  const altAngle = renderCompactVideoPrompt(altAngleSlots, { maxWords: 50, require: ['camera'] });
 
   const altLightingSlots: VideoPromptSlots = {
     ...slots,
@@ -201,17 +330,10 @@ export function renderAlternativeApproaches(slots: VideoPromptSlots): Array<{ la
         ? 'bright, high-key daylight from a large window as the key light, soft fill to reduce harsh shadows'
         : 'low-key lighting with a single warm key light from the side, minimal fill, and deep shadows',
   };
-  const altLighting = renderMainVideoPrompt(altLightingSlots);
-
-  // Keep variations compact for A/B testing; trim to ~50 words if needed.
-  const compact = (text: string): string => {
-    const words = text.split(/\s+/).filter(Boolean);
-    if (words.length <= 50) return text;
-    return `${words.slice(0, 50).join(' ')}.`;
-  };
+  const altLighting = renderCompactVideoPrompt(altLightingSlots, { maxWords: 50, require: ['lighting'] });
 
   return [
-    { label: 'Different Camera', prompt: compact(altAngle) },
-    { label: 'Different Lighting', prompt: compact(altLighting) },
+    { label: 'Different Camera', prompt: altAngle },
+    { label: 'Different Lighting', prompt: altLighting },
   ];
 }

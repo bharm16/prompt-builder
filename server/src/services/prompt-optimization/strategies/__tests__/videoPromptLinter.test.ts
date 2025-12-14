@@ -50,6 +50,36 @@ describe('lintVideoPromptSlots', () => {
     expect(joined).toMatch(/ONE continuous action/i);
   });
 
+  it('rejects action phrases that include a second verb without conjunctions', () => {
+    const result = lintVideoPromptSlots({
+      shot_framing: 'Medium Close-Up',
+      camera_angle: 'Eye-Level Shot',
+      camera_move: 'static tripod',
+      subject: 'a man',
+      subject_details: ['short hair', 'navy sweater'],
+      action: 'standing by a window looking into the room',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/multiple actions/i);
+  });
+
+  it('rejects subject_details items that are too long or action-like', () => {
+    const result = lintVideoPromptSlots({
+      shot_framing: 'Medium Shot',
+      camera_angle: 'Eye-Level Shot',
+      camera_move: 'static tripod',
+      subject: 'a delivery man',
+      subject_details: ['navy jacket with a logo patch on the sleeve', 'standing by a doorway'],
+      action: 'carrying a pizza box',
+    });
+
+    expect(result.ok).toBe(false);
+    const joined = result.errors.join('\n');
+    expect(joined).toMatch(/subject_details.*too long/i);
+    expect(joined).toMatch(/subject_details.*looks like an action/i);
+  });
+
   it('rejects viewer/audience language in any string field', () => {
     const result = lintVideoPromptSlots({
       shot_framing: 'Close-Up',
@@ -97,4 +127,3 @@ describe('lintVideoPromptSlots', () => {
     expect(result.errors.join('\n')).toMatch(/subject_details.*must be null/i);
   });
 });
-

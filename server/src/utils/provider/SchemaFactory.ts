@@ -410,14 +410,14 @@ function getOpenAIVideoOptimizationSchema(): JSONSchema {
       },
       subject_details: {
         type: ['array', 'null'],
-        description: '2-3 specific, visible subject identifiers for consistency (clothing/breed/color/accessories).',
+        description: '2-3 specific, visible subject identifiers for consistency (clothing/breed/color/accessories). Each item must be 1-6 words (short noun phrase), no verbs.',
         minItems: 2,
         maxItems: 3,
         items: { type: 'string' },
       },
       action: {
         type: ['string', 'null'],
-        description: 'ONE continuous, physically plausible action as a single present-participle (-ing) verb phrase (e.g., "running...", "carrying...").',
+        description: 'ONE continuous, physically plausible action as a single present-participle (-ing) verb phrase (4-12 words; no second verb).',
       },
       setting: {
         type: ['string', 'null'],
