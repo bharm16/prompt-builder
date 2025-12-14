@@ -170,8 +170,8 @@ export const NEURO_SYMBOLIC = {
   },
   
   // Fallback to LLM if neuro-symbolic produces insufficient results
-  FALLBACK_TO_LLM: true,  // Use LLM for semantic content
-  
+  FALLBACK_TO_LLM: false,  // Temporarily disabled for testing
+
   // Minimum spans to skip LLM fallback
   MIN_SPANS_THRESHOLD: 3,
   
@@ -257,4 +257,3 @@ const SpanLabelingConfig = {
 };
 
 export default SpanLabelingConfig;
-

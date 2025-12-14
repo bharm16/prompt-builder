@@ -17,6 +17,26 @@ import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../t
 export class NlpSpanStrategy {
   private readonly log = logger.child({ service: 'NlpSpanStrategy' });
 
+  /**
+   * NLP is inherently extractive: it can only label what exists in the text.
+   * For longer, structured prompts we expect substantially more spans than for
+   * short prompts. Use a dynamic expectation to avoid returning "3 spans" for
+   * rich prompts, while still allowing simple prompts to stay on the NLP path.
+   */
+  private _getExpectedMinSpanCount(text: string, maxSpans?: number): number {
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+
+    let expected: number;
+    if (wordCount < 40) expected = 1;
+    else if (wordCount < 80) expected = 4;
+    else if (wordCount < 140) expected = 8;
+    else if (wordCount < 220) expected = 12;
+    else expected = 15;
+
+    const limit = typeof maxSpans === 'number' && maxSpans > 0 ? maxSpans : 60;
+    return Math.max(1, Math.min(expected, limit));
+  }
+
   private _calculateCoveragePercent(
     spans: Array<{ start?: number; end?: number }> | null | undefined,
     textLength: number
@@ -133,100 +153,126 @@ export class NlpSpanStrategy {
     // Check if we have sufficient coverage to skip LLM
     // ============================================================================
     if (nlpSpans.length > 0) {
-      const meetsThreshold = nlpSpans.length >= SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
+      const nlpEndTime = Date.now();
+      const nlpLatency = nlpEndTime - startTime;
 
-      if (meetsThreshold) {
-        const nlpEndTime = Date.now();
-        const nlpLatency = nlpEndTime - startTime;
+      // Validate NLP spans through the same pipeline
+      const baseMeta = {
+        version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
+        notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
+        source: nlpSource,
+        latency: nlpLatency,
+        ...nlpMetadata,
+        vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
+      };
 
-        // Validate NLP spans through the same pipeline
-        const baseMeta = {
-          version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
-          notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
-          source: nlpSource,
-          latency: nlpLatency,
-          ...nlpMetadata,
-          vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
-        };
+      const validation = validateSpans({
+        spans: nlpSpans,
+        meta: baseMeta,
+        text,
+        policy,
+        options,
+        attempt: 1,
+        cache,
+        isAdversarial: false,
+      });
 
-        const validation = validateSpans({
-          spans: nlpSpans,
-          meta: baseMeta,
-          text,
-          policy,
-          options,
-          attempt: 1,
-          cache,
-          isAdversarial: false,
-        });
+      if (validation.ok) {
+        const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
+        const coveragePercent = this._calculateCoveragePercent(validation.result.spans, text.length);
+        const spanCount = validation.result.spans.length;
 
-        if (validation.ok) {
-          const coveragePercent = this._calculateCoveragePercent(validation.result.spans, text.length);
-          if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-            this.log.info('NLP Fast-Path coverage insufficient, falling back to LLM', {
-              operation: 'extractSpans',
-              spanCount: validation.result.spans.length,
-              coveragePercent: Math.round(coveragePercent * 10) / 10,
-              minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-              source: nlpSource,
-            });
-            return null;
-          }
-
-          // Log telemetry if enabled
-          if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
-            this.log.info('NLP Fast-Path bypassed LLM call', {
-              operation: 'extractSpans',
-              spanCount: nlpSpans.length,
-              latency: nlpLatency,
-              estimatedSavings: '$0.0005',
-            });
-          }
-
-          return {
-            spans: validation.result.spans,
-            meta: validation.result.meta,
-            isAdversarial: validation.result.isAdversarial,
-          };
-        }
-
-        // Retry in lenient mode to preserve fast-path spans when strict checks are too tight
-        const lenientValidation = validateSpans({
-          spans: nlpSpans,
-          meta: baseMeta,
-          text,
-          policy,
-          options,
-          attempt: 2,
-          cache,
-          isAdversarial: false,
-        });
-
-        if (lenientValidation.ok) {
-          const coveragePercent = this._calculateCoveragePercent(lenientValidation.result.spans, text.length);
-          if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-            this.log.info('NLP Fast-Path coverage insufficient (lenient), falling back to LLM', {
-              operation: 'extractSpans',
-              spanCount: lenientValidation.result.spans.length,
-              coveragePercent: Math.round(coveragePercent * 10) / 10,
-              minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-              source: nlpSource,
-            });
-            return null;
-          }
-
-          this.log.info('NLP Fast-Path accepted with lenient validation', {
+        if (spanCount < expectedMinSpans) {
+          this.log.info('NLP Fast-Path span count insufficient for prompt size, falling back to LLM', {
             operation: 'extractSpans',
-            spanCount: lenientValidation.result.spans.length,
-            latency: nlpLatency,
+            spanCount,
+            expectedMinSpans,
+            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            source: nlpSource,
           });
-
-          return {
-            spans: lenientValidation.result.spans,
-            meta: lenientValidation.result.meta,
-            isAdversarial: lenientValidation.result.isAdversarial,
-          };
+          return null;
         }
+
+        if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+          this.log.debug('NLP Fast-Path coverage below threshold but accepted due to span count', {
+            operation: 'extractSpans',
+            spanCount,
+            expectedMinSpans,
+            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            source: nlpSource,
+          });
+        }
+
+        // Log telemetry if enabled
+        if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
+          this.log.info('NLP Fast-Path bypassed LLM call', {
+            operation: 'extractSpans',
+            spanCount: nlpSpans.length,
+            latency: nlpLatency,
+            estimatedSavings: '$0.0005',
+          });
+        }
+
+        return {
+          spans: validation.result.spans,
+          meta: validation.result.meta,
+          isAdversarial: validation.result.isAdversarial,
+        };
+      }
+
+      // Retry in lenient mode to preserve fast-path spans when strict checks are too tight
+      const lenientValidation = validateSpans({
+        spans: nlpSpans,
+        meta: baseMeta,
+        text,
+        policy,
+        options,
+        attempt: 2,
+        cache,
+        isAdversarial: false,
+      });
+
+      if (lenientValidation.ok) {
+        const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
+        const coveragePercent = this._calculateCoveragePercent(lenientValidation.result.spans, text.length);
+        const spanCount = lenientValidation.result.spans.length;
+
+        if (spanCount < expectedMinSpans) {
+          this.log.info('NLP Fast-Path span count insufficient for prompt size (lenient), falling back to LLM', {
+            operation: 'extractSpans',
+            spanCount,
+            expectedMinSpans,
+            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            source: nlpSource,
+          });
+          return null;
+        }
+
+        if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+          this.log.debug('NLP Fast-Path coverage below threshold but accepted due to span count (lenient)', {
+            operation: 'extractSpans',
+            spanCount,
+            expectedMinSpans,
+            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            source: nlpSource,
+          });
+        }
+
+        this.log.info('NLP Fast-Path accepted with lenient validation', {
+          operation: 'extractSpans',
+          spanCount,
+          latency: nlpLatency,
+        });
+
+        return {
+          spans: lenientValidation.result.spans,
+          meta: lenientValidation.result.meta,
+          isAdversarial: lenientValidation.result.isAdversarial,
+        };
       }
     }
 

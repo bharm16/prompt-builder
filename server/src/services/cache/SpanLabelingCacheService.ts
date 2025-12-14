@@ -9,6 +9,9 @@ import type {
   SpanLabelingPolicy
 } from './types.js';
 
+// Bump this to invalidate old cached span results when the NLP/LLM pipeline changes.
+const SPAN_LABELING_CACHE_KEY_VERSION = '2';
+
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
  *
@@ -81,6 +84,7 @@ export class SpanLabelingCacheService {
 
     // Create a deterministic hash of policy + templateVersion
     const policyString = JSON.stringify({
+      v: SPAN_LABELING_CACHE_KEY_VERSION,
       policy: policy || {},
       templateVersion: templateVersion || 'v1',
     });
@@ -393,4 +397,3 @@ export function initSpanLabelingCache(options: SpanLabelingCacheServiceOptions =
   spanLabelingCache.startPeriodicCleanup();
   return spanLabelingCache;
 }
-

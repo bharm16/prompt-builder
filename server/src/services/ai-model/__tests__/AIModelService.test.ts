@@ -24,6 +24,10 @@ describe('AIModelService', () => {
     complete: MockedFunction<IAIClient['complete']>;
     streamComplete: MockedFunction<NonNullable<IAIClient['streamComplete']>>;
   };
+  let qwenClient: {
+    complete: MockedFunction<IAIClient['complete']>;
+    streamComplete: MockedFunction<NonNullable<IAIClient['streamComplete']>>;
+  };
 
   const makeResponse = (text = 'ok'): AIResponse => ({
     text,
@@ -39,11 +43,16 @@ describe('AIModelService', () => {
       complete: vi.fn(),
       streamComplete: vi.fn(),
     };
+    qwenClient = {
+      complete: vi.fn(),
+      streamComplete: vi.fn(),
+    };
 
     service = new AIModelService({
       clients: {
         openai: openaiClient as IAIClient,
         groq: groqClient as IAIClient,
+        qwen: qwenClient as IAIClient,
       },
     });
   });
@@ -51,7 +60,12 @@ describe('AIModelService', () => {
   describe('execute', () => {
     it('routes to the configured client and passes config defaults', async () => {
       const config = service.getOperationConfig('optimize_standard');
-      const primary = config.client === 'groq' ? groqClient : openaiClient;
+      const clientByName: Record<string, typeof openaiClient> = {
+        openai: openaiClient,
+        groq: groqClient,
+        qwen: qwenClient,
+      };
+      const primary = clientByName[config.client] ?? openaiClient;
 
       primary.complete.mockResolvedValue(makeResponse('standard'));
 
@@ -113,8 +127,13 @@ describe('AIModelService', () => {
       const config = service.getOperationConfig('optimize_standard');
       expect(config.fallbackTo).toBeDefined();
 
-      const primary = config.client === 'groq' ? groqClient : openaiClient;
-      const fallback = config.fallbackTo === 'groq' ? groqClient : openaiClient;
+      const clientByName: Record<string, typeof openaiClient> = {
+        openai: openaiClient,
+        groq: groqClient,
+        qwen: qwenClient,
+      };
+      const primary = clientByName[config.client] ?? openaiClient;
+      const fallback = (config.fallbackTo ? clientByName[config.fallbackTo] : null) ?? openaiClient;
 
       primary.complete.mockRejectedValue(new Error('primary failed'));
       fallback.complete.mockResolvedValue(makeResponse('fallback'));
@@ -132,7 +151,12 @@ describe('AIModelService', () => {
   describe('stream', () => {
     it('streams through a streaming-capable client', async () => {
       const config = service.getOperationConfig('enhance_suggestions');
-      const client = config.client === 'groq' ? groqClient : openaiClient;
+      const clientByName: Record<string, typeof openaiClient> = {
+        openai: openaiClient,
+        groq: groqClient,
+        qwen: qwenClient,
+      };
+      const client = clientByName[config.client] ?? openaiClient;
 
       const chunks = ['a', 'b', 'c'];
       client.streamComplete.mockImplementation(async (_sys, options) => {

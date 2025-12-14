@@ -14,7 +14,7 @@ import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { logger } from '@infrastructure/Logger.js';
-import { TAXONOMY } from '#shared/taxonomy.ts';
+import { TAXONOMY, VALID_CATEGORIES } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig.js';
 import type {
   NlpSpan,
@@ -169,89 +169,136 @@ let glinerInitialized = false;
 let glinerInitFailed = false;
 let glinerInitPromise: Promise<boolean> | null = null;
 
-/** Labels for video prompt entity extraction
- * Expanded set based on testing - covers subjects, locations, actions, time, objects, atmosphere
+/**
+ * Labels for GLiNER extraction + mapping to internal taxonomy IDs.
+ *
+ * IMPORTANT: Every taxonomy ID here must exist in `shared/taxonomy.ts` (VALID_CATEGORIES),
+ * otherwise validation will drop the span and coverage will look artificially low.
  */
-const GLINER_LABELS = [
+const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
   // Subjects
-  'person', 'character', 'animal', 'creature',
-  // Objects (distinct from subjects)
-  'object', 'item', 'vehicle', 'food', 'drink', 'clothing',
-  // Locations & Environment  
-  'place', 'location', 'environment', 'building', 'room',
-  // Actions (expanded)
-  'action', 'movement', 'gesture', 'activity',
-  // Emotions & Expression
-  'emotion', 'expression', 'mood',
-  // Atmosphere & Time
-  'atmosphere', 'weather', 'time of day', 'season',
-  // Visual Style
-  'style', 'aesthetic', 'lighting', 'color',
-  // Technical specs & camera
-  'frame rate', 'fps', 'duration', 'aspect ratio',
-  'camera movement', 'camera angle', 'focus', 'depth of field', 'color temperature'
+  { label: 'person', taxonomyId: 'subject.identity' },
+  { label: 'character', taxonomyId: 'subject.identity' },
+  { label: 'animal', taxonomyId: 'subject.identity' },
+  { label: 'creature', taxonomyId: 'subject.identity' },
+  { label: 'object', taxonomyId: 'subject.identity' },
+  { label: 'item', taxonomyId: 'subject.identity' },
+  { label: 'vehicle', taxonomyId: 'subject.identity' },
+  { label: 'food', taxonomyId: 'subject.identity' },
+  { label: 'drink', taxonomyId: 'subject.identity' },
+  { label: 'clothing', taxonomyId: 'subject.wardrobe' },
+
+  // Environment
+  { label: 'place', taxonomyId: 'environment.location' },
+  { label: 'location', taxonomyId: 'environment.location' },
+  { label: 'building', taxonomyId: 'environment.location' },
+  { label: 'room', taxonomyId: 'environment.location' },
+  { label: 'environment', taxonomyId: 'environment.context' },
+  { label: 'atmosphere', taxonomyId: 'environment.context' },
+  { label: 'weather', taxonomyId: 'environment.weather' },
+  { label: 'season', taxonomyId: 'environment.context' },
+
+  // Actions
+  { label: 'action', taxonomyId: 'action.movement' },
+  { label: 'movement', taxonomyId: 'action.movement' },
+  { label: 'activity', taxonomyId: 'action.movement' },
+  { label: 'gesture', taxonomyId: 'action.gesture' },
+
+  // Emotion / vibe
+  { label: 'emotion', taxonomyId: 'subject.emotion' },
+  { label: 'expression', taxonomyId: 'subject.emotion' },
+  { label: 'mood', taxonomyId: 'style.aesthetic' },
+
+  // Cinematography / style
+  { label: 'shot type', taxonomyId: 'shot.type' },
+  { label: 'camera movement', taxonomyId: 'camera.movement' },
+  { label: 'camera angle', taxonomyId: 'camera.angle' },
+  { label: 'camera lens', taxonomyId: 'camera.lens' },
+  { label: 'lens', taxonomyId: 'camera.lens' },
+  { label: 'focus', taxonomyId: 'camera.focus' },
+  { label: 'depth of field', taxonomyId: 'camera.focus' },
+  { label: 'style', taxonomyId: 'style.aesthetic' },
+  { label: 'aesthetic', taxonomyId: 'style.aesthetic' },
+  { label: 'film stock', taxonomyId: 'style.filmStock' },
+  { label: 'color grade', taxonomyId: 'style.colorGrade' },
+  { label: 'color', taxonomyId: 'style.colorGrade' },
+
+  // Lighting
+  { label: 'lighting', taxonomyId: 'lighting.quality' },
+  { label: 'light source', taxonomyId: 'lighting.source' },
+  { label: 'time of day', taxonomyId: 'lighting.timeOfDay' },
+  { label: 'color temperature', taxonomyId: 'lighting.colorTemp' },
+
+  // Technical specs
+  { label: 'frame rate', taxonomyId: 'technical.frameRate' },
+  { label: 'fps', taxonomyId: 'technical.frameRate' },
+  { label: 'duration', taxonomyId: 'technical.duration' },
+  { label: 'aspect ratio', taxonomyId: 'technical.aspectRatio' },
+  { label: 'resolution', taxonomyId: 'technical.resolution' },
+
+  // Audio
+  { label: 'audio', taxonomyId: 'audio.ambient' },
+  { label: 'ambient sound', taxonomyId: 'audio.ambient' },
+  { label: 'sound effect', taxonomyId: 'audio.soundEffect' },
+  { label: 'music', taxonomyId: 'audio.score' },
+  { label: 'score', taxonomyId: 'audio.score' },
 ];
 
+const GLINER_LABELS = GLINER_LABEL_SPECS.map(({ label }) => label);
+
 /** Map GLiNER labels to taxonomy IDs */
-const LABEL_TO_TAXONOMY: Record<string, string> = {
-  // Subjects (people, animals, characters)
-  person: 'subject.identity',
-  character: 'subject.identity',
-  animal: 'subject.identity',
-  creature: 'subject.identity',
-  
-  // Objects (distinct from subjects - things, not beings)
-  object: 'subject.props',
-  item: 'subject.props',
-  vehicle: 'subject.props',
-  food: 'subject.props',
-  drink: 'subject.props',
-  clothing: 'subject.wardrobe',
-  
-  // Locations & Environment
-  place: 'environment.location',
-  location: 'environment.location',
-  environment: 'environment.setting',
-  building: 'environment.location',
-  room: 'environment.location',
-  
-  // Actions
-  action: 'action.movement',
-  movement: 'action.movement',
-  gesture: 'action.gesture',
-  activity: 'action.movement',
-  
-  // Emotions & Expression
-  emotion: 'subject.emotion',
-  expression: 'subject.emotion',
-  mood: 'style.mood',
-  
-  // Atmosphere & Time
-  atmosphere: 'environment.atmosphere',
-  weather: 'environment.weather',
-  'time of day': 'lighting.time_of_day',
-  season: 'environment.time',
-  
-  // Visual Style
-  style: 'style.aesthetic',
-  aesthetic: 'style.aesthetic',
-  lighting: 'lighting.quality',
-  color: 'style.color',
-  
-  // Technical specs & camera
-  'frame rate': 'technical.frameRate',
-  fps: 'technical.frameRate',
-  duration: 'technical.duration',
-  'aspect ratio': 'technical.aspectRatio',
-  'camera movement': 'camera.movement',
-  'camera angle': 'camera.angle',
-  focus: 'camera.focus',
-  'depth of field': 'camera.focus',
-  'color temperature': 'lighting.colorTemp'
-};
+const LABEL_TO_TAXONOMY: Record<string, string> = Object.fromEntries(
+  GLINER_LABEL_SPECS.map(({ label, taxonomyId }) => [label, taxonomyId])
+);
+
+const invalidTaxonomyIds = GLINER_LABEL_SPECS.filter(({ taxonomyId }) => !VALID_CATEGORIES.has(taxonomyId));
+if (invalidTaxonomyIds.length) {
+  log.warn('GLiNER label mapping includes invalid taxonomy IDs (these spans will be dropped)', {
+    invalid: invalidTaxonomyIds,
+  });
+}
 
 function mapLabelToTaxonomy(label: string): string {
   return LABEL_TO_TAXONOMY[label.toLowerCase()] || 'subject.identity';
+}
+
+/**
+ * GLiNER scores are not directly comparable to the LLM confidence scale used by the rest
+ * of the span-labeling pipeline. We calibrate them so that:
+ * - any detection above the GLiNER threshold maps to ≥ 0.5 (default minConfidence)
+ * - higher GLiNER scores still rank higher
+ */
+function calibrateGlinerConfidence(score: number, threshold: number): number {
+  const clamped = Math.max(0, Math.min(1, score));
+  const t = Math.max(0, Math.min(0.99, threshold));
+
+  // Map [t..1] -> [0.5..1]
+  const normalized = clamped <= t ? 0 : (clamped - t) / (1 - t);
+  const calibrated = 0.5 + normalized * 0.5;
+  return Math.round(calibrated * 100) / 100;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`GLiNER inference timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
 }
 
 /**
@@ -345,21 +392,26 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
   
   try {
     const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
+    const timeoutMs = NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0;
     const startTime = performance.now();
     log.debug('Starting GLiNER inference', {
       operation: 'extractOpenVocabulary',
       textLength: text.length,
       threshold,
+      timeoutMs,
       labelCount: GLINER_LABELS.length,
     });
     
-    const results = await gliner.inference({
-      texts: [text],
-      entities: GLINER_LABELS,
-      flatNer: false,
-      threshold,
-      multiLabel: false,
-    });
+    const results = await withTimeout(
+      gliner.inference({
+        texts: [text],
+        entities: GLINER_LABELS,
+        flatNer: false,
+        threshold,
+        multiLabel: false,
+      }),
+      timeoutMs
+    );
     
     const entities = results[0] || [];
     const duration = Math.round(performance.now() - startTime);
@@ -373,7 +425,7 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
     return entities.map(entity => ({
       text: entity.spanText,  // Node.js version uses spanText field
       role: mapLabelToTaxonomy(entity.label),
-      confidence: Math.round(entity.score * 100) / 100,
+      confidence: calibrateGlinerConfidence(entity.score, threshold),
       start: entity.start,
       end: entity.end,
       source: 'gliner' as const
@@ -626,6 +678,27 @@ export async function warmupGliner(): Promise<WarmupResult> {
   
   try {
     const ready = await initializeGliner();
+    // Run a tiny inference once to avoid a slow/unstable first request (ONNX warm-up).
+    // Do not fail warmup if inference fails; initialization success is still useful.
+    if (ready && gliner) {
+      try {
+        await withTimeout(
+          gliner.inference({
+            texts: ['Low-Angle Shot, 24fps, 16:9, golden hour'],
+            entities: GLINER_LABELS,
+            flatNer: false,
+            threshold: NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3,
+            multiLabel: false,
+          }),
+          Math.max(NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0, 1000)
+        );
+      } catch (err) {
+        log.warn('GLiNER warmup inference failed (continuing)', {
+          operation,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
     const duration = Math.round(performance.now() - startTime);
     
     log.info(`${operation} ${ready ? 'completed' : 'failed'}`, {
