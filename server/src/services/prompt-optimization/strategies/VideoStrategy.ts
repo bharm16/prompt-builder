@@ -28,16 +28,70 @@ function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
   const normalizeStringArrayOrNull = (value: unknown): string[] | null => {
     if (value === null || typeof value === 'undefined') return null;
     if (!Array.isArray(value)) return null;
-    const cleaned = value
-      .filter((item) => typeof item === 'string')
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 3);
+    const rawItems = value.filter((item) => typeof item === 'string') as string[];
+
+    // Expand comma-separated details (e.g., "red coat, blonde hair") into separate items.
+    const expanded = rawItems.flatMap((item) =>
+      item
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+    );
+
+    // De-duplicate while preserving order
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    for (const item of expanded) {
+      const key = item.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    const cleaned = deduped.slice(0, 3);
     return cleaned.length > 0 ? cleaned : null;
   };
 
   const subject = normalizeStringOrNull(raw.subject);
-  const subjectDetails = subject ? normalizeStringArrayOrNull(raw.subject_details) : null;
+  let subjectDetails = subject ? normalizeStringArrayOrNull(raw.subject_details) : null;
+
+  // Drop generic filler details.
+  if (subjectDetails) {
+    const generic = new Set(['main subject', 'subject', 'the subject', 'person']);
+    subjectDetails = subjectDetails.filter((d) => !generic.has(d.trim().toLowerCase()));
+    if (subjectDetails.length === 0) subjectDetails = null;
+  }
+
+  let action = normalizeStringOrNull(raw.action);
+
+  // If the model mistakenly put an action into `subject_details`, salvage it without another model call.
+  if (subject && subjectDetails) {
+    const looksLikeActionDetail = (detail: string): boolean => {
+      const firstToken = detail.trim().split(/\s+/)[0]?.toLowerCase() || '';
+      if (!firstToken.endsWith('ing')) return false;
+      // Allow clothing/appearance phrasing to remain as a subject detail.
+      if (firstToken === 'wearing' || firstToken === 'dressed') return false;
+      return true;
+    };
+
+    const actionLikeIndices = subjectDetails
+      .map((detail, idx) => (looksLikeActionDetail(detail) ? idx : -1))
+      .filter((idx) => idx >= 0);
+
+    // If an action-like detail was placed into `subject_details`, move it into `action` to preserve slot semantics.
+    if (!action && actionLikeIndices.length > 0) {
+      const idx = actionLikeIndices[0]!;
+      action = subjectDetails[idx] || null;
+      subjectDetails = subjectDetails.filter((_, i) => i !== idx);
+    }
+
+    // If we now have an action, remove remaining action-like items from subject details.
+    if (action && subjectDetails) {
+      subjectDetails = subjectDetails.filter((d) => !looksLikeActionDetail(d));
+    }
+
+    if (subjectDetails && subjectDetails.length === 0) subjectDetails = null;
+  }
 
   return {
     shot_framing: normalizeString(raw.shot_framing, 'Wide Shot'),
@@ -45,7 +99,7 @@ function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
     camera_move: normalizeStringOrNull(raw.camera_move),
     subject,
     subject_details: subjectDetails,
-    action: normalizeStringOrNull(raw.action),
+    action,
     setting: normalizeStringOrNull(raw.setting),
     time: normalizeStringOrNull(raw.time),
     lighting: normalizeStringOrNull(raw.lighting),

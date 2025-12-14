@@ -43,4 +43,23 @@ describe('videoPromptRenderer', () => {
     expect(variations[0]?.prompt).toMatch(/^Medium Shot\b/);
     expect(variations[1]?.prompt).toMatch(/^Medium Shot\b/);
   });
+
+  it('avoids ungrammatical "with wearing" subject phrasing', () => {
+    const text = renderMainVideoPrompt({
+      shot_framing: 'Medium Close-Up',
+      camera_angle: 'Eye-Level Shot',
+      camera_move: 'static tripod',
+      subject: 'man',
+      subject_details: ['wearing a sweater', 'short hair'],
+      action: null,
+      setting: null,
+      time: null,
+      lighting: 'natural light from the window, soft and warm',
+      style: 'shot on Kodak Portra 400',
+    });
+
+    expect(text).toMatch(/of a man\b/i);
+    expect(text).toMatch(/\bwearing a sweater\b/i);
+    expect(text).not.toMatch(/\bwith wearing\b/i);
+  });
 });

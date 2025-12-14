@@ -21,6 +21,24 @@ function formatList(items: string[]): string {
   return `${cleaned.slice(0, -1).join(', ')}, and ${cleaned[cleaned.length - 1]}`;
 }
 
+function ensureIndefiniteArticle(nounPhrase: string): string {
+  const trimmed = nounPhrase.trim();
+  if (!trimmed) return trimmed;
+
+  if (/^(?:a|an|the|this|that|these|those|my|your|his|her|their|our)\b/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // If it looks like a proper noun ("John", "NASA") don't force an article.
+  if (/^[A-Z]/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const firstLetter = trimmed[0]?.toLowerCase() || '';
+  const article = ['a', 'e', 'i', 'o', 'u'].includes(firstLetter) ? 'an' : 'a';
+  return `${article} ${trimmed}`;
+}
+
 function angleToPhrase(cameraAngle: string | null): string | null {
   const angle = clean(cameraAngle);
   if (!angle) return null;
@@ -61,11 +79,34 @@ function actionIsPresentParticiple(action: string): boolean {
 }
 
 function formatSubject(subject: string | null, details: string[] | null): string | null {
-  const s = clean(subject);
-  if (!s) return null;
-  const cleanedDetails = (details || []).map((d) => d.trim()).filter(Boolean);
-  if (cleanedDetails.length === 0) return s;
-  return `${s} with ${formatList(cleanedDetails)}`;
+  const rawSubject = clean(subject);
+  if (!rawSubject) return null;
+
+  const cleanedDetails = (details || []).map((d) => clean(d)).filter((d): d is string => typeof d === 'string' && d.length > 0);
+  const safeSubject = ensureIndefiniteArticle(rawSubject);
+
+  if (cleanedDetails.length === 0) return safeSubject;
+
+  // Handle "wearing..." / "dressed in..." details without producing "with wearing..."
+  const clothingIndex = cleanedDetails.findIndex((d) => /^(?:wearing\b|dressed\b|dressed\s+in\b|in\s+)/i.test(d));
+  const clothingPhrase = clothingIndex >= 0 ? cleanedDetails.splice(clothingIndex, 1)[0] : null;
+
+  const isActionLikeDetail = (detail: string): boolean => {
+    const firstToken = detail.trim().split(/\s+/)[0]?.toLowerCase() || '';
+    if (!firstToken.endsWith('ing')) return false;
+    // Appearance phrasing (already handled above) shouldn't be treated as an action clause.
+    if (firstToken === 'wearing' || firstToken === 'dressed') return false;
+    return true;
+  };
+
+  const attributeDetails = cleanedDetails.filter((d) => !isActionLikeDetail(d));
+  const actionLikeDetails = cleanedDetails.filter(isActionLikeDetail);
+
+  const parts: string[] = [safeSubject];
+  if (clothingPhrase) parts.push(clothingPhrase);
+  if (attributeDetails.length > 0) parts.push(`with ${formatList(attributeDetails)}`);
+  if (actionLikeDetails.length > 0) parts.push(`and ${formatList(actionLikeDetails)}`);
+  return parts.join(' ');
 }
 
 function formatSettingTime(setting: string | null, time: string | null): string | null {
