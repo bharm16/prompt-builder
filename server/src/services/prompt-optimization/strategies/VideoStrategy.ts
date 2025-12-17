@@ -12,37 +12,13 @@ import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPro
 import { lintVideoPromptSlots } from './videoPromptLinter.js';
 import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer.js';
 
-const DETERMINERS = new Set(['a', 'an', 'the', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'their', 'our']);
-const ALLOWED_SECONDARY_ACTION_ING = new Set(['carrying', 'holding']);
-const SECONDARY_ING_NOUNS = new Set(['building', 'ceiling', 'clothing', 'morning', 'evening', 'lighting', 'blooming', 'winding']);
-
-function findSecondaryVerbIndex(action: string): number | null {
-  const tokens = (action.toLowerCase().match(/\b[a-z']+\b/g) || []).filter(Boolean);
-  if (tokens.length <= 1) return null;
-  const first = tokens[0] || '';
-
-  for (let i = 1; i < tokens.length; i++) {
-    const token = tokens[i] || '';
-    if (!token.endsWith('ing')) continue;
-    if (token === first) continue;
-    if (ALLOWED_SECONDARY_ACTION_ING.has(token)) continue;
-    if (SECONDARY_ING_NOUNS.has(token)) continue;
-    const prev = tokens[i - 1] || '';
-    if (DETERMINERS.has(prev)) continue;
-    return i;
-  }
-
-  return null;
-}
-
-function truncateActionToSingleVerb(action: string): string {
-  const trimmed = action.trim().replace(/\s+/g, ' ');
-  const idx = findSecondaryVerbIndex(trimmed);
-  if (idx === null) return trimmed;
-
-  const tokens = (trimmed.match(/\b[\w']+\b/g) || []).filter(Boolean);
-  const truncated = tokens.slice(0, idx).join(' ').trim();
-  return truncated.replace(/[.,;:]+$/g, '').trim();
+function isCriticalVideoPromptLintError(error: string): boolean {
+  return (
+    /Missing `shot_framing`/i.test(error) ||
+    /`shot_framing` looks like an angle/i.test(error) ||
+    /Missing `camera_angle`/i.test(error) ||
+    /If `subject` is null, `subject_details` must be null/i.test(error)
+  );
 }
 
 function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
@@ -124,10 +100,6 @@ function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
     }
 
     if (subjectDetails && subjectDetails.length === 0) subjectDetails = null;
-  }
-
-  if (action) {
-    action = truncateActionToSingleVerb(action);
   }
 
   if (subjectDetails) {
@@ -344,8 +316,18 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
 
       const lint = lintVideoPromptSlots(normalizedSlots);
       if (!lint.ok) {
-        logger.warn('Video prompt slot lint failed (repairing)', {
+        const criticalErrors = lint.errors.filter(isCriticalVideoPromptLintError);
+        if (criticalErrors.length === 0) {
+          logger.warn('Video prompt slot lint has non-critical issues (skipping repair)', {
+            errors: lint.errors,
+            provider,
+          });
+          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
+        }
+
+        logger.warn('Video prompt slot lint failed (repairing critical issues)', {
           errors: lint.errors,
+          criticalErrors,
           provider,
         });
 

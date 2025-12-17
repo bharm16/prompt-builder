@@ -56,7 +56,7 @@ function ensureSettingPhrase(setting: string): string {
 function ensureTimePhrase(time: string): string {
   const trimmed = time.trim();
   if (!trimmed) return trimmed;
-  if (/^(?:at|in|during|before|after)\b/i.test(trimmed)) return trimmed;
+  if (/^(?:at|in|during|before|after|as|while)\b/i.test(trimmed)) return trimmed;
   return `at ${trimmed}`;
 }
 
@@ -237,7 +237,7 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
 
   // Ensure a reasonable density; if extremely short, add one concrete technical sentence without abstract narration.
   if (countWords(paragraph) < 85) {
-    return `${paragraph} Keep motion blur minimal and maintain stable background continuity across the clip.`;
+    return `${paragraph} Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.`;
   }
 
   return paragraph;

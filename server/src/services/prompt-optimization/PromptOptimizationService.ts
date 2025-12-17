@@ -545,6 +545,7 @@ Keep ONE action and 75-125 words.`
 
 Focus on:
 - Clear subject and primary action when present (otherwise lean on camera move + visual focus)
+- Preserve explicit user-provided intent (including temporal changes like seasons shifting)
 - Essential visual details (lighting, camera angle)
 - Specific cinematographic style
 - Avoid negative phrasing; describe what to show
@@ -648,4 +649,3 @@ Output ONLY the draft prompt, no explanations.`
 }
 
 export default PromptOptimizationService;
-
