@@ -2,10 +2,9 @@
 
 ## Overview
 
-This document details the implementation of three high-impact features from the research PDFs:
+This document details the implementation of two high-impact features from the research PDFs:
 1. **Contrastive Decoding** - Enhanced diversity through iterative generation with negative constraints
-2. **Enhanced SemanticRouter** - Domain-specific example banks with intelligent ranking
-3. **LLM-as-a-Judge** - Optional quality evaluation using research-backed rubrics
+2. **LLM-as-a-Judge** - Optional quality evaluation using research-backed rubrics
 
 All features are based on peer-reviewed research and implement patterns recommended in the PDF documents.
 
@@ -61,69 +60,7 @@ Logged metrics:
 - `batch1Count`, `batch2Count`, `batch3Count`: Suggestions per batch
 - `avgSimilarity`, `minSimilarity`, `maxSimilarity`: Diversity metrics
 
-## 2. Enhanced SemanticRouter with Example Banks
-
-### What It Does
-
-Replaces hardcoded few-shot examples with intelligent selection from domain-specific banks:
-- **Technical Bank** (10 examples): Director's Lexicon, cinematography terms
-- **Academic Bank** (10 examples): Research terminology, citations, methodology
-- **Creative Bank** (10 examples): Metaphors, imagery, literary devices
-- **Conversational Bank** (10 examples): Slang, informal speech, contractions
-
-### Why It Matters
-
-From the PDF: "Role-Aware Semantic Router with context-aware example selection improves accuracy by 20-30% on complex inputs."
-
-**Expected Impact**: 20-30% improvement in span labeling accuracy on ambiguous inputs.
-
-### How It Works
-
-1. **Domain Detection**: Analyzes input for technical terms, academic language, creative patterns, or casual speech
-2. **Example Ranking**: Scores each example using 4 factors:
-   - Keyword overlap (35% weight)
-   - Domain match (25% weight)
-   - Structural similarity (20% weight)
-   - Ambiguity match (20% weight)
-3. **Selection**: Returns top 3-4 most relevant examples
-
-### Configuration
-
-Automatically enabled in `SpanLabelingService`. No configuration needed.
-
-### Implementation Files
-
-- `server/src/llm/span-labeling/routing/examples/` - 4 example bank files
-- `server/src/llm/span-labeling/routing/ExampleRanker.js` - Ranking algorithm
-- `server/src/llm/span-labeling/routing/SemanticRouter.js` - Enhanced router
-- `tests/unit/server/llm/ExampleRanker.test.js` - Test suite
-
-### Adding New Examples
-
-```javascript
-// In any example bank file (e.g., technical.js)
-export const technicalExamples = [
-  {
-    input: "Your example input text",
-    output: {
-      spans: [...], // Labeled spans
-      meta: { version: "v3.0", notes: "..." }
-    },
-    domains: ['cinematography', 'technical'], // For domain matching
-    keywords: ['camera', 'dolly', 'movement'], // For keyword matching
-    ambiguity: 'camera_vs_subject_movement' // For ambiguity matching
-  },
-  // ... more examples
-];
-```
-
-### Performance Impact
-
-- **Latency**: Minimal (+5-10ms for ranking)
-- **Quality**: Significant accuracy improvement on edge cases
-- **Memory**: ~2KB per example bank (negligible)
-
-## 3. LLM-as-a-Judge (PDF Section 5.3)
+## 2. LLM-as-a-Judge (PDF Section 5.3)
 
 ### What It Does
 
@@ -301,7 +238,7 @@ JUDGE_GENERAL_MODEL=claude-sonnet-4  # Model for general evaluation
 
 ## Monitoring & Telemetry
 
-All three features include comprehensive logging:
+Both features include comprehensive logging:
 
 ### Contrastive Decoding
 ```javascript
@@ -314,16 +251,6 @@ logger.info('Contrastive decoding completed', {
   avgSimilarity: 0.23,  // Lower = more diverse
   minSimilarity: 0.05,
   maxSimilarity: 0.45
-});
-```
-
-### Enhanced SemanticRouter
-```javascript
-logger.debug('Example ranking completed', {
-  totalExamples: 40,
-  topScore: 0.875,
-  selectedCount: 4,
-  detectedDomains: ['cinematography', 'technical']
 });
 ```
 
@@ -341,7 +268,6 @@ logger.info('LLM-as-a-Judge evaluation completed', {
 Run all tests:
 ```bash
 npm test -- ContrastiveDiversityEnforcer
-npm test -- ExampleRanker
 npm test -- LLMJudgeService
 ```
 
@@ -351,11 +277,6 @@ npm test -- LLMJudgeService
 - ✅ Reduce similar suggestion clusters by 60%+ (Jaccard similarity metric)
 - ✅ Maintain generation quality (no degradation in user acceptance)
 - ✅ Telemetry shows diversity metrics improve across video prompts
-
-### Enhanced SemanticRouter
-- ✅ Span labeling accuracy improves 20-30% on ambiguous inputs
-- ✅ Example selection time remains under 10ms
-- ✅ Correct domain detection rate > 90%
 
 ### LLM-as-a-Judge
 - ✅ Quality scores correlate with user acceptance rates (r > 0.7)
@@ -383,12 +304,7 @@ npm test -- LLMJudgeService
    - Temperature scheduling per criterion type
    - Semantic distance metrics beyond Jaccard
 
-2. **SemanticRouter**:
-   - Online learning from user corrections
-   - Domain-specific fine-tuning
-   - Multi-domain example blending
-
-3. **LLM-as-a-Judge**:
+2. **LLM-as-a-Judge**:
    - Cached evaluations for identical inputs
    - Async evaluation queue for production
    - Custom rubrics per user/organization
@@ -399,7 +315,6 @@ npm test -- LLMJudgeService
 - **PDF Section 5.2**: Visual diversity via proxy (Vendi Score on CLIP)
 - **PDF Section 5.3**: LLM-as-a-Judge paradigm
 - **PDF Section 6.3**: Diversity sampling with contrastive penalty
-- **PDF Design B**: Role-Aware Semantic Router
 
 ## Support
 
@@ -408,4 +323,3 @@ For questions or issues:
 2. Review test suites for usage examples
 3. Consult rubric definitions for evaluation criteria
 4. See performance metrics in Sentry/monitoring dashboard
-

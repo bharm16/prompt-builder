@@ -96,7 +96,7 @@ Run same 5 test cases and check specifically:
 ## Files Modified
 
 ### Round 1
-- `utils/promptBuilder.ts` - Disabled broken SemanticRouter example injection
+- `utils/promptBuilder.ts` - Disabled example injection in prompt building
 - `templates/span-labeling-prompt.md` - Added CRITICAL sections for function words, phrase boundaries, composite splitting
 
 ### Round 2
@@ -111,16 +111,7 @@ If issues occur:
 
 ## Future Work
 
-### Priority 1: Fix Example Banks
-Files to fix with valid taxonomy IDs:
-- `routing/examples/creative.js`
-- `routing/examples/technical.js`
-- `routing/examples/academic.js`
-- `routing/examples/conversational.js`
-
-Then re-enable SemanticRouter in `promptBuilder.ts`.
-
-### Priority 2: Validation-Side Improvements
+### Priority 1: Validation-Side Improvements
 Consider adding:
 - Auto-upgrade parent categories to attributes when context is clear (e.g., `camera` → `camera.movement` if camera verb detected)
 - Pre-merge check for function words (auto-remove "a", "the", etc.)

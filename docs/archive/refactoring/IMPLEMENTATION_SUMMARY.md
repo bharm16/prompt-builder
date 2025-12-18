@@ -94,21 +94,7 @@ Successfully implemented a complete architectural evolution of the span labeling
 - ✅ Explicit anti-patterns for common mistakes
 - ✅ Category misalignment warnings
 
-#### 2.4 Semantic Router
-**File**: `server/src/llm/span-labeling/routing/SemanticRouter.js` (NEW)
-
-**Features**:
-- ✅ Detects technical terminology (Director's Lexicon terms)
-- ✅ Detects ambiguous terms (pan, light, shot, etc.)
-- ✅ Detects camera-heavy context
-- ✅ Generates context-aware few-shot examples
-- ✅ Exports `formatExamplesForPrompt()` for injection
-
-**Integration**:
-- ✅ Updated `SpanLabelingService.js` to use context-aware system prompts
-- ✅ Modified `buildSystemPrompt()` to accept text and inject examples
-
-#### 2.5 Relaxed F1 Evaluator
+#### 2.4 Relaxed F1 Evaluator
 **File**: `server/src/llm/span-labeling/evaluation/RelaxedF1Evaluator.js` (NEW)
 
 **Features**:
@@ -137,17 +123,7 @@ Successfully implemented a complete architectural evolution of the span labeling
 **Goal**: Maximum Reliability & Self-Correction  
 **Timeline**: Completed
 
-#### 3.1 Strict Schema
-**File**: `server/src/llm/span-labeling/schemas/StrictSpanResponseSchema.js` (NEW)
-
-**Features**:
-- ✅ JSON Schema with strict validation
-- ✅ Enum-based taxonomy ID validation (all 42 valid IDs)
-- ✅ OpenAI Structured Outputs format (`json_schema`)
-- ✅ Groq JSON mode format fallback
-- ✅ Provider-agnostic schema conversion
-
-#### 3.2 Grammar-Constrained Decoding
+#### 3.1 Grammar-Constrained Decoding
 **Files Modified**:
 - ✅ `server/src/services/ai-model/AIModelService.js`
   - Added `responseFormat` parameter support
@@ -157,45 +133,7 @@ Successfully implemented a complete architectural evolution of the span labeling
   - Updated `streamComplete()` with same support
   - Maintains backward compatibility with `jsonMode`
 
-#### 3.3 Span Critic
-**File**: `server/src/llm/span-labeling/critic/SpanCritic.js` (NEW)
-
-**Features**:
-- ✅ **Camera/Action Confusion Detection**: Checks for camera verbs in action spans
-- ✅ **One Action Rule Validation**: Detects sequential markers
-- ✅ **Film Stock Taxonomy Check**: Ensures 35mm → style.filmStock (not style.aesthetic)
-- ✅ **Lighting Time Taxonomy Check**: Ensures golden hour → lighting.timeOfDay
-- ✅ **Auto-Correction**: Fixes known taxonomy errors automatically
-- ✅ **Feedback Prompt Generation**: Creates regeneration prompts for LLM
-
-**Methods**:
-- `checkCameraActionConfusion(spans, originalText)`
-- `checkOneActionRule(spans)`
-- `checkFilmStockTaxonomy(spans)`
-- `checkLightingTimeTaxonomy(spans)`
-- `autoCorrect(spans, errors)`
-- `validate(spans, originalText, options)`
-
-#### 3.4 Injection Detector
-**File**: `server/src/llm/span-labeling/guardrails/InjectionDetector.js` (NEW)
-
-**Features**:
-- ✅ **Pattern-Based Detection**: 5 pattern categories
-  1. Instruction override attempts
-  2. System prompt extraction
-  3. Role manipulation
-  4. Output format manipulation
-  5. Taxonomy extraction
-- ✅ **Heuristic Analysis**: Detects suspicious patterns
-  - Excessive instruction words
-  - Meta-references to system
-  - Unusual punctuation
-  - Mixed language scripts
-  - Base64-like encoding
-- ✅ **Pre-LLM Filtering**: Blocks before API call
-- ✅ **Telemetry**: Tracks detection events
-
-#### 3.5 Evaluation Suite
+#### 3.2 Evaluation Suite
 **Files Created**:
 - ✅ `scripts/evaluation/run-golden-set-evaluation.js` (NEW)
   - Loads golden dataset
@@ -217,29 +155,25 @@ Successfully implemented a complete architectural evolution of the span labeling
 |--------|--------|--------|
 | JSON Validity Rate | >99.5% | ✅ Infrastructure ready |
 | Relaxed F1 | >0.85 | ✅ Evaluator implemented |
-| Taxonomy Accuracy | >90% | ✅ Critic validates |
-| Safety Pass Rate | 100% | ✅ Detector + dataset ready |
+| Taxonomy Accuracy | >90% | ✅ Evaluator ready |
+| Safety Pass Rate | 100% | ✅ Dataset ready |
 | Avg Latency | <1.5s | ✅ Telemetry in place |
 
 ---
 
 ## 🗂️ Files Created/Modified Summary
 
-### New Files Created (14)
-1. `server/src/llm/span-labeling/routing/SemanticRouter.js`
-2. `server/src/llm/span-labeling/evaluation/RelaxedF1Evaluator.js`
-3. `server/src/llm/span-labeling/evaluation/golden-set/core-prompts.json`
-4. `server/src/llm/span-labeling/evaluation/golden-set/technical-prompts.json`
-5. `server/src/llm/span-labeling/evaluation/golden-set/adversarial-prompts.json`
-6. `server/src/llm/span-labeling/evaluation/golden-set/edge-cases.json`
-7. `server/src/llm/span-labeling/schemas/StrictSpanResponseSchema.js`
-8. `server/src/llm/span-labeling/critic/SpanCritic.js`
-9. `server/src/llm/span-labeling/guardrails/InjectionDetector.js`
-10. `scripts/evaluation/run-golden-set-evaluation.js`
-11. `scripts/evaluation/README.md`
-12. `pdf_content_extracted.txt` (temporary - can be deleted)
-13. `IMPLEMENTATION_SUMMARY.md` (this file)
-14. (Note: `spa.plan.md` was pre-existing and not modified)
+### New Files Created (10)
+1. `server/src/llm/span-labeling/evaluation/RelaxedF1Evaluator.js`
+2. `server/src/llm/span-labeling/evaluation/golden-set/core-prompts.json`
+3. `server/src/llm/span-labeling/evaluation/golden-set/technical-prompts.json`
+4. `server/src/llm/span-labeling/evaluation/golden-set/adversarial-prompts.json`
+5. `server/src/llm/span-labeling/evaluation/golden-set/edge-cases.json`
+6. `scripts/evaluation/run-golden-set-evaluation.js`
+7. `scripts/evaluation/README.md`
+8. `pdf_content_extracted.txt` (temporary - can be deleted)
+9. `IMPLEMENTATION_SUMMARY.md` (this file)
+10. (Note: `spa.plan.md` was pre-existing and not modified)
 
 ### Files Modified (6)
 1. `server/src/llm/span-labeling/templates/span-labeling-prompt.md` ⭐ Major changes
@@ -272,11 +206,7 @@ Successfully implemented a complete architectural evolution of the span labeling
    ```javascript
    const FEATURE_FLAGS = {
      USE_SUBSTRING_EXTRACTION: true,  // Phase 1
-     USE_DISAMBIGUATION_RULES: true,  // Phase 2
-     USE_SEMANTIC_ROUTER: true,       // Phase 2
-     USE_SCHEMA_CONSTRAINTS: false,   // Phase 3 (opt-in, provider-dependent)
-     USE_CRITIC_LOOP: false,          // Phase 3 (opt-in)
-     USE_INJECTION_DETECTOR: true     // Phase 3
+     USE_DISAMBIGUATION_RULES: true   // Phase 2
    };
    ```
 
@@ -297,9 +227,8 @@ Successfully implemented a complete architectural evolution of the span labeling
    - Monitor: validation errors, user edit rate, latency
 
 4. **Phase 3 Opt-In**
-   - Enable Critic loop for specific operations
    - Enable Structured Outputs if provider supports (OpenAI GPT-4o)
-   - Monitor auto-correction rates
+   - Monitor validation error rates
 
 ---
 
@@ -309,17 +238,16 @@ Each phase is backwards compatible:
 
 - **Phase 1**: Can roll back by re-adding index requirements to schema (not recommended)
 - **Phase 2**: Disambiguation rules are additive, can be disabled via feature flag
-- **Phase 3**: Schema constraints and Critic are opt-in, can be toggled off
+- **Phase 3**: Schema constraints are opt-in, can be toggled off
 
 ---
 
 ## 📝 Documentation Updates Needed
 
 1. Update API documentation with new capabilities
-2. Document SemanticRouter behavior for users
-3. Add telemetry dashboard for monitoring
-4. Create runbook for handling validation failures
-5. Document feature flags and rollback procedures
+2. Add telemetry dashboard for monitoring
+3. Create runbook for handling validation failures
+4. Document feature flags and rollback procedures
 
 ---
 
@@ -327,9 +255,7 @@ Each phase is backwards compatible:
 
 1. **Index Drift is Real**: Transformers process tokens, not characters - offloading index calculation to deterministic backend was critical
 2. **Disambiguation Matters**: Explicit rules + negative constraints dramatically improve accuracy on ambiguous terms
-3. **Context-Aware Examples Work**: Dynamic few-shot injection based on input characteristics improves technical prompt handling
-4. **Auto-Correction > Regeneration**: Critic loop with auto-correction is faster and cheaper than full regeneration
-5. **Security is Multi-Layered**: XML fencing + pattern detection + LLM-level awareness all contribute
+3. **Security is Multi-Layered**: XML fencing + LLM-level awareness both contribute
 
 ---
 
@@ -345,16 +271,11 @@ Each phase is backwards compatible:
 - [x] Phase 2: Robustness & Disambiguation (Horizon 2)
   - [x] Add Disambiguation Rules section to prompt
   - [x] Add Director's Lexicon definitions to prompt
-  - [x] Create SemanticRouter for context-aware examples
   - [x] Create RelaxedF1Evaluator for metrics
   - [x] Create Golden Set with 19+ annotated examples
-  - [x] Integrate SemanticRouter into SpanLabelingService
 
 - [x] Phase 3: Agentic & Schema-First (Horizon 3)
-  - [x] Create strict schema for constrained decoding
   - [x] Enable grammar-constrained decoding in AIModelService
-  - [x] Implement SpanCritic for self-correction logic
-  - [x] Create InjectionDetector guardrail
   - [x] Create full evaluation suite and validation scripts
 
 ---
@@ -370,4 +291,3 @@ For questions about this implementation:
 **Implementation Status**: ✅ COMPLETE  
 **Ready for**: Staging Deployment & Evaluation  
 **Estimated Impact**: 30-40% improvement in F1, >95% reduction in Index Drift errors
-
