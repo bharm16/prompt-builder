@@ -1,5 +1,18 @@
 import { buildSpanKey } from '../utils/textUtils.js';
 
+interface SpanLike {
+  text: string;
+  start: number;
+  end: number;
+  confidence: number;
+  [key: string]: unknown;
+}
+
+interface TruncateResult {
+  spans: SpanLike[];
+  notes: string[];
+}
+
 /**
  * Span truncation module
  *
@@ -19,7 +32,10 @@ import { buildSpanKey } from '../utils/textUtils.js';
  * @param {number} maxSpans - Maximum number of spans to keep
  * @returns {Object} {spans: Array, notes: Array}
  */
-export function truncateToMaxSpans(spans, maxSpans) {
+export function truncateToMaxSpans(
+  spans: SpanLike[],
+  maxSpans: number
+): TruncateResult {
   if (spans.length <= maxSpans) {
     return { spans, notes: [] };
   }
@@ -31,7 +47,7 @@ export function truncateToMaxSpans(spans, maxSpans) {
   });
 
   // Select top maxSpans spans
-  const keepSet = new Set(ranked.slice(0, maxSpans).map(buildSpanKey));
+  const keepSet = new Set<string>(ranked.slice(0, maxSpans).map(buildSpanKey));
   const truncated = spans.filter((span) => keepSet.has(buildSpanKey(span)));
 
   // Re-sort by position for output consistency

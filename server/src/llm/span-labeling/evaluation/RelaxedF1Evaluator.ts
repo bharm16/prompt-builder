@@ -11,6 +11,27 @@
  * Standard "Exact Match" metrics are too harsh for span extraction.
  */
 
+interface SpanLike {
+  start?: number;
+  end?: number;
+  role?: string;
+  text?: string;
+  [key: string]: unknown;
+}
+
+interface ConfusionMatrix {
+  [role: string]: Record<string, number>;
+}
+
+interface EvaluationTestCase {
+  predicted?: SpanLike[];
+  groundTruth?: SpanLike[];
+}
+
+interface EvaluationSuite {
+  tests?: EvaluationTestCase[];
+}
+
 export class RelaxedF1Evaluator {
   /**
    * Calculate Intersection over Union for two spans
@@ -18,7 +39,7 @@ export class RelaxedF1Evaluator {
    * @param {Object} groundTruth - Ground truth span with {start, end, role}
    * @returns {number} IoU score (0-1)
    */
-  calculateIoU(predicted, groundTruth) {
+  calculateIoU(predicted: SpanLike, groundTruth: SpanLike): number {
     if (
       !predicted ||
       !groundTruth ||
@@ -51,8 +72,8 @@ export class RelaxedF1Evaluator {
    * @returns {Object} {rate, fragmentedCount, totalGroundTruth, examples}
    */
   calculateFragmentationRate(
-    predicted,
-    groundTruth,
+    predicted: SpanLike[] | null | undefined,
+    groundTruth: SpanLike[] | null | undefined,
     iouThreshold = 0.1,
     useParentRole = true
   ) {
@@ -61,7 +82,10 @@ export class RelaxedF1Evaluator {
     }
 
     let fragmentedCount = 0;
-    const examples = [];
+    const examples: Array<{
+      groundTruth: SpanLike;
+      fragments: Array<Pick<SpanLike, 'text' | 'role' | 'start' | 'end'>>;
+    }> = [];
 
     for (const gt of groundTruth) {
       const overlapping = predicted.filter((p) => this.calculateIoU(p, gt) > iouThreshold);
@@ -104,12 +128,21 @@ export class RelaxedF1Evaluator {
    * @param {number} iouThreshold - Minimum IoU to count as a match (default: 0.5)
    * @returns {Object} {rate, spuriousCount, totalPredicted, examples}
    */
-  calculateOverExtractionRate(predicted, groundTruth, iouThreshold = 0.5) {
+  calculateOverExtractionRate(
+    predicted: SpanLike[] | null | undefined,
+    groundTruth: SpanLike[] | null | undefined,
+    iouThreshold = 0.5
+  ): {
+    rate: number;
+    spuriousCount: number;
+    totalPredicted: number;
+    examples: SpanLike[];
+  } {
     if (!Array.isArray(predicted) || predicted.length === 0) {
       return { rate: 0, spuriousCount: 0, totalPredicted: predicted?.length || 0, examples: [] };
     }
 
-    const examples = [];
+    const examples: SpanLike[] = [];
     let spuriousCount = 0;
 
     for (const pred of predicted) {
@@ -144,13 +177,18 @@ export class RelaxedF1Evaluator {
    * @param {number} iouThreshold - Minimum IoU to consider a spatial match (default: 0.5)
    * @returns {Object} Updated matrix
    */
-  updateConfusionMatrix(matrix, predicted, groundTruth, iouThreshold = 0.5) {
-    const updated = matrix || {};
+  updateConfusionMatrix(
+    matrix: ConfusionMatrix | null | undefined,
+    predicted: SpanLike[] | null | undefined,
+    groundTruth: SpanLike[] | null | undefined,
+    iouThreshold = 0.5
+  ): ConfusionMatrix {
+    const updated: ConfusionMatrix = matrix || {};
     if (!Array.isArray(predicted) || !Array.isArray(groundTruth)) {
       return updated;
     }
 
-    const usedPred = new Set();
+    const usedPred = new Set<number>();
 
     for (const gt of groundTruth) {
       let bestIdx = -1;
@@ -195,8 +233,11 @@ export class RelaxedF1Evaluator {
    * @param {number} iouThreshold - Minimum IoU for spatial match
    * @returns {Object} Confusion matrix
    */
-  generateConfusionMatrix(testResults, iouThreshold = 0.5) {
-    const matrix = {};
+  generateConfusionMatrix(
+    testResults: EvaluationTestCase[] | null | undefined,
+    iouThreshold = 0.5
+  ): ConfusionMatrix {
+    const matrix: ConfusionMatrix = {};
     if (!Array.isArray(testResults)) return matrix;
     for (const r of testResults) {
       this.updateConfusionMatrix(matrix, r.predicted || [], r.groundTruth || [], iouThreshold);
@@ -211,10 +252,23 @@ export class RelaxedF1Evaluator {
    * @param {number} iouThreshold - Minimum IoU for match (default: 0.5)
    * @returns {Object} {precision, recall, f1, truePositives, falsePositives, falseNegatives}
    */
-  evaluateSpans(predicted, groundTruth, iouThreshold = 0.5) {
+  evaluateSpans(
+    predicted: SpanLike[],
+    groundTruth: SpanLike[],
+    iouThreshold = 0.5
+  ): {
+    precision: number;
+    recall: number;
+    f1: number;
+    truePositives: number;
+    falsePositives: number;
+    falseNegatives: number;
+    totalPredicted: number;
+    totalGroundTruth: number;
+  } {
     let truePositives = 0;
-    const matchedGT = new Set();
-    const matchedPred = new Set();
+    const matchedGT = new Set<number>();
+    const matchedPred = new Set<number>();
 
     // Find true positives (predicted spans that match ground truth)
     for (let i = 0; i < predicted.length; i++) {
@@ -263,10 +317,14 @@ export class RelaxedF1Evaluator {
    * @param {number} iouThreshold - Minimum IoU for spatial match (default: 0.5)
    * @returns {Object} {accuracy, correct, total}
    */
-  evaluateTaxonomyAccuracy(predicted, groundTruth, iouThreshold = 0.5) {
+  evaluateTaxonomyAccuracy(
+    predicted: SpanLike[],
+    groundTruth: SpanLike[],
+    iouThreshold = 0.5
+  ): { accuracy: number; correct: number; total: number } {
     let correctRoles = 0;
     let totalSpatialMatches = 0;
-    const matchedGT = new Set();
+    const matchedGT = new Set<number>();
 
     for (const pred of predicted) {
       for (let j = 0; j < groundTruth.length; j++) {
@@ -303,7 +361,9 @@ export class RelaxedF1Evaluator {
    * @param {Array} results - Array of {success: boolean} results
    * @returns {Object} {rate, valid, total}
    */
-  calculateJsonValidityRate(results) {
+  calculateJsonValidityRate(
+    results: Array<{ success: boolean }>
+  ): { rate: number; valid: number; total: number } {
     const valid = results.filter(r => r.success).length;
     const total = results.length;
     const rate = total > 0 ? valid / total : 0;
@@ -316,7 +376,9 @@ export class RelaxedF1Evaluator {
    * @param {Array} adversarialTests - Array of {flagged: boolean, expected: true} tests
    * @returns {Object} {rate, passed, total}
    */
-  calculateSafetyPassRate(adversarialTests) {
+  calculateSafetyPassRate(
+    adversarialTests: Array<{ flagged: boolean; expected: boolean }>
+  ): { rate: number; passed: number; total: number } {
     const passed = adversarialTests.filter(test => test.flagged === test.expected).length;
     const total = adversarialTests.length;
     const rate = total > 0 ? passed / total : 0;
@@ -329,11 +391,20 @@ export class RelaxedF1Evaluator {
    * @param {Object} testSuite - Complete test suite with multiple test sets
    * @returns {Object} Detailed evaluation report
    */
-  generateEvaluationReport(testSuite) {
+  generateEvaluationReport(testSuite: EvaluationSuite): {
+    timestamp: string;
+    summary: Record<string, number>;
+    byCategory: Record<string, { f1: number; precision: number; recall: number; support: number }>;
+    examples: {
+      truePositives: SpanLike[];
+      falsePositives: SpanLike[];
+      falseNegatives: SpanLike[];
+    };
+  } {
     const results = {
       timestamp: new Date().toISOString(),
-      summary: {},
-      byCategory: {},
+      summary: {} as Record<string, number>,
+      byCategory: {} as Record<string, { f1: number; precision: number; recall: number; support: number }>,
       examples: {
         truePositives: [],
         falsePositives: [],
@@ -385,7 +456,7 @@ export class RelaxedF1Evaluator {
     };
 
     // Per-category breakdown
-    const categories = new Set();
+    const categories = new Set<string>();
     for (const testCase of testSuite.tests || []) {
       const groundTruth = Array.isArray(testCase.groundTruth) ? testCase.groundTruth : [];
       groundTruth.forEach((span) => categories.add(span.role));
@@ -436,7 +507,25 @@ export class RelaxedF1Evaluator {
    * @param {Object} metrics - Evaluation metrics
    * @returns {Object} {passed, failures}
    */
-  checkTargetThresholds(metrics) {
+  checkTargetThresholds(metrics: {
+    relaxedF1: number;
+    taxonomyAccuracy: number;
+    jsonValidityRate?: number;
+    safetyPassRate?: number;
+    fragmentationRate?: number;
+    overExtractionRate?: number;
+  }): {
+    passed: boolean;
+    failures: string[];
+    targets: {
+      relaxedF1: number;
+      taxonomyAccuracy: number;
+      jsonValidityRate: number;
+      safetyPassRate: number;
+      fragmentationRate: number;
+      overExtractionRate: number;
+    };
+  } {
     const targets = {
       relaxedF1: 0.85,
       taxonomyAccuracy: 0.90,

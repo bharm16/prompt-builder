@@ -5,6 +5,24 @@
  * Fixes LLM fragmentation issues like "Action" + "Shot" → "Action Shot"
  */
 
+interface SpanLike {
+  text: string;
+  start: number;
+  end: number;
+  role: string;
+  confidence: number;
+  [key: string]: unknown;
+}
+
+interface MergeOptions {
+  maxMergedWords?: number;
+}
+
+interface MergeResult {
+  spans: SpanLike[];
+  notes: string[];
+}
+
 /**
  * Get the parent category from a role string
  * e.g., "environment.location" → "environment"
@@ -12,7 +30,7 @@
  * @param {string} role - The taxonomy role
  * @returns {string} Parent category
  */
-function getParentCategory(role) {
+function getParentCategory(role: unknown): string {
   if (!role || typeof role !== 'string') return '';
   const dotIndex = role.indexOf('.');
   return dotIndex > 0 ? role.substring(0, dotIndex) : role;
@@ -25,7 +43,7 @@ function getParentCategory(role) {
  * @param {string} role2 - Second role
  * @returns {boolean} True if compatible
  */
-function areRolesCompatible(role1, role2) {
+function areRolesCompatible(role1: string, role2: string): boolean {
   const parent1 = getParentCategory(role1);
   const parent2 = getParentCategory(role2);
   return parent1 === parent2 && parent1 !== '';
@@ -37,7 +55,7 @@ function areRolesCompatible(role1, role2) {
  * @param {string} gap - The text between spans
  * @returns {boolean} True if gap is mergeable
  */
-function isMergeableGap(gap) {
+function isMergeableGap(gap: string): boolean {
   if (!gap || gap.length === 0) return true;
   if (gap.length > 3) return false; // Don't merge if gap is too large
   
@@ -52,7 +70,7 @@ function isMergeableGap(gap) {
  * @param {string} role2 - Second role
  * @returns {string} The more specific role
  */
-function selectMoreSpecificRole(role1, role2) {
+function selectMoreSpecificRole(role1: string, role2: string): string {
   const hasAttribute1 = role1.includes('.');
   const hasAttribute2 = role2.includes('.');
   
@@ -69,7 +87,7 @@ function selectMoreSpecificRole(role1, role2) {
  * @param {string} text - Text to count words in
  * @returns {number} Word count
  */
-function countWords(text) {
+function countWords(text: unknown): number {
   if (!text || typeof text !== 'string') return 0;
   return text.trim().split(/\s+/).filter(w => w.length > 0).length;
 }
@@ -83,19 +101,23 @@ function countWords(text) {
  * @param {number} options.maxMergedWords - Maximum words in merged span (default: 8)
  * @returns {{spans: Array, notes: Array}}
  */
-export function mergeAdjacentSpans(spans, sourceText, options = {}) {
+export function mergeAdjacentSpans(
+  spans: SpanLike[] | null | undefined,
+  sourceText: string,
+  options: MergeOptions = {}
+): MergeResult {
   const { maxMergedWords = 8 } = options;
   
   if (!spans || spans.length <= 1) {
     return { spans: spans || [], notes: [] };
   }
 
-  const merged = [];
-  const notes = [];
+  const merged: SpanLike[] = [];
+  const notes: string[] = [];
   let i = 0;
 
   while (i < spans.length) {
-    let current = { ...spans[i] };
+    let current: SpanLike = { ...spans[i] };
     let mergeCount = 0;
 
     // Try to merge with subsequent spans
@@ -144,4 +166,3 @@ export function mergeAdjacentSpans(spans, sourceText, options = {}) {
 
   return { spans: merged, notes };
 }
-

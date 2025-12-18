@@ -5,6 +5,19 @@
  * Assumes spans are sorted by start position.
  */
 
+interface SpanLike {
+  text: string;
+  start: number;
+  end: number;
+  confidence: number;
+  [key: string]: unknown;
+}
+
+interface ResolveResult {
+  spans: SpanLike[];
+  notes: string[];
+}
+
 /**
  * Resolve overlapping spans by keeping the higher confidence span
  *
@@ -18,14 +31,17 @@
  * @param {boolean} allowOverlap - If true, keeps all spans without resolution
  * @returns {Object} {spans: Array, notes: Array}
  */
-export function resolveOverlaps(sortedSpans, allowOverlap) {
+export function resolveOverlaps(
+  sortedSpans: SpanLike[],
+  allowOverlap: boolean
+): ResolveResult {
   // Skip resolution if overlaps are allowed
   if (allowOverlap) {
     return { spans: sortedSpans, notes: [] };
   }
 
-  const resolved = [];
-  const notes = [];
+  const resolved: SpanLike[] = [];
+  const notes: string[] = [];
 
   sortedSpans.forEach((span) => {
     const last = resolved[resolved.length - 1];

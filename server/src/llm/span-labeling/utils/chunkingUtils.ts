@@ -11,10 +11,38 @@
  * - Handle overlapping spans at chunk boundaries
  */
 
+interface SentenceSlice {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+interface TextChunk {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+  wordCount: number;
+}
+
+interface SpanLike {
+  start: number;
+  end: number;
+  role?: string;
+  category?: string;
+  [key: string]: unknown;
+}
+
+interface ChunkResult {
+  spans?: SpanLike[];
+  chunkOffset: number;
+}
+
 /**
  * Text Chunker class for processing large texts
  */
 export class TextChunker {
+  private maxChunkSize: number;
+
   constructor(maxChunkSize = 400) {
     this.maxChunkSize = maxChunkSize; // words per chunk
   }
@@ -24,14 +52,14 @@ export class TextChunker {
    * @param {string} text - Text to chunk
    * @returns {Array<Object>} Array of chunks with offsets
    */
-  chunkText(text) {
+  chunkText(text: unknown): TextChunk[] {
     if (!text || typeof text !== 'string') {
       return [];
     }
     
     const sentences = this.splitIntoSentences(text);
-    const chunks = [];
-    let currentChunk = {
+    const chunks: TextChunk[] = [];
+    let currentChunk: TextChunk = {
       text: '',
       startOffset: 0,
       endOffset: 0,
@@ -78,13 +106,13 @@ export class TextChunker {
    * @param {string} text - Text to split
    * @returns {Array<Object>} Sentences with positions
    */
-  splitIntoSentences(text) {
+  splitIntoSentences(text: string): SentenceSlice[] {
     // Enhanced sentence splitter that handles common edge cases
     // Matches sentences ending with . ! ? followed by space or end of string
     // Handles common abbreviations like Dr. Mr. Ms. etc.
     const sentenceRegex = /[^.!?]+[.!?]+(?=\s|$)/g;
-    const sentences = [];
-    let match;
+    const sentences: SentenceSlice[] = [];
+    let match: RegExpExecArray | null;
     let lastIndex = 0;
     
     while ((match = sentenceRegex.exec(text)) !== null) {
@@ -129,9 +157,9 @@ export class TextChunker {
    * @param {Array<Object>} chunkResults - Results from each chunk
    * @returns {Array<Object>} Merged spans
    */
-  mergeChunkedSpans(chunkResults) {
-    const mergedSpans = [];
-    const seenSpans = new Set(); // Track to avoid duplicates
+  mergeChunkedSpans(chunkResults: ChunkResult[]): SpanLike[] {
+    const mergedSpans: SpanLike[] = [];
+    const seenSpans = new Set<string>(); // Track to avoid duplicates
     
     for (const { spans, chunkOffset } of chunkResults) {
       if (!Array.isArray(spans)) {
@@ -140,7 +168,7 @@ export class TextChunker {
       
       for (const span of spans) {
         // Adjust span positions by chunk offset
-        const adjustedSpan = {
+        const adjustedSpan: SpanLike = {
           ...span,
           start: span.start + chunkOffset,
           end: span.end + chunkOffset,
@@ -165,7 +193,7 @@ export class TextChunker {
    * @param {string} text - Text to check
    * @returns {boolean} True if text exceeds chunk size
    */
-  needsChunking(text) {
+  needsChunking(text: unknown): boolean {
     if (!text || typeof text !== 'string') {
       return false;
     }
@@ -179,7 +207,7 @@ export class TextChunker {
  * @param {string} text - Text to count
  * @returns {number} Word count
  */
-export function countWords(text) {
+export function countWords(text: unknown): number {
   if (!text || typeof text !== 'string') {
     return 0;
   }
@@ -187,4 +215,3 @@ export function countWords(text) {
 }
 
 export default TextChunker;
-

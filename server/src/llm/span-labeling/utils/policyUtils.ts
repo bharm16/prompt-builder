@@ -4,6 +4,19 @@ import {
   PERFORMANCE
 } from '../config/SpanLabelingConfig.js';
 
+interface ValidationPolicy {
+  nonTechnicalWordLimit?: number;
+  allowOverlap?: boolean;
+  [key: string]: unknown;
+}
+
+interface ProcessingOptions {
+  maxSpans?: number;
+  minConfidence?: number;
+  templateVersion?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Policy and options sanitization utilities
  *
@@ -20,8 +33,8 @@ import {
  * @param {Object} [policy] - Raw policy configuration
  * @returns {Object} Validated policy with defaults
  */
-export function sanitizePolicy(policy = {}) {
-  const merged = {
+export function sanitizePolicy(policy: ValidationPolicy | null = {}): ValidationPolicy {
+  const merged: ValidationPolicy = {
     ...DEFAULT_POLICY,
     ...(policy && typeof policy === 'object' ? policy : {}),
   };
@@ -48,8 +61,8 @@ export function sanitizePolicy(policy = {}) {
  * @param {Object} [options] - Raw options configuration
  * @returns {Object} Validated options with defaults
  */
-export function sanitizeOptions(options = {}) {
-  const merged = {
+export function sanitizeOptions(options: ProcessingOptions | null = {}): ProcessingOptions {
+  const merged: ProcessingOptions = {
     ...DEFAULT_OPTIONS,
     ...(options && typeof options === 'object' ? options : {}),
   };
@@ -84,7 +97,10 @@ export function sanitizeOptions(options = {}) {
  * @param {Object} policy - Validation policy
  * @returns {string} Task description
  */
-export function buildTaskDescription(maxSpans, policy = DEFAULT_POLICY) {
+export function buildTaskDescription(
+  maxSpans: number,
+  policy: ValidationPolicy | null = DEFAULT_POLICY
+): string {
   const parts = [`Identify up to ${maxSpans} spans and assign roles.`];
 
   if (policy) {

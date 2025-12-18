@@ -3,6 +3,23 @@ import { ROLE_SET } from '../config/roles.js';
 import { TAXONOMY } from '#shared/taxonomy.ts';
 import { clamp01 } from '../utils/textUtils.js';
 
+interface SpanInput {
+  text: string;
+  start: number;
+  end: number;
+  role: string;
+  confidence?: number;
+}
+
+interface NormalizedSpan {
+  text: string;
+  start: number;
+  end: number;
+  role: string;
+  confidence: number;
+  id?: string;
+}
+
 /**
  * Span normalization module
  *
@@ -18,7 +35,7 @@ import { clamp01 } from '../utils/textUtils.js';
  * @param {string} sourceText - The full source text (for hashing)
  * @returns {string} Stable span ID
  */
-function generateSpanId(span, sourceText) {
+function generateSpanId(span: SpanInput, sourceText: string): string {
   // Hash the source text to create a deterministic prefix
   const textHash = createHash('sha256')
     .update(sourceText)
@@ -45,7 +62,11 @@ function generateSpanId(span, sourceText) {
  * @param {boolean} lenient - If true, assigns 'subject' for invalid roles; if false, returns null
  * @returns {Object|null} Normalized span with role, confidence, and stable ID, or null if invalid
  */
-export function normalizeSpan(span, sourceText, lenient = false) {
+export function normalizeSpan(
+  span: SpanInput,
+  sourceText: string,
+  lenient = false
+): NormalizedSpan | null {
   const confidence = clamp01(span.confidence);
 
   // Validate role against taxonomy
@@ -62,7 +83,7 @@ export function normalizeSpan(span, sourceText, lenient = false) {
   }
 
   // Create normalized span with role (needed for ID generation)
-  const normalizedSpan = {
+  const normalizedSpan: NormalizedSpan = {
     text: span.text,
     start: span.start,
     end: span.end,

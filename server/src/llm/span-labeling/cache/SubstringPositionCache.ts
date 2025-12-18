@@ -1,4 +1,18 @@
 import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
+
+interface Telemetry {
+  exactMatches: number;
+  caseInsensitiveMatches: number;
+  fuzzyMatches: number;
+  failures: number;
+  totalRequests: number;
+}
+
+interface MatchResult {
+  start: number;
+  end: number;
+}
 
 /**
  * Optimized substring position finder with caching
@@ -12,6 +26,11 @@ import { logger } from '@infrastructure/Logger';
  * for typical 60-span, 5000-character texts.
  */
 export class SubstringPositionCache {
+  private cache: Map<string, number[]>;
+  private currentText: string | null;
+  private log: ILogger;
+  private telemetry: Telemetry;
+
   constructor() {
     this.cache = new Map();
     this.currentText = null;
@@ -29,14 +48,14 @@ export class SubstringPositionCache {
   /**
    * Get telemetry stats
    */
-  getTelemetry() {
+  getTelemetry(): Telemetry {
     return { ...this.telemetry };
   }
 
   /**
    * Reset telemetry counters
    */
-  resetTelemetry() {
+  resetTelemetry(): void {
     this.telemetry = {
       exactMatches: 0,
       caseInsensitiveMatches: 0,
@@ -50,7 +69,7 @@ export class SubstringPositionCache {
    * Light normalization used for fallback matching
    * (removes quotes/markdown noise, collapses whitespace, normalizes unicode)
    */
-  _cleanForMatch(value) {
+  private _cleanForMatch(value: unknown): string {
     if (typeof value !== 'string') return '';
 
     return value
@@ -67,7 +86,7 @@ export class SubstringPositionCache {
    * Lightweight Levenshtein distance (iterative) for fuzzy fallback.
    * Only used when exact/normalized matches fail.
    */
-  _levenshtein(a, b) {
+  private _levenshtein(a: string, b: string): number {
     if (a === b) return 0;
     if (!a.length) return b.length;
     if (!b.length) return a.length;
@@ -103,14 +122,14 @@ export class SubstringPositionCache {
    * Fuzzy fallback search when exact match is not found.
    * Anchored on a short prefix to avoid scanning the entire string.
    */
-  _fuzzyFind(text, substring) {
+  private _fuzzyFind(text: string, substring: string): MatchResult | null {
     const cleanedTarget = this._cleanForMatch(substring);
     if (!cleanedTarget) return null;
 
     const targetLen = cleanedTarget.length;
     const lowerText = text.toLowerCase();
     const anchor = cleanedTarget.slice(0, Math.min(6, targetLen));
-    const candidateStarts = [];
+    const candidateStarts: number[] = [];
 
     // Anchor-driven candidates (primary path)
     if (anchor) {
@@ -130,7 +149,7 @@ export class SubstringPositionCache {
       }
     }
 
-    let best = null;
+    let best: { start: number; end: number; score: number } | null = null;
     for (const start of candidateStarts) {
       const windowEnd = Math.min(text.length, start + targetLen + 10);
       const window = text.slice(start, windowEnd);
@@ -165,7 +184,7 @@ export class SubstringPositionCache {
    * @param {string} substring - Substring to find
    * @returns {Array<number>} Array of start positions
    */
-  _getOccurrences(text, substring) {
+  private _getOccurrences(text: string, substring: string): number[] {
     // Clear cache if text changed (compare by reference for performance)
     // For different text content, this will be different string references
     if (this.currentText !== text) {
@@ -175,11 +194,11 @@ export class SubstringPositionCache {
 
     // Check cache
     if (this.cache.has(substring)) {
-      return this.cache.get(substring);
+      return this.cache.get(substring) as number[];
     }
 
     // Find all occurrences
-    const occurrences = [];
+    const occurrences: number[] = [];
     let index = text.indexOf(substring, 0);
     while (index !== -1) {
       occurrences.push(index);
@@ -202,7 +221,11 @@ export class SubstringPositionCache {
    * @param {number} [preferredStart=0] - Preferred start position hint
    * @returns {Object|null} {start, end} or null if not found
    */
-  findBestMatch(text, substring, preferredStart = 0) {
+  findBestMatch(
+    text: string,
+    substring: string,
+    preferredStart = 0
+  ): MatchResult | null {
     if (!substring) return null;
 
     this.telemetry.totalRequests++;
@@ -305,7 +328,7 @@ export class SubstringPositionCache {
   /**
    * Clear the cache (called between requests)
    */
-  clear() {
+  clear(): void {
     this.cache.clear();
     this.currentText = null;
   }

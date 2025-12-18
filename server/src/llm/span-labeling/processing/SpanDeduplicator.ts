@@ -7,6 +7,18 @@ import { buildSpanKey } from '../utils/textUtils.js';
  * LLMs sometimes generate duplicate spans, especially after repairs.
  */
 
+interface SpanLike {
+  start: number;
+  end: number;
+  text: string;
+  [key: string]: unknown;
+}
+
+interface DedupeResult {
+  spans: SpanLike[];
+  notes: string[];
+}
+
 /**
  * Deduplicate spans based on position and text
  *
@@ -16,10 +28,10 @@ import { buildSpanKey } from '../utils/textUtils.js';
  * @param {Array<Object>} spans - Sorted array of spans
  * @returns {Object} {spans: Array, notes: Array}
  */
-export function deduplicateSpans(spans) {
-  const seenKeys = new Set();
-  const deduplicated = [];
-  const notes = [];
+export function deduplicateSpans(spans: SpanLike[]): DedupeResult {
+  const seenKeys = new Set<string>();
+  const deduplicated: SpanLike[] = [];
+  const notes: string[] = [];
 
   spans.forEach((span, index) => {
     const key = buildSpanKey(span);

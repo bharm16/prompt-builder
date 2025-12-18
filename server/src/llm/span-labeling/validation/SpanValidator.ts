@@ -4,6 +4,12 @@ import { resolveOverlaps } from '../processing/OverlapResolver.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
 import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
+import type {
+  ProcessingOptions,
+  ValidationPolicy,
+  ValidationResult,
+} from '../types.js';
+import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
 
 /**
  * Comprehensive span validation and processing
@@ -38,6 +44,24 @@ import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
  * @param {string} params.analysisTrace - Chain-of-thought reasoning from LLM
  * @returns {Object} {ok: boolean, errors: Array, result: {spans: Array, meta: Object, analysisTrace: string}}
  */
+interface MetaLike {
+  version?: string;
+  notes?: string | string[];
+  [key: string]: unknown;
+}
+
+interface ValidateSpansParams {
+  spans: unknown[];
+  meta?: MetaLike;
+  text: string;
+  policy: ValidationPolicy;
+  options: ProcessingOptions;
+  attempt?: number;
+  cache: SubstringPositionCache;
+  isAdversarial?: boolean;
+  analysisTrace?: string | null;
+}
+
 export function validateSpans({
   spans,
   meta,
@@ -48,7 +72,7 @@ export function validateSpans({
   cache,
   isAdversarial = false,
   analysisTrace = null,
-}) {
+}: ValidateSpansParams): ValidationResult {
   const lenient = attempt > 1;
 
   // Phase 1: Normalize and correct individual spans
@@ -73,19 +97,19 @@ export function validateSpans({
   // Phase 4: Resolve overlaps
   const { spans: resolved, notes: overlapNotes } = resolveOverlaps(
     deduplicated,
-    policy.allowOverlap
+    policy.allowOverlap as boolean
   );
 
   // Phase 5: Filter by confidence
   const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
     resolved,
-    options.minConfidence
+    options.minConfidence as number
   );
 
   // Phase 6: Truncate to max spans
   const { spans: finalSpans, notes: truncationNotes } = truncateToMaxSpans(
     confidenceFiltered,
-    options.maxSpans
+    options.maxSpans as number
   );
 
   // Combine all notes
@@ -110,7 +134,7 @@ export function validateSpans({
         version:
           typeof meta?.version === 'string' && meta.version.trim()
             ? meta.version.trim()
-            : options.templateVersion,
+            : (options.templateVersion as string),
         notes: combinedNotes.join(' | '),
       },
       isAdversarial: Boolean(isAdversarial),

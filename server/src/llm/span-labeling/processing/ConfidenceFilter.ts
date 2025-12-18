@@ -5,6 +5,19 @@
  * Provides detailed logging of dropped spans.
  */
 
+interface SpanLike {
+  text: string;
+  start: number;
+  end: number;
+  confidence: number;
+  [key: string]: unknown;
+}
+
+interface FilterResult {
+  spans: SpanLike[];
+  notes: string[];
+}
+
 /**
  * Filter spans by minimum confidence threshold
  *
@@ -15,8 +28,11 @@
  * @param {number} minConfidence - Minimum confidence threshold (0-1)
  * @returns {Object} {spans: Array, notes: Array}
  */
-export function filterByConfidence(spans, minConfidence) {
-  const notes = [];
+export function filterByConfidence(
+  spans: SpanLike[],
+  minConfidence: number
+): FilterResult {
+  const notes: string[] = [];
   const filtered = spans.filter((span) => {
     if (span.confidence >= minConfidence) return true;
 

@@ -5,6 +5,18 @@
  * and provides safe parsing with error handling.
  */
 
+interface UserPayloadParams {
+  task: string;
+  policy: Record<string, unknown>;
+  text: string;
+  templateVersion: string;
+  validation?: Record<string, unknown>;
+}
+
+type ParseResult =
+  | { ok: true; value: unknown }
+  | { ok: false; error: string };
+
 /**
  * Remove markdown code fence from JSON response
  *
@@ -14,7 +26,7 @@
  * @param {string} value - Raw string that may contain markdown fences
  * @returns {string} Cleaned string without markdown fences
  */
-export function cleanJsonEnvelope(value) {
+export function cleanJsonEnvelope(value: unknown): string {
   if (typeof value !== 'string') return '';
 
   const trimmed = value.trim();
@@ -40,11 +52,12 @@ export function cleanJsonEnvelope(value) {
  * @param {string} raw - Raw JSON string to parse
  * @returns {Object} {ok: boolean, value?: any, error?: string}
  */
-export function parseJson(raw) {
+export function parseJson(raw: string): ParseResult {
   try {
     return { ok: true, value: JSON.parse(cleanJsonEnvelope(raw)) };
   } catch (error) {
-    return { ok: false, error: `Invalid JSON: ${error.message}` };
+    const err = error as { message?: string };
+    return { ok: false, error: `Invalid JSON: ${err.message}` };
   }
 }
 
@@ -64,7 +77,13 @@ export function parseJson(raw) {
  * @param {Object} [params.validation] - Optional validation feedback for repair
  * @returns {string} JSON stringified payload
  */
-export function buildUserPayload({ task, policy, text, templateVersion, validation }) {
+export function buildUserPayload({
+  task,
+  policy,
+  text,
+  templateVersion,
+  validation,
+}: UserPayloadParams): string {
   const payload = {
     task,
     policy,
