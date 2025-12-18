@@ -8,7 +8,7 @@ Created a migration script that forces all existing prompts to regenerate their 
 
 ### New Files
 
-1. **`scripts/migrations/force-highlight-rerender.js`** (376 lines)
+1. **`scripts/migrations/force-highlight-rerender.ts`** (376 lines)
    - Main migration script
    - Two modes: `clear` (fast) and `regenerate` (immediate)
    - Full error handling and progress tracking
@@ -85,18 +85,18 @@ npm run migrate:rerender
 ### Advanced Usage
 ```bash
 # Test on specific user
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --userId=abc123 \
   --mode=clear \
   --dry-run
 
 # Test on small sample
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --limit=10 \
   --mode=clear
 
 # Full regeneration for production deployment
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --mode=regenerate \
   --batch-size=20
 ```
@@ -239,7 +239,7 @@ Potential improvements:
 
 - **Main guide**: `scripts/migrations/README.md`
 - **Quick reference**: `scripts/migrations/FORCE_RERENDER_GUIDE.md`
-- **Backfill script**: `scripts/migrations/backfill-highlight-cache.js`
+- **Backfill script**: `scripts/migrations/backfill-highlight-cache.ts`
 - **Setup guide**: `scripts/migrations/SETUP_GUIDE.md`
 
 ## Testing Checklist

@@ -27,7 +27,7 @@ npm run migrate:backfill
 
 ## 📋 When to Use Each Script
 
-### Force Rerender (`force-highlight-rerender.js`)
+### Force Rerender (`force-highlight-rerender.ts`)
 **Use when:**
 - ✅ You've updated the highlighting algorithm
 - ✅ You want to apply new changes to existing prompts
@@ -36,7 +36,7 @@ npm run migrate:backfill
 **Don't use when:**
 - ❌ Prompts don't have highlights yet (use backfill instead)
 
-### Backfill (`backfill-highlight-cache.js`)
+### Backfill (`backfill-highlight-cache.ts`)
 **Use when:**
 - ✅ Prompts are missing highlights entirely
 - ✅ New users with old prompts
@@ -49,11 +49,11 @@ npm run migrate:backfill
 
 ```
 Do prompts have highlights already?
-├─ YES → Use force-highlight-rerender.js
+├─ YES → Use force-highlight-rerender.ts
 │   ├─ Fast rollout → --mode=clear (default)
 │   └─ Pre-deployment → --mode=regenerate
 │
-└─ NO → Use backfill-highlight-cache.js
+└─ NO → Use backfill-highlight-cache.ts
 ```
 
 ## ⚡ Performance at a Glance
@@ -70,17 +70,17 @@ Do prompts have highlights already?
 
 ```bash
 # Specific user
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --userId=abc123 \
   --mode=clear
 
 # Limited count (testing)
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --limit=10 \
   --dry-run
 
 # Custom batch size
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --batch-size=20 \
   --mode=regenerate
 ```
@@ -125,7 +125,7 @@ gcloud auth application-default login
 **"No documents found"**
 ```bash
 # Remove filters
-node scripts/migrations/force-highlight-rerender.js --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 # (without --userId or --limit)
 ```
 

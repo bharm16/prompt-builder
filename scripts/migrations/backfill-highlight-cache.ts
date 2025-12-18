@@ -1,49 +1,32 @@
 #!/usr/bin/env node
 
 /**
- * Force Highlight Rerender Migration
+ * Firestore Highlight Cache Backfill Migration
  * 
- * This script forces all existing prompts to regenerate their highlights
- * by clearing the highlightCache field. This is useful when:
- * - You've updated the span labeling algorithm
- * - You've changed the highlighting model
- * - You want to apply new labeling templates to existing prompts
- * 
- * Similar to how updating the cache model (templateVersion) forces rerenders,
- * this script invalidates all cached highlights so they will be regenerated
- * on next load or via the backfill script.
+ * This script generates and saves highlight cache data for existing prompt documents
+ * that don't have highlightCache populated.
  * 
  * Usage:
- *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js [options]
- *   OR
- *   npm run migrate:rerender [options]
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts [options]
  * 
  * Options:
  *   --dry-run              Preview changes without writing to Firestore
  *   --userId=USER_ID       Process only prompts for a specific user
- *   --batch-size=N         Number of documents to process in parallel (default: 10)
+ *   --batch-size=N         Number of documents to process in parallel (default: 5)
  *   --limit=N              Maximum number of documents to process (for testing)
- *   --mode=clear|regenerate Clear cache only or regenerate immediately (default: clear)
- * 
- * Modes:
- *   clear        - Clears highlightCache, forces rerender on next load
- *   regenerate   - Clears and immediately regenerates highlights (takes longer)
  * 
  * Examples:
  *   # Dry run to see what would be updated
- *   npm run migrate:rerender:dry
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run
  * 
- *   # Clear highlight cache for all prompts (fast)
- *   npm run migrate:rerender
- * 
- *   # Clear and regenerate highlights for all prompts (slower but complete)
- *   npm run migrate:rerender:regenerate
+ *   # Process all prompts
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
  * 
  *   # Process prompts for specific user
- *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --userId=abc123 --mode=clear
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --userId=abc123
  * 
- *   # Test on 10 documents first
- *   tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.js --limit=10 --dry-run
+ *   # Process only 10 documents (testing)
+ *   tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --limit=10 --dry-run
  */
 
 import { initializeFirebaseAdmin, admin } from './firebase-admin-init.js';
@@ -55,27 +38,19 @@ const args = process.argv.slice(2);
 const options = {
   dryRun: args.includes('--dry-run'),
   userId: args.find(arg => arg.startsWith('--userId='))?.split('=')[1],
-  batchSize: parseInt(args.find(arg => arg.startsWith('--batch-size='))?.split('=')[1]) || 10,
+  batchSize: parseInt(args.find(arg => arg.startsWith('--batch-size='))?.split('=')[1]) || 5,
   limit: parseInt(args.find(arg => arg.startsWith('--limit='))?.split('=')[1]) || null,
-  mode: args.find(arg => arg.startsWith('--mode='))?.split('=')[1] || 'clear',
 };
-
-// Validate mode
-if (!['clear', 'regenerate'].includes(options.mode)) {
-  console.error('❌ Invalid mode. Must be "clear" or "regenerate"');
-  process.exit(1);
-}
 
 // Statistics tracking
 const stats = {
   total: 0,
   processed: 0,
-  cleared: 0,
-  regenerated: 0,
+  updated: 0,
   skipped: 0,
   errors: 0,
-  noCache: 0,
-  failedDocs: [],
+  alreadyHasCache: 0,
+  failedDocs: [], // Track failed documents with details
   startTime: null,
   totalProcessingTime: 0,
 };
@@ -89,7 +64,7 @@ function hashString(str) {
 }
 
 /**
- * Generate new highlight cache for a prompt text
+ * Generate highlight cache for a prompt text
  */
 async function generateHighlightCache(text) {
   const result = await labelSpans({
@@ -118,77 +93,61 @@ async function processDocument(doc, db) {
   const docId = doc.id;
   const data = doc.data();
   
-  // Skip if no existing highlightCache
-  if (!data.highlightCache) {
-    stats.noCache++;
+  // Skip if already has highlightCache
+  if (data.highlightCache) {
+    stats.alreadyHasCache++;
     stats.skipped++;
     return { 
       status: 'skipped', 
-      reason: 'no-cache',
+      reason: 'already-has-cache',
       mode: data.mode,
       charCount: 0,
       processingTime: 0,
     };
   }
 
-  // Get prompt text for mode=regenerate
+  // Skip if no output text
   const promptText = data.output || data.optimizedPrompt || data.prompt;
-  
-  if (options.mode === 'regenerate') {
-    if (!promptText || typeof promptText !== 'string' || !promptText.trim()) {
-      stats.skipped++;
-      return { 
-        status: 'skipped', 
-        reason: 'no-prompt-text',
-        mode: data.mode,
-        charCount: 0,
-        processingTime: 0,
-      };
-    }
+  if (!promptText || typeof promptText !== 'string' || !promptText.trim()) {
+    stats.skipped++;
+    return { 
+      status: 'skipped', 
+      reason: 'no-prompt-text',
+      mode: data.mode,
+      charCount: 0,
+      processingTime: 0,
+    };
   }
 
   try {
-    const updatePayload = {};
-    let newSpansCount = 0;
-    let newSignature = null;
-
-    if (options.mode === 'regenerate') {
-      // Generate new highlights
-      const highlightCache = await generateHighlightCache(promptText);
-      updatePayload.highlightCache = highlightCache;
-      newSpansCount = highlightCache.spans.length;
-      newSignature = highlightCache.signature;
-      stats.regenerated++;
-    } else {
-      // Just clear the cache
-      updatePayload.highlightCache = admin.firestore.FieldValue.delete();
-      stats.cleared++;
-    }
-
-    // Add version entry
+    // Generate highlight cache
+    const highlightCache = await generateHighlightCache(promptText);
+    
     const versionEntry = {
-      versionId: `rerender-${options.mode}-${Date.now()}`,
-      signature: newSignature,
-      spansCount: newSpansCount,
-      action: options.mode === 'regenerate' ? 'regenerated' : 'cleared',
+      versionId: `migration-v-${Date.now()}`,
+      signature: highlightCache.signature,
+      spansCount: highlightCache.spans.length,
       timestamp: new Date().toISOString(),
     };
-    updatePayload.versions = admin.firestore.FieldValue.arrayUnion(versionEntry);
 
     // Update document
     if (!options.dryRun) {
-      await db.collection('prompts').doc(docId).update(updatePayload);
+      await db.collection('prompts').doc(docId).update({
+        highlightCache,
+        versions: admin.firestore.FieldValue.arrayUnion(versionEntry),
+      });
     }
 
     const processingTime = (Date.now() - startTime) / 1000;
+    stats.updated++;
     stats.totalProcessingTime += processingTime;
     
     return {
-      status: options.mode === 'regenerate' ? 'regenerated' : 'cleared',
-      spansCount: newSpansCount,
-      signature: newSignature,
+      status: 'updated',
+      spansCount: highlightCache.spans.length,
+      signature: highlightCache.signature,
       mode: data.mode,
-      charCount: promptText?.length || 0,
+      charCount: promptText.length,
       processingTime,
     };
   } catch (error) {
@@ -198,37 +157,47 @@ async function processDocument(doc, db) {
       id: docId,
       mode: data.mode,
       error: error.message,
-      charCount: promptText?.length || 0,
+      charCount: promptText.length,
     });
     
     return {
       status: 'error',
       error: error.message,
       mode: data.mode,
-      charCount: promptText?.length || 0,
+      charCount: promptText.length,
       processingTime,
     };
   }
 }
 
 /**
+ * Process documents in batches
+ */
+async function processBatch(docs, db) {
+  const batchPromises = [];
+  
+  for (let i = 0; i < docs.length; i += options.batchSize) {
+    const batch = docs.slice(i, i + options.batchSize);
+    const batchResults = await Promise.all(
+      batch.map(doc => processDocument(doc, db))
+    );
+    
+    batchPromises.push(...batchResults);
+  }
+  
+  return batchPromises;
+}
+
+/**
  * Main migration function
  */
 async function runMigration() {
-  console.log('\n🔧 Force Highlight Rerender Migration\n');
+  console.log('\n🔧 Firestore Highlight Cache Backfill Migration\n');
   console.log('Configuration:');
-  console.log(`  Mode: ${options.mode.toUpperCase()}`);
   console.log(`  Dry Run: ${options.dryRun ? '✓ YES (no changes will be made)' : '✗ NO (will update Firestore)'}`);
   console.log(`  User Filter: ${options.userId || 'ALL USERS'}`);
   console.log(`  Batch Size: ${options.batchSize}`);
   console.log(`  Limit: ${options.limit || 'NONE'}`);
-  console.log('');
-
-  if (options.mode === 'clear') {
-    console.log('ℹ️  Clear mode: Will remove highlightCache to force rerender on next load');
-  } else {
-    console.log('ℹ️  Regenerate mode: Will immediately generate new highlights (may take longer)');
-  }
   console.log('');
 
   const db = initializeFirebaseAdmin();
@@ -264,6 +233,7 @@ async function runMigration() {
     
     for (let i = 0; i < docs.length; i++) {
       const doc = docs[i];
+      const data = doc.data();
       
       const progress = Math.round(((i + 1) / stats.total) * 100);
       const result = await processDocument(doc, db);
@@ -275,15 +245,11 @@ async function runMigration() {
       const remainingDocs = stats.total - stats.processed;
       const estimatedMinutesRemaining = remainingDocs / docsPerMinute;
       
-      if (result.status === 'regenerated' || result.status === 'cleared') {
+      if (result.status === 'updated') {
         console.log(
           `[${i + 1}/${stats.total}] (${progress}%) ${doc.id.slice(0, 8)} (${result.mode || 'unknown'}, ${result.charCount} chars)`
         );
-        if (result.status === 'regenerated') {
-          console.log(`  ✓ Regenerated ${result.spansCount} spans in ${result.processingTime.toFixed(1)}s`);
-        } else {
-          console.log(`  ✓ Cleared cache in ${result.processingTime.toFixed(3)}s`);
-        }
+        console.log(`  ✓ ${result.spansCount} spans in ${result.processingTime.toFixed(1)}s`);
         if (i < docs.length - 1) {
           console.log(`  Speed: ${docsPerMinute.toFixed(1)} docs/min | ETA: ${estimatedMinutesRemaining.toFixed(1)} min\n`);
         }
@@ -299,23 +265,17 @@ async function runMigration() {
 
     // Print summary
     const totalTime = (Date.now() - stats.startTime) / 1000 / 60;
-    const avgTimePerDoc = (stats.cleared + stats.regenerated) > 0 
-      ? stats.totalProcessingTime / (stats.cleared + stats.regenerated) 
-      : 0;
+    const avgTimePerDoc = stats.updated > 0 ? stats.totalProcessingTime / stats.updated : 0;
     
     console.log('\n' + '='.repeat(60));
     console.log('📊 Migration Summary');
     console.log('='.repeat(60));
     console.log(`Total documents found:        ${stats.total}`);
     console.log(`Documents processed:          ${stats.processed}`);
-    if (options.mode === 'clear') {
-      console.log(`Caches cleared:               ${stats.cleared} ✓`);
-    } else {
-      console.log(`Highlights regenerated:       ${stats.regenerated} ✓`);
-    }
+    console.log(`Documents updated:            ${stats.updated} ✓`);
     console.log(`Documents skipped:            ${stats.skipped}`);
-    console.log(`  - No existing cache:        ${stats.noCache}`);
-    console.log(`  - No prompt text:           ${stats.skipped - stats.noCache}`);
+    console.log(`  - Already had cache:        ${stats.alreadyHasCache}`);
+    console.log(`  - No prompt text:           ${stats.skipped - stats.alreadyHasCache}`);
     console.log(`Errors:                       ${stats.errors} ${stats.errors > 0 ? '✗' : ''}`);
     console.log('');
     console.log(`Total time:                   ${totalTime.toFixed(1)} minutes`);
@@ -335,15 +295,7 @@ async function runMigration() {
       console.log('\n⚠️  DRY RUN MODE - No changes were made to Firestore');
       console.log('Run without --dry-run to apply changes.\n');
     } else {
-      const actionWord = options.mode === 'clear' ? 'cleared' : 'regenerated';
-      const count = options.mode === 'clear' ? stats.cleared : stats.regenerated;
-      console.log(`\n✓ Migration completed! ${count} documents ${actionWord}, ${stats.errors} failed.\n`);
-      
-      if (options.mode === 'clear') {
-        console.log('💡 Next steps:');
-        console.log('   - Highlights will be regenerated automatically when prompts are loaded');
-        console.log('   - Or run: node scripts/migrations/backfill-highlight-cache.js\n');
-      }
+      console.log(`\n✓ Migration completed! ${stats.updated} documents updated, ${stats.errors} failed.\n`);
     }
 
   } catch (error) {
@@ -360,5 +312,3 @@ runMigration()
     console.error('\n❌ Unexpected error:', error);
     process.exit(1);
   });
-
-
