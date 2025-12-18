@@ -4,6 +4,7 @@ import type { ILogger } from '@interfaces/ILogger';
 
 interface LoggerConfig {
   level?: string;
+  includeLogStack?: boolean;
 }
 
 /**
@@ -12,6 +13,7 @@ interface LoggerConfig {
  */
 export class Logger implements ILogger {
   private logger: pino.Logger;
+  private includeLogStack: boolean;
 
   constructor(config: LoggerConfig = {}) {
     // Default to 'debug' in development, 'info' in production (Requirement 8.1, 8.2)
@@ -28,10 +30,11 @@ export class Logger implements ILogger {
         },
       } : undefined,
     });
+    this.includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
   }
 
   info(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.info(meta, message);
+    this.logger.info(this.withLogStack(meta), message);
   }
 
   error(message: string, error?: Error, meta: Record<string, unknown> = {}): void {
@@ -43,15 +46,15 @@ export class Logger implements ILogger {
         ...error,
       },
     } : {};
-    this.logger.error({ ...meta, ...errorMeta }, message);
+    this.logger.error({ ...this.withLogStack(meta), ...errorMeta }, message);
   }
 
   warn(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.warn(meta, message);
+    this.logger.warn(this.withLogStack(meta), message);
   }
 
   debug(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.debug(meta, message);
+    this.logger.debug(this.withLogStack(meta), message);
   }
 
   /**
@@ -95,8 +98,19 @@ export class Logger implements ILogger {
     childLogger.logger = this.logger.child(bindings);
     return childLogger;
   }
+
+  private withLogStack(meta: Record<string, unknown>): Record<string, unknown> {
+    if (!this.includeLogStack) return meta;
+    const logStack = this.captureLogStack();
+    return logStack ? { ...meta, logStack } : meta;
+  }
+
+  private captureLogStack(): string | undefined {
+    const stack = new Error().stack;
+    if (!stack) return undefined;
+    return stack;
+  }
 }
 
 // Export singleton instance
 export const logger = new Logger();
-

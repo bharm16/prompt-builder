@@ -31,6 +31,7 @@ interface LoggerConfig {
   level: LogLevel;
   includeTimestamp: boolean;
   includeStackTrace: boolean;
+  includeLogStack: boolean;
   persistToStorage: boolean;
   maxStoredLogs: number;
 }
@@ -57,6 +58,7 @@ class LoggingService {
       level: (import.meta.env?.VITE_LOG_LEVEL as LogLevel) || (isDev ? 'debug' : 'warn'),
       includeTimestamp: true,
       includeStackTrace: isDev,
+      includeLogStack: isDev || import.meta.env?.VITE_LOG_STACK === 'true',
       persistToStorage: isDev,
       maxStoredLogs: 500,
       ...config,
@@ -139,13 +141,16 @@ class LoggingService {
     if (!this.config.enabled) return;
     if (LOG_LEVELS[level] < LOG_LEVELS[this.config.level]) return;
 
+    const logStack = this.config.includeLogStack ? this.captureLogStack() : undefined;
+    const finalMeta = logStack ? { ...(meta || {}), logStack } : meta;
+
     const entry: LogEntry = {
       level,
       message,
       timestamp: new Date().toISOString(),
       traceId: this.currentTraceId || undefined,
       context,
-      meta,
+      meta: finalMeta,
     };
 
     // Console output with styling
@@ -162,8 +167,8 @@ class LoggingService {
 
     const consoleMethod = level === 'debug' ? 'log' : level;
 
-    if (meta && Object.keys(meta).length > 0) {
-      console[consoleMethod](`%c${fullMessage}`, styles[level], meta);
+    if (finalMeta && Object.keys(finalMeta).length > 0) {
+      console[consoleMethod](`%c${fullMessage}`, styles[level], finalMeta);
     } else {
       console[consoleMethod](`%c${fullMessage}`, styles[level]);
     }
@@ -177,6 +182,12 @@ class LoggingService {
     if (this.config.persistToStorage) {
       this.persistLog(entry);
     }
+  }
+
+  private captureLogStack(): string | undefined {
+    const stack = new Error().stack;
+    if (!stack) return undefined;
+    return stack;
   }
 
   /**

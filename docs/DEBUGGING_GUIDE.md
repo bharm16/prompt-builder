@@ -78,6 +78,19 @@ logger.startTimer('fetchData');
 logger.endTimer('fetchData'); // Logs duration
 ```
 
+### Stack Traces on Every Log
+Attach call stacks to all log entries (useful for seeing which files/functions are active):
+
+```bash
+# Frontend
+VITE_LOG_STACK=true
+
+# Backend
+LOG_STACK=true
+```
+
+Each log will include a `logStack` field with the call stack.
+
 ### React Component Debugging
 ```typescript
 import { useDebugLogger } from '@/hooks/useDebugLogger';

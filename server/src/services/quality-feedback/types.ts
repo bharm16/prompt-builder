@@ -1,65 +1,6 @@
 /**
- * Types for quality feedback services
- * Shared type definitions used across quality feedback modules
+ * Types for LLM-as-a-Judge evaluation
  */
-
-/**
- * Feature vector extracted from a suggestion
- */
-export interface FeatureVector {
-  length: number;
-  specificity: number;
-  clarity: number;
-  actionability: number;
-  contextMatch: number;
-  hasExamples: number;
-  hasNumbers: number;
-  hasStructure: number;
-  sentenceCount: number;
-  questionCount: number;
-}
-
-/**
- * Context information for feature extraction
- */
-export interface FeatureContext {
-  domain?: string;
-  type?: string;
-  expectedLength?: number;
-}
-
-/**
- * Feedback entry stored in repository
- */
-export interface FeedbackEntry {
-  id: string;
-  suggestion: string | { text: string };
-  features: FeatureVector;
-  accepted: boolean;
-  qualityScore: number;
-  context?: FeatureContext;
-  service: string;
-  timestamp: number;
-}
-
-/**
- * Quality statistics for a service
- */
-export interface QualityStatistics {
-  totalFeedback: number;
-  acceptanceRate: number;
-  averageQuality: number;
-  recentTrend: 'improving' | 'declining' | 'stable';
-  modelWeights?: Record<string, number>;
-}
-
-/**
- * Model weights and bias
- */
-export interface ModelWeights {
-  weights: Record<string, number>;
-  bias: number;
-}
 
 /**
  * Evaluation context for LLM judge
@@ -90,4 +31,3 @@ export interface LLMEvaluationResult {
     evaluationTime: number;
   };
 }
-
