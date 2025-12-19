@@ -1,4 +1,5 @@
 import pino from 'pino';
+import pinoPretty from 'pino-pretty';
 import type { Request, Response, NextFunction } from 'express';
 import type { ILogger } from '@interfaces/ILogger';
 
@@ -19,17 +20,26 @@ export class Logger implements ILogger {
     // Default to 'debug' in development, 'info' in production (Requirement 8.1, 8.2)
     const defaultLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
     
-    this.logger = pino({
-      level: config.level || process.env.LOG_LEVEL || defaultLevel,
-      transport: process.env.NODE_ENV !== 'production' ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
+    if (process.env.NODE_ENV !== 'production') {
+      const prettyStream = pinoPretty({
+        colorize: true,
+        translateTime: 'SYS:standard',
+        ignore: 'pid,hostname',
+        customPrettifiers: {
+          logStack: prettifyLogStack,
         },
-      } : undefined,
-    });
+      });
+      this.logger = pino(
+        {
+          level: config.level || process.env.LOG_LEVEL || defaultLevel,
+        },
+        prettyStream
+      );
+    } else {
+      this.logger = pino({
+        level: config.level || process.env.LOG_LEVEL || defaultLevel,
+      });
+    }
     this.includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
   }
 
@@ -105,11 +115,33 @@ export class Logger implements ILogger {
     return logStack ? { ...meta, logStack } : meta;
   }
 
-  private captureLogStack(): string | undefined {
+  private captureLogStack(): string[] | undefined {
     const stack = new Error().stack;
     if (!stack) return undefined;
-    return stack;
+    const lines = stack
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines[0] === 'Error') {
+      lines.shift();
+    }
+
+    return lines;
   }
+}
+
+function prettifyLogStack(value: unknown): string {
+  const formatted = formatLogStack(value);
+  return formatted ?? String(value);
+}
+
+function formatLogStack(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const lines = Array.isArray(value) ? value : String(value).split('\n');
+  const trimmed = lines.map((line) => line.trim()).filter(Boolean);
+  if (trimmed.length === 0) return undefined;
+  return `\n${trimmed.map((line) => `  ${line}`).join('\n')}`;
 }
 
 // Export singleton instance

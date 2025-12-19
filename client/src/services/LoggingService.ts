@@ -184,10 +184,19 @@ class LoggingService {
     }
   }
 
-  private captureLogStack(): string | undefined {
+  private captureLogStack(): string[] | undefined {
     const stack = new Error().stack;
     if (!stack) return undefined;
-    return stack;
+    const lines = stack
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines[0] === 'Error') {
+      lines.shift();
+    }
+
+    return lines;
   }
 
   /**
