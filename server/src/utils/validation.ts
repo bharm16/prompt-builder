@@ -20,7 +20,6 @@
 export {
   // Prompt schemas
   promptSchema,
-  semanticParseSchema,
   
   // Suggestion schemas
   suggestionSchema,

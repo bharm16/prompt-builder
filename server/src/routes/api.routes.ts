@@ -14,7 +14,6 @@ import {
   variationsSchema,
   parseConceptSchema,
   videoValidationSchema,
-  semanticParseSchema,
 } from '../utils/validation.js';
 import { extractSemanticSpans } from '../services/nlp/NlpSpanService.js';
 
@@ -23,7 +22,6 @@ interface ApiServices {
   enhancementService: any;
   sceneDetectionService: any;
   videoConceptService: any;
-  textCategorizerService: any;
   metricsService?: any;
 }
 
@@ -40,7 +38,6 @@ export function createAPIRoutes(services: ApiServices): Router {
     enhancementService,
     sceneDetectionService,
     videoConceptService,
-    textCategorizerService,
     metricsService,
   } = services;
 
@@ -461,48 +458,6 @@ export function createAPIRoutes(services: ApiServices): Router {
           conceptLength: concept?.length || 0,
         });
         throw error;
-      }
-    })
-  );
-
-  router.post(
-    '/video/semantic-parse',
-    validateRequest(semanticParseSchema),
-    asyncHandler(async (req, res) => {
-      const startTime = Date.now();
-      const requestId = req.id || 'unknown';
-      const operation = 'semantic-parse';
-      
-      const { text } = req.body;
-
-      logger.info('Semantic parse request received', {
-        operation,
-        requestId,
-        textLength: text?.length || 0,
-      });
-
-      try {
-        const spans = await textCategorizerService.parseText({ text });
-        
-        logger.info('Semantic parse request completed', {
-          operation,
-          requestId,
-          duration: Date.now() - startTime,
-          spanCount: spans?.length || 0,
-        });
-
-        res.json({ spans });
-      } catch (error: any) {
-        logger.error('Semantic parse request failed', error, {
-          operation,
-          requestId,
-          duration: Date.now() - startTime,
-          textLength: text?.length || 0,
-        });
-        res.status(error.statusCode || 500).json({
-          error: 'Categorization failed',
-          message: 'Unable to parse text into semantic spans',
-        });
       }
     })
   );

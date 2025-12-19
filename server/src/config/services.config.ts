@@ -30,7 +30,6 @@ import { PromptOptimizationService } from '../services/prompt-optimization/Promp
 import { EnhancementService } from '../services/EnhancementService.js';
 import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
 import { VideoConceptService } from '../services/VideoConceptService.ts';
-import { TextCategorizerService } from '../services/text-categorization/TextCategorizerService.js';
 import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
 import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
 
@@ -407,12 +406,6 @@ export async function configureServices(): Promise<DIContainer> {
     ['aiService']
   );
 
-  container.register(
-    'textCategorizerService',
-    (aiService: AIModelService) => new TextCategorizerService(aiService),
-    ['aiService']
-  );
-
   // ============================================================================
   // Image Generation Service
   // ============================================================================
@@ -570,7 +563,6 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     'enhancementService',
     'sceneDetectionService',
     'videoConceptService',
-    'textCategorizerService',
     'spanLabelingCacheService',
   ];
 

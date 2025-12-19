@@ -20,10 +20,6 @@ export interface PromptOptimizationRequest {
   } | null;
 }
 
-export interface SemanticParseRequest {
-  text: string;
-}
-
 export interface SuggestionRequest {
   highlightedText: string;
   contextBefore?: string;

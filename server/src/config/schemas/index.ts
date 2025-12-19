@@ -8,9 +8,7 @@
 // Prompt schemas
 export {
   promptSchema,
-  semanticParseSchema,
   type PromptRequest,
-  type SemanticParseRequest,
 } from './promptSchemas.ts';
 
 // Suggestion schemas

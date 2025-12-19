@@ -30,12 +30,5 @@ export const promptSchema = z.object({
     .nullable(),
 });
 
-export const semanticParseSchema = z.object({
-  text: z.string()
-    .min(1, 'Text is required for semantic parsing')
-    .max(50000, 'Text must not exceed 50,000 characters'),
-});
-
 export type PromptRequest = z.infer<typeof promptSchema>;
-export type SemanticParseRequest = z.infer<typeof semanticParseSchema>;
 

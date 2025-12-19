@@ -32,6 +32,11 @@ This directory contains the architectural standards and patterns for the Prompt 
 - References key documentation
 - Requests design approval before implementation
 
+### SERVICE_BOUNDARIES.md
+**Service Ownership Map**
+- Clarifies span labeling, semantic parsing, and video prompt analysis responsibilities
+- Avoids overlapping pipelines and duplicate LLM calls
+
 ### TypeScript Migration
 
 For TypeScript patterns and migration guides, see [typescript/](./typescript/README.md)

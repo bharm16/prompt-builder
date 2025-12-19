@@ -37,7 +37,6 @@ interface CategoryConstraintsConfig {
  *   - CategoryAlignmentService (fallback suggestions)
  *   - PromptBuilderService (AI prompt constraints)
  *   - SuggestionValidationService (pattern validation)
- *   - CategoryDefinitionAggregator (metadata aggregation)
  * 
  * STRUCTURE:
  *   - CATEGORY_CONSTRAINTS: Configuration with patterns, instructions, fallbacks

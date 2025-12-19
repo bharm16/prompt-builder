@@ -55,7 +55,6 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
     videoConceptService: container.resolve('videoConceptService'),
-    textCategorizerService: container.resolve('textCategorizerService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);

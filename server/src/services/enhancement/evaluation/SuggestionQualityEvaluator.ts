@@ -1,5 +1,4 @@
 import type { Suggestion } from '../services/types.js';
-import type { TextCategorizerService } from '../../text-categorization/TextCategorizerService.ts';
 import type { VideoPromptService } from '../../video-prompt-analysis/VideoPromptService.ts';
 import type { SuggestionValidationService } from '../services/SuggestionValidationService.ts';
 
@@ -67,32 +66,14 @@ function lengthAppropriatenessScore(original: string, suggestion: string): numbe
 export class SuggestionQualityEvaluator {
   constructor(
     private readonly validationService: SuggestionValidationService,
-    private readonly videoService: VideoPromptService,
-    private readonly classifier?: TextCategorizerService
+    private readonly videoService: VideoPromptService
   ) {}
 
-  private async inferParentCategory(suggestion: Suggestion, fallbackText: string): Promise<string | null> {
+  private inferParentCategory(suggestion: Suggestion): string | null {
     if (suggestion.category && typeof suggestion.category === 'string') {
       return suggestion.category.toLowerCase();
     }
-
-    if (!this.classifier) return null;
-
-    try {
-      const spans = await this.classifier.parseText({ text: fallbackText });
-      if (!spans || spans.length === 0) return null;
-
-      const counts: Record<string, number> = {};
-      spans.forEach((s) => {
-        const key = (s.category || '').toLowerCase();
-        if (!key) return;
-        counts[key] = (counts[key] || 0) + 1;
-      });
-      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-      return top ? top[0] : null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   async evaluateCase(testCase: SuggestionTestCase, suggestions: Suggestion[]): Promise<SuggestionQualityResult> {
@@ -110,7 +91,7 @@ export class SuggestionQualityEvaluator {
     // Category coherence
     let coherentCount = 0;
     for (let i = 0; i < validSuggestions.length; i++) {
-      const parent = await this.inferParentCategory(validSuggestions[i]!, texts[i]!);
+      const parent = this.inferParentCategory(validSuggestions[i]!);
       if (parent && allowedParents.includes(parent)) coherentCount++;
     }
     const categoryCoherence = texts.length > 0 ? coherentCount / texts.length : 0;

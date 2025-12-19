@@ -184,7 +184,6 @@ describe('api.routes', () => {
         enhancementService: {},
         sceneDetectionService: {},
         videoConceptService: {},
-        textCategorizerService: {},
         metricsService: null,
       })
     );
