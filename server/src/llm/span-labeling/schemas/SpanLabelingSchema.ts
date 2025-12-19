@@ -9,7 +9,7 @@
  * from the prompt (~35% token reduction) because the schema enforces them.
  */
 
-import { TAXONOMY } from '#shared/taxonomy.ts';
+import { TAXONOMY } from '#shared/taxonomy.js';
 
 type TaxonomyValues = typeof TAXONOMY[keyof typeof TAXONOMY];
 type ParentCategoryId = TaxonomyValues['id'];

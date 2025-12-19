@@ -5,7 +5,7 @@
  * Following VideoConceptBuilder pattern: config/constants.js
  */
 
-import { Sparkles, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // ===========================
@@ -22,6 +22,12 @@ export const DEFAULT_EMPTY_STATE = {
   icon: Sparkles,
   title: 'No suggestions available',
   description: 'Try selecting a different section or use a custom request above.',
+} as const;
+
+export const DEFAULT_ERROR_STATE = {
+  icon: AlertTriangle,
+  title: 'Unable to load suggestions',
+  description: 'Please try again in a moment.',
 } as const;
 
 // ===========================
@@ -62,4 +68,3 @@ export const MAX_REQUEST_LENGTH = 500 as const;
 export const API_ENDPOINTS = {
   CUSTOM_SUGGESTIONS: '/api/get-custom-suggestions',
 } as const;
-

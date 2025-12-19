@@ -27,7 +27,7 @@ export class ShotInterpreterService {
   /**
    * Interpret a raw concept into a structured shot plan
    */
-  async interpret(prompt: string): Promise<ShotPlan | null> {
+  async interpret(prompt: string, signal?: AbortSignal): Promise<ShotPlan | null> {
     const startTime = performance.now();
     const operation = 'interpret';
     
@@ -77,6 +77,7 @@ export class ShotInterpreterService {
         maxRetries: 1,
         temperature: 0,
         maxTokens: 400,
+        signal,
       });
 
       this.log.info(`${operation} completed`, {

@@ -4,6 +4,8 @@ import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
 import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
 import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
+import { resolveOverlaps } from './processing/OverlapResolver.js';
+import { detectInjectionPatterns } from '../../utils/SecurityPrompts.js';
 import { logger } from '@infrastructure/Logger.js';
 import type { LabelSpansParams, LabelSpansResult } from './types.js';
 import type { AIService as BaseAIService } from '../../types.js';
@@ -38,6 +40,27 @@ export async function labelSpans(
 
   if (!aiService) {
     throw new Error('aiService is required');
+  }
+
+  const adversarialCheck = detectInjectionPatterns(params.text);
+  if (adversarialCheck.hasPatterns) {
+    logger.warn('Span labeling precheck flagged adversarial input', {
+      operation: 'labelSpans',
+      patterns: adversarialCheck.patterns,
+      textLength: params.text.length,
+    });
+
+    return {
+      spans: [],
+      meta: {
+        version: params.templateVersion || SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion,
+        notes: 'adversarial input flagged',
+      },
+      isAdversarial: true,
+      analysisTrace: adversarialCheck.patterns.length
+        ? `adversarial precheck: ${adversarialCheck.patterns.join(', ')}`
+        : 'adversarial precheck',
+    };
   }
 
   // Check if text needs chunking
@@ -128,7 +151,10 @@ async function labelSpansChunked(
   params: LabelSpansParams,
   aiService: BaseAIService
 ): Promise<LabelSpansResult> {
-  const chunker = new TextChunker(SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK);
+  const chunker = new TextChunker(
+    SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK,
+    SpanLabelingConfig.CHUNKING.OVERLAP_WORDS
+  );
   const chunks = chunker.chunkText(params.text);
   
   const wordCount = countWords(params.text);
@@ -194,6 +220,17 @@ async function labelSpansChunked(
   
   // Merge spans from all chunks
   let mergedSpans = chunker.mergeChunkedSpans(chunkResults);
+  const policy = sanitizePolicy(params.policy);
+  const overlapResolved = resolveOverlaps(
+    mergedSpans.map(span => ({
+      ...span,
+      confidence: typeof span.confidence === 'number' ? span.confidence : 0,
+      text: typeof span.text === 'string' ? span.text : String(span.quote ?? ''),
+    })),
+    policy.allowOverlap === true
+  );
+
+  mergedSpans = overlapResolved.spans;
   const isAdversarial = chunkResults.some(r => r.isAdversarial);
 
   if (isAdversarial) {

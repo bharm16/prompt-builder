@@ -24,7 +24,7 @@ import {
 } from '@llm/span-labeling/schemas/SpanLabelingSchema.js';
 
 export interface JSONSchema {
-  type: string;
+  type: string | string[];
   name?: string;
   strict?: boolean;
   additionalProperties?: boolean;
@@ -45,15 +45,32 @@ export interface SchemaOptions {
   isPlaceholder?: boolean;
 }
 
+function buildCapabilityOptions(
+  options: SchemaOptions,
+  fallbackOperation: string
+): { operation?: string; model?: string; client?: string } {
+  const params: { operation?: string; model?: string; client?: string } = {
+    operation: options.operation ?? fallbackOperation,
+  };
+
+  if (options.model !== undefined) {
+    params.model = options.model;
+  }
+
+  if (options.provider !== undefined) {
+    params.client = options.provider;
+  }
+
+  return params;
+}
+
 /**
  * Enhancement Suggestion Schema Factory
  */
 export function getEnhancementSchema(options: SchemaOptions = {}): JSONSchema {
-  const { provider, capabilities } = detectAndGetCapabilities({
-    operation: options.operation || 'enhance_suggestions',
-    model: options.model,
-    client: options.provider,
-  });
+  const { provider, capabilities } = detectAndGetCapabilities(
+    buildCapabilityOptions(options, 'enhance_suggestions')
+  );
 
   if (capabilities.strictJsonSchema) {
     return getOpenAIEnhancementSchema(options.isPlaceholder ?? false);
@@ -155,11 +172,9 @@ function getGroqEnhancementSchema(isPlaceholder: boolean): JSONSchema {
  * Custom Suggestion Schema Factory
  */
 export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSchema {
-  const { capabilities } = detectAndGetCapabilities({
-    operation: options.operation || 'enhance_suggestions',
-    model: options.model,
-    client: options.provider,
-  });
+  const { capabilities } = detectAndGetCapabilities(
+    buildCapabilityOptions(options, 'enhance_suggestions')
+  );
 
   if (capabilities.strictJsonSchema) {
     return {
@@ -196,6 +211,7 @@ export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSche
       suggestions: {
         type: 'array',
         items: {
+          type: 'object',
           required: ['text'],
           properties: {
             text: { type: 'string' },
@@ -212,11 +228,9 @@ export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSche
  * Span Labeling Schema Factory
  */
 export function getSpanLabelingSchema(options: SchemaOptions = {}): JSONSchema {
-  const { capabilities } = detectAndGetCapabilities({
-    operation: options.operation || 'span_labeling',
-    model: options.model,
-    client: options.provider,
-  });
+  const { capabilities } = detectAndGetCapabilities(
+    buildCapabilityOptions(options, 'span_labeling')
+  );
 
   if (capabilities.strictJsonSchema) {
     return OPENAI_SPAN_LABELING_JSON_SCHEMA;
@@ -229,11 +243,9 @@ export function getSpanLabelingSchema(options: SchemaOptions = {}): JSONSchema {
  * Video Optimization Schema Factory
  */
 export function getVideoOptimizationSchema(options: SchemaOptions = {}): JSONSchema {
-  const { capabilities } = detectAndGetCapabilities({
-    operation: options.operation || 'optimize_standard',
-    model: options.model,
-    client: options.provider,
-  });
+  const { capabilities } = detectAndGetCapabilities(
+    buildCapabilityOptions(options, 'optimize_standard')
+  );
 
   if (capabilities.strictJsonSchema) {
     return getOpenAIVideoOptimizationSchema();
@@ -467,11 +479,9 @@ function getGroqVideoOptimizationSchema(): JSONSchema {
  * Shot Interpreter Schema Factory
  */
 export function getShotInterpreterSchema(options: SchemaOptions = {}): JSONSchema {
-  const { capabilities } = detectAndGetCapabilities({
-    operation: options.operation || 'optimize_shot_interpreter',
-    model: options.model,
-    client: options.provider,
-  });
+  const { capabilities } = detectAndGetCapabilities(
+    buildCapabilityOptions(options, 'optimize_shot_interpreter')
+  );
 
   const baseSchema: JSONSchema = {
     type: 'object',

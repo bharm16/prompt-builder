@@ -25,3 +25,4 @@ export const POISONOUS_PATTERNS = [
   'notable',
 ] as const;
 
+export const PROMPT_PREVIEW_LIMIT = 6000;

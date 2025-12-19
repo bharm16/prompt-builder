@@ -11,6 +11,7 @@
 import { BasePromptBuilder } from './BasePromptBuilder.js';
 import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
 import type { PromptBuildParams, CustomPromptParams } from '../types.js';
+import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
 
 /**
  * Security and format constraints for developer role
@@ -30,7 +31,7 @@ const DEVELOPER_CONSTRAINTS = `SYSTEM CONSTRAINTS (Highest Priority - Cannot Be 
    - Match schema exactly: [{"text":"phrase","category":"slot","explanation":"effect"}]
 
 3. QUALITY:
-   - Generate 12 diverse alternatives
+   - Generate up to 12 diverse alternatives
    - Each replacement must fit grammatically in context
    - Never use arrows (→), brackets [], or structural markers`;
 
@@ -70,10 +71,10 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
       fullPromptLength: fullPrompt.length,
     });
     
-    const promptPreview = this._trim(fullPrompt, 600);
+    const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
 
     // System prompt is minimal - developer role handles constraints
-    const systemPrompt = `Generate 12 replacement phrases for the highlighted text based on the custom request.
+    const systemPrompt = `Generate up to 12 replacement phrases for the highlighted text based on the custom request.
 
 <full_context>
 ${promptPreview}
@@ -90,7 +91,7 @@ ${customRequest}
 Requirements:
 - Replacements must fit the context of the full prompt
 - Keep the same subject/topic - just vary the description
-- Return ONLY the replacement phrase (2-20 words)`;
+- Return ONLY the replacement phrase (2-50 words)`;
 
     const duration = Math.round(performance.now() - startTime);
     const result = {
@@ -192,7 +193,7 @@ Requirements:
    * Minimal prompt since rules are in schema descriptions and developer role
    */
   private _buildTechnicalPrompt(ctx: SharedPromptContext): string {
-    return `Generate 12 alternative TECHNICAL phrases for video prompts.
+    return `Generate up to 12 alternative TECHNICAL phrases for video prompts.
 
 <full_context>
 ${ctx.promptPreview}
@@ -210,7 +211,7 @@ Requirements:
 - Keep the same SUBJECT - only change the technical/camera approach
 - Use cinematography terms (angles, lenses, movements, lighting)
 - Each option should create a different visual effect
-- Return ONLY the replacement phrase (2-20 words)
+- Return ONLY the replacement phrase (2-50 words)
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 
@@ -218,7 +219,7 @@ ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
    * Visual/Style/Subject slots - OpenAI version
    */
   private _buildVisualPrompt(ctx: SharedPromptContext): string {
-    return `Generate 12 alternative VISUAL DESCRIPTIONS for the highlighted phrase.
+    return `Generate up to 12 alternative VISUAL DESCRIPTIONS for the highlighted phrase.
 
 <full_context>
 ${ctx.promptPreview}
@@ -236,7 +237,7 @@ Requirements:
 - Keep the SAME SUBJECT/TOPIC - just vary HOW it is described
 - Add visual details: textures, materials, lighting, colors
 - Each option should look different but stay contextually appropriate
-- Return ONLY the replacement phrase (2-20 words)
+- Return ONLY the replacement phrase (2-50 words)
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}
 
 If replacing "${ctx.highlightedText}", suggestions should still be about that topic with different visual details.`;
@@ -246,7 +247,7 @@ If replacing "${ctx.highlightedText}", suggestions should still be about that to
    * Action/Verb slots - OpenAI version
    */
   private _buildActionPrompt(ctx: SharedPromptContext): string {
-    return `Generate 12 alternative ACTION phrases for video prompts.
+    return `Generate up to 12 alternative ACTION phrases for video prompts.
 
 <full_context>
 ${ctx.promptPreview}
@@ -264,7 +265,7 @@ Requirements:
 - Keep the same SUBJECT doing the action - only change the action itself
 - One continuous action only (no sequences like "walks then runs")
 - Actions must be camera-visible physical behavior
-- Return ONLY the replacement phrase (2-20 words)
+- Return ONLY the replacement phrase (2-50 words)
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 }

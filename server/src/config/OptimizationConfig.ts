@@ -92,6 +92,10 @@ interface SpanLabelingConfig {
   templateVersion: string;
 }
 
+interface ConstitutionalAIConfig {
+  sampleRate: number;
+}
+
 interface CacheConfig {
   promptOptimization: string;
   contextInference: string;
@@ -196,6 +200,11 @@ export const OptimizationConfig = {
     templateVersion: 'v1',
   } as SpanLabelingConfig,
 
+  // Constitutional AI sampling (1 = always, 0 = never)
+  constitutionalAI: {
+    sampleRate: 1,
+  } as ConstitutionalAIConfig,
+
   // Cache configuration keys
   cache: {
     promptOptimization: 'promptOptimization',
@@ -205,4 +214,3 @@ export const OptimizationConfig = {
 } as const;
 
 export default OptimizationConfig;
-

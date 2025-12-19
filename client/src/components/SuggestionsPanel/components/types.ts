@@ -10,6 +10,12 @@ export interface EmptyStateConfig {
   description: string;
 }
 
+export interface ErrorStateConfig {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
 export interface TipItem {
   text: string;
   icon?: LucideIcon;
@@ -21,4 +27,3 @@ export interface InactiveStateConfig {
   description: string;
   tips?: TipItem[];
 }
-

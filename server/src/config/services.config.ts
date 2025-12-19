@@ -579,9 +579,9 @@ export async function initializeServices(container: DIContainer): Promise<DICont
 
   logger.info('All services initialized and validated successfully');
   
-  // Only warmup GLiNER if neuro-symbolic pipeline is enabled
+  // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
   const { NEURO_SYMBOLIC } = await import('../llm/span-labeling/config/SpanLabelingConfig.js');
-  if (NEURO_SYMBOLIC.ENABLED) {
+  if (NEURO_SYMBOLIC.ENABLED && NEURO_SYMBOLIC.GLINER?.ENABLED && NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP) {
     try {
       const glinerResult = await warmupGliner();
       if (glinerResult.success) {
@@ -594,7 +594,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
     }
   } else {
-    logger.info('ℹ️ GLiNER warmup skipped (NEURO_SYMBOLIC disabled)');
+    logger.info('ℹ️ GLiNER warmup skipped (prewarm disabled or GLiNER disabled)');
   }
   
   return container;

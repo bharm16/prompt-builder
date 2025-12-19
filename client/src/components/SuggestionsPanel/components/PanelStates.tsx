@@ -7,7 +7,7 @@
 
 import { Info, type LucideIcon } from 'lucide-react';
 import { getLoadingSkeletonCount } from '../utils/suggestionHelpers';
-import type { EmptyStateConfig, InactiveStateConfig } from './types';
+import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './types';
 
 // ===========================
 // LOADING STATE
@@ -91,6 +91,37 @@ export function EmptyState({ emptyState }: EmptyStateProps): React.ReactElement 
 }
 
 // ===========================
+// ERROR STATE
+// ===========================
+
+interface ErrorStateProps {
+  errorState: ErrorStateConfig;
+  errorMessage?: string;
+}
+
+export function ErrorState({
+  errorState,
+  errorMessage,
+}: ErrorStateProps): React.ReactElement {
+  const ErrorIcon = errorState.icon;
+  const description = errorMessage || errorState.description;
+
+  return (
+    <div className="flex flex-1 items-center justify-center py-geist-8">
+      <div className="px-geist-3 text-center max-w-[220px]">
+        <div className="relative inline-flex mb-geist-3">
+          <div className="relative p-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist">
+            <ErrorIcon className="h-6 w-6 text-geist-accents-5" aria-hidden="true" />
+          </div>
+        </div>
+        <p className="text-label-12 text-geist-foreground mb-geist-1">{errorState.title}</p>
+        <p className="text-label-12 text-geist-accents-5">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+// ===========================
 // INACTIVE STATE
 // ===========================
 
@@ -131,4 +162,3 @@ export function InactiveState({ inactiveState }: InactiveStateProps): React.Reac
     </div>
   );
 }
-

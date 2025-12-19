@@ -74,6 +74,76 @@ export class NlpSpanStrategy {
     return (covered / textLength) * 100;
   }
 
+  private _isHighSignalRole(role: string | null | undefined): boolean {
+    if (!role || typeof role !== 'string') return false;
+    const normalized = role.toLowerCase();
+    return (
+      normalized.startsWith('technical') ||
+      normalized.startsWith('camera') ||
+      normalized.startsWith('shot') ||
+      normalized.startsWith('style') ||
+      normalized.startsWith('audio') ||
+      normalized.startsWith('lighting')
+    );
+  }
+
+  private _getAverageConfidence(spans: Array<{ confidence?: number }>): number {
+    if (!Array.isArray(spans) || spans.length === 0) return 0;
+    const total = spans.reduce(
+      (sum, span) => sum + (typeof span.confidence === 'number' ? span.confidence : 0),
+      0
+    );
+    return total / spans.length;
+  }
+
+  private _assessFastPathSpans(
+    spans: Array<{ start?: number; end?: number; role?: string; confidence?: number }>,
+    text: string,
+    options: ProcessingOptions
+  ): {
+    accept: boolean;
+    spanCount: number;
+    expectedMinSpans: number;
+    coveragePercent: number;
+    avgConfidence: number;
+    highSignalCount: number;
+    sparseHighConfidenceAccepted: boolean;
+  } {
+    const spanCount = spans.length;
+    const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
+    const coveragePercent = this._calculateCoveragePercent(spans, text.length);
+    const avgConfidence = this._getAverageConfidence(spans);
+    const minCoveragePercent = SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT;
+    const baseMinConfidence =
+      typeof options.minConfidence === 'number'
+        ? options.minConfidence
+        : SpanLabelingConfig.DEFAULT_OPTIONS.minConfidence;
+    const highConfidenceThreshold = Math.max(
+      SpanLabelingConfig.NLP_FAST_PATH.SPARSE_HIGH_CONFIDENCE_THRESHOLD,
+      baseMinConfidence
+    );
+    const highSignalCount = spans.filter(
+      (span) =>
+        (typeof span.confidence === 'number' ? span.confidence : 0) >= highConfidenceThreshold &&
+        this._isHighSignalRole(span.role)
+    ).length;
+    const sparseHighConfidenceAccepted =
+      coveragePercent < minCoveragePercent &&
+      spanCount >= SpanLabelingConfig.NLP_FAST_PATH.SPARSE_MIN_SPANS &&
+      avgConfidence >= highConfidenceThreshold &&
+      highSignalCount >= SpanLabelingConfig.NLP_FAST_PATH.SPARSE_MIN_SIGNAL_SPANS;
+
+    return {
+      accept: spanCount >= expectedMinSpans || sparseHighConfidenceAccepted,
+      spanCount,
+      expectedMinSpans,
+      coveragePercent,
+      avgConfidence,
+      highSignalCount,
+      sparseHighConfidenceAccepted,
+    };
+  }
+
   /**
    * Extract spans using NLP fast-path
    *
@@ -178,28 +248,41 @@ export class NlpSpanStrategy {
       });
 
       if (validation.ok) {
-        const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
-        const coveragePercent = this._calculateCoveragePercent(validation.result.spans, text.length);
-        const spanCount = validation.result.spans.length;
+        const assessment = this._assessFastPathSpans(validation.result.spans, text, options);
 
-        if (spanCount < expectedMinSpans) {
+        if (!assessment.accept) {
           this.log.info('NLP Fast-Path span count insufficient for prompt size, falling back to LLM', {
             operation: 'extractSpans',
-            spanCount,
-            expectedMinSpans,
-            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
             minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+            highSignalCount: assessment.highSignalCount,
             source: nlpSource,
           });
           return null;
         }
 
-        if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-          this.log.debug('NLP Fast-Path coverage below threshold but accepted due to span count', {
+        if (assessment.spanCount < assessment.expectedMinSpans && assessment.sparseHighConfidenceAccepted) {
+          this.log.info('NLP Fast-Path accepted sparse high-confidence spans', {
             operation: 'extractSpans',
-            spanCount,
-            expectedMinSpans,
-            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+            highSignalCount: assessment.highSignalCount,
+            source: nlpSource,
+          });
+        }
+
+        if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+          const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
+          this.log.debug(`NLP Fast-Path coverage below threshold but accepted due to ${acceptanceReason}`, {
+            operation: 'extractSpans',
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
             minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
             source: nlpSource,
           });
@@ -235,28 +318,41 @@ export class NlpSpanStrategy {
       });
 
       if (lenientValidation.ok) {
-        const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
-        const coveragePercent = this._calculateCoveragePercent(lenientValidation.result.spans, text.length);
-        const spanCount = lenientValidation.result.spans.length;
+        const assessment = this._assessFastPathSpans(lenientValidation.result.spans, text, options);
 
-        if (spanCount < expectedMinSpans) {
+        if (!assessment.accept) {
           this.log.info('NLP Fast-Path span count insufficient for prompt size (lenient), falling back to LLM', {
             operation: 'extractSpans',
-            spanCount,
-            expectedMinSpans,
-            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
             minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+            highSignalCount: assessment.highSignalCount,
             source: nlpSource,
           });
           return null;
         }
 
-        if (coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-          this.log.debug('NLP Fast-Path coverage below threshold but accepted due to span count (lenient)', {
+        if (assessment.spanCount < assessment.expectedMinSpans && assessment.sparseHighConfidenceAccepted) {
+          this.log.info('NLP Fast-Path accepted sparse high-confidence spans (lenient)', {
             operation: 'extractSpans',
-            spanCount,
-            expectedMinSpans,
-            coveragePercent: Math.round(coveragePercent * 10) / 10,
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+            highSignalCount: assessment.highSignalCount,
+            source: nlpSource,
+          });
+        }
+
+        if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
+          const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
+          this.log.debug(`NLP Fast-Path coverage below threshold but accepted due to ${acceptanceReason} (lenient)`, {
+            operation: 'extractSpans',
+            spanCount: assessment.spanCount,
+            expectedMinSpans: assessment.expectedMinSpans,
+            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
             minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
             source: nlpSource,
           });
@@ -264,7 +360,7 @@ export class NlpSpanStrategy {
 
         this.log.info('NLP Fast-Path accepted with lenient validation', {
           operation: 'extractSpans',
-          spanCount,
+          spanCount: assessment.spanCount,
           latency: nlpLatency,
         });
 

@@ -171,7 +171,8 @@ export function useHighlightRendering({
 
     // PHASE 2 & 3: Add new spans and update changed spans
     const coverage: Array<{ start: number; end: number }> = [];
-    let nodeIndex = buildTextNodeIndex(root);
+    // Build the text node index lazily to avoid repeated O(N) DOM walks.
+    let nodeIndex: TextNodeIndex | null = null;
 
     sortedSpans.forEach(({ span, highlightStart, highlightEnd }) => {
       const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role || ''}`;
@@ -205,6 +206,15 @@ export function useHighlightRendering({
       }
 
       if (shouldRender) {
+        if (!nodeIndex) {
+          nodeIndex = buildTextNodeIndex(root);
+          highlightStateRef.current.nodeIndex = nodeIndex;
+        }
+
+        if (!nodeIndex.nodes.length) {
+          return;
+        }
+
         // Create wrapper elements
         const segmentWrappers = wrapRangeSegments({
           root,
@@ -231,9 +241,6 @@ export function useHighlightRendering({
           span,
           wrappers: segmentWrappers,
         });
-
-        // Rebuild node index after DOM changes
-        nodeIndex = buildTextNodeIndex(root);
       }
 
       // Track coverage
@@ -261,4 +268,3 @@ export function useHighlightRendering({
 
   return highlightStateRef;
 }
-

@@ -13,6 +13,7 @@ import AhoCorasick from 'ahocorasick';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { Worker } from 'worker_threads';
 import { logger } from '@infrastructure/Logger.js';
 import { TAXONOMY, VALID_CATEGORIES } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig.js';
@@ -169,6 +170,17 @@ let glinerInitialized = false;
 let glinerInitFailed = false;
 let glinerInitPromise: Promise<boolean> | null = null;
 
+// GLiNER worker thread state (optional)
+let glinerWorker: Worker | null = null;
+let glinerWorkerReady = false;
+let glinerWorkerInitFailed = false;
+let glinerWorkerInitPromise: Promise<boolean> | null = null;
+let glinerWorkerRequestId = 0;
+const glinerWorkerPending = new Map<
+  number,
+  { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout?: NodeJS.Timeout }
+>();
+
 /**
  * Labels for GLiNER extraction + mapping to internal taxonomy IDs.
  *
@@ -301,6 +313,150 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
+function shouldUseGlinerWorker(): boolean {
+  return Boolean(NEURO_SYMBOLIC.GLINER?.USE_WORKER);
+}
+
+function isGlinerReady(): boolean {
+  return shouldUseGlinerWorker()
+    ? glinerWorkerReady && !glinerWorkerInitFailed
+    : glinerInitialized && !glinerInitFailed;
+}
+
+function failPendingGlinerRequests(reason: string): void {
+  for (const [id, pending] of glinerWorkerPending.entries()) {
+    glinerWorkerPending.delete(id);
+    if (pending.timeout) clearTimeout(pending.timeout);
+    pending.reject(new Error(reason));
+  }
+}
+
+function handleGlinerWorkerMessage(message: {
+  id?: number;
+  ok?: boolean;
+  result?: unknown;
+  error?: string;
+}): void {
+  if (!message || typeof message.id !== 'number') return;
+  const pending = glinerWorkerPending.get(message.id);
+  if (!pending) return;
+  glinerWorkerPending.delete(message.id);
+  if (pending.timeout) clearTimeout(pending.timeout);
+  if (message.ok) {
+    pending.resolve(message.result);
+  } else {
+    pending.reject(new Error(message.error || 'GLiNER worker request failed'));
+  }
+}
+
+function getOrCreateGlinerWorker(): Worker | null {
+  if (glinerWorker) return glinerWorker;
+  const operation = 'getOrCreateGlinerWorker';
+
+  try {
+    const workerUrl = new URL('./glinerWorker.js', import.meta.url);
+    glinerWorker = new Worker(workerUrl, {
+      type: 'module',
+      workerData: {
+        modelPath,
+        tokenizerPath: NEURO_SYMBOLIC.GLINER.MODEL_PATH,
+        labels: GLINER_LABELS,
+        labelToTaxonomy: LABEL_TO_TAXONOMY,
+        maxWidth: NEURO_SYMBOLIC.GLINER.MAX_WIDTH || 12,
+        defaultThreshold: NEURO_SYMBOLIC.GLINER.THRESHOLD || 0.3,
+        defaultTimeoutMs: NEURO_SYMBOLIC.GLINER.TIMEOUT || 0,
+      },
+    });
+
+    glinerWorker.on('message', handleGlinerWorkerMessage);
+    glinerWorker.on('error', (error) => {
+      glinerWorker = null;
+      glinerWorkerReady = false;
+      glinerWorkerInitFailed = true;
+      glinerWorkerInitPromise = null;
+      log.error(`${operation}: Worker error`, error as Error, { operation });
+      failPendingGlinerRequests('GLiNER worker error');
+    });
+    glinerWorker.on('exit', (code) => {
+      glinerWorker = null;
+      glinerWorkerReady = false;
+      glinerWorkerInitPromise = null;
+      glinerWorkerInitFailed = code !== 0;
+      if (code !== 0) {
+        log.warn(`${operation}: Worker exited`, { operation, code });
+      }
+      failPendingGlinerRequests('GLiNER worker exited');
+    });
+
+    return glinerWorker;
+  } catch (error) {
+    glinerWorkerInitFailed = true;
+    log.error(`${operation}: Failed to start worker`, error as Error, { operation });
+    return null;
+  }
+}
+
+function sendGlinerWorkerRequest<T>(
+  type: string,
+  payload: Record<string, unknown>,
+  timeoutMs: number
+): Promise<T> {
+  const worker = getOrCreateGlinerWorker();
+  if (!worker) {
+    return Promise.reject(new Error('GLiNER worker unavailable'));
+  }
+
+  const id = ++glinerWorkerRequestId;
+  return new Promise<T>((resolve, reject) => {
+    const timeout =
+      Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? setTimeout(() => {
+            glinerWorkerPending.delete(id);
+            reject(new Error(`GLiNER worker request timed out after ${timeoutMs}ms`));
+          }, timeoutMs)
+        : undefined;
+
+    glinerWorkerPending.set(id, {
+      resolve: resolve as (value: unknown) => void,
+      reject,
+      timeout,
+    });
+
+    worker.postMessage({ id, type, payload });
+  });
+}
+
+async function initializeGlinerWorker(): Promise<boolean> {
+  if (glinerWorkerReady) return true;
+  if (glinerWorkerInitFailed) return false;
+  if (glinerWorkerInitPromise) return glinerWorkerInitPromise;
+
+  glinerWorkerInitPromise = (async () => {
+    const operation = 'initializeGlinerWorker';
+    const startTime = performance.now();
+    try {
+      const timeoutMs = Math.max(NEURO_SYMBOLIC.GLINER.TIMEOUT || 0, 15000);
+      const ready = await sendGlinerWorkerRequest<boolean>('initialize', {}, timeoutMs);
+      glinerWorkerReady = Boolean(ready);
+      glinerWorkerInitFailed = !glinerWorkerReady;
+      const duration = Math.round(performance.now() - startTime);
+      if (glinerWorkerReady) {
+        log.info(`${operation}: GLiNER worker initialized`, { operation, duration });
+      } else {
+        log.warn(`${operation}: GLiNER worker initialization failed`, { operation, duration });
+      }
+      return glinerWorkerReady;
+    } catch (error) {
+      glinerWorkerInitFailed = true;
+      const duration = Math.round(performance.now() - startTime);
+      log.error(`${operation}: Failed`, error as Error, { operation, duration });
+      return false;
+    }
+  })();
+
+  return glinerWorkerInitPromise;
+}
+
 /**
  * Initialize GLiNER from the official package
  */
@@ -378,9 +534,63 @@ async function initializeGliner(): Promise<boolean> {
  */
 async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
   if (!text || typeof text !== 'string') return [];
-  
-  const ready = await initializeGliner();
-  if (!ready || !gliner) {
+
+  const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
+  const timeoutMs = NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0;
+
+  if (shouldUseGlinerWorker()) {
+    if (!isGlinerReady()) {
+      if (!glinerWorkerInitPromise && !glinerWorkerInitFailed) {
+        void initializeGlinerWorker();
+      }
+      log.warn('GLiNER worker not ready, skipping open-vocabulary extraction', {
+        operation: 'extractOpenVocabulary',
+        glinerReady: isGlinerReady(),
+        glinerInitFailed: glinerWorkerInitFailed,
+        textLength: text.length,
+      });
+      return [];
+    }
+
+    try {
+      const startTime = performance.now();
+      log.debug('Starting GLiNER inference (worker)', {
+        operation: 'extractOpenVocabulary',
+        textLength: text.length,
+        threshold,
+        timeoutMs,
+        labelCount: GLINER_LABELS.length,
+      });
+
+      const spans = await sendGlinerWorkerRequest<NlpSpan[]>(
+        'inference',
+        { text, threshold, timeoutMs },
+        timeoutMs
+      );
+
+      const duration = Math.round(performance.now() - startTime);
+      log.info('GLiNER inference completed (worker)', {
+        operation: 'extractOpenVocabulary',
+        duration,
+        entityCount: spans.length,
+        threshold,
+      });
+
+      return spans;
+    } catch (error) {
+      log.warn('extractOpenVocabulary (worker): Failed', {
+        textLength: text.length,
+        operation: 'extractOpenVocabulary',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return [];
+    }
+  }
+
+  if (!glinerInitialized || glinerInitFailed || !gliner) {
+    if (!glinerInitPromise && !glinerInitFailed) {
+      void initializeGliner();
+    }
     log.warn('GLiNER not ready, skipping open-vocabulary extraction', {
       operation: 'extractOpenVocabulary',
       glinerReady: glinerInitialized && !glinerInitFailed,
@@ -389,10 +599,8 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
     });
     return [];
   }
-  
+
   try {
-    const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
-    const timeoutMs = NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0;
     const startTime = performance.now();
     log.debug('Starting GLiNER inference', {
       operation: 'extractOpenVocabulary',
@@ -650,7 +858,7 @@ export function getVocabStats(): VocabStats {
     totalTerms,
     categories: stats,
     glinerLabels: ALL_GLINER_LABELS.length,
-    glinerReady: glinerInitialized && !glinerInitFailed,
+    glinerReady: isGlinerReady(),
   };
 }
 
@@ -677,26 +885,43 @@ export async function warmupGliner(): Promise<WarmupResult> {
   const startTime = performance.now();
   
   try {
-    const ready = await initializeGliner();
+    const useWorker = shouldUseGlinerWorker();
+    const warmupText = 'Low-Angle Shot, 24fps, 16:9, golden hour';
+    const ready = useWorker ? await initializeGlinerWorker() : await initializeGliner();
     // Run a tiny inference once to avoid a slow/unstable first request (ONNX warm-up).
     // Do not fail warmup if inference fails; initialization success is still useful.
-    if (ready && gliner) {
-      try {
-        await withTimeout(
-          gliner.inference({
-            texts: ['Low-Angle Shot, 24fps, 16:9, golden hour'],
-            entities: GLINER_LABELS,
-            flatNer: false,
-            threshold: NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3,
-            multiLabel: false,
-          }),
-          Math.max(NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0, 1000)
-        );
-      } catch (err) {
-        log.warn('GLiNER warmup inference failed (continuing)', {
-          operation,
-          error: err instanceof Error ? err.message : String(err),
-        });
+    if (ready) {
+      if (useWorker) {
+        try {
+          await sendGlinerWorkerRequest(
+            'warmup',
+            { text: warmupText },
+            Math.max(NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0, 1000)
+          );
+        } catch (err) {
+          log.warn('GLiNER warmup inference failed (worker, continuing)', {
+            operation,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      } else if (gliner) {
+        try {
+          await withTimeout(
+            gliner.inference({
+              texts: [warmupText],
+              entities: GLINER_LABELS,
+              flatNer: false,
+              threshold: NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3,
+              multiLabel: false,
+            }),
+            Math.max(NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0, 1000)
+          );
+        } catch (err) {
+          log.warn('GLiNER warmup inference failed (continuing)', {
+            operation,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     }
     const duration = Math.round(performance.now() - startTime);

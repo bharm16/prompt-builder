@@ -62,8 +62,6 @@ export class SuggestionValidationService {
     ];
     const oneClipPatterns = [
       /\band then\b/i,
-      /\bafter\b/i,
-      /\bbefore\b/i,
       /\bstarts?\s+to\b/i,
       /\bbegins?\s+to\b/i,
       /\bnext\b/i,
@@ -123,17 +121,17 @@ export class SuggestionValidationService {
         }
       } else if (context.isVideoPrompt) {
         const constraints = context.videoConstraints || {
-          minWords: 10,
-          maxWords: 25,
+          minWords: 2,
+          maxWords: 50,
           maxSentences: 1,
         };
 
         const minWords = Number.isFinite(constraints.minWords)
           ? constraints.minWords!
-          : 10;
+          : 2;
         const maxWords = Number.isFinite(constraints.maxWords)
           ? constraints.maxWords!
-          : 25;
+          : 50;
         const maxSentences = Number.isFinite(constraints.maxSentences)
           ? constraints.maxSentences!
           : 1;
@@ -266,4 +264,3 @@ export class SuggestionValidationService {
     }));
   }
 }
-

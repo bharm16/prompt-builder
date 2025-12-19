@@ -173,15 +173,17 @@ export class SuggestionGenerationService {
 
     // Check for poisonous patterns
     const poisonousPatterns = POISONOUS_PATTERNS;
+    const isPoisonous = (text?: string | null): boolean => {
+      if (!text) return false;
+      const lowerText = text.toLowerCase();
+      return poisonousPatterns.some((pattern) => {
+        const lowerPattern = pattern.toLowerCase();
+        return lowerText.includes(lowerPattern) || lowerText === lowerPattern;
+      });
+    };
     const hasPoisonousText =
       Array.isArray(suggestions) &&
-      suggestions.some((s) =>
-        poisonousPatterns.some(
-          (pattern) =>
-            s.text?.toLowerCase().includes(pattern.toLowerCase()) ||
-            s.text?.toLowerCase() === pattern.toLowerCase()
-        )
-      );
+      suggestions.some((s) => isPoisonous(s.text));
 
     const sampleSuggestions = Array.isArray(suggestions)
       ? suggestions.slice(0, 3).map((s) => s.text)
@@ -207,6 +209,25 @@ export class SuggestionGenerationService {
           suggestions: suggestions.map((s) => s.text),
         }
       );
+
+      const filteredSuggestions = suggestions.filter((s) => !isPoisonous(s.text));
+      const filteredCount = suggestions.length - filteredSuggestions.length;
+
+      logger.warn('Filtered poisonous suggestions from LLM response', {
+        highlightedText: params.highlightedText,
+        filteredCount,
+        remainingCount: filteredSuggestions.length,
+        provider,
+      });
+
+      if (filteredSuggestions.length === 0) {
+        logger.warn('All suggestions filtered due to poisonous patterns', {
+          highlightedText: params.highlightedText,
+          provider,
+        });
+      }
+
+      suggestions = filteredSuggestions;
     }
 
     return {

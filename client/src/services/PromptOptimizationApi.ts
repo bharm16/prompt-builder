@@ -15,6 +15,7 @@ interface OptimizeOptions {
   mode: string;
   context?: unknown | null;
   brainstormContext?: unknown | null;
+  signal?: AbortSignal;
 }
 
 interface OptimizeResult {
@@ -43,6 +44,8 @@ interface StreamWithFetchOptions {
   body: Record<string, unknown>;
   onMessage: (event: string, data: Record<string, unknown>) => void;
   onError: (error: Error) => void;
+  onComplete?: () => void;
+  signal?: AbortSignal;
 }
 
 interface OfflineResult {
@@ -64,6 +67,7 @@ export class PromptOptimizationApi {
     mode,
     context = null,
     brainstormContext = null,
+    signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
       return (await this.client.post('/optimize', {
@@ -71,7 +75,7 @@ export class PromptOptimizationApi {
         mode,
         context,
         brainstormContext,
-      })) as OptimizeResult;
+      }, { signal })) as OptimizeResult;
     } catch (error) {
       if (this._shouldUseOfflineFallback(error)) {
         const offline = this._buildOfflineResult(
@@ -96,6 +100,7 @@ export class PromptOptimizationApi {
     mode,
     context = null,
     brainstormContext = null,
+    signal,
     onDraft = null,
     onSpans = null,
     onRefined = null,
@@ -106,6 +111,8 @@ export class PromptOptimizationApi {
       let refined: string | null = null;
       let spans: unknown[] | null = null;
       let metadata: Record<string, unknown> | null = null;
+      let doneReceived = false;
+      let settled = false;
 
       // Build request URL
       const baseUrl =
@@ -124,6 +131,7 @@ export class PromptOptimizationApi {
           context,
           brainstormContext,
         },
+        signal,
         onMessage: (event, data) => {
           try {
             switch (event) {
@@ -156,13 +164,17 @@ export class PromptOptimizationApi {
 
               case 'done':
                 // Resolve with final result including spans
-                resolve({
-                  draft: draft || refined || '',
-                  refined: refined || draft || '',
-                  spans: spans || [],
-                  metadata,
-                  usedFallback: (data.usedFallback as boolean) || false,
-                });
+                doneReceived = true;
+                if (!settled) {
+                  settled = true;
+                  resolve({
+                    draft: draft || refined || '',
+                    refined: refined || draft || '',
+                    spans: spans || [],
+                    metadata,
+                    usedFallback: (data.usedFallback as boolean) || false,
+                  });
+                }
                 break;
 
               case 'error':
@@ -172,7 +184,10 @@ export class PromptOptimizationApi {
                 if (onError && typeof onError === 'function') {
                   onError(error);
                 }
-                reject(error);
+                if (!settled) {
+                  settled = true;
+                  reject(error);
+                }
                 break;
             }
           } catch (parseError) {
@@ -185,6 +200,20 @@ export class PromptOptimizationApi {
           if (onError && typeof onError === 'function') {
             onError(error);
           }
+          if (!settled) {
+            settled = true;
+            reject(error);
+          }
+        },
+        onComplete: () => {
+          if (settled || doneReceived) {
+            return;
+          }
+          const error = new Error('Streaming ended before completion');
+          if (onError && typeof onError === 'function') {
+            onError(error);
+          }
+          settled = true;
           reject(error);
         },
       });
@@ -201,6 +230,8 @@ export class PromptOptimizationApi {
     body,
     onMessage,
     onError,
+    onComplete,
+    signal,
   }: StreamWithFetchOptions): Promise<void> {
     try {
       const config = this.client as unknown as {
@@ -216,6 +247,7 @@ export class PromptOptimizationApi {
           'X-API-Key': apiKey,
         },
         body: JSON.stringify(body),
+        signal,
       });
 
       if (!response.ok) {
@@ -265,6 +297,9 @@ export class PromptOptimizationApi {
           }
         }
       }
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
     } catch (error) {
       const err = error as Error & {
         status?: number | null;
@@ -275,7 +310,9 @@ export class PromptOptimizationApi {
         err.status = statusValue !== undefined ? statusValue : null;
       }
 
-      log.error('Streaming fetch error', err);
+      if (!this._isAbortError(err)) {
+        log.error('Streaming fetch error', err);
+      }
       onError(err);
     }
   }
@@ -287,11 +324,33 @@ export class PromptOptimizationApi {
     options: OptimizeWithStreamingOptions
   ): Promise<OptimizeWithStreamingResult> {
     let streamingError: Error | null = null;
+    const { onError, signal, ...streamingOptions } = options;
+    const onRefined = options.onRefined;
+
+    if (signal?.aborted) {
+      const aborted = new DOMException('Request aborted', 'AbortError');
+      if (typeof onError === 'function') {
+        onError(aborted);
+      }
+      throw aborted;
+    }
 
     try {
       // Try streaming first
-      return await this.optimizeWithStreaming(options);
+      return await this.optimizeWithStreaming({
+        ...streamingOptions,
+        signal,
+        onError: (error) => {
+          streamingError = error;
+        },
+      });
     } catch (error) {
+      if (this._isAbortError(error)) {
+        if (typeof onError === 'function') {
+          onError(error as Error);
+        }
+        throw error;
+      }
       streamingError = error as Error;
       log.warn('Streaming failed, falling back to legacy API', {
         promptLength: options.prompt?.length || 0,
@@ -312,10 +371,14 @@ export class PromptOptimizationApi {
         mode,
         context,
         brainstormContext,
+        signal,
       });
 
       // Format as two-stage result
       const optimized = result.optimizedPrompt;
+      if (typeof onRefined === 'function' && !signal?.aborted) {
+        onRefined(optimized, { ...(result.metadata || {}), usedFallback: true });
+      }
       return {
         draft: optimized,
         refined: optimized,
@@ -331,6 +394,9 @@ export class PromptOptimizationApi {
         return this._handleOfflineFallback(options, legacyError);
       }
 
+      if (typeof onError === 'function') {
+        onError(legacyError as Error);
+      }
       throw legacyError;
     }
   }
@@ -424,6 +490,14 @@ export class PromptOptimizationApi {
     );
   }
 
+  private _isAbortError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+    const err = error as { name?: string; code?: string };
+    return err.name === 'AbortError' || err.code === 'ABORT_ERR';
+  }
+
   private _buildOfflineResult(
     { prompt, mode }: OptimizeOptions,
     error: unknown
@@ -478,4 +552,3 @@ export class PromptOptimizationApi {
 // Export singleton instance
 import { apiClient } from './ApiClient';
 export const promptOptimizationApiV2 = new PromptOptimizationApi(apiClient);
-

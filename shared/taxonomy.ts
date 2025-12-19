@@ -306,89 +306,15 @@ export function isValidCategory(id: string): boolean {
   return VALID_CATEGORIES.has(id);
 }
 
-// ============================================================================
-// LEGACY COMPATIBILITY
-// ============================================================================
-
 /**
- * Map old flat IDs to new namespaced IDs
- * Provides backward compatibility during migration
- */
-export const LEGACY_ID_MAP: Record<string, string> = {
-  // Subject attributes
-  'identity': 'subject.identity',
-  'appearance': 'subject.appearance',
-  'wardrobe': 'subject.wardrobe',
-  'action': 'action.movement',
-  'emotion': 'subject.emotion',
-  'subject.action': 'action.movement',
-  
-  // Environment attributes
-  'location': 'environment.location',
-  'weather': 'environment.weather',
-  'context': 'environment.context',
-  
-  // Lighting attributes
-  'lighting_source': 'lighting.source',
-  'lightingSource': 'lighting.source',
-  'lighting_quality': 'lighting.quality',
-  'lightingQuality': 'lighting.quality',
-  'time_of_day': 'lighting.timeOfDay',
-  'timeOfDay': 'lighting.timeOfDay',
-  'timeofday': 'lighting.timeOfDay',
-  'timeday': 'lighting.timeOfDay',
-  'colorTemp': 'lighting.colorTemp',
-  'color_temp': 'lighting.colorTemp',
-  
-  // Camera attributes
-  'framing': 'shot.type',
-  'camera.framing': 'shot.type',
-  'shot': 'shot.type',
-  'camera_move': 'camera.movement',
-  'cameraMove': 'camera.movement',
-  'movement': 'camera.movement',
-  'lens': 'camera.lens',
-  'angle': 'camera.angle',
-  'focus': 'camera.focus',
-  'aperture': 'camera.focus',
-  'depth_of_field': 'camera.focus',
-  
-  // Style attributes
-  'aesthetic': 'style.aesthetic',
-  'film_stock': 'style.filmStock',
-  'filmStock': 'style.filmStock',
-  'colorGrade': 'style.colorGrade',
-  'color_grade': 'style.colorGrade',
-  
-  // Technical attributes
-  'aspect_ratio': 'technical.aspectRatio',
-  'aspectRatio': 'technical.aspectRatio',
-  'frame_rate': 'technical.frameRate',
-  'frameRate': 'technical.frameRate',
-  'fps': 'technical.frameRate',
-  'resolution': 'technical.resolution',
-  'specs': 'technical.resolution',
-  'duration': 'technical.duration',
-  
-  // Audio attributes
-  'score': 'audio.score',
-  'sound_effect': 'audio.soundEffect',
-  'soundEffect': 'audio.soundEffect',
-  'sfx': 'audio.soundEffect',
-  'ambient': 'audio.ambient',
-  'ambience': 'audio.ambient',
-} as const;
-
-/**
- * Resolve a category ID (handles both new and legacy IDs)
- * 
+ * Resolve a category ID (post-migration, no legacy mapping).
+ *
  * @example
- * resolveCategory('wardrobe') // 'subject.wardrobe' (legacy mapped)
- * resolveCategory('subject.wardrobe') // 'subject.wardrobe' (already namespaced)
+ * resolveCategory('subject.wardrobe') // 'subject.wardrobe'
  */
 export function resolveCategory(id: string | null | undefined): string {
   if (!id) return id ?? '';
-  return LEGACY_ID_MAP[id] || id;
+  return id;
 }
 
 // ============================================================================
@@ -434,10 +360,7 @@ export function parseCategoryId(id: string | null | undefined): ParsedCategoryId
  */
 export function getParentCategory(categoryId: string | null | undefined): string | null {
   if (!categoryId) return null;
-
-  // Resolve legacy ID first
-  const resolvedId = resolveCategory(categoryId);
-  const parsed = parseCategoryId(resolvedId);
+  const parsed = parseCategoryId(categoryId);
   
   if (!parsed) return null;
   return parsed.parent;
@@ -452,9 +375,7 @@ export function getParentCategory(categoryId: string | null | undefined): string
  */
 export function isAttribute(categoryId: string | null | undefined): boolean {
   if (!categoryId) return false;
-
-  const resolvedId = resolveCategory(categoryId);
-  const parsed = parseCategoryId(resolvedId);
+  const parsed = parseCategoryId(categoryId);
   
   return parsed ? !parsed.isParent : false;
 }
@@ -503,9 +424,7 @@ export interface CategoryByIdResult {
  */
 export function getCategoryById(categoryId: string | null | undefined): CategoryConfig | CategoryByIdResult | null {
   if (!categoryId) return null;
-
-  const resolvedId = resolveCategory(categoryId);
-  const parsed = parseCategoryId(resolvedId);
+  const parsed = parseCategoryId(categoryId);
   
   if (!parsed) return null;
 
@@ -517,7 +436,7 @@ export function getCategoryById(categoryId: string | null | undefined): Category
       } else {
         // It's an attribute
         return {
-          id: resolvedId,
+          id: categoryId,
           parent: parsed.parent,
           attribute: parsed.attribute ?? undefined,
           isAttribute: true

@@ -197,6 +197,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
     config: { maxTokens: number; temperature: number; timeout: number };
     baseSeed: number;
     attempts?: number;
+    signal?: AbortSignal;
   }): Promise<VideoPromptStructuredResponse | null> {
     const attempts = Math.max(0, Math.min(options.attempts ?? 2, 4));
     if (attempts === 0) return null;
@@ -216,6 +217,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           temperature: 0.2,
           timeout: options.config.timeout,
           seed,
+          signal: options.signal,
         });
 
         const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
@@ -249,7 +251,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
    * falls back to StructuredOutputEnforcer for unsupported providers
    * Uses Few-Shot Prompting to prevent structural arrows in output
    */
-  async optimize({ prompt, shotPlan = null }: OptimizationRequest): Promise<string> {
+  async optimize({ prompt, shotPlan = null, signal }: OptimizationRequest): Promise<string> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
 
@@ -309,6 +311,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
+        signal,
       });
 
       const parsedResponse = JSON.parse(response.text) as VideoPromptStructuredResponse;
@@ -339,6 +342,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           config,
           baseSeed: this._hashString(prompt),
           attempts: 2,
+          signal,
         });
         if (rerolled) {
           logger.info('Video prompt lint fixed via reroll', { provider });
@@ -353,6 +357,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           originalJson: parsedResponse,
           lintErrors: lint.errors,
           config,
+          signal,
         });
 
         return this._reassembleOutput(repaired);
@@ -374,7 +379,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         error: (error as Error).message
       });
 
-      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config);
+      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config, signal);
     }
   }
 
@@ -384,7 +389,8 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
   private async _fallbackOptimization(
     prompt: string,
     shotPlan: ShotPlan | null,
-    config: { maxTokens: number; temperature: number; timeout: number }
+    config: { maxTokens: number; temperature: number; timeout: number },
+    signal?: AbortSignal
   ): Promise<string> {
     // Generate full system prompt (legacy format)
     const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan);
@@ -406,6 +412,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
+        signal,
       }
     ) as VideoPromptStructuredResponse;
 
@@ -479,6 +486,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
     originalJson: VideoPromptStructuredResponse;
     lintErrors: string[];
     config: { maxTokens: number; temperature: number; timeout: number };
+    signal?: AbortSignal;
   }): Promise<VideoPromptStructuredResponse> {
     const repairSystemPrompt =
       'You are a strict JSON repair assistant for video prompt slot output. Fix the JSON fields to satisfy the lint errors. Return ONLY valid JSON that matches the provided schema. Do not add any prose.';
@@ -501,6 +509,7 @@ ${JSON.stringify(options.originalJson, null, 2)}
       maxTokens: options.config.maxTokens,
       temperature: 0.2,
       timeout: options.config.timeout,
+      signal: options.signal,
     });
 
     const repaired = JSON.parse(response.text) as VideoPromptStructuredResponse;

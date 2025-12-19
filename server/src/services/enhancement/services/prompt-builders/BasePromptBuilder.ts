@@ -8,6 +8,7 @@
 import { logger } from '@infrastructure/Logger';
 import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
+import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
 import type {
   PromptBuildParams,
   BrainstormContext,
@@ -176,14 +177,14 @@ export abstract class BasePromptBuilder {
     const inlineContext = `${prefix}[${highlightedText}]${suffix}`;
     
     // Longer prompt preview
-    const promptPreview = this._trim(fullPrompt, 600);
+    const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
 
     // Build constraint line
     let constraintLine = '';
     if (videoConstraints) {
       const parts: string[] = [];
       if (videoConstraints.minWords || videoConstraints.maxWords) {
-        parts.push(`${videoConstraints.minWords || 2}-${videoConstraints.maxWords || 20} words`);
+        parts.push(`${videoConstraints.minWords || 2}-${videoConstraints.maxWords || 50} words`);
       }
       if (videoConstraints.mode === 'micro') {
         parts.push('noun phrases only');

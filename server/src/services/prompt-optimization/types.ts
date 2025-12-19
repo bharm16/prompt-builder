@@ -64,9 +64,11 @@ export interface OptimizationRequest {
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
   shotPlan?: ShotPlan | null;
+  shotPlanAttempted?: boolean;
   useConstitutionalAI?: boolean;
   useIterativeRefinement?: boolean;
   domainContent?: unknown;
+  signal?: AbortSignal;
 }
 
 /**
@@ -77,7 +79,8 @@ export interface TwoStageOptimizationRequest {
   mode?: OptimizationMode;
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
-  onDraft?: ((draft: string) => void) | null;
+  onDraft?: ((draft: string, spans?: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
+  signal?: AbortSignal;
 }
 
 /**
@@ -86,11 +89,11 @@ export interface TwoStageOptimizationRequest {
 export interface TwoStageOptimizationResult {
   draft: string;
   refined: string;
-  metadata?: {
-    draftTime?: number;
-    refinementTime?: number;
-    usedFallback?: boolean;
-  };
+  draftSpans?: { spans?: unknown[]; meta?: unknown } | null;
+  refinedSpans?: { spans?: unknown[]; meta?: unknown } | null;
+  metadata?: Record<string, unknown>;
+  usedFallback?: boolean;
+  error?: string;
 }
 
 /**
@@ -112,6 +115,7 @@ export interface AIService {
     maxTokens?: number;
     temperature?: number;
     timeout?: number;
+    signal?: AbortSignal;
   }): Promise<{ text?: string; content?: Array<{ text: string }> }>;
   supportsStreaming?(operation: string): boolean;
   getAvailableClients?(): string[];
@@ -124,4 +128,3 @@ export interface TemplateService {
   getTemplate?(name: string, version?: string): Promise<string>;
   [key: string]: unknown;
 }
-

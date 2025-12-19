@@ -104,6 +104,15 @@ export function createAPIRoutes(services: ApiServices): Router {
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
       const { prompt, mode, context, brainstormContext } = req.body;
+      const abortController = new AbortController();
+      const { signal } = abortController;
+      const onAbort = (): void => {
+        if (!signal.aborted) {
+          abortController.abort();
+        }
+      };
+      req.on('close', onAbort);
+      req.on('aborted', onAbort);
 
       // Set up Server-Sent Events (SSE) headers
       res.setHeader('Content-Type', 'text/event-stream');
@@ -113,6 +122,9 @@ export function createAPIRoutes(services: ApiServices): Router {
 
       // Helper to send SSE message
       const sendEvent = (eventType: string, data: unknown): void => {
+        if (signal.aborted || res.writableEnded) {
+          return;
+        }
         res.write(`event: ${eventType}\n`);
         res.write(`data: ${JSON.stringify(data)}\n\n`);
       };
@@ -133,13 +145,14 @@ export function createAPIRoutes(services: ApiServices): Router {
       });
 
       try {
-        // Start two-stage optimization with parallel span labeling
+        // Start two-stage optimization (streaming draft + refined)
         const result = await promptOptimizationService.optimizeTwoStage({
           prompt,
           mode,
           context,
           brainstormContext,
-          // Stream draft AND spans to client immediately when ready
+          signal,
+          // Stream draft (and spans if provided) to client immediately when ready
           onDraft: (
             draft: string,
             spans: { spans?: unknown[]; meta?: unknown } | null
@@ -197,6 +210,10 @@ export function createAPIRoutes(services: ApiServices): Router {
 
         res.end();
       } catch (error: any) {
+        if (signal.aborted || res.writableEnded) {
+          res.end();
+          return;
+        }
         logger.error('Optimize-stream request failed', error, {
           operation,
           requestId,

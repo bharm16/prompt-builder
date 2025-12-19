@@ -17,6 +17,10 @@ interface SentenceSlice {
   endOffset: number;
 }
 
+interface SentenceSliceWithCount extends SentenceSlice {
+  wordCount: number;
+}
+
 interface TextChunk {
   text: string;
   startOffset: number;
@@ -42,9 +46,11 @@ interface ChunkResult {
  */
 export class TextChunker {
   private maxChunkSize: number;
+  private overlapWords: number;
 
-  constructor(maxChunkSize = 400) {
+  constructor(maxChunkSize = 400, overlapWords = 0) {
     this.maxChunkSize = maxChunkSize; // words per chunk
+    this.overlapWords = Math.max(0, overlapWords);
   }
   
   /**
@@ -58,45 +64,53 @@ export class TextChunker {
     }
     
     const sentences = this.splitIntoSentences(text);
+    if (sentences.length === 0) {
+      return [];
+    }
+
+    const sentenceEntries: SentenceSliceWithCount[] = sentences.map(sentence => ({
+      ...sentence,
+      wordCount: sentence.text.split(/\s+/).filter(w => w.length > 0).length,
+    }));
+
     const chunks: TextChunk[] = [];
-    let currentChunk: TextChunk = {
-      text: '',
-      startOffset: 0,
-      endOffset: 0,
-      wordCount: 0,
+
+    let currentSentences: SentenceSliceWithCount[] = [];
+    let currentWordCount = 0;
+
+    const pushChunk = (sentencesForChunk: SentenceSliceWithCount[], wordCount: number): void => {
+      if (!sentencesForChunk.length) {
+        return;
+      }
+
+      const startOffset = sentencesForChunk[0].startOffset;
+      const endOffset = sentencesForChunk[sentencesForChunk.length - 1].endOffset;
+
+      chunks.push({
+        text: text.slice(startOffset, endOffset),
+        startOffset,
+        endOffset,
+        wordCount,
+      });
     };
     
-    for (const sentence of sentences) {
-      const sentenceWords = sentence.text.split(/\s+/).filter(w => w.length > 0).length;
-      
+    for (const sentence of sentenceEntries) {
       // If adding this sentence exceeds limit, start new chunk
-      if (currentChunk.wordCount > 0 && 
-          currentChunk.wordCount + sentenceWords > this.maxChunkSize) {
-        chunks.push({ ...currentChunk });
-        currentChunk = {
-          text: sentence.text,
-          startOffset: sentence.startOffset,
-          endOffset: sentence.endOffset,
-          wordCount: sentenceWords,
-        };
-      } else {
-        // Add to current chunk
-        if (currentChunk.text) {
-          currentChunk.text += ' ' + sentence.text;
-          currentChunk.endOffset = sentence.endOffset;
-        } else {
-          currentChunk.text = sentence.text;
-          currentChunk.startOffset = sentence.startOffset;
-          currentChunk.endOffset = sentence.endOffset;
-        }
-        currentChunk.wordCount += sentenceWords;
+      if (currentWordCount > 0 &&
+          currentWordCount + sentence.wordCount > this.maxChunkSize) {
+        pushChunk(currentSentences, currentWordCount);
+
+        const overlap = this.getOverlapSentences(currentSentences);
+        currentSentences = overlap.sentences;
+        currentWordCount = overlap.wordCount;
       }
+
+      currentSentences.push(sentence);
+      currentWordCount += sentence.wordCount;
     }
     
     // Add final chunk
-    if (currentChunk.text) {
-      chunks.push(currentChunk);
-    }
+    pushChunk(currentSentences, currentWordCount);
     
     return chunks;
   }
@@ -199,6 +213,30 @@ export class TextChunker {
     }
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
     return wordCount > this.maxChunkSize;
+  }
+
+  private getOverlapSentences(sentences: SentenceSliceWithCount[]): {
+    sentences: SentenceSliceWithCount[];
+    wordCount: number;
+  } {
+    if (!this.overlapWords || sentences.length === 0) {
+      return { sentences: [], wordCount: 0 };
+    }
+
+    const overlap: SentenceSliceWithCount[] = [];
+    let overlapWordCount = 0;
+
+    for (let i = sentences.length - 1; i >= 0; i -= 1) {
+      const sentence = sentences[i];
+      overlapWordCount += sentence.wordCount;
+      overlap.unshift(sentence);
+
+      if (overlapWordCount >= this.overlapWords) {
+        break;
+      }
+    }
+
+    return { sentences: overlap, wordCount: overlapWordCount };
   }
 }
 

@@ -3,7 +3,6 @@ import type { ILogger } from '@interfaces/ILogger';
 import { cacheService } from '../cache/CacheService.js';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
 import { ConstitutionalAI } from '@utils/ConstitutionalAI.js';
-import { labelSpans } from '@llm/span-labeling/SpanLabelingService.js';
 import OptimizationConfig from '@config/OptimizationConfig.js';
 
 // Import specialized services
@@ -85,10 +84,18 @@ export class PromptOptimizationService {
     mode,
     context = null,
     brainstormContext = null,
-    onDraft = null
+    onDraft = null,
+    signal,
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
     const startTime = performance.now();
     const operation = 'optimizeTwoStage';
+    const ensureNotAborted = (): void => {
+      if (signal?.aborted) {
+        const abortError = new Error('Request aborted');
+        abortError.name = 'AbortError';
+        throw abortError;
+      }
+    };
     
     // Default to video mode (only mode supported)
     let finalMode: OptimizationMode = mode || 'video';
@@ -108,10 +115,12 @@ export class PromptOptimizationService {
       hasBrainstormContext: !!brainstormContext,
     });
 
+    ensureNotAborted();
+
     // Pre-interpret the raw concept into a flexible shot plan (no hard validation on user input)
     let shotPlan: ShotPlan | null = null;
     try {
-      shotPlan = await this.shotInterpreter.interpret(prompt);
+      shotPlan = await this.shotInterpreter.interpret(prompt, signal);
     } catch (interpError) {
       this.log.warn('Shot interpretation failed, proceeding without shot plan', {
         operation,
@@ -119,17 +128,19 @@ export class PromptOptimizationService {
       });
     }
 
+    ensureNotAborted();
+
     // Check if draft operation supports streaming (ChatGPT available)
     if (!this.ai.supportsStreaming?.('optimize_draft')) {
       this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
         operation,
       });
-      const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext });
+      const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext, signal });
       return { draft: result, refined: result, metadata: { usedFallback: true } };
     }
 
     try {
-      // STAGE 1: Generate fast draft with ChatGPT + parallel span labeling (1-3s)
+      // STAGE 1: Generate fast draft with ChatGPT (1-3s)
       const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan);
       this.log.debug('Generating draft with ChatGPT', {
         operation,
@@ -138,31 +149,16 @@ export class PromptOptimizationService {
       });
       const draftStartTime = performance.now();
 
-      // Start operations in parallel
-      const operations = [
-        this.ai.execute('optimize_draft', {
-          systemPrompt: draftSystemPrompt,
-          userMessage: prompt,
-          maxTokens: OptimizationConfig.tokens.draft[finalMode] || OptimizationConfig.tokens.draft.default,
-          temperature: OptimizationConfig.temperatures.draft,
-          timeout: OptimizationConfig.timeouts.draft,
-        }),
-        // Only do span labeling for video mode
-        finalMode === 'video' ? labelSpans({
-          text: prompt,
-          maxSpans: OptimizationConfig.spanLabeling.maxSpans,
-          minConfidence: OptimizationConfig.spanLabeling.minConfidence,
-          templateVersion: OptimizationConfig.spanLabeling.templateVersion,
-        }, this.ai).catch(err => {
-          this.log.warn('Parallel span labeling failed, will retry after draft', {
-            operation,
-            error: (err as Error).message,
-          });
-          return null;
-        }) : Promise.resolve(null)
-      ];
+      ensureNotAborted();
 
-      const [draftResponse, initialSpans] = await Promise.all(operations);
+      const draftResponse = await this.ai.execute('optimize_draft', {
+        systemPrompt: draftSystemPrompt,
+        userMessage: prompt,
+        maxTokens: OptimizationConfig.tokens.draft[finalMode] || OptimizationConfig.tokens.draft.default,
+        temperature: OptimizationConfig.temperatures.draft,
+        timeout: OptimizationConfig.timeouts.draft,
+        signal,
+      });
 
       const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
       const draftDuration = Math.round(performance.now() - draftStartTime);
@@ -171,14 +167,12 @@ export class PromptOptimizationService {
         operation,
         duration: draftDuration,
         draftLength: draft.length,
-        hasSpans: !!initialSpans,
         mode: finalMode,
       });
 
       // Call onDraft callback
       if (onDraft && typeof onDraft === 'function') {
-        const safeSpans = initialSpans || { spans: [], meta: null };
-        onDraft(draft, safeSpans);
+        onDraft(draft, null);
       }
 
       // STAGE 2: Refine with primary model (background)
@@ -188,16 +182,19 @@ export class PromptOptimizationService {
       });
       const refinementStartTime = performance.now();
 
+      ensureNotAborted();
+
       const refined = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
-        context,
         context: {
           ...(context || {}),
           originalUserPrompt: prompt, // Pass original prompt for consistency check
         },
         brainstormContext,
         shotPlan,
+        shotPlanAttempted: true,
+        signal,
       });
 
       const refinementDuration = Math.round(performance.now() - refinementStartTime);
@@ -209,7 +206,6 @@ export class PromptOptimizationService {
         refinementDuration,
         totalDuration,
         mode: finalMode,
-        hasSpans: !!initialSpans,
         draftLength: draft.length,
         refinedLength: refined.length,
       });
@@ -217,7 +213,7 @@ export class PromptOptimizationService {
       return {
         draft,
         refined,
-        draftSpans: initialSpans,
+        draftSpans: null,
         refinedSpans: null, // Skip for performance
         metadata: {
           draftDuration,
@@ -230,13 +226,29 @@ export class PromptOptimizationService {
       };
 
     } catch (error) {
+      if ((error as Error)?.name === 'AbortError') {
+        this.log.info('Two-stage optimization aborted', {
+          operation,
+          duration: Math.round(performance.now() - startTime),
+          mode: finalMode,
+        });
+        throw error;
+      }
       this.log.error('Two-stage optimization failed, falling back to single-stage', error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         mode: finalMode,
       });
 
-      const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext, shotPlan });
+      const result = await this.optimize({
+        prompt,
+        mode: finalMode,
+        context,
+        brainstormContext,
+        shotPlan,
+        shotPlanAttempted: true,
+        signal,
+      });
       return {
         draft: result,
         refined: result,
@@ -260,11 +272,20 @@ export class PromptOptimizationService {
     context = null,
     brainstormContext = null,
     shotPlan = null,
+    shotPlanAttempted = false,
     useConstitutionalAI = false,
-    useIterativeRefinement = false
+    useIterativeRefinement = false,
+    signal,
   }: OptimizationRequest): Promise<string> {
     const startTime = performance.now();
     const operation = 'optimize';
+    const ensureNotAborted = (): void => {
+      if (signal?.aborted) {
+        const abortError = new Error('Request aborted');
+        abortError.name = 'AbortError';
+        throw abortError;
+      }
+    };
     
     // Default to video mode (only mode supported)
     let finalMode: OptimizationMode = mode || 'video';
@@ -288,15 +309,19 @@ export class PromptOptimizationService {
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
       hasShotPlan: !!shotPlan,
+      shotPlanAttempted,
       useConstitutionalAI,
       useIterativeRefinement,
     });
 
+    ensureNotAborted();
+
     // Interpret shot plan if not already provided
     let interpretedShotPlan: ShotPlan | null = shotPlan;
-    if (!interpretedShotPlan) {
+    if (!interpretedShotPlan && !shotPlanAttempted) {
       try {
-        interpretedShotPlan = await this.shotInterpreter.interpret(prompt);
+        ensureNotAborted();
+        interpretedShotPlan = await this.shotInterpreter.interpret(prompt, signal);
       } catch (interpError) {
         this.log.warn('Shot interpretation (single-stage) failed, proceeding without plan', {
           operation,
@@ -327,7 +352,8 @@ export class PromptOptimizationService {
           finalMode,
           context,
           brainstormContext,
-          useConstitutionalAI
+          useConstitutionalAI,
+          signal
         );
       } else {
         // Get appropriate strategy and optimize
@@ -345,11 +371,12 @@ export class PromptOptimizationService {
           brainstormContext,
           domainContent,
           shotPlan: interpretedShotPlan,
+          signal,
         });
 
         // Apply constitutional AI review if requested
         if (useConstitutionalAI) {
-          optimizedPrompt = await this.applyConstitutionalAI(optimizedPrompt, finalMode);
+          optimizedPrompt = await this.applyConstitutionalAI(optimizedPrompt, finalMode, signal);
         }
       }
 
@@ -372,6 +399,14 @@ export class PromptOptimizationService {
       return optimizedPrompt;
 
     } catch (error) {
+      if ((error as Error)?.name === 'AbortError') {
+        this.log.info(`${operation} aborted`, {
+          operation,
+          duration: Math.round(performance.now() - startTime),
+          mode: finalMode,
+        });
+        throw error;
+      }
       this.log.error(`${operation} failed`, error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
@@ -390,10 +425,18 @@ export class PromptOptimizationService {
     mode: OptimizationMode,
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
-    useConstitutionalAI: boolean
+    useConstitutionalAI: boolean,
+    signal?: AbortSignal
   ): Promise<string> {
     const startTime = performance.now();
     const operation = 'optimizeIteratively';
+    const ensureNotAborted = (): void => {
+      if (signal?.aborted) {
+        const abortError = new Error('Request aborted');
+        abortError.name = 'AbortError';
+        throw abortError;
+      }
+    };
     
     this.log.debug(`Starting ${operation}`, {
       operation,
@@ -410,6 +453,7 @@ export class PromptOptimizationService {
     let bestScore = 0;
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
+      ensureNotAborted();
       this.log.debug('Iteration starting', {
         operation,
         iteration,
@@ -425,12 +469,13 @@ export class PromptOptimizationService {
         prompt: currentPrompt,
         context,
         brainstormContext,
-        domainContent
+        domainContent,
+        signal,
       });
 
       // Apply constitutional AI if requested
       const finalOptimized = useConstitutionalAI
-        ? await this.applyConstitutionalAI(optimized, mode)
+        ? await this.applyConstitutionalAI(optimized, mode, signal)
         : optimized;
 
       // Assess quality
@@ -483,7 +528,11 @@ export class PromptOptimizationService {
   /**
    * Apply constitutional AI review to optimized prompt
    */
-  private async applyConstitutionalAI(prompt: string, mode: OptimizationMode): Promise<string> {
+  private async applyConstitutionalAI(
+    prompt: string,
+    mode: OptimizationMode,
+    signal?: AbortSignal
+  ): Promise<string> {
     const startTime = performance.now();
     const operation = 'applyConstitutionalAI';
     
@@ -494,6 +543,21 @@ export class PromptOptimizationService {
     });
 
     try {
+      if (signal?.aborted) {
+        const abortError = new Error('Request aborted');
+        abortError.name = 'AbortError';
+        throw abortError;
+      }
+
+      const sampleRate = OptimizationConfig.constitutionalAI?.sampleRate ?? 1;
+      if (sampleRate < 1 && Math.random() > Math.max(0, Math.min(1, sampleRate))) {
+        this.log.debug(`${operation} skipped (sampled out)`, {
+          operation,
+          sampleRate,
+        });
+        return prompt;
+      }
+
       const constitutionalAI = new ConstitutionalAI(this.ai);
       const reviewResult = await constitutionalAI.review(prompt);
 

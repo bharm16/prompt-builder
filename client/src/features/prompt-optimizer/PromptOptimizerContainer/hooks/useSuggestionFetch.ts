@@ -36,6 +36,8 @@ interface SuggestionsData {
   originalText: string;
   suggestions: Suggestion[];
   isLoading: boolean;
+  isError?: boolean;
+  errorMessage?: string;
   isPlaceholder: boolean;
   fullPrompt: string;
   range?: Range | null;
@@ -141,6 +143,8 @@ export function useSuggestionFetch({
         originalText: originalText || trimmedHighlight,
         suggestions: [],
         isLoading: true,
+        isError: false,
+        errorMessage: undefined,
         isPlaceholder: false,
         fullPrompt: normalizedPrompt,
         range: range ?? null,
@@ -156,6 +160,8 @@ export function useSuggestionFetch({
                 newIsPlaceholder !== undefined
                   ? newIsPlaceholder
                   : prev.isPlaceholder,
+              isError: false,
+              errorMessage: undefined,
             };
           });
         },
@@ -197,6 +203,8 @@ export function useSuggestionFetch({
             ...prev,
             suggestions: suggestionsAsObjects,
             isLoading: false,
+            isError: false,
+            errorMessage: undefined,
             isPlaceholder,
           };
         });
@@ -209,9 +217,9 @@ export function useSuggestionFetch({
           const updated: SuggestionsData = {
             ...prev,
             isLoading: false,
-            suggestions: [
-              { text: 'Failed to load suggestions. Please try again.' } as Suggestion,
-            ],
+            isError: true,
+            errorMessage: 'Failed to load suggestions. Please try again.',
+            suggestions: [],
           };
           return updated;
         });
@@ -234,4 +242,3 @@ export function useSuggestionFetch({
     fetchEnhancementSuggestions,
   };
 }
-

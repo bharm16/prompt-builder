@@ -84,6 +84,9 @@ export const VALIDATION_MODES = {
 export const CHUNKING = {
   // Max words before chunking is triggered
   MAX_WORDS_PER_CHUNK: 400,
+
+  // Overlap words between chunks to preserve seam context
+  OVERLAP_WORDS: 50,
   
   // Max tokens to reserve for output (used in token estimation)
   OUTPUT_TOKEN_BUFFER: 2000,
@@ -115,6 +118,11 @@ export const NLP_FAST_PATH = {
   
   // Minimum coverage percentage to skip LLM (0-100)
   MIN_COVERAGE_PERCENT: 30,
+
+  // Allow sparse but high-confidence spans to bypass expected span count
+  SPARSE_MIN_SPANS: 1,
+  SPARSE_HIGH_CONFIDENCE_THRESHOLD: 0.85,
+  SPARSE_MIN_SIGNAL_SPANS: 1,
   
   // Enable detailed metrics tracking
   TRACK_METRICS: true,
@@ -143,6 +151,9 @@ export const NEURO_SYMBOLIC = {
   GLINER: {
     // Enabled - using official 'gliner' npm package
     ENABLED: true,
+
+    // Run GLiNER inference in a worker thread to avoid main-thread blocking
+    USE_WORKER: true,
     
     // Model path (ONNX format)
     MODEL_PATH: 'onnx-community/gliner_small-v2.1',

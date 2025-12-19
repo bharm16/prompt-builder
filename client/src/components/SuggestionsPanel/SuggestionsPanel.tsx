@@ -27,7 +27,7 @@ import { PanelHeader } from './components/PanelHeader';
 import { CategoryTabs } from './components/CategoryTabs';
 import { CustomRequestForm } from './components/CustomRequestForm';
 import { SuggestionsList } from './components/SuggestionsList';
-import { LoadingState, EmptyState, InactiveState } from './components/PanelStates';
+import { LoadingState, EmptyState, ErrorState, InactiveState } from './components/PanelStates';
 
 // Utils
 import { cn } from '@/utils/cn';
@@ -38,9 +38,10 @@ import { cn } from '@/utils/cn';
 import {
   DEFAULT_INACTIVE_STATE,
   DEFAULT_EMPTY_STATE,
+  DEFAULT_ERROR_STATE,
   DEFAULT_PANEL_CONFIG,
 } from './config/panelConfig';
-import type { EmptyStateConfig, InactiveStateConfig } from './components/types';
+import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './components/types';
 import type { SuggestionItem } from './hooks/types';
 
 interface SuggestionsPanelProps {
@@ -48,6 +49,8 @@ interface SuggestionsPanelProps {
     show?: boolean;
     suggestions?: SuggestionItem[];
     isLoading?: boolean;
+    isError?: boolean;
+    errorMessage?: string;
     onSuggestionClick?: (suggestion: SuggestionItem) => void;
     onClose?: () => void;
     onRefresh?: () => void;
@@ -71,6 +74,7 @@ interface SuggestionsPanelProps {
     contextBadgeIcon?: LucideIcon;
     keyboardHint?: string;
     emptyState?: EmptyStateConfig;
+    errorState?: ErrorStateConfig;
     inactiveState?: InactiveStateConfig;
     footer?: React.ReactNode;
     showCategoryTabs?: boolean;
@@ -96,6 +100,8 @@ export function SuggestionsPanel({
     show = false,
     suggestions = [],
     isLoading = false,
+    isError = false,
+    errorMessage,
     onSuggestionClick = () => {},
     onClose,
     onRefresh,
@@ -133,6 +139,7 @@ export function SuggestionsPanel({
       suggestionsData.contextBadgeIcon || DEFAULT_PANEL_CONFIG.contextBadgeIcon,
     keyboardHint = suggestionsData.keyboardHint,
     emptyState = suggestionsData.emptyState || DEFAULT_EMPTY_STATE,
+    errorState = suggestionsData.errorState || DEFAULT_ERROR_STATE,
     inactiveState =
       suggestionsData.inactiveState || DEFAULT_INACTIVE_STATE,
     footer = suggestionsData.footer,
@@ -241,7 +248,11 @@ export function SuggestionsPanel({
               />
             )}
 
-            {!isLoading && currentSuggestions.length > 0 && (
+            {!isLoading && isError && (
+              <ErrorState errorState={errorState} errorMessage={errorMessage} />
+            )}
+
+            {!isLoading && !isError && currentSuggestions.length > 0 && (
               <SuggestionsList
                 suggestions={currentSuggestions}
                 onSuggestionClick={onSuggestionClick}
@@ -250,7 +261,7 @@ export function SuggestionsPanel({
               />
             )}
 
-            {!isLoading && currentSuggestions.length === 0 && (
+            {!isLoading && !isError && currentSuggestions.length === 0 && (
               <EmptyState emptyState={emptyState} />
             )}
           </>
@@ -283,5 +294,4 @@ export function SuggestionsPanel({
   );
 }
 export default SuggestionsPanel;
-
 

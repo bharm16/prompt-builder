@@ -8,6 +8,23 @@ import type { AIService } from '../../../prompt-optimization/types.js';
 
 const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'] as const;
 
+type SubjectDescriptorKey = typeof SUBJECT_DESCRIPTOR_KEYS[number];
+
+type DescriptorDetection = {
+  category: string | null;
+  taxonomyId: string | null;
+  confidence: number;
+};
+
+type DescriptorInput = {
+  key: SubjectDescriptorKey;
+  value: string;
+};
+
+type DescriptorCategoryEntry = DescriptorInput & {
+  detection: DescriptorDetection;
+};
+
 /**
  * Conflict result
  */
@@ -62,17 +79,17 @@ export class ConflictDetectionService {
 
     // Detect descriptor categories for enhanced conflict detection
     const descriptors = SUBJECT_DESCRIPTOR_KEYS
-      .map(key => ({ key, value: params.elements[key] }))
-      .filter((d): d is { key: string; value: string } => !!d.value);
+      .map((key) => ({ key, value: params.elements[key] }))
+      .filter((d): d is DescriptorInput => typeof d.value === 'string' && d.value.length > 0);
 
-    const descriptorCategories = descriptors.map(desc => ({
+    const descriptorCategories: DescriptorCategoryEntry[] = descriptors.map((desc) => ({
       ...desc,
-      detection: detectDescriptorCategory(desc.value)
+      detection: detectDescriptorCategory(desc.value) as DescriptorDetection,
     }));
 
     // Build enhanced element list with descriptor categories
     const elementsList = filledElements.map(([k, v]) => {
-      const descriptorInfo = descriptorCategories.find(d => d.key === k);
+      const descriptorInfo = descriptorCategories.find((d) => d.key === k);
       if (descriptorInfo && descriptorInfo.detection.category) {
         return `${k} (${descriptorInfo.detection.category} category): ${v}`;
       }
@@ -145,7 +162,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
    * Check for conflicts between descriptor categories
    */
   private checkDescriptorCategoryConflicts(
-    descriptorCategories: Array<{ key: string; value: string; detection: ReturnType<typeof detectDescriptorCategory> }>
+    descriptorCategories: DescriptorCategoryEntry[]
   ): Conflict[] {
     const conflicts: Conflict[] = [];
 
@@ -155,6 +172,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
         const desc1 = descriptorCategories[i];
         const desc2 = descriptorCategories[j];
 
+        if (!desc1 || !desc2) continue;
         if (!desc1.detection.category || !desc2.detection.category) continue;
 
         // Check for contradictions (e.g., "wearing formal tuxedo" + "barefoot")
@@ -194,4 +212,3 @@ Return ONLY a JSON array of conflicts (empty array if none):
     return conflicts;
   }
 }
-

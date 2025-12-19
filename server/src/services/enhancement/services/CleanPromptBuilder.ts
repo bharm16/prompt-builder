@@ -2,6 +2,7 @@ import { logger } from '@infrastructure/Logger';
 import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
 import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples.js';
+import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
 import { 
   getSecurityPrefix, 
   getFormatInstruction,
@@ -62,7 +63,7 @@ export class CleanPromptBuilder {
       fullPromptLength: fullPrompt.length,
     });
     
-    const promptPreview = this._trim(fullPrompt, 600);
+    const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
 
     // Get provider-aware security prefix
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
@@ -83,14 +84,14 @@ export class CleanPromptBuilder {
 
     return [
       securityPrefix,
-      'Generate 12 replacement phrases for the highlighted text.',
+      'Generate up to 12 replacement phrases for the highlighted text.',
       '',
       userDataSection,
       '',
       'RULES:',
       '1. Replacements must fit the context of the full prompt',
       '2. Keep the same subject/topic - just vary the description',
-      '3. Return ONLY the replacement phrase (2-20 words)',
+      '3. Return ONLY the replacement phrase (2-50 words)',
       '',
       'Output JSON: [{"text":"replacement","category":"custom","explanation":"why this fits"}]',
       formatInstruction,
@@ -219,7 +220,7 @@ export class CleanPromptBuilder {
 
     return [
       securityPrefix,
-      'Generate 12 alternative TECHNICAL phrases for video prompts.',
+      'Generate up to 12 alternative TECHNICAL phrases for video prompts.',
       '',
       userDataSection,
       '',
@@ -227,7 +228,7 @@ export class CleanPromptBuilder {
       '1. Keep the same SUBJECT - only change the technical/camera approach',
       '2. Use cinematography terms (angles, lenses, movements, lighting)',
       '3. Each option should create a different visual effect',
-      '4. Return ONLY the replacement phrase (2-20 words)',
+      '4. Return ONLY the replacement phrase (2-50 words)',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
@@ -260,7 +261,7 @@ export class CleanPromptBuilder {
 
     return [
       securityPrefix,
-      'Generate 12 alternative VISUAL DESCRIPTIONS for the highlighted phrase.',
+      'Generate up to 12 alternative VISUAL DESCRIPTIONS for the highlighted phrase.',
       '',
       userDataSection,
       '',
@@ -268,7 +269,7 @@ export class CleanPromptBuilder {
       '1. Keep the SAME SUBJECT/TOPIC - just vary HOW it is described',
       '2. Add visual details: textures, materials, lighting, colors',
       '3. Each option should look different but stay contextually appropriate',
-      '4. Return ONLY the replacement phrase (2-20 words)',
+      '4. Return ONLY the replacement phrase (2-50 words)',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
@@ -299,7 +300,7 @@ export class CleanPromptBuilder {
 
     return [
       securityPrefix,
-      'Generate 12 alternative ACTION phrases for video prompts.',
+      'Generate up to 12 alternative ACTION phrases for video prompts.',
       '',
       userDataSection,
       '',
@@ -307,7 +308,7 @@ export class CleanPromptBuilder {
       '1. Keep the same SUBJECT doing the action - only change the action itself',
       '2. One continuous action only (no sequences like "walks then runs")',
       '3. Actions must be camera-visible physical behavior',
-      '4. Return ONLY the replacement phrase (2-20 words)',
+      '4. Return ONLY the replacement phrase (2-50 words)',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
@@ -352,14 +353,14 @@ export class CleanPromptBuilder {
     const inlineContext = `${prefix}[${highlightedText}]${suffix}`;
     
     // Longer prompt preview - the model needs to understand the full scene
-    const promptPreview = this._trim(fullPrompt, 600);
+    const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
 
     // Build constraint line
     let constraintLine = '';
     if (videoConstraints) {
       const parts: string[] = [];
       if (videoConstraints.minWords || videoConstraints.maxWords) {
-        parts.push(`${videoConstraints.minWords || 2}-${videoConstraints.maxWords || 20} words`);
+        parts.push(`${videoConstraints.minWords || 2}-${videoConstraints.maxWords || 50} words`);
       }
       if (videoConstraints.mode === 'micro') {
         parts.push('noun phrases only');

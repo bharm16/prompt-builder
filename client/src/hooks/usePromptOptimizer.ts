@@ -9,7 +9,7 @@
  * Single Responsibility: Orchestrate the prompt optimization workflow
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { promptOptimizationApiV2 } from '../services';
 import { logger } from '../services/LoggingService';
@@ -29,6 +29,8 @@ const log = logger.child('usePromptOptimizer');
 
 export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = true) => {
   const toast = useToast() as Toast;
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const {
     state,
     setInputPrompt,
@@ -47,8 +49,19 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
     setIsProcessing,
   } = usePromptOptimizerState();
 
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const analyzeAndOptimize = useCallback(
-    async (prompt: string, context: unknown | null = null, brainstormContext: unknown | null = null) => {
+    async (
+      prompt: string,
+      context: unknown | null = null,
+      brainstormContext: unknown | null = null,
+      signal?: AbortSignal
+    ) => {
       log.debug('analyzeAndOptimize called', {
         promptLength: prompt.length,
         mode: selectedMode,
@@ -63,6 +76,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           mode: selectedMode,
           context,
           brainstormContext,
+          signal,
         });
         
         const duration = logger.endTimer('analyzeAndOptimize');
@@ -92,6 +106,13 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
         return null;
       }
 
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      const requestId = ++requestIdRef.current;
+
       log.debug('optimize called', {
         operation: 'optimize',
         promptLength: promptToOptimize.length,
@@ -120,7 +141,11 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             mode: selectedMode,
             context,
             brainstormContext,
+            signal: abortController.signal,
             onDraft: (draft: string) => {
+              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+                return;
+              }
               const draftDuration = logger.endTimer('optimize');
               logger.startTimer('optimize'); // Restart for refinement phase
               
@@ -157,6 +182,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               toast.info('Draft ready! Refining in background...');
             },
             onSpans: (spans: unknown[], source: string, meta?: unknown) => {
+              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+                return;
+              }
               markSpansReceived(source);
 
               log.debug('Spans callback triggered', {
@@ -191,6 +219,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               }
             },
             onRefined: (refined: string) => {
+              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+                return;
+              }
               const refinementDuration = logger.endTimer('optimize');
               
               markRefinementComplete();
@@ -232,6 +263,17 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
                 toast.info(`Refined! Score: ${refinedScore}%`);
               }
             },
+            onError: (error: Error) => {
+              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+                return;
+              }
+              log.error('Optimization stream error', error, {
+                operation: 'optimize',
+                mode: selectedMode,
+              });
+              setIsRefining(false);
+              setIsProcessing(false);
+            },
           });
 
           const totalDuration = logger.endTimer('optimize');
@@ -252,6 +294,10 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             outputLength: result.refined?.length || 0,
           });
 
+          if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+            return null;
+          }
+
           return {
             optimized: result.refined,
             score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),
@@ -263,7 +309,12 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           });
 
           // Fallback to legacy single-stage optimization
-          const optimized = await analyzeAndOptimize(promptToOptimize, context, brainstormContext);
+          const optimized = await analyzeAndOptimize(
+            promptToOptimize,
+            context,
+            brainstormContext,
+            abortController.signal
+          );
           const score = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, optimized);
 
           setOptimizedPrompt(optimized);
@@ -289,6 +340,13 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           return { optimized, score };
         }
       } catch (error) {
+        if ((error as Error)?.name === 'AbortError') {
+          log.debug('Optimization aborted', {
+            operation: 'optimize',
+            mode: selectedMode,
+          });
+          return null;
+        }
         const duration = logger.endTimer('optimize');
         log.error('optimize failed', error as Error, {
           operation: 'optimize',
@@ -299,8 +357,10 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
         toast.error('Failed to optimize. Make sure the server is running.');
         return null;
       } finally {
-        setIsProcessing(false);
-        setIsRefining(false);
+        if (requestId === requestIdRef.current) {
+          setIsProcessing(false);
+          setIsRefining(false);
+        }
       }
     },
     [

@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
@@ -13,6 +14,7 @@ import type { ValidationPolicy } from '../llm/span-labeling/types.js';
  */
 export function createLabelSpansRoute(aiService: AIModelService): Router {
   const router = ExpressRouter();
+  const inflightRequests = new Map<string, Promise<LabelSpansResult>>();
 
   const sanitizeNumber = (value: unknown): number | undefined => {
     if (typeof value === 'number') return value;
@@ -21,6 +23,29 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       if (!Number.isNaN(parsed)) return parsed;
     }
     return undefined;
+  };
+
+  const createCoalescingKey = (
+    text: string,
+    policy: ValidationPolicy | undefined,
+    templateVersion: string | undefined
+  ): string => {
+    const textHash = createHash('sha256')
+      .update(text)
+      .digest('hex')
+      .substring(0, 16);
+
+    const policyHash = createHash('sha256')
+      .update(
+        JSON.stringify({
+          policy: policy || {},
+          templateVersion: templateVersion || 'v1',
+        })
+      )
+      .digest('hex')
+      .substring(0, 8);
+
+    return `span:${textHash}:${policyHash}`;
   };
 
   router.post('/', async (req: Request, res: Response) => {
@@ -109,34 +134,63 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       // Cache miss: use AIModelService (configured in modelConfig.js)
       if (!result) {
-        const apiStartTime = performance.now();
+        const coalescingKey = createCoalescingKey(text, policy, templateVersion);
+        const inflight = inflightRequests.get(coalescingKey);
 
-        // Use AIModelService which respects modelConfig.js configuration
-        result = await labelSpans(payload, aiService);
+        if (inflight) {
+          const coalescedStart = performance.now();
+          result = await inflight;
 
-        const apiTime = Math.round(performance.now() - apiStartTime);
+          const coalescedTime = Math.round(performance.now() - coalescedStart);
+          logger.debug('Span labeling request coalesced', {
+            operation,
+            requestId,
+            userId,
+            coalescedTime,
+            textLength: text.length,
+          });
 
-        // Store in cache for future requests
-        if (spanLabelingCache) {
-          // Use short TTL (5 min) for large texts, default TTL (1 hour) for smaller ones
-          const ttl = text.length > 2000 ? 300 : 3600;
-          await spanLabelingCache.set(text, policy, templateVersion, result, { ttl });
+          res.setHeader('X-Cache', 'COALESCED');
+          res.setHeader('X-Coalesced', '1');
+          res.setHeader('X-Coalesced-Time', `${coalescedTime}ms`);
+        } else {
+          const apiStartTime = performance.now();
+          const labelPromise = (async () => {
+            const computed = await labelSpans(payload, aiService);
+
+            if (spanLabelingCache) {
+              const ttl = text.length > 2000 ? 300 : 3600;
+              await spanLabelingCache.set(text, policy, templateVersion, computed, { ttl });
+            }
+
+            return computed;
+          })();
+
+          inflightRequests.set(coalescingKey, labelPromise);
+
+          try {
+            result = await labelPromise;
+          } finally {
+            inflightRequests.delete(coalescingKey);
+          }
+
+          const apiTime = Math.round(performance.now() - apiStartTime);
+
+          logger.info(`${operation} completed`, {
+            operation,
+            requestId,
+            userId,
+            duration: Math.round(performance.now() - startTime),
+            apiTime,
+            textLength: text.length,
+            spanCount: result.spans?.length || 0,
+            cacheHit: false,
+            coalesced: false,
+          });
+
+          res.setHeader('X-Cache', 'MISS');
+          res.setHeader('X-API-Time', `${apiTime}ms`);
         }
-
-        logger.info(`${operation} completed`, {
-          operation,
-          requestId,
-          userId,
-          duration: Math.round(performance.now() - startTime),
-          apiTime,
-          textLength: text.length,
-          spanCount: result.spans?.length || 0,
-          cacheHit: false,
-        });
-
-        // Add cache miss headers for monitoring
-        res.setHeader('X-Cache', 'MISS');
-        res.setHeader('X-API-Time', `${apiTime}ms`);
       }
 
       return res.json(result);
@@ -159,4 +213,3 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
   return router;
 }
-
