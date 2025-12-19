@@ -1,10 +1,11 @@
 import { logger } from '@infrastructure/Logger';
+import type { NextFunction, Request, Response } from 'express';
 
 /**
  * Redact sensitive data from strings
  * Removes PII like emails, SSNs, credit cards, phone numbers
  */
-function redactSensitiveData(obj) {
+function redactSensitiveData(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return obj
       // Redact email addresses
@@ -23,31 +24,43 @@ function redactSensitiveData(obj) {
     return obj;
   }
   
-  const redacted = Array.isArray(obj) ? [] : {};
-  const sensitiveKeys = ['email', 'password', 'token', 'apikey', 'api_key', 'secret', 
-                        'ssn', 'creditcard', 'credit_card', 'phone', 'address'];
+  const redacted: Record<string, unknown> | unknown[] = Array.isArray(obj) ? [] : {};
+  const sensitiveKeys = [
+    'email',
+    'password',
+    'token',
+    'apikey',
+    'api_key',
+    'secret',
+    'ssn',
+    'creditcard',
+    'credit_card',
+    'phone',
+    'address',
+  ];
   
   for (const [key, value] of Object.entries(obj)) {
     // Redact entire value if key is sensitive
-    if (sensitiveKeys.some(s => key.toLowerCase().includes(s))) {
-      redacted[key] = '[REDACTED]';
+    if (sensitiveKeys.some((s) => key.toLowerCase().includes(s))) {
+      (redacted as Record<string, unknown>)[key] = '[REDACTED]';
     }
     // Recursively redact nested objects
     else if (typeof value === 'object' && value !== null) {
-      redacted[key] = redactSensitiveData(value);
+      (redacted as Record<string, unknown>)[key] = redactSensitiveData(value);
     }
     // Redact long strings (likely to be prompts with PII)
     else if (typeof value === 'string' && value.length > 1000) {
       const redactedValue = redactSensitiveData(value);
-      redacted[key] = redactedValue.substring(0, 200) + 
+      (redacted as Record<string, unknown>)[key] =
+        (redactedValue as string).substring(0, 200) +
         `... [${value.length - 200} chars truncated]`;
     }
     // Redact patterns in short strings
     else if (typeof value === 'string') {
-      redacted[key] = redactSensitiveData(value);
+      (redacted as Record<string, unknown>)[key] = redactSensitiveData(value);
     }
     else {
-      redacted[key] = value;
+      (redacted as Record<string, unknown>)[key] = value;
     }
   }
   
@@ -58,9 +71,16 @@ function redactSensitiveData(obj) {
  * Global error handling middleware
  * Catches and formats errors consistently with sensitive data redaction
  */
-export function errorHandler(err, req, res, next) {
+type RequestWithId = Request & { id?: string; body?: Record<string, unknown> };
+
+export function errorHandler(
+  err: any,
+  req: RequestWithId,
+  res: Response,
+  _next: NextFunction
+): void {
   // Log the error
-  const meta = {
+  const meta: Record<string, unknown> = {
     requestId: req.id,
     method: req.method,
     path: req.path,
@@ -84,7 +104,7 @@ export function errorHandler(err, req, res, next) {
   const statusCode = err.statusCode || err.status || 500;
 
   // Build error response
-  const errorResponse = {
+  const errorResponse: Record<string, unknown> = {
     error: err.message || 'Internal server error',
     requestId: req.id,
   };

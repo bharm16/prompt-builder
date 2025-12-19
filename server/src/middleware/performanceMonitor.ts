@@ -1,4 +1,35 @@
 import { logger } from '@infrastructure/Logger';
+import type { NextFunction, Request, Response } from 'express';
+
+interface MetricsService {
+  recordAlert?: (name: string, payload: Record<string, unknown>) => void;
+}
+
+interface PerfOperation {
+  start?: number;
+  duration: number | null;
+}
+
+interface PerfContext {
+  startTime: number;
+  operations: Record<string, PerfOperation>;
+  metadata: Record<string, unknown>;
+}
+
+interface PerfMetrics {
+  total: number;
+  operations: Record<string, number>;
+  metadata: Record<string, unknown>;
+}
+
+interface RequestPerfMonitor {
+  start: (operationName: string) => void;
+  end: (operationName: string) => void;
+  addMetadata: (key: string, value: unknown) => void;
+  getMetrics: () => PerfMetrics;
+}
+
+type RequestWithPerf = Request & { perfMonitor?: RequestPerfMonitor };
 
 /**
  * Performance Monitor Middleware
@@ -14,7 +45,10 @@ import { logger } from '@infrastructure/Logger';
  * - Adds X-Response-Time header to response
  */
 export class PerformanceMonitor {
-  constructor(metricsService = null) {
+  private metricsService: MetricsService | null;
+  private isDev: boolean;
+
+  constructor(metricsService: MetricsService | null = null) {
     this.metricsService = metricsService;
     this.isDev = process.env.NODE_ENV === 'development';
   }
@@ -22,8 +56,8 @@ export class PerformanceMonitor {
   /**
    * Middleware function to track request performance
    */
-  trackRequest(req, res, next) {
-    const perfContext = {
+  trackRequest(req: RequestWithPerf, res: Response, next: NextFunction): void {
+    const perfContext: PerfContext = {
       startTime: Date.now(),
       operations: {},
       metadata: {},
@@ -39,10 +73,10 @@ export class PerformanceMonitor {
 
     // Intercept response to complete monitoring
     const originalJson = res.json.bind(res);
-    res.json = (body) => {
+    res.json = ((body: unknown) => {
       this._completeRequest(req, res, perfContext);
       return originalJson(body);
-    };
+    }) as typeof res.json;
 
     next();
   }
@@ -51,7 +85,7 @@ export class PerformanceMonitor {
    * Start timing for a specific operation
    * @private
    */
-  _startTimer(perfContext, operationName) {
+  _startTimer(perfContext: PerfContext, operationName: string): void {
     if (!perfContext.operations[operationName]) {
       perfContext.operations[operationName] = {
         start: Date.now(),
@@ -64,7 +98,7 @@ export class PerformanceMonitor {
    * End timing and record duration
    * @private
    */
-  _endTimer(perfContext, operationName) {
+  _endTimer(perfContext: PerfContext, operationName: string): void {
     const operation = perfContext.operations[operationName];
     if (operation && operation.start) {
       operation.duration = Date.now() - operation.start;
@@ -75,7 +109,7 @@ export class PerformanceMonitor {
    * Add metadata to the request
    * @private
    */
-  _addMetadata(perfContext, key, value) {
+  _addMetadata(perfContext: PerfContext, key: string, value: unknown): void {
     perfContext.metadata[key] = value;
   }
 
@@ -83,9 +117,9 @@ export class PerformanceMonitor {
    * Get current metrics
    * @private
    */
-  _getMetrics(perfContext) {
+  _getMetrics(perfContext: PerfContext): PerfMetrics {
     const total = Date.now() - perfContext.startTime;
-    const operations = {};
+    const operations: Record<string, number> = {};
     
     Object.keys(perfContext.operations).forEach((name) => {
       operations[name] = perfContext.operations[name].duration || 0;
@@ -102,7 +136,7 @@ export class PerformanceMonitor {
    * Complete request and flush metrics
    * @private
    */
-  _completeRequest(req, res, perfContext) {
+  _completeRequest(req: RequestWithPerf, res: Response, perfContext: PerfContext): void {
     const metrics = this._getMetrics(perfContext);
     const route = req.route?.path || req.path;
 
@@ -138,7 +172,7 @@ export class PerformanceMonitor {
    * Log metrics to console in development
    * @private
    */
-  _logDevelopmentMetrics(route, metrics) {
+  _logDevelopmentMetrics(route: string, metrics: PerfMetrics): void {
     logger.debug('Request performance metrics', {
       operation: '_logDevelopmentMetrics',
       route,
@@ -152,7 +186,7 @@ export class PerformanceMonitor {
    * Record metrics to production service
    * @private
    */
-  _recordProductionMetrics(route, metrics) {
+  _recordProductionMetrics(route: string, metrics: PerfMetrics): void {
     // This could be extended to record specific metrics
     // For now, we rely on the existing MetricsService middleware
     // which tracks HTTP request duration
@@ -162,7 +196,7 @@ export class PerformanceMonitor {
    * Alert on slow requests
    * @private
    */
-  _alertSlowRequest(route, metrics) {
+  _alertSlowRequest(route: string, metrics: PerfMetrics): void {
     logger.warn('Request exceeded latency threshold', {
       route,
       total: metrics.total,
@@ -181,4 +215,3 @@ export class PerformanceMonitor {
     }
   }
 }
-
