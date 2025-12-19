@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Successfully implemented all 4 core fixes and 3 performance optimizations to eliminate the "fractured" span highlighting workflow. The system now trusts backend AI intelligence, uses diff-based DOM rendering to eliminate flickering, and includes comprehensive performance optimizations.
+Successfully implemented all 4 core fixes and 2 performance optimizations to eliminate the "fractured" span highlighting workflow. The system now trusts backend AI intelligence, uses diff-based DOM rendering to eliminate flickering, and includes comprehensive performance optimizations.
 
 ## Implemented Changes
 
@@ -124,33 +124,7 @@ Successfully implemented all 4 core fixes and 3 performance optimizations to eli
 
 ---
 
-### ✅ Optimization 3: Web Workers for Span Processing
-
-**Files:**
-- `client/src/features/span-highlighting/workers/spanProcessor.worker.js` (NEW)
-- `client/src/features/span-highlighting/hooks/useSpanWorker.js` (NEW)
-
-**Changes:**
-- Created Web Worker for background span processing
-- Worker handles:
-  - Structural validation
-  - Sorting by position
-  - Overlap detection and removal
-  - Confidence filtering
-  - Deduplication
-  - Truncation to maxSpans
-- Created React hook (`useSpanWorker`) with graceful fallback
-- Worker lifecycle managed automatically
-
-**Impact:**
-- Keeps main thread free for rendering
-- Non-blocking operations for expensive computations
-- Particularly beneficial with 50+ spans
-- Graceful degradation if workers not available
-
----
-
-### ✅ Optimization 4: Performance Testing Infrastructure
+### ✅ Optimization 3: Performance Testing Infrastructure
 
 **Files:**
 - `client/src/features/span-highlighting/utils/performanceTesting.js` (NEW)
@@ -269,11 +243,9 @@ Change detected → Compare by ID → Update only changed spans
 
 ### New Files
 1. `client/src/features/span-highlighting/hooks/useDebouncedValidation.js` - Debouncing
-2. `client/src/features/span-highlighting/workers/spanProcessor.worker.js` - Web Worker
-3. `client/src/features/span-highlighting/hooks/useSpanWorker.js` - Worker hook
-4. `client/src/features/span-highlighting/utils/performanceTesting.js` - Testing utils
-5. `client/src/features/span-highlighting/PERFORMANCE_TESTING.md` - Testing guide
-6. `SPAN_HIGHLIGHTING_IMPROVEMENTS_SUMMARY.md` - This document
+2. `client/src/features/span-highlighting/utils/performanceTesting.js` - Testing utils
+3. `client/src/features/span-highlighting/PERFORMANCE_TESTING.md` - Testing guide
+4. `SPAN_HIGHLIGHTING_IMPROVEMENTS_SUMMARY.md` - This document
 
 ---
 
@@ -300,10 +272,9 @@ None. All changes are backward compatible.
 - Dynamic taxonomy
 - Span IDs
 
-✅ **All 3 Performance Optimizations Implemented**
+✅ **All 2 Performance Optimizations Implemented**
 - BentoGrid memoization
 - Debounced validation
-- Web Workers
 
 ✅ **Testing Infrastructure Created**
 - Performance testing utilities
@@ -327,4 +298,3 @@ None. All changes are backward compatible.
 The span highlighting workflow has been transformed from a fractured, performance-limited system to a unified, high-performance implementation. The changes eliminate the core issues (AI rejection, DOM thrashing, taxonomy drift) while adding comprehensive performance optimizations and testing infrastructure.
 
 **Key Achievement:** The system now respects AI intelligence, renders smoothly with 50+ highlights, and maintains a single source of truth for taxonomy definitions.
-

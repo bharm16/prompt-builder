@@ -1,14 +1,20 @@
-import express from 'express';
+import express, { type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '../utils/requestHelpers.js';
 import { LLMJudgeService } from '../services/quality-feedback/services/LLMJudgeService.js';
+
+declare const require: NodeRequire;
+
+interface AIService {
+  [key: string]: unknown;
+}
 
 /**
  * Create suggestions route with dependency injection
  * @param {Object} aiService - AI Model Service instance
  * @returns {Router} Express router
  */
-export function createSuggestionsRoute(aiService) {
+export function createSuggestionsRoute(aiService: AIService): Router {
   const router = express.Router();
 
   // Initialize LLM Judge Service
@@ -98,7 +104,7 @@ router.post('/evaluate', async (req, res) => {
       evaluation,
       responseTime,
     });
-  } catch (error) {
+  } catch (error: any) {
     const responseTime = Math.round(performance.now() - startTime);
     const operation = 'evaluateSuggestions';
     const requestId = req.id;
@@ -181,7 +187,7 @@ router.post('/evaluate/single', async (req, res) => {
       evaluation,
       responseTime,
     });
-  } catch (error) {
+  } catch (error: any) {
     const responseTime = Math.round(performance.now() - startTime);
     
     logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
@@ -273,7 +279,7 @@ router.post('/evaluate/compare', async (req, res) => {
       comparison,
       responseTime,
     });
-  } catch (error) {
+  } catch (error: any) {
     const responseTime = Math.round(performance.now() - startTime);
     
     logger.error(`${operation} failed`, error instanceof Error ? error : new Error(String(error)), {
@@ -324,4 +330,3 @@ router.get('/rubrics', (req, res) => {
 
   return router;
 }
-

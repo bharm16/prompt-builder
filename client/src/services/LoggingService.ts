@@ -32,6 +32,10 @@ interface LoggerConfig {
   includeTimestamp: boolean;
   includeStackTrace: boolean;
   includeLogStack: boolean;
+  includeLogCaller: boolean;
+  logStackLevels: LogLevel[];
+  logStackDepth: number;
+  logStackLimit: number | null;
   persistToStorage: boolean;
   maxStoredLogs: number;
 }
@@ -49,20 +53,45 @@ class LoggingService {
   private config: LoggerConfig;
   private currentTraceId: string | null = null;
   private operationTimers: Map<string, number> = new Map();
+  private logStackLevels: Set<LogLevel>;
+  private logStackDepth: number;
+  private includeLogCaller: boolean;
 
   constructor(config?: Partial<LoggerConfig>) {
     const isDev = import.meta.env?.MODE === 'development';
+    const includeLogStack = isDev || import.meta.env?.VITE_LOG_STACK === 'true';
+    const stackLevels = config?.logStackLevels?.length
+      ? config.logStackLevels
+      : (import.meta.env?.VITE_LOG_STACK_LEVELS || 'warn,error')
+          .split(',')
+          .map((level) => level.trim().toLowerCase())
+          .filter(Boolean) as LogLevel[];
+    const resolvedStackLevels = stackLevels.length > 0 ? stackLevels : (['warn', 'error'] as LogLevel[]);
+    const stackDepth = config?.logStackDepth ?? Number.parseInt(import.meta.env?.VITE_LOG_STACK_DEPTH || '6', 10);
+    const stackLimit = config?.logStackLimit ?? Number.parseInt(import.meta.env?.VITE_LOG_STACK_LIMIT || '', 10);
+    const includeLogCaller = config?.includeLogCaller ??
+      (import.meta.env?.VITE_LOG_CALLER ? import.meta.env?.VITE_LOG_CALLER === 'true' : includeLogStack);
 
     this.config = {
       enabled: isDev || import.meta.env?.VITE_DEBUG_LOGGING === 'true',
       level: (import.meta.env?.VITE_LOG_LEVEL as LogLevel) || (isDev ? 'debug' : 'warn'),
       includeTimestamp: true,
       includeStackTrace: isDev,
-      includeLogStack: isDev || import.meta.env?.VITE_LOG_STACK === 'true',
+      includeLogStack,
+      includeLogCaller,
+      logStackLevels: resolvedStackLevels,
+      logStackDepth: stackDepth,
+      logStackLimit: Number.isFinite(stackLimit) && stackLimit > 0 ? stackLimit : null,
       persistToStorage: isDev,
       maxStoredLogs: 500,
       ...config,
     };
+    this.logStackLevels = new Set(this.config.logStackLevels);
+    this.logStackDepth = Number.isFinite(this.config.logStackDepth) && this.config.logStackDepth > 0
+      ? this.config.logStackDepth
+      : 6;
+    this.includeLogCaller = this.config.includeLogCaller;
+    this.applyStackTraceLimit(this.config.logStackLimit);
   }
 
   /**
@@ -141,8 +170,8 @@ class LoggingService {
     if (!this.config.enabled) return;
     if (LOG_LEVELS[level] < LOG_LEVELS[this.config.level]) return;
 
-    const logStack = this.config.includeLogStack ? this.captureLogStack() : undefined;
-    const finalMeta = logStack ? { ...(meta || {}), logStack } : meta;
+    const finalMeta = this.buildMeta(level, meta);
+    const metaForEntry = finalMeta && Object.keys(finalMeta).length > 0 ? finalMeta : undefined;
 
     const entry: LogEntry = {
       level,
@@ -150,7 +179,7 @@ class LoggingService {
       timestamp: new Date().toISOString(),
       traceId: this.currentTraceId || undefined,
       context,
-      meta: finalMeta,
+      meta: metaForEntry,
     };
 
     // Console output with styling
@@ -167,8 +196,8 @@ class LoggingService {
 
     const consoleMethod = level === 'debug' ? 'log' : level;
 
-    if (finalMeta && Object.keys(finalMeta).length > 0) {
-      console[consoleMethod](`%c${fullMessage}`, styles[level], finalMeta);
+    if (metaForEntry && Object.keys(metaForEntry).length > 0) {
+      console[consoleMethod](`%c${fullMessage}`, styles[level], metaForEntry);
     } else {
       console[consoleMethod](`%c${fullMessage}`, styles[level]);
     }
@@ -184,6 +213,33 @@ class LoggingService {
     }
   }
 
+  private buildMeta(level: LogLevel, meta?: Record<string, unknown>): Record<string, unknown> | undefined {
+    const enriched: Record<string, unknown> = { ...(meta || {}) };
+    const includeStack = this.shouldIncludeStack(level);
+    const includeCaller = this.includeLogCaller || includeStack;
+
+    if (!includeStack && !includeCaller) {
+      return meta;
+    }
+
+    const rawFrames = this.captureLogStack();
+    if (!rawFrames) return meta;
+
+    const { caller, frames } = this.filterStackFrames(rawFrames);
+    if (includeCaller && caller && enriched.caller === undefined) {
+      enriched.caller = caller;
+    }
+    if (includeStack && frames.length > 0 && enriched.logStack === undefined) {
+      enriched.logStack = frames.slice(0, this.logStackDepth);
+    }
+
+    return Object.keys(enriched).length > 0 ? enriched : undefined;
+  }
+
+  private shouldIncludeStack(level: LogLevel): boolean {
+    return this.config.includeLogStack && this.logStackLevels.has(level);
+  }
+
   private captureLogStack(): string[] | undefined {
     const stack = new Error().stack;
     if (!stack) return undefined;
@@ -197,6 +253,55 @@ class LoggingService {
     }
 
     return lines;
+  }
+
+  private filterStackFrames(frames: string[]): { caller?: string; frames: string[] } {
+    const normalized = frames
+      .map((frame) => this.normalizeStackFrame(frame))
+      .filter((frame): frame is string => Boolean(frame))
+      .filter((frame) => !this.isNoiseFrame(frame));
+
+    const appFrames = normalized.filter((frame) => this.isAppFrame(frame));
+    const selected = appFrames.length > 0 ? appFrames : normalized;
+
+    return {
+      caller: selected[0],
+      frames: selected,
+    };
+  }
+
+  private normalizeStackFrame(frame: string): string | undefined {
+    let line = frame.trim();
+    if (!line) return undefined;
+    if (line.startsWith('at ')) {
+      line = line.slice(3);
+    }
+
+    line = line.replace(/file:\/\//g, '');
+    line = line.replace(/https?:\/\/[^/]+\//g, '');
+    line = line.replace(/webpack:\/\//g, '');
+    line = line.replace(/\(\/+/g, '(');
+    line = line.replace(/^\/+/, '');
+
+    return line;
+  }
+
+  private isNoiseFrame(frame: string): boolean {
+    return (
+      frame.includes('node_modules') ||
+      frame.includes('LoggingService.') ||
+      frame.includes('client/src/services/LoggingService.ts')
+    );
+  }
+
+  private isAppFrame(frame: string): boolean {
+    return frame.includes('/src/') || frame.startsWith('src/') || frame.includes('client/src/');
+  }
+
+  private applyStackTraceLimit(limit: number | null): void {
+    if (!limit) return;
+    const errorWithLimit = Error as unknown as { stackTraceLimit?: number };
+    errorWithLimit.stackTraceLimit = limit;
   }
 
   /**

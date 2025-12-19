@@ -1,14 +1,28 @@
-import express from 'express';
+import express, { type Router } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
 import { logger } from '@infrastructure/Logger.js';
+
+interface HealthDependencies {
+  claudeClient: { getStats: () => { state: string } };
+  groqClient?: { getStats: () => { state: string } } | null;
+  geminiClient?: { getStats: () => { state: string } } | null;
+  cacheService: {
+    isHealthy: () => boolean;
+    getCacheStats: () => unknown;
+  };
+  metricsService: {
+    register: { contentType: string };
+    getMetrics: () => Promise<string>;
+  };
+}
 
 /**
  * Create health check routes
  * @param {Object} dependencies - Service dependencies
  * @returns {Router} Express router
  */
-export function createHealthRoutes(dependencies) {
+export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
   const { claudeClient, groqClient, geminiClient, cacheService, metricsService } = dependencies;
 

@@ -8,8 +8,11 @@
  * - Resource cleanup
  */
 
+import type { Application } from 'express';
+import type { Server } from 'http';
 import { logger } from './infrastructure/Logger.ts';
 import { closeRedisClient } from './config/redis.ts';
+import type { DIContainer } from './infrastructure/DIContainer.ts';
 
 /**
  * Start the HTTP server
@@ -18,7 +21,10 @@ import { closeRedisClient } from './config/redis.ts';
  * @param {DIContainer} container - Dependency injection container
  * @returns {Promise<http.Server>} The HTTP server instance
  */
-export async function startServer(app, container) {
+export async function startServer(
+  app: Application,
+  container: DIContainer
+): Promise<Server> {
   const config = container.resolve('config');
   const PORT = config.server.port;
 
@@ -48,7 +54,7 @@ export async function startServer(app, container) {
         reject(error);
       });
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to start server', error);
       reject(error);
     }
@@ -61,8 +67,8 @@ export async function startServer(app, container) {
  * @param {http.Server} server - HTTP server instance
  * @param {DIContainer} container - Dependency injection container
  */
-export function setupGracefulShutdown(server, container) {
-  const shutdown = async (signal) => {
+export function setupGracefulShutdown(server: Server, container: DIContainer): void {
+  const shutdown = async (signal: string) => {
     logger.info(`${signal} signal received: closing HTTP server`);
 
     // Stop accepting new connections
@@ -82,7 +88,7 @@ export function setupGracefulShutdown(server, container) {
 
         logger.info('All resources cleaned up successfully');
         process.exit(0);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Error during graceful shutdown', error);
         process.exit(1);
       }

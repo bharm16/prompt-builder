@@ -10,9 +10,10 @@
  * and returns a configured Express app.
  */
 
-import express from 'express';
+import express, { type Application } from 'express';
 import { configureMiddleware } from './config/middleware.config.ts';
 import { configureRoutes } from './config/routes.config.ts';
+import type { DIContainer } from '@infrastructure/DIContainer';
 
 /**
  * Create and configure the Express application
@@ -20,7 +21,7 @@ import { configureRoutes } from './config/routes.config.ts';
  * @param {DIContainer} container - Dependency injection container with all services
  * @returns {express.Application} Configured Express app
  */
-export function createApp(container) {
+export function createApp(container: DIContainer): Application {
   const app = express();
 
   // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress

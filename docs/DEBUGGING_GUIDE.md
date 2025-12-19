@@ -78,8 +78,8 @@ logger.startTimer('fetchData');
 logger.endTimer('fetchData'); // Logs duration
 ```
 
-### Stack Traces on Every Log
-Attach call stacks to all log entries (useful for seeing which files/functions are active):
+### Stack Traces and Callers
+Attach call stacks (and a short caller line) to log entries for file/function visibility:
 
 ```bash
 # Frontend
@@ -89,7 +89,28 @@ VITE_LOG_STACK=true
 LOG_STACK=true
 ```
 
-Each log will include a `logStack` field with the call stack.
+Defaults:
+- `logStack` only on `warn`/`error`
+- `caller` on all logs when stack capture is enabled
+
+Optional tuning:
+```bash
+# Include stacks for debug/info too
+VITE_LOG_STACK_LEVELS=debug,info,warn,error
+LOG_STACK_LEVELS=debug,info,warn,error
+
+# Limit stack depth
+VITE_LOG_STACK_DEPTH=4
+LOG_STACK_DEPTH=4
+
+# Increase stack trace limit (default is low)
+VITE_LOG_STACK_LIMIT=50
+LOG_STACK_LIMIT=50
+
+# Disable caller if you only want full stacks
+VITE_LOG_CALLER=false
+LOG_CALLER=false
+```
 
 ### React Component Debugging
 ```typescript

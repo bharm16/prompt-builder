@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validateRequest } from '../middleware/validateRequest.js';
@@ -18,12 +18,21 @@ import {
 } from '../utils/validation.js';
 import { extractSemanticSpans } from '../services/nlp/NlpSpanService.js';
 
+interface ApiServices {
+  promptOptimizationService: any;
+  enhancementService: any;
+  sceneDetectionService: any;
+  videoConceptService: any;
+  textCategorizerService: any;
+  metricsService?: any;
+}
+
 /**
  * Create API routes
  * @param {Object} services - Service instances
  * @returns {Router} Express router
  */
-export function createAPIRoutes(services) {
+export function createAPIRoutes(services: ApiServices): Router {
   const router = express.Router();
 
   const {
@@ -78,7 +87,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json({ optimizedPrompt });
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Optimize request failed', error, {
           operation,
           requestId,
@@ -106,7 +115,7 @@ export function createAPIRoutes(services) {
       res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
       // Helper to send SSE message
-      const sendEvent = (eventType, data) => {
+      const sendEvent = (eventType: string, data: unknown): void => {
         res.write(`event: ${eventType}\n`);
         res.write(`data: ${JSON.stringify(data)}\n\n`);
       };
@@ -134,7 +143,10 @@ export function createAPIRoutes(services) {
           context,
           brainstormContext,
           // Stream draft AND spans to client immediately when ready
-          onDraft: (draft, spans) => {
+          onDraft: (
+            draft: string,
+            spans: { spans?: unknown[]; meta?: unknown } | null
+          ): void => {
             // Send draft text
             sendEvent('draft', {
               draft,
@@ -187,7 +199,7 @@ export function createAPIRoutes(services) {
         });
 
         res.end();
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Optimize-stream request failed', error, {
           operation,
           requestId,
@@ -245,7 +257,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(result);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Video suggestions request failed', error, {
           operation,
           requestId,
@@ -303,7 +315,7 @@ export function createAPIRoutes(services) {
           compatibility,
           conflicts: conflictResult?.conflicts || [],
         });
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Video validate request failed', error, {
           operation,
           requestId,
@@ -359,7 +371,7 @@ export function createAPIRoutes(services) {
           suggestions: completion.suggestions,
           smartDefaults,
         });
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Video complete request failed', error, {
           operation,
           requestId,
@@ -402,7 +414,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(variations);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Video variations request failed', error, {
           operation,
           requestId,
@@ -441,7 +453,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(parsed);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Video parse request failed', error, {
           operation,
           requestId,
@@ -480,7 +492,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json({ spans });
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Semantic parse request failed', error, {
           operation,
           requestId,
@@ -570,7 +582,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(result);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Enhancement suggestions request failed', error, {
           operation,
           requestId,
@@ -616,7 +628,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(result);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Custom suggestions request failed', error, {
           operation,
           requestId,
@@ -675,7 +687,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(result);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Scene change detection request failed', error, {
           operation,
           requestId,
@@ -722,7 +734,7 @@ export function createAPIRoutes(services) {
         });
 
         res.json(result);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('NLP test request failed', error, {
           operation,
           requestId,

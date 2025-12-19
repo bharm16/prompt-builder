@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { runWithRequestContext } from '../infrastructure/requestContext.js';
 
 /**
  * Middleware to add unique request ID to each request
@@ -11,5 +12,5 @@ export function requestIdMiddleware(req, res, next) {
   // Set response header
   res.setHeader('X-Request-ID', req.id);
 
-  next();
+  runWithRequestContext({ requestId: req.id }, () => next());
 }

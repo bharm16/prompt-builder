@@ -2,10 +2,17 @@ import pino from 'pino';
 import pinoPretty from 'pino-pretty';
 import type { Request, Response, NextFunction } from 'express';
 import type { ILogger } from '@interfaces/ILogger';
+import { getRequestContext } from './requestContext.js';
+
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LoggerConfig {
   level?: string;
   includeLogStack?: boolean;
+  includeLogCaller?: boolean;
+  logStackLevels?: LogLevel[];
+  logStackDepth?: number;
+  logStackLimit?: number;
 }
 
 /**
@@ -15,11 +22,25 @@ interface LoggerConfig {
 export class Logger implements ILogger {
   private logger: pino.Logger;
   private includeLogStack: boolean;
+  private includeLogCaller: boolean;
+  private logStackLevels: Set<LogLevel>;
+  private logStackDepth: number;
+  private appRoot: string;
 
   constructor(config: LoggerConfig = {}) {
     // Default to 'debug' in development, 'info' in production (Requirement 8.1, 8.2)
     const defaultLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
-    
+    const includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
+    const stackLevels = config.logStackLevels?.length
+      ? config.logStackLevels
+      : (process.env.LOG_STACK_LEVELS || 'warn,error')
+          .split(',')
+          .map((level) => level.trim().toLowerCase())
+          .filter(Boolean) as LogLevel[];
+    const resolvedStackLevels = stackLevels.length > 0 ? stackLevels : (['warn', 'error'] as LogLevel[]);
+    const stackDepthEnv = config.logStackDepth ?? Number.parseInt(process.env.LOG_STACK_DEPTH || '6', 10);
+    const stackLimitEnv = config.logStackLimit ?? Number.parseInt(process.env.LOG_STACK_LIMIT || '', 10);
+
     if (process.env.NODE_ENV !== 'production') {
       const prettyStream = pinoPretty({
         colorize: true,
@@ -40,11 +61,16 @@ export class Logger implements ILogger {
         level: config.level || process.env.LOG_LEVEL || defaultLevel,
       });
     }
-    this.includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
+    this.includeLogStack = includeLogStack;
+    this.includeLogCaller = config.includeLogCaller ?? (process.env.LOG_CALLER ? process.env.LOG_CALLER === 'true' : includeLogStack);
+    this.logStackLevels = new Set(resolvedStackLevels);
+    this.logStackDepth = Number.isFinite(stackDepthEnv) && stackDepthEnv > 0 ? stackDepthEnv : 6;
+    this.appRoot = process.cwd();
+    this.applyStackTraceLimit(stackLimitEnv);
   }
 
   info(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.info(this.withLogStack(meta), message);
+    this.logger.info(this.enrichMeta('info', meta), message);
   }
 
   error(message: string, error?: Error, meta: Record<string, unknown> = {}): void {
@@ -56,15 +82,15 @@ export class Logger implements ILogger {
         ...error,
       },
     } : {};
-    this.logger.error({ ...this.withLogStack(meta), ...errorMeta }, message);
+    this.logger.error({ ...this.enrichMeta('error', meta), ...errorMeta }, message);
   }
 
   warn(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.warn(this.withLogStack(meta), message);
+    this.logger.warn(this.enrichMeta('warn', meta), message);
   }
 
   debug(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.debug(this.withLogStack(meta), message);
+    this.logger.debug(this.enrichMeta('debug', meta), message);
   }
 
   /**
@@ -109,10 +135,35 @@ export class Logger implements ILogger {
     return childLogger;
   }
 
-  private withLogStack(meta: Record<string, unknown>): Record<string, unknown> {
-    if (!this.includeLogStack) return meta;
-    const logStack = this.captureLogStack();
-    return logStack ? { ...meta, logStack } : meta;
+  private enrichMeta(level: LogLevel, meta: Record<string, unknown>): Record<string, unknown> {
+    const enriched = { ...meta };
+    const context = getRequestContext();
+    if (context?.requestId && enriched.requestId === undefined) {
+      enriched.requestId = context.requestId;
+    }
+
+    const includeStack = this.shouldIncludeStack(level);
+    const includeCaller = this.includeLogCaller || includeStack;
+    if (!includeStack && !includeCaller) {
+      return enriched;
+    }
+
+    const rawFrames = this.captureLogStack();
+    if (!rawFrames) return enriched;
+
+    const { caller, frames } = this.filterStackFrames(rawFrames);
+    if (includeCaller && caller && enriched.caller === undefined) {
+      enriched.caller = caller;
+    }
+    if (includeStack && frames.length > 0 && enriched.logStack === undefined) {
+      enriched.logStack = frames.slice(0, this.logStackDepth);
+    }
+
+    return enriched;
+  }
+
+  private shouldIncludeStack(level: LogLevel): boolean {
+    return this.includeLogStack && this.logStackLevels.has(level);
   }
 
   private captureLogStack(): string[] | undefined {
@@ -128,6 +179,62 @@ export class Logger implements ILogger {
     }
 
     return lines;
+  }
+
+  private filterStackFrames(frames: string[]): { caller?: string; frames: string[] } {
+    const normalized = frames
+      .map((frame) => this.normalizeStackFrame(frame))
+      .filter((frame): frame is string => Boolean(frame))
+      .filter((frame) => !this.isNoiseFrame(frame));
+
+    const appFrames = normalized.filter((frame) => this.isAppFrame(frame));
+    const selected = appFrames.length > 0 ? appFrames : normalized;
+
+    return {
+      caller: selected[0],
+      frames: selected,
+    };
+  }
+
+  private normalizeStackFrame(frame: string): string | undefined {
+    let line = frame.trim();
+    if (!line) return undefined;
+    if (line.startsWith('at ')) {
+      line = line.slice(3);
+    }
+
+    line = line.replace('file://', '');
+
+    if (this.appRoot) {
+      line = line.replaceAll(this.appRoot, '');
+    }
+
+    line = line.replace(/\(\/+/g, '(');
+    line = line.replace(/^\/+/, '');
+
+    return line;
+  }
+
+  private isNoiseFrame(frame: string): boolean {
+    return (
+      frame.includes('node:internal') ||
+      frame.includes('internal/modules') ||
+      frame.includes('node_modules') ||
+      frame.includes('processTicksAndRejections') ||
+      frame.includes('server/src/infrastructure/Logger.') ||
+      frame.includes('server/src/infrastructure/Logger.ts') ||
+      frame.includes('server/src/infrastructure/requestContext.')
+    );
+  }
+
+  private isAppFrame(frame: string): boolean {
+    return frame.includes('server/src/') || frame.includes('server/index.');
+  }
+
+  private applyStackTraceLimit(limit: number): void {
+    if (!Number.isFinite(limit) || limit <= 0) return;
+    const errorWithLimit = Error as unknown as { stackTraceLimit?: number };
+    errorWithLimit.stackTraceLimit = limit;
   }
 }
 
