@@ -1,0 +1,66 @@
+/* PromptInputLayout - Input View Layout Styles
+ * Completely isolated CSS for input view
+ * No shared classes with PromptResultsLayout
+ */
+
+.prompt-input-layout {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--geist-background);
+  transition: background-color 0.3s;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  gap: 0;
+}
+
+.prompt-input-layout__main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: all 0.3s;
+  min-width: 0;
+}
+
+.prompt-input-layout__content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .prompt-input-layout__content {
+    padding: 2rem 1.5rem;
+  }
+}
+
+.prompt-input-layout__footer {
+  margin-top: auto;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.prompt-input-layout__footer-link {
+  font-size: 0.875rem;
+  color: rgb(115, 115, 115);
+  transition: color 0.2s;
+}
+
+.prompt-input-layout__footer-link:hover {
+  color: rgb(38, 38, 38);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

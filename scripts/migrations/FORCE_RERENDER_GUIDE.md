@@ -1,6 +1,6 @@
 # Force Highlight Rerender - Quick Reference Guide
 
-This guide provides common usage patterns for the `force-highlight-rerender.js` migration script.
+This guide provides common usage patterns for the `force-highlight-rerender.ts` migration script.
 
 ## Common Use Cases
 
@@ -11,13 +11,13 @@ This guide provides common usage patterns for the `force-highlight-rerender.js` 
 **Recommended Approach**:
 ```bash
 # Step 1: Test on a small sample
-node scripts/migrations/force-highlight-rerender.js --limit=10 --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --limit=10 --dry-run
 
 # Step 2: Clear cache for all prompts (fast, ~1 second per prompt)
-node scripts/migrations/force-highlight-rerender.js --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 
 # Step 3 (Optional): Regenerate immediately for production
-node scripts/migrations/force-highlight-rerender.js --mode=regenerate
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=regenerate
 ```
 
 **Why Clear Mode?**
@@ -33,7 +33,7 @@ node scripts/migrations/force-highlight-rerender.js --mode=regenerate
 **Recommended Approach**:
 ```bash
 # Regenerate all highlights immediately
-node scripts/migrations/force-highlight-rerender.js --mode=regenerate
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=regenerate
 
 # This ensures all prompts have fresh highlights before users access them
 ```
@@ -50,13 +50,13 @@ node scripts/migrations/force-highlight-rerender.js --mode=regenerate
 
 ```bash
 # Dry run first
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --userId=abc123 \
   --mode=clear \
   --dry-run
 
 # Apply changes
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --userId=abc123 \
   --mode=clear
 ```
@@ -67,17 +67,17 @@ node scripts/migrations/force-highlight-rerender.js \
 
 ```bash
 # Phase 1: Test with 100 prompts
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --limit=100 \
   --mode=clear \
   --dry-run
 
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --limit=100 \
   --mode=clear
 
 # Phase 2: Monitor for issues, then roll out to all
-node scripts/migrations/force-highlight-rerender.js --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 ```
 
 ## Mode Comparison
@@ -110,12 +110,12 @@ node scripts/migrations/force-highlight-rerender.js --mode=clear
 # In your CI/CD pipeline after deploying algorithm updates:
 
 # Option 1: Fast clear (recommended)
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --mode=clear \
   2>&1 | tee logs/highlight-rerender-$(date +%Y%m%d).log
 
 # Option 2: Pre-warm cache (optional, run during off-peak)
-node scripts/migrations/force-highlight-rerender.js \
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
   --mode=regenerate \
   --batch-size=20 \
   2>&1 | tee logs/highlight-regen-$(date +%Y%m%d).log
@@ -129,10 +129,10 @@ git pull origin main
 npm run build
 
 # 2. Clear all highlight caches
-node scripts/migrations/force-highlight-rerender.js --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 
 # 3. (Optional) Backfill any missing highlights
-node scripts/migrations/backfill-highlight-cache.js
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
 
 # Done! Highlights will regenerate with new algorithm on next load
 ```
@@ -204,9 +204,9 @@ The script includes built-in safety features:
 
 ## Related Scripts
 
-- **Backfill missing highlights**: `backfill-highlight-cache.js`
-- **Verify API keys**: `verify-api-keys.js`  
-- **Performance monitoring**: `get-highlight-stats.js`
+- **Backfill missing highlights**: `backfill-highlight-cache.ts`
+- **Verify API keys**: `verify-api-keys.ts`  
+- **Performance monitoring**: `get-highlight-stats.ts`
 
 ## Questions?
 

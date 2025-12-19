@@ -1,0 +1,518 @@
+{
+  "results": [
+    {
+      "testName": "Camera vs Action Disambiguation",
+      "duration": 1798,
+      "spanCount": 5,
+      "textMismatch": {
+        "exactMatchRate": 0,
+        "fuzzyMatchRate": 0,
+        "failureRate": 0,
+        "mismatchedSpans": 0,
+        "telemetry": {
+          "exactMatches": 0,
+          "caseInsensitiveMatches": 0,
+          "fuzzyMatches": 0,
+          "failures": 0,
+          "totalRequests": 0
+        }
+      },
+      "wrongCategories": {
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
+        "missingSpanCount": 0,
+        "antiPatternCount": 0
+      },
+      "missingSpans": {
+        "missingCount": 0,
+        "missingSpans": []
+      },
+      "hallucinated": {
+        "hallucinatedCount": 0,
+        "hallucinatedSpans": []
+      },
+      "jsonParse": {
+        "hasSchemaErrors": false,
+        "repairTriggered": false,
+        "jsonParseError": false
+      },
+      "fragmentation": {
+        "fragmentationIssues": [],
+        "fragmentationCount": 0,
+        "expectedFragmentationViolations": 0,
+        "mergeableCount": 0,
+        "mergeNotes": []
+      },
+      "repairTriggered": false,
+      "spans": [
+        {
+          "text": "camera slowly pans right",
+          "role": "camera.movement",
+          "confidence": 0.8812500000000001,
+          "start": 4,
+          "end": 28
+        },
+        {
+          "text": "the actor",
+          "role": "subject.identity",
+          "confidence": 0.825,
+          "start": 32,
+          "end": 41
+        },
+        {
+          "text": "walks",
+          "role": "action.movement",
+          "confidence": 0.9,
+          "start": 42,
+          "end": 47
+        },
+        {
+          "text": "across",
+          "role": "environment.location",
+          "confidence": 0.85,
+          "start": 48,
+          "end": 54
+        },
+        {
+          "text": "stage",
+          "role": "environment.location",
+          "confidence": 0.9,
+          "start": 59,
+          "end": 64
+        }
+      ]
+    },
+    {
+      "testName": "Shot Type Detection",
+      "duration": 478,
+      "spanCount": 4,
+      "textMismatch": {
+        "exactMatchRate": 0,
+        "fuzzyMatchRate": 0,
+        "failureRate": 0,
+        "mismatchedSpans": 0,
+        "telemetry": {
+          "exactMatches": 0,
+          "caseInsensitiveMatches": 0,
+          "fuzzyMatches": 0,
+          "failures": 0,
+          "totalRequests": 0
+        }
+      },
+      "wrongCategories": {
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
+        "missingSpanCount": 0,
+        "antiPatternCount": 0
+      },
+      "missingSpans": {
+        "missingCount": 0,
+        "missingSpans": []
+      },
+      "hallucinated": {
+        "hallucinatedCount": 0,
+        "hallucinatedSpans": []
+      },
+      "jsonParse": {
+        "hasSchemaErrors": false,
+        "repairTriggered": false,
+        "jsonParseError": false
+      },
+      "fragmentation": {
+        "fragmentationIssues": [],
+        "fragmentationCount": 0,
+        "expectedFragmentationViolations": 0,
+        "mergeableCount": 0,
+        "mergeNotes": []
+      },
+      "repairTriggered": false,
+      "spans": [
+        {
+          "text": "Close-up shot",
+          "role": "shot.type",
+          "confidence": 0.95,
+          "start": 0,
+          "end": 13
+        },
+        {
+          "text": "detective",
+          "role": "subject.identity",
+          "confidence": 0.9,
+          "start": 19,
+          "end": 28
+        },
+        {
+          "text": "weathered hands",
+          "role": "subject.appearance",
+          "confidence": 0.9,
+          "start": 31,
+          "end": 46
+        },
+        {
+          "text": "holding a vintage camera",
+          "role": "action.movement",
+          "confidence": 0.88,
+          "start": 47,
+          "end": 71
+        }
+      ]
+    },
+    {
+      "testName": "Technical Specs Extraction",
+      "duration": 544,
+      "spanCount": 4,
+      "textMismatch": {
+        "exactMatchRate": 0,
+        "fuzzyMatchRate": 0,
+        "failureRate": 0,
+        "mismatchedSpans": 0,
+        "telemetry": {
+          "exactMatches": 0,
+          "caseInsensitiveMatches": 0,
+          "fuzzyMatches": 0,
+          "failures": 0,
+          "totalRequests": 0
+        }
+      },
+      "wrongCategories": {
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
+        "missingSpanCount": 0,
+        "antiPatternCount": 0
+      },
+      "missingSpans": {
+        "missingCount": 0,
+        "missingSpans": []
+      },
+      "hallucinated": {
+        "hallucinatedCount": 0,
+        "hallucinatedSpans": []
+      },
+      "jsonParse": {
+        "hasSchemaErrors": false,
+        "repairTriggered": false,
+        "jsonParseError": false
+      },
+      "fragmentation": {
+        "fragmentationIssues": [],
+        "fragmentationCount": 0,
+        "expectedFragmentationViolations": 0,
+        "mergeableCount": 0,
+        "mergeNotes": []
+      },
+      "repairTriggered": false,
+      "spans": [
+        {
+          "text": "4-8s",
+          "role": "technical.duration",
+          "confidence": 1,
+          "start": 36,
+          "end": 40
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 61,
+          "end": 65
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 84,
+          "end": 89
+        },
+        {
+          "text": "Natural ambience",
+          "role": "audio.score",
+          "confidence": 1,
+          "start": 103,
+          "end": 119
+        }
+      ]
+    },
+    {
+      "testName": "Fragmentation Test",
+      "duration": 1044,
+      "spanCount": 4,
+      "textMismatch": {
+        "exactMatchRate": 0,
+        "fuzzyMatchRate": 0,
+        "failureRate": 0,
+        "mismatchedSpans": 0,
+        "telemetry": {
+          "exactMatches": 0,
+          "caseInsensitiveMatches": 0,
+          "fuzzyMatches": 0,
+          "failures": 0,
+          "totalRequests": 0
+        }
+      },
+      "wrongCategories": {
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
+        "missingSpanCount": 0,
+        "antiPatternCount": 0
+      },
+      "missingSpans": {
+        "missingCount": 0,
+        "missingSpans": []
+      },
+      "hallucinated": {
+        "hallucinatedCount": 0,
+        "hallucinatedSpans": []
+      },
+      "jsonParse": {
+        "hasSchemaErrors": false,
+        "repairTriggered": false,
+        "jsonParseError": false
+      },
+      "fragmentation": {
+        "fragmentationIssues": [],
+        "fragmentationCount": 0,
+        "expectedFragmentationViolations": 0,
+        "mergeableCount": 0,
+        "mergeNotes": []
+      },
+      "repairTriggered": false,
+      "spans": [
+        {
+          "text": "Action shot",
+          "role": "shot.type",
+          "confidence": 0.95,
+          "start": 0,
+          "end": 11
+        },
+        {
+          "text": "a dog",
+          "role": "subject.wardrobe",
+          "confidence": 0.8,
+          "start": 15,
+          "end": 20
+        },
+        {
+          "text": "running through",
+          "role": "action.movement",
+          "confidence": 0.81,
+          "start": 21,
+          "end": 36
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.85,
+          "start": 39,
+          "end": 43
+        }
+      ]
+    },
+    {
+      "testName": "Complex Multi-Section",
+      "duration": 1808,
+      "spanCount": 14,
+      "textMismatch": {
+        "exactMatchRate": 0,
+        "fuzzyMatchRate": 0,
+        "failureRate": 0,
+        "mismatchedSpans": 0,
+        "telemetry": {
+          "exactMatches": 0,
+          "caseInsensitiveMatches": 0,
+          "fuzzyMatches": 0,
+          "failures": 0,
+          "totalRequests": 0
+        }
+      },
+      "wrongCategories": {
+        "wrongCategories": [],
+        "wrongCategoryCount": 0,
+        "missingSpanCount": 0,
+        "antiPatternCount": 0
+      },
+      "missingSpans": {
+        "missingCount": 0,
+        "missingSpans": []
+      },
+      "hallucinated": {
+        "hallucinatedCount": 0,
+        "hallucinatedSpans": []
+      },
+      "jsonParse": {
+        "hasSchemaErrors": false,
+        "repairTriggered": false,
+        "jsonParseError": false
+      },
+      "fragmentation": {
+        "fragmentationIssues": [
+          {
+            "fragments": [
+              "as fallen leaves swirl around him",
+              "in the brisk wind"
+            ],
+            "merged": "as fallen leaves swirl around him in the brisk wind",
+            "gap": " ",
+            "role": "environment.weather"
+          },
+          {
+            "fragments": [
+              "The camera slowly pans in from a distance",
+              "capturing the tension and urgency of the moment"
+            ],
+            "merged": "The camera slowly pans in from a distance, capturing the tension and urgency of the moment",
+            "gap": ", ",
+            "role": "camera.movement"
+          }
+        ],
+        "fragmentationCount": 2,
+        "expectedFragmentationViolations": 0,
+        "mergeableCount": 0,
+        "mergeNotes": []
+      },
+      "repairTriggered": false,
+      "spans": [
+        {
+          "text": "Wide shot",
+          "role": "shot.type",
+          "confidence": 0.95,
+          "start": 0,
+          "end": 9
+        },
+        {
+          "text": "George Washington",
+          "role": "subject.identity",
+          "confidence": 0.9,
+          "start": 13,
+          "end": 30
+        },
+        {
+          "text": "standing amidst a leaf-strewn battlefield",
+          "role": "environment.location",
+          "confidence": 0.9,
+          "start": 75,
+          "end": 116
+        },
+        {
+          "text": "under overcast skies",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.8,
+          "start": 117,
+          "end": 137
+        },
+        {
+          "text": "He gestures emphatically",
+          "role": "action.movement",
+          "confidence": 0.9,
+          "start": 139,
+          "end": 163
+        },
+        {
+          "text": "to soldiers",
+          "role": "subject.identity",
+          "confidence": 0.8,
+          "start": 164,
+          "end": 175
+        },
+        {
+          "text": "rallying their spirits",
+          "role": "action.movement",
+          "confidence": 0.8,
+          "start": 177,
+          "end": 199
+        },
+        {
+          "text": "as fallen leaves swirl around him",
+          "role": "environment.weather",
+          "confidence": 0.85,
+          "start": 200,
+          "end": 233
+        },
+        {
+          "text": "in the brisk wind",
+          "role": "environment.weather",
+          "confidence": 0.8,
+          "start": 234,
+          "end": 251
+        },
+        {
+          "text": "The camera slowly pans in from a distance",
+          "role": "camera.movement",
+          "confidence": 0.8500000000000001,
+          "start": 253,
+          "end": 294
+        },
+        {
+          "text": "capturing the tension and urgency of the moment",
+          "role": "camera.movement",
+          "confidence": 0.85,
+          "start": 296,
+          "end": 343
+        },
+        {
+          "text": "4-8s",
+          "role": "technical.duration",
+          "confidence": 0.95,
+          "start": 382,
+          "end": 386
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 0.95,
+          "start": 407,
+          "end": 411
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 0.95,
+          "start": 430,
+          "end": 435
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalTests": 5,
+    "textMismatch": {
+      "count": 0,
+      "rate": 0
+    },
+    "wrongCategories": {
+      "count": 0,
+      "rate": 0
+    },
+    "missingSpans": {
+      "count": 0,
+      "rate": 0
+    },
+    "hallucinatedText": {
+      "count": 0,
+      "rate": 0
+    },
+    "jsonParseFailures": {
+      "count": 0,
+      "rate": 0
+    },
+    "fragmentation": {
+      "count": 1,
+      "rate": 0.2
+    },
+    "repairLoopTriggered": {
+      "count": 0,
+      "rate": 0
+    },
+    "performance": {
+      "avg": 1134.4,
+      "p95": 1808,
+      "p99": 1808,
+      "timings": [
+        1798,
+        478,
+        544,
+        1044,
+        1808
+      ]
+    }
+  }
+}

@@ -1,0 +1,426 @@
+/**
+ * PromptOptimizerContainer - Main Orchestrator
+ *
+ * Refactored to delegate business logic to specialized hooks.
+ * This component focuses on:
+ * - Coordinating hooks
+ * - Rendering UI sections
+ * - Wiring event handlers
+ */
+
+import React, { useMemo } from 'react';
+import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
+import { PromptInputSection } from '../components/PromptInputSection';
+import { PromptResultsSection } from '../components/PromptResultsSection';
+import { PromptModals } from '../components/PromptModals';
+import { PromptTopBar } from '../components/PromptTopBar';
+import { PromptSidebar } from '../components/PromptSidebar';
+import SuggestionsPanel from '@components/SuggestionsPanel';
+import DebugButton from '@components/DebugButton';
+import { useToast } from '@components/Toast';
+import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
+import { getAuthRepository } from '@/repositories';
+import { useDebugLogger } from '@hooks/useDebugLogger';
+import {
+  usePromptLoader,
+  useHighlightsPersistence,
+  useUndoRedo,
+  usePromptOptimization,
+  useImprovementFlow,
+  useConceptBrainstorm,
+  useEnhancementSuggestions,
+} from './hooks';
+import type { User } from '../context/types';
+
+/**
+ * Inner component with access to PromptStateContext
+ */
+function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
+  const debug = useDebugLogger('PromptOptimizerContent', { user: user ? 'authenticated' : 'anonymous' });
+
+  // Force light mode immediately
+  React.useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    debug.logEffect('Light mode enforced');
+  }, []);
+
+  const toast = useToast();
+  const {
+    // State
+    selectedMode,
+    showResults,
+    showSettings,
+    setShowSettings,
+    showShortcuts,
+    setShowShortcuts,
+    showHistory,
+    setShowHistory,
+    showImprover,
+    setShowImprover,
+    showBrainstorm,
+    setShowBrainstorm,
+    suggestionsData,
+    setSuggestionsData,
+    setConceptElements,
+    promptContext,
+    setPromptContext,
+    currentPromptUuid,
+    currentPromptDocId,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    setShowResults,
+    setCanUndo,
+    setCanRedo,
+
+    // Refs
+    latestHighlightRef,
+    persistedSignatureRef,
+    undoStackRef,
+    redoStackRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+
+    // Hooks
+    promptOptimizer,
+    promptHistory,
+
+    // Functions
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    setDisplayedPromptSilently,
+    handleCreateNew,
+
+    // Navigation
+    navigate,
+    uuid,
+  } = usePromptState();
+
+  const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'] as const;
+
+  // Stabilize promptContext to prevent infinite loops
+  const stablePromptContext = useMemo(() => {
+    if (!promptContext) return null;
+    return promptContext;
+  }, [
+    promptContext?.elements?.subject,
+    promptContext?.elements?.action,
+    promptContext?.elements?.location,
+    promptContext?.elements?.time,
+    promptContext?.elements?.mood,
+    promptContext?.elements?.style,
+    promptContext?.elements?.event,
+    promptContext?.metadata?.format,
+    promptContext?.version,
+  ]);
+
+  // ============================================================================
+  // Custom Hooks - Business Logic Delegation
+  // ============================================================================
+
+  // Load prompt from URL parameter
+  usePromptLoader({
+    uuid,
+    currentPromptUuid,
+    navigate,
+    toast,
+    promptOptimizer,
+    setDisplayedPromptSilently,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    setCurrentPromptDocId,
+    setCurrentPromptUuid,
+    setShowResults,
+    setPromptContext,
+    skipLoadFromUrlRef,
+  });
+
+  // Highlights persistence
+  const { handleHighlightsPersist } = useHighlightsPersistence({
+    currentPromptUuid,
+    currentPromptDocId,
+    user,
+    toast,
+    applyInitialHighlightSnapshot,
+    promptHistory,
+    latestHighlightRef,
+    persistedSignatureRef,
+  });
+
+  // Undo/Redo functionality
+  const { handleUndo, handleRedo, handleDisplayedPromptChange } = useUndoRedo({
+    promptOptimizer,
+    setDisplayedPromptSilently,
+    applyInitialHighlightSnapshot,
+    undoStackRef,
+    redoStackRef,
+    latestHighlightRef,
+    isApplyingHistoryRef,
+    setCanUndo,
+    setCanRedo,
+  });
+
+  // Prompt optimization
+  const { handleOptimize } = usePromptOptimization({
+    promptOptimizer,
+    promptHistory,
+    promptContext,
+    selectedMode,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    setDisplayedPromptSilently,
+    setShowResults,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    persistedSignatureRef,
+    skipLoadFromUrlRef,
+    navigate,
+  });
+
+  // Improvement flow
+  const { handleImproveFirst, handleImprovementComplete } = useImprovementFlow({
+    promptOptimizer,
+    toast,
+    setShowImprover,
+    handleOptimize,
+  });
+
+  // Concept brainstorm flow
+  const { handleConceptComplete, handleSkipBrainstorm } = useConceptBrainstorm({
+    promptOptimizer,
+    promptHistory,
+    selectedMode,
+    setConceptElements,
+    setPromptContext,
+    setShowBrainstorm,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    setDisplayedPromptSilently,
+    setShowResults,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    persistedSignatureRef,
+    skipLoadFromUrlRef,
+    navigate,
+    toast,
+  });
+
+  // Enhancement suggestions
+  const { fetchEnhancementSuggestions, handleSuggestionClick } = useEnhancementSuggestions({
+    promptOptimizer,
+    selectedMode,
+    suggestionsData,
+    setSuggestionsData,
+    handleDisplayedPromptChange,
+    stablePromptContext,
+    toast,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
+  });
+
+  // ============================================================================
+  // Keyboard Shortcuts
+  // ============================================================================
+  useKeyboardShortcuts({
+    openShortcuts: () => {
+      debug.logAction('openShortcuts');
+      setShowShortcuts(true);
+    },
+    openSettings: () => {
+      debug.logAction('openSettings');
+      setShowSettings(true);
+    },
+    createNew: () => {
+      debug.logAction('createNew');
+      handleCreateNew();
+    },
+    optimize: () => {
+      if (!promptOptimizer.isProcessing && showResults === false) {
+        debug.logAction('optimize', { mode: selectedMode });
+        handleOptimize();
+      }
+    },
+    improveFirst: () => {
+      debug.logAction('improveFirst');
+      handleImproveFirst();
+    },
+    canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),
+    copy: () => {
+      debug.logAction('copy', { promptLength: promptOptimizer.displayedPrompt.length });
+      navigator.clipboard.writeText(promptOptimizer.displayedPrompt);
+      toast.success('Copied to clipboard!');
+    },
+    export: () => {
+      debug.logAction('export');
+      showResults && toast.info('Use export button in canvas');
+    },
+    toggleSidebar: () => {
+      debug.logAction('toggleSidebar', { newState: !showHistory });
+      setShowHistory(!showHistory);
+    },
+    switchMode: () => {
+      debug.logAction('switchMode');
+      // Implementation from original
+    },
+    applySuggestion: (index: number) => {
+      if (suggestionsData && typeof suggestionsData === 'object' && 'suggestions' in suggestionsData) {
+        const suggestions = (suggestionsData as { suggestions: unknown[] }).suggestions;
+        if (suggestions[index]) {
+          debug.logAction('applySuggestion', { index });
+          handleSuggestionClick(suggestions[index]);
+        }
+      }
+    },
+    closeModal: () => {
+      debug.logAction('closeModal');
+      if (showSettings) setShowSettings(false);
+      else if (showShortcuts) setShowShortcuts(false);
+      else if (showImprover) setShowImprover(false);
+      else if (showBrainstorm) setShowBrainstorm(false);
+      else if (suggestionsData) setSuggestionsData(null);
+    },
+  });
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <div
+      className="h-screen overflow-hidden gradient-neutral transition-colors duration-300"
+      style={{
+        '--sidebar-width': showHistory 
+          ? 'var(--layout-sidebar-width-expanded)' 
+          : 'var(--layout-sidebar-width-collapsed)',
+        display: 'grid',
+        gridTemplateColumns: `
+          var(--sidebar-width) 
+          minmax(0, 1fr)
+          var(--layout-suggestions-panel-width)
+        `,
+      } as React.CSSProperties}
+    >
+      {/* Skip to main content */}
+      <a href="#main-content" className="sr-only-focusable top-4 left-4">
+        Skip to main content
+      </a>
+
+      {/* Modals */}
+      <PromptModals
+        onImprovementComplete={handleImprovementComplete}
+        onConceptComplete={handleConceptComplete}
+        onSkipBrainstorm={handleSkipBrainstorm}
+      />
+
+      {/* Top Action Buttons */}
+      <PromptTopBar />
+
+      {/* History Sidebar */}
+      <PromptSidebar user={user} />
+
+      {/* Main Content */}
+      <main
+        id="main-content"
+        className="relative flex flex-col overflow-y-auto transition-all duration-300"
+        style={{
+          minWidth: 0, // Allows flex shrinking
+        }}
+      >
+        {/* Input Section */}
+        {!showResults && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+            <PromptInputSection
+              aiNames={aiNames}
+              onOptimize={handleOptimize}
+              onShowBrainstorm={() => setShowBrainstorm(true)}
+            />
+          </div>
+        )}
+
+        {/* Results Section */}
+        <PromptResultsSection
+          onDisplayedPromptChange={handleDisplayedPromptChange}
+          onFetchSuggestions={fetchEnhancementSuggestions}
+          onSuggestionClick={handleSuggestionClick}
+          onHighlightsPersist={handleHighlightsPersist}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          stablePromptContext={stablePromptContext}
+        />
+
+        {/* Privacy Policy Footer */}
+        {!showResults && (
+          <footer className="mt-auto py-8 text-center">
+            <a
+              href="/privacy-policy"
+              className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </footer>
+        )}
+      </main>
+
+      {/* Suggestions Panel - Right Column */}
+      <aside 
+        className="overflow-y-auto border-l border-geist-accents-2 bg-geist-background"
+        style={{
+          width: 'var(--layout-suggestions-panel-width)',
+        }}
+      >
+        <SuggestionsPanel 
+          suggestionsData={
+            suggestionsData 
+              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick: handleSuggestionClick, currentPrompt: promptOptimizer.displayedPrompt } 
+              : { show: false, currentPrompt: promptOptimizer.displayedPrompt }
+          } 
+        />
+      </aside>
+
+      {/* Debug Button - Hidden */}
+      {false && (import.meta.env.DEV ||
+        new URLSearchParams(window.location.search).get('debug') === 'true') && (
+        <DebugButton
+          inputPrompt={promptOptimizer.inputPrompt}
+          displayedPrompt={promptOptimizer.displayedPrompt}
+          optimizedPrompt={promptOptimizer.optimizedPrompt}
+          selectedMode={selectedMode}
+          promptContext={stablePromptContext}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Outer component with auth state management
+ */
+function PromptOptimizerContainer(): React.ReactElement {
+  const debug = useDebugLogger('PromptOptimizerContainer');
+  const [user, setUser] = React.useState<User | null>(null);
+
+  // Listen for auth state changes
+  React.useEffect(() => {
+    debug.logEffect('Auth state listener initialized');
+    const authRepository = getAuthRepository();
+    const unsubscribe = authRepository.onAuthStateChanged((currentUser) => {
+      debug.logAction('authStateChanged', { 
+        authenticated: !!currentUser,
+        userId: currentUser?.uid 
+      });
+      setUser(currentUser);
+    });
+    return () => {
+      debug.logEffect('Auth state listener cleanup');
+      unsubscribe();
+    };
+  }, []);
+
+  return (
+    <PromptStateProvider user={user}>
+      <PromptOptimizerContent user={user} />
+    </PromptStateProvider>
+  );
+}
+
+export default PromptOptimizerContainer;
+

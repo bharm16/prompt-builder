@@ -1,5 +1,5 @@
-import { logger } from '../infrastructure/Logger.js';
-import { metricsService } from '../infrastructure/MetricsService.js';
+import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
 
 /**
  * Request Batching Middleware for Span Labeling

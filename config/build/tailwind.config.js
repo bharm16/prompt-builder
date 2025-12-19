@@ -14,7 +14,7 @@ export default {
   theme: {
     extend: {
       // ============================================
-      // COLOR SYSTEM - Airbnb DLS Aligned
+      // COLOR SYSTEM - Geist/Vercel Design System
       // Calm neutrals, confident accent, accessible contrast
       // ============================================
       colors: {
@@ -33,7 +33,7 @@ export default {
           950: '#0B0B0B',
         },
 
-        // ACCENT SCALE (Rausch)
+        // ACCENT SCALE
         accent: {
           50: '#FFF5F7',
           100: '#FFE3EA',
@@ -181,6 +181,20 @@ export default {
         'text-primary': '#222222',
         'text-secondary': '#484848',
         'borders-lines': '#E3E3E3',
+        // ============================================
+        // GEIST ACCENT COLORS (Official - CSS variables documented)
+        // Source: vercel.com/geist/colors
+        // ============================================
+        'geist-accents-1': '#fafafa',    // Lightest background
+        'geist-accents-2': '#eaeaea',    // Borders, dividers
+        'geist-accents-3': '#999',       // Placeholder text
+        'geist-accents-4': '#888',
+        'geist-accents-5': '#666',       // Secondary text
+        'geist-accents-6': '#444',
+        'geist-accents-7': '#333',
+        'geist-accents-8': '#111',       // Primary text
+        'geist-foreground': '#000',
+        'geist-background': '#fff',
       },
 
       // ============================================
@@ -189,6 +203,8 @@ export default {
       // ============================================
       fontFamily: {
         sans: [
+          'var(--font-geist-sans)',
+          'Geist',
           'Inter',
           'ui-sans-serif',
           'system-ui',
@@ -201,12 +217,17 @@ export default {
           'sans-serif',
         ],
         mono: [
+          'var(--font-geist-mono)',
+          'Geist Mono',
           'JetBrains Mono',
           'Menlo',
           'Monaco',
           'Courier New',
           'monospace',
         ],
+      },
+      fontVariantNumeric: {
+        'tabular': 'tabular-nums',
       },
       fontSize: {
         // Display sizes
@@ -222,6 +243,46 @@ export default {
         'text-md': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '400' }],
         'text-sm': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '400' }],
         'text-xs': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '400' }],
+
+        // ============================================
+        // GEIST TYPOGRAPHY HIERARCHY (Official)
+        // Source: vercel.com/geist/typography
+        // ============================================
+        
+        // Headings - For page and section titles (72px to 14px)
+        'heading-72': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-64': ['4rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-56': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'heading-48': ['3rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'heading-40': ['2.5rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
+        'heading-32': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'heading-24': ['1.5rem', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'heading-20': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '600' }],
+        'heading-18': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '600' }],
+        'heading-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '600' }],
+        'heading-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '600' }],
+
+        // Buttons - For button components
+        'button-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'button-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'button-12': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '500' }],
+
+        // Labels - For single-line text elements
+        'label-20': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '500' }],
+        'label-18': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '500' }],
+        'label-16': ['1rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'label-14': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }],
+        'label-13': ['0.8125rem', { lineHeight: '1.5', letterSpacing: '0', fontWeight: '500' }], // 13px
+        'label-12': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.01em', fontWeight: '500' }],
+
+        // Copy - For multi-line text content
+        'copy-24': ['1.5rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-20': ['1.25rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-18': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-16': ['1rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-14': ['0.875rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
+        'copy-13': ['0.8125rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }], // 13px
+        'copy-12': ['0.75rem', { lineHeight: '1.6', letterSpacing: '0', fontWeight: '400' }],
       },
 
       // ============================================
@@ -262,6 +323,19 @@ export default {
         72: '18rem', // 288px
         80: '20rem', // 320px
         96: '24rem', // 384px
+        // ============================================
+        // GEIST SPACING (pt units: 1pt = 1.333px)
+        // UNOFFICIAL - Not documented but extracted from Vercel
+        // ============================================
+        'geist-0': '0',
+        'geist-1': '4pt',    // ~5.33px (~5px)
+        'geist-2': '8pt',    // ~10.66px (~11px)
+        'geist-3': '12pt',   // ~16px
+        'geist-4': '16pt',   // ~21.33px (~21px - default gap)
+        'geist-5': '20pt',   // ~26.66px (~27px)
+        'geist-6': '24pt',   // ~32px
+        'geist-8': '32pt',   // ~42.66px (~43px)
+        'geist-12': '48pt',  // ~64px
       },
 
       // ============================================
@@ -278,10 +352,17 @@ export default {
         '2xl': '1.25rem', // 20px
         '3xl': '1.5rem', // 24px
         full: '9999px',
+        // ============================================
+        // GEIST BORDER RADIUS (Tight, subtle rounding)
+        // UNOFFICIAL - Not documented but extracted from Vercel
+        // ============================================
+        'geist': '5px',      // Primary radius - very tight
+        'geist-sm': '3px',   // Smaller radius
+        'geist-lg': '8px',   // Larger radius (still tight)
       },
 
       // ============================================
-      // SHADOW SYSTEM - Airbnb DLS Inspired
+      // SHADOW SYSTEM - Geist/Vercel Design System
       // Sophisticated elevation with proper depth
       // ============================================
       boxShadow: {
@@ -303,6 +384,12 @@ export default {
         'primary': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
         'accent': '0 10px 15px -3px rgb(99 102 241 / 0.3)',
         'success': '0 10px 15px -3px rgb(16 185 129 / 0.3)',
+        // ============================================
+        // GEIST SHADOWS (Official - 3 levels documented)
+        // ============================================
+        'geist-small': '0 5px 10px rgba(0, 0, 0, 0.12)',
+        'geist-medium': '0 8px 30px rgba(0, 0, 0, 0.12)',
+        'geist-large': '0 30px 60px rgba(0, 0, 0, 0.12)',
       },
 
       // ============================================
@@ -471,5 +558,13 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('daisyui'),
+  ],
+  daisyui: {
+    themes: ['light'],
+    base: true,
+    styled: true,
+    utils: true,
+  },
 };

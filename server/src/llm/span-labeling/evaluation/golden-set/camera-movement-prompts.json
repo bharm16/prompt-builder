@@ -1,0 +1,301 @@
+{
+  "metadata": {
+    "name": "Camera Movement Prompts - Golden Set",
+    "description": "Targeted coverage for multi-part camera movement fragmentation",
+    "category": "camera_movement",
+    "version": "1.0.0",
+    "created": "2025-12-12"
+  },
+  "prompts": [
+    {
+      "id": "camera-movement-001",
+      "text": "A skier carves down a snowy slope as the camera slowly pushes in, then tilts up and arcs left.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "skier",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 7
+          },
+          {
+            "text": "carves down",
+            "role": "action.movement",
+            "start": 8,
+            "end": 19
+          },
+          {
+            "text": "snowy slope",
+            "role": "environment.location",
+            "start": 22,
+            "end": 33
+          },
+          {
+            "text": "camera slowly pushes in, then tilts up and arcs left",
+            "role": "camera.movement",
+            "start": 41,
+            "end": 93
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-002",
+      "text": "Start with a wide shot; the camera whip-pans right, settles into a steady tracking move, and finally zooms in on the violinist in a concert hall.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "wide shot",
+            "role": "shot.type",
+            "start": 13,
+            "end": 22
+          },
+          {
+            "text": "camera whip-pans right, settles into a steady tracking move, and finally zooms in",
+            "role": "camera.movement",
+            "start": 28,
+            "end": 109
+          },
+          {
+            "text": "violinist",
+            "role": "subject.identity",
+            "start": 117,
+            "end": 126
+          },
+          {
+            "text": "concert hall",
+            "role": "environment.location",
+            "start": 132,
+            "end": 144
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-003",
+      "text": "The camera dollies backward while panning left and tilting down, revealing a crowded cafeteria behind the waiter.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "camera dollies backward while panning left and tilting down",
+            "role": "camera.movement",
+            "start": 4,
+            "end": 63
+          },
+          {
+            "text": "crowded cafeteria",
+            "role": "environment.location",
+            "start": 77,
+            "end": 94
+          },
+          {
+            "text": "waiter",
+            "role": "subject.identity",
+            "start": 106,
+            "end": 112
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-004",
+      "text": "Drone shot over the coastline: the camera descends, then yaw-rotates, then accelerates forward as surfers wait below.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Drone shot",
+            "role": "shot.type",
+            "start": 0,
+            "end": 10
+          },
+          {
+            "text": "coastline",
+            "role": "environment.location",
+            "start": 20,
+            "end": 29
+          },
+          {
+            "text": "camera descends, then yaw-rotates, then accelerates forward",
+            "role": "camera.movement",
+            "start": 35,
+            "end": 94
+          },
+          {
+            "text": "surfers",
+            "role": "subject.identity",
+            "start": 98,
+            "end": 105
+          },
+          {
+            "text": "wait",
+            "role": "action.state",
+            "start": 106,
+            "end": 110
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-005",
+      "text": "From behind a hiker, the camera cranes up, rolls slightly, and then pulls back to reveal the canyon.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "hiker",
+            "role": "subject.identity",
+            "start": 14,
+            "end": 19
+          },
+          {
+            "text": "camera cranes up, rolls slightly, and then pulls back",
+            "role": "camera.movement",
+            "start": 25,
+            "end": 78
+          },
+          {
+            "text": "canyon",
+            "role": "environment.location",
+            "start": 93,
+            "end": 99
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-006",
+      "text": "The camera starts on the hands, then slides sideways and settles behind the speaker.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "camera starts on the hands, then slides sideways and settles behind",
+            "role": "camera.movement",
+            "start": 4,
+            "end": 71
+          },
+          {
+            "text": "speaker",
+            "role": "subject.identity",
+            "start": 76,
+            "end": 83
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-007",
+      "text": "The camera spirals clockwise, then eases into a slow orbit around the dancer on a stage.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "camera spirals clockwise, then eases into a slow orbit",
+            "role": "camera.movement",
+            "start": 4,
+            "end": 58
+          },
+          {
+            "text": "dancer",
+            "role": "subject.identity",
+            "start": 70,
+            "end": 76
+          },
+          {
+            "text": "stage",
+            "role": "environment.location",
+            "start": 82,
+            "end": 87
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-008",
+      "text": "The camera lunges forward, stops abruptly, and then glides smoothly backward as the runner sprints past.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "camera lunges forward, stops abruptly, and then glides smoothly backward",
+            "role": "camera.movement",
+            "start": 4,
+            "end": 76
+          },
+          {
+            "text": "runner",
+            "role": "subject.identity",
+            "start": 84,
+            "end": 90
+          },
+          {
+            "text": "sprints past",
+            "role": "action.movement",
+            "start": 91,
+            "end": 103
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-009",
+      "text": "The camera pans right, tilts up, and zooms in simultaneously, locking onto the lighthouse against the storm.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "camera pans right, tilts up, and zooms in simultaneously",
+            "role": "camera.movement",
+            "start": 4,
+            "end": 60
+          },
+          {
+            "text": "lighthouse",
+            "role": "subject.identity",
+            "start": 79,
+            "end": 89
+          },
+          {
+            "text": "storm",
+            "role": "environment.weather",
+            "start": 102,
+            "end": 107
+          }
+        ]
+      }
+    },
+    {
+      "id": "camera-movement-010",
+      "text": "Single take in a kitchen: the camera drifts through the doorway, circles the table, then rises; end on a top-down view as a family eats dinner.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "kitchen",
+            "role": "environment.location",
+            "start": 17,
+            "end": 24
+          },
+          {
+            "text": "camera drifts through the doorway, circles the table, then rises",
+            "role": "camera.movement",
+            "start": 30,
+            "end": 94
+          },
+          {
+            "text": "top-down view",
+            "role": "camera.angle",
+            "start": 105,
+            "end": 118
+          },
+          {
+            "text": "family",
+            "role": "subject.identity",
+            "start": 124,
+            "end": 130
+          },
+          {
+            "text": "eats dinner",
+            "role": "action.state",
+            "start": 131,
+            "end": 142
+          }
+        ]
+      }
+    }
+  ]
+}

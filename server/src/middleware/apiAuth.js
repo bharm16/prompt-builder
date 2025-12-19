@@ -1,4 +1,4 @@
-import { logger } from '../infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * API Key Authentication Middleware

@@ -87,3 +87,6 @@ firestore-debug.log
 ui-debug.log
 # Hugging Face model cache (too large for GitHub)
 server/src/services/nlp/models/
+server/src/llm/span-labeling/nlp/models/
+
+.env.backup.20251205_002746

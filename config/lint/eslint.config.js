@@ -5,11 +5,12 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import security from 'eslint-plugin-security';
 import noSecrets from 'eslint-plugin-no-secrets';
+import noHardcodedCss from './eslint-plugin-no-hardcoded-css.js';
 
 export default [
   { ignores: ['dist', 'node_modules'] },
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -26,6 +27,7 @@ export default [
       'react-refresh': reactRefresh,
       security,
       'no-secrets': noSecrets,
+      'no-hardcoded-css': noHardcodedCss,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -57,6 +59,12 @@ export default [
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
       'security/detect-unsafe-regex': 'error',
+      // Hardcoded spacing/formatting values detection in inline styles
+      'no-hardcoded-css/no-hardcoded-css': ['warn', {
+        allowPixelValues: false,
+        allowSmallValues: true, // Allow 0px, 1px, 2px for borders, etc.
+        allowedProperties: ['zIndex', 'opacity', 'borderWidth'], // Properties that commonly need hardcoded values
+      }],
     },
   },
   // Server-side configuration

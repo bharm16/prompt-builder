@@ -14,27 +14,27 @@
  */
 
 // Services - Analysis
-export { SceneCompletionService } from './services/analysis/SceneCompletionService.js';
-export { SceneVariationService } from './services/analysis/SceneVariationService.js';
-export { ConceptParsingService } from './services/analysis/ConceptParsingService.js';
-export { RefinementService } from './services/analysis/RefinementService.js';
+export { SceneCompletionService } from './services/analysis/SceneCompletionService.ts';
+export { SceneVariationService } from './services/analysis/SceneVariationService.ts';
+export { ConceptParsingService } from './services/analysis/ConceptParsingService.ts';
+export { RefinementService } from './services/analysis/RefinementService.ts';
 
 // Services - Detection
-export { ConflictDetectionService } from './services/detection/ConflictDetectionService.js';
-export { SceneChangeDetectionService } from './services/detection/SceneChangeDetectionService.js';
+export { ConflictDetectionService } from './services/detection/ConflictDetectionService.ts';
+export { SceneChangeDetectionService } from './services/detection/SceneChangeDetectionService.ts';
 
 // Services - Generation
-export { SuggestionGeneratorService } from './services/generation/SuggestionGeneratorService.js';
-export { TechnicalParameterService } from './services/generation/TechnicalParameterService.js';
-export { PromptBuilderService } from './services/generation/SystemPromptBuilder.js';
+export { SuggestionGeneratorService } from './services/generation/SuggestionGeneratorService.ts';
+export { TechnicalParameterService } from './services/generation/TechnicalParameterService.ts';
+export { PromptBuilderService } from './services/generation/SystemPromptBuilder.ts';
 
 // Services - Validation
-export { CompatibilityService } from './services/validation/CompatibilityService.js';
-export { PromptValidationService } from './services/validation/PromptValidationService.js';
+export { CompatibilityService } from './services/validation/CompatibilityService.ts';
+export { PromptValidationService } from './services/validation/PromptValidationService.ts';
 
 // Repositories
-export { PreferenceRepository } from './repositories/PreferenceRepository.js';
-export { VideoTemplateRepository } from './repositories/VideoTemplateRepository.js';
+export { PreferenceRepository } from './repositories/PreferenceRepository.ts';
+export { VideoTemplateRepository } from './repositories/VideoTemplateRepository.ts';
 
 // Config
 export * from './config/descriptorCategories.js';

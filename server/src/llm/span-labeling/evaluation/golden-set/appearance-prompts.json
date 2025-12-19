@@ -1,0 +1,885 @@
+{
+  "metadata": {
+    "name": "Appearance Prompts - Golden Set",
+    "description": "Targeted coverage for subject.identity vs subject.appearance confusion",
+    "category": "appearance",
+    "version": "1.0.0",
+    "created": "2025-12-12"
+  },
+  "prompts": [
+    {
+      "id": "appearance-001",
+      "text": "A violinist with long braided hair and ink-stained fingers practices in a quiet attic under soft window light.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "violinist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 11
+          },
+          {
+            "text": "long braided hair",
+            "role": "subject.appearance",
+            "start": 17,
+            "end": 34
+          },
+          {
+            "text": "ink-stained fingers",
+            "role": "subject.appearance",
+            "start": 39,
+            "end": 58
+          },
+          {
+            "text": "practices",
+            "role": "action.state",
+            "start": 59,
+            "end": 68
+          },
+          {
+            "text": "quiet attic",
+            "role": "environment.location",
+            "start": 74,
+            "end": 85
+          },
+          {
+            "text": "soft window light",
+            "role": "lighting.source",
+            "start": 92,
+            "end": 109
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-002",
+      "text": "A tired boxer with a broken nose and bruised knuckles sits on a stool in a gritty gym, harsh overhead fluorescents buzzing.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "tired boxer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 13
+          },
+          {
+            "text": "broken nose",
+            "role": "subject.appearance",
+            "start": 21,
+            "end": 32
+          },
+          {
+            "text": "bruised knuckles",
+            "role": "subject.appearance",
+            "start": 37,
+            "end": 53
+          },
+          {
+            "text": "sits on a stool",
+            "role": "action.state",
+            "start": 54,
+            "end": 69
+          },
+          {
+            "text": "gritty gym",
+            "role": "environment.location",
+            "start": 75,
+            "end": 85
+          },
+          {
+            "text": "harsh overhead fluorescents",
+            "role": "lighting.source",
+            "start": 87,
+            "end": 114
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-003",
+      "text": "A street photographer with a silver eyebrow piercing and sunburned shoulders wanders through a seaside boardwalk at midday.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "street photographer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 21
+          },
+          {
+            "text": "silver eyebrow piercing",
+            "role": "subject.appearance",
+            "start": 29,
+            "end": 52
+          },
+          {
+            "text": "sunburned shoulders",
+            "role": "subject.appearance",
+            "start": 57,
+            "end": 76
+          },
+          {
+            "text": "wanders",
+            "role": "action.movement",
+            "start": 77,
+            "end": 84
+          },
+          {
+            "text": "seaside boardwalk",
+            "role": "environment.location",
+            "start": 95,
+            "end": 112
+          },
+          {
+            "text": "at midday",
+            "role": "lighting.timeOfDay",
+            "start": 113,
+            "end": 122
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-004",
+      "text": "A ceramicist with clay-dusted eyelashes and rough, calloused palms shapes a vase in a warm kiln room, orange glow from the kiln flickering.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "ceramicist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 12
+          },
+          {
+            "text": "clay-dusted eyelashes",
+            "role": "subject.appearance",
+            "start": 18,
+            "end": 39
+          },
+          {
+            "text": "rough, calloused palms",
+            "role": "subject.appearance",
+            "start": 44,
+            "end": 66
+          },
+          {
+            "text": "shapes a vase",
+            "role": "action.gesture",
+            "start": 67,
+            "end": 80
+          },
+          {
+            "text": "warm kiln room",
+            "role": "environment.location",
+            "start": 86,
+            "end": 100
+          },
+          {
+            "text": "orange glow from the kiln",
+            "role": "lighting.source",
+            "start": 102,
+            "end": 127
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-005",
+      "text": "A ranger with wind-chapped lips and frost in his beard hikes along a pine trail at dawn.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "ranger",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 8
+          },
+          {
+            "text": "wind-chapped lips",
+            "role": "subject.appearance",
+            "start": 14,
+            "end": 31
+          },
+          {
+            "text": "frost in his beard",
+            "role": "subject.appearance",
+            "start": 36,
+            "end": 54
+          },
+          {
+            "text": "hikes along",
+            "role": "action.movement",
+            "start": 55,
+            "end": 66
+          },
+          {
+            "text": "pine trail",
+            "role": "environment.location",
+            "start": 69,
+            "end": 79
+          },
+          {
+            "text": "at dawn",
+            "role": "lighting.timeOfDay",
+            "start": 80,
+            "end": 87
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-006",
+      "text": "A ballet dancer with blistered toes and shimmering sweat on her shoulders rehearses on an empty stage under a single spotlight.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "ballet dancer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 15
+          },
+          {
+            "text": "blistered toes",
+            "role": "subject.appearance",
+            "start": 21,
+            "end": 35
+          },
+          {
+            "text": "shimmering sweat on her shoulders",
+            "role": "subject.appearance",
+            "start": 40,
+            "end": 73
+          },
+          {
+            "text": "rehearses",
+            "role": "action.state",
+            "start": 74,
+            "end": 83
+          },
+          {
+            "text": "empty stage",
+            "role": "environment.location",
+            "start": 90,
+            "end": 101
+          },
+          {
+            "text": "single spotlight",
+            "role": "lighting.source",
+            "start": 110,
+            "end": 126
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-007",
+      "text": "A fisherman with salt-crusted eyebrows and a weathered face mends nets beside a rocky pier in overcast light.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "fisherman",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 11
+          },
+          {
+            "text": "salt-crusted eyebrows",
+            "role": "subject.appearance",
+            "start": 17,
+            "end": 38
+          },
+          {
+            "text": "weathered face",
+            "role": "subject.appearance",
+            "start": 45,
+            "end": 59
+          },
+          {
+            "text": "mends nets",
+            "role": "action.gesture",
+            "start": 60,
+            "end": 70
+          },
+          {
+            "text": "rocky pier",
+            "role": "environment.location",
+            "start": 80,
+            "end": 90
+          },
+          {
+            "text": "overcast light",
+            "role": "lighting.quality",
+            "start": 94,
+            "end": 108
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-008",
+      "text": "A librarian with tired eyes and pale ink smudges on her wrist arranges books in a quiet reading room, warm lamplight.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "librarian",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 11
+          },
+          {
+            "text": "tired eyes",
+            "role": "subject.appearance",
+            "start": 17,
+            "end": 27
+          },
+          {
+            "text": "pale ink smudges on her wrist",
+            "role": "subject.appearance",
+            "start": 32,
+            "end": 61
+          },
+          {
+            "text": "arranges books",
+            "role": "action.gesture",
+            "start": 62,
+            "end": 76
+          },
+          {
+            "text": "quiet reading room",
+            "role": "environment.location",
+            "start": 82,
+            "end": 100
+          },
+          {
+            "text": "warm lamplight",
+            "role": "lighting.source",
+            "start": 102,
+            "end": 116
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-009",
+      "text": "A mountain climber with wind-whipped hair and a scraped cheek steadies herself on a narrow ledge in bright noon sun.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "mountain climber",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 18
+          },
+          {
+            "text": "wind-whipped hair",
+            "role": "subject.appearance",
+            "start": 24,
+            "end": 41
+          },
+          {
+            "text": "scraped cheek",
+            "role": "subject.appearance",
+            "start": 48,
+            "end": 61
+          },
+          {
+            "text": "steadies herself",
+            "role": "action.state",
+            "start": 62,
+            "end": 78
+          },
+          {
+            "text": "narrow ledge",
+            "role": "environment.location",
+            "start": 84,
+            "end": 96
+          },
+          {
+            "text": "bright noon sun",
+            "role": "lighting.quality",
+            "start": 100,
+            "end": 115
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-010",
+      "text": "A chef with a singed forearm and sweat-soaked temples flips vegetables in a sizzling wok, steam rising.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "chef",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 6
+          },
+          {
+            "text": "singed forearm",
+            "role": "subject.appearance",
+            "start": 14,
+            "end": 28
+          },
+          {
+            "text": "sweat-soaked temples",
+            "role": "subject.appearance",
+            "start": 33,
+            "end": 53
+          },
+          {
+            "text": "flips vegetables",
+            "role": "action.gesture",
+            "start": 54,
+            "end": 70
+          },
+          {
+            "text": "sizzling wok",
+            "role": "environment.context",
+            "start": 76,
+            "end": 88
+          },
+          {
+            "text": "steam rising",
+            "role": "environment.context",
+            "start": 90,
+            "end": 102
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-011",
+      "text": "A mechanic with grease-blackened fingernails and a scar across his jaw tightens bolts in an auto shop under a flickering shop light.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "mechanic",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 10
+          },
+          {
+            "text": "grease-blackened fingernails",
+            "role": "subject.appearance",
+            "start": 16,
+            "end": 44
+          },
+          {
+            "text": "scar across his jaw",
+            "role": "subject.appearance",
+            "start": 51,
+            "end": 70
+          },
+          {
+            "text": "tightens bolts",
+            "role": "action.gesture",
+            "start": 71,
+            "end": 85
+          },
+          {
+            "text": "auto shop",
+            "role": "environment.location",
+            "start": 92,
+            "end": 101
+          },
+          {
+            "text": "flickering shop light",
+            "role": "lighting.source",
+            "start": 110,
+            "end": 131
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-012",
+      "text": "A surfer with wet, tangled hair and sand stuck to his eyelashes jogs toward the shoreline at golden hour.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "surfer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 8
+          },
+          {
+            "text": "wet, tangled hair",
+            "role": "subject.appearance",
+            "start": 14,
+            "end": 31
+          },
+          {
+            "text": "sand stuck to his eyelashes",
+            "role": "subject.appearance",
+            "start": 36,
+            "end": 63
+          },
+          {
+            "text": "jogs toward",
+            "role": "action.movement",
+            "start": 64,
+            "end": 75
+          },
+          {
+            "text": "shoreline",
+            "role": "environment.location",
+            "start": 80,
+            "end": 89
+          },
+          {
+            "text": "golden hour",
+            "role": "lighting.timeOfDay",
+            "start": 93,
+            "end": 104
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-013",
+      "text": "A scientist with cracked lips and dark circles under her eyes studies samples in a sterile lab, cool blue monitor glow.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "scientist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 11
+          },
+          {
+            "text": "cracked lips",
+            "role": "subject.appearance",
+            "start": 17,
+            "end": 29
+          },
+          {
+            "text": "dark circles under her eyes",
+            "role": "subject.appearance",
+            "start": 34,
+            "end": 61
+          },
+          {
+            "text": "studies samples",
+            "role": "action.state",
+            "start": 62,
+            "end": 77
+          },
+          {
+            "text": "sterile lab",
+            "role": "environment.location",
+            "start": 83,
+            "end": 94
+          },
+          {
+            "text": "cool blue monitor glow",
+            "role": "lighting.colorTemp",
+            "start": 96,
+            "end": 118
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-014",
+      "text": "A drummer with sweat-slick hair and a flushed face pounds a rhythm in a cramped basement rehearsal room.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "drummer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 9
+          },
+          {
+            "text": "sweat-slick hair",
+            "role": "subject.appearance",
+            "start": 15,
+            "end": 31
+          },
+          {
+            "text": "flushed face",
+            "role": "subject.appearance",
+            "start": 38,
+            "end": 50
+          },
+          {
+            "text": "pounds a rhythm",
+            "role": "action.gesture",
+            "start": 51,
+            "end": 66
+          },
+          {
+            "text": "cramped basement rehearsal room",
+            "role": "environment.location",
+            "start": 72,
+            "end": 103
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-015",
+      "text": "A farmer with sun-leathered skin and chipped nails tosses feed into a wooden barn, dust motes floating in sunbeams.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "farmer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 8
+          },
+          {
+            "text": "sun-leathered skin",
+            "role": "subject.appearance",
+            "start": 14,
+            "end": 32
+          },
+          {
+            "text": "chipped nails",
+            "role": "subject.appearance",
+            "start": 37,
+            "end": 50
+          },
+          {
+            "text": "tosses feed",
+            "role": "action.gesture",
+            "start": 51,
+            "end": 62
+          },
+          {
+            "text": "wooden barn",
+            "role": "environment.location",
+            "start": 70,
+            "end": 81
+          },
+          {
+            "text": "sunbeams",
+            "role": "lighting.source",
+            "start": 106,
+            "end": 114
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-016",
+      "text": "A tattoo artist with ink-splattered hands and a focused stare shades a sleeve in a studio lit by a neon sign.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "tattoo artist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 15
+          },
+          {
+            "text": "ink-splattered hands",
+            "role": "subject.appearance",
+            "start": 21,
+            "end": 41
+          },
+          {
+            "text": "focused stare",
+            "role": "subject.emotion",
+            "start": 48,
+            "end": 61
+          },
+          {
+            "text": "shades a sleeve",
+            "role": "action.gesture",
+            "start": 62,
+            "end": 77
+          },
+          {
+            "text": "studio",
+            "role": "environment.location",
+            "start": 83,
+            "end": 89
+          },
+          {
+            "text": "neon sign",
+            "role": "lighting.source",
+            "start": 99,
+            "end": 108
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-017",
+      "text": "A pianist with trembling fingers and a faint scar on her temple plays softly in a quiet room lit by candles.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "pianist",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 9
+          },
+          {
+            "text": "trembling fingers",
+            "role": "subject.appearance",
+            "start": 15,
+            "end": 32
+          },
+          {
+            "text": "faint scar on her temple",
+            "role": "subject.appearance",
+            "start": 39,
+            "end": 63
+          },
+          {
+            "text": "plays softly",
+            "role": "action.gesture",
+            "start": 64,
+            "end": 76
+          },
+          {
+            "text": "quiet room",
+            "role": "environment.location",
+            "start": 82,
+            "end": 92
+          },
+          {
+            "text": "lit by candles",
+            "role": "lighting.source",
+            "start": 93,
+            "end": 107
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-018",
+      "text": "A sculptor with sawdust in his beard and a reddened nose carves wood in an open workshop, afternoon light streaming in.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "sculptor",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 10
+          },
+          {
+            "text": "sawdust in his beard",
+            "role": "subject.appearance",
+            "start": 16,
+            "end": 36
+          },
+          {
+            "text": "reddened nose",
+            "role": "subject.appearance",
+            "start": 43,
+            "end": 56
+          },
+          {
+            "text": "carves wood",
+            "role": "action.gesture",
+            "start": 57,
+            "end": 68
+          },
+          {
+            "text": "open workshop",
+            "role": "environment.location",
+            "start": 75,
+            "end": 88
+          },
+          {
+            "text": "afternoon light",
+            "role": "lighting.timeOfDay",
+            "start": 90,
+            "end": 105
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-019",
+      "text": "A paramedic with tired, bloodshot eyes and a creased brow kneels beside a patient in a cramped ambulance, strobing siren reflections.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "paramedic",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 11
+          },
+          {
+            "text": "tired, bloodshot eyes",
+            "role": "subject.appearance",
+            "start": 17,
+            "end": 38
+          },
+          {
+            "text": "creased brow",
+            "role": "subject.appearance",
+            "start": 45,
+            "end": 57
+          },
+          {
+            "text": "kneels beside a patient",
+            "role": "action.state",
+            "start": 58,
+            "end": 81
+          },
+          {
+            "text": "cramped ambulance",
+            "role": "environment.location",
+            "start": 87,
+            "end": 104
+          },
+          {
+            "text": "strobing siren reflections",
+            "role": "lighting.source",
+            "start": 106,
+            "end": 132
+          }
+        ]
+      }
+    },
+    {
+      "id": "appearance-020",
+      "text": "A swimmer with chlorine-bleached hair and goosebumped skin climbs out of the pool under bright stadium lights.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "swimmer",
+            "role": "subject.identity",
+            "start": 2,
+            "end": 9
+          },
+          {
+            "text": "chlorine-bleached hair",
+            "role": "subject.appearance",
+            "start": 15,
+            "end": 37
+          },
+          {
+            "text": "goosebumped skin",
+            "role": "subject.appearance",
+            "start": 42,
+            "end": 58
+          },
+          {
+            "text": "climbs out",
+            "role": "action.movement",
+            "start": 59,
+            "end": 69
+          },
+          {
+            "text": "pool",
+            "role": "environment.location",
+            "start": 77,
+            "end": 81
+          },
+          {
+            "text": "bright stadium lights",
+            "role": "lighting.source",
+            "start": 88,
+            "end": 109
+          }
+        ]
+      }
+    }
+  ]
+}

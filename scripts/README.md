@@ -4,7 +4,7 @@ This directory contains utility scripts for monitoring and verifying the applica
 
 ## Available Scripts
 
-### 1. API Key Verification (`verify-api-keys.js`)
+### 1. API Key Verification (`verify-api-keys.ts`)
 
 Validates all configured API keys and tests their response times.
 
@@ -18,7 +18,7 @@ npm run verify-keys
 - Tests response times for both APIs
 - Provides helpful error messages if keys are invalid
 
-### 2. Highlighting Performance Stats (`get-highlight-stats.js`)
+### 2. Highlighting Performance Stats (`get-highlight-stats.ts`)
 
 Extracts and displays real-time performance metrics for text highlighting/span labeling.
 

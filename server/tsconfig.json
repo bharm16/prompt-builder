@@ -1,0 +1,28 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@infrastructure/*": ["src/infrastructure/*"],
+      "@services/*": ["src/services/*"],
+      "@api/*": ["src/api/*"],
+      "@types/*": ["src/types/*"],
+      "@interfaces/*": ["src/interfaces/*"],
+      "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"],
+      "@llm/*": ["src/llm/*"],
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": ["src/**/*", "index.ts", "instrument.mjs"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
+

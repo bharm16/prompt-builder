@@ -1,44 +1,59 @@
-/* Prompt Line Styles */
+/* Prompt Line Styles - Geist Typography */
 .prompt-line {
-  font-size: 0.9375rem;
-  color: rgb(64, 64, 64);
+  /* Using text-copy-14 - Most common text style */
+  font-family: var(--font-geist-sans);
+  font-size: 0.875rem;
   line-height: 1.6;
-  margin-bottom: 0.75rem;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--geist-accents-6);
+  margin-bottom: var(--geist-gap-half);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .prompt-line--heading {
+  /* Using text-heading-20 - Small headings */
+  font-family: var(--font-geist-sans);
   font-size: 1.25rem;
+  line-height: 1.4;
+  letter-spacing: 0;
   font-weight: 600;
-  color: rgb(23, 23, 23);
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  color: var(--geist-foreground);
+  margin-top: var(--geist-gap);
+  margin-bottom: var(--geist-gap-half);
 }
 
 .prompt-line--section {
+  /* Using text-heading-16 - Tiny headings */
+  font-family: var(--font-geist-sans);
   font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0;
   font-weight: 600;
-  color: rgb(38, 38, 38);
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
+  color: var(--geist-accents-7);
+  margin-top: var(--geist-gap);
+  margin-bottom: var(--geist-gap-half);
 }
 
 .prompt-line--bullet,
 .prompt-line--ordered {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: var(--geist-gap-quarter);
+  margin-bottom: var(--geist-gap-quarter);
 }
 
 .prompt-bullet-marker,
 .prompt-ordered-index {
+  /* Using text-label-14 - Menu items (most common) */
+  font-family: var(--font-geist-sans);
   flex-shrink: 0;
-  color: rgb(120, 120, 120);
-  font-weight: 500;
+  color: var(--geist-accents-4);
   font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
 .prompt-ordered-text,
@@ -48,22 +63,31 @@
 }
 
 .prompt-line--gap {
-  height: 0.75rem;
+  height: var(--geist-gap-quarter);
 }
 
 .prompt-line--separator {
-  color: rgb(212, 212, 212);
+  /* Using text-label-12 - Tertiary labels */
+  font-family: var(--font-geist-sans);
+  color: var(--geist-accents-2);
   font-size: 0.75rem;
+  line-height: 1.5;
   letter-spacing: 0.4em;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
 .prompt-line--code {
-  background: rgba(243, 244, 246, 0.6);
-  padding: 0.75rem;
-  border-radius: 6px;
+  /* Using text-label-14-mono - Mono labels */
+  background: var(--geist-accents-1);
+  padding: var(--geist-gap-half);
+  border-radius: var(--geist-radius);
   font-size: 0.875rem;
-  margin-bottom: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-family: var(--font-geist-mono);
+  margin-bottom: var(--geist-gap-half);
   overflow-x: auto;
   white-space: pre-wrap;
 }
@@ -161,12 +185,20 @@
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  background-color: rgba(23, 23, 23, 0.9);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
+  transform: translateX(-50%) translateY(calc(-1 * var(--geist-gap-quarter)));
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #1f2937;
+  padding: var(--geist-gap-quarter) var(--geist-gap-quarter);
+  border-radius: var(--geist-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-small);
+  /* Using text-label-12 - Tertiary labels */
+  font-family: var(--font-geist-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
   font-weight: 500;
   text-transform: capitalize;
   white-space: nowrap;
@@ -182,9 +214,9 @@
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%) translateY(-4px);
+  transform: translateX(-50%) translateY(calc(-1 * var(--geist-gap-quarter)));
   border: 4px solid transparent;
-  border-top-color: rgba(23, 23, 23, 0.9);
+  border-top-color: rgba(255, 255, 255, 0.8);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -194,14 +226,27 @@
 .value-word:hover::before,
 .value-word:hover::after {
   opacity: 1;
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateX(-50%) translateY(calc(-1 * var(--geist-gap-half)));
 }
 
 .value-word:hover::after {
-  transform: translateX(-50%) translateY(-4px);
+  transform: translateX(-50%) translateY(calc(-1 * var(--geist-gap-quarter)));
 }
 
 /* Prevent tooltip overflow */
 [contenteditable] {
   position: relative;
+}
+
+/* Flexbox layout for bento grid, editor, and image generation */
+.prompt-canvas-grid {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 0 !important;
+}
+
+/* Responsive content padding - 0.75vw on both sides */
+.prompt-canvas-content-wrapper {
+  padding-left: 0.75vw !important;
+  padding-right: 0.75vw !important;
 }

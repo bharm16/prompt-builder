@@ -1,0 +1,24 @@
+/* PromptOptimizerWorkspace - Workspace Container Styles
+ * Minimal styles for the workspace wrapper
+ * Layout-specific styles are in their respective layout CSS files
+ */
+
+.prompt-optimizer-workspace {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--geist-background);
+  transition: background-color 0.3s;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -4,7 +4,7 @@ This directory contains migration scripts for updating Firestore data structures
 
 ## Available Migrations
 
-### 1. Force Highlight Rerender (`force-highlight-rerender.js`)
+### 1. Force Highlight Rerender (`force-highlight-rerender.ts`)
 
 Forces all existing prompts to regenerate their highlights by clearing or regenerating the `highlightCache` field. Use this when you've updated the span labeling algorithm, highlighting model, or want to apply new labeling templates to existing prompts.
 
@@ -23,32 +23,32 @@ Same as Highlight Cache Backfill (see section 2 below).
 
 **Dry Run (Preview changes without committing):**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --dry-run
 ```
 
 **Clear cache (forces rerender on next load - FAST):**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 ```
 
 **Clear and regenerate immediately (slower but complete):**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --mode=regenerate
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=regenerate
 ```
 
 **Process specific user's prompts:**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --userId=YOUR_USER_ID --mode=clear
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --userId=YOUR_USER_ID --mode=clear
 ```
 
 **Test on limited documents:**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --limit=10 --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --limit=10 --dry-run
 ```
 
 **Custom batch size:**
 ```bash
-node scripts/migrations/force-highlight-rerender.js --batch-size=20 --mode=regenerate
+tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --batch-size=20 --mode=regenerate
 ```
 
 #### Modes
@@ -120,7 +120,7 @@ Average time per document:    0.041s
 
 💡 Next steps:
    - Highlights will be regenerated automatically when prompts are loaded
-   - Or run: node scripts/migrations/backfill-highlight-cache.js
+   - Or run: tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
 ```
 
 #### Safety Features
@@ -134,7 +134,7 @@ Average time per document:    0.041s
 
 ---
 
-### 2. Highlight Cache Backfill (`backfill-highlight-cache.js`)
+### 2. Highlight Cache Backfill (`backfill-highlight-cache.ts`)
 
 Generates and populates `highlightCache` data for existing prompt documents that don't have ML-powered highlighting data.
 
@@ -174,27 +174,27 @@ Before running the migration, you need to:
 
 **Dry Run (Preview changes without committing):**
 ```bash
-node scripts/migrations/backfill-highlight-cache.js --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run
 ```
 
 **Run the migration:**
 ```bash
-node scripts/migrations/backfill-highlight-cache.js
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
 ```
 
 **Process specific user's prompts:**
 ```bash
-node scripts/migrations/backfill-highlight-cache.js --userId=YOUR_USER_ID
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --userId=YOUR_USER_ID
 ```
 
 **Process limited number of documents (for testing):**
 ```bash
-node scripts/migrations/backfill-highlight-cache.js --limit=10 --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --limit=10 --dry-run
 ```
 
 **Custom batch size:**
 ```bash
-node scripts/migrations/backfill-highlight-cache.js --batch-size=10
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --batch-size=10
 ```
 
 #### What It Does
@@ -310,8 +310,8 @@ node scripts/migrations/migrate-timestamps.js
 
 When creating new migration scripts:
 
-1. Copy `backfill-highlight-cache.js` as a template
-2. Use `initializeFirebaseAdmin()` from `firebase-admin-init.js`
+1. Copy `backfill-highlight-cache.ts` as a template
+2. Use `initializeFirebaseAdmin()` from `firebase-admin-init.ts`
 3. Include `--dry-run` flag support
 4. Add progress tracking and statistics
 5. Handle errors gracefully with retries

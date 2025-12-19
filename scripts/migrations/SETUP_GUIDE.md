@@ -48,7 +48,7 @@ FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/your/service-account.json
 
 ```bash
 # Test with a dry run on 1 document
-node scripts/migrations/backfill-highlight-cache.js --dry-run --limit=1
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run --limit=1
 ```
 
 You should see:
@@ -113,7 +113,7 @@ If you have `gcloud` CLI installed:
 gcloud auth application-default login
 
 # Run migration (no .env change needed)
-node scripts/migrations/backfill-highlight-cache.js --dry-run
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run
 ```
 
 ---
@@ -124,12 +124,12 @@ Once configured, run the migration:
 
 ```bash
 # 1. Test with dry-run
-node scripts/migrations/backfill-highlight-cache.js --dry-run --limit=5
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run --limit=5
 
 # 2. Review the output
 
 # 3. Run the actual migration
-node scripts/migrations/backfill-highlight-cache.js
+tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
 ```
 
 ---

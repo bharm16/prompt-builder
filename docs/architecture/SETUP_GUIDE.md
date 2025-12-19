@@ -42,7 +42,7 @@ Add to your `~/.bashrc` (Linux) or `~/.zshrc` (Mac):
 
 ```bash
 # Quick validation commands
-alias cc-check="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' \) -exec wc -l {} + | sort -rn | head -20"
+alias cc-check="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' \) -exec wc -l {} + | sort -rn | head -20"
 
 # Check regular components (should be < 200 lines)
 alias cc-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"❌ Component over 200: \" \$0}'"

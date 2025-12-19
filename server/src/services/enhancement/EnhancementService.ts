@@ -1,0 +1,523 @@
+import { logger } from '@infrastructure/Logger.js';
+import type { ILogger } from '@interfaces/ILogger.js';
+import { cacheService } from '../cache/CacheService.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
+import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
+import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
+import { SuggestionProcessor } from './services/SuggestionProcessor.js';
+import { StyleTransferService } from './services/StyleTransferService.js';
+import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
+import { EnhancementMetricsService } from './services/EnhancementMetricsService.js';
+import { VideoContextDetectionService } from './services/VideoContextDetectionService.js';
+import { SuggestionGenerationService } from './services/SuggestionGenerationService.js';
+import { SuggestionProcessingService } from './services/SuggestionProcessingService.js';
+import { CacheKeyFactory } from './utils/CacheKeyFactory.js';
+import { PROMPT_MODES } from './constants.js';
+import type {
+  AIService,
+  VideoService,
+  PlaceholderDetector,
+  BrainstormBuilder,
+  PromptBuilder,
+  ValidationService,
+  DiversityEnforcer,
+  CategoryAligner,
+  MetricsService,
+  EnhancementRequestParams,
+  CustomSuggestionRequestParams,
+  EnhancementResult,
+  EnhancementMetrics,
+  Suggestion,
+  VideoConstraints,
+  CategoryAlignmentResult,
+  BrainstormContext,
+  PromptBuildParams,
+  GroupedSuggestions,
+} from './services/types.js';
+
+/**
+ * EnhancementService - Main Orchestrator
+ *
+ * Coordinates enhancement suggestion generation by delegating to specialized services.
+ * This service focuses purely on orchestration.
+ *
+ * Single Responsibility: Orchestrate the enhancement suggestion workflow
+ */
+export class EnhancementService {
+  private readonly ai: AIService;
+  private readonly placeholderDetector: PlaceholderDetector;
+  private readonly videoService: VideoService;
+  private readonly brainstormBuilder: BrainstormBuilder;
+  private readonly promptBuilder: PromptBuilder;
+  private readonly validationService: ValidationService;
+  private readonly diversityEnforcer: DiversityEnforcer;
+  private readonly categoryAligner: CategoryAligner;
+  private readonly metricsService: MetricsService | null;
+  private readonly cacheConfig: { ttl: number; namespace: string };
+  private readonly fallbackRegeneration: FallbackRegenerationService;
+  private readonly suggestionProcessor: SuggestionProcessor;
+  private readonly styleTransfer: StyleTransferService;
+  private readonly contrastiveDiversity: ContrastiveDiversityEnforcer;
+  private readonly metricsLogger: EnhancementMetricsService;
+  private readonly videoContextDetection: VideoContextDetectionService;
+  private readonly suggestionGeneration: SuggestionGenerationService;
+  private readonly suggestionProcessing: SuggestionProcessingService;
+  private readonly log: ILogger;
+
+  constructor(
+    aiService: AIService,
+    placeholderDetector: PlaceholderDetector,
+    videoService: VideoService,
+    brainstormBuilder: BrainstormBuilder,
+    promptBuilder: PromptBuilder,
+    validationService: ValidationService,
+    diversityEnforcer: DiversityEnforcer,
+    categoryAligner: CategoryAligner,
+    metricsService: MetricsService | null = null
+  ) {
+    this.ai = aiService;
+    this.placeholderDetector = placeholderDetector;
+    this.videoService = videoService;
+    this.brainstormBuilder = brainstormBuilder;
+    this.promptBuilder = promptBuilder;
+    this.validationService = validationService;
+    this.diversityEnforcer = diversityEnforcer;
+    this.categoryAligner = categoryAligner;
+    this.metricsService = metricsService;
+    this.log = logger.child({ service: 'EnhancementService' });
+    this.cacheConfig = cacheService.getConfig('enhancement') || {
+      ttl: 3600,
+      namespace: 'enhancement',
+    };
+
+    // Initialize specialized services
+    this.fallbackRegeneration = new FallbackRegenerationService(
+      videoService,
+      promptBuilder,
+      validationService,
+      diversityEnforcer
+    );
+    this.suggestionProcessor = new SuggestionProcessor(validationService);
+    this.styleTransfer = new StyleTransferService(aiService);
+    this.contrastiveDiversity = new ContrastiveDiversityEnforcer(aiService);
+    this.metricsLogger = new EnhancementMetricsService(metricsService);
+    this.videoContextDetection = new VideoContextDetectionService(videoService);
+    this.suggestionGeneration = new SuggestionGenerationService(
+      aiService,
+      this.contrastiveDiversity
+    );
+    this.suggestionProcessing = new SuggestionProcessingService(
+      diversityEnforcer,
+      validationService,
+      categoryAligner,
+      this.fallbackRegeneration,
+      this.suggestionProcessor,
+      aiService
+    );
+  }
+
+  /**
+   * Get enhancement suggestions for highlighted text
+   */
+  async getEnhancementSuggestions({
+    highlightedText,
+    contextBefore,
+    contextAfter,
+    fullPrompt,
+    originalUserPrompt,
+    brainstormContext,
+    highlightedCategory,
+    highlightedCategoryConfidence,
+    highlightedPhrase,
+    editHistory = [],
+  }: EnhancementRequestParams): Promise<EnhancementResult> {
+    const metrics: EnhancementMetrics = {
+      total: 0,
+      cache: false,
+      cacheCheck: 0,
+      modelDetection: 0,
+      sectionDetection: 0,
+      promptBuild: 0,
+      groqCall: 0,
+      postProcessing: 0,
+      promptMode: PROMPT_MODES.ENHANCEMENT,
+    };
+    const startTotal = Date.now();
+
+    let isVideoPrompt = false;
+    let modelTarget: string | null = null;
+    let promptSection: string | null = null;
+
+    const operation = 'getEnhancementSuggestions';
+    
+    try {
+      this.log.debug(`Starting ${operation}`, {
+        operation,
+        highlightedLength: highlightedText?.length,
+        highlightedCategory: highlightedCategory || null,
+        categoryConfidence: highlightedCategoryConfidence ?? null,
+        hasBrainstormContext: !!brainstormContext,
+        editHistoryLength: editHistory?.length || 0,
+      });
+
+      const videoContext = this.videoContextDetection.detectVideoContext({
+        fullPrompt,
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        highlightedCategory: highlightedCategory ?? null,
+        highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
+        metrics,
+      });
+      
+      isVideoPrompt = videoContext.isVideoPrompt;
+      modelTarget = videoContext.modelTarget;
+      promptSection = videoContext.promptSection;
+      const brainstormSignature = this.brainstormBuilder.buildBrainstormSignature(brainstormContext ?? null);
+      const highlightWordCount = videoContext.highlightWordCount;
+      const phraseRole = videoContext.phraseRole;
+      const videoConstraints = videoContext.videoConstraints;
+
+      const cacheStart = Date.now();
+      const cacheKey = CacheKeyFactory.generateKey(this.cacheConfig.namespace, {
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        isVideoPrompt,
+        brainstormSignature,
+        highlightedCategory: highlightedCategory ?? null,
+        highlightWordCount,
+        phraseRole,
+        videoConstraints,
+        editHistory,
+        modelTarget,
+        promptSection,
+      });
+
+      const cached = await cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
+      metrics.cacheCheck = Date.now() - cacheStart;
+
+      if (cached) {
+        metrics.cache = true;
+        metrics.total = Date.now() - startTotal;
+        metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+        this.metricsLogger.logMetrics(metrics, {
+          highlightedCategory: highlightedCategory ?? null,
+          isVideoPrompt,
+          modelTarget,
+          promptSection,
+        });
+        this.log.debug('Cache hit for enhancement suggestions', {
+          operation,
+          cacheCheckTime: metrics.cacheCheck,
+          totalTime: metrics.total,
+          promptMode: metrics.promptMode,
+          suggestionCount: cached.suggestions?.length || 0,
+        });
+        return cached;
+      }
+
+      const isPlaceholder = this.placeholderDetector.detectPlaceholder(
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt
+      );
+
+      const promptBuildStart = Date.now();
+      const promptBuilderInput = {
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        brainstormContext: brainstormContext ?? null,
+        editHistory,
+        modelTarget,
+        isVideoPrompt,
+        phraseRole,
+        highlightedCategory: highlightedCategory ?? null,
+        promptSection,
+        videoConstraints,
+        highlightWordCount,
+        isPlaceholder,
+      };
+      const systemPrompt = isPlaceholder
+        ? this.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
+        : this.promptBuilder.buildRewritePrompt(promptBuilderInput);
+      metrics.promptBuild = Date.now() - promptBuildStart;
+
+      const schema = getEnhancementSchema(isPlaceholder);
+      const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
+        diversity: 'high',
+        precision: 'medium',
+      });
+
+      const generationResult = await this.suggestionGeneration.generateSuggestions({
+        systemPrompt,
+        schema: schema as Record<string, unknown>,
+        isVideoPrompt,
+        isPlaceholder,
+        highlightedText,
+        temperature,
+        metrics,
+      });
+      
+      const suggestions = generationResult.suggestions;
+      metrics.groqCall = generationResult.groqCallTime;
+      metrics.usedContrastiveDecoding = generationResult.usedContrastiveDecoding;
+
+      const postStart = Date.now();
+      const processingResult = await this.suggestionProcessing.processSuggestions({
+        suggestions: suggestions ?? [],
+        highlightedCategory: highlightedCategory ?? null,
+        highlightedText,
+        highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
+        isPlaceholder,
+        isVideoPrompt,
+        videoConstraints,
+        phraseRole,
+        highlightWordCount,
+        schema: schema as Record<string, unknown>,
+        temperature,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        brainstormContext: brainstormContext ?? null,
+        editHistory,
+        modelTarget,
+        promptSection,
+      });
+
+      const result = this._buildEnhancementResult({
+        suggestionsToUse: processingResult.suggestionsToUse,
+        activeConstraints: processingResult.activeConstraints,
+        alignmentFallbackApplied: processingResult.alignmentFallbackApplied,
+        usedFallback: processingResult.usedFallback,
+        isPlaceholder,
+        phraseRole,
+      });
+
+      metrics.postProcessing = Date.now() - postStart;
+
+      // Note: sanitizedSuggestions not available here after extraction, using suggestionsToUse instead
+      this.suggestionProcessor.logResult(
+        result,
+        processingResult.suggestionsToUse,
+        processingResult.usedFallback,
+        processingResult.fallbackSourceCount,
+        suggestions ?? []
+      );
+
+      await cacheService.set(cacheKey, result, {
+        ttl: this.cacheConfig.ttl,
+      });
+
+      metrics.total = Date.now() - startTotal;
+      metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+      this.metricsLogger.logMetrics(metrics, {
+        highlightedCategory: highlightedCategory ?? null,
+        isVideoPrompt,
+        modelTarget,
+        promptSection,
+      });
+      this.metricsLogger.checkLatency(metrics);
+
+      this.log.info(`${operation} completed`, {
+        operation,
+        duration: metrics.total,
+        suggestionCount: result.suggestions?.length || 0,
+        fromCache: metrics.cache,
+        isVideoPrompt,
+        isPlaceholder,
+        modelTarget,
+        promptSection,
+      });
+
+      return result;
+    } catch (error) {
+      metrics.total = Date.now() - startTotal;
+      metrics.promptMode = PROMPT_MODES.ENHANCEMENT;
+      this.metricsLogger.logMetrics(
+        metrics,
+        {
+          highlightedCategory: highlightedCategory ?? null,
+          isVideoPrompt,
+          modelTarget,
+          promptSection,
+        },
+        error as Error
+      );
+      
+      this.log.error(`${operation} failed`, error as Error, {
+        operation,
+        duration: metrics.total,
+        highlightedCategory: highlightedCategory ?? null,
+        isVideoPrompt,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get custom suggestions based on user request
+   */
+  async getCustomSuggestions({ 
+    highlightedText, 
+    customRequest, 
+    fullPrompt 
+  }: CustomSuggestionRequestParams): Promise<{ suggestions: Suggestion[] }> {
+    const startTime = performance.now();
+    const operation = 'getCustomSuggestions';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      customRequestLength: customRequest?.length || 0,
+      highlightedLength: highlightedText?.length,
+    });
+
+    // Check cache
+    const cacheKey = cacheService.generateKey(this.cacheConfig.namespace, {
+      highlightedText,
+      customRequest,
+      fullPrompt: fullPrompt.substring(0, 500),
+    });
+
+    const cached = await cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
+    if (cached) {
+      this.log.debug('Cache hit for custom suggestions', {
+        operation,
+        duration: Math.round(performance.now() - startTime),
+        suggestionCount: cached.suggestions?.length || 0,
+      });
+      return cached;
+    }
+
+    // Detect video prompt
+    const isVideoPrompt = this.videoService.isVideoPrompt(fullPrompt);
+
+    // Build prompt
+    const systemPrompt = this.promptBuilder.buildCustomPrompt({
+      highlightedText,
+      customRequest,
+      fullPrompt,
+      isVideoPrompt,
+    });
+
+    // Generate suggestions
+    const schema = getCustomSuggestionSchema();
+    const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
+      diversity: 'high',
+      precision: 'medium',
+    });
+
+    // Create adapter for StructuredOutputEnforcer compatibility
+    // StructuredOutputEnforcer._callAIService adds systemPrompt to options
+    const aiAdapter = {
+      execute: async (operation: string, options: Record<string, unknown>) => {
+        const executeParams: Parameters<AIService['execute']>[1] = {
+          systemPrompt: options.systemPrompt as string,
+        };
+        if (options.userMessage) executeParams.userMessage = options.userMessage as string;
+        if (options.temperature !== undefined) executeParams.temperature = options.temperature as number;
+        if (options.maxTokens !== undefined) executeParams.maxTokens = options.maxTokens as number;
+        
+        const response = await this.ai.execute(operation, executeParams);
+        // Convert AIResponse to AIServiceResponse format
+        return {
+          text: response.text,
+          content: [{ text: response.text }],
+        };
+      },
+    };
+    
+    const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+      aiAdapter,
+      systemPrompt,
+      {
+        operation: 'custom_suggestions',
+        schema: schema as { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] } } | null,
+        isArray: true,
+        maxTokens: 2048,
+        maxRetries: 2,
+        temperature,
+      }
+    );
+
+    // Process suggestions
+    const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(suggestions);
+
+    const result = { suggestions: diverseSuggestions };
+
+    // Cache result
+    await cacheService.set(cacheKey, result, {
+      ttl: this.cacheConfig.ttl,
+    });
+
+    this.log.info(`${operation} completed`, {
+      operation,
+      duration: Math.round(performance.now() - startTime),
+      count: diverseSuggestions.length,
+      diversityEnforced: diverseSuggestions.length !== suggestions.length,
+    });
+
+    return result;
+  }
+
+  /**
+   * Transfer text from one style to another
+   */
+  async transferStyle(text: string, targetStyle: string): Promise<string> {
+    return this.styleTransfer.transferStyle(text, targetStyle);
+  }
+
+
+  /**
+   * Build final enhancement result from processed suggestions
+   * @private
+   */
+  private _buildEnhancementResult(params: {
+    suggestionsToUse: Suggestion[];
+    activeConstraints: VideoConstraints | undefined;
+    alignmentFallbackApplied: boolean;
+    usedFallback: boolean;
+    isPlaceholder: boolean;
+    phraseRole: string | null;
+  }): EnhancementResult {
+    const groupedSuggestions = this.suggestionProcessor.groupSuggestions(
+      params.suggestionsToUse,
+      params.isPlaceholder
+    );
+
+    const buildResultParams: {
+      groupedSuggestions: Suggestion[] | GroupedSuggestions[];
+      isPlaceholder: boolean;
+      phraseRole?: string | null;
+      activeConstraints?: { mode?: string } | null;
+      alignmentFallbackApplied?: boolean;
+      usedFallback?: boolean;
+      hasNoSuggestions?: boolean;
+    } = {
+      groupedSuggestions,
+      isPlaceholder: params.isPlaceholder,
+    };
+    if (params.phraseRole !== null) buildResultParams.phraseRole = params.phraseRole;
+    if (params.activeConstraints && params.activeConstraints.mode) {
+      buildResultParams.activeConstraints = { mode: params.activeConstraints.mode };
+    } else if (params.activeConstraints) {
+      buildResultParams.activeConstraints = null;
+    }
+    if (params.alignmentFallbackApplied) buildResultParams.alignmentFallbackApplied = true;
+    if (params.usedFallback) buildResultParams.usedFallback = true;
+    if (params.suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
+    
+    return this.suggestionProcessor.buildResult(buildResultParams);
+  }
+
+
+
+}
+
