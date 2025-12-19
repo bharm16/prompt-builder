@@ -34,7 +34,7 @@ services it should (and should not) be paired with.
 - Avoid: Do not use this service as a span labeling substitute.
 
 ## NLP span extraction
-- Entry point: `server/src/services/nlp/NlpSpanService.ts`
+- Entry point: `server/src/llm/span-labeling/nlp/NlpSpanService.ts`
 - Primary responsibility: fast, rule- and model-based extraction to reduce LLM load.
 - Use when: invoked internally by `SpanLabelingService` as Tier 1/2 extraction.
 - Outputs: `NlpSpan[]` with lower-level spans that may be incomplete.

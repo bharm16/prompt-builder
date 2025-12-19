@@ -9,59 +9,48 @@
  * from the prompt (~35% token reduction) because the schema enforces them.
  */
 
-// Valid taxonomy IDs - derived from shared/taxonomy.js
-export const VALID_TAXONOMY_IDS = [
-  // Parent categories
-  'shot',
-  'subject',
-  'action',
-  'environment',
-  'lighting',
-  'camera',
-  'style',
-  'technical',
-  'audio',
-  // Shot attributes
-  'shot.type',
-  // Subject attributes
-  'subject.identity',
-  'subject.appearance',
-  'subject.wardrobe',
-  'subject.emotion',
-  // Action attributes
-  'action.movement',
-  'action.state',
-  'action.gesture',
-  // Environment attributes
-  'environment.location',
-  'environment.weather',
-  'environment.context',
-  // Lighting attributes
-  'lighting.source',
-  'lighting.quality',
-  'lighting.timeOfDay',
-  'lighting.colorTemp',
-  // Camera attributes
-  'camera.movement',
-  'camera.lens',
-  'camera.angle',
-  'camera.focus',
-  // Style attributes
-  'style.aesthetic',
-  'style.filmStock',
-  'style.colorGrade',
-  // Technical attributes
-  'technical.aspectRatio',
-  'technical.frameRate',
-  'technical.resolution',
-  'technical.duration',
-  // Audio attributes
-  'audio.score',
-  'audio.soundEffect',
-  'audio.ambient'
-] as const;
+import { TAXONOMY } from '#shared/taxonomy.ts';
 
-export type TaxonomyId = typeof VALID_TAXONOMY_IDS[number];
+type TaxonomyValues = typeof TAXONOMY[keyof typeof TAXONOMY];
+type ParentCategoryId = TaxonomyValues['id'];
+type AttributeId = {
+  [K in keyof typeof TAXONOMY]: typeof TAXONOMY[K]['attributes'] extends Record<string, infer V> ? V : never
+}[keyof typeof TAXONOMY];
+
+export type TaxonomyId = ParentCategoryId | AttributeId;
+
+const TAXONOMY_CATEGORIES = Object.values(TAXONOMY);
+
+function buildTaxonomyIdList(): TaxonomyId[] {
+  const parentIds = TAXONOMY_CATEGORIES.map((category) => category.id);
+  const parentOrder = new Map<string, number>(parentIds.map((id, index) => [id, index]));
+
+  const attributeOrder = new Map<string, number>();
+  const attributes: AttributeId[] = [];
+
+  for (const category of TAXONOMY_CATEGORIES) {
+    if (!category.attributes) continue;
+    for (const attributeId of Object.values(category.attributes)) {
+      if (attributeOrder.has(attributeId)) continue;
+      attributeOrder.set(attributeId, attributes.length);
+      attributes.push(attributeId as AttributeId);
+    }
+  }
+
+  const sortedAttributes = [...attributes].sort((a, b) => {
+    const parentA = a.split('.')[0] ?? '';
+    const parentB = b.split('.')[0] ?? '';
+    const orderA = parentOrder.get(parentA) ?? Number.MAX_SAFE_INTEGER;
+    const orderB = parentOrder.get(parentB) ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+    return (attributeOrder.get(a) ?? 0) - (attributeOrder.get(b) ?? 0);
+  });
+
+  return [...parentIds, ...sortedAttributes];
+}
+
+// Valid taxonomy IDs - derived from shared/taxonomy.ts
+export const VALID_TAXONOMY_IDS = buildTaxonomyIdList();
 
 /**
  * TypeScript Interface Definition (for prompts that don't use strict schema)
@@ -208,6 +197,18 @@ export const JSON_SCHEMA_GROQ = {
       }
     }
   }
+};
+
+// Flattened JSON Schema definitions for provider-agnostic usage (SchemaFactory, tests, etc.)
+export const OPENAI_SPAN_LABELING_JSON_SCHEMA = {
+  name: JSON_SCHEMA_DEFINITION.name,
+  strict: JSON_SCHEMA_DEFINITION.strict,
+  ...JSON_SCHEMA_DEFINITION.schema
+};
+
+export const GROQ_SPAN_LABELING_JSON_SCHEMA = {
+  name: JSON_SCHEMA_GROQ.name,
+  ...JSON_SCHEMA_GROQ.schema
 };
 
 /**

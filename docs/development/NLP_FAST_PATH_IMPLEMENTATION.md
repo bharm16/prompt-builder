@@ -13,7 +13,7 @@ Successfully implemented a **dictionary-based NLP fast-path** for span labeling 
 
 ### 1. Data Structure (Phase 1)
 
-**Created:** `server/src/llm/span-labeling/data/vocab.json`
+**Created:** `server/src/llm/span-labeling/nlp/vocab.json`
 
 Comprehensive vocabulary database with **281 terms** across **8 taxonomy categories**:
 
@@ -28,7 +28,7 @@ Comprehensive vocabulary database with **281 terms** across **8 taxonomy categor
 
 ### 2. NLP Service (Phase 2)
 
-**Created:** `server/src/llm/span-labeling/services/NlpSpanService.js`
+**Created:** `server/src/llm/span-labeling/nlp/NlpSpanService.ts`
 
 Core features:
 - **Regex-based matching** for deterministic extraction
@@ -77,7 +77,7 @@ NLP_FAST_PATH: {
 
 ### 6. Testing (Phase 4)
 
-**Created:** `server/src/llm/span-labeling/services/__tests__/NlpSpanService.test.js`
+**Created:** `server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts`
 
 **34 comprehensive tests** covering:
 - ✓ Vocabulary matching (all 8 categories)
@@ -154,9 +154,9 @@ const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
 
 ## Files Created
 
-1. `server/src/llm/span-labeling/data/vocab.json` - Vocabulary database
-2. `server/src/llm/span-labeling/services/NlpSpanService.js` - NLP extraction engine
-3. `server/src/llm/span-labeling/services/__tests__/NlpSpanService.test.js` - Unit tests
+1. `server/src/llm/span-labeling/nlp/vocab.json` - Vocabulary database
+2. `server/src/llm/span-labeling/nlp/NlpSpanService.ts` - NLP extraction engine
+3. `server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts` - Unit tests
 4. `scripts/validate-nlp-fastpath.js` - End-to-end validation script
 
 ## Files Modified
@@ -168,7 +168,7 @@ const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
 
 ### Unit Tests
 ```bash
-npm test -- server/src/llm/span-labeling/services/__tests__/NlpSpanService.test.js
+npm test -- server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts
 # ✓ 34 tests passing
 ```
 

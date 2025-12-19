@@ -46,7 +46,7 @@ import { CategoryAlignmentService } from '../services/enhancement/services/Categ
 import { createRedisClient } from './redis.ts';
 
 // Import NLP warmup
-import { warmupGliner } from '../services/nlp/NlpSpanService.js';
+import { warmupGliner } from '../llm/span-labeling/nlp/NlpSpanService.js';
 
 interface ServiceConfig {
   openai: {

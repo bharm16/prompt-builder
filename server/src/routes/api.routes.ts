@@ -15,7 +15,7 @@ import {
   parseConceptSchema,
   videoValidationSchema,
 } from '../utils/validation.js';
-import { extractSemanticSpans } from '../services/nlp/NlpSpanService.js';
+import { extractSemanticSpans } from '../llm/span-labeling/nlp/NlpSpanService.js';
 
 interface ApiServices {
   promptOptimizationService: any;

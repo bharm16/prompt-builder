@@ -19,14 +19,14 @@ npm install gliner
 ### Step 2: Download the ONNX model
 
 ```bash
-mkdir -p server/src/services/nlp/models
+mkdir -p server/src/llm/span-labeling/nlp/models
 
 # Download from HuggingFace
 # Visit: https://huggingface.co/onnx-community/gliner_small-v2.1/tree/main/onnx
-# Download model.onnx to server/src/services/nlp/models/
+# Download model.onnx to server/src/llm/span-labeling/nlp/models/
 
 # Or via CLI:
-cd server/src/services/nlp/models
+cd server/src/llm/span-labeling/nlp/models
 wget https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/onnx/model.onnx
 ```
 
@@ -83,4 +83,4 @@ The package is browser-focused but works in Node.js via WASM. If you hit issues:
 
 ## Files Changed
 
-- `server/src/services/nlp/NlpSpanService.ts` - REWRITTEN
+- `server/src/llm/span-labeling/nlp/NlpSpanService.ts` - REWRITTEN

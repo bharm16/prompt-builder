@@ -6,7 +6,7 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { extractSemanticSpans } from '../../../nlp/NlpSpanService.js';
+import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService.js';
 import { getParentCategory } from '@shared/taxonomy';
 import type {
   PromptBuildParams,

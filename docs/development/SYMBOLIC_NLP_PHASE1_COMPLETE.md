@@ -71,7 +71,7 @@ November 23, 2025
 
 ### Enhanced Existing Files (2 files)
 
-#### 1. NlpSpanService.js
+#### 1. NlpSpanService.ts
 **Added `extractSemanticSpans()` method:**
 
 ```javascript
@@ -332,7 +332,7 @@ Passive: "The camera is held by the man"
 
 ## Files Modified (2 total)
 
-1. server/src/llm/span-labeling/services/NlpSpanService.js
+1. server/src/llm/span-labeling/nlp/NlpSpanService.ts
    - Added `extractSemanticSpans()` method
 
 2. server/src/llm/span-labeling/config/SpanLabelingConfig.js
@@ -342,7 +342,7 @@ Passive: "The camera is held by the man"
 
 ### Basic Usage
 ```javascript
-import { extractSemanticSpans } from './server/src/llm/span-labeling/services/NlpSpanService.js';
+import { extractSemanticSpans } from './server/src/llm/span-labeling/nlp/NlpSpanService.ts';
 
 const result = await extractSemanticSpans("A soldier runs through a forest");
 

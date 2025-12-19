@@ -1,5 +1,5 @@
 // Import vocabulary from centralized vocab.json
-import vocab from '../../nlp/vocab.json' with { type: "json" };
+import vocab from '../../../llm/span-labeling/nlp/vocab.json' with { type: "json" };
 import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
 
 /**

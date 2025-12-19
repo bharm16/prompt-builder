@@ -40,7 +40,7 @@ export interface Taxonomy {
   readonly AUDIO: CategoryConfig;
 }
 
-export const TAXONOMY: Taxonomy = {
+export const TAXONOMY = {
   // ============================================================================
   // GROUP 0: THE SHOT (FRAMING)
   // ============================================================================
@@ -266,7 +266,7 @@ export const TAXONOMY: Taxonomy = {
       AMBIENT: 'audio.ambient'
     }
   }
-} as const;
+} as const satisfies Taxonomy;
 
 // ============================================================================
 // VALIDATION SET
@@ -590,4 +590,3 @@ export function getColorForCategory(categoryId: string | null | undefined): stri
 
   return null;
 }
-

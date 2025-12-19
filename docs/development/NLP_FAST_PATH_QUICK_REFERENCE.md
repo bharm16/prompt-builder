@@ -5,7 +5,7 @@
 ### Run Tests
 ```bash
 # Unit tests
-npm test -- server/src/llm/span-labeling/services/__tests__/NlpSpanService.test.js
+npm test -- server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts
 
 # End-to-end validation
 node scripts/validate-nlp-fastpath.js
@@ -43,7 +43,7 @@ console.log(result.meta.source); // 'nlp-fast-path' or 'llm'
 
 ## Adding New Vocabulary
 
-Edit `server/src/llm/span-labeling/data/vocab.json`:
+Edit `server/src/llm/span-labeling/nlp/vocab.json`:
 
 ```json
 {
@@ -58,8 +58,8 @@ Edit `server/src/llm/span-labeling/data/vocab.json`:
 
 | File | Purpose |
 |------|---------|
-| `data/vocab.json` | Vocabulary database (281 terms) |
-| `services/NlpSpanService.js` | NLP extraction engine |
+| `nlp/vocab.json` | Vocabulary database (281 terms) |
+| `nlp/NlpSpanService.ts` | NLP extraction engine |
 | `SpanLabelingService.js` | Integration point |
 | `config/SpanLabelingConfig.js` | Configuration |
 | `scripts/validate-nlp-fastpath.js` | Validation script |
@@ -77,12 +77,12 @@ Edit `server/src/llm/span-labeling/data/vocab.json`:
 
 1. Check it exists in `vocab.json`
 2. Verify taxonomy ID is correct
-3. Check disambiguation rules in `NlpSpanService.js`
+3. Check disambiguation rules in `NlpSpanService.ts`
 4. Test with: `extractKnownSpans("your text here")`
 
 ### Issue: False positives
 
-Add disambiguation rule in `shouldIncludeMatch()` function in `NlpSpanService.js`:
+Add disambiguation rule in `shouldIncludeMatch()` function in `NlpSpanService.ts`:
 
 ```javascript
 if (taxonomyId === 'camera.movement') {
@@ -130,7 +130,6 @@ A: ~$0.0003-0.0004 per request (60-70% bypass rate). At scale: $100-1500/year.
 
 ## Support
 
-- **Tests**: `npm test -- server/src/llm/span-labeling/services/__tests__/NlpSpanService.test.js`
+- **Tests**: `npm test -- server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts`
 - **Validation**: `node scripts/validate-nlp-fastpath.js`
 - **Documentation**: See `NLP_FAST_PATH_IMPLEMENTATION.md`
-

@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import SpanLabelingConfig from '../config/SpanLabelingConfig.js';
-import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '@services/nlp/NlpSpanService.js';
+import { extractKnownSpans, getVocabStats, extractSemanticSpans } from '../nlp/NlpSpanService.js';
 import { validateSpans } from '../validation/SpanValidator.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
 import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';

@@ -14,21 +14,9 @@
  * - ~35% token reduction from prompt
  */
 
-// Valid taxonomy IDs
-export const VALID_TAXONOMY_IDS = [
-  'shot', 'subject', 'action', 'environment', 'lighting', 'camera', 'style', 'technical', 'audio',
-  'shot.type',
-  'subject.identity', 'subject.appearance', 'subject.wardrobe', 'subject.emotion',
-  'action.movement', 'action.state', 'action.gesture',
-  'environment.location', 'environment.weather', 'environment.context',
-  'lighting.source', 'lighting.quality', 'lighting.timeOfDay',
-  'camera.movement', 'camera.lens', 'camera.angle',
-  'style.aesthetic', 'style.filmStock',
-  'technical.aspectRatio', 'technical.frameRate', 'technical.resolution', 'technical.duration',
-  'audio.score', 'audio.soundEffect'
-] as const;
+import { VALID_TAXONOMY_IDS, type TaxonomyId } from './SpanLabelingSchema.js';
 
-export type TaxonomyId = typeof VALID_TAXONOMY_IDS[number];
+export type { TaxonomyId };
 
 /**
  * Category Selection Guide - encoded in enum description

@@ -13,7 +13,7 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import vocab from '../../../nlp/vocab.json' with { type: "json" };
+import vocab from '../../../../llm/span-labeling/nlp/vocab.json' with { type: "json" };
 import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
 
 export class OpenAIVideoTemplateBuilder extends BaseVideoTemplateBuilder {
