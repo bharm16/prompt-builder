@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Worker } from 'worker_threads';
 import { logger } from '@infrastructure/Logger.js';
-import { TAXONOMY, VALID_CATEGORIES } from '#shared/taxonomy.ts';
+import { TAXONOMY, VALID_CATEGORIES, getParentCategory } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig.js';
 import type {
   NlpSpan,
@@ -84,6 +84,145 @@ function hasCameraContext(text: string, start: number, end: number): boolean {
   return /(camera|shot|lens|frame|cinematography|cinematic|filming|video|footage)/.test(context);
 }
 
+const WORD_CHAR_REGEX = /[A-Za-z0-9]/;
+
+function isWordChar(value: string | undefined): boolean {
+  return Boolean(value && WORD_CHAR_REGEX.test(value));
+}
+
+function hasSafeWordBoundaries(text: string, start: number, end: number): boolean {
+  const before = start > 0 ? text[start - 1] : '';
+  const after = end < text.length ? text[end] : '';
+  const startChar = text[start];
+  const endChar = text[end - 1];
+
+  if (isWordChar(startChar) && isWordChar(before)) return false;
+  if (isWordChar(endChar) && isWordChar(after)) return false;
+  return true;
+}
+
+const COMMON_ASPECT_RATIOS = new Set([
+  '1:1',
+  '4:3',
+  '3:2',
+  '16:9',
+  '9:16',
+  '4:5',
+  '2:3',
+  '21:9',
+  '1.33:1',
+  '1.37:1',
+  '1.43:1',
+  '1.66:1',
+  '1.75:1',
+  '1.85:1',
+  '2.00:1',
+  '2.20:1',
+  '2.35:1',
+  '2.39:1',
+  '2.40:1',
+  '2.55:1',
+  '2.59:1',
+  '2.76:1'
+]);
+
+function isLikelyAspectRatio(text: string, start: number, end: number): boolean {
+  const raw = text.slice(start, end);
+  const normalized = raw.replace(/\s+/g, '');
+
+  if (COMMON_ASPECT_RATIOS.has(normalized)) {
+    return true;
+  }
+
+  const windowStart = Math.max(0, start - 30);
+  const windowEnd = Math.min(text.length, end + 30);
+  const context = text.slice(windowStart, windowEnd).toLowerCase();
+  return context.includes('aspect') || context.includes('ratio');
+}
+
+const PATTERN_DEFINITIONS: Array<{
+  role: string;
+  regex: RegExp;
+  confidence: number;
+  context?: (text: string, start: number, end: number) => boolean;
+}> = [
+  {
+    role: 'technical.frameRate',
+    regex: /\b\d{2,3}(?:\.\d{1,2})?\s*fps\b/gi,
+    confidence: 0.95,
+  },
+  {
+    role: 'technical.duration',
+    regex: /\b\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds)\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'technical.duration',
+    regex: /\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds)\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'technical.resolution',
+    regex: /\b\d{3,4}p\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'technical.resolution',
+    regex: /\b[248]k\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'technical.aspectRatio',
+    regex: /\b\d+(?:\.\d+)?\s*:\s*\d+(?:\.\d+)?\b/g,
+    confidence: 0.9,
+    context: isLikelyAspectRatio,
+  },
+  {
+    role: 'camera.lens',
+    regex: /\b\d{2,3}\s*mm\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'camera.focus',
+    regex: /\bf\s*\/\s*\d+(?:\.\d+)?\b/gi,
+    confidence: 0.9,
+  },
+  {
+    role: 'lighting.colorTemp',
+    regex: /\b\d{4,5}\s*k\b/gi,
+    confidence: 0.85,
+  },
+];
+
+function extractPatternSpans(text: string): NlpSpan[] {
+  const spans: NlpSpan[] = [];
+
+  for (const pattern of PATTERN_DEFINITIONS) {
+    pattern.regex.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.regex.exec(text)) !== null) {
+      const matchedText = match[0];
+      const start = match.index;
+      const end = start + matchedText.length;
+
+      if (pattern.context && !pattern.context(text, start, end)) {
+        continue;
+      }
+
+      spans.push({
+        text: matchedText,
+        role: pattern.role,
+        confidence: pattern.confidence,
+        start,
+        end,
+        source: 'pattern',
+      });
+    }
+  }
+
+  return spans;
+}
+
 function extractClosedVocabulary(text: string): NlpSpan[] {
   if (!text || typeof text !== 'string') return [];
   
@@ -99,6 +238,10 @@ function extractClosedVocabulary(text: string): NlpSpan[] {
       const start = endIndex - pattern.length + 1;
       const end = endIndex + 1;
       const matchedText = text.substring(start, end);
+
+      if (!hasSafeWordBoundaries(text, start, end)) {
+        continue;
+      }
       
       if (info.taxonomyId === 'camera.movement' && AMBIGUOUS_CAMERA_TERMS.has(pattern)) {
         const beforeContext = text.substring(Math.max(0, start - 20), start).toLowerCase();
@@ -120,6 +263,8 @@ function extractClosedVocabulary(text: string): NlpSpan[] {
       });
     }
   }
+
+  spans.push(...extractPatternSpans(text));
   
   return spans;
 }
@@ -198,7 +343,13 @@ const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
   { label: 'vehicle', taxonomyId: 'subject.identity' },
   { label: 'food', taxonomyId: 'subject.identity' },
   { label: 'drink', taxonomyId: 'subject.identity' },
+  { label: 'appearance', taxonomyId: 'subject.appearance' },
+  { label: 'physical trait', taxonomyId: 'subject.appearance' },
+  { label: 'body part', taxonomyId: 'subject.appearance' },
   { label: 'clothing', taxonomyId: 'subject.wardrobe' },
+  { label: 'wardrobe', taxonomyId: 'subject.wardrobe' },
+  { label: 'outfit', taxonomyId: 'subject.wardrobe' },
+  { label: 'accessory', taxonomyId: 'subject.wardrobe' },
 
   // Environment
   { label: 'place', taxonomyId: 'environment.location' },
@@ -206,6 +357,9 @@ const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
   { label: 'building', taxonomyId: 'environment.location' },
   { label: 'room', taxonomyId: 'environment.location' },
   { label: 'environment', taxonomyId: 'environment.context' },
+  { label: 'setting', taxonomyId: 'environment.context' },
+  { label: 'scene', taxonomyId: 'environment.context' },
+  { label: 'context', taxonomyId: 'environment.context' },
   { label: 'atmosphere', taxonomyId: 'environment.context' },
   { label: 'weather', taxonomyId: 'environment.weather' },
   { label: 'season', taxonomyId: 'environment.context' },
@@ -215,6 +369,8 @@ const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
   { label: 'movement', taxonomyId: 'action.movement' },
   { label: 'activity', taxonomyId: 'action.movement' },
   { label: 'gesture', taxonomyId: 'action.gesture' },
+  { label: 'pose', taxonomyId: 'action.state' },
+  { label: 'state', taxonomyId: 'action.state' },
 
   // Emotion / vibe
   { label: 'emotion', taxonomyId: 'subject.emotion' },
@@ -233,6 +389,10 @@ const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
   { label: 'aesthetic', taxonomyId: 'style.aesthetic' },
   { label: 'film stock', taxonomyId: 'style.filmStock' },
   { label: 'color grade', taxonomyId: 'style.colorGrade' },
+  { label: 'color grading', taxonomyId: 'style.colorGrade' },
+  { label: 'color palette', taxonomyId: 'style.colorGrade' },
+  { label: 'palette', taxonomyId: 'style.colorGrade' },
+  { label: 'tones', taxonomyId: 'style.colorGrade' },
   { label: 'color', taxonomyId: 'style.colorGrade' },
 
   // Lighting
@@ -250,8 +410,12 @@ const GLINER_LABEL_SPECS: Array<{ label: string; taxonomyId: string }> = [
 
   // Audio
   { label: 'audio', taxonomyId: 'audio.ambient' },
+  { label: 'sound', taxonomyId: 'audio.ambient' },
   { label: 'ambient sound', taxonomyId: 'audio.ambient' },
+  { label: 'ambience', taxonomyId: 'audio.ambient' },
+  { label: 'ambiance', taxonomyId: 'audio.ambient' },
   { label: 'sound effect', taxonomyId: 'audio.soundEffect' },
+  { label: 'sfx', taxonomyId: 'audio.soundEffect' },
   { label: 'music', taxonomyId: 'audio.score' },
   { label: 'score', taxonomyId: 'audio.score' },
 ];
@@ -272,6 +436,20 @@ if (invalidTaxonomyIds.length) {
 
 function mapLabelToTaxonomy(label: string): string {
   return LABEL_TO_TAXONOMY[label.toLowerCase()] || 'subject.identity';
+}
+
+function getLabelThreshold(label: string, taxonomyId: string, defaultThreshold: number): number {
+  const overrides = NEURO_SYMBOLIC.GLINER?.LABEL_THRESHOLDS || {};
+  const labelKey = label.toLowerCase();
+  const override =
+    (typeof overrides[labelKey] === 'number' ? overrides[labelKey] : undefined) ??
+    (typeof overrides[taxonomyId] === 'number' ? overrides[taxonomyId] : undefined);
+
+  if (typeof override === 'number' && Number.isFinite(override)) {
+    return Math.max(0, Math.min(0.99, override));
+  }
+
+  return defaultThreshold;
 }
 
 /**
@@ -365,6 +543,8 @@ function getOrCreateGlinerWorker(): Worker | null {
         maxWidth: NEURO_SYMBOLIC.GLINER.MAX_WIDTH || 12,
         defaultThreshold: NEURO_SYMBOLIC.GLINER.THRESHOLD || 0.3,
         defaultTimeoutMs: NEURO_SYMBOLIC.GLINER.TIMEOUT || 0,
+        multiLabel: NEURO_SYMBOLIC.GLINER.MULTI_LABEL || false,
+        labelThresholds: NEURO_SYMBOLIC.GLINER.LABEL_THRESHOLDS || {},
       },
     });
 
@@ -537,6 +717,8 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 
   const threshold = NEURO_SYMBOLIC.GLINER?.THRESHOLD || 0.3;
   const timeoutMs = NEURO_SYMBOLIC.GLINER?.TIMEOUT || 0;
+  const multiLabel = NEURO_SYMBOLIC.GLINER?.MULTI_LABEL ?? false;
+  const labelThresholds = NEURO_SYMBOLIC.GLINER?.LABEL_THRESHOLDS || {};
 
   if (shouldUseGlinerWorker()) {
     if (!isGlinerReady()) {
@@ -564,7 +746,7 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 
       const spans = await sendGlinerWorkerRequest<NlpSpan[]>(
         'inference',
-        { text, threshold, timeoutMs },
+        { text, threshold, timeoutMs, multiLabel, labelThresholds },
         timeoutMs
       );
 
@@ -616,7 +798,7 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
         entities: GLINER_LABELS,
         flatNer: false,
         threshold,
-        multiLabel: false,
+        multiLabel,
       }),
       timeoutMs
     );
@@ -630,14 +812,24 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
       threshold,
     });
     
-    return entities.map(entity => ({
-      text: entity.spanText,  // Node.js version uses spanText field
-      role: mapLabelToTaxonomy(entity.label),
-      confidence: calibrateGlinerConfidence(entity.score, threshold),
-      start: entity.start,
-      end: entity.end,
-      source: 'gliner' as const
-    }));
+    return entities
+      .map((entity) => {
+        const taxonomyId = mapLabelToTaxonomy(entity.label);
+        const labelThreshold = getLabelThreshold(entity.label, taxonomyId, threshold);
+        if (entity.score < labelThreshold) {
+          return null;
+        }
+
+        return {
+          text: entity.spanText,  // Node.js version uses spanText field
+          role: taxonomyId,
+          confidence: calibrateGlinerConfidence(entity.score, labelThreshold),
+          start: entity.start,
+          end: entity.end,
+          source: 'gliner' as const
+        };
+      })
+      .filter((span): span is NlpSpan => span !== null);
   } catch (error) {
     log.warn('extractOpenVocabulary: Failed', {
       textLength: text.length,
@@ -653,65 +845,106 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 // =============================================================================
 
 function mergeSpans(closedSpans: NlpSpan[], openSpans: NlpSpan[]): NlpSpan[] {
-  const allSpans = [...closedSpans];
-  const occupied = new Set<number>();
-  
-  for (const span of closedSpans) {
-    for (let i = span.start; i < span.end; i++) {
-      occupied.add(i);
-    }
-  }
-  
-  for (const span of openSpans) {
-    let hasOverlap = false;
-    for (let i = span.start; i < span.end; i++) {
-      if (occupied.has(i)) {
-        hasOverlap = true;
-        break;
-      }
-    }
-    
-    if (!hasOverlap) {
-      allSpans.push(span);
-      for (let i = span.start; i < span.end; i++) {
-        occupied.add(i);
-      }
-    }
-  }
-  
-  return allSpans;
+  return deduplicateSpans([...closedSpans, ...openSpans]);
 }
 
 function deduplicateSpans(spans: NlpSpan[]): NlpSpan[] {
   if (spans.length === 0) return [];
-  
+
+  const seen = new Set<string>();
   const sorted = [...spans].sort((a, b) => {
-    if (b.confidence !== a.confidence) return b.confidence - a.confidence;
-    const lenDiff = (b.end - b.start) - (a.end - a.start);
-    if (lenDiff !== 0) return lenDiff;
-    return a.start - b.start;
+    if (a.start !== b.start) return a.start - b.start;
+    if (a.end !== b.end) return b.end - a.end;
+    return b.confidence - a.confidence;
   });
-  
+
   const accepted: NlpSpan[] = [];
-  const occupied = new Set<number>();
-  
   for (const span of sorted) {
-    let overlap = false;
-    for (let i = span.start; i < span.end; i++) {
-      if (occupied.has(i)) {
-        overlap = true;
-        break;
+    const key = `${span.start}|${span.end}|${span.role}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+
+    const overlaps: Array<{ index: number; span: NlpSpan }> = [];
+    const spanParent = getParentCategory(span.role) || span.role;
+
+    for (let i = accepted.length - 1; i >= 0; i--) {
+      const existing = accepted[i];
+      if (existing.end <= span.start) break;
+
+      const existingParent = getParentCategory(existing.role) || existing.role;
+      if (existingParent !== spanParent) {
+        continue;
+      }
+
+      const overlap = span.start < existing.end && existing.start < span.end;
+      if (overlap) {
+        overlaps.push({ index: i, span: existing });
       }
     }
-    
-    if (!overlap) {
+
+    if (overlaps.length === 0) {
       accepted.push(span);
-      for (let i = span.start; i < span.end; i++) {
-        occupied.add(i);
+      continue;
+    }
+
+    const preferClosed = NEURO_SYMBOLIC.MERGE.CLOSED_VOCAB_PRIORITY;
+    const strategy = NEURO_SYMBOLIC.MERGE.OVERLAP_STRATEGY;
+
+    const getSourcePriority = (source?: NlpSpan['source']): number => {
+      if (!preferClosed) return 0;
+      if (source === 'aho-corasick' || source === 'pattern') return 2;
+      if (source === 'gliner') return 1;
+      return 0;
+    };
+
+    const getSpecificity = (role: string): number => role.split('.').length;
+
+    const isPreferred = (candidate: NlpSpan, current: NlpSpan): boolean => {
+      const candidateSource = getSourcePriority(candidate.source);
+      const currentSource = getSourcePriority(current.source);
+      if (candidateSource !== currentSource) {
+        return candidateSource > currentSource;
       }
+
+      const candidateSpecificity = getSpecificity(candidate.role);
+      const currentSpecificity = getSpecificity(current.role);
+      if (candidateSpecificity !== currentSpecificity) {
+        return candidateSpecificity > currentSpecificity;
+      }
+
+      const candidateLength = candidate.end - candidate.start;
+      const currentLength = current.end - current.start;
+
+      if (strategy === 'longest-match') {
+        if (candidateLength !== currentLength) return candidateLength > currentLength;
+        if (candidate.confidence !== current.confidence) return candidate.confidence > current.confidence;
+      } else {
+        if (candidate.confidence !== current.confidence) return candidate.confidence > current.confidence;
+        if (candidateLength !== currentLength) return candidateLength > currentLength;
+      }
+
+      return candidate.start <= current.start;
+    };
+
+    let winner = span;
+    for (const overlap of overlaps) {
+      if (!isPreferred(winner, overlap.span)) {
+        winner = overlap.span;
+      }
+    }
+
+    if (winner === span) {
+      overlaps
+        .sort((a, b) => b.index - a.index)
+        .forEach(({ index }) => {
+          accepted.splice(index, 1);
+        });
+      accepted.push(span);
     }
   }
-  
+
   return accepted.sort((a, b) => a.start - b.start);
 }
 
@@ -778,6 +1011,7 @@ export async function extractSemanticSpans(
     const tier1Start = performance.now();
     const closedSpans = extractClosedVocabulary(text);
     const tier1Time = Math.round(performance.now() - tier1Start);
+    const patternSpans = closedSpans.filter((span) => span.source === 'pattern').length;
     
     // Tier 2: Open vocabulary
     let openSpans: NlpSpan[] = [];
@@ -794,10 +1028,9 @@ export async function extractSemanticSpans(
       });
     }
     
-    // Merge and deduplicate
+    // Merge and deduplicate with role-aware overlap resolution
     const mergedSpans = mergeSpans(closedSpans, openSpans);
-    const uniqueSpans = deduplicateSpans(mergedSpans);
-    const outputSpans = uniqueSpans.map(({ source: _, ...span }) => span);
+    const outputSpans = mergedSpans.map(({ source: _, ...span }) => span);
     
     const totalTime = Math.round(performance.now() - startTime);
     
@@ -806,6 +1039,7 @@ export async function extractSemanticSpans(
       duration: totalTime,
       totalSpans: outputSpans.length,
       closedVocabSpans: closedSpans.length,
+      patternSpans,
       openVocabSpans: openSpans.length,
       useGliner,
     });
@@ -817,6 +1051,8 @@ export async function extractSemanticSpans(
         totalSpans: outputSpans.length,
         closedVocabSpans: closedSpans.length,
         openVocabSpans: openSpans.length,
+        patternSpans,
+        glinerReady: isGlinerReady(),
         tier1Latency: tier1Time,
         tier2Latency: tier2Time,
         totalLatency: totalTime,
@@ -875,6 +1111,13 @@ export function estimateCoverage(text: string): number {
   }, 0);
   
   return Math.min(100, Math.round((coveredWords / words) * 100));
+}
+
+/**
+ * Report whether GLiNER is initialized and ready
+ */
+export function isGlinerAvailable(): boolean {
+  return isGlinerReady();
 }
 
 /**

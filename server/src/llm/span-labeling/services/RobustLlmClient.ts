@@ -7,6 +7,7 @@ import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
 import { validateSpans } from '../validation/SpanValidator.js';
 import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, getFewShotExamples } from '../utils/promptBuilder.js';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
+import { getSpanLabelingSchema } from '@utils/provider/SchemaFactory.js';
 import { logger } from '@infrastructure/Logger';
 import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan } from '../types.js';
 import type { AIService as BaseAIService } from '../../../types.js';
@@ -50,18 +51,20 @@ async function callModel({
   aiService,
   maxTokens,
   providerOptions,
+  schema,
 }: {
   systemPrompt: string;
   userPayload: string;
   aiService: BaseAIService;
   maxTokens: number;
   providerOptions: ProviderRequestOptions;
+  schema?: Record<string, unknown>;
 }): Promise<ModelResponse> {
   const requestOptions: Record<string, unknown> = {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
-    jsonMode: true,
+    jsonMode: !schema,
     enableBookending: providerOptions.enableBookending,
     useSeedFromConfig: providerOptions.useSeedFromConfig,
     logprobs: providerOptions.enableLogprobs,
@@ -69,6 +72,10 @@ async function callModel({
 
   if (providerOptions.developerMessage) {
     requestOptions.developerMessage = providerOptions.developerMessage;
+  }
+
+  if (schema) {
+    requestOptions.schema = schema;
   }
 
   // Few-shot examples as message array (Llama 3 best practice)
@@ -139,18 +146,27 @@ export class RobustLlmClient implements ILlmClient {
 
     // Get provider-specific options from subclass (merge providerName for few-shot lookup)
     const providerName = this._getProviderName();
+    const modelConfig = this._getModelConfig(aiService, 'span_labeling');
+    const { provider, capabilities } = detectAndGetCapabilities({
+      operation: 'span_labeling',
+      model: modelConfig?.model,
+      client: process.env.SPAN_PROVIDER || providerName,
+    });
+    const supportsSchema = capabilities.strictJsonSchema || provider === 'groq' || provider === 'qwen';
+    const spanSchema = supportsSchema
+      ? getSpanLabelingSchema({ operation: 'span_labeling', model: modelConfig?.model, provider })
+      : undefined;
     const providerOptions: ProviderRequestOptions = {
       ...this._getProviderRequestOptions(),
       providerName,
     };
 
     // Build system prompt
-    const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName);
+    const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName, Boolean(spanSchema));
 
     // Check for two-pass architecture (GPT-4o-mini with complex schemas)
-    const config = this._getModelConfig(aiService, 'span_labeling');
-    const isMini = config?.model?.includes('mini') || 
-                   config?.model?.includes('gpt-4o-mini') ||
+    const isMini = modelConfig?.model?.includes('mini') || 
+                   modelConfig?.model?.includes('gpt-4o-mini') ||
                    process.env.SPAN_MODEL?.includes('mini');
     const hasComplexSchema = this._isComplexSchemaForSpans();
 
@@ -164,6 +180,7 @@ export class RobustLlmClient implements ILlmClient {
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
+        schema: spanSchema,
       });
     } else {
       // Standard single-pass extraction
@@ -173,6 +190,7 @@ export class RobustLlmClient implements ILlmClient {
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
+        schema: spanSchema,
       });
     }
 
@@ -188,7 +206,7 @@ export class RobustLlmClient implements ILlmClient {
     this._injectDefensiveMeta(parsedPrimary.value, options, nlpSpansAttempted);
 
     // Validate schema
-    validateSchemaOrThrow(parsedPrimary.value);
+    validateSchemaOrThrow(parsedPrimary.value, spanSchema);
 
     const isAdversarial =
       parsedPrimary.value?.isAdversarial === true ||
@@ -256,6 +274,7 @@ export class RobustLlmClient implements ILlmClient {
       cache,
       estimatedMaxTokens,
       providerOptions,
+      schema: spanSchema,
     });
 
     return this._postProcessResult(repairResult);
@@ -317,12 +336,14 @@ export class RobustLlmClient implements ILlmClient {
     aiService,
     maxTokens,
     providerOptions,
+    schema,
   }: {
     systemPrompt: string;
     userPayload: string;
     aiService: BaseAIService;
     maxTokens: number;
     providerOptions: ProviderRequestOptions;
+    schema?: Record<string, unknown>;
   }): Promise<ModelResponse> {
     const payloadData = JSON.parse(userPayload);
     const providerName = this._getProviderName();
@@ -406,6 +427,7 @@ Convert this analysis to the required JSON format.`
         ...providerOptions,
         developerMessage: structuringDeveloperMessage,
       },
+      schema,
     });
 
     logger.info('Pass 2 (structuring) completed', {
@@ -490,6 +512,7 @@ Convert this analysis to the required JSON format.`
     cache,
     estimatedMaxTokens,
     providerOptions,
+    schema,
   }: {
     basePayload: Record<string, unknown>;
     validationErrors: string[];
@@ -501,6 +524,7 @@ Convert this analysis to the required JSON format.`
     cache: SubstringPositionCache;
     estimatedMaxTokens: number;
     providerOptions: ProviderRequestOptions;
+    schema?: Record<string, unknown>;
   }): Promise<LabelSpansResult> {
     const repairPayload = {
       ...basePayload,
@@ -520,6 +544,7 @@ If validation feedback is provided, correct the issues without altering span tex
       aiService,
       maxTokens: estimatedMaxTokens,
       providerOptions,
+      schema,
     });
 
     this._lastResponseMetadata = repairResponse.metadata;
@@ -529,7 +554,7 @@ If validation feedback is provided, correct the issues without altering span tex
       throw new Error(parsedRepair.error);
     }
 
-    validateSchemaOrThrow(parsedRepair.value);
+    validateSchemaOrThrow(parsedRepair.value, schema);
 
     const validation = validateSpans({
       spans: parsedRepair.value.spans || [],

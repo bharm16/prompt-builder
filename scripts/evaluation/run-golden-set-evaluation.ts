@@ -31,6 +31,7 @@ import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingServi
 import { AIModelService } from '../../server/src/services/ai-model/AIModelService.ts';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.ts';
 import { GeminiAdapter } from '../../server/src/clients/adapters/GeminiAdapter.ts';
+import { warmupGliner } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -170,6 +171,7 @@ function loadGoldenDataset() {
     ['appearance', 'appearance-prompts.json'],
     ['lighting', 'lighting-prompts.json'],
     ['cameraMovement', 'camera-movement-prompts.json'],
+    ['patternOverlap', 'pattern-overlap-prompts.json'],
   ];
 
   const datasets: Record<string, any> = {};
@@ -493,6 +495,9 @@ export async function runSpanLabelingBenchmark(options = {}) {
  * Main evaluation function
  */
 async function main() {
+  console.log('Warming GLiNER (open-vocabulary) model...');
+  const warmup = await warmupGliner();
+  console.log(`GLiNER warmup: ${warmup.success ? 'ready' : 'not ready'} (${warmup.message})`);
   console.log('Running span-labeling benchmark (real LLM calls)...');
   const { metrics, results } = await runSpanLabelingBenchmark({ runs: 1 });
   printReport(metrics, new RelaxedF1Evaluator());
@@ -506,6 +511,9 @@ async function main() {
   } catch {
     // ignore write errors in constrained environments
   }
+
+  // GLiNER worker threads can keep the process alive; exit cleanly after report.
+  process.exit(0);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

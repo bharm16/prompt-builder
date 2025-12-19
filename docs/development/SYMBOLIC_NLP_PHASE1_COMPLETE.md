@@ -1,5 +1,8 @@
 # Symbolic NLP Framework Phase 1 - Implementation Complete ✅
 
+> NOTE: This document describes an experimental pipeline that is not currently wired into production.
+> The active span-labeling fast-path uses Aho-Corasick + GLiNER + regex patterns.
+
 ## Executive Summary
 
 Successfully implemented a comprehensive symbolic NLP framework for video prompt generation, featuring Penn Treebank POS tagging, Brill transformation rules, shallow parsing, domain-specific frame semantics, and semantic role labeling. This Phase 1 implementation provides deterministic, explainable linguistic analysis that enhances the existing span labeling system with deep structural understanding.
@@ -445,4 +448,3 @@ This provides a robust, explainable, and performant alternative to pure LLM-base
 **Date:** November 23, 2025  
 **Phase:** 1 of 2  
 **Next Milestone:** Phase 2 - Scene Graph Construction
-

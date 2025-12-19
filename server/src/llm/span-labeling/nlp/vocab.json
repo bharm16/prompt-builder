@@ -177,6 +177,24 @@
     "Warm",
     "Cool"
   ],
+  "lighting.source": [
+    "Sunlight",
+    "Moonlight",
+    "Candlelight",
+    "Firelight",
+    "Neon",
+    "Streetlight",
+    "Spotlight",
+    "Backlight",
+    "Rim Light",
+    "Key Light",
+    "Fill Light",
+    "Practical Light",
+    "Window Light",
+    "Headlight",
+    "Flashlight",
+    "Torchlight"
+  ],
   "style.filmStock": [
     "Kodak Vision3 50D 5203",
     "Kodak Vision3 50D 7203",
@@ -254,6 +272,22 @@
     "V-Log",
     "Canon Log 3"
   ],
+  "style.colorGrade": [
+    "Warm Tones",
+    "Cool Tones",
+    "Muted Colors",
+    "Vibrant Colors",
+    "Desaturated",
+    "Saturated",
+    "High Contrast",
+    "Low Contrast",
+    "Teal and Orange",
+    "Monochrome",
+    "Black and White",
+    "Sepia",
+    "Pastel Palette",
+    "Cinematic Color Grade"
+  ],
   "technical.aspectRatio": [
     "1:1",
     "4:3",
@@ -317,6 +351,42 @@
     "1080p",
     "720p",
     "480p"
+  ],
+  "audio.ambient": [
+    "Ambient Sound",
+    "Ambient Noise",
+    "Room Tone",
+    "Wind",
+    "Rain",
+    "Birdsong",
+    "City Ambience",
+    "Forest Ambience",
+    "Ocean Waves",
+    "Traffic",
+    "Crowd Noise"
+  ],
+  "audio.soundEffect": [
+    "Footsteps",
+    "Door Slam",
+    "Glass Break",
+    "Engine Rev",
+    "Gunshot",
+    "Explosion",
+    "Thunder",
+    "Whoosh",
+    "Clicks",
+    "Rustling Leaves"
+  ],
+  "audio.score": [
+    "Orchestral Score",
+    "Synth Score",
+    "Ambient Music",
+    "Piano Music",
+    "String Ensemble",
+    "Electronic Score",
+    "Lo-fi Beat",
+    "Cinematic Score",
+    "Minimalist Score"
   ],
   "camera.lens": [
     "14mm",

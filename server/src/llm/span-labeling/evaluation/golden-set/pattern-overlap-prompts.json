@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "name": "Pattern + Overlap Prompts - Golden Set",
+    "description": "Targeted prompts for pattern extraction (technical specs) and cross-category overlap retention.",
+    "category": "patternOverlap",
+    "version": "1.0.0",
+    "created": "2025-12-19"
+  },
+  "prompts": [
+    {
+      "id": "pattern-001",
+      "text": "**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 48fps\n- **Resolution:** 4K\n- **Lens:** 50mm\n- **Aperture:** f/2.8\n- **Color Temp:** 5600K",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "6s",
+            "role": "technical.duration",
+            "start": 36,
+            "end": 38
+          },
+          {
+            "text": "2.39:1",
+            "role": "technical.aspectRatio",
+            "start": 59,
+            "end": 65
+          },
+          {
+            "text": "48fps",
+            "role": "technical.frameRate",
+            "start": 84,
+            "end": 89
+          },
+          {
+            "text": "4K",
+            "role": "technical.resolution",
+            "start": 108,
+            "end": 110
+          },
+          {
+            "text": "50mm",
+            "role": "camera.lens",
+            "start": 123,
+            "end": 127
+          },
+          {
+            "text": "f/2.8",
+            "role": "camera.focus",
+            "start": 144,
+            "end": 149
+          },
+          {
+            "text": "5600K",
+            "role": "lighting.colorTemp",
+            "start": 168,
+            "end": 173
+          }
+        ]
+      }
+    },
+    {
+      "id": "pattern-002",
+      "text": "Warm tones dominate the frame.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Warm tones",
+            "role": "style.colorGrade",
+            "start": 0,
+            "end": 10
+          },
+          {
+            "text": "Warm",
+            "role": "lighting.colorTemp",
+            "start": 0,
+            "end": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "pattern-003",
+      "text": "Ambient Sound of Wind and Birdsong with a Lo-fi Beat.",
+      "groundTruth": {
+        "spans": [
+          {
+            "text": "Ambient Sound",
+            "role": "audio.ambient",
+            "start": 0,
+            "end": 13
+          },
+          {
+            "text": "Wind",
+            "role": "audio.ambient",
+            "start": 17,
+            "end": 21
+          },
+          {
+            "text": "Birdsong",
+            "role": "audio.ambient",
+            "start": 26,
+            "end": 34
+          },
+          {
+            "text": "Lo-fi Beat",
+            "role": "audio.score",
+            "start": 42,
+            "end": 52
+          }
+        ]
+      }
+    }
+  ]
+}

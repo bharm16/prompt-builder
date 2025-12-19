@@ -5,6 +5,7 @@ import { TextChunker, countWords } from './utils/chunkingUtils.js';
 import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
 import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
 import { resolveOverlaps } from './processing/OverlapResolver.js';
+import { validateSpans } from './validation/SpanValidator.js';
 import { detectInjectionPatterns } from '../../utils/SecurityPrompts.js';
 import { logger } from '@infrastructure/Logger.js';
 import type { LabelSpansParams, LabelSpansResult } from './types.js';
@@ -221,6 +222,11 @@ async function labelSpansChunked(
   // Merge spans from all chunks
   let mergedSpans = chunker.mergeChunkedSpans(chunkResults);
   const policy = sanitizePolicy(params.policy);
+  const sanitizedOptions = sanitizeOptions({
+    maxSpans: params.maxSpans,
+    minConfidence: params.minConfidence,
+    templateVersion: params.templateVersion,
+  });
   const overlapResolved = resolveOverlaps(
     mergedSpans.map(span => ({
       ...span,
@@ -245,17 +251,30 @@ async function labelSpansChunked(
     totalWords: wordCount,
     provider,
   };
+
+  const cache = new SubstringPositionCache();
+  const validation = validateSpans({
+    spans: mergedSpans,
+    meta: combinedMeta,
+    text: params.text,
+    policy,
+    options: sanitizedOptions,
+    attempt: 2,
+    cache,
+    isAdversarial,
+  });
   
   logger.info('Chunked processing complete', {
     operation: 'labelSpansChunked',
-    spanCount: mergedSpans.length,
+    spanCount: validation.result.spans.length,
     chunkCount: chunks.length,
     provider,
   });
   
   return {
-    spans: mergedSpans,
-    meta: combinedMeta,
-    isAdversarial,
+    spans: validation.result.spans,
+    meta: validation.result.meta,
+    isAdversarial: validation.result.isAdversarial,
+    analysisTrace: validation.result.analysisTrace,
   };
 }

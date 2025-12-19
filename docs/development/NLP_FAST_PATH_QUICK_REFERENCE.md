@@ -13,7 +13,7 @@ node scripts/validate-nlp-fastpath.js
 
 ### Configuration
 
-Edit `server/src/llm/span-labeling/config/SpanLabelingConfig.js`:
+Edit `server/src/llm/span-labeling/config/SpanLabelingConfig.ts`:
 
 ```javascript
 NLP_FAST_PATH: {
@@ -22,6 +22,13 @@ NLP_FAST_PATH: {
   MIN_COVERAGE_PERCENT: 30,       // Minimum coverage percentage
   TRACK_METRICS: true,            // Log performance metrics
   TRACK_COST_SAVINGS: true        // Log cost savings
+},
+NEURO_SYMBOLIC: {
+  GLINER: {
+    ENABLED: true,
+    MULTI_LABEL: false,           // Set true for higher recall
+    LABEL_THRESHOLDS: {}          // Optional per-label overrides
+  }
 }
 ```
 
@@ -58,10 +65,10 @@ Edit `server/src/llm/span-labeling/nlp/vocab.json`:
 
 | File | Purpose |
 |------|---------|
-| `nlp/vocab.json` | Vocabulary database (281 terms) |
+| `nlp/vocab.json` | Vocabulary database (closed vocab + curated style/audio terms) |
 | `nlp/NlpSpanService.ts` | NLP extraction engine |
-| `SpanLabelingService.js` | Integration point |
-| `config/SpanLabelingConfig.js` | Configuration |
+| `SpanLabelingService.ts` | Integration point |
+| `config/SpanLabelingConfig.ts` | Configuration |
 | `scripts/validate-nlp-fastpath.js` | Validation script |
 
 ## Performance Metrics
@@ -114,7 +121,7 @@ Enable metrics in config, then check logs:
 ## FAQ
 
 **Q: Will this affect accuracy?**
-A: No - for known terms, accuracy is 100% (deterministic). Unknown terms still use LLM.
+A: Known terms remain deterministic; open-vocab coverage depends on GLiNER labels and thresholds.
 
 **Q: Can I disable it?**
 A: Yes - set `NLP_FAST_PATH.ENABLED: false` in config.

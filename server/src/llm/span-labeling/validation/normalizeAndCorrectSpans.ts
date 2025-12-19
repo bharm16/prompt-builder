@@ -1,4 +1,5 @@
 import { ROLE_SET } from '../config/roles.js';
+import { getParentCategory } from '#shared/taxonomy.ts';
 import { wordCount } from '../utils/textUtils.js';
 import { normalizeSpan } from '../processing/SpanNormalizer.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
@@ -142,16 +143,21 @@ export function normalizeAndCorrectSpans(
       normalized.role === 'Specs' || // Keep legacy for safety
       normalized.role === 'Style';
 
+    const parentCategory = getParentCategory(normalized.role) || normalized.role;
+    const adjustedLimit =
+      parentCategory === 'action' || parentCategory === 'environment'
+        ? Math.max(policy.nonTechnicalWordLimit ?? 0, 12)
+        : policy.nonTechnicalWordLimit ?? 0;
+
     // Check word limit for non-exempt spans only
     if (
       !isExemptCategory &&
-      policy.nonTechnicalWordLimit !== undefined &&
-      policy.nonTechnicalWordLimit > 0 &&
-      wordCount(normalized.text) > policy.nonTechnicalWordLimit
+      adjustedLimit > 0 &&
+      wordCount(normalized.text) > adjustedLimit
     ) {
       if (!lenient) {
         errors.push(
-          `${label} exceeds non-technical word limit (${policy.nonTechnicalWordLimit} words)`
+          `${label} exceeds non-technical word limit (${adjustedLimit} words)`
         );
       } else {
         validationNotes.push(`${label} dropped: exceeds non-technical word limit`);
@@ -168,7 +174,6 @@ export function normalizeAndCorrectSpans(
     notes: [...validationNotes, ...autoFixNotes],
   };
 }
-
 
 
 

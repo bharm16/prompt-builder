@@ -12,7 +12,7 @@ export interface NlpSpan {
   confidence: number;
   start: number;
   end: number;
-  source?: 'aho-corasick' | 'gliner';
+  source?: 'aho-corasick' | 'gliner' | 'pattern';
 }
 
 /**
@@ -41,6 +41,8 @@ export interface ExtractionStats {
   totalSpans: number;
   closedVocabSpans: number;
   openVocabSpans: number;
+  patternSpans?: number;
+  glinerReady?: boolean;
   tier1Latency: number;
   tier2Latency: number;
   totalLatency: number;
@@ -83,4 +85,3 @@ export interface PatternInfo {
   taxonomyId: string;
   originalTerm: string;
 }
-

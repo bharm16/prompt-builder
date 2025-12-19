@@ -166,6 +166,12 @@ export const NEURO_SYMBOLIC = {
     
     // Timeout for GLiNER inference (ms)
     TIMEOUT: 5000,
+
+    // Allow multiple labels per span (higher recall, more noise)
+    MULTI_LABEL: false,
+
+    // Optional per-label threshold overrides (by label or taxonomy ID)
+    LABEL_THRESHOLDS: {} as Record<string, number>,
     
     // Pre-warm model on server startup
     PREWARM_ON_STARTUP: true,
