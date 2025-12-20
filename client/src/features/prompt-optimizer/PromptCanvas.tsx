@@ -13,7 +13,7 @@ import type { PromptCanvasProps } from './PromptCanvas/types';
 import type { ExportFormat } from './types';
 
 // Relative imports - implementations
-import { useSpanLabeling } from '@/features/span-highlighting';
+import { useSpanLabeling, sanitizeText } from '@/features/span-highlighting';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '@/features/span-highlighting';
@@ -85,7 +85,13 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
-  const previewSource = previewPrompt ?? displayedPrompt ?? '';
+  // Normalize to NFC so span offsets and rendered text stay aligned.
+  const normalizedDisplayedPrompt = useMemo(
+    () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
+    [displayedPrompt]
+  );
+
+  const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -100,7 +106,7 @@ export function PromptCanvas({
     isDraftReady,
     isRefining,
     promptUuid,
-    displayedPrompt,
+    displayedPrompt: normalizedDisplayedPrompt,
     enableMLHighlighting,
     initialHighlightsVersion,
   });
@@ -129,13 +135,14 @@ export function PromptCanvas({
     meta: labeledMeta,
     status: labelingStatus,
     error: labelingError,
+    signature: labelingSignature,
     refresh: refreshLabeling,
   } = useSpanLabeling({
-    text: enableMLHighlighting ? displayedPrompt ?? '' : '',
+    text: enableMLHighlighting ? normalizedDisplayedPrompt ?? '' : '',
     initialData: memoizedInitialHighlights,
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
-    enabled: enableMLHighlighting && Boolean(displayedPrompt?.trim()),
+    enabled: enableMLHighlighting && Boolean(normalizedDisplayedPrompt?.trim()),
     immediate: isInitialOptimization,
     maxSpans: PERFORMANCE_CONFIG.MAX_HIGHLIGHTS,
     minConfidence: PERFORMANCE_CONFIG.MIN_CONFIDENCE_SCORE,
@@ -147,7 +154,7 @@ export function PromptCanvas({
 
   // Suggestion detection hook
   useSuggestionDetection({
-    displayedPrompt,
+    displayedPrompt: normalizedDisplayedPrompt,
     isSuggestionsOpen,
     refreshLabeling,
   });
@@ -156,10 +163,11 @@ export function PromptCanvas({
   const parseResult = useParseResult({
     labeledSpans,
     labeledMeta,
+    labelingSignature,
     labelingStatus,
     labelingError,
     enableMLHighlighting,
-    displayedPrompt,
+    displayedPrompt: normalizedDisplayedPrompt,
   });
 
   // Highlight rendering using extracted hook
@@ -176,32 +184,32 @@ export function PromptCanvas({
     },
     enabled: enableMLHighlighting,
     fingerprint: highlightFingerprint,
-    text: displayedPrompt ?? '',
+    text: normalizedDisplayedPrompt ?? '',
   });
 
   // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
   const { html: formattedHTML } = useMemo(
     () => {
       if (enableMLHighlighting) {
-        return { html: escapeHTMLForMLHighlighting(displayedPrompt || '') };
+        return { html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || '') };
       }
-      return formatTextToHTML(displayedPrompt ?? '');
+      return formatTextToHTML(normalizedDisplayedPrompt ?? '');
     },
     enableMLHighlighting
-      ? [displayedPrompt, enableMLHighlighting]
-      : [displayedPrompt, enableMLHighlighting, promptContext]
+      ? [normalizedDisplayedPrompt, enableMLHighlighting]
+      : [normalizedDisplayedPrompt, enableMLHighlighting, promptContext]
   );
 
   // Performance timer: Track when prompt appears on screen
   useEffect(() => {
-    if (displayedPrompt && displayedPrompt.trim() && enableMLHighlighting) {
+    if (normalizedDisplayedPrompt && normalizedDisplayedPrompt.trim() && enableMLHighlighting) {
       performance.mark('prompt-displayed-on-screen');
       debug.logEffect('Prompt displayed on screen', {
-        promptLength: displayedPrompt.length,
+        promptLength: normalizedDisplayedPrompt.length,
         mlHighlighting: enableMLHighlighting,
       });
     }
-  }, [displayedPrompt, enableMLHighlighting, debug]);
+  }, [normalizedDisplayedPrompt, enableMLHighlighting, debug]);
 
   // UI state (simple boolean flags - could be moved to reducer if needed)
   const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
@@ -217,7 +225,7 @@ export function PromptCanvas({
   } = useTextSelection({
     selectedMode,
     editorRef: editorRef as React.RefObject<HTMLElement>,
-    displayedPrompt,
+    displayedPrompt: normalizedDisplayedPrompt,
     labeledSpans,
     parseResult,
     onFetchSuggestions,
@@ -226,7 +234,7 @@ export function PromptCanvas({
   // Editor content hook
   useEditorContent({
     editorRef: editorRef as React.RefObject<HTMLElement>,
-    displayedPrompt,
+    displayedPrompt: normalizedDisplayedPrompt,
     formattedHTML,
   });
 
@@ -241,9 +249,9 @@ export function PromptCanvas({
 
   // Event handlers
   const handleCopy = useCallback((): void => {
-    debug.logAction('copy', { promptLength: displayedPrompt?.length ?? 0 });
-    copy(displayedPrompt ?? '');
-  }, [copy, displayedPrompt, debug]);
+    debug.logAction('copy', { promptLength: normalizedDisplayedPrompt?.length ?? 0 });
+    copy(normalizedDisplayedPrompt ?? '');
+  }, [copy, normalizedDisplayedPrompt, debug]);
 
   const handleShare = useCallback((): void => {
     if (promptUuid) {
@@ -262,7 +270,7 @@ export function PromptCanvas({
       try {
         ExportService.export(exportFormat, {
           inputPrompt,
-          displayedPrompt: displayedPrompt ?? '',
+          displayedPrompt: normalizedDisplayedPrompt ?? '',
           ...(qualityScore !== null && { qualityScore }),
           selectedMode,
         });
@@ -275,7 +283,7 @@ export function PromptCanvas({
         toast.error('Export failed');
       }
     },
-    [inputPrompt, displayedPrompt, qualityScore, selectedMode, toast, debug]
+    [inputPrompt, normalizedDisplayedPrompt, qualityScore, selectedMode, toast, debug]
   );
 
   const handleCopyEvent = useCallback(
@@ -287,24 +295,25 @@ export function PromptCanvas({
         return;
       }
 
-      e.clipboardData.setData('text/plain', displayedPrompt ?? '');
+      e.clipboardData.setData('text/plain', normalizedDisplayedPrompt ?? '');
       e.preventDefault();
     },
-    [displayedPrompt]
+    [normalizedDisplayedPrompt]
   );
 
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
       const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
+      const normalizedText = sanitizeText(newText);
       debug.logAction('textEdit', { 
-        newLength: newText.length,
-        oldLength: displayedPrompt?.length ?? 0,
+        newLength: normalizedText.length,
+        oldLength: normalizedDisplayedPrompt?.length ?? 0,
       });
       if (onDisplayedPromptChange) {
-        onDisplayedPromptChange(newText);
+        onDisplayedPromptChange(normalizedText);
       }
     },
-    [onDisplayedPromptChange, displayedPrompt, debug]
+    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
   );
 
   // Render the component
@@ -382,7 +391,7 @@ export function PromptCanvas({
               onRedo={onRedo}
               canUndo={canUndo}
               canRedo={canRedo}
-              promptText={displayedPrompt ?? ''}
+              promptText={normalizedDisplayedPrompt ?? ''}
               showModelMenu={showModelMenu}
               onToggleModelMenu={setShowModelMenu}
             />
@@ -416,13 +425,17 @@ export function PromptCanvas({
                   ? ({
                       ...suggestionsData,
                       onSuggestionClick: onSuggestionClick,
-                      ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
+                      ...(normalizedDisplayedPrompt
+                        ? { currentPrompt: normalizedDisplayedPrompt }
+                        : {}),
                       panelTitle: 'AI Suggestions',
                       panelClassName: 'h-full flex flex-col',
                     } as Record<string, unknown>)
                   : ({
                       show: false,
-                      ...(displayedPrompt ? { currentPrompt: displayedPrompt } : {}),
+                      ...(normalizedDisplayedPrompt
+                        ? { currentPrompt: normalizedDisplayedPrompt }
+                        : {}),
                       panelTitle: 'AI Suggestions',
                       panelClassName: 'h-full flex flex-col',
                     } as Record<string, unknown>)

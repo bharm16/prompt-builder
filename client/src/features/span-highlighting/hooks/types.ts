@@ -90,6 +90,7 @@ export interface SpanLabelingState {
   meta: SpanMeta | null;
   status: SpanLabelingStatus;
   error: Error | null;
+  signature: string | null;
 }
 
 /**
@@ -147,6 +148,7 @@ export interface UseSpanLabelingReturn {
   meta: SpanMeta | null;
   status: SpanLabelingStatus;
   error: Error | null;
+  signature: string | null;
   refresh: () => void;
 }
 

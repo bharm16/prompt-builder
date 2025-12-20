@@ -83,6 +83,7 @@ export function createDisabledState(): SpanLabelingState {
     meta: null,
     status: 'idle',
     error: null,
+    signature: null,
   };
 }
 
@@ -93,7 +94,8 @@ export function createLoadingState(
   immediate: boolean,
   previousStatus: string,
   previousSpans: unknown[],
-  previousMeta: unknown | null
+  previousMeta: unknown | null,
+  previousSignature: string | null
 ): SpanLabelingState {
   const preservingPrevious = immediate && previousStatus === 'success';
   return {
@@ -102,6 +104,6 @@ export function createLoadingState(
     status:
       previousStatus === 'success' && !immediate ? 'refreshing' : 'loading',
     error: null,
+    signature: preservingPrevious ? previousSignature : null,
   };
 }
-

@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { createCanonicalText } from '@utils/canonicalText';
-import { convertLabeledSpansToHighlights } from '@features/span-highlighting';
+import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
 import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 import type { ParseResult } from '../types';
@@ -20,6 +20,7 @@ export interface UseParseResultOptions {
     confidence: number;
   }>;
   labeledMeta: Record<string, unknown> | null;
+  labelingSignature?: string | null;
   labelingStatus: string;
   labelingError: Error | null;
   enableMLHighlighting: boolean;
@@ -29,6 +30,7 @@ export interface UseParseResultOptions {
 export function useParseResult({
   labeledSpans,
   labeledMeta,
+  labelingSignature,
   labelingStatus,
   labelingError,
   enableMLHighlighting,
@@ -49,12 +51,27 @@ export function useParseResult({
   useEffect(() => {
     const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
     const currentText = displayedPrompt ?? '';
+    const currentSignature = createHighlightSignature(currentText);
+    const signatureMatches =
+      !labelingSignature || labelingSignature === currentSignature;
 
     if (!enableMLHighlighting || !currentText.trim()) {
       setParseResult({
         canonical,
         spans: [] as HighlightSpan[],
         meta: labeledMeta,
+        status: labelingStatus as ParseResult['status'],
+        error: labelingError,
+        displayText: currentText,
+      });
+      return;
+    }
+
+    if (!signatureMatches) {
+      setParseResult({
+        canonical,
+        spans: [] as HighlightSpan[],
+        meta: null,
         status: labelingStatus as ParseResult['status'],
         error: labelingError,
         displayText: currentText,
@@ -79,6 +96,7 @@ export function useParseResult({
   }, [
     labeledSpans,
     labeledMeta,
+    labelingSignature,
     labelingStatus,
     labelingError,
     enableMLHighlighting,
@@ -87,4 +105,3 @@ export function useParseResult({
 
   return parseResult;
 }
-

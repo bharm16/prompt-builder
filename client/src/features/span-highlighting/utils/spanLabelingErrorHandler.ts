@@ -88,6 +88,7 @@ export function createErrorStateWithFallback(
     meta: fallbackResult.meta,
     status: 'stale',
     error,
+    signature: fallbackResult.signature,
   };
 }
 
@@ -100,6 +101,7 @@ export function createErrorState(error: Error): SpanLabelingState {
     meta: null,
     status: 'error',
     error,
+    signature: null,
   };
 }
 

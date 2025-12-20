@@ -128,6 +128,7 @@ export function useSpanLabeling({
     meta: null,
     status: 'idle',
     error: null,
+    signature: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -232,7 +233,9 @@ export function useSpanLabeling({
   // Memoize callbacks to prevent recreating the schedule function on every render
   const onLoadingState = useCallback(
     (immediate: boolean) => {
-      setState((prev) => createLoadingState(immediate, prev.status, prev.spans, prev.meta));
+      setState((prev) =>
+        createLoadingState(immediate, prev.status, prev.spans, prev.meta, prev.signature)
+      );
     },
     []
   );
@@ -252,6 +255,7 @@ export function useSpanLabeling({
         meta: normalizedResult.meta,
         status: 'success',
         error: null,
+        signature,
       });
 
       setCacheForPayload(payload, normalizedResult);
@@ -339,6 +343,7 @@ export function useSpanLabeling({
             meta: cacheResult.cached.meta as SpanMeta | null,
             status: 'success',
             error: null,
+            signature: cacheResult.cached.signature,
           });
           emitResult(
             {
@@ -394,6 +399,7 @@ export function useSpanLabeling({
         meta: stableInitialData.meta ?? null,
         status: 'success',
         error: null,
+        signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       setCacheForPayload(payload, {
         spans: stableInitialData.spans,
@@ -443,6 +449,7 @@ export function useSpanLabeling({
     meta: state.meta,
     status: state.status,
     error: state.error,
+    signature: state.signature,
     refresh,
   };
 }
