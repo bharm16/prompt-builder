@@ -34,6 +34,8 @@ export interface PromptOptimizer {
   setDisplayedPrompt: (prompt: string) => void;
   previewPrompt: string | null;
   setPreviewPrompt: (prompt: string | null) => void;
+  previewAspectRatio: string | null;
+  setPreviewAspectRatio: (ratio: string | null) => void;
   qualityScore: number | null;
   skipAnimation: boolean;
   setSkipAnimation: (skip: boolean) => void;

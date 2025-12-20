@@ -162,6 +162,9 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     if (promptOptimizer.setPreviewPrompt) {
       promptOptimizer.setPreviewPrompt(null);
     }
+    if (promptOptimizer.setPreviewAspectRatio) {
+      promptOptimizer.setPreviewAspectRatio(null);
+    }
     setSelectedMode(entry.mode || 'video');
     setShowResults(true);
 

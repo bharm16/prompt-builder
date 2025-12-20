@@ -28,6 +28,7 @@ export interface PromptOptimizerState {
   optimizedPrompt: string;
   displayedPrompt: string;
   previewPrompt: string | null;
+  previewAspectRatio: string | null;
   qualityScore: number | null;
   skipAnimation: boolean;
   improvementContext: unknown | null;
@@ -43,6 +44,7 @@ export type PromptOptimizerAction =
   | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
   | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
   | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
+  | { type: 'SET_PREVIEW_ASPECT_RATIO'; payload: string | null }
   | { type: 'SET_QUALITY_SCORE'; payload: number | null }
   | { type: 'SET_SKIP_ANIMATION'; payload: boolean }
   | { type: 'SET_IMPROVEMENT_CONTEXT'; payload: unknown | null }
@@ -61,6 +63,7 @@ const initialState: PromptOptimizerState = {
   optimizedPrompt: '',
   displayedPrompt: '',
   previewPrompt: null,
+  previewAspectRatio: null,
   qualityScore: null,
   skipAnimation: false,
   improvementContext: null,
@@ -97,6 +100,8 @@ function reducer(
       return { ...state, displayedPrompt: action.payload };
     case 'SET_PREVIEW_PROMPT':
       return { ...state, previewPrompt: action.payload };
+    case 'SET_PREVIEW_ASPECT_RATIO':
+      return { ...state, previewAspectRatio: action.payload };
     case 'SET_QUALITY_SCORE':
       return { ...state, qualityScore: action.payload };
     case 'SET_SKIP_ANIMATION':
@@ -125,6 +130,7 @@ function reducer(
         optimizedPrompt: '',
         displayedPrompt: '',
         previewPrompt: null,
+        previewAspectRatio: null,
         qualityScore: null,
         skipAnimation: false,
         draftPrompt: '',
@@ -167,6 +173,10 @@ export function usePromptOptimizerState() {
 
   const setPreviewPrompt = useCallback((prompt: string | null) => {
     dispatch({ type: 'SET_PREVIEW_PROMPT', payload: prompt });
+  }, []);
+
+  const setPreviewAspectRatio = useCallback((ratio: string | null) => {
+    dispatch({ type: 'SET_PREVIEW_ASPECT_RATIO', payload: ratio });
   }, []);
 
   const setSkipAnimation = useCallback((skip: boolean) => {
@@ -223,6 +233,7 @@ export function usePromptOptimizerState() {
     setOptimizedPrompt,
     setDisplayedPrompt,
     setPreviewPrompt,
+    setPreviewAspectRatio,
     setQualityScore,
     setSkipAnimation,
     setImprovementContext,

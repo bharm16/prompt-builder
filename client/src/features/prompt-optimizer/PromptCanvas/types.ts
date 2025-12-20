@@ -144,6 +144,7 @@ export interface PromptCanvasProps {
   displayedPrompt: string | null;
   optimizedPrompt: string;
   previewPrompt?: string | null;
+  previewAspectRatio?: string | null;
   qualityScore: number | null;
   selectedMode: string;
   currentMode: Mode;

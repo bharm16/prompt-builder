@@ -44,8 +44,8 @@ import './PromptCanvas.css';
 export function PromptCanvas({
   inputPrompt,
   displayedPrompt,
-  optimizedPrompt,
   previewPrompt = null,
+  previewAspectRatio = null,
   qualityScore,
   selectedMode,
   currentMode,
@@ -85,13 +85,7 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
-  const previewSource =
-    previewPrompt &&
-    displayedPrompt &&
-    optimizedPrompt &&
-    displayedPrompt.trim() === optimizedPrompt.trim()
-      ? previewPrompt
-      : (displayedPrompt ?? '');
+  const previewSource = previewPrompt ?? displayedPrompt ?? '';
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -406,7 +400,12 @@ export function PromptCanvas({
         >
           {/* Image Generation Section */}
           <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0">
-            <VisualPreview prompt={previewSource} isVisible={true} />
+            <VisualPreview
+              prompt={previewSource}
+              previewPrompt={previewPrompt}
+              aspectRatio={previewAspectRatio}
+              isVisible={true}
+            />
           </div>
 
           {/* AI Suggestions Section */}

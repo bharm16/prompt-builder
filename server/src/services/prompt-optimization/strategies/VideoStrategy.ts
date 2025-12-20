@@ -445,9 +445,16 @@ export class VideoStrategy implements OptimizationStrategy {
     const slots = normalizeSlots(parsed);
     const promptParagraph = renderMainVideoPrompt(slots);
     const previewPrompt = renderPreviewPrompt(slots);
+    const aspectRatio =
+      typeof parsed.technical_specs?.aspect_ratio === 'string'
+        ? parsed.technical_specs.aspect_ratio.trim()
+        : '';
 
     if (onMetadata) {
-      onMetadata({ previewPrompt });
+      onMetadata({
+        previewPrompt,
+        ...(aspectRatio ? { aspectRatio } : {}),
+      });
     }
 
     let output = promptParagraph;

@@ -38,6 +38,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
     setDisplayedPrompt,
     setQualityScore,
     setPreviewPrompt,
+    setPreviewAspectRatio,
     setSkipAnimation,
     setImprovementContext,
     setDraftPrompt,
@@ -267,6 +268,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               if (metadata?.previewPrompt && typeof metadata.previewPrompt === 'string') {
                 setPreviewPrompt(metadata.previewPrompt);
               }
+              if (typeof metadata?.aspectRatio === 'string' && metadata.aspectRatio.trim()) {
+                setPreviewAspectRatio(metadata.aspectRatio.trim());
+              }
 
               setQualityScore(refinedScore);
               setIsRefining(false);
@@ -325,6 +329,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
             setPreviewPrompt(result.metadata.previewPrompt);
           }
+          if (typeof result.metadata?.aspectRatio === 'string' && result.metadata.aspectRatio.trim()) {
+            setPreviewAspectRatio(result.metadata.aspectRatio.trim());
+          }
 
           return {
             optimized: result.refined,
@@ -350,6 +357,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           setQualityScore(score);
           if (response.metadata?.previewPrompt && typeof response.metadata.previewPrompt === 'string') {
             setPreviewPrompt(response.metadata.previewPrompt);
+          }
+          if (typeof response.metadata?.aspectRatio === 'string' && response.metadata.aspectRatio.trim()) {
+            setPreviewAspectRatio(response.metadata.aspectRatio.trim());
           }
 
           // Show quality score toast
@@ -412,6 +422,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
       setIsRefining,
       setQualityScore,
       setPreviewPrompt,
+      setPreviewAspectRatio,
       setDraftSpans,
       setRefinedSpans,
     ]
@@ -428,6 +439,8 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
     setDisplayedPrompt,
     previewPrompt: state.previewPrompt,
     setPreviewPrompt,
+    previewAspectRatio: state.previewAspectRatio,
+    setPreviewAspectRatio,
     qualityScore: state.qualityScore,
     skipAnimation: state.skipAnimation,
     setSkipAnimation,

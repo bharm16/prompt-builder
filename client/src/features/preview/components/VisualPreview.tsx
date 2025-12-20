@@ -11,18 +11,108 @@ import { useImagePreview } from '../hooks/useImagePreview';
 
 interface VisualPreviewProps {
   prompt: string;
+  previewPrompt?: string | null;
+  aspectRatio?: string | null;
   isVisible: boolean;
 }
 
+const SUPPORTED_ASPECT_RATIOS = new Set([
+  '1:1',
+  '16:9',
+  '21:9',
+  '2:3',
+  '3:2',
+  '4:5',
+  '5:4',
+  '9:16',
+  '9:21',
+]);
+
+const normalizeAspectRatio = (value?: string | null): string | null => {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalized = trimmed.replace(/\s+/g, '').replace(/x/i, ':');
+
+  if (SUPPORTED_ASPECT_RATIOS.has(normalized)) {
+    return normalized;
+  }
+
+  if (
+    normalized === '2.39:1' ||
+    normalized === '2.4:1' ||
+    normalized === '2.35:1' ||
+    normalized === '2.37:1'
+  ) {
+    return '21:9';
+  }
+
+  if (normalized === '1.85:1' || normalized === '1.78:1' || normalized === '1.77:1') {
+    return '16:9';
+  }
+
+  const match = normalized.match(/(\d+(?:\.\d+)?[:x]\d+(?:\.\d+)?)/i);
+  if (match) {
+    const extracted = match[1].replace(/x/i, ':');
+    if (SUPPORTED_ASPECT_RATIOS.has(extracted)) {
+      return extracted;
+    }
+    if (
+      extracted === '2.39:1' ||
+      extracted === '2.4:1' ||
+      extracted === '2.35:1' ||
+      extracted === '2.37:1'
+    ) {
+      return '21:9';
+    }
+    if (extracted === '1.85:1' || extracted === '1.78:1' || extracted === '1.77:1') {
+      return '16:9';
+    }
+  }
+
+  return null;
+};
+
 export const VisualPreview: React.FC<VisualPreviewProps> = ({
   prompt,
+  previewPrompt = null,
+  aspectRatio = null,
   isVisible,
 }) => {
+  const normalizedAspectRatio = React.useMemo(
+    () => normalizeAspectRatio(aspectRatio),
+    [aspectRatio]
+  );
   const { imageUrl, loading, error, regenerate } = useImagePreview({
     prompt,
     isVisible,
+    ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
   });
   const [isExporting, setIsExporting] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const copyTimeoutRef = React.useRef<number | null>(null);
+
+  const previewPromptText =
+    typeof previewPrompt === 'string' ? previewPrompt.trim() : '';
+  const hasPreviewPrompt = previewPromptText.length > 0;
+
+  React.useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    setCopied(false);
+  }, [previewPromptText]);
 
   const handleExportKeyframe = React.useCallback(async () => {
     if (!imageUrl || isExporting) {
@@ -51,7 +141,42 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     }
   }, [imageUrl, isExporting]);
 
+  const handleCopyPreviewPrompt = React.useCallback(async () => {
+    if (!hasPreviewPrompt) {
+      return;
+    }
+
+    const copyText = previewPromptText;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(copyText);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = copyText;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      }
+
+      setCopied(true);
+      if (copyTimeoutRef.current !== null) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = window.setTimeout(() => {
+        setCopied(false);
+      }, 1500);
+    } catch {
+      setCopied(false);
+    }
+  }, [hasPreviewPrompt, previewPromptText]);
+
   if (!isVisible) return null;
+
+  const displayAspectRatio = normalizedAspectRatio ?? '16:9';
 
   return (
     <div className="flex flex-col h-full space-y-4">
@@ -75,7 +200,10 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           </div>
         </button>
       </div>
-      <div className="relative group w-full aspect-video bg-geist-accents-1 rounded-lg overflow-hidden border border-geist-accents-2 shadow-sm">
+      <div
+        className="relative group w-full bg-geist-accents-1 rounded-lg overflow-hidden border border-geist-accents-2 shadow-sm"
+        style={{ aspectRatio: displayAspectRatio.replace(':', ' / ') }}
+      >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-geist-background/50 backdrop-blur-sm z-10">
             <div className="flex flex-col items-center gap-2">
@@ -109,6 +237,15 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
               >
                 {isExporting ? 'Exporting...' : 'Export Keyframe'}
               </button>
+              {hasPreviewPrompt && (
+                <button
+                  className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
+                  onClick={handleCopyPreviewPrompt}
+                  aria-label="Copy preview prompt"
+                >
+                  {copied ? 'Copied' : 'Copy Preview'}
+                </button>
+              )}
               <button
                 className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
                 onClick={() => window.open(imageUrl, '_blank')}

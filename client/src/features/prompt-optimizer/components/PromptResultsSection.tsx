@@ -67,6 +67,7 @@ export const PromptResultsSection = ({
         displayedPrompt={promptOptimizer.displayedPrompt}
         optimizedPrompt={promptOptimizer.optimizedPrompt}
         previewPrompt={promptOptimizer.previewPrompt}
+        previewAspectRatio={promptOptimizer.previewAspectRatio}
         qualityScore={promptOptimizer.qualityScore}
         selectedMode={currentMode.id}
         currentMode={currentMode}

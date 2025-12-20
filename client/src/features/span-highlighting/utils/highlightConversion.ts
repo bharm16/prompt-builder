@@ -90,7 +90,29 @@ function normalizeRole(role: string | null | undefined): string {
 }
 
 /**
+ * Get the parent category from a role/category string
+ * e.g., "environment.location" → "environment"
+ * e.g., "shot.type" → "shot"
+ */
+function getParentCategory(category: string | null | undefined): string {
+  if (!category || typeof category !== 'string') return '';
+  const dotIndex = category.indexOf('.');
+  return dotIndex > 0 ? category.substring(0, dotIndex) : category;
+}
+
+/**
+ * Check if two categories are compatible for merging
+ * Compatible means they share the same parent category
+ */
+function areCategoriesCompatible(category1: string, category2: string): boolean {
+  const parent1 = getParentCategory(category1);
+  const parent2 = getParentCategory(category2);
+  return parent1 === parent2 && parent1 !== '';
+}
+
+/**
  * Helper to merge adjacent spans that were split by newlines/whitespace
+ * Uses parent category matching to be consistent with server-side merge
  */
 function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highlight[] {
   if (highlights.length < 2) return highlights;
@@ -103,21 +125,28 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
     const next = highlights[i];
     if (!next) continue;
 
-    // 1. Must be same category/role
-    const sameCategory = current.category === next.category;
+    // 1. Must have compatible categories (same parent category)
+    // This matches the server-side merge logic
+    const compatibleCategories = areCategoriesCompatible(current.category, next.category);
 
     // 2. Must be adjacent (only whitespace/newlines in between)
     // We assume highlights are already sorted by start
     const gapText = fullText.slice(current.end, next.start);
     const isAdjacent = !gapText.trim(); // True if gap is empty or just whitespace
 
-    if (sameCategory && isAdjacent) {
+    if (compatibleCategories && isAdjacent) {
       // MERGE THEM
       // Extend current span to include the next one
       current.end = next.end;
       current.displayEnd = next.end;
       current.quote = fullText.slice(current.start, current.end);
       current.displayQuote = current.quote;
+
+      // Keep the more specific category (one with a dot)
+      if (next.category.includes('.') && !current.category.includes('.')) {
+        current.category = next.category;
+        current.role = next.role;
+      }
 
       // Inherit the right context from the later span
       current.rightCtx = next.rightCtx;

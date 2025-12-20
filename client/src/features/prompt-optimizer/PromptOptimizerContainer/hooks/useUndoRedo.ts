@@ -7,6 +7,7 @@ interface PromptOptimizer {
   setDisplayedPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   setPreviewPrompt?: (prompt: string | null) => void;
+  setPreviewAspectRatio?: (ratio: string | null) => void;
   [key: string]: unknown;
 }
 
@@ -263,6 +264,7 @@ export function useUndoRedo({
 
       // Clear preview prompt once the user edits the output
       promptOptimizer.setPreviewPrompt?.(null);
+      promptOptimizer.setPreviewAspectRatio?.(null);
 
       // Detect type of change for grouping logic
       const changeType: ChangeType = newText.length > currentText.length ? 'adding' : 'deleting';
