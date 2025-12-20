@@ -11,12 +11,12 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { getAuthRepository } from '../../repositories';
-import { HistoryEmptyState } from '../../components/EmptyState';
-import { useToast } from '../../components/Toast';
-import { Button } from '../../components/Button';
-import { useDebugLogger } from '../../hooks/useDebugLogger';
-import type { User, PromptHistoryEntry } from '../../hooks/types';
+import { getAuthRepository } from '@repositories/index';
+import { HistoryEmptyState } from '@components/EmptyState';
+import { useToast } from '@components/Toast';
+import { Button } from '@components/Button';
+import { useDebugLogger } from '@hooks/useDebugLogger';
+import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Mode } from '../prompt-optimizer/context/types';
 
 interface HistoryItemProps {

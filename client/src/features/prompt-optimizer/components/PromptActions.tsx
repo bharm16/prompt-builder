@@ -8,7 +8,7 @@ import {
   RotateCcw,
   RotateCw,
 } from 'lucide-react';
-import { Button } from '../../../components/Button';
+import { Button } from '@components/Button';
 import type { FloatingToolbarProps } from '../types';
 import { ModelMenu } from './ModelMenu';
 

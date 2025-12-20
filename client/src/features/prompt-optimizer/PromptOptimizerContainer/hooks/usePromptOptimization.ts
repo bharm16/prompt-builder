@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import type { HighlightSnapshot } from '../../context/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 
 interface PromptOptimizer {

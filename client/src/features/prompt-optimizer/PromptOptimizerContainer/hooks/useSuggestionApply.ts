@@ -11,10 +11,10 @@
  */
 
 import { useCallback } from 'react';
-import { applySuggestionToPrompt } from '../../utils/applySuggestion.ts';
-import { useEditHistory } from '../../hooks/useEditHistory';
+import { applySuggestionToPrompt } from '@features/prompt-optimizer/utils/applySuggestion';
+import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
-import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
+import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 
 interface UseSuggestionApplyParams {
   suggestionsData: SuggestionsData | null;

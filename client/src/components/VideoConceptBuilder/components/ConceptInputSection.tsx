@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Zap as Brain } from '@geist-ui/icons';
-import { Button } from '../../Button';
+import { Button } from '@components/Button';
 import type { ElementKey } from '../hooks/types';
 
 interface ConceptInputSectionProps {

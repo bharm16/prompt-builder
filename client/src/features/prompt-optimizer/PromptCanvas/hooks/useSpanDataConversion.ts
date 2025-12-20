@@ -6,8 +6,8 @@
  */
 
 import { useMemo } from 'react';
-import { useHighlightSourceSelection } from '../../../span-highlighting/hooks/useHighlightSourceSelection';
-import type { SpanData } from '../../../span-highlighting/hooks/useHighlightSourceSelection';
+import { useHighlightSourceSelection } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
+import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { SpansData, HighlightSnapshot } from '../types';
 import {
   convertSpansDataToSpanData,

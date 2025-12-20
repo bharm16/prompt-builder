@@ -1,6 +1,6 @@
 import React, { type ReactNode, type ComponentType } from 'react';
 import * as Sentry from '@sentry/react';
-import { logger } from '../../services/LoggingService';
+import { logger } from '@services/LoggingService';
 
 interface ErrorBoundaryState {
   hasError: boolean;

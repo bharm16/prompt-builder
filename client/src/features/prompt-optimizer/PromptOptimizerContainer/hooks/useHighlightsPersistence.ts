@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { getPromptRepository } from '@/repositories';
+import { getPromptRepository } from '@repositories/index';
 import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot } from '../../context/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 
 interface Span {
   id?: string;

@@ -12,11 +12,11 @@
 
 import { useCallback } from 'react';
 import type React from 'react';
-import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/enhancementSuggestionsApi';
-import { prepareSpanContext } from '@/features/span-highlighting/utils/spanProcessing';
-import { useEditHistory } from '../../hooks/useEditHistory';
+import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
+import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
+import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
-import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
+import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;

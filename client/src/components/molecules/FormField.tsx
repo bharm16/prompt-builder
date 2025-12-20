@@ -7,7 +7,7 @@ import {
   colors,
   typography,
   iconSizes,
-} from '../../styles/tokens';
+} from '@styles/tokens';
 
 interface FormFieldProps {
   id: string;

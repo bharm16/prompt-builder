@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { User } from '@hooks/types';
-import type { FormData } from '../../PromptImprovementForm';
+import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
 

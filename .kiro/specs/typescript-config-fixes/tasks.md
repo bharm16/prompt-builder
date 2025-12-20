@@ -126,11 +126,11 @@ This implementation plan systematically fixes 512 TypeScript errors by addressin
   - Ask the user if questions arise
   - **Status: INCOMPLETE** - 220 server TypeScript errors remain, span-labeling tests hang
 
-- [x] 12. Write property test for zero compilation errors
+- [ ] 12. Write property test for zero compilation errors
   - **Property 1: Zero TypeScript Compilation Errors**
   - **Validates: Requirements 1.3, 1.4, 2.3-2.6, 3.1, 3.4, 4.1-4.5, 5.1-5.3, 6.1-6.4, 7.1-7.4**
 
-- [ ] 13. Write property test for no deep relative imports
+- [x] 13. Write property test for no deep relative imports
   - **Property 2: No Deep Relative Imports**
   - **Validates: Requirements 1.9, 8.1, 8.2, 8.4**
 
@@ -138,7 +138,7 @@ This implementation plan systematically fixes 512 TypeScript errors by addressin
   - **Property 3: Configuration Correctness**
   - **Validates: Requirements 1.1, 1.2, 1.6-1.10, 2.7, 3.2, 3.3, 6.3**
 
-- [ ] 15. Final checkpoint - Complete verification
+- [-] 15. Final checkpoint - Complete verification
   - Run full test suite
   - Verify TypeScript compilation succeeds
   - Ensure all property tests pass

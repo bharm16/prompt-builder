@@ -1,5 +1,5 @@
 import React from 'react';
-import { HistorySidebar } from '../../history/HistorySidebar';
+import { HistorySidebar } from '@features/history/HistorySidebar';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptSidebarProps } from '../types';
 

@@ -1,11 +1,11 @@
 import React, { useRef, useMemo, useCallback, useEffect } from 'react';
 
 // External libraries
-import { useToast } from '../../components/Toast';
+import { useToast } from '@components/Toast';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Internal absolute imports
-import { ExportService } from '../../services/exportService';
+import { ExportService } from '@services/exportService';
 import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
 
 // Relative imports - types first

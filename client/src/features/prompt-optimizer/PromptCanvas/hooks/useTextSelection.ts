@@ -6,12 +6,12 @@
  */
 
 import { useCallback, type RefObject } from 'react';
-import { getSelectionOffsets, selectRange } from '../../utils/textSelection';
+import { getSelectionOffsets, selectRange } from '@features/prompt-optimizer/utils/textSelection';
 import {
   findHighlightNode,
   extractHighlightMetadata,
   createHighlightRange,
-} from '../../utils/highlightInteractionHelpers';
+} from '@features/prompt-optimizer/utils/highlightInteractionHelpers';
 import type { ParseResult, SuggestionPayload, SpanClickPayload } from '../types';
 
 export interface UseTextSelectionOptions {

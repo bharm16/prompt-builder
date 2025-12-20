@@ -4,10 +4,10 @@
 
 import type { Mode } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CanonicalText } from '../../../utils/canonicalText';
-import type { HighlightSpan } from '../../span-highlighting/hooks/useHighlightRendering';
+import type { CanonicalText } from '@utils/canonicalText';
+import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
 
-import type { SpanData } from '../../span-highlighting/hooks/useHighlightSourceSelection';
+import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 
 export interface SpansData {
   spans: Array<{

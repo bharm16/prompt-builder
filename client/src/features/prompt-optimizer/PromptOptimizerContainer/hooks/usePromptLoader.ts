@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getPromptRepository } from '@/repositories';
-import { createHighlightSignature } from '@/features/span-highlighting';
+import { getPromptRepository } from '@repositories/index';
+import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
 import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot } from '../../context/types';
+import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 
 interface PromptData {
   id?: string;

@@ -5,7 +5,7 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import type { SpanData } from '../../../span-highlighting/hooks/useHighlightSourceSelection';
+import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
 import type { SpansData, HighlightSnapshot, ValidSpan } from '../types';
 
 /**

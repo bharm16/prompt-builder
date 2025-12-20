@@ -8,7 +8,7 @@
 import { useMemo } from 'react';
 import { calculateGroupProgress, type GroupProgress } from '../utils/validation';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
-import { detectDescriptorCategoryClient } from '../../../utils/subjectDescriptorCategories';
+import { detectDescriptorCategoryClient } from '@utils/subjectDescriptorCategories';
 import type { ElementKey, Elements } from './types';
 import type { CategoryDetection } from '../components/types';
 

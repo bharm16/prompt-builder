@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
-import type { HighlightSnapshot, StateSnapshot } from '../../context/types';
+import type { HighlightSnapshot, StateSnapshot } from '@features/prompt-optimizer/context/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;

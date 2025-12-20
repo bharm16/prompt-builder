@@ -20,8 +20,8 @@ import { useSuggestionFetch } from './useSuggestionFetch';
 import type React from 'react';
 import type { Toast } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
-import type { PromptOptimizer } from '../../context/types';
+import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
 
 export interface UseEnhancementSuggestionsParams {
   promptOptimizer: PromptOptimizer;

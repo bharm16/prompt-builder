@@ -1,5 +1,5 @@
 import React, { forwardRef, type ChangeEvent, type FocusEvent, type KeyboardEvent } from 'react';
-import { inputPreset, transitions, transitionProperties } from '../../styles/tokens';
+import { inputPreset, transitions, transitionProperties } from '@styles/tokens';
 
 interface BaseInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur' | 'onKeyDown'> {
   value?: string | undefined;

@@ -6,7 +6,7 @@
  */
 
 import { useEffect, type RefObject } from 'react';
-import { getSelectionOffsets, restoreSelectionFromOffsets } from '../../utils/textSelection';
+import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
 
 export interface UseEditorContentOptions {
   editorRef: RefObject<HTMLElement>;

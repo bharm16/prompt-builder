@@ -3,10 +3,10 @@ import { X } from 'lucide-react';
 import Settings, { useSettings } from '@components/Settings';
 import KeyboardShortcuts from '@components/KeyboardShortcuts';
 import { Button } from '@components/Button';
-import PromptImprovementForm from '../../../PromptImprovementForm';
+import PromptImprovementForm from '@/PromptImprovementForm';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';
-import type { FormData } from '../../../PromptImprovementForm';
+import type { FormData } from '@/PromptImprovementForm';
 
 /**
  * PromptModals - Modal Management
