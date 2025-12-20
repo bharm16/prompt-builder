@@ -43,6 +43,8 @@ import './PromptCanvas.css';
 // Main PromptCanvas Component
 export function PromptCanvas({
   inputPrompt,
+  onInputPromptChange,
+  onReoptimize,
   displayedPrompt,
   previewPrompt = null,
   previewAspectRatio = null,
@@ -316,6 +318,32 @@ export function PromptCanvas({
     [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
   );
 
+  const handleInputPromptChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      const updatedPrompt = sanitizeText(e.target.value);
+      debug.logAction('inputPromptEdit', { promptLength: updatedPrompt.length });
+      onInputPromptChange(updatedPrompt);
+    },
+    [onInputPromptChange, debug]
+  );
+
+  const handleReoptimize = useCallback((): void => {
+    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    void onReoptimize(inputPrompt);
+  }, [inputPrompt, onReoptimize, debug]);
+
+  const handleInputPromptKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleReoptimize();
+      }
+    },
+    [handleReoptimize]
+  );
+
+  const hasInputPrompt = Boolean(inputPrompt.trim());
+
   // Render the component
   return (
     <div className="relative flex flex-col bg-geist-background min-h-full flex-1">
@@ -366,6 +394,45 @@ export function PromptCanvas({
             }}
           >
             {/* PromptEditor continues working even if highlighting fails */}
+            <div className="mb-geist-8">
+              <div className="flex items-center justify-between gap-geist-4 mb-geist-2">
+                <span className="text-label-12 text-geist-accents-6 uppercase tracking-wide">
+                  Original prompt
+                </span>
+              </div>
+              <div className="relative bg-geist-background border border-geist-accents-2 rounded-geist-lg transition-all duration-200 focus-within:border-geist-accents-4 focus-within:shadow-geist-small">
+                <label htmlFor="original-prompt-input" className="sr-only">
+                  Original prompt
+                </label>
+                <textarea
+                  id="original-prompt-input"
+                  value={inputPrompt}
+                  onChange={handleInputPromptChange}
+                  onKeyDown={handleInputPromptKeyDown}
+                  placeholder="Edit your original prompt..."
+                  rows={3}
+                  className="w-full resize-none bg-transparent text-[15px] text-geist-foreground placeholder-geist-accents-4 outline-none leading-relaxed px-geist-5 py-geist-4 rounded-geist-lg font-sans"
+                  style={{
+                    border: 'none',
+                    boxShadow: 'none',
+                    outline: 'none',
+                    paddingRight: '7.5rem',
+                    paddingBottom: '3.25rem',
+                  }}
+                  aria-label="Original prompt input"
+                />
+                <button
+                  type="button"
+                  onClick={handleReoptimize}
+                  disabled={!hasInputPrompt}
+                  className="absolute bottom-4 right-4 inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Re-optimize prompt"
+                  title="Re-optimize (Cmd/Ctrl+Enter)"
+                >
+                  Re-optimize
+                </button>
+              </div>
+            </div>
             <PromptEditor
               ref={editorRef as React.RefObject<HTMLDivElement>}
               onTextSelection={handleTextSelection}

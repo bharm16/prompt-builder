@@ -20,6 +20,7 @@ import './PromptResultsLayout.css';
 interface PromptResultsLayoutProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
+  onReoptimize: (promptToOptimize?: string) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onHighlightsPersist: (result: {
@@ -40,6 +41,7 @@ interface PromptResultsLayoutProps {
 export const PromptResultsLayout = ({
   user,
   onDisplayedPromptChange,
+  onReoptimize,
   onFetchSuggestions,
   onSuggestionClick,
   onHighlightsPersist,
@@ -61,6 +63,7 @@ export const PromptResultsLayout = ({
       <main className="prompt-results-layout__main" id="main-content">
         <PromptResultsSection
           onDisplayedPromptChange={onDisplayedPromptChange}
+          onReoptimize={onReoptimize}
           onFetchSuggestions={onFetchSuggestions}
           onSuggestionClick={onSuggestionClick}
           onHighlightsPersist={onHighlightsPersist}

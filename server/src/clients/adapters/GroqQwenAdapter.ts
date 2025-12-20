@@ -37,8 +37,8 @@ interface QwenCompletionOptions {
   retryOnValidationFailure?: boolean;
   maxRetries?: number;
   expectedOutputSize?: 'small' | 'medium' | 'large';
-  /** Qwen3-specific: Control thinking mode. 'none' disables reasoning for structured output */
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  /** Qwen3-32B reasoning_effort: 'none' disables reasoning, 'default' enables reasoning */
+  reasoningEffort?: 'none' | 'default';
 }
 
 interface QwenAdapterConfig {
@@ -101,7 +101,7 @@ export class GroqQwenAdapter {
     this.capabilities = { 
       streaming: true, 
       jsonMode: true,
-      structuredOutputs: true,
+      structuredOutputs: false,
       reasoningEffort: true, // Qwen3-specific
     };
   }
@@ -234,9 +234,7 @@ export class GroqQwenAdapter {
        * 
        * Controls the model's "thinking mode":
        * - 'none': Disable reasoning, get direct output (best for structured JSON)
-       * - 'low': Minimal reasoning
-       * - 'medium': Balanced reasoning
-       * - 'high': Full reasoning (default for complex tasks)
+       * - 'default': Enable reasoning (model default)
        * 
        * For structured output, default to 'none' to prevent reasoning traces in JSON.
        */
@@ -246,15 +244,14 @@ export class GroqQwenAdapter {
         payload.reasoning_effort = 'none';
       }
 
-      // Response format configuration
-      if (options.schema) {
-        payload.response_format = {
-          type: 'json_schema',
-          json_schema: {
-            name: (options.schema as { name?: string }).name || 'structured_response',
-            schema: (options.schema as { schema?: unknown }).schema || options.schema
-          }
-        };
+      // Response format configuration (Qwen supports json_object, not json_schema)
+      const wantsJsonSchema = !!options.schema || options.responseFormat?.type === 'json_schema';
+      if (wantsJsonSchema) {
+        this.log.debug('Qwen response_format json_schema unsupported; using json_object', {
+          model: options.model || this.defaultModel,
+          hasSchema: !!options.schema,
+        });
+        payload.response_format = { type: 'json_object' };
       } else if (options.responseFormat) {
         payload.response_format = options.responseFormat;
       } else if (options.jsonMode) {

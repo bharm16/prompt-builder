@@ -122,6 +122,7 @@ export interface PromptModalsProps {
  */
 export interface PromptResultsSectionProps {
   onDisplayedPromptChange: (text: string) => void;
+  onReoptimize: (promptToOptimize?: string) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onHighlightsPersist: (highlights: {
