@@ -4,6 +4,30 @@ Copy-paste these templates when working with Claude Code to maintain architectur
 
 ---
 
+## 🔴 Critical: SRP/SoC Over Line Counts
+
+**Line counts are heuristics, NOT splitting triggers.** Before splitting any file:
+
+1. **Identify distinct responsibilities** - Does the file have multiple reasons to change?
+2. **Check for mixed concerns** - Is orchestration mixed with implementation?
+3. **Evaluate cohesion** - Would splitting improve or harm cohesion?
+
+**If a file has ONE cohesive responsibility → Don't split, even if over threshold.**
+
+### ❌ Mechanical Splitting (Never Do This)
+```javascript
+// BAD: Split because 210 > 200, but they change together
+UserProfile.jsx (180 lines) + UserProfileHeader.jsx (30 lines)
+```
+
+### ✅ Principled Splitting
+```javascript
+// GOOD: Split because different responsibilities, reusable
+UserProfile.jsx (orchestration) + UserAvatar.jsx (reused elsewhere)
+```
+
+---
+
 ## Template 1: New Frontend Component
 
 ```
@@ -11,19 +35,24 @@ Add [FEATURE NAME] component
 
 ARCHITECTURE (follow VideoConceptBuilder pattern):
 Structure:
-- ComponentName.jsx (orchestrator, max 500 lines)
+- ComponentName.jsx (orchestrator, typically ~300-500 lines)
 - hooks/useComponentState.js (useReducer for state)
 - api/componentApi.js (all fetch calls)
 - utils/componentUtils.js (pure functions)
 - config/componentConfig.js (configuration data)
-- components/ (UI pieces, each < 200 lines)
+- components/ (UI pieces - split by responsibility, not line count)
 
 REFERENCE IMPLEMENTATION:
 client/src/components/VideoConceptBuilder/
 
-CONSTRAINTS:
-- Orchestrator components max 500 lines (main files that compose pieces)
-- Regular UI components max 200 lines
+SRP CHECK (answer before implementing):
+1. How many distinct responsibilities does this have?
+2. How many reasons to change?
+3. If only 1 responsibility → keep cohesive, don't split mechanically
+
+GUIDELINES:
+- Split by RESPONSIBILITY, not line count
+- A 250-line component with one cohesive flow > 3 artificially split files
 - All API calls in api/ layer
 - Business logic in hooks/
 - Configuration in config/
@@ -60,16 +89,21 @@ CURRENT ARCHITECTURE:
 - Current structure: [hooks/api/utils/components]
 - Current line count: [use wc -l to check]
 
+SRP CHECK (answer before implementing):
+1. Does the new code introduce a NEW responsibility?
+2. Does it have a different reason to change than existing code?
+3. If NO to both → keep it cohesive, don't split mechanically
+
 CONSTRAINTS:
 - Maintain existing architecture pattern
 - If adding API calls → must go in existing api/ file
 - If adding business logic → extract to hooks/
-- If adding 50+ lines of UI → extract to new component in components/
-- MUST NOT exceed file size limits:
-  - Orchestrator components: 500 lines
-  - Regular UI components: 200 lines
-  - Hooks: 150 lines
-  - Utils: 100 lines
+- If adding truly DISTINCT UI concern → extract to new component
+- WARNING thresholds (evaluate, don't auto-split):
+  - Orchestrator components: ~500 lines
+  - Regular UI components: ~200 lines
+  - Hooks: ~150 lines
+  - Utils: ~100 lines
 
 REFERENCE:
 client/src/components/VideoConceptBuilder/[similar component]
@@ -123,9 +157,17 @@ PATTERNS:
 - Strategy pattern: Mode-specific behavior
 - Template service: Prompts in .md files, not hardcoded
 
-CONSTRAINTS:
-- Main orchestrator: max 500 lines
-- Specialized services: max 300 lines each
+SRP CHECK (answer before implementing):
+1. How many distinct responsibilities does this service have?
+2. How many reasons to change?
+3. If only 1 responsibility → keep cohesive, don't split mechanically
+
+GUIDELINES:
+- Split by RESPONSIBILITY, not line count
+- A 400-line service doing one thing well > 4 artificially split files
+- WARNING thresholds (evaluate, don't auto-split):
+  - Main orchestrator: ~500 lines
+  - Specialized services: ~300 lines
 - Single responsibility per service
 - No hardcoded prompts (use template files)
 - Must be testable (dependency injection)

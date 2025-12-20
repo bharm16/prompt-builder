@@ -178,6 +178,7 @@ export interface PromptCanvasProps {
   canRedo?: boolean;
   isDraftReady?: boolean;
   isRefining?: boolean;
+  isProcessing?: boolean;
   draftSpans?: SpansData | null;
   refinedSpans?: SpansData | null;
 }

@@ -34,6 +34,20 @@ export class ServiceUnavailableError extends Error {
   }
 }
 
+/**
+ * Client-initiated abort error
+ * 
+ * This occurs when the client (browser) closes the connection before
+ * the API call completes. This is NOT an API failure and should NOT
+ * trip the circuit breaker.
+ */
+export class ClientAbortError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ClientAbortError';
+  }
+}
+
 interface Adapter {
   complete(systemPrompt: string, options?: CompletionOptions): Promise<AIResponse>;
   streamComplete?(systemPrompt: string, options: StreamCompletionOptions): Promise<string>;
@@ -70,6 +84,7 @@ interface CircuitBreakerConfig {
   resetTimeout?: number;
   rollingCountTimeout?: number;
   rollingCountBuckets?: number;
+  volumeThreshold?: number;
   name?: string;
 }
 
@@ -144,7 +159,20 @@ export class LLMClient implements IAIClient {
       resetTimeout: 30000,
       rollingCountTimeout: 10000,
       rollingCountBuckets: 10,
+      volumeThreshold: 5,
       name: `${this.providerName}-api`,
+      // Exclude ClientAbortError from circuit breaker failure counting.
+      // Client-initiated aborts (user closed browser/navigated away) are NOT
+      // API failures and should NOT trip the circuit breaker.
+      errorFilter: (err: Error) => {
+        if (err instanceof ClientAbortError || err.name === 'ClientAbortError') {
+          logger.debug(`Circuit breaker: Ignoring ClientAbortError (not an API failure)`, {
+            provider: this.providerName,
+          });
+          return true; // true = don't count this as a failure
+        }
+        return false; // false = count this as a failure
+      },
       ...circuitBreakerConfig,
     };
 

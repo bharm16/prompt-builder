@@ -44,17 +44,17 @@ Add to your `~/.bashrc` (Linux) or `~/.zshrc` (Mac):
 # Quick validation commands
 alias cc-check="find client/src server/src -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' \) -exec wc -l {} + | sort -rn | head -20"
 
-# Check regular components (should be < 200 lines)
-alias cc-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"❌ Component over 200: \" \$0}'"
+# Flag components for SRP review (threshold ~200 lines)
+alias cc-fe="find client/src -name '*.jsx' -path '*/components/*' -exec wc -l {} + | awk '\$1 > 200 {print \"⚠️  Review for SRP: \" \$0}'"
 
-# Check orchestrator components (should be < 500 lines)
-alias cc-fe-main="find client/src -name '*.jsx' ! -path '*/components/*' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Orchestrator over 500: \" \$0}'"
+# Flag orchestrators for SRP review (threshold ~500 lines)
+alias cc-fe-main="find client/src -name '*.jsx' ! -path '*/components/*' -exec wc -l {} + | awk '\$1 > 500 {print \"⚠️  Review for SRP: \" \$0}'"
 
-# Check orchestrator services (should be < 500 lines)
-alias cc-be-main="find server/src/services -maxdepth 1 -name '*.js' -exec wc -l {} + | awk '\$1 > 500 {print \"❌ Service orchestrator over 500: \" \$0}'"
+# Flag service orchestrators for SRP review (threshold ~500 lines)
+alias cc-be-main="find server/src/services -maxdepth 1 -name '*.js' -exec wc -l {} + | awk '\$1 > 500 {print \"⚠️  Review for SRP: \" \$0}'"
 
-# Check specialized services (should be < 300 lines)
-alias cc-be-spec="find server/src/services -mindepth 2 -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"❌ Specialized service over 300: \" \$0}'"
+# Flag specialized services for SRP review (threshold ~300 lines)
+alias cc-be-spec="find server/src/services -mindepth 2 -name '*.js' -exec wc -l {} + | awk '\$1 > 300 {print \"⚠️  Review for SRP: \" \$0}'"
 
 alias cc-all="find client/src server/src -name '*.js' -o -name '*.jsx' | xargs wc -l | sort -rn"
 ```
@@ -64,11 +64,14 @@ Then reload: `source ~/.bashrc` or `source ~/.zshrc`
 Now you can run:
 ```bash
 cc-check      # Check top 20 largest files
-cc-fe         # Check regular UI components (< 200 lines)
-cc-fe-main    # Check orchestrator components (< 500 lines)
-cc-be-main    # Check orchestrator services (< 500 lines)
-cc-be-spec    # Check specialized services (< 300 lines)
+cc-fe         # Flag UI components for SRP review (~200 threshold)
+cc-fe-main    # Flag orchestrators for SRP review (~500 threshold)
+cc-be-main    # Flag service orchestrators for SRP review (~500 threshold)
+cc-be-spec    # Flag specialized services for SRP review (~300 threshold)
 ```
+
+**IMPORTANT:** These commands flag files for REVIEW, not auto-splitting.
+A 250-line component with ONE cohesive responsibility is fine - don't split it.
 
 ---
 
@@ -323,76 +326,81 @@ CONSTRAINTS:
 SHOW STRUCTURE BEFORE implementing"
 ```
 
-### "File exceeded size limits"
+### "File flagged as exceeding threshold"
 
-**Solution:** Refactor before adding more:
+**Solution:** First, ask if it SHOULD be split:
+1. Does it have multiple distinct responsibilities?
+2. Does it have multiple reasons to change?
+3. Would splitting improve cohesion?
+
+**If YES to any → Split by responsibility:**
 ```bash
-claude-code "Refactor [file] - currently [X] lines, exceeds [limit]
+claude-code "Refactor [file] - it has multiple responsibilities:
+1. [responsibility 1]
+2. [responsibility 2]
 
-Follow VideoConceptBuilder/REFACTORING_SUMMARY.md pattern:
-- Extract to hooks/
-- Extract to components/
-- Extract to utils/
+SRP CHECK: These have different reasons to change.
 
-Target: Main component under [limit] lines
+Follow VideoConceptBuilder/REFACTORING_SUMMARY.md pattern.
 SHOW REFACTORING PLAN FIRST"
 ```
 
-### "I keep forgetting to check sizes"
+**If NO to all → Leave it cohesive.** A 250-line component with ONE responsibility is fine.
 
-**Solution:** Add to git pre-commit hook:
+### "I keep forgetting to check for SRP violations"
+
+**Solution:** Add to git pre-commit hook (WARNING mode, not blocking):
 
 Create `.git/hooks/pre-commit`:
 ```bash
 #!/bin/bash
 
-echo "Checking file sizes..."
+echo "Checking for potential SRP violations..."
+echo "(Files over threshold should be REVIEWED, not auto-split)"
+echo ""
 
-# Check UI components (should be < 200 lines)
+# Flag UI components for SRP review (threshold ~200 lines)
 violations=$(find client/src -name "*.jsx" -path "*/components/*" -exec wc -l {} + | awk '$1 > 200 {print $0}')
 if [ ! -z "$violations" ]; then
-  echo "❌ UI components exceed 200 lines:"
+  echo "⚠️  UI components over 200 lines (review for SRP):"
   echo "$violations"
   echo ""
-  echo "Refactor before committing."
-  exit 1
 fi
 
-# Check orchestrator components (should be < 500 lines)
+# Flag orchestrator components for SRP review (threshold ~500 lines)
 violations=$(find client/src -name "*.jsx" ! -path "*/components/*" -exec wc -l {} + | awk '$1 > 500 {print $0}')
 if [ ! -z "$violations" ]; then
-  echo "❌ Orchestrator components exceed 500 lines:"
+  echo "⚠️  Orchestrators over 500 lines (review for SRP):"
   echo "$violations"
   echo ""
-  echo "Refactor before committing."
-  exit 1
 fi
 
-# Check specialized services (should be < 300 lines)
+# Flag specialized services for SRP review (threshold ~300 lines)
 violations=$(find server/src/services -mindepth 2 -name "*.js" -exec wc -l {} + | awk '$1 > 300 {print $0}')
 if [ ! -z "$violations" ]; then
-  echo "❌ Specialized services exceed 300 lines:"
+  echo "⚠️  Specialized services over 300 lines (review for SRP):"
   echo "$violations"
   echo ""
-  echo "Refactor before committing."
-  exit 1
 fi
 
-# Check orchestrator services (should be < 500 lines)
+# Flag orchestrator services for SRP review (threshold ~500 lines)
 violations=$(find server/src/services -maxdepth 1 -name "*.js" -exec wc -l {} + | awk '$1 > 500 {print $0}')
 if [ ! -z "$violations" ]; then
-  echo "❌ Orchestrator services exceed 500 lines:"
+  echo "⚠️  Service orchestrators over 500 lines (review for SRP):"
   echo "$violations"
   echo ""
-  echo "Refactor before committing."
-  exit 1
 fi
 
-echo "✅ All files within size limits"
-exit 0
+echo "Remember: A 250-line file with ONE responsibility is fine."
+echo "Only split if file has MULTIPLE distinct responsibilities."
+echo ""
+echo "✅ Pre-commit check complete"
+exit 0  # Don't block - these are warnings for review
 ```
 
 Make executable: `chmod +x .git/hooks/pre-commit`
+
+**Note:** This hook WARNS but doesn't block. A file over threshold with ONE cohesive responsibility is fine.
 
 ---
 

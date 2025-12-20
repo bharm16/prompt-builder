@@ -2,9 +2,15 @@
 
 ## The 3 Rules
 
-1. **Always specify pattern**: "Follow [VideoConceptBuilder | PromptOptimizationService] pattern"
-2. **Always request structure first**: "SHOW STRUCTURE FIRST"
-3. **Always validate after**: Run `cc-check` or `wc -l [files]`
+1. **SRP/SoC Check**: "How many responsibilities? How many reasons to change?"
+2. **Always specify pattern**: "Follow [VideoConceptBuilder | PromptOptimizationService] pattern"
+3. **Always request structure first**: "SHOW STRUCTURE FIRST"
+
+## 🔴 Critical: Line Counts Are Heuristics
+
+**Before splitting ANY file:**
+- If 1 responsibility → Don't split, even if over threshold
+- If multiple responsibilities → Split by responsibility, not line count
 
 ---
 
@@ -38,19 +44,17 @@ SHOW WHAT CHANGES BEFORE implementing
 
 ---
 
-## Size Limits
+## Size Guidelines (Warning Thresholds)
 
-| Type | Max Lines |
-|------|-----------|
-| Orchestrator Component/Service | 500 |
-| Regular UI Component | 200 |
-| Hook | 150 |
-| Specialized Service | 300 |
-| Utility | 100 |
-| Config | 200 |
-| API Layer | 150 |
+| Type | Warning | When to Split |
+|------|---------|---------------|
+| Orchestrator | ~500 | Multiple unrelated flows |
+| UI Component | ~200 | Mixed concerns |
+| Hook | ~150 | Unrelated state domains |
+| Service | ~300 | Multiple reasons to change |
+| Utility | ~100 | Different concerns |
 
-**Note:** Orchestrators compose pieces. UI components contain logic. Extract business logic from orchestrators.
+**250 lines with 1 responsibility > 3 artificially split files**
 
 ---
 
@@ -84,13 +88,24 @@ SHOW REFACTORING PLAN FIRST
 
 ---
 
-## Red Flags (Stop & Refactor)
+## ❌ Never Do This
 
-- ❌ File approaching limit
-- ❌ API calls inline (should be in api/)
-- ❌ Multiple useState (should be useReducer)
-- ❌ Mixed UI + business logic
-- ❌ Hardcoded config (should be in config/)
+- Split solely because line threshold exceeded
+- Create components only used in one place
+- Extract code that always changes together
+
+## ✅ Do This Instead
+
+- Split by RESPONSIBILITY, not line count
+- Extract when reusable elsewhere
+- Separate orchestration from implementation
+
+## Code Quality Issues
+
+- API calls inline (should be in api/)
+- Multiple useState (should be useReducer)
+- Mixed UI + business logic
+- Hardcoded config (should be in config/)
 
 ---
 

@@ -67,6 +67,7 @@ export function PromptCanvas({
   canRedo = false,
   isDraftReady = false,
   isRefining = false,
+  isProcessing = false,
   draftSpans = null,
   refinedSpans = null,
 }: PromptCanvasProps): React.ReactElement {
@@ -328,21 +329,28 @@ export function PromptCanvas({
   );
 
   const handleReoptimize = useCallback((): void => {
+    if (isProcessing || isRefining) {
+      return;
+    }
     debug.logAction('reoptimize', { promptLength: inputPrompt.length });
     void onReoptimize(inputPrompt);
-  }, [inputPrompt, onReoptimize, debug]);
+  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
 
   const handleInputPromptKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      if (isProcessing || isRefining) {
+        return;
+      }
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleReoptimize();
       }
     },
-    [handleReoptimize]
+    [handleReoptimize, isProcessing, isRefining]
   );
 
   const hasInputPrompt = Boolean(inputPrompt.trim());
+  const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
 
   // Render the component
   return (
@@ -424,7 +432,7 @@ export function PromptCanvas({
                 <button
                   type="button"
                   onClick={handleReoptimize}
-                  disabled={!hasInputPrompt}
+                  disabled={isReoptimizeDisabled}
                   className="absolute bottom-4 right-4 inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Re-optimize prompt"
                   title="Re-optimize (Cmd/Ctrl+Enter)"

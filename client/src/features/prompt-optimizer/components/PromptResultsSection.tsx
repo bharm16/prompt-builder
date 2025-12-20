@@ -91,6 +91,7 @@ export const PromptResultsSection = ({
         // Two-stage indicators
         isDraftReady={promptOptimizer.isDraftReady}
         isRefining={promptOptimizer.isRefining}
+        isProcessing={promptOptimizer.isProcessing}
         // Span labeling for fast highlights (NEW!)
         draftSpans={promptOptimizer.draftSpans}
         refinedSpans={promptOptimizer.refinedSpans}

@@ -111,19 +111,30 @@ ServiceName/
 
 ---
 
-## 🚨 File Size Limits (Enforce These)
+## 🚨 SRP/SoC Check (Do This First)
 
-| Type | Max Lines |
-|------|-----------|
-| Orchestrator Component/Service | **500** |
-| Regular UI Component | **200** |
-| React Hook | **150** |
-| Specialized Service | **300** |
-| Utility | **100** |
-| Config | **200** |
-| API Layer | **150** |
+Before splitting ANY file, answer:
+1. **How many distinct responsibilities?** (If 1 → don't split)
+2. **How many reasons to change?** (If 1 → don't split)
+3. **Would splitting improve or harm cohesion?**
 
-**Note:** Orchestrators compose pieces (imports, hooks, handlers, JSX). Regular components contain UI logic. If your orchestrator has business logic, extract it.
+**Line counts are heuristics, NOT splitting triggers.**
+
+---
+
+## 📋 File Size Guidelines (Warning Thresholds)
+
+| Type | Warning Threshold | When to Split |
+|------|-------------------|---------------|
+| Orchestrator Component/Service | ~500 lines | Multiple unrelated flows |
+| Regular UI Component | ~200 lines | Mixed presentation + business logic |
+| React Hook | ~150 lines | Managing unrelated state domains |
+| Specialized Service | ~300 lines | Multiple reasons to change |
+| Utility | ~100 lines | Functions with different concerns |
+| Config | ~200 lines | Config for different features |
+| API Layer | ~150 lines | Calls to unrelated endpoints |
+
+**Note:** These are smell indicators. A 250-line component with ONE cohesive responsibility is better than 3 artificially split files.
 
 ---
 
@@ -177,11 +188,21 @@ SHOW STRUCTURE FIRST"
 
 ---
 
-## 🔥 Red Flags (Stop and Refactor First)
+## 🔥 Red Flags (Stop and Evaluate)
 
-- UI component approaching 200 lines (extract subcomponents)
-- Orchestrator approaching 500 lines (extract hooks/services)
-- Specialized service approaching 300 lines (split responsibilities)
+### ❌ Mechanical Splitting (Never Do This)
+- Splitting solely because file exceeds line threshold
+- Creating components only used in one place
+- Extracting code that always changes together
+- Adding indirection without improving cohesion
+
+### ✅ Principled Splitting (Do This)
+- File has multiple distinct responsibilities
+- Different parts have different reasons to change
+- Extracted piece is reusable elsewhere
+- Mixing orchestration with implementation details
+
+### Code Quality Issues
 - Adding API calls inline (must go in api/ layer)
 - Adding useState when useReducer exists
 - Copy-pasting code (extract to shared utility)

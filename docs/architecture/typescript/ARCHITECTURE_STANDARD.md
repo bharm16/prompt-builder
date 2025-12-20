@@ -8,7 +8,7 @@ This document defines the directory structure and file organization patterns for
 
 ## 1. Frontend Component Structure
 
-**Threshold:** Any component exceeding 300 lines OR containing complex state logic must follow this structure.
+**When to Use This Structure:** Components that have **multiple distinct responsibilities** (e.g., state management + API calls + complex UI logic) should be split following this pattern. Line count is a secondary indicator—a 400-line component with a single cohesive responsibility may be fine, while a 150-line component mixing concerns should be split.
 
 ```text
 ComponentName/
@@ -112,7 +112,7 @@ export const FEATURE_FLAGS = {
 
 ## 2. Backend Service Structure
 
-**Threshold:** Any service exceeding 200 lines must be split using the orchestrator pattern.
+**When to Use This Structure:** Services that have **multiple reasons to change** (different stakeholders, different data flows) should be split using the orchestrator pattern. A 350-line service doing one thing well is preferable to artificially splitting cohesive logic.
 
 ```text
 services/feature-name/
@@ -228,19 +228,46 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 ---
 
-## 4. File Size Limits (Updated)
+## 4. File Size Guidelines (Heuristics, Not Hard Limits)
 
-| File Type | Max Lines | Notes |
-|-----------|-----------|-------|
-| Orchestrator (.tsx/.ts) | **500** | Main component/service files |
-| UI Component (.tsx) | **200** | Presentational components |
-| React Hook (.ts) | **150** | Single responsibility |
-| Specialized Service (.ts) | **300** | Business logic |
-| Utility (.ts) | **100** | Pure functions |
-| Types (.ts) | **200** | Type definitions only |
-| Schemas (.ts) | **150** | Zod schemas only |
-| Constants (.ts) | **100** | Static data only |
-| API Layer (.ts) | **150** | Fetch wrappers |
+**Core Principle:** Line counts are smell indicators, not splitting triggers. A file exceeding these thresholds should be **evaluated for SRP/SoC violations**, not automatically split.
+
+| File Type | Warning Threshold | When to Split |
+|-----------|-------------------|---------------|
+| Orchestrator (.tsx/.ts) | ~500 lines | Multiple unrelated orchestration flows |
+| UI Component (.tsx) | ~200 lines | Mixed presentation + business logic |
+| React Hook (.ts) | ~150 lines | Managing unrelated state domains |
+| Specialized Service (.ts) | ~300 lines | Multiple reasons to change |
+| Utility (.ts) | ~100 lines | Functions with different concerns |
+| Types (.ts) | ~200 lines | Types for unrelated domains |
+| Schemas (.ts) | ~150 lines | Schemas for unrelated APIs |
+| Constants (.ts) | ~100 lines | Config for different features |
+| API Layer (.ts) | ~150 lines | Calls to unrelated endpoints |
+
+### When NOT to Split (Even If Over Threshold)
+
+- A reducer with 200 lines handling one cohesive state domain
+- A form component with 250 lines but a single logical flow
+- A service with many edge cases for one responsibility
+- A config file that's large but logically unified
+
+### ❌ Mechanical Splitting (Anti-Pattern)
+
+```typescript
+// BAD: Split because 210 > 200, but these change together
+UserProfile.tsx (180 lines) + UserProfileHeader.tsx (30 lines)
+```
+
+If `UserProfileHeader` is only used by `UserProfile` and they always change together, this split adds indirection without improving cohesion.
+
+### ✅ Principled Splitting
+
+```typescript
+// GOOD: Split because different responsibilities
+UserProfile.tsx (orchestration) + UserAvatar.tsx (reusable presentation)
+```
+
+`UserAvatar` is reused elsewhere and encapsulates avatar-specific logic independent of the profile.
 
 ---
 

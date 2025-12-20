@@ -1,4 +1,4 @@
-import { APIError, TimeoutError } from '../LLMClient.ts';
+import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
@@ -27,6 +27,7 @@ interface AdapterConfig {
 interface AbortControllerResult {
   controller: AbortController;
   timeoutId: NodeJS.Timeout;
+  abortedByTimeout: { value: boolean };
 }
 
 interface GeminiPayload {
@@ -88,7 +89,7 @@ export class GeminiAdapter {
     const startTime = performance.now();
     const operation = 'complete';
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
 
     this.log.debug(`Starting ${operation}`, {
       operation,
@@ -147,12 +148,20 @@ export class GeminiAdapter {
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
-        this.log.warn('Gemini API request timeout', {
+        if (abortedByTimeout.value) {
+          const timeoutError = new TimeoutError(`${this.providerName} API request timeout after ${timeout}ms`);
+          this.log.warn('Gemini API request timeout', {
+            operation,
+            timeout,
+          });
+          throw timeoutError;
+        }
+
+        const clientAbortError = new ClientAbortError(`${this.providerName} API request aborted by client`);
+        this.log.debug('Gemini API request aborted by client', {
           operation,
-          timeout,
         });
-        throw timeoutError;
+        throw clientAbortError;
       }
 
       this.log.error(`${operation} failed`, errorObj, {
@@ -166,7 +175,7 @@ export class GeminiAdapter {
 
   async streamComplete(systemPrompt: string, options: CompletionOptions & { onChunk: (chunk: string) => void }): Promise<string> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
     let fullText = '';
 
     try {
@@ -247,7 +256,10 @@ export class GeminiAdapter {
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
+        if (abortedByTimeout.value) {
+          throw new TimeoutError(`${this.providerName} streaming request timeout after ${timeout}ms`);
+        }
+        throw new ClientAbortError(`${this.providerName} streaming request aborted by client`);
       }
 
       throw errorObj;
@@ -377,7 +389,11 @@ export class GeminiAdapter {
 
   private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const abortedByTimeout = { value: false };
+    const timeoutId = setTimeout(() => {
+      abortedByTimeout.value = true;
+      controller.abort();
+    }, timeout);
 
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -387,7 +403,6 @@ export class GeminiAdapter {
       }
     }
 
-    return { controller, timeoutId };
+    return { controller, timeoutId, abortedByTimeout };
   }
 }
-

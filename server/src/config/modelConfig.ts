@@ -35,6 +35,11 @@ interface ModelConfigEntry {
 
 type OperationName = keyof typeof ModelConfig;
 
+const QWEN_FALLBACK = {
+  model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
+  timeout: parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
+};
+
 /**
  * Model Configuration Object
  * 
@@ -65,6 +70,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 4096,
     timeout: 60000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true, // GPT-4o: Use developer role for format constraints
   },
 
@@ -79,6 +85,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 500,
     timeout: 15000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same concept should draft similarly
     useDeveloperMessage: true,
   },
@@ -212,6 +219,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 2048,
     timeout: 45000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true,
   },
 
@@ -340,6 +348,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     timeout: 30000,
     responseFormat: 'json_object',
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same prompt should generate same questions
     useDeveloperMessage: true,
   },
@@ -401,6 +410,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     maxTokens: 600,
     timeout: 20000,
     fallbackTo: 'qwen',
+    fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same spans should classify identically
     useDeveloperMessage: true,
   },

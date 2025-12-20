@@ -1,7 +1,7 @@
 import { logger } from '@infrastructure/Logger';
 import { ModelConfig, DEFAULT_CONFIG, shouldUseSeed, shouldUseDeveloperMessage as configShouldUseDeveloperMessage } from '@config/modelConfig';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
-import type { IAIClient, AIResponse, CompletionOptions } from '@interfaces/IAIClient';
+import { AIClientError, type IAIClient, type AIResponse, type CompletionOptions } from '@interfaces/IAIClient';
 
 /**
  * AI Model Service - Unified Router for LLM Operations
@@ -473,6 +473,19 @@ export class AIModelService {
       
       if (!client) {
         throw new Error(`Fallback client '${fallbackClient}' not available`);
+      }
+
+      if (fallbackClient === 'qwen') {
+        const circuitState = (client as { getCircuitBreakerState?: () => 'OPEN' | 'HALF-OPEN' | 'CLOSED' })
+          .getCircuitBreakerState?.();
+        if (circuitState === 'OPEN') {
+          logger.warn('Skipping fallback due to open circuit breaker', {
+            operation,
+            fallbackClient,
+            fallbackModel: fallbackConfig?.model,
+          });
+          throw new AIClientError(`${fallbackClient} API circuit breaker is open`, 503);
+        }
       }
       
       // Build fallback options with fallbackConfig when available

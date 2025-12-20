@@ -15,7 +15,7 @@
  * - Use GroqLlamaAdapter for: llama-3.1-8b-instant, llama-* models
  */
 
-import { APIError, TimeoutError } from '../LLMClient.ts';
+import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { AIResponse } from '@interfaces/IAIClient';
@@ -51,6 +51,7 @@ interface QwenAdapterConfig {
 interface AbortControllerResult {
   controller: AbortController;
   timeoutId: NodeJS.Timeout;
+  abortedByTimeout: { value: boolean };
 }
 
 interface GroqResponseData {
@@ -199,7 +200,7 @@ export class GroqQwenAdapter {
     options: QwenCompletionOptions
   ): Promise<AIResponse> {
     const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId } = this._createAbortController(timeout, options.signal);
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
 
     try {
       const messages = this._buildMessages(systemPrompt, options);
@@ -245,17 +246,40 @@ export class GroqQwenAdapter {
       }
 
       // Response format configuration (Qwen supports json_object, not json_schema)
+      // IMPORTANT: Groq requires 'json' to appear in messages when using json_object mode
       const wantsJsonSchema = !!options.schema || options.responseFormat?.type === 'json_schema';
-      if (wantsJsonSchema) {
-        this.log.debug('Qwen response_format json_schema unsupported; using json_object', {
-          model: options.model || this.defaultModel,
-          hasSchema: !!options.schema,
-        });
+      const usingJsonObjectMode = wantsJsonSchema || options.jsonMode || options.responseFormat?.type === 'json_object';
+      
+      if (usingJsonObjectMode) {
+        // Groq API requires the word 'json' to appear in messages when using json_object mode
+        // Inject into first message if not already present
+        const messagesContainJson = messages.some(m => 
+          m.content.toLowerCase().includes('json')
+        );
+        
+        if (!messagesContainJson) {
+          this.log.debug('Injecting JSON instruction for Groq json_object mode', {
+            model: options.model || this.defaultModel,
+          });
+          // Prepend to system message to satisfy Groq's requirement
+          const systemIdx = messages.findIndex(m => m.role === 'system');
+          if (systemIdx !== -1) {
+            messages[systemIdx].content = `Respond with valid JSON.\n\n${messages[systemIdx].content}`;
+          } else {
+            // No system message, add instruction to first message
+            messages[0].content = `Respond with valid JSON.\n\n${messages[0].content}`;
+          }
+        }
+        
+        if (wantsJsonSchema) {
+          this.log.debug('Qwen response_format json_schema unsupported; using json_object', {
+            model: options.model || this.defaultModel,
+            hasSchema: !!options.schema,
+          });
+        }
         payload.response_format = { type: 'json_object' };
       } else if (options.responseFormat) {
         payload.response_format = options.responseFormat;
-      } else if (options.jsonMode) {
-        payload.response_format = { type: 'json_object' };
       }
 
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -287,7 +311,10 @@ export class GroqQwenAdapter {
 
       const errorObj = error as Error;
       if (errorObj.name === 'AbortError') {
-        throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        if (abortedByTimeout.value) {
+          throw new TimeoutError(`Groq API request timeout after ${timeout}ms`);
+        }
+        throw new ClientAbortError('Groq API request aborted by client');
       }
 
       throw errorObj;
@@ -397,7 +424,11 @@ export class GroqQwenAdapter {
 
   private _createAbortController(timeout: number, externalSignal?: AbortSignal): AbortControllerResult {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const abortedByTimeout = { value: false };
+    const timeoutId = setTimeout(() => {
+      abortedByTimeout.value = true;
+      controller.abort();
+    }, timeout);
 
     if (externalSignal) {
       if (externalSignal.aborted) {
@@ -407,6 +438,6 @@ export class GroqQwenAdapter {
       }
     }
 
-    return { controller, timeoutId };
+    return { controller, timeoutId, abortedByTimeout };
   }
 }
