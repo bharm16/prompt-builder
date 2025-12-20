@@ -27,6 +27,7 @@ interface PromptOptimizer {
   setOptimizedPrompt: (prompt: string) => void;
   setDisplayedPrompt: (prompt: string) => void;
   displayedPrompt: string;
+  setPreviewPrompt?: (prompt: string | null) => void;
   [key: string]: unknown;
 }
 
@@ -90,6 +91,7 @@ export function usePromptLoader({
           promptOptimizer.setInputPrompt(promptData.input || '');
           promptOptimizer.setOptimizedPrompt(promptData.output || '');
           setDisplayedPromptSilently(promptData.output || '');
+          promptOptimizer.setPreviewPrompt?.(null);
           setCurrentPromptUuid(promptData.uuid);
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);

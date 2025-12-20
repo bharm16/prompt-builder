@@ -5,7 +5,7 @@
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useEffect, type RefObject } from 'react';
+import { useLayoutEffect, type RefObject } from 'react';
 import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
 
 export interface UseEditorContentOptions {
@@ -22,7 +22,7 @@ export function useEditorContent({
   displayedPrompt,
   formattedHTML,
 }: UseEditorContentOptions): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (editorRef.current && displayedPrompt) {
       const newHTML = formattedHTML || displayedPrompt;
 
@@ -75,4 +75,3 @@ export function useEditorContent({
     }
   }, [editorRef, displayedPrompt, formattedHTML]);
 }
-

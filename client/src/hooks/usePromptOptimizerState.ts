@@ -27,6 +27,7 @@ export interface PromptOptimizerState {
   isProcessing: boolean;
   optimizedPrompt: string;
   displayedPrompt: string;
+  previewPrompt: string | null;
   qualityScore: number | null;
   skipAnimation: boolean;
   improvementContext: unknown | null;
@@ -41,6 +42,7 @@ export type PromptOptimizerAction =
   | { type: 'SET_INPUT_PROMPT'; payload: string }
   | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
   | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
+  | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
   | { type: 'SET_QUALITY_SCORE'; payload: number | null }
   | { type: 'SET_SKIP_ANIMATION'; payload: boolean }
   | { type: 'SET_IMPROVEMENT_CONTEXT'; payload: unknown | null }
@@ -58,6 +60,7 @@ const initialState: PromptOptimizerState = {
   isProcessing: false,
   optimizedPrompt: '',
   displayedPrompt: '',
+  previewPrompt: null,
   qualityScore: null,
   skipAnimation: false,
   improvementContext: null,
@@ -92,6 +95,8 @@ function reducer(
       return { ...state, optimizedPrompt: action.payload };
     case 'SET_DISPLAYED_PROMPT':
       return { ...state, displayedPrompt: action.payload };
+    case 'SET_PREVIEW_PROMPT':
+      return { ...state, previewPrompt: action.payload };
     case 'SET_QUALITY_SCORE':
       return { ...state, qualityScore: action.payload };
     case 'SET_SKIP_ANIMATION':
@@ -119,6 +124,7 @@ function reducer(
         isProcessing: true,
         optimizedPrompt: '',
         displayedPrompt: '',
+        previewPrompt: null,
         qualityScore: null,
         skipAnimation: false,
         draftPrompt: '',
@@ -157,6 +163,10 @@ export function usePromptOptimizerState() {
 
   const setQualityScore = useCallback((score: number | null) => {
     dispatch({ type: 'SET_QUALITY_SCORE', payload: score });
+  }, []);
+
+  const setPreviewPrompt = useCallback((prompt: string | null) => {
+    dispatch({ type: 'SET_PREVIEW_PROMPT', payload: prompt });
   }, []);
 
   const setSkipAnimation = useCallback((skip: boolean) => {
@@ -212,6 +222,7 @@ export function usePromptOptimizerState() {
     setInputPrompt,
     setOptimizedPrompt,
     setDisplayedPrompt,
+    setPreviewPrompt,
     setQualityScore,
     setSkipAnimation,
     setImprovementContext,

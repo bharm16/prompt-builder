@@ -10,7 +10,7 @@ import { detectProvider } from '@utils/provider/ProviderDetector';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
 import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
-import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer';
+import { renderAlternativeApproaches, renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
 
 function isCriticalVideoPromptLintError(error: string): boolean {
   return (
@@ -251,7 +251,7 @@ export class VideoStrategy implements OptimizationStrategy {
    * falls back to StructuredOutputEnforcer for unsupported providers
    * Uses Few-Shot Prompting to prevent structural arrows in output
    */
-  async optimize({ prompt, shotPlan = null, signal }: OptimizationRequest): Promise<string> {
+  async optimize({ prompt, shotPlan = null, signal, onMetadata }: OptimizationRequest): Promise<string> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
     const optimizeConfig = ModelConfig.optimize_standard;
@@ -329,7 +329,7 @@ export class VideoStrategy implements OptimizationStrategy {
             errors: lint.errors,
             provider,
           });
-          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
+          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
         }
 
         logger.warn('Video prompt slot lint failed (repairing critical issues)', {
@@ -350,7 +350,7 @@ export class VideoStrategy implements OptimizationStrategy {
       });
         if (rerolled) {
           logger.info('Video prompt lint fixed via reroll', { provider });
-          return this._reassembleOutput(rerolled);
+          return this._reassembleOutput(rerolled, onMetadata);
         }
 
       const repaired = await this._repairSlots({
@@ -364,7 +364,7 @@ export class VideoStrategy implements OptimizationStrategy {
         ...(signal ? { signal } : {}),
       });
 
-        return this._reassembleOutput(repaired);
+        return this._reassembleOutput(repaired, onMetadata);
       }
 
       logger.info('Video optimization complete with native structured outputs', {
@@ -375,7 +375,7 @@ export class VideoStrategy implements OptimizationStrategy {
         usedDeveloperMessage: !!template.developerMessage,
       });
 
-      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
+      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
 
     } catch (error) {
       // Strategy 2: Fallback to StructuredOutputEnforcer (Robustness)
@@ -383,7 +383,7 @@ export class VideoStrategy implements OptimizationStrategy {
         error: (error as Error).message
       });
 
-      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config, signal);
+      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config, signal, onMetadata);
     }
   }
 
@@ -394,7 +394,8 @@ export class VideoStrategy implements OptimizationStrategy {
     prompt: string,
     shotPlan: ShotPlan | null,
     config: { maxTokens: number; temperature: number; timeout: number },
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onMetadata?: (metadata: Record<string, unknown>) => void
   ): Promise<string> {
     // Generate full system prompt (legacy format)
     const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan);
@@ -431,15 +432,23 @@ export class VideoStrategy implements OptimizationStrategy {
     });
 
     // Fallback path: if lint fails, proceed with best-effort normalized slots (avoid a second model call here)
-    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots });
+    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
   }
 
   /**
    * Reassemble structured JSON into text format for backward compatibility
    */
-  private _reassembleOutput(parsed: VideoPromptStructuredResponse): string {
+  private _reassembleOutput(
+    parsed: VideoPromptStructuredResponse,
+    onMetadata?: (metadata: Record<string, unknown>) => void
+  ): string {
     const slots = normalizeSlots(parsed);
     const promptParagraph = renderMainVideoPrompt(slots);
+    const previewPrompt = renderPreviewPrompt(slots);
+
+    if (onMetadata) {
+      onMetadata({ previewPrompt });
+    }
 
     let output = promptParagraph;
 

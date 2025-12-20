@@ -159,6 +159,9 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     promptOptimizer.setInputPrompt(entry.input);
     promptOptimizer.setOptimizedPrompt(entry.output);
     setDisplayedPromptSilently(entry.output);
+    if (promptOptimizer.setPreviewPrompt) {
+      promptOptimizer.setPreviewPrompt(null);
+    }
     setSelectedMode(entry.mode || 'video');
     setShowResults(true);
 

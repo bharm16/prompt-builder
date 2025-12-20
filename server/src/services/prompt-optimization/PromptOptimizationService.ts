@@ -136,14 +136,22 @@ export class PromptOptimizationService {
       this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
         operation,
       });
+      let fallbackMetadata: Record<string, unknown> | null = null;
       const result = await this.optimize({
         prompt,
         mode: finalMode,
         context,
         brainstormContext,
+        onMetadata: (metadata) => {
+          fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
+        },
         ...(signal ? { signal } : {}),
       });
-      return { draft: result, refined: result, metadata: { usedFallback: true } };
+      return {
+        draft: result,
+        refined: result,
+        metadata: { usedFallback: true, ...(fallbackMetadata || {}) },
+      };
     }
 
     try {
@@ -191,6 +199,7 @@ export class PromptOptimizationService {
 
       ensureNotAborted();
 
+      let refinementMetadata: Record<string, unknown> | null = null;
       const refined = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
@@ -201,6 +210,9 @@ export class PromptOptimizationService {
         },
         shotPlan,
         shotPlanAttempted: true,
+        onMetadata: (metadata) => {
+          refinementMetadata = { ...(refinementMetadata || {}), ...metadata };
+        },
         ...(signal ? { signal } : {}),
       });
 
@@ -229,6 +241,7 @@ export class PromptOptimizationService {
           mode: finalMode,
           usedTwoStage: true,
           shotPlan,
+          ...(refinementMetadata || {}),
         }
       };
 
@@ -247,6 +260,7 @@ export class PromptOptimizationService {
         mode: finalMode,
       });
 
+      let fallbackMetadata: Record<string, unknown> | null = null;
       const result = await this.optimize({
         prompt,
         mode: finalMode,
@@ -254,6 +268,9 @@ export class PromptOptimizationService {
         brainstormContext,
         shotPlan,
         shotPlanAttempted: true,
+        onMetadata: (metadata) => {
+          fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
+        },
         ...(signal ? { signal } : {}),
       });
       return {
@@ -263,6 +280,7 @@ export class PromptOptimizationService {
           mode: finalMode,
           usedFallback: true,
           shotPlan,
+          ...(fallbackMetadata || {}),
         },
         usedFallback: true,
         error: (error as Error).message,
@@ -282,6 +300,7 @@ export class PromptOptimizationService {
     shotPlanAttempted = false,
     useConstitutionalAI = false,
     useIterativeRefinement = false,
+    onMetadata,
     signal,
   }: OptimizationRequest): Promise<string> {
     const startTime = performance.now();
@@ -339,8 +358,15 @@ export class PromptOptimizationService {
 
     // Check cache
     const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext);
+    const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
     const cached = await cacheService.get<string>(cacheKey);
     if (cached) {
+      if (onMetadata) {
+        const cachedMetadata = await cacheService.get<Record<string, unknown>>(cacheMetadataKey);
+        if (cachedMetadata) {
+          onMetadata(cachedMetadata);
+        }
+      }
       this.log.debug('Returning cached optimization result', {
         operation,
         mode: finalMode,
@@ -351,6 +377,13 @@ export class PromptOptimizationService {
 
     try {
       let optimizedPrompt: string;
+      let optimizationMetadata: Record<string, unknown> | null = null;
+      const handleMetadata = (metadata: Record<string, unknown>): void => {
+        optimizationMetadata = { ...(optimizationMetadata || {}), ...metadata };
+        if (onMetadata) {
+          onMetadata(metadata);
+        }
+      };
 
       // Use iterative refinement if requested
       if (useIterativeRefinement) {
@@ -360,7 +393,8 @@ export class PromptOptimizationService {
           context,
           brainstormContext,
           useConstitutionalAI,
-          signal
+          signal,
+          handleMetadata
         );
       } else {
         // Get appropriate strategy and optimize
@@ -378,6 +412,7 @@ export class PromptOptimizationService {
           brainstormContext,
           domainContent,
           shotPlan: interpretedShotPlan,
+          onMetadata: handleMetadata,
           ...(signal ? { signal } : {}),
         });
 
@@ -389,6 +424,9 @@ export class PromptOptimizationService {
 
       // Cache the result
       await cacheService.set(cacheKey, optimizedPrompt, this.cacheConfig);
+      if (optimizationMetadata) {
+        await cacheService.set(cacheMetadataKey, optimizationMetadata, this.cacheConfig);
+      }
 
       // Log metrics
       this.logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
@@ -433,7 +471,8 @@ export class PromptOptimizationService {
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
     useConstitutionalAI: boolean,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onMetadata?: (metadata: Record<string, unknown>) => void
   ): Promise<string> {
     const startTime = performance.now();
     const operation = 'optimizeIteratively';
@@ -458,6 +497,10 @@ export class PromptOptimizationService {
     let currentPrompt = prompt;
     let bestPrompt = prompt;
     let bestScore = 0;
+    let lastMetadata: Record<string, unknown> | null = null;
+    const collectMetadata = (metadata: Record<string, unknown>): void => {
+      lastMetadata = metadata;
+    };
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       ensureNotAborted();
@@ -477,6 +520,7 @@ export class PromptOptimizationService {
         context,
         brainstormContext,
         domainContent,
+        onMetadata: collectMetadata,
         ...(signal ? { signal } : {}),
       });
 
@@ -528,6 +572,10 @@ export class PromptOptimizationService {
       iterations: maxIterations,
       duration: Math.round(performance.now() - startTime),
     });
+
+    if (onMetadata && lastMetadata) {
+      onMetadata(lastMetadata);
+    }
 
     return bestPrompt;
   }
@@ -726,6 +774,10 @@ Output ONLY the draft prompt, no explanations.`
       brainstormContext ? JSON.stringify(brainstormContext) : ''
     ];
     return parts.join('::');
+  }
+
+  private buildMetadataCacheKey(baseKey: string): string {
+    return `${baseKey}::meta`;
   }
 
   /**

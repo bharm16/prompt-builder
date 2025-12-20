@@ -22,6 +22,34 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     prompt,
     isVisible,
   });
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExportKeyframe = React.useCallback(async () => {
+    if (!imageUrl || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `keyframe-preview-${Date.now()}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [imageUrl, isExporting]);
 
   if (!isVisible) return null;
 
@@ -72,7 +100,15 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
               className="w-full h-full object-cover transition-opacity duration-500"
             />
             {/* Overlay actions */}
-            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90 disabled:opacity-60"
+                onClick={handleExportKeyframe}
+                aria-label="Export keyframe"
+                disabled={isExporting}
+              >
+                {isExporting ? 'Exporting...' : 'Export Keyframe'}
+              </button>
               <button
                 className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
                 onClick={() => window.open(imageUrl, '_blank')}
@@ -95,4 +131,3 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     </div>
   );
 };
-

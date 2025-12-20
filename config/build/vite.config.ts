@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'path';
@@ -24,6 +24,8 @@ export default defineConfig({
       '@features': path.resolve(__dirname, '../../client/src/features'),
       '@hooks': path.resolve(__dirname, '../../client/src/hooks'),
       '@api': path.resolve(__dirname, '../../client/src/api'),
+      '@services': path.resolve(__dirname, '../../client/src/services'),
+      '@repositories': path.resolve(__dirname, '../../client/src/repositories'),
       '@types': path.resolve(__dirname, '../../client/src/types'),
       '@utils': path.resolve(__dirname, '../../client/src/utils'),
       '@config': path.resolve(__dirname, '../../client/src/config'),
@@ -51,7 +53,6 @@ export default defineConfig({
           },
           release: {
             name: process.env.VITE_APP_VERSION || 'unknown',
-            cleanArtifacts: true,
             setCommits: {
               auto: true,
               ignoreMissing: true,
@@ -59,7 +60,7 @@ export default defineConfig({
           },
         })
       : undefined,
-  ].filter(Boolean) as ReturnType<typeof defineConfig>['plugins'],
+  ].filter(Boolean) as PluginOption[],
   server: {
     proxy: {
       '/api': {
@@ -85,4 +86,3 @@ export default defineConfig({
   },
   publicDir: path.resolve(__dirname, '../../client/public'),
 });
-

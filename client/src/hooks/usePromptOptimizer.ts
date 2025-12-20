@@ -37,6 +37,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
     setOptimizedPrompt,
     setDisplayedPrompt,
     setQualityScore,
+    setPreviewPrompt,
     setSkipAnimation,
     setImprovementContext,
     setDraftPrompt,
@@ -85,7 +86,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           outputLength: data.optimizedPrompt?.length || 0,
         });
         
-        return data.optimizedPrompt;
+        return data;
       } catch (error) {
         logger.endTimer('analyzeAndOptimize');
         log.error('analyzeAndOptimize failed', error as Error);
@@ -238,7 +239,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
                 });
               }
             },
-            onRefined: (refined: string) => {
+            onRefined: (refined: string, metadata?: Record<string, unknown>) => {
               if (abortController.signal.aborted || requestId !== requestIdRef.current) {
                 return;
               }
@@ -262,6 +263,9 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
               // IMPORTANT: Don't update displayedPrompt yet if we're waiting for refined spans
               if (!state.refinedSpans) {
                 setDisplayedPrompt(refined);
+              }
+              if (metadata?.previewPrompt && typeof metadata.previewPrompt === 'string') {
+                setPreviewPrompt(metadata.previewPrompt);
               }
 
               setQualityScore(refinedScore);
@@ -318,6 +322,10 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             return null;
           }
 
+          if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
+            setPreviewPrompt(result.metadata.previewPrompt);
+          }
+
           return {
             optimized: result.refined,
             score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),
@@ -329,16 +337,20 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           });
 
           // Fallback to legacy single-stage optimization
-          const optimized = await analyzeAndOptimize(
+          const response = await analyzeAndOptimize(
             promptToOptimize,
             context,
             brainstormContext,
             abortController.signal
           );
+          const optimized = response.optimizedPrompt;
           const score = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, optimized);
 
           setOptimizedPrompt(optimized);
           setQualityScore(score);
+          if (response.metadata?.previewPrompt && typeof response.metadata.previewPrompt === 'string') {
+            setPreviewPrompt(response.metadata.previewPrompt);
+          }
 
           // Show quality score toast
           if (score >= 80) {
@@ -399,6 +411,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
       setIsDraftReady,
       setIsRefining,
       setQualityScore,
+      setPreviewPrompt,
       setDraftSpans,
       setRefinedSpans,
     ]
@@ -413,6 +426,8 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
     setOptimizedPrompt,
     displayedPrompt: state.displayedPrompt,
     setDisplayedPrompt,
+    previewPrompt: state.previewPrompt,
+    setPreviewPrompt,
     qualityScore: state.qualityScore,
     skipAnimation: state.skipAnimation,
     setSkipAnimation,

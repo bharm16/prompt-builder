@@ -67,11 +67,15 @@ export function createAPIRoutes(services: ApiServices): Router {
       });
 
       try {
+        let metadata: Record<string, unknown> | null = null;
         const optimizedPrompt = await promptOptimizationService.optimize({
           prompt,
           mode,
           context,
           brainstormContext, // Pass brainstorm context to service
+          onMetadata: (next) => {
+            metadata = { ...(metadata || {}), ...next };
+          },
         });
 
         logger.info('Optimize request completed', {
@@ -83,7 +87,10 @@ export function createAPIRoutes(services: ApiServices): Router {
           outputLength: optimizedPrompt?.length || 0,
         });
 
-        res.json({ optimizedPrompt });
+        res.json({
+          optimizedPrompt,
+          ...(metadata ? { metadata } : {}),
+        });
       } catch (error: any) {
         logger.error('Optimize request failed', error, {
           operation,

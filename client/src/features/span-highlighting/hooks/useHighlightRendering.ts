@@ -15,7 +15,7 @@
  * This eliminates flickering and improves performance with 50+ highlights.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import {
   buildTextNodeIndex,
@@ -61,6 +61,28 @@ export function useHighlightRendering({
     nodeIndex: null,
     fingerprint: null,
   });
+  const [renderRetryTick, setRenderRetryTick] = useState(0);
+  const retryFrameRef = useRef<number | null>(null);
+  const retryKeyRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
+
+  const scheduleRetry = useCallback((key: string): void => {
+    if (retryKeyRef.current !== key) {
+      retryKeyRef.current = key;
+      retryCountRef.current = 0;
+    }
+    if (retryCountRef.current >= 2) {
+      return;
+    }
+    if (retryFrameRef.current !== null) {
+      return;
+    }
+    retryCountRef.current += 1;
+    retryFrameRef.current = requestAnimationFrame(() => {
+      retryFrameRef.current = null;
+      setRenderRetryTick((prev) => prev + 1);
+    });
+  }, []);
 
   /**
    * Helper: Check if a span has changed (position or text)
@@ -94,6 +116,14 @@ export function useHighlightRendering({
 
   // Clean up on unmount
   useEffect(() => () => clearAllHighlights(), []);
+  useEffect(
+    () => () => {
+      if (retryFrameRef.current !== null) {
+        cancelAnimationFrame(retryFrameRef.current);
+      }
+    },
+    []
+  );
 
   // Main highlighting effect - DIFF-BASED RENDERING
   useEffect(() => {
@@ -171,8 +201,13 @@ export function useHighlightRendering({
 
     // PHASE 2 & 3: Add new spans and update changed spans
     const coverage: Array<{ start: number; end: number }> = [];
-    // Build the text node index lazily to avoid repeated O(N) DOM walks.
-    let nodeIndex: TextNodeIndex | null = null;
+    let nodeIndex: TextNodeIndex | null = buildTextNodeIndex(root);
+    highlightStateRef.current.nodeIndex = nodeIndex;
+
+    if (!nodeIndex.nodes.length) {
+      scheduleRetry(fingerprint ?? displayText);
+      return;
+    }
 
     sortedSpans.forEach(({ span, highlightStart, highlightEnd }) => {
       const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role || ''}`;
@@ -193,12 +228,13 @@ export function useHighlightRendering({
 
       // Determine if we need to render/re-render
       let shouldRender = false;
-      
+      const wrappersMissing =
+        !existingEntry?.wrappers?.length ||
+        existingEntry.wrappers.some((wrapper) => !root.contains(wrapper));
+
       if (!existingEntry) {
-        // New span - needs rendering
         shouldRender = true;
-      } else if (hasSpanChanged(existingEntry.span, span)) {
-        // Span changed - unwrap old, render new
+      } else if (hasSpanChanged(existingEntry.span, span) || wrappersMissing) {
         if (existingEntry.wrappers?.length) {
           existingEntry.wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
         }
@@ -206,14 +242,6 @@ export function useHighlightRendering({
       }
 
       if (shouldRender) {
-        if (!nodeIndex) {
-          nodeIndex = buildTextNodeIndex(root);
-          highlightStateRef.current.nodeIndex = nodeIndex;
-        }
-
-        if (!nodeIndex.nodes.length) {
-          return;
-        }
 
         // Create wrapper elements
         const segmentWrappers = wrapRangeSegments({
@@ -271,7 +299,7 @@ export function useHighlightRendering({
     } catch (err) {
       // Mark may not exist if prompt wasn't displayed yet
     }
-  }, [parseResult, enabled, fingerprint, editorRef, text]);
+  }, [parseResult, enabled, fingerprint, editorRef, text, renderRetryTick, scheduleRetry]);
 
   return highlightStateRef;
 }

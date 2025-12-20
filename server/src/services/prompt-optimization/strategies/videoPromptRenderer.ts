@@ -305,6 +305,36 @@ export function renderCompactVideoPrompt(
   return compactToWordLimit(text, maxWords);
 }
 
+export function renderPreviewPrompt(slots: VideoPromptSlots): string {
+  const shotFraming = clean(slots.shot_framing) ?? 'Wide Shot';
+  const anglePhrase = angleToPhrase(slots.camera_angle);
+  const subjectPhrase = formatSubject(slots.subject, (slots.subject_details || []).slice(0, 2));
+  const action = clean(slots.action);
+  const settingTime = formatSettingTime(clean(slots.setting), clean(slots.time));
+  const lighting = clean(slots.lighting);
+  const style = clean(slots.style);
+
+  const baseParts: string[] = [];
+  baseParts.push(shotFraming);
+  if (anglePhrase) baseParts.push(anglePhrase);
+  baseParts.push(`of ${subjectPhrase || 'the scene'}`);
+  if (action) {
+    baseParts.push(actionIsPresentParticiple(action) ? action : `as it ${action}`);
+  }
+  if (settingTime) baseParts.push(settingTime);
+  let text = ensurePeriod(baseParts.join(' ').replace(/\s+/g, ' ').trim());
+
+  const lightingSentence = lighting ? ensurePeriod(`Lit by ${shortenToFirstClause(lighting)}`) : null;
+  const styleSentence = style ? ensurePeriod(`Style reference: ${shortenToFirstClause(style)}`) : null;
+
+  if (lightingSentence) text = `${text} ${lightingSentence}`.trim();
+  if (styleSentence) text = `${text} ${styleSentence}`.trim();
+
+  text = `${text} Single keyframe with crisp detail.`.trim();
+
+  return compactToWordLimit(text, 60);
+}
+
 function pickAlternativeAngle(current: string): string {
   const angle = clean(current) ?? 'Eye-Level Shot';
   const options = [

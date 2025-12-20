@@ -70,6 +70,7 @@ export interface OptimizationRequest {
   useConstitutionalAI?: boolean;
   useIterativeRefinement?: boolean;
   domainContent?: unknown;
+  onMetadata?: (metadata: Record<string, unknown>) => void;
   signal?: AbortSignal;
 }
 
