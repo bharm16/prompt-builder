@@ -79,7 +79,7 @@ export class GroqQwenAdapter {
   public capabilities: { 
     streaming: boolean; 
     jsonMode: boolean; 
-    jsonSchema: boolean;
+    structuredOutputs: boolean;
     reasoningEffort: boolean;
   };
 
@@ -101,7 +101,7 @@ export class GroqQwenAdapter {
     this.capabilities = { 
       streaming: true, 
       jsonMode: true,
-      jsonSchema: true,
+      structuredOutputs: true,
       reasoningEffort: true, // Qwen3-specific
     };
   }
@@ -134,7 +134,7 @@ export class GroqQwenAdapter {
         if (options.jsonMode || options.schema || options.responseFormat) {
           const validation = validateLLMResponse(response.text, {
             expectJson: true,
-            expectArray: options.isArray,
+            ...(options.isArray !== undefined && { expectArray: options.isArray }),
           });
 
           if (!validation.isValid) {
@@ -170,7 +170,7 @@ export class GroqQwenAdapter {
           this.log.warn('Groq API error, retrying', {
             operation,
             attempt: attempt + 1,
-            status: error.status,
+            status: error.statusCode,
             error: error.message,
           });
           attempt++;
@@ -329,20 +329,22 @@ export class GroqQwenAdapter {
   private _normalizeResponse(data: GroqResponseData, options: QwenCompletionOptions): AIResponse {
     const text = data.choices?.[0]?.message?.content || '';
 
+    const metadata = {
+      usage: data.usage,
+      raw: data,
+      _original: data,
+      provider: 'groq-qwen',
+      optimizations: [
+        'qwen3-reasoning-effort',
+        'higher-temp-tolerance',
+      ],
+      ...(data.choices?.[0]?.finish_reason ? { finishReason: data.choices[0].finish_reason } : {}),
+      ...(data.system_fingerprint ? { systemFingerprint: data.system_fingerprint } : {}),
+    };
+
     return {
       text,
-      metadata: {
-        usage: data.usage,
-        raw: data,
-        _original: data,
-        provider: 'groq-qwen',
-        finishReason: data.choices?.[0]?.finish_reason,
-        systemFingerprint: data.system_fingerprint,
-        optimizations: [
-          'qwen3-reasoning-effort',
-          'higher-temp-tolerance',
-        ],
-      },
+      metadata,
     };
   }
 

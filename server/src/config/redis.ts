@@ -28,11 +28,12 @@ export function createRedisClient(): Redis | null {
   }
 
   try {
-    const redisConfig: Redis.RedisOptions = {
+    const password = process.env.REDIS_PASSWORD;
+    const redisConfig = {
       // Connection
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      password: process.env.REDIS_PASSWORD || undefined,
+      ...(password && { password }),
       db: parseInt(process.env.REDIS_DB || '0', 10),
 
       // Connection pooling

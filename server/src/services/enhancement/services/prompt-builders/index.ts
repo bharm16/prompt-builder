@@ -47,7 +47,7 @@ export function createPromptBuilder(provider: 'openai' | 'groq'): IPromptBuilder
 }
 
 // Re-export types and classes
-export { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
+export type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
 export { OpenAIPromptBuilder } from './OpenAIPromptBuilder.js';
 export { GroqPromptBuilder } from './GroqPromptBuilder.js';
 export { BasePromptBuilder } from './BasePromptBuilder.js';

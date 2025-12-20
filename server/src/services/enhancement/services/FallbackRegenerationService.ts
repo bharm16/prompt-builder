@@ -8,6 +8,7 @@ import type {
   FallbackRegenerationResult,
   PromptBuildParams,
   VideoConstraints,
+  OutputSchema,
 } from './types.js';
 
 /**
@@ -68,29 +69,35 @@ export class FallbackRegenerationService {
 
     // Early return if we have valid suggestions or this isn't a video prompt
     if (sanitizedSuggestions.length > 0 || !isVideoPrompt) {
-      return {
+      const result: FallbackRegenerationResult = {
         suggestions: sanitizedSuggestions,
-        constraints: videoConstraints || undefined,
         usedFallback: false,
         sourceCount: 0,
       };
+      if (videoConstraints) {
+        result.constraints = videoConstraints;
+      }
+      return result;
     }
     
     // For placeholders: only skip fallback if we actually have suggestions
     // If placeholder generation failed (0 suggestions), allow fallback to try
     if (isPlaceholder && sanitizedSuggestions.length > 0) {
-      return {
+      const result: FallbackRegenerationResult = {
         suggestions: sanitizedSuggestions,
-        constraints: videoConstraints || undefined,
         usedFallback: false,
         sourceCount: 0,
       };
+      if (videoConstraints) {
+        result.constraints = videoConstraints;
+      }
+      return result;
     }
 
     logger.warn('All suggestions removed during sanitization', {
       highlightWordCount: regenerationDetails.highlightWordCount,
-      phraseRole: regenerationDetails.phraseRole,
-      constraintMode: videoConstraints?.mode || null,
+      phraseRole: regenerationDetails.phraseRole ?? null,
+      constraintMode: videoConstraints?.mode ?? null,
     });
 
     // Initialize fallback state
@@ -148,12 +155,15 @@ export class FallbackRegenerationService {
     }
 
     // No successful fallback found
-    return {
+    const result: FallbackRegenerationResult = {
       suggestions: [],
-      constraints: videoConstraints || undefined,
       usedFallback: false,
       sourceCount: 0,
     };
+    if (videoConstraints) {
+      result.constraints = videoConstraints;
+    }
+    return result;
   }
 
   /**
@@ -172,7 +182,7 @@ export class FallbackRegenerationService {
     fallbackConstraints: VideoConstraints;
     requestParams: PromptBuildParams;
     aiService: AIService;
-    schema: Record<string, unknown>;
+    schema: OutputSchema;
     temperature: number;
     isPlaceholder: boolean;
     isVideoPrompt: boolean;
@@ -201,12 +211,26 @@ export class FallbackRegenerationService {
     const fallbackDiverse = await this.diversityEnforcer.ensureDiverseSuggestions(
       fallbackSuggestions
     );
-    const fallbackSanitized = this.validationService.sanitizeSuggestions(fallbackDiverse, {
-      highlightedText: requestParams.highlightedText,
+    
+    // Build sanitization context, only including defined values
+    const sanitizationContext: {
+      highlightedText?: string;
+      isPlaceholder?: boolean;
+      isVideoPrompt?: boolean;
+      videoConstraints?: VideoConstraints;
+    } = {
       isPlaceholder,
       isVideoPrompt,
       videoConstraints: fallbackConstraints,
-    });
+    };
+    if (requestParams.highlightedText !== undefined) {
+      sanitizationContext.highlightedText = requestParams.highlightedText;
+    }
+    
+    const fallbackSanitized = this.validationService.sanitizeSuggestions(
+      fallbackDiverse,
+      sanitizationContext
+    );
 
     return {
       suggestions: fallbackSanitized,

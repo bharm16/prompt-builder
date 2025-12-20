@@ -1,20 +1,17 @@
 import express, { type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { extractUserId } from '../utils/requestHelpers.js';
-import { LLMJudgeService } from '../services/quality-feedback/services/LLMJudgeService.js';
+import { extractUserId } from '@utils/requestHelpers';
+import { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
+import type { AIModelService } from '@services/ai-model/AIModelService';
 
 declare const require: NodeRequire;
-
-interface AIService {
-  [key: string]: unknown;
-}
 
 /**
  * Create suggestions route with dependency injection
  * @param {Object} aiService - AI Model Service instance
  * @returns {Router} Express router
  */
-export function createSuggestionsRoute(aiService: AIService): Router {
+export function createSuggestionsRoute(aiService: AIModelService): Router {
   const router = express.Router();
 
   // Initialize LLM Judge Service
@@ -100,7 +97,7 @@ router.post('/evaluate', async (req, res) => {
       overallScore: evaluation.overallScore,
     });
 
-    res.json({
+    return res.json({
       evaluation,
       responseTime,
     });
@@ -116,7 +113,7 @@ router.post('/evaluate', async (req, res) => {
       duration: responseTime,
     });
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Evaluation failed',
       message: error.message,
       responseTime,
@@ -183,7 +180,7 @@ router.post('/evaluate/single', async (req, res) => {
       overallScore: evaluation.overallScore,
     });
 
-    res.json({
+    return res.json({
       evaluation,
       responseTime,
     });
@@ -197,7 +194,7 @@ router.post('/evaluate/single', async (req, res) => {
       duration: responseTime,
     });
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Evaluation failed',
       message: error.message,
       responseTime,
@@ -275,7 +272,7 @@ router.post('/evaluate/compare', async (req, res) => {
       scoreDifference: comparison.scoreDifference,
     });
 
-    res.json({
+    return res.json({
       comparison,
       responseTime,
     });
@@ -288,7 +285,7 @@ router.post('/evaluate/compare', async (req, res) => {
       duration: responseTime,
     });
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Evaluation failed',
       message: error.message,
       responseTime,
@@ -318,9 +315,9 @@ router.get('/rubrics', (req, res) => {
     requestId,
   });
   
-  const { VIDEO_RUBRIC, GENERAL_RUBRIC } = require('../services/quality-feedback/config/judgeRubrics.js');
+  const { VIDEO_RUBRIC, GENERAL_RUBRIC } = require('../services/quality-feedback/config/judgeRubrics');
   
-  res.json({
+  return res.json({
     rubrics: {
       video: VIDEO_RUBRIC,
       general: GENERAL_RUBRIC,

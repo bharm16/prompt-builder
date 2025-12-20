@@ -11,8 +11,8 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { wrapUserData } from '@utils/provider/PromptBuilder.js';
-import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate.js';
+import { wrapUserData } from '@utils/provider/PromptBuilder';
+import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate';
 
 /**
  * Context for building video templates

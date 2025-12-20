@@ -3,8 +3,8 @@
  */
 
 import type { Router } from 'express';
-import type { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
-import type { AIModelService } from '../services/ai-model/AIModelService.js';
+import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import type { AIModelService } from '@services/ai-model/AIModelService';
 
 /**
  * Services object for preview routes

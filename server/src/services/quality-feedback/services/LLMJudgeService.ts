@@ -1,12 +1,8 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { getRubric, calculateTotalScore } from '../config/judgeRubrics.js';
-import type { EvaluationContext, LLMEvaluationResult, RubricScores } from '../types.js';
-
-interface AIService {
-  // Minimal interface - actual implementation may vary
-  [key: string]: unknown;
-}
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { getRubric, calculateTotalScore } from '../config/judgeRubrics';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { EvaluationContext, LLMEvaluationResult, RubricScores } from '../types';
 
 interface Suggestion {
   text?: string;
@@ -32,6 +28,28 @@ interface ComparisonResult {
   }>;
 }
 
+type OutputSchema = {
+  type: 'object' | 'array';
+  required?: string[];
+  items?: { required?: string[] };
+} & Record<string, unknown>;
+
+interface RubricCriterion {
+  name: string;
+  weight: number;
+  scale: string;
+  description: string;
+  examples: { high: string; low: string };
+  questions: string[];
+}
+
+interface RubricDefinition {
+  name: string;
+  description: string;
+  scoringGuide: string;
+  criteria: RubricCriterion[];
+}
+
 /**
  * LLMJudgeService - LLM-as-a-Judge Evaluation
  * 
@@ -47,9 +65,9 @@ interface ComparisonResult {
  * sound like a director wrote it? Is it safe?"
  */
 export class LLMJudgeService {
-  private readonly ai: AIService;
+  private readonly ai: AIModelService;
 
-  constructor(aiService: AIService) {
+  constructor(aiService: AIModelService) {
     this.ai = aiService;
   }
 
@@ -60,9 +78,9 @@ export class LLMJudgeService {
     const startTime = Date.now();
 
     // Auto-detect rubric type if not specified
-    const rubric = rubricType
+    const rubric = (rubricType
       ? getRubric(rubricType)
-      : getRubric(context.isVideoPrompt ? 'video' : 'general');
+      : getRubric(context.isVideoPrompt ? 'video' : 'general')) as RubricDefinition;
 
     logger.info('Starting LLM-as-a-Judge evaluation', {
       suggestionCount: suggestions.length,
@@ -80,7 +98,13 @@ export class LLMJudgeService {
       // Call LLM with appropriate model for judging
       const operation = context.isVideoPrompt ? 'llm_judge_video' : 'llm_judge_general';
       
-      const evaluation = await StructuredOutputEnforcer.enforceJSON(
+      const evaluation = await StructuredOutputEnforcer.enforceJSON<{
+        rubricScores: RubricScores;
+        feedback?: string[];
+        strengths?: string[];
+        weaknesses?: string[];
+        detailedNotes?: string;
+      }>(
         this.ai,
         systemPrompt,
         {
@@ -89,7 +113,7 @@ export class LLMJudgeService {
           temperature: 0.2, // Low temperature for consistent evaluation
           operation,
         }
-      ) as { rubricScores: RubricScores; feedback?: string[]; strengths?: string[]; weaknesses?: string[]; detailedNotes?: string };
+      );
 
       // Calculate total score from rubric scores
       const totalScore = calculateTotalScore(evaluation.rubricScores, rubric);
@@ -124,19 +148,19 @@ export class LLMJudgeService {
   /**
    * Build the evaluation prompt for the judge LLM
    */
-  private _buildJudgePrompt(suggestions: Suggestion[], context: EvaluationContext, rubric: ReturnType<typeof getRubric>): string {
+  private _buildJudgePrompt(suggestions: Suggestion[], context: EvaluationContext, rubric: RubricDefinition): string {
     const suggestionsList = suggestions
       .map((s, i) => `${i + 1}. "${s.text || s}"`)
       .join('\n');
 
     const criteriaDescriptions = rubric.criteria
       .map(
-        criterion => `
+        (criterion: RubricCriterion) => `
 **${criterion.name.toUpperCase()} (${criterion.scale})**
 ${criterion.description}
 
 Questions to consider:
-${criterion.questions.map(q => `- ${q}`).join('\n')}
+${criterion.questions.map((q: string) => `- ${q}`).join('\n')}
 
 Examples:
 - HIGH (4-5): ${criterion.examples.high}
@@ -187,9 +211,9 @@ Return your evaluation as JSON:
   /**
    * Get JSON schema for evaluation output
    */
-  private _getEvaluationSchema(rubric: ReturnType<typeof getRubric>): Record<string, unknown> {
+  private _getEvaluationSchema(rubric: RubricDefinition): OutputSchema {
     const criteriaProperties: Record<string, unknown> = {};
-    rubric.criteria.forEach(criterion => {
+    rubric.criteria.forEach((criterion: RubricCriterion) => {
       criteriaProperties[criterion.name] = {
         type: 'number',
         minimum: 1,
@@ -199,7 +223,7 @@ Return your evaluation as JSON:
     });
 
     return {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         rubricScores: {
           type: 'object',
@@ -233,9 +257,9 @@ Return your evaluation as JSON:
   /**
    * Get fallback evaluation if LLM fails
    */
-  private _getFallbackEvaluation(rubric: ReturnType<typeof getRubric>): LLMEvaluationResult {
+  private _getFallbackEvaluation(rubric: RubricDefinition): LLMEvaluationResult {
     const rubricScores: RubricScores = {};
-    rubric.criteria.forEach(criterion => {
+    rubric.criteria.forEach((criterion: RubricCriterion) => {
       rubricScores[criterion.name] = 3; // Neutral score
     });
 
@@ -262,7 +286,7 @@ Return your evaluation as JSON:
     return this.evaluateSuggestions({
       suggestions: [{ text: suggestion }],
       context,
-      rubricType,
+      ...(rubricType ? { rubricType } : {}),
     });
   }
 
@@ -284,9 +308,9 @@ Return your evaluation as JSON:
     
     for (let i = 0; i < suggestionSets.length; i++) {
       const evaluation = await this.evaluateSuggestions({
-        suggestions: suggestionSets[i],
+        suggestions: suggestionSets[i] ?? [],
         context,
-        rubricType,
+        ...(rubricType ? { rubricType } : {}),
       });
       
       evaluations.push(evaluation);
@@ -309,15 +333,20 @@ Return your evaluation as JSON:
     context: EvaluationContext,
     rubricType?: 'video' | 'general'
   ): Promise<ComparisonResult> {
-    const [evalA, evalB] = await this.batchEvaluate([setA, setB], context, rubricType);
+    const evaluations = await this.batchEvaluate([setA, setB], context, rubricType);
+    const evalA = evaluations[0];
+    const evalB = evaluations[1];
+    if (!evalA || !evalB) {
+      throw new Error('LLMJudgeService: missing evaluation results for comparison');
+    }
 
-    const rubric = getRubric(rubricType || (context.isVideoPrompt ? 'video' : 'general'));
+    const rubric = (getRubric(rubricType || (context.isVideoPrompt ? 'video' : 'general')) as RubricDefinition);
     const criteriaComparison: ComparisonResult['criteriaComparison'] = {};
 
     // Compare each criterion
-    rubric.criteria.forEach(criterion => {
-      const scoreA = evalA.rubricScores[criterion.name];
-      const scoreB = evalB.rubricScores[criterion.name];
+    rubric.criteria.forEach((criterion: RubricCriterion) => {
+      const scoreA = evalA.rubricScores[criterion.name] ?? 0;
+      const scoreB = evalB.rubricScores[criterion.name] ?? 0;
       
       criteriaComparison[criterion.name] = {
         setA: scoreA,
@@ -336,4 +365,3 @@ Return your evaluation as JSON:
     };
   }
 }
-

@@ -174,7 +174,7 @@ export class OpenAICompatibleAdapter {
         if (options.jsonMode || options.schema || options.responseFormat) {
           const validation = validateLLMResponse(response.text, {
             expectJson: true,
-            expectArray: options.isArray,
+            ...(options.isArray !== undefined && { expectArray: options.isArray }),
           });
 
           if (!validation.isValid) {
@@ -211,7 +211,7 @@ export class OpenAICompatibleAdapter {
           this.log.warn('OpenAI API error, retrying', {
             operation,
             attempt: attempt + 1,
-            status: error.status,
+            status: error.statusCode,
             error: error.message,
           });
           attempt++;
@@ -562,21 +562,23 @@ export class OpenAICompatibleAdapter {
     if (options.logprobs) optimizations.push('logprobs-confidence');
     if (options.prediction) optimizations.push('predicted-outputs');
 
+    const metadata = {
+      usage: data.usage,
+      raw: data,
+      _original: data,
+      provider: this.providerName,
+      optimizations,
+      ...(data.model ? { model: data.model } : {}),
+      ...(data.choices?.[0]?.finish_reason ? { finishReason: data.choices[0].finish_reason } : {}),
+      ...(data.system_fingerprint ? { systemFingerprint: data.system_fingerprint } : {}),
+      ...(data.id ? { requestId: data.id } : {}),
+      ...(logprobsInfo ? { logprobs: logprobsInfo } : {}),
+      ...(typeof averageConfidence === 'number' ? { averageConfidence } : {}),
+    };
+
     return {
       text,
-      metadata: {
-        usage: data.usage,
-        raw: data,
-        _original: data,
-        provider: this.providerName,
-        model: data.model,
-        finishReason: data.choices?.[0]?.finish_reason,
-        systemFingerprint: data.system_fingerprint,
-        requestId: data.id,
-        optimizations,
-        logprobs: logprobsInfo,
-        averageConfidence,
-      },
+      metadata,
     };
   }
 
@@ -679,7 +681,10 @@ export class OpenAICompatibleAdapter {
     }
 
     if (matches.length > 0) {
-      return matches[0];
+      const firstMatch = matches[0];
+      if (firstMatch) {
+        return firstMatch;
+      }
     }
 
     return 'Remember to follow the format constraints defined in the system message.';

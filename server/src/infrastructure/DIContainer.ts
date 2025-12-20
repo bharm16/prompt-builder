@@ -52,9 +52,9 @@ export class DIContainer {
    *   ['claudeClient']
    * );
    */
-  register(
+  register<TDependencies extends unknown[], TResult>(
     name: string,
-    factory: (...dependencies: unknown[]) => unknown,
+    factory: (...dependencies: TDependencies) => TResult,
     dependencies: string[] = [],
     options: RegistrationOptions = {}
   ): void {
@@ -69,7 +69,7 @@ export class DIContainer {
     }
 
     this.services.set(name, {
-      factory,
+      factory: factory as (...dependencies: unknown[]) => unknown,
       dependencies,
       singleton,
     });
@@ -215,4 +215,3 @@ export class DIContainer {
 export function createContainer(): DIContainer {
   return new DIContainer();
 }
-

@@ -6,14 +6,14 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService.js';
+import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService';
 import { getParentCategory } from '@shared/taxonomy';
-import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
+import { PROMPT_PREVIEW_LIMIT } from '@services/enhancement/constants';
 import type {
   PromptBuildParams,
   BrainstormContext,
-} from '../types.js';
-import type { SharedPromptContext } from './IPromptBuilder.js';
+} from '../types';
+import type { SharedPromptContext } from './IPromptBuilder';
 
 /**
  * Base class with shared prompt building logic

@@ -18,11 +18,11 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
-import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
+import { SECURITY_REMINDER } from '@utils/SecurityPrompts';
+import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder';
 
 export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
-  protected readonly log = logger.child({ service: 'GroqVideoTemplateBuilder' });
+  protected override readonly log = logger.child({ service: 'GroqVideoTemplateBuilder' });
   /**
    * Build Groq-optimized template
    *
@@ -31,7 +31,7 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * - User Message: XML-wrapped data + format reminder (sandwich prompting)
    * - No developer message (not available for Groq)
    */
-  buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
+  override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
     const startTime = performance.now();
     const operation = 'buildTemplate';
     

@@ -51,20 +51,23 @@ function normalizeSchema(input: unknown): Record<string, unknown> | null {
  */
 export function validateSchema(data: unknown, schemaOverride?: Record<string, unknown>): boolean {
   if (!schemaOverride) {
-    return validateResponseSchema(data);
+    const result = validateResponseSchema(data);
+    return typeof result === 'boolean' ? result : false;
   }
 
   let validator = schemaCache.get(schemaOverride as object);
   if (!validator) {
     const normalized = normalizeSchema(schemaOverride);
     if (!normalized) {
-      return validateResponseSchema(data);
+      const result = validateResponseSchema(data);
+      return typeof result === 'boolean' ? result : false;
     }
     validator = ajv.compile(normalized);
     schemaCache.set(schemaOverride as object, validator);
   }
 
-  return validator(data) as boolean;
+  const result = validator(data);
+  return typeof result === 'boolean' ? result : false;
 }
 
 /**
@@ -94,8 +97,11 @@ export function formatSchemaErrors(override?: Record<string, unknown>): string {
   const errors = getSchemaErrors(override);
   return errors
     .map((err) => {
-      const legacy = err as ErrorObject & { dataPath?: string };
-      return `${legacy.dataPath || err.instancePath || ''} ${err.message}`;
+      // Handle both old (dataPath) and new (instancePath) AJV versions
+      const path = (err as ErrorObject & { dataPath?: string; instancePath?: string }).dataPath 
+        ?? (err as ErrorObject & { instancePath?: string }).instancePath 
+        ?? '';
+      return `${path} ${err.message ?? 'Unknown error'}`;
     })
     .join('; ');
 }

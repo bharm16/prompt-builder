@@ -4,17 +4,13 @@
  * Pure functions for extracting and cleaning JSON from LLM responses.
  * Handles mechanism (how to clean/parse) without policy (retry logic).
  */
-
-interface AIServiceResponse {
-  text?: string;
-  content?: Array<{ text: string }>;
-}
+import type { AIResponse } from '@interfaces/IAIClient';
 
 /**
  * Extract text from AI service response
  * Handles both { text: string } and { content: [{ text: string }] } formats
  */
-export function extractResponseText(response: AIServiceResponse): string {
+export function extractResponseText(response: AIResponse): string {
   if (response.text) {
     return response.text;
   }
@@ -74,4 +70,3 @@ export function extractAndParse<T>(responseText: string, isArray: boolean): T {
   const cleanedText = cleanJSONResponse(responseText, isArray);
   return JSON.parse(cleanedText) as T;
 }
-

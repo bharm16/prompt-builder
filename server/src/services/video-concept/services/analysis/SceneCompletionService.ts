@@ -1,7 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { completeSceneOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for completing video scenes by filling empty elements.
@@ -78,12 +77,16 @@ Return ONLY a JSON object with the missing elements:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array' } = {
+        type: 'object' as const,
+      };
+      
       const suggestions = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_scene_completion',
-          schema: completeSceneOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.7,
         }

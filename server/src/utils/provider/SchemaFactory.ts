@@ -17,11 +17,11 @@
 import {
   detectAndGetCapabilities,
   type ProviderType,
-} from '@utils/provider/ProviderDetector.js';
+} from '@utils/provider/ProviderDetector';
 import {
   OPENAI_SPAN_LABELING_JSON_SCHEMA,
   GROQ_SPAN_LABELING_JSON_SCHEMA,
-} from '@llm/span-labeling/schemas/SpanLabelingSchema.js';
+} from '@llm/span-labeling/schemas/SpanLabelingSchema';
 
 export interface JSONSchema {
   type: string | string[];

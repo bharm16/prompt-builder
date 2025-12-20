@@ -3,7 +3,7 @@
  * Shared type definitions used across cache service modules
  */
 
-import type { ICacheService } from '@interfaces/ICacheService.js';
+import type { ICacheService } from '@interfaces/ICacheService';
 
 /**
  * Cache configuration options
@@ -116,7 +116,7 @@ export interface CacheKeyGenerator {
 export interface RedisClient {
   status?: string;
   get?: (key: string) => Promise<string | null>;
-  set?: (key: string, value: string, mode: string, ttl: number) => Promise<void>;
+  set?: (...args: any[]) => Promise<unknown>;
   del?: (...keys: string[]) => Promise<number>;
   keys?: (pattern: string) => Promise<string[]>;
 }
@@ -158,4 +158,3 @@ export interface SpanLabelingCacheStats {
 export interface SpanLabelingPolicy {
   [key: string]: unknown;
 }
-

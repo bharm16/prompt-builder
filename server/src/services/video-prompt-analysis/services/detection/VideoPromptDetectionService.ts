@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
-import { DETECTION_MARKERS, DETECTION_THRESHOLDS } from '../../config/detectionMarkers.js';
-import { normalizeText } from '../../utils/textHelpers.js';
+import { DETECTION_MARKERS, DETECTION_THRESHOLDS } from '@services/video-prompt-analysis/config/detectionMarkers';
+import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
 
 /**
  * Service responsible for detecting if a prompt is a video prompt

@@ -1,7 +1,7 @@
 import express, { type Router } from 'express';
-import { asyncHandler } from '../middleware/asyncHandler.js';
-import { metricsAuthMiddleware } from '../middleware/metricsAuth.js';
-import { logger } from '@infrastructure/Logger.js';
+import { asyncHandler } from '@middleware/asyncHandler';
+import { metricsAuthMiddleware } from '@middleware/metricsAuth';
+import { logger } from '@infrastructure/Logger';
 
 interface HealthDependencies {
   claudeClient: { getStats: () => { state: string } };
@@ -58,16 +58,16 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       // Use internal indicators only (cache health and circuit breaker state)
       const cacheHealth = cacheService.isHealthy();
       const claudeStats = claudeClient.getStats();
-      const groqStats = groqClient ? groqClient.getStats() : null;
-      const geminiStats = geminiClient ? geminiClient.getStats() : null;
+      const groqStats = groqClient?.getStats();
+      const geminiStats = geminiClient?.getStats();
 
       const checks = {
-        cache: cacheHealth,
+        cache: { healthy: cacheHealth },
         openAI: {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,
         },
-        groq: groqClient ? {
+        groq: groqStats ? {
           healthy: groqStats.state === 'CLOSED',
           circuitBreakerState: groqStats.state,
           enabled: true,
@@ -76,7 +76,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
           enabled: false,
           message: 'Groq API not configured (two-stage optimization disabled)',
         },
-        gemini: geminiClient ? {
+        gemini: geminiStats ? {
           healthy: geminiStats.state === 'CLOSED',
           circuitBreakerState: geminiStats.state,
           enabled: true,
@@ -171,7 +171,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       },
       twoStageOptimization: {
         enabled: !!groqClient,
-        status: groqClient ? (groqStats.state === 'CLOSED' ? 'operational' : 'degraded') : 'disabled',
+        status: groqStats ? (groqStats.state === 'CLOSED' ? 'operational' : 'degraded') : 'disabled',
       },
       memory: process.memoryUsage(),
       nodeVersion: process.version,

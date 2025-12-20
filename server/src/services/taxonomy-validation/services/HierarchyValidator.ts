@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, getParentCategory, isAttribute, getAllParentCategories, resolveCategory } from '#shared/taxonomy.ts';
-import type { Span, ValidationIssue, AttributeExistenceCheck } from '../types.js';
+import type { Span, ValidationIssue, AttributeExistenceCheck } from '../types';
 
 /**
  * HierarchyValidator

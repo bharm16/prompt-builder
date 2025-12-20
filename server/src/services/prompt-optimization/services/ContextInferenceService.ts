@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import type { AIService, InferredContext } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import type { AIService, InferredContext } from '../types';
 
 /**
  * Service for inferring context from user prompts
@@ -145,7 +145,7 @@ Output only the JSON, nothing else:`;
 
     // Remove markdown code fences if present
     const jsonMatch = rawOutput.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
+    if (jsonMatch && jsonMatch[1]) {
       jsonText = jsonMatch[1];
     }
 
@@ -195,4 +195,3 @@ Output only the JSON, nothing else:`;
     return 'intermediate';
   }
 }
-

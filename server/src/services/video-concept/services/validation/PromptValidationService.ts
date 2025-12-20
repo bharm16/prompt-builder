@@ -1,11 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import {
-  validatePromptOutputSchema,
-  smartDefaultsOutputSchema,
-} from '@utils/validation.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Validation breakdown
@@ -89,12 +85,17 @@ Return ONLY a JSON object:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['score', 'breakdown', 'feedback', 'strengths', 'weaknesses'],
+      };
+      
       const validation = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_prompt_validation',
-          schema: validatePromptOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.3,
         }
@@ -171,12 +172,16 @@ Return ONLY a JSON array:
 ["default 1", "default 2", "default 3"]`;
 
     try {
+      const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
+        type: 'array' as const,
+      };
+      
       const defaults = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_smart_defaults',
-          schema: smartDefaultsOutputSchema,
+          schema,
           isArray: true,
           maxTokens: 256,
           temperature: 0.6,

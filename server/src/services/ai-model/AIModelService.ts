@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { ModelConfig, DEFAULT_CONFIG, shouldUseSeed, shouldUseDeveloperMessage as configShouldUseDeveloperMessage } from '@config/modelConfig';
-import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
 import type { IAIClient, AIResponse, CompletionOptions } from '@interfaces/IAIClient';
 
 /**
@@ -34,7 +34,7 @@ interface ClientsMap {
   [key: string]: IAIClient | null | undefined;
 }
 
-interface ExecuteParams extends CompletionOptions {
+export interface ExecuteParams extends CompletionOptions {
   systemPrompt: string;
   userMessage?: string;
   messages?: Array<{ role: string; content: string }>;
@@ -195,15 +195,21 @@ export class AIModelService {
     }
 
     // Build request options with provider-specific optimizations
+    const {
+      schema: schemaOverride,
+      responseFormat: responseFormatOverride,
+      ...restParams
+    } = params;
+
     const requestOptions: RequestOptions = {
-      ...params,
+      ...restParams,
       model: (params.model as string | undefined) || config.model,
       temperature: params.temperature !== undefined ? params.temperature : config.temperature,
       maxTokens: params.maxTokens || config.maxTokens,
       timeout: params.timeout || config.timeout,
       jsonMode,
-      responseFormat,
-      schema: params.schema,
+      ...(responseFormat ? { responseFormat } : {}),
+      ...(schemaOverride ? { schema: schemaOverride } : {}),
       enableBookending: params.enableBookending !== undefined 
         ? params.enableBookending 
         : capabilities.bookending,
@@ -263,7 +269,7 @@ export class AIModelService {
       const err = error as { message: string; statusCode?: number; isRetryable?: boolean };
       
       // Some providers/models reject `logprobs`; retry once without it.
-      const hasLogprobs = requestOptions.logprobs === true || requestOptions.logprobs === 1;
+      const hasLogprobs = requestOptions.logprobs === true;
       const logprobsUnsupported =
         typeof err.message === 'string' &&
         err.message.toLowerCase().includes('logprobs') &&
@@ -371,7 +377,7 @@ export class AIModelService {
 
     // Add seed for reproducibility if configured
     if (shouldUseSeed(operation)) {
-      streamOptions.seed = this._hashString(params.systemPrompt) % 2147483647;
+      streamOptions.seed = this._hashString(String(params.systemPrompt)) % 2147483647;
     }
 
     try {
@@ -473,18 +479,11 @@ export class AIModelService {
       // This ensures we use the correct model for the fallback provider
       const fallbackOptions: CompletionOptions = {
         ...requestOptions,
-        // Use fallbackConfig.model if provided, otherwise let the client use its default
-        model: fallbackConfig?.model || undefined,
         // Use fallbackConfig.timeout if provided
         timeout: fallbackConfig?.timeout || requestOptions.timeout,
-        // Clear provider-specific options that may not be supported
-        developerMessage: undefined,
+        ...(fallbackConfig?.model ? { model: fallbackConfig.model } : {}),
       };
       
-      // If no fallbackConfig model, clear model entirely to use client default
-      if (!fallbackConfig?.model) {
-        delete fallbackOptions.model;
-      }
       delete (fallbackOptions as { developerMessage?: string }).developerMessage;
       
       const response = await client.complete(systemPrompt, fallbackOptions);

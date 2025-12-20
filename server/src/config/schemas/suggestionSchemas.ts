@@ -50,10 +50,10 @@ export const suggestionSchema = z.object({
     .nullable()
     .optional(),
   highlightedPhrase: z.string().max(1000).nullable().optional(),
-  brainstormContext: z.object({
+  brainstormContext: z.looseObject({
     version: z.string().optional(),
     createdAt: z.number().optional(),
-    elements: z.object({
+    elements: z.looseObject({
       subject: z.string().nullable().optional(),
       action: z.string().nullable().optional(),
       location: z.string().nullable().optional(),
@@ -62,18 +62,15 @@ export const suggestionSchema = z.object({
       style: z.string().nullable().optional(),
       event: z.string().nullable().optional(),
     })
-      .passthrough()
       .optional(),
-    metadata: z.object({
+    metadata: z.looseObject({
       format: z.string().nullable().optional(),
-      technicalParams: z.record(z.unknown()).optional(),
+      technicalParams: z.record(z.string(), z.unknown()).optional(),
       validationScore: z.unknown().optional(),
       history: z.array(z.unknown()).optional(),
     })
-      .passthrough()
       .optional(),
   })
-    .passthrough()
     .optional()
     .nullable(),
   allLabeledSpans: z.array(labeledSpanSchema).optional(),
@@ -105,7 +102,7 @@ export const sceneChangeSchema = z.object({
   fullPrompt: z.string()
     .min(1)
     .max(50000, 'Full prompt must not exceed 50,000 characters'),
-  affectedFields: z.record(z.unknown()).optional(),
+  affectedFields: z.record(z.string(), z.unknown()).optional(),
   sectionHeading: z.string().max(200).nullable().optional(),
   sectionContext: z.string().max(5000).nullable().optional(),
 });

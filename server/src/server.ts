@@ -10,9 +10,12 @@
 
 import type { Application } from 'express';
 import type { Server } from 'http';
+import type Redis from 'ioredis';
+import type { ServiceConfig } from './config/services.config.ts';
 import { logger } from './infrastructure/Logger.ts';
 import { closeRedisClient } from './config/redis.ts';
 import type { DIContainer } from './infrastructure/DIContainer.ts';
+import type { SpanLabelingCacheService } from './services/cache/SpanLabelingCacheService.ts';
 
 /**
  * Start the HTTP server
@@ -25,7 +28,7 @@ export async function startServer(
   app: Application,
   container: DIContainer
 ): Promise<Server> {
-  const config = container.resolve('config');
+  const config = container.resolve<ServiceConfig>('config');
   const PORT = config.server.port;
 
   return new Promise((resolve, reject) => {
@@ -77,11 +80,12 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
 
       try {
         // Close Redis connection
-        const redisClient = container.resolve('redisClient');
+        const redisClient = container.resolve<Redis | null>('redisClient');
         await closeRedisClient(redisClient);
 
         // Stop cache cleanup interval
-        const spanLabelingCacheService = container.resolve('spanLabelingCacheService');
+        const spanLabelingCacheService =
+          container.resolve<SpanLabelingCacheService | null>('spanLabelingCacheService');
         if (spanLabelingCacheService && spanLabelingCacheService.stopPeriodicCleanup) {
           spanLabelingCacheService.stopPeriodicCleanup();
         }
@@ -112,7 +116,7 @@ export function setupGracefulShutdown(server: Server, container: DIContainer): v
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled rejection', { reason, promise });
+    logger.error('Unhandled rejection', undefined, { reason, promise });
     shutdown('UNHANDLED_REJECTION');
   });
 }

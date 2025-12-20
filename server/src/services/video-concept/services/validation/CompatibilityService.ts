@@ -1,10 +1,9 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { compatibilityOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
-import type { CacheService } from '../../../cache/CacheService.js';
-import type { Suggestion } from '../generation/SuggestionGeneratorService.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
+import type { CacheService } from '@services/cache/CacheService';
+import type { Suggestion } from '../generation/SuggestionGeneratorService';
 
 /**
  * Compatibility check result
@@ -105,7 +104,8 @@ Score:`;
       this.log.warn(`${operation} failed`, {
         operation,
         duration: Math.round(performance.now() - startTime),
-      }, error as Error);
+        error: error instanceof Error ? error.message : String(error),
+      });
       return 0.5; // Default neutral score on error
     }
   }
@@ -224,12 +224,17 @@ Respond with ONLY a JSON object:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['score', 'feedback'],
+      };
+      
       const result = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_compatibility_check',
-          schema: compatibilityOutputSchema,
+          schema,
           maxTokens: 256,
           temperature: 0.3,
         }

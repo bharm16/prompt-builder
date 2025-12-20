@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import type { AIService, OptimizationMode } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import type { AIService, OptimizationMode } from '../types';
 
 /**
  * Service for detecting the optimal optimization mode for a prompt

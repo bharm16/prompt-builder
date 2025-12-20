@@ -57,14 +57,16 @@ export class CategoryAlignmentService {
         category: highlightedCategory || null,
       });
       
+      const context = {
+        ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
+        originalSuggestionsRejected: suggestions.length,
+        reason: 'Category mismatch or low confidence',
+      };
+
       return {
         suggestions: fallbacks,
         fallbackApplied: true,
-        context: {
-          baseCategory: highlightedCategory || undefined,
-          originalSuggestionsRejected: suggestions.length,
-          reason: 'Category mismatch or low confidence'
-        }
+        context,
       };
     }
 
@@ -83,10 +85,12 @@ export class CategoryAlignmentService {
       fallbackApplied: false,
     });
 
+    const context = highlightedCategory ? { baseCategory: highlightedCategory } : {};
+
     return {
       suggestions: validSuggestions,
       fallbackApplied: false,
-      context: { baseCategory: highlightedCategory || undefined }
+      context,
     };
   }
 
@@ -120,7 +124,12 @@ export class CategoryAlignmentService {
       const subcategory = detectSubcategory(highlightedText, category);
       if (subcategory) {
         const constraint = CATEGORY_CONSTRAINTS.technical[subcategory as keyof typeof CATEGORY_CONSTRAINTS.technical];
-        if (constraint && 'pattern' in constraint && constraint.pattern instanceof RegExp) {
+        if (
+          constraint &&
+          typeof constraint === 'object' &&
+          'pattern' in constraint &&
+          constraint.pattern instanceof RegExp
+        ) {
           const validCount = suggestions.filter(s =>
             constraint.pattern.test(s.text)
           ).length;
@@ -212,7 +221,12 @@ export class CategoryAlignmentService {
     // Get specific fallbacks for technical subcategories
     if (category === 'technical' && subcategory && CATEGORY_CONSTRAINTS.technical) {
       const constraint = CATEGORY_CONSTRAINTS.technical[subcategory as keyof typeof CATEGORY_CONSTRAINTS.technical];
-      if (constraint && 'fallbacks' in constraint && Array.isArray(constraint.fallbacks)) {
+      if (
+        constraint &&
+        typeof constraint === 'object' &&
+        'fallbacks' in constraint &&
+        Array.isArray(constraint.fallbacks)
+      ) {
         const fallbacks = constraint.fallbacks as Suggestion[];
         this.log.debug('Using technical subcategory fallbacks', {
           operation,
@@ -252,4 +266,3 @@ export class CategoryAlignmentService {
     ];
   }
 }
-

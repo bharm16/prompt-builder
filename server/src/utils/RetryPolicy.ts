@@ -68,9 +68,9 @@ export class RetryPolicy {
     }
 
     // All retries exhausted
-    logger.error('All retry attempts exhausted', {
+    logger.error('All retry attempts exhausted', lastError ?? undefined, {
       attempts: maxRetries + 1,
-      lastError: lastError?.message,
+      lastErrorMessage: lastError?.message,
     });
 
     if (!lastError) {

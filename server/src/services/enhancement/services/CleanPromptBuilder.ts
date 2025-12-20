@@ -1,20 +1,20 @@
 import { logger } from '@infrastructure/Logger';
-import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService.js';
+import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService';
 import { getParentCategory } from '@shared/taxonomy';
-import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples.js';
-import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
+import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples';
+import { PROMPT_PREVIEW_LIMIT } from '../constants';
 import { 
   getSecurityPrefix, 
   getFormatInstruction,
   detectAndGetCapabilities,
   wrapUserData,
-} from '@utils/provider/index.js';
+} from '@utils/provider/index';
 import type {
   PromptBuildParams,
   CustomPromptParams,
   SharedPromptContext,
   BrainstormContext,
-} from './types.js';
+} from './types';
 
 /**
  * CleanPromptBuilder - Provider-Aware Implementation
@@ -82,7 +82,7 @@ export class CleanPromptBuilder {
       hasSchema: true,
     });
 
-    return [
+    const result = [
       securityPrefix,
       'Generate up to 12 replacement phrases for the highlighted text.',
       '',

@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import type { AIService, OptimizationMode, QualityAssessment } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import type { AIService, OptimizationMode, QualityAssessment } from '../types';
 
 /**
  * Service for assessing the quality of prompts
@@ -169,7 +169,8 @@ Output only the JSON, nothing else:`;
       optimize: 'For general optimization, ensure the improved version addresses the core intent with better structure and clarity.'
     };
 
-    return criteria[mode] || criteria.optimize;
+    const fallback = criteria.optimize ?? '';
+    return criteria[mode] ?? fallback;
   }
 
   /**
@@ -180,7 +181,7 @@ Output only the JSON, nothing else:`;
 
     // Remove markdown code fences if present
     const jsonMatch = rawOutput.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
+    if (jsonMatch && jsonMatch[1]) {
       jsonText = jsonMatch[1];
     }
 
@@ -222,4 +223,3 @@ Output only the JSON, nothing else:`;
 }
 
 export default QualityAssessmentService;
-

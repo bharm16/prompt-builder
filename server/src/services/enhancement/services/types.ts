@@ -3,8 +3,8 @@
  * Shared type definitions used across enhancement service modules
  */
 
-import type { AIModelService } from '../../ai-model/AIModelService.js';
-import type { VideoPromptService } from '../../video-prompt-analysis/index.js';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { VideoPromptService } from '@services/video-prompt-analysis/index';
 import type { PromptMode } from '../constants.js';
 
 /**
@@ -35,7 +35,7 @@ export interface VideoConstraints {
   minWords?: number;
   maxWords?: number;
   maxSentences?: number;
-  mode?: 'micro' | 'standard' | 'narrative';
+  mode?: string;
   disallowTerminalPunctuation?: boolean;
   formRequirement?: string;
   focusGuidance?: string[];
@@ -183,7 +183,7 @@ export interface SharedPromptContext {
  */
 export interface ContrastiveDecodingContext {
   systemPrompt: string;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   highlightedText?: string;
@@ -197,6 +197,22 @@ export interface DiversityMetrics {
   minSimilarity: number;
   maxSimilarity: number;
   pairCount?: number;
+}
+
+/**
+ * Schema type for structured output
+ * Compatible with StructuredOutputEnforcer's expected schema format
+ */
+export interface OutputSchema {
+  type: 'object' | 'array';
+  name?: string;
+  strict?: boolean;
+  required?: string[];
+  items?: {
+    required?: string[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 }
 
 /**
@@ -216,7 +232,7 @@ export interface FallbackRegenerationParams {
   };
   requestParams: PromptBuildParams;
   aiService: AIModelService;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   temperature: number;
 }
 
@@ -281,15 +297,18 @@ export interface VideoService {
     highlightedText: string,
     contextBefore: string,
     contextAfter: string,
-    highlightedCategory?: string | null
+    highlightedCategory?: string | null | undefined
   ): string | null;
-  getVideoReplacementConstraints(params: {
-    highlightWordCount: number;
-    phraseRole: string | null;
-    highlightedText: string;
-    highlightedCategory?: string | null;
-    highlightedCategoryConfidence?: number | null;
-  }): VideoConstraints | null;
+  getVideoReplacementConstraints(
+    details?: {
+      highlightWordCount?: number | undefined;
+      phraseRole?: string | null | undefined;
+      highlightedText?: string | undefined;
+      highlightedCategory?: string | null | undefined;
+      highlightedCategoryConfidence?: number | null | undefined;
+    },
+    options?: { forceMode?: string | undefined }
+  ): VideoConstraints;
   detectTargetModel(fullPrompt: string): string | null;
   detectPromptSection(
     highlightedText: string,
@@ -297,9 +316,9 @@ export interface VideoService {
     contextBefore: string
   ): string | null;
   getVideoFallbackConstraints(
-    currentConstraints: VideoConstraints | undefined,
-    details: Record<string, unknown>,
-    attemptedModes: Set<string>
+    currentConstraints: VideoConstraints | null | undefined,
+    details?: Record<string, unknown>,
+    attemptedModes?: Set<string>
   ): VideoConstraints | null;
 }
 
@@ -321,7 +340,7 @@ export interface PlaceholderDetector {
  * Brainstorm builder interface
  */
 export interface BrainstormBuilder {
-  buildBrainstormSignature(brainstormContext: BrainstormContext | null): string;
+  buildBrainstormSignature(brainstormContext: BrainstormContext | null): BrainstormSignature | null;
 }
 
 /**
@@ -412,4 +431,3 @@ export interface EnhancementMetrics {
   promptMode: PromptMode;
   usedContrastiveDecoding?: boolean;
 }
-

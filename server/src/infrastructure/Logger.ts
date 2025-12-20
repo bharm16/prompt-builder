@@ -2,7 +2,7 @@ import pino from 'pino';
 import pinoPretty from 'pino-pretty';
 import type { Request, Response, NextFunction } from 'express';
 import type { ILogger } from '@interfaces/ILogger';
-import { getRequestContext } from './requestContext.js';
+import { getRequestContext } from './requestContext';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -76,9 +76,9 @@ export class Logger implements ILogger {
   error(message: string, error?: Error, meta: Record<string, unknown> = {}): void {
     const errorMeta = error ? {
       err: {
-        message: error.message,
+        errorMessage: error.message,
         stack: error.stack,
-        name: error.name,
+        errorName: error.name,
         ...error,
       },
     } : {};
@@ -181,7 +181,7 @@ export class Logger implements ILogger {
     return lines;
   }
 
-  private filterStackFrames(frames: string[]): { caller?: string; frames: string[] } {
+  private filterStackFrames(frames: string[]): { caller: string | undefined; frames: string[] } {
     const normalized = frames
       .map((frame) => this.normalizeStackFrame(frame))
       .filter((frame): frame is string => Boolean(frame))
@@ -189,9 +189,10 @@ export class Logger implements ILogger {
 
     const appFrames = normalized.filter((frame) => this.isAppFrame(frame));
     const selected = appFrames.length > 0 ? appFrames : normalized;
+    const firstFrame = selected[0];
 
     return {
-      caller: selected[0],
+      caller: firstFrame,
       frames: selected,
     };
   }

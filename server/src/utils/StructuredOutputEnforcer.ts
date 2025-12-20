@@ -1,7 +1,9 @@
 import { logger } from '@infrastructure/Logger';
-import { extractResponseText, extractAndParse } from './JsonExtractor.js';
-import { RetryPolicy } from './RetryPolicy.js';
-import { detectAndGetCapabilities, type ProviderType } from './provider/ProviderDetector.js';
+import { extractResponseText, extractAndParse } from './JsonExtractor';
+import { RetryPolicy } from './RetryPolicy';
+import { detectAndGetCapabilities, type ProviderType } from './provider/ProviderDetector';
+import type { AIResponse } from '@interfaces/IAIClient';
+import type { ExecuteParams } from '@services/ai-model/AIModelService';
 
 interface EnforceJSONOptions {
   schema?: {
@@ -21,16 +23,8 @@ interface EnforceJSONOptions {
   [key: string]: unknown;
 }
 
-interface AIServiceResponse {
-  text?: string;
-  metadata?: Record<string, unknown>;
-  content?: Array<{
-    text: string;
-  }>;
-}
-
 interface AIService {
-  execute(operation: string, options: Record<string, unknown>): Promise<AIServiceResponse>;
+  execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
 }
 
 /**
@@ -132,8 +126,8 @@ export class StructuredOutputEnforcer {
           parsedJSON = extractAndParse<T>(responseText, extractAsArray);
         } catch (parseError) {
           const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-          logger.error('Failed to parse JSON response', {
-            error: errorMessage,
+          const errorObj = parseError instanceof Error ? parseError : new Error(errorMessage);
+          logger.error('Failed to parse JSON response', errorObj, {
             cleanedResponse: responseText.substring(0, 200),
             fullLength: responseText.length,
             provider,
@@ -297,9 +291,9 @@ RETRY INSTRUCTIONS:
     aiService: AIService,
     operation: string,
     systemPrompt: string,
-    options: Record<string, unknown>
-  ): Promise<AIServiceResponse> {
-    const executeOptions: Record<string, unknown> = {
+    options: Record<string, unknown> & { schema?: Record<string, unknown> }
+  ): Promise<AIResponse> {
+    const executeOptions: ExecuteParams = {
       systemPrompt,
       userMessage: 'Please provide the output as specified.',
       ...options,
@@ -307,15 +301,13 @@ RETRY INSTRUCTIONS:
 
     // If schema is provided, pass it through for strict mode
     // The adapter will convert this to response_format: { type: "json_schema", ... }
-    if (options.schema) {
+    if (options.schema && typeof options.schema === 'object') {
       executeOptions.schema = options.schema;
       // Remove jsonMode since strict schema mode supersedes it
       delete executeOptions.jsonMode;
     }
 
-    const response = await aiService.execute(operation, executeOptions);
-
-    return response;
+    return await aiService.execute(operation, executeOptions);
   }
 
   /**

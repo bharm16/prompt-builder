@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import type { AIService, ShotPlan } from '../types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService, ShotPlan } from '../types';
 
 /**
  * ShotInterpreterService
@@ -48,7 +48,7 @@ export class ShotInterpreterService {
 
     // Lightweight schema to keep output predictable without blocking optional fields
     const schema = {
-      type: 'object',
+      type: 'object' as const,
       required: ['shot_type', 'core_intent'],
       properties: {
         shot_type: { type: 'string' },
@@ -71,13 +71,13 @@ export class ShotInterpreterService {
     };
 
     try {
-      const parsed = await StructuredOutputEnforcer.enforceJSON(this.ai, systemPrompt, {
+      const parsed = await StructuredOutputEnforcer.enforceJSON<ShotPlan>(this.ai, systemPrompt, {
         operation: 'optimize_shot_interpreter',
         schema,
         maxRetries: 1,
         temperature: 0,
         maxTokens: 400,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       this.log.info(`${operation} completed`, {
@@ -92,7 +92,8 @@ export class ShotInterpreterService {
       this.log.warn(`${operation} failed - continuing without structured plan`, {
         operation,
         duration: Math.round(performance.now() - startTime),
-      }, error as Error);
+        error: (error as Error).message,
+      });
       return null;
     }
   }

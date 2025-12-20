@@ -11,6 +11,8 @@
  * - Handle overlapping spans at chunk boundaries
  */
 
+import type { SpanLike } from '../types.js';
+
 interface SentenceSlice {
   text: string;
   startOffset: number;
@@ -26,14 +28,6 @@ interface TextChunk {
   startOffset: number;
   endOffset: number;
   wordCount: number;
-}
-
-interface SpanLike {
-  start: number;
-  end: number;
-  role?: string;
-  category?: string;
-  [key: string]: unknown;
 }
 
 interface ChunkResult {
@@ -83,8 +77,12 @@ export class TextChunker {
         return;
       }
 
-      const startOffset = sentencesForChunk[0].startOffset;
-      const endOffset = sentencesForChunk[sentencesForChunk.length - 1].endOffset;
+      const firstSentence = sentencesForChunk[0];
+      const lastSentence = sentencesForChunk[sentencesForChunk.length - 1];
+      if (!firstSentence || !lastSentence) return;
+
+      const startOffset = firstSentence.startOffset;
+      const endOffset = lastSentence.endOffset;
 
       chunks.push({
         text: text.slice(startOffset, endOffset),
@@ -250,6 +248,7 @@ export class TextChunker {
 
     for (let i = sentences.length - 1; i >= 0; i -= 1) {
       const sentence = sentences[i];
+      if (!sentence) continue;
       overlapWordCount += sentence.wordCount;
       overlap.unshift(sentence);
 

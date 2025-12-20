@@ -30,8 +30,6 @@ export function initSentry(app: Application): void {
     integrations: [
       // HTTP request tracking
       Sentry.httpIntegration(),
-      // Express request handler
-      Sentry.expressIntegration(app),
       // Profiling (optional, can be resource-intensive)
       nodeProfilingIntegration(),
     ],
@@ -58,11 +56,14 @@ export function initSentry(app: Application): void {
 
       // Remove sensitive query parameters
       if (event.request?.query_string) {
-        const sanitized = event.request.query_string
-          .replace(/api[_-]?key=[^&]*/gi, 'api_key=[REDACTED]')
-          .replace(/token=[^&]*/gi, 'token=[REDACTED]')
-          .replace(/secret=[^&]*/gi, 'secret=[REDACTED]');
-        event.request.query_string = sanitized;
+        const queryString = event.request.query_string;
+        if (typeof queryString === 'string') {
+          const sanitized = queryString
+            .replace(/api[_-]?key=[^&]*/gi, 'api_key=[REDACTED]')
+            .replace(/token=[^&]*/gi, 'token=[REDACTED]')
+            .replace(/secret=[^&]*/gi, 'secret=[REDACTED]');
+          event.request.query_string = sanitized;
+        }
       }
 
       return event;
@@ -129,10 +130,13 @@ export function setSentryUser(user: SentryUser | null): void {
   if (!SENTRY_DSN) return;
 
   if (user) {
+    const email = user.email;
+    const displayName = user.displayName;
     Sentry.setUser({
       id: user.uid,
-      email: user.email,
-      username: user.displayName || user.email?.split('@')[0],
+      ...(email && { email }),
+      ...(displayName && { username: displayName }),
+      ...(!displayName && email && { username: email.split('@')[0] }),
     });
   } else {
     Sentry.setUser(null);
@@ -180,11 +184,11 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   });
 }
 
-// Helper to start a transaction for performance tracking
-export function startTransaction(name: string, op: string): Sentry.Transaction | null {
+// Helper to start a span for performance tracking (replaces deprecated startTransaction)
+export function startSpan(name: string, op: string): Sentry.Span | null {
   if (!SENTRY_DSN) return null;
 
-  return Sentry.startTransaction({
+  return Sentry.startInactiveSpan({
     name,
     op,
   });

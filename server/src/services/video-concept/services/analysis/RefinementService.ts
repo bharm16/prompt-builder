@@ -1,7 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { refinementsOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for refining video scene elements for better coherence.
@@ -46,6 +45,9 @@ export class RefinementService {
       });
       return { refinements: {} };
     }
+    
+    // Safe to access since we checked length >= 2
+    const firstElementKey = filledElements[0]![0];
 
     const prompt = `Suggest refinements for these video elements to improve coherence.
 
@@ -59,17 +61,21 @@ For each element, suggest 2-3 refined versions that:
 
 Return ONLY a JSON object:
 {
-  "${filledElements[0][0]}": ["refinement 1", "refinement 2"],
+  "${firstElementKey}": ["refinement 1", "refinement 2"],
   ...
 }`;
 
     try {
+      const schema: { type: 'object' | 'array' } = {
+        type: 'object' as const,
+      };
+      
       const refinements = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_refinements',
-          schema: refinementsOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.6,
         }

@@ -1,6 +1,12 @@
 import { logger } from '@infrastructure/Logger';
 
 /**
+ * @typedef {import('express').Request} Request
+ * @typedef {import('express').Response} Response
+ * @typedef {import('express').NextFunction} NextFunction
+ */
+
+/**
  * Metrics Authentication Middleware
  *
  * Validates bearer token for accessing metrics and stats endpoints.
@@ -8,7 +14,7 @@ import { logger } from '@infrastructure/Logger';
  *
  * @param {Request} req - Express request object
  * @param {Response} res - Express response object
- * @param {Function} next - Express next middleware function
+ * @param {NextFunction} next - Express next middleware function
  */
 export function metricsAuthMiddleware(req, res, next) {
   // Extract bearer token from Authorization header

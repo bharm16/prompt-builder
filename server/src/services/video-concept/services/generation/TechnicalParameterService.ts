@@ -1,8 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { technicalParamsOutputSchema } from '@utils/validation.js';
-import type { ILogger } from '@interfaces/ILogger.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for generating technical video production parameters.
@@ -87,12 +85,17 @@ Return ONLY a JSON object:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['camera', 'lighting', 'color', 'format', 'audio', 'postProduction'],
+      };
+      
       const technicalParams = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_technical_params',
-          schema: technicalParamsOutputSchema,
+          schema,
           maxTokens: 768,
           temperature: 0.5,
         }

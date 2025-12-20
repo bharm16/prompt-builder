@@ -132,7 +132,9 @@ export function validateLLMResponse(
     result.parsed = jsonResult.parsed;
     result.hasPreamble = jsonResult.hasPreamble;
     result.hasPostamble = jsonResult.hasPostamble;
-    result.cleanedText = jsonResult.cleanedText;
+    if (jsonResult.cleanedText !== undefined) {
+      result.cleanedText = jsonResult.cleanedText;
+    }
     result.confidence *= jsonResult.confidence;
 
     // Check truncation for JSON
@@ -192,16 +194,29 @@ function validateJsonResponse(
   hasPreamble: boolean;
   hasPostamble: boolean;
   cleanedText?: string;
+  isRefusal: boolean;
+  isTruncated: boolean;
 } {
-  const result = {
+  const result: {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    parsed?: unknown;
+    confidence: number;
+    hasPreamble: boolean;
+    hasPostamble: boolean;
+    cleanedText?: string;
+    isRefusal: boolean;
+    isTruncated: boolean;
+  } = {
     isValid: true,
-    errors: [] as string[],
-    warnings: [] as string[],
-    parsed: undefined as unknown,
+    errors: [],
+    warnings: [],
     confidence: 1.0,
     hasPreamble: false,
     hasPostamble: false,
-    cleanedText: undefined as string | undefined,
+    isRefusal: false,
+    isTruncated: false,
   };
 
   let cleanedText = text.trim();
@@ -228,7 +243,7 @@ function validateJsonResponse(
 
   // Try to extract JSON from markdown code blocks
   const codeBlockMatch = cleanedText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
+  if (codeBlockMatch && codeBlockMatch[1]) {
     cleanedText = codeBlockMatch[1].trim();
     result.hasPreamble = true;
     result.hasPostamble = true;
@@ -237,11 +252,12 @@ function validateJsonResponse(
   }
 
   // Find JSON boundaries
-  const jsonStart = cleanedText.indexOf(options.expectArray ? '[' : '{');
-  const jsonEnd = cleanedText.lastIndexOf(options.expectArray ? ']' : '}');
+  const expectArray = options.expectArray ?? false;
+  const jsonStart = cleanedText.indexOf(expectArray ? '[' : '{');
+  const jsonEnd = cleanedText.lastIndexOf(expectArray ? ']' : '}');
 
   if (jsonStart === -1) {
-    result.errors.push(`No ${options.expectArray ? 'array' : 'object'} found in response`);
+    result.errors.push(`No ${expectArray ? 'array' : 'object'} found in response`);
     result.isValid = false;
     result.confidence = 0.1;
     return result;
@@ -255,19 +271,19 @@ function validateJsonResponse(
   }
 
   // Extract JSON substring
-  cleanedText = cleanedText.substring(jsonStart, jsonEnd + 1);
-  result.cleanedText = cleanedText;
+  const extractedJson = cleanedText.substring(jsonStart, jsonEnd + 1);
+  result.cleanedText = extractedJson;
 
   // Parse JSON
   try {
-    result.parsed = JSON.parse(cleanedText);
+    result.parsed = JSON.parse(extractedJson);
     
     // Validate expected type
-    if (options.expectArray && !Array.isArray(result.parsed)) {
+    if (expectArray && !Array.isArray(result.parsed)) {
       result.errors.push('Expected array but got object');
       result.isValid = false;
       result.confidence *= 0.3;
-    } else if (!options.expectArray && Array.isArray(result.parsed)) {
+    } else if (!expectArray && Array.isArray(result.parsed)) {
       result.errors.push('Expected object but got array');
       result.isValid = false;
       result.confidence *= 0.3;
@@ -280,15 +296,16 @@ function validateJsonResponse(
 
     // Try to provide helpful context
     const errorMatch = parseError.message.match(/position (\d+)/);
-    if (errorMatch) {
-      const position = parseInt(errorMatch[1], 10);
+    if (errorMatch?.[1]) {
+      const position = Number.parseInt(errorMatch[1], 10);
       const contextStart = Math.max(0, position - 20);
-      const contextEnd = Math.min(cleanedText.length, position + 20);
-      const context = cleanedText.substring(contextStart, contextEnd);
+      const contextEnd = Math.min(extractedJson.length, position + 20);
+      const context = extractedJson.substring(contextStart, contextEnd);
       result.errors.push(`Error context: "...${context}..."`);
     }
   }
 
+  // Return result with proper typing
   return result;
 }
 

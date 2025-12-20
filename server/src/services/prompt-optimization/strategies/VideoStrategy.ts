@@ -1,16 +1,16 @@
-import { logger } from '@infrastructure/Logger.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
-import { ModelConfig } from '@config/modelConfig.js';
+import { logger } from '@infrastructure/Logger';
+import OptimizationConfig from '@config/OptimizationConfig';
+import { ModelConfig } from '@config/modelConfig';
 // Import the examples along with the generator
-import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { getVideoTemplateBuilder } from './video-templates/index.js';
-import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory.js';
-import { detectProvider } from '@utils/provider/ProviderDetector.js';
-import type { AIService, TemplateService, OptimizationRequest, ShotPlan } from '../types.js';
-import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes.js';
-import { lintVideoPromptSlots } from './videoPromptLinter.js';
-import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer.js';
+import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { getVideoTemplateBuilder } from './video-templates/index';
+import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
+import { detectProvider } from '@utils/provider/ProviderDetector';
+import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
+import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes';
+import { lintVideoPromptSlots } from './videoPromptLinter';
+import { renderAlternativeApproaches, renderMainVideoPrompt } from './videoPromptRenderer';
 
 function isCriticalVideoPromptLintError(error: string): boolean {
   return (
@@ -144,7 +144,7 @@ function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
  * Uses specialized video prompt template with Chain-of-Thought reasoning
  * Returns structured JSON internally but assembles to text for backward compatibility
  */
-export class VideoStrategy implements import('../types.js').OptimizationStrategy {
+export class VideoStrategy implements OptimizationStrategy {
   readonly name = 'video';
   private readonly ai: AIService;
   private readonly templateService: TemplateService;
@@ -212,12 +212,12 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           systemPrompt: options.templateSystemPrompt,
           messages: options.messages,
           schema: options.schema,
-          developerMessage: options.developerMessage,
+          ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
           maxTokens: options.config.maxTokens,
           temperature: 0.2,
           timeout: options.config.timeout,
           seed,
-          signal: options.signal,
+          ...(options.signal ? { signal: options.signal } : {}),
         });
 
         const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
@@ -254,12 +254,16 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
   async optimize({ prompt, shotPlan = null, signal }: OptimizationRequest): Promise<string> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
+    const optimizeConfig = ModelConfig.optimize_standard;
+    if (!optimizeConfig) {
+      throw new Error('Missing optimize_standard model configuration');
+    }
 
     // Detect provider for this operation
     const provider = detectProvider({
       operation: 'optimize_standard',
-      client: ModelConfig.optimize_standard.client,
-      model: ModelConfig.optimize_standard.model,
+      client: optimizeConfig.client,
+      model: optimizeConfig.model,
     });
 
     logger.debug('Provider detected for video optimization', { provider });
@@ -275,7 +279,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
       // Build provider-optimized template
       const template = templateBuilder.buildTemplate({
         userConcept: prompt,
-        interpretedPlan: shotPlan || undefined,
+        ...(shotPlan ? { interpretedPlan: shotPlan as unknown as Record<string, unknown> } : {}),
         includeInstructions: true,
       });
 
@@ -283,7 +287,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
       const schema = getVideoOptimizationSchema({
         operation: 'optimize_standard',
         provider,
-        model: ModelConfig.optimize_standard.model,
+        model: optimizeConfig.model,
       });
 
       logger.debug('Using provider-specific template', {
@@ -307,11 +311,11 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         systemPrompt: template.systemPrompt, // Required by API
         messages: messages, // <--- Pass the full chain here
         schema: schema,
-        developerMessage: template.developerMessage, // OpenAI only
+        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}), // OpenAI only
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       const parsedResponse = JSON.parse(response.text) as VideoPromptStructuredResponse;
@@ -334,31 +338,31 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
           provider,
         });
 
-        const rerolled = await this._rerollSlots({
-          templateSystemPrompt: template.systemPrompt,
-          developerMessage: template.developerMessage,
-          schema,
-          messages,
-          config,
-          baseSeed: this._hashString(prompt),
-          attempts: 2,
-          signal,
-        });
+      const rerolled = await this._rerollSlots({
+        templateSystemPrompt: template.systemPrompt,
+        schema,
+        messages,
+        config,
+        baseSeed: this._hashString(prompt),
+        attempts: 2,
+        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
+        ...(signal ? { signal } : {}),
+      });
         if (rerolled) {
           logger.info('Video prompt lint fixed via reroll', { provider });
           return this._reassembleOutput(rerolled);
         }
 
-        const repaired = await this._repairSlots({
-          templateSystemPrompt: template.systemPrompt,
-          developerMessage: template.developerMessage,
-          schema,
-          userMessage: template.userMessage,
-          originalJson: parsedResponse,
-          lintErrors: lint.errors,
-          config,
-          signal,
-        });
+      const repaired = await this._repairSlots({
+        templateSystemPrompt: template.systemPrompt,
+        schema,
+        userMessage: template.userMessage,
+        originalJson: parsedResponse,
+        lintErrors: lint.errors,
+        config,
+        ...(template.developerMessage ? { developerMessage: template.developerMessage } : {}),
+        ...(signal ? { signal } : {}),
+      });
 
         return this._reassembleOutput(repaired);
       }
@@ -397,7 +401,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
 
     // Simpler schema for non-strict fallback
     const looseSchema = {
-      type: 'object',
+      type: 'object' as const,
       required: ['_creative_strategy', 'shot_framing', 'camera_angle', 'camera_move', 'subject', 'subject_details', 'action', 'setting', 'time', 'lighting', 'style', 'technical_specs'],
     };
 
@@ -412,7 +416,7 @@ export class VideoStrategy implements import('../types.js').OptimizationStrategy
         maxTokens: config.maxTokens,
         temperature: config.temperature,
         timeout: config.timeout,
-        signal,
+        ...(signal ? { signal } : {}),
       }
     ) as VideoPromptStructuredResponse;
 
@@ -505,11 +509,11 @@ ${JSON.stringify(options.originalJson, null, 2)}
       systemPrompt: repairSystemPrompt,
       userMessage: repairUserMessage,
       schema: options.schema,
-      developerMessage: options.developerMessage,
+      ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
       maxTokens: options.config.maxTokens,
       temperature: 0.2,
       timeout: options.config.timeout,
-      signal: options.signal,
+      ...(options.signal ? { signal: options.signal } : {}),
     });
 
     const repaired = JSON.parse(response.text) as VideoPromptStructuredResponse;

@@ -31,5 +31,9 @@ export interface IMetricsCollector {
    * Update cache hit rate
    */
   updateCacheHitRate(cacheType: string, hitRate: number): void;
-}
 
+  /**
+   * Update circuit breaker state (optional)
+   */
+  updateCircuitBreakerState?(circuit: string, state: 'closed' | 'open' | 'half-open'): void;
+}

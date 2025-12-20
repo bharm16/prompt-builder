@@ -6,26 +6,66 @@ export default defineConfig({
   root: path.resolve(__dirname, '../../'),
   plugins: [react()],
   resolve: {
-    // Note: both client and server use "@utils" with different roots.
-    // We alias known server utils first, then fall back to client utils.
+    // Path aliases matching tsconfig.json for both client and server
+    // Note: Order matters - more specific patterns should come before general ones
     alias: [
+      // Shared aliases (used by both client and server) - from both tsconfig.json files
+      { find: /^@shared\/(.*)/, replacement: path.resolve(__dirname, '../../shared/$1') },
+      { find: /^#shared\/(.*)/, replacement: path.resolve(__dirname, '../../shared/$1') },
       { find: '@shared', replacement: path.resolve(__dirname, '../../shared') },
-      { find: '@config', replacement: path.resolve(__dirname, '../../server/src/config') },
+      { find: '#shared', replacement: path.resolve(__dirname, '../../shared') },
+
+      // Server-specific aliases (from server/tsconfig.json)
+      { find: /^@infrastructure\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/infrastructure/$1') },
       { find: '@infrastructure', replacement: path.resolve(__dirname, '../../server/src/infrastructure') },
+      { find: /^@interfaces\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/interfaces/$1') },
       { find: '@interfaces', replacement: path.resolve(__dirname, '../../server/src/interfaces') },
+      { find: /^@llm\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/llm/$1') },
       { find: '@llm', replacement: path.resolve(__dirname, '../../server/src/llm') },
-      { find: /^@utils\/provider/, replacement: path.resolve(__dirname, '../../server/src/utils/provider') },
-      { find: /^@utils\/logging/, replacement: path.resolve(__dirname, '../../server/src/utils/logging') },
-      { find: /^@utils\/ConstitutionalAI/, replacement: path.resolve(__dirname, '../../server/src/utils/ConstitutionalAI') },
-      { find: /^@utils\/JsonExtractor/, replacement: path.resolve(__dirname, '../../server/src/utils/JsonExtractor') },
-      { find: /^@utils\/RetryPolicy/, replacement: path.resolve(__dirname, '../../server/src/utils/RetryPolicy') },
-      { find: /^@utils\/SecurityPrompts/, replacement: path.resolve(__dirname, '../../server/src/utils/SecurityPrompts') },
-      { find: /^@utils\/StructuredOutputEnforcer/, replacement: path.resolve(__dirname, '../../server/src/utils/StructuredOutputEnforcer') },
-      { find: /^@utils\/TemperatureOptimizer/, replacement: path.resolve(__dirname, '../../server/src/utils/TemperatureOptimizer') },
-      { find: /^@utils\/validation/, replacement: path.resolve(__dirname, '../../server/src/utils/validation') },
-      { find: /^@utils\/requestHelpers/, replacement: path.resolve(__dirname, '../../server/src/utils/requestHelpers') },
-      { find: /^@utils\/validateEnv/, replacement: path.resolve(__dirname, '../../server/src/utils/validateEnv') },
-      { find: /^@utils/, replacement: path.resolve(__dirname, '../../client/src/utils') },
+      { find: /^@api\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/api/$1') },
+      { find: '@api', replacement: path.resolve(__dirname, '../../server/src/api') },
+      { find: /^@middleware\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/middleware/$1') },
+      { find: '@middleware', replacement: path.resolve(__dirname, '../../server/src/middleware') },
+      { find: /^@routes\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/routes/$1') },
+      { find: '@routes', replacement: path.resolve(__dirname, '../../server/src/routes') },
+      { find: /^@clients\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/clients/$1') },
+      { find: '@clients', replacement: path.resolve(__dirname, '../../server/src/clients') },
+      { find: /^@server\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/$1') },
+      { find: '@server', replacement: path.resolve(__dirname, '../../server/src') },
+
+      // Client-specific aliases (from client/tsconfig.json)
+      { find: /^@\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/$1') },
+      { find: /^@components\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/components/$1') },
+      { find: '@components', replacement: path.resolve(__dirname, '../../client/src/components') },
+      { find: /^@features\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/features/$1') },
+      { find: '@features', replacement: path.resolve(__dirname, '../../client/src/features') },
+      { find: /^@hooks\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/hooks/$1') },
+      { find: '@hooks', replacement: path.resolve(__dirname, '../../client/src/hooks') },
+      { find: /^@styles\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/styles/$1') },
+      { find: '@styles', replacement: path.resolve(__dirname, '../../client/src/styles') },
+      { find: /^@lib\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/lib/$1') },
+      { find: '@lib', replacement: path.resolve(__dirname, '../../client/src/lib') },
+      { find: /^@schemas\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/schemas/$1') },
+      { find: '@schemas', replacement: path.resolve(__dirname, '../../client/src/schemas') },
+      { find: /^@repositories\/(.*)/, replacement: path.resolve(__dirname, '../../client/src/repositories/$1') },
+      { find: '@repositories', replacement: path.resolve(__dirname, '../../client/src/repositories') },
+
+      // Shared aliases that exist in both client and server
+      // For tests, server paths take precedence for @config, @services, @types
+      // @config - server config (server/src/config)
+      { find: /^@config\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/config/$1') },
+      { find: '@config', replacement: path.resolve(__dirname, '../../server/src/config') },
+      // @services - server services (server/src/services)
+      { find: /^@services\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/services/$1') },
+      { find: '@services', replacement: path.resolve(__dirname, '../../server/src/services') },
+      // @types - server types (server/src/types)
+      { find: /^@types\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/types/$1') },
+      { find: '@types', replacement: path.resolve(__dirname, '../../server/src/types') },
+      // @utils - server utils take precedence (server/src/utils)
+      { find: /^@utils\/(.*)/, replacement: path.resolve(__dirname, '../../server/src/utils/$1') },
+      { find: '@utils', replacement: path.resolve(__dirname, '../../server/src/utils') },
+
+      // React resolution
       { find: 'react', replacement: path.resolve(__dirname, '../../node_modules/react') },
       { find: 'react-dom', replacement: path.resolve(__dirname, '../../node_modules/react-dom') },
     ],

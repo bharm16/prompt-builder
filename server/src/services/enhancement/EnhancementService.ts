@@ -1,19 +1,19 @@
-import { logger } from '@infrastructure/Logger.js';
-import type { ILogger } from '@interfaces/ILogger.js';
-import { cacheService } from '../cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas.js';
-import { FallbackRegenerationService } from './services/FallbackRegenerationService.js';
-import { SuggestionProcessor } from './services/SuggestionProcessor.js';
-import { StyleTransferService } from './services/StyleTransferService.js';
-import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer.js';
-import { EnhancementMetricsService } from './services/EnhancementMetricsService.js';
-import { VideoContextDetectionService } from './services/VideoContextDetectionService.js';
-import { SuggestionGenerationService } from './services/SuggestionGenerationService.js';
-import { SuggestionProcessingService } from './services/SuggestionProcessingService.js';
-import { CacheKeyFactory } from './utils/CacheKeyFactory.js';
-import { PROMPT_MODES } from './constants.js';
+import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
+import { cacheService } from '@services/cache/CacheService';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { getEnhancementSchema, getCustomSuggestionSchema } from './config/schemas';
+import { FallbackRegenerationService } from './services/FallbackRegenerationService';
+import { SuggestionProcessor } from './services/SuggestionProcessor';
+import { StyleTransferService } from './services/StyleTransferService';
+import { ContrastiveDiversityEnforcer } from './services/ContrastiveDiversityEnforcer';
+import { EnhancementMetricsService } from './services/EnhancementMetricsService';
+import { VideoContextDetectionService } from './services/VideoContextDetectionService';
+import { SuggestionGenerationService } from './services/SuggestionGenerationService';
+import { SuggestionProcessingService } from './services/SuggestionProcessingService';
+import { CacheKeyFactory } from './utils/CacheKeyFactory';
+import { PROMPT_MODES } from './constants';
 import type {
   AIService,
   VideoService,
@@ -34,7 +34,8 @@ import type {
   BrainstormContext,
   PromptBuildParams,
   GroupedSuggestions,
-} from './services/types.js';
+  OutputSchema,
+} from './services/types';
 
 /**
  * EnhancementService - Main Orchestrator
@@ -257,7 +258,7 @@ export class EnhancementService {
 
       const generationResult = await this.suggestionGeneration.generateSuggestions({
         systemPrompt,
-        schema: schema as Record<string, unknown>,
+        schema: schema as OutputSchema,
         isVideoPrompt,
         isPlaceholder,
         highlightedText,
@@ -280,7 +281,7 @@ export class EnhancementService {
         videoConstraints,
         phraseRole,
         highlightWordCount,
-        schema: schema as Record<string, unknown>,
+        schema: schema as OutputSchema,
         temperature,
         contextBefore,
         contextAfter,
@@ -414,28 +415,8 @@ export class EnhancementService {
       precision: 'medium',
     });
 
-    // Create adapter for StructuredOutputEnforcer compatibility
-    // StructuredOutputEnforcer._callAIService adds systemPrompt to options
-    const aiAdapter = {
-      execute: async (operation: string, options: Record<string, unknown>) => {
-        const executeParams: Parameters<AIService['execute']>[1] = {
-          systemPrompt: options.systemPrompt as string,
-        };
-        if (options.userMessage) executeParams.userMessage = options.userMessage as string;
-        if (options.temperature !== undefined) executeParams.temperature = options.temperature as number;
-        if (options.maxTokens !== undefined) executeParams.maxTokens = options.maxTokens as number;
-        
-        const response = await this.ai.execute(operation, executeParams);
-        // Convert AIResponse to AIServiceResponse format
-        return {
-          text: response.text,
-          content: [{ text: response.text }],
-        };
-      },
-    };
-    
     const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-      aiAdapter,
+      this.ai,
       systemPrompt,
       {
         operation: 'custom_suggestions',
@@ -520,4 +501,3 @@ export class EnhancementService {
 
 
 }
-

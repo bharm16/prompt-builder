@@ -7,9 +7,9 @@
 import type { Router, Request, Response } from 'express';
 import express from 'express';
 import { logger } from '@infrastructure/Logger';
-import { extractUserId } from '../utils/requestHelpers.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
-import type { PreviewRoutesServices } from './types.js';
+import { extractUserId } from '@utils/requestHelpers';
+import { asyncHandler } from '@middleware/asyncHandler';
+import type { PreviewRoutesServices } from './types';
 
 /**
  * Create preview routes
@@ -53,9 +53,13 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       });
 
       try {
+        const normalizedAspectRatio =
+          typeof aspectRatio === 'string' && aspectRatio.trim().length > 0
+            ? aspectRatio
+            : undefined;
         const result = await imageGenerationService.generatePreview(prompt, {
-          aspectRatio,
           userId,
+          ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
         });
 
         logger.info(`${operation} completed`, {
@@ -65,7 +69,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
           duration: Math.round(performance.now() - startTime),
         });
 
-        res.json({
+        return res.json({
           success: true,
           data: result,
         });
@@ -111,7 +115,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
           });
         }
 
-        res.status(statusCode).json({
+        return res.status(statusCode).json({
           success: false,
           error: 'Image generation failed',
           message: errorMessage,
@@ -122,4 +126,3 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
   return router;
 }
-

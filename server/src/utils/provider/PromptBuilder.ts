@@ -18,11 +18,11 @@ import {
   detectAndGetCapabilities,
   type ProviderType,
   type ProviderCapabilities,
-} from './ProviderDetector.js';
+} from './ProviderDetector';
 import {
   SECURITY_REMINDER,
   IMMUTABLE_SOVEREIGN_PREAMBLE,
-} from '../SecurityPrompts.js';
+} from '../SecurityPrompts';
 
 export interface PromptBuildContext {
   operation?: string;

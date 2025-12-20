@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.js';
-import type { StorageAdapter, UserPreferences, InMemoryStorage } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import type { StorageAdapter, UserPreferences } from '../types';
 
 /**
  * In-memory storage adapter
@@ -69,9 +69,9 @@ export class PreferenceRepository {
   private readonly maxRejectedHistory: number;
 
   constructor(options: {
-    storage?: StorageAdapter;
-    maxChosenHistory?: number;
-    maxRejectedHistory?: number;
+    storage?: StorageAdapter | undefined;
+    maxChosenHistory?: number | undefined;
+    maxRejectedHistory?: number | undefined;
   } = {}) {
     // Storage adapter - currently in-memory, easily swappable
     this.storage = options.storage || new InMemoryStorage();

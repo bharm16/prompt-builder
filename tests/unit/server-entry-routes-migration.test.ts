@@ -2,15 +2,15 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../server/src/config/middleware.config.ts', () => ({
+vi.mock('@config/middleware.config', () => ({
   configureMiddleware: vi.fn(),
 }));
 
-vi.mock('../../server/src/config/routes.config.ts', () => ({
+vi.mock('@config/routes.config', () => ({
   configureRoutes: vi.fn(),
 }));
 
-vi.mock('../../server/src/services/quality-feedback/services/LLMJudgeService.js', () => ({
+vi.mock('@services/quality-feedback/services/LLMJudgeService', () => ({
   LLMJudgeService: class {
     async evaluateSuggestions() {
       return {
@@ -48,13 +48,14 @@ vi.mock('../../server/src/services/quality-feedback/services/LLMJudgeService.js'
   },
 }));
 
-import * as middlewareConfig from '../../server/src/config/middleware.config.ts';
-import * as routesConfig from '../../server/src/config/routes.config.ts';
-import { createApp } from '../../server/src/app.js';
-import { startServer } from '../../server/src/server.js';
-import { createHealthRoutes } from '../../server/src/routes/health.routes.js';
-import { createAPIRoutes } from '../../server/src/routes/api.routes.js';
-import { createSuggestionsRoute } from '../../server/src/routes/suggestions.js';
+import * as middlewareConfig from '@config/middleware.config';
+import * as routesConfig from '@config/routes.config';
+import { createApp } from '@server/app';
+import { startServer } from '@server/server';
+import { createHealthRoutes } from '@routes/health.routes';
+import { createAPIRoutes } from '@routes/api.routes';
+import { createSuggestionsRoute } from '@routes/suggestions';
+import type { AIModelService } from '@services/ai-model/AIModelService';
 
 describe('createApp', () => {
   it('sets trust proxy and wires middleware/routes', () => {
@@ -210,7 +211,8 @@ describe('suggestions.routes', () => {
   it('validates suggestion evaluation payloads', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const invalid = await request(app).post('/evaluate').send({
       suggestions: [],
@@ -224,7 +226,8 @@ describe('suggestions.routes', () => {
   it('returns evaluation results for valid requests', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const response = await request(app).post('/evaluate').send({
       suggestions: [{ text: 'Better phrasing' }],
@@ -239,7 +242,8 @@ describe('suggestions.routes', () => {
   it('supports single and compare evaluation endpoints', async () => {
     const app = express();
     app.use(express.json());
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const single = await request(app).post('/evaluate/single').send({
       suggestion: 'One option',
@@ -261,7 +265,8 @@ describe('suggestions.routes', () => {
 
   it('exposes rubric definitions', async () => {
     const app = express();
-    app.use(createSuggestionsRoute({}));
+    const aiService = {} as AIModelService;
+    app.use(createSuggestionsRoute(aiService));
 
     const response = await request(app).get('/rubrics');
 

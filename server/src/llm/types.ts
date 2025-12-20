@@ -2,6 +2,9 @@
  * Types for LLM services
  */
 
+import type { ExecuteParams } from '@services/ai-model/AIModelService';
+import type { AIResponse } from '@interfaces/IAIClient';
+
 /**
  * Input span for role classification
  */
@@ -26,14 +29,5 @@ export interface LabeledSpan {
  * AI Service interface
  */
 export interface AIService {
-  execute: (operation: string, params: {
-    systemPrompt?: string;
-    userMessage?: string;
-    maxTokens?: number;
-    jsonMode?: boolean;
-  }) => Promise<{
-    text?: string;
-    content?: Array<{ text?: string }>;
-  }>;
+  execute: (operation: string, params: ExecuteParams) => Promise<AIResponse>;
 }
-

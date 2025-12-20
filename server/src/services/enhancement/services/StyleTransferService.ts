@@ -15,7 +15,17 @@ export class StyleTransferService {
    * @returns Transformed text
    */
   async transferStyle(text: string, targetStyle: string): Promise<string> {
-    const styleConfig = STYLE_DEFINITIONS[targetStyle as keyof typeof STYLE_DEFINITIONS] || STYLE_DEFINITIONS[DEFAULT_STYLE as keyof typeof STYLE_DEFINITIONS];
+    const styleConfig =
+      STYLE_DEFINITIONS[targetStyle as keyof typeof STYLE_DEFINITIONS] ??
+      STYLE_DEFINITIONS[DEFAULT_STYLE as keyof typeof STYLE_DEFINITIONS] ??
+      Object.values(STYLE_DEFINITIONS)[0];
+
+    if (!styleConfig) {
+      logger.warn('No style definitions available for transfer', {
+        targetStyle,
+      });
+      return text;
+    }
 
     const styleTransferPrompt = this._buildStyleTransferPrompt(text, targetStyle, styleConfig);
 
@@ -59,4 +69,3 @@ Requirements:
 Provide ONLY the transformed text, no explanations:`;
   }
 }
-

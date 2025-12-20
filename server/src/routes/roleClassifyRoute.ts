@@ -2,9 +2,9 @@
 import { logger } from '@infrastructure/Logger';
 import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
-import { roleClassify } from '../llm/roleClassifier.js';
-import type { AIModelService } from '../services/ai-model/AIModelService.js';
-import type { InputSpan, LabeledSpan } from '../llm/types.js';
+import { roleClassify } from '@llm/roleClassifier';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { InputSpan, LabeledSpan } from '@llm/types';
 
 /**
  * Create role classify route with dependency injection
@@ -77,7 +77,7 @@ export function createRoleClassifyRoute(aiService: AIModelService): Router {
         templateVersion,
       });
       
-      res.json({ spans: labeled });
+      return res.json({ spans: labeled });
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
       
@@ -87,7 +87,7 @@ export function createRoleClassifyRoute(aiService: AIModelService): Router {
         duration,
       });
       
-      res
+      return res
         .status(500)
         .json({ error: String((error as { message?: unknown })?.message || error || 'Unknown error') });
     }
@@ -95,4 +95,3 @@ export function createRoleClassifyRoute(aiService: AIModelService): Router {
 
   return router;
 }
-

@@ -1,13 +1,13 @@
 import { createHash } from 'crypto';
-import { logger } from '@infrastructure/Logger.js';
-import { metricsService } from '@infrastructure/MetricsService.js';
+import { logger } from '@infrastructure/Logger';
+import { metricsService } from '@infrastructure/MetricsService';
 import type {
   SpanLabelingCacheServiceOptions,
   RedisClient,
   MemoryCacheEntry,
   SpanLabelingCacheStats,
   SpanLabelingPolicy
-} from './types.js';
+} from './types';
 
 // Bump this to invalidate old cached span results when the NLP/LLM pipeline changes.
 const SPAN_LABELING_CACHE_KEY_VERSION = '2';

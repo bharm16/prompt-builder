@@ -2,12 +2,12 @@ import { createHash } from 'crypto';
 import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { extractUserId } from '../utils/requestHelpers.js';
-import { labelSpans } from '../llm/span-labeling/SpanLabelingService.js';
-import { spanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
-import type { AIModelService } from '../services/ai-model/AIModelService.js';
-import type { LabelSpansParams, LabelSpansResult } from '../llm/span-labeling/types.js';
-import type { ValidationPolicy } from '../llm/span-labeling/types.js';
+import { extractUserId } from '@utils/requestHelpers';
+import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import { spanLabelingCache } from '@services/cache/SpanLabelingCacheService';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { LabelSpansParams, LabelSpansResult } from '@llm/span-labeling/types';
+import type { ValidationPolicy } from '@llm/span-labeling/types';
 
 /**
  * Create label spans route with dependency injection
@@ -27,8 +27,8 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
   const createCoalescingKey = (
     text: string,
-    policy: ValidationPolicy | undefined,
-    templateVersion: string | undefined
+    policy: ValidationPolicy | null,
+    templateVersion: string | null
   ): string => {
     const textHash = createHash('sha256')
       .update(text)
@@ -79,10 +79,10 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
     const payload: LabelSpansParams = {
       text,
-      maxSpans: safeMaxSpans,
-      minConfidence: safeMinConfidence,
-      policy,
-      templateVersion,
+      ...(safeMaxSpans !== undefined ? { maxSpans: safeMaxSpans } : {}),
+      ...(safeMinConfidence !== undefined ? { minConfidence: safeMinConfidence } : {}),
+      ...(policy ? { policy } : {}),
+      ...(templateVersion ? { templateVersion } : {}),
     };
 
     const startTime = performance.now();
@@ -104,12 +104,18 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
     try {
       // Cache-aside pattern: Check cache first
       // This reduces API calls by 70-90% and provides <5ms response time for cached results
-      let result: LabelSpansResult | undefined;
+      let result: LabelSpansResult | null = null;
       let cacheHit = false;
+      const cachePolicy = policy ?? null;
+      const cacheTemplateVersion = templateVersion ?? null;
 
       if (spanLabelingCache) {
         const cacheStartTime = performance.now();
-        const cached = await spanLabelingCache.get(text, policy, templateVersion);
+        const cached = (await spanLabelingCache.get(
+          text,
+          cachePolicy,
+          cacheTemplateVersion
+        )) as LabelSpansResult | null;
 
         if (cached) {
           result = cached;
@@ -134,7 +140,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       // Cache miss: use AIModelService (configured in modelConfig.js)
       if (!result) {
-        const coalescingKey = createCoalescingKey(text, policy, templateVersion);
+        const coalescingKey = createCoalescingKey(text, cachePolicy, cacheTemplateVersion);
         const inflight = inflightRequests.get(coalescingKey);
 
         if (inflight) {
@@ -160,7 +166,13 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
             if (spanLabelingCache) {
               const ttl = text.length > 2000 ? 300 : 3600;
-              await spanLabelingCache.set(text, policy, templateVersion, computed, { ttl });
+              await spanLabelingCache.set(
+                text,
+                cachePolicy,
+                cacheTemplateVersion,
+                computed,
+                { ttl }
+              );
             }
 
             return computed;
@@ -193,6 +205,9 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
         }
       }
 
+      if (!result) {
+        return res.status(502).json({ error: 'Span labeling failed to produce a result' });
+      }
       return res.json(result);
     } catch (error) {
       logger.error(`${operation} failed`, error as Error, {

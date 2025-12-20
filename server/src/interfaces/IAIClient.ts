@@ -75,6 +75,7 @@ export interface AIResponseMetadata {
 
 export interface AIResponse {
   text: string;
+  content?: Array<{ text?: string }>;
   metadata: AIResponseMetadata;
 }
 
@@ -107,7 +108,7 @@ export interface IAIClient {
   /**
    * Health check (optional)
    */
-  healthCheck?(): Promise<{ healthy: boolean; provider: string; error?: string }>;
+  healthCheck?(): Promise<{ healthy: boolean; provider: string; error?: string | undefined }>;
 
   /**
    * Capabilities declaration (optional)

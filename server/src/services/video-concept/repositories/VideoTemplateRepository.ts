@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger.js';
-import type { TemplateStorageAdapter, VideoTemplate, InMemoryTemplateStorage } from '../types.js';
+import { logger } from '@infrastructure/Logger';
+import type { TemplateStorageAdapter, VideoTemplate } from '../types';
 
 /**
  * In-memory template storage adapter
@@ -57,7 +57,7 @@ class InMemoryTemplateStorage implements TemplateStorageAdapter {
 export class VideoTemplateRepository {
   private readonly storage: TemplateStorageAdapter & { incrementUsage?: (templateId: string) => Promise<void>; update?: (templateId: string, template: VideoTemplate) => Promise<void>; delete?: (templateId: string) => Promise<void> };
 
-  constructor(options: { storage?: TemplateStorageAdapter } = {}) {
+  constructor(options: { storage?: TemplateStorageAdapter | undefined } = {}) {
     // Storage adapter - currently in-memory, easily swappable
     this.storage = options.storage || new InMemoryTemplateStorage();
   }

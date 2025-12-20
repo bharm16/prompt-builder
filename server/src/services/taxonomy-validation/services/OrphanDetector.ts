@@ -67,7 +67,7 @@ export class OrphanDetector {
       return null; // No orphans - subject exists
     }
 
-    const subjectAttributes = Object.values(TAXONOMY.SUBJECT.attributes || {});
+    const subjectAttributes = Object.values(TAXONOMY.SUBJECT.attributes || {}) as string[];
     const orphanedSpans = spans.filter(s => s.category && subjectAttributes.includes(s.category));
 
     if (orphanedSpans.length === 0) {
@@ -90,7 +90,7 @@ export class OrphanDetector {
     
     // Camera attributes can exist independently (they imply camera presence)
     // But we can still flag it as a suggestion for completeness
-    const cameraAttributes = Object.values(TAXONOMY.CAMERA.attributes || {});
+    const cameraAttributes = Object.values(TAXONOMY.CAMERA.attributes || {}) as string[];
     const cameraAttrSpans = spans.filter(s => s.category && cameraAttributes.includes(s.category));
 
     if (cameraAttrSpans.length === 0 || hasCamera) {
@@ -147,4 +147,3 @@ export class OrphanDetector {
     return 'warning';
   }
 }
-

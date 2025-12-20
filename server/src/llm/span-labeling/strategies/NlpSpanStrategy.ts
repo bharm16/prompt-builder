@@ -62,6 +62,7 @@ export class NlpSpanStrategy {
       if (typeof span.start !== 'number' || typeof span.end !== 'number') return;
       for (let i = 0; i < words.length; i++) {
         const word = words[i];
+        if (!word) continue;
         if (word.end <= span.start) continue;
         if (word.start >= span.end) break;
         coveredWords.add(i);
@@ -362,7 +363,7 @@ export class NlpSpanStrategy {
         return {
           spans: validation.result.spans,
           meta: validation.result.meta,
-          isAdversarial: validation.result.isAdversarial,
+          ...(validation.result.isAdversarial !== undefined && { isAdversarial: validation.result.isAdversarial }),
         };
       }
 
@@ -453,7 +454,7 @@ export class NlpSpanStrategy {
         return {
           spans: lenientValidation.result.spans,
           meta: lenientValidation.result.meta,
-          isAdversarial: lenientValidation.result.isAdversarial,
+          ...(lenientValidation.result.isAdversarial !== undefined && { isAdversarial: lenientValidation.result.isAdversarial }),
         };
       }
     }

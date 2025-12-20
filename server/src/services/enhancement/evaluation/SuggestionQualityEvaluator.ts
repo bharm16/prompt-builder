@@ -1,5 +1,5 @@
 import type { Suggestion } from '../services/types.js';
-import type { VideoPromptService } from '../../video-prompt-analysis/VideoPromptService.ts';
+import type { VideoPromptService } from '@services/video-prompt-analysis/VideoPromptService';
 import type { SuggestionValidationService } from '../services/SuggestionValidationService.ts';
 
 export interface SuggestionTestCase {

@@ -21,8 +21,8 @@ export const promptSchema = z.object({
     .optional()
     .nullable(),
   brainstormContext: z.object({
-    elements: z.record(z.unknown()).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    elements: z.record(z.string(), z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
     version: z.string().optional(),
     createdAt: z.number().optional(),
   })

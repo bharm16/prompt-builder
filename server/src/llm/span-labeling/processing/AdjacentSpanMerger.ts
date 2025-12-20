@@ -4,15 +4,7 @@
  * Merges adjacent spans that belong to the same parent category.
  * Fixes LLM fragmentation issues like "Action" + "Shot" → "Action Shot"
  */
-
-interface SpanLike {
-  text: string;
-  start: number;
-  end: number;
-  role: string;
-  confidence: number;
-  [key: string]: unknown;
-}
+import type { SpanLike } from '../types.js';
 
 interface MergeOptions {
   maxMergedWords?: number;
@@ -117,12 +109,18 @@ export function mergeAdjacentSpans(
   let i = 0;
 
   while (i < spans.length) {
-    let current: SpanLike = { ...spans[i] };
+    const firstSpan = spans[i];
+    if (!firstSpan) {
+      i++;
+      continue;
+    }
+    let current: SpanLike = { ...firstSpan };
     let mergeCount = 0;
 
     // Try to merge with subsequent spans
     while (i + 1 < spans.length) {
       const next = spans[i + 1];
+      if (!next) break;
 
       // Check if spans are adjacent
       const gap = sourceText.substring(current.end, next.start);
@@ -132,6 +130,9 @@ export function mergeAdjacentSpans(
       }
 
       // Check if roles are compatible
+      if (typeof current.role !== 'string' || typeof next.role !== 'string') {
+        break;
+      }
       if (!areRolesCompatible(current.role, next.role)) {
         break; // Different parent categories
       }
@@ -143,12 +144,15 @@ export function mergeAdjacentSpans(
       }
 
       // Merge the spans
+      const currentConfidence = typeof current.confidence === 'number' ? current.confidence : 0;
+      const nextConfidence = typeof next.confidence === 'number' ? next.confidence : 0;
+      const mergedRole = selectMoreSpecificRole(current.role, next.role);
       current = {
         ...current,
         text: mergedText,
         end: next.end,
-        role: selectMoreSpecificRole(current.role, next.role),
-        confidence: (current.confidence + next.confidence) / 2,
+        role: mergedRole,
+        confidence: (currentConfidence + nextConfidence) / 2,
         // Preserve the ID from the first span
       };
 

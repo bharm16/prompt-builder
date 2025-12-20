@@ -13,11 +13,11 @@
  * - Explicit anti-hallucination instructions for missing context
  */
 
-import { BasePromptBuilder } from './BasePromptBuilder.js';
-import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
-import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
-import type { PromptBuildParams, CustomPromptParams } from '../types.js';
-import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
+import { BasePromptBuilder } from './BasePromptBuilder';
+import { SECURITY_REMINDER } from '@utils/SecurityPrompts';
+import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder';
+import type { PromptBuildParams, CustomPromptParams } from '../types';
+import { PROMPT_PREVIEW_LIMIT } from '@services/enhancement/constants';
 
 import { logger } from '@infrastructure/Logger';
 
@@ -26,7 +26,7 @@ import { logger } from '@infrastructure/Logger';
  * Embeds all constraints in system prompt since Llama doesn't support developer role
  */
 export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuilder {
-  private readonly log = logger.child({ service: 'GroqPromptBuilder' });
+  protected override readonly log = logger.child({ service: 'GroqPromptBuilder' });
 
   getProvider(): 'groq' {
     return 'groq';
@@ -106,6 +106,9 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
    * Core builder - embeds all constraints in system prompt
    */
   private _buildSpanPrompt(params: PromptBuildParams): PromptBuildResult {
+    const startTime = performance.now();
+    const operation = '_buildSpanPrompt';
+    
     const {
       highlightedText = '',
       contextBefore = '',

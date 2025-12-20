@@ -10,11 +10,11 @@
  * - Returns appropriate builder (OpenAI vs Groq)
  */
 
-import { logger } from '../../../../infrastructure/Logger.js';
-import { detectProvider } from '@utils/provider/ProviderDetector.js';
-import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder.js';
-import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder.js';
-import type { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder.js';
+import { logger } from '@infrastructure/Logger';
+import { detectProvider } from '@utils/provider/ProviderDetector';
+import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
+import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
+import type { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
 
 const log = logger.child({ service: 'VideoTemplateBuilderFactory' });
 
@@ -111,7 +111,7 @@ export function createVideoTemplateBuilder(provider: 'openai' | 'groq'): BaseVid
 }
 
 // Re-export types and classes
-export { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder.js';
-export type { VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
-export { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder.js';
-export { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder.js';
+export { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
+export type { VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder';
+export { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
+export { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';

@@ -48,5 +48,5 @@ export {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
-} from '../config/schemas/index.ts';
+} from '@config/schemas/index';
 

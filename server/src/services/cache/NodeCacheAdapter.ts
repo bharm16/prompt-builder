@@ -1,6 +1,6 @@
 import NodeCache from 'node-cache';
-import type { ICacheService, CacheOptions } from '@interfaces/ICacheService.js';
-import type { CacheAdapterOptions, CacheKeyGenerator, Logger } from './types.js';
+import type { ICacheService, CacheOptions } from '@interfaces/ICacheService';
+import type { CacheAdapterOptions, CacheKeyGenerator, Logger } from './types';
 
 /**
  * NodeCache Adapter
@@ -44,7 +44,7 @@ export class NodeCacheAdapter implements ICacheService {
   }
 
   async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
-    const ttl = options.ttl || this.cache.options.stdTTL;
+    const ttl = options.ttl ?? this.cache.options.stdTTL ?? 0;
     const success = this.cache.set(key, value, ttl);
     
     if (success) {
@@ -90,4 +90,3 @@ export class NodeCacheAdapter implements ICacheService {
     }
   }
 }
-

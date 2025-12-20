@@ -1,25 +1,26 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '../cache/CacheService.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import { ConstitutionalAI } from '@utils/ConstitutionalAI.js';
-import OptimizationConfig from '@config/OptimizationConfig.js';
+import { cacheService } from '@services/cache/CacheService';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { ConstitutionalAI } from '@utils/ConstitutionalAI';
+import OptimizationConfig from '@config/OptimizationConfig';
 
 // Import specialized services
-import { ContextInferenceService } from './services/ContextInferenceService.js';
-import { ModeDetectionService } from './services/ModeDetectionService.js';
-import { QualityAssessmentService } from './services/QualityAssessmentService.js';
-import { StrategyFactory } from './services/StrategyFactory.js';
-import { ShotInterpreterService } from './services/ShotInterpreterService.js';
-import { templateService } from './services/TemplateService.js';
+import { ContextInferenceService } from './services/ContextInferenceService';
+import { ModeDetectionService } from './services/ModeDetectionService';
+import { QualityAssessmentService } from './services/QualityAssessmentService';
+import { StrategyFactory } from './services/StrategyFactory';
+import { ShotInterpreterService } from './services/ShotInterpreterService';
+import { templateService } from './services/TemplateService';
 import type {
   AIService,
   OptimizationMode,
   OptimizationRequest,
   TwoStageOptimizationRequest,
   TwoStageOptimizationResult,
-  ShotPlan
-} from './types.js';
+  ShotPlan,
+  InferredContext
+} from './types';
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -46,7 +47,7 @@ export class PromptOptimizationService {
   private readonly strategyFactory: StrategyFactory;
   private readonly shotInterpreter: ShotInterpreterService;
   private readonly cacheConfig: { ttl: number; namespace: string };
-  private readonly templateVersions: Record<string, string>;
+  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly log: ILogger;
 
   constructor(aiService: AIService) {
@@ -135,7 +136,13 @@ export class PromptOptimizationService {
       this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
         operation,
       });
-      const result = await this.optimize({ prompt, mode: finalMode, context, brainstormContext, signal });
+      const result = await this.optimize({
+        prompt,
+        mode: finalMode,
+        context,
+        brainstormContext,
+        ...(signal ? { signal } : {}),
+      });
       return { draft: result, refined: result, metadata: { usedFallback: true } };
     }
 
@@ -157,7 +164,7 @@ export class PromptOptimizationService {
         maxTokens: OptimizationConfig.tokens.draft[finalMode] || OptimizationConfig.tokens.draft.default,
         temperature: OptimizationConfig.temperatures.draft,
         timeout: OptimizationConfig.timeouts.draft,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
@@ -187,14 +194,14 @@ export class PromptOptimizationService {
       const refined = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
-        context: {
-          ...(context || {}),
-          originalUserPrompt: prompt, // Pass original prompt for consistency check
+        context,
+        brainstormContext: {
+          ...(brainstormContext || {}),
+          originalUserPrompt: prompt,
         },
-        brainstormContext,
         shotPlan,
         shotPlanAttempted: true,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       const refinementDuration = Math.round(performance.now() - refinementStartTime);
@@ -247,7 +254,7 @@ export class PromptOptimizationService {
         brainstormContext,
         shotPlan,
         shotPlanAttempted: true,
-        signal,
+        ...(signal ? { signal } : {}),
       });
       return {
         draft: result,
@@ -371,7 +378,7 @@ export class PromptOptimizationService {
           brainstormContext,
           domainContent,
           shotPlan: interpretedShotPlan,
-          signal,
+          ...(signal ? { signal } : {}),
         });
 
         // Apply constitutional AI review if requested
@@ -470,7 +477,7 @@ export class PromptOptimizationService {
         context,
         brainstormContext,
         domainContent,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       // Apply constitutional AI if requested
@@ -558,16 +565,35 @@ export class PromptOptimizationService {
         return prompt;
       }
 
-      const constitutionalAI = new ConstitutionalAI(this.ai);
-      const reviewResult = await constitutionalAI.review(prompt);
+      const claudeClient = {
+        complete: async (reviewPrompt: string, options?: { maxTokens?: number }) => {
+          const response = await this.ai.execute('optimize_quality_assessment', {
+            systemPrompt: reviewPrompt,
+            maxTokens: options?.maxTokens ?? 2048,
+            temperature: 0.2,
+            ...(signal ? { signal } : {}),
+          });
+          const content = response.content?.map((item) => ({ text: item.text ?? '' }));
+          return {
+            text: response.text,
+            ...(content ? { content } : {}),
+          };
+        },
+      };
+
+      const reviewResult = await ConstitutionalAI.applyConstitutionalReview(
+        claudeClient,
+        prompt,
+        prompt
+      );
 
       if (reviewResult.revised) {
         this.log.info('Constitutional AI suggested revisions', {
           operation,
-          violationCount: reviewResult.violations?.length || 0,
+          issueCount: reviewResult.critique?.issues?.length || 0,
           duration: Math.round(performance.now() - startTime),
         });
-        return reviewResult.revised;
+        return reviewResult.output;
       }
 
       this.log.debug(`${operation} completed - no revisions needed`, {
@@ -655,7 +681,11 @@ Make it:
 Output ONLY the draft prompt, no explanations.`
     };
 
-    return draftInstructions[mode] || draftInstructions.optimize;
+    const fallback =
+      draftInstructions.optimize ??
+      draftInstructions.video ??
+      'You are a prompt optimization draft generator. Create an improved prompt.';
+    return draftInstructions[mode] ?? fallback;
   }
 
   /**

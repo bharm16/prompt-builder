@@ -14,9 +14,9 @@ import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Worker } from 'worker_threads';
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, VALID_CATEGORIES, getParentCategory } from '#shared/taxonomy.ts';
-import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig.js';
+import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig';
 import type {
   NlpSpan,
   ExtractionOptions,
@@ -24,7 +24,7 @@ import type {
   VocabStats,
   WarmupResult,
   PatternInfo
-} from './types.js';
+} from './types';
 
 // =============================================================================
 // SETUP
@@ -496,6 +496,7 @@ function extractActionSpans(text: string): NlpSpan[] {
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+    if (!token) continue;
     const role = ACTION_VERB_ROLE.get(token.lower);
     if (!role) continue;
     if (!isLikelyVerbToken(token)) continue;
@@ -505,7 +506,8 @@ function extractActionSpans(text: string): NlpSpan[] {
     }
 
     let startIndex = i;
-    if (i > 0 && isAdverbToken(tokens[i - 1])) {
+    const prevToken = tokens[i - 1];
+    if (i > 0 && prevToken && isAdverbToken(prevToken)) {
       startIndex = i - 1;
     }
 
@@ -513,9 +515,12 @@ function extractActionSpans(text: string): NlpSpan[] {
     let usedTokens = 1;
 
     for (let j = i + 1; j < tokens.length && usedTokens < ACTION_MAX_TOKENS; j++) {
-      if (hasHardBoundary(text, tokens[j - 1].end, tokens[j].start)) break;
-      if (ACTION_STOP_WORDS.has(tokens[j].lower)) break;
-      if (ACTION_VERB_FORMS.has(tokens[j].lower)) break;
+      const prevTok = tokens[j - 1];
+      const currTok = tokens[j];
+      if (!prevTok || !currTok) break;
+      if (hasHardBoundary(text, prevTok.end, currTok.start)) break;
+      if (ACTION_STOP_WORDS.has(currTok.lower)) break;
+      if (ACTION_VERB_FORMS.has(currTok.lower)) break;
 
       endIndex = j;
       usedTokens += 1;
@@ -523,7 +528,8 @@ function extractActionSpans(text: string): NlpSpan[] {
 
     let hasNonAdverbAfterVerb = false;
     for (let j = i + 1; j <= endIndex; j++) {
-      if (!isAdverbToken(tokens[j])) {
+      const tok = tokens[j];
+      if (tok && !isAdverbToken(tok)) {
         hasNonAdverbAfterVerb = true;
         break;
       }
@@ -536,8 +542,11 @@ function extractActionSpans(text: string): NlpSpan[] {
       }
     }
 
-    const start = tokens[startIndex].start;
-    const end = tokens[endIndex].end;
+    const startToken = tokens[startIndex];
+    const endToken = tokens[endIndex];
+    if (!startToken || !endToken) continue;
+    const start = startToken.start;
+    const end = endToken.end;
     const phrase = text.slice(start, end).trim();
     if (!phrase) continue;
 
@@ -587,7 +596,7 @@ function extractClosedVocabulary(text: string): NlpSpan[] {
   if (!text || typeof text !== 'string') return [];
   
   const lowerText = text.toLowerCase();
-  const results = ahoCorasick.search(lowerText) as Array<[number, string[]]>;
+  const results = ahoCorasick.search(lowerText);
   const spans: NlpSpan[] = [];
   
   for (const [endIndex, patterns] of results) {
@@ -682,10 +691,14 @@ let glinerWorkerReady = false;
 let glinerWorkerInitFailed = false;
 let glinerWorkerInitPromise: Promise<boolean> | null = null;
 let glinerWorkerRequestId = 0;
-const glinerWorkerPending = new Map<
-  number,
-  { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout?: NodeJS.Timeout }
->();
+
+interface GlinerWorkerPendingEntry {
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+  timeout: NodeJS.Timeout | undefined;
+}
+
+const glinerWorkerPending = new Map<number, GlinerWorkerPendingEntry>();
 
 /**
  * Labels for GLiNER extraction + mapping to internal taxonomy IDs.
@@ -895,7 +908,6 @@ function getOrCreateGlinerWorker(): Worker | null {
   try {
     const workerUrl = new URL('./glinerWorker.js', import.meta.url);
     glinerWorker = new Worker(workerUrl, {
-      type: 'module',
       workerData: {
         modelPath,
         tokenizerPath: NEURO_SYMBOLIC.GLINER.MODEL_PATH,
@@ -1174,7 +1186,7 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
     });
     
     return entities
-      .map((entity) => {
+      .map((entity): NlpSpan | null => {
         const taxonomyId = mapLabelToTaxonomy(entity.label);
         const labelThreshold = getLabelThreshold(entity.label, taxonomyId, threshold);
         if (entity.score < labelThreshold) {
@@ -1232,6 +1244,7 @@ function deduplicateSpans(spans: NlpSpan[]): NlpSpan[] {
 
     for (let i = accepted.length - 1; i >= 0; i--) {
       const existing = accepted[i];
+      if (!existing) continue;
       if (existing.end <= span.start) break;
 
       const existingParent = getParentCategory(existing.role) || existing.role;

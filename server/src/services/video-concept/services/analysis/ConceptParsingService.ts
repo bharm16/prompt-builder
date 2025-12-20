@@ -1,8 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { parseConceptOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Service responsible for parsing text concept descriptions into structured elements.
@@ -58,12 +57,17 @@ Return ONLY a JSON object with ALL elements:
 }`;
 
     try {
+      const schema: { type: 'object' | 'array'; required?: string[] } = {
+        type: 'object' as const,
+        required: ['subject', 'action', 'location', 'time', 'mood', 'style', 'event'],
+      };
+      
       const elements = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_concept_parsing',
-          schema: parseConceptOutputSchema,
+          schema,
           maxTokens: 512,
           temperature: 0.5,
         }

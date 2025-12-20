@@ -338,7 +338,7 @@ export class SemanticCacheEnhancer {
       });
     }
 
-    const result = {
+    const result: CacheOptimizationRecommendations = {
       overall: numericHitRate < 40 ? 'needs-improvement' : 'good',
       currentHitRate: hitRate,
       targetHitRate: '60%+',
@@ -372,13 +372,18 @@ export class SemanticCacheEnhancer {
     // Cluster similar prompts
     const clusters = this._clusterPrompts(commonPrompts);
 
-    const strategy = {
+    const prompts = clusters.flatMap((cluster) => {
+      const representative = cluster[0];
+      if (!representative) {
+        return [];
+      }
+      return [{ representative, variations: cluster.length }];
+    });
+
+    const strategy: CacheWarmingStrategy = {
       clusters: clusters.length,
       strategy: 'Pre-cache common variations of popular prompts',
-      prompts: clusters.map((cluster) => ({
-        representative: cluster[0],
-        variations: cluster.length,
-      })),
+      prompts,
     };
 
     const duration = Math.round(performance.now() - startTime);
@@ -402,16 +407,21 @@ export class SemanticCacheEnhancer {
     for (let i = 0; i < prompts.length; i++) {
       if (used.has(i)) continue;
 
-      const cluster = [prompts[i]];
+      const basePrompt = prompts[i];
+      if (!basePrompt) continue;
+
+      const cluster = [basePrompt];
       used.add(i);
 
       for (let j = i + 1; j < prompts.length; j++) {
         if (used.has(j)) continue;
 
-        const similarity = this.calculateSimilarity(prompts[i], prompts[j]);
+        const comparePrompt = prompts[j];
+        if (!comparePrompt) continue;
+        const similarity = this.calculateSimilarity(basePrompt, comparePrompt);
 
         if (similarity >= threshold) {
-          cluster.push(prompts[j]);
+          cluster.push(comparePrompt);
           used.add(j);
         }
       }
@@ -504,4 +514,3 @@ export class SemanticCacheEnhancer {
     );
   }
 }
-

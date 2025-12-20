@@ -6,7 +6,7 @@
  * ensuring client-server consistency
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
 
 /**
  * Complete set of valid roles for span labeling

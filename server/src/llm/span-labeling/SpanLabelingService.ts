@@ -1,15 +1,15 @@
-import { SubstringPositionCache } from './cache/SubstringPositionCache.js';
-import SpanLabelingConfig from './config/SpanLabelingConfig.js';
-import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils.js';
-import { TextChunker, countWords } from './utils/chunkingUtils.js';
-import { NlpSpanStrategy } from './strategies/NlpSpanStrategy.js';
-import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory.js';
-import { resolveOverlaps } from './processing/OverlapResolver.js';
-import { validateSpans } from './validation/SpanValidator.js';
-import { detectInjectionPatterns } from '../../utils/SecurityPrompts.js';
-import { logger } from '@infrastructure/Logger.js';
-import type { LabelSpansParams, LabelSpansResult } from './types.js';
-import type { AIService as BaseAIService } from '../../types.js';
+import { SubstringPositionCache } from './cache/SubstringPositionCache';
+import SpanLabelingConfig from './config/SpanLabelingConfig';
+import { sanitizePolicy, sanitizeOptions } from './utils/policyUtils';
+import { TextChunker, countWords } from './utils/chunkingUtils';
+import { NlpSpanStrategy } from './strategies/NlpSpanStrategy';
+import { createLlmClient, getCurrentSpanProvider } from './services/LlmClientFactory';
+import { resolveOverlaps } from './processing/OverlapResolver';
+import { validateSpans } from './validation/SpanValidator';
+import { detectInjectionPatterns } from '@utils/SecurityPrompts';
+import { logger } from '@infrastructure/Logger';
+import type { LabelSpansParams, LabelSpansResult, SpanLike } from './types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -101,11 +101,11 @@ async function labelSpansSingle(
   const cache = new SubstringPositionCache();
 
   try {
-    const policy = sanitizePolicy(params.policy);
+    const policy = sanitizePolicy(params.policy ?? null);
     const sanitizedOptions = sanitizeOptions({
-      maxSpans: params.maxSpans,
-      minConfidence: params.minConfidence,
-      templateVersion: params.templateVersion,
+      ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+      ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+      ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
     });
 
     // Try NLP fast-path first
@@ -138,7 +138,7 @@ async function labelSpansSingle(
 }
 
 interface ChunkResult {
-  spans: unknown[];
+  spans?: SpanLike[];
   chunkOffset: number;
   meta: { version: string; notes: string; [key: string]: unknown } | null;
   isAdversarial: boolean;
@@ -174,9 +174,17 @@ async function labelSpansChunked(
         ...params,
         text: chunk.text,
       }, aiService);
+
+      const spans: SpanLike[] = (result.spans || [])
+        .filter((span) => typeof span.start === 'number' && typeof span.end === 'number')
+        .map((span) => ({
+          ...span,
+          start: span.start as number,
+          end: span.end as number,
+        }));
       
       return {
-        spans: result.spans || [],
+        spans,
         chunkOffset: chunk.startOffset,
         meta: result.meta,
         isAdversarial: result.isAdversarial === true,
@@ -221,11 +229,11 @@ async function labelSpansChunked(
   
   // Merge spans from all chunks
   let mergedSpans = chunker.mergeChunkedSpans(chunkResults);
-  const policy = sanitizePolicy(params.policy);
+  const policy = sanitizePolicy(params.policy ?? null);
   const sanitizedOptions = sanitizeOptions({
-    maxSpans: params.maxSpans,
-    minConfidence: params.minConfidence,
-    templateVersion: params.templateVersion,
+    ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+    ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+    ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
   });
   const overlapResolved = resolveOverlaps(
     mergedSpans.map(span => ({
@@ -274,7 +282,7 @@ async function labelSpansChunked(
   return {
     spans: validation.result.spans,
     meta: validation.result.meta,
-    isAdversarial: validation.result.isAdversarial,
-    analysisTrace: validation.result.analysisTrace,
+    ...(validation.result.isAdversarial !== undefined && { isAdversarial: validation.result.isAdversarial }),
+    ...(validation.result.analysisTrace !== undefined && { analysisTrace: validation.result.analysisTrace }),
   };
 }

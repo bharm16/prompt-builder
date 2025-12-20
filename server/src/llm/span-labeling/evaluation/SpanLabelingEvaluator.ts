@@ -52,15 +52,15 @@ export type ConfusionMatrix = Record<string, Record<string, number>>;
  * - Confusion matrix
  */
 export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
-  calculateIoU(predicted: Span, groundTruth: Span): number {
+  override calculateIoU(predicted: Span, groundTruth: Span): number {
     return super.calculateIoU(predicted, groundTruth);
   }
 
-  evaluateSpans(predicted: Span[], groundTruth: Span[], iouThreshold = 0.5): F1Metrics {
+  override evaluateSpans(predicted: Span[], groundTruth: Span[], iouThreshold = 0.5): F1Metrics {
     return super.evaluateSpans(predicted, groundTruth, iouThreshold) as F1Metrics;
   }
 
-  evaluateTaxonomyAccuracy(
+  override evaluateTaxonomyAccuracy(
     predicted: Span[],
     groundTruth: Span[],
     iouThreshold = 0.5
@@ -68,7 +68,7 @@ export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
     return super.evaluateTaxonomyAccuracy(predicted, groundTruth, iouThreshold) as TaxonomyMetrics;
   }
 
-  calculateFragmentationRate(
+  override calculateFragmentationRate(
     predicted: Span[],
     groundTruth: Span[],
     iouThreshold = 0.1,
@@ -82,7 +82,7 @@ export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
     ) as FragmentationMetrics;
   }
 
-  calculateOverExtractionRate(
+  override calculateOverExtractionRate(
     predicted: Span[],
     groundTruth: Span[],
     iouThreshold = 0.5
@@ -90,7 +90,7 @@ export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
     return super.calculateOverExtractionRate(predicted, groundTruth, iouThreshold) as OverExtractionMetrics;
   }
 
-  updateConfusionMatrix(
+  override updateConfusionMatrix(
     matrix: ConfusionMatrix,
     predicted: Span[],
     groundTruth: Span[],
@@ -99,7 +99,7 @@ export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
     return super.updateConfusionMatrix(matrix, predicted, groundTruth, iouThreshold) as ConfusionMatrix;
   }
 
-  generateConfusionMatrix(
+  override generateConfusionMatrix(
     testResults: Array<{ predicted: Span[]; groundTruth: Span[] }>,
     iouThreshold = 0.5
   ): ConfusionMatrix {

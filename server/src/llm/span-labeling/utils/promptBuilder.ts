@@ -20,7 +20,7 @@
  *   Pass useJsonSchema=true to save ~50-100 tokens per request
  */
 
-import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts.js';
+import { IMMUTABLE_SOVEREIGN_PREAMBLE } from '@utils/SecurityPrompts';
 import { logger } from '@infrastructure/Logger';
 
 // OpenAI-specific imports

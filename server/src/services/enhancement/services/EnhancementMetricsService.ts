@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger.js';
-import type { EnhancementMetrics, MetricsService } from './types.js';
-import type { PromptMode } from '../constants.js';
+import { logger } from '@infrastructure/Logger';
+import type { EnhancementMetrics, MetricsService } from './types';
+import type { PromptMode } from '../constants';
 
 interface MetricsParams {
   highlightedCategory: string | null;

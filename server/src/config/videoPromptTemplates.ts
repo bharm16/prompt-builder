@@ -333,7 +333,7 @@ EXAMPLES (if user typed "product reveal"):
 Each event should provide NARRATIVE PURPOSE. Not "something happening" but "product reveal with dramatic build-up and payoff".`,
   };
 
-  return prompts[elementType] || prompts.subject;
+  return prompts[elementType] ?? prompts.subject ?? '';
 }
 
 export const VIDEO_PROMPT_PRINCIPLES = `

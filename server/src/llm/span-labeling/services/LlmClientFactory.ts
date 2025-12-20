@@ -9,11 +9,11 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import { RobustLlmClient } from './RobustLlmClient.js';
-import { GroqLlmClient } from './GroqLlmClient.js';
-import { OpenAILlmClient } from './OpenAILlmClient.js';
-import { detectProvider } from '@utils/provider/ProviderDetector.js';
-import type { ILlmClient, LlmClientProvider } from './ILlmClient.js';
+import { RobustLlmClient } from './RobustLlmClient';
+import { GroqLlmClient } from './GroqLlmClient';
+import { OpenAILlmClient } from './OpenAILlmClient';
+import { detectProvider } from '@utils/provider/ProviderDetector';
+import type { ILlmClient, LlmClientProvider } from './ILlmClient';
 
 /**
  * Factory options for creating an LLM client

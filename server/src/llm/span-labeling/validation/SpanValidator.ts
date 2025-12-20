@@ -8,6 +8,7 @@ import type {
   ProcessingOptions,
   ValidationPolicy,
   ValidationResult,
+  LLMSpan,
 } from '../types.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
 
@@ -83,13 +84,24 @@ export function validateSpans({
 
   // Phase 2: Sort by position
   sanitized.sort((a, b) => {
-    if (a.start === b.start) return a.end - b.end;
-    return a.start - b.start;
+    const aStart = a.start ?? 0;
+    const bStart = b.start ?? 0;
+    const aEnd = a.end ?? 0;
+    const bEnd = b.end ?? 0;
+    if (aStart === bStart) return aEnd - bEnd;
+    return aStart - bStart;
   });
 
   // Phase 2.5: Merge adjacent spans with compatible categories
   // Fixes LLM fragmentation like "Action" + "Shot" → "Action Shot"
-  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(sanitized, text);
+  // Cast to SpanLike[] since we've validated start/end exist
+  const spansForMerge = sanitized.map(s => ({
+    ...s,
+    start: s.start ?? 0,
+    end: s.end ?? 0,
+    confidence: s.confidence ?? 0,
+  }));
+  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(spansForMerge, text);
 
   // Phase 3: Deduplicate
   const { spans: deduplicated, notes: dedupeNotes } = deduplicateSpans(merged);
@@ -97,20 +109,29 @@ export function validateSpans({
   // Phase 4: Resolve overlaps
   const { spans: resolved, notes: overlapNotes } = resolveOverlaps(
     deduplicated,
-    policy.allowOverlap as boolean
+    policy.allowOverlap === true
   );
 
   // Phase 5: Filter by confidence
   const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
     resolved,
-    options.minConfidence as number
+    options.minConfidence ?? 0
   );
 
   // Phase 6: Truncate to max spans
-  const { spans: finalSpans, notes: truncationNotes } = truncateToMaxSpans(
+  const { spans: finalSpansRaw, notes: truncationNotes } = truncateToMaxSpans(
     confidenceFiltered,
-    options.maxSpans as number
+    options.maxSpans ?? 10
   );
+
+  // Convert back to LLMSpan[]
+  const finalSpans: LLMSpan[] = finalSpansRaw.map((s) => ({
+    text: s.text,
+    role: typeof s.role === 'string' ? s.role : 'subject',
+    start: s.start,
+    end: s.end,
+    ...(typeof s.confidence === 'number' ? { confidence: s.confidence } : {}),
+  }));
 
   // Combine all notes
   const combinedNotes = [

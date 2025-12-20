@@ -15,17 +15,17 @@ import type { Request, Response } from 'express';
 import type { DIContainer } from '@infrastructure/DIContainer';
 
 // Import middleware
-import { apiAuthMiddleware } from '../middleware/apiAuth.js';
-import { errorHandler } from '../middleware/errorHandler.js';
-import { createBatchMiddleware } from '../middleware/requestBatching.js';
+import { apiAuthMiddleware } from '@middleware/apiAuth';
+import { errorHandler } from '@middleware/errorHandler';
+import { createBatchMiddleware } from '@middleware/requestBatching';
 
 // Import routes
-import { createAPIRoutes } from '../routes/api.routes.js';
-import { createHealthRoutes } from '../routes/health.routes.js';
-import { createRoleClassifyRoute } from '../routes/roleClassifyRoute.js';
-import { createLabelSpansRoute } from '../routes/labelSpansRoute.js';
-import { createSuggestionsRoute } from '../routes/suggestions.js';
-import { createPreviewRoutes } from '../routes/preview.routes.js';
+import { createAPIRoutes } from '@routes/api.routes';
+import { createHealthRoutes } from '@routes/health.routes';
+import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
+import { createLabelSpansRoute } from '@routes/labelSpansRoute';
+import { createSuggestionsRoute } from '@routes/suggestions';
+import { createPreviewRoutes } from '@routes/preview.routes';
 
 /**
  * Register all application routes

@@ -13,11 +13,11 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import vocab from '../../../../llm/span-labeling/nlp/vocab.json' with { type: "json" };
+import vocab from '@llm/span-labeling/nlp/vocab.json' with { type: "json" };
 import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder.js';
 
 export class OpenAIVideoTemplateBuilder extends BaseVideoTemplateBuilder {
-  protected readonly log = logger.child({ service: 'OpenAIVideoTemplateBuilder' });
+  protected override readonly log = logger.child({ service: 'OpenAIVideoTemplateBuilder' });
   /**
    * Build OpenAI-optimized template
    *
@@ -26,7 +26,7 @@ export class OpenAIVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * - System Prompt: Director's Treatment methodology (creative process)
    * - User Message: XML-wrapped user concept + interpreted plan
    */
-  buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
+  override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
     const startTime = performance.now();
     const operation = 'buildTemplate';
     

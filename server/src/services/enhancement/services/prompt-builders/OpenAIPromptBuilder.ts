@@ -11,7 +11,7 @@
 import { BasePromptBuilder } from './BasePromptBuilder.js';
 import type { IPromptBuilder, PromptBuildResult, SharedPromptContext } from './IPromptBuilder.js';
 import type { PromptBuildParams, CustomPromptParams } from '../types.js';
-import { PROMPT_PREVIEW_LIMIT } from '../../constants.js';
+import { PROMPT_PREVIEW_LIMIT } from '@services/enhancement/constants';
 
 /**
  * Security and format constraints for developer role
@@ -42,7 +42,7 @@ import { logger } from '@infrastructure/Logger';
  * Uses developer role for hard constraints
  */
 export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBuilder {
-  private readonly log = logger.child({ service: 'OpenAIPromptBuilder' });
+  protected override readonly log = logger.child({ service: 'OpenAIPromptBuilder' });
 
   getProvider(): 'openai' {
     return 'openai';

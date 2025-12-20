@@ -22,11 +22,11 @@ export interface ConstraintConfig {
  * Constraint generation details
  */
 export interface ConstraintDetails {
-  highlightWordCount?: number;
-  phraseRole?: string;
-  highlightedText?: string;
-  highlightedCategory?: string;
-  highlightedCategoryConfidence?: number;
+  highlightWordCount?: number | undefined;
+  phraseRole?: string | null | undefined;
+  highlightedText?: string | undefined;
+  highlightedCategory?: string | null | undefined;
+  highlightedCategoryConfidence?: number | null | undefined;
 }
 
 /**

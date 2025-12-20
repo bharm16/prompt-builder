@@ -12,7 +12,7 @@
  */
 
 import { logger } from '@infrastructure/Logger';
-import type { AIService } from './AIModelService';
+import type { AIModelService, ExecuteParams } from './AIModelService';
 import type { AIResponse } from '@interfaces/IAIClient';
 
 interface RoutingDecision {
@@ -33,7 +33,7 @@ interface RoutingOptions {
 }
 
 export class MiniMaxRouter {
-  constructor(private aiService: AIService) {}
+  constructor(private aiService: AIModelService) {}
 
   /**
    * Route request intelligently between GPT-4o-mini and GPT-4o
@@ -191,6 +191,22 @@ export class MiniMaxRouter {
   /**
    * Execute request with GPT-4o-mini
    */
+  private _buildExecuteOptions(
+    options: RoutingOptions,
+    overrides: Partial<ExecuteParams> = {}
+  ): ExecuteParams {
+    return {
+      systemPrompt: options.systemPrompt,
+      enableBookending: true,
+      ...(options.userMessage ? { userMessage: options.userMessage } : {}),
+      ...(options.schema ? { schema: options.schema } : {}),
+      ...(options.maxTokens !== undefined ? { maxTokens: options.maxTokens } : {}),
+      ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
+      ...overrides,
+    };
+  }
+
   private async _executeWithMini(options: RoutingOptions): Promise<AIResponse> {
     // Determine mini operation name (try operation_mini, fallback to operation)
     const miniOperation = options.operation.endsWith('_mini') 
@@ -198,28 +214,17 @@ export class MiniMaxRouter {
       : `${options.operation}_mini`;
 
     try {
-      return await this.aiService.execute(miniOperation, {
-        systemPrompt: options.systemPrompt,
-        userMessage: options.userMessage,
-        schema: options.schema,
-        maxTokens: options.maxTokens,
-        temperature: options.temperature,
-        timeout: options.timeout,
-        enableBookending: true, // Enable bookending for mini
-      });
+      return await this.aiService.execute(
+        miniOperation,
+        this._buildExecuteOptions(options)
+      );
     } catch (error) {
       // If mini operation doesn't exist, fall back to original operation with mini model override
       if (error instanceof Error && error.message.includes('not found')) {
-        return await this.aiService.execute(options.operation, {
-          systemPrompt: options.systemPrompt,
-          userMessage: options.userMessage,
-          schema: options.schema,
-          maxTokens: options.maxTokens,
-          temperature: options.temperature,
-          timeout: options.timeout,
-          model: 'gpt-4o-mini-2024-07-18', // Override to mini
-          enableBookending: true,
-        });
+        return await this.aiService.execute(
+          options.operation,
+          this._buildExecuteOptions(options, { model: 'gpt-4o-mini-2024-07-18' })
+        );
       }
       throw error;
     }
@@ -229,16 +234,9 @@ export class MiniMaxRouter {
    * Execute request with GPT-4o
    */
   private async _executeWithGPT4o(options: RoutingOptions): Promise<AIResponse> {
-    return await this.aiService.execute(options.operation, {
-      systemPrompt: options.systemPrompt,
-      userMessage: options.userMessage,
-      schema: options.schema,
-      maxTokens: options.maxTokens,
-      temperature: options.temperature,
-      timeout: options.timeout,
-      model: 'gpt-4o-2024-08-06', // Ensure GPT-4o
-      enableBookending: true,
-    });
+    return await this.aiService.execute(
+      options.operation,
+      this._buildExecuteOptions(options, { model: 'gpt-4o-2024-08-06' })
+    );
   }
 }
-

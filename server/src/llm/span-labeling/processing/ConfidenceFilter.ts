@@ -4,14 +4,7 @@
  * Filters spans below minimum confidence threshold.
  * Provides detailed logging of dropped spans.
  */
-
-interface SpanLike {
-  text: string;
-  start: number;
-  end: number;
-  confidence: number;
-  [key: string]: unknown;
-}
+import type { SpanLike } from '../types.js';
 
 interface FilterResult {
   spans: SpanLike[];
@@ -34,11 +27,12 @@ export function filterByConfidence(
 ): FilterResult {
   const notes: string[] = [];
   const filtered = spans.filter((span) => {
-    if (span.confidence >= minConfidence) return true;
+    const confidence = typeof span.confidence === 'number' ? span.confidence : 0;
+    if (confidence >= minConfidence) return true;
 
     notes.push(
       `Dropped "${span.text}" at ${span.start}-${span.end} ` +
-      `(confidence ${span.confidence.toFixed(2)} below threshold ${minConfidence}).`
+      `(confidence ${confidence.toFixed(2)} below threshold ${minConfidence}).`
     );
     return false;
   });

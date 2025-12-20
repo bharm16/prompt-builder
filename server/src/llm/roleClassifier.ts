@@ -199,6 +199,8 @@ export function validate(source: InputSpan[], labeled: unknown[]): LabeledSpan[]
     const { text, start, end } = itemObj;
     if (
       typeof text === 'string' &&
+      typeof start === 'number' &&
+      typeof end === 'number' &&
       Number.isInteger(start) &&
       Number.isInteger(end) &&
       start >= 0 &&
@@ -218,8 +220,8 @@ export function validate(source: InputSpan[], labeled: unknown[]): LabeledSpan[]
 
       out.push({
         text,
-        start: start as number,
-        end: end as number,
+        start,
+        end,
         role,
         confidence,
       });

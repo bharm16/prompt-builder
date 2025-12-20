@@ -170,7 +170,7 @@ When FALSE: process normally.`
  */
 export const DESCRIPTION_ENRICHED_SCHEMA_GROQ = {
   ...DESCRIPTION_ENRICHED_SCHEMA,
-  strict: undefined // Remove strict flag for Groq
+  strict: false as const // Use false instead of undefined for Groq (Groq ignores this flag anyway)
 };
 
 /**

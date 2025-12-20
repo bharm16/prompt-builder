@@ -1,9 +1,9 @@
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '@services/cache/CacheService.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer.js';
-import type { AIService } from '../../../prompt-optimization/types.js';
+import { cacheService } from '@services/cache/CacheService';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Scene change detection result
@@ -80,8 +80,8 @@ export class SceneChangeDetectionService {
     const systemPrompt = this.buildSystemPrompt(params);
 
     // Define schema for validation
-    const schema = {
-      type: 'object',
+    const schema: { type: 'object' | 'array'; required?: string[] } = {
+      type: 'object' as const,
       required: ['isSceneChange', 'confidence', 'reasoning', 'suggestedUpdates'],
     };
 

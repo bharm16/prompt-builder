@@ -6,14 +6,7 @@
  */
 
 import { getParentCategory } from '#shared/taxonomy.ts';
-
-interface SpanLike {
-  text: string;
-  start: number;
-  end: number;
-  confidence: number;
-  [key: string]: unknown;
-}
+import type { SpanLike } from '../types.js';
 
 interface ResolveResult {
   spans: SpanLike[];
@@ -69,8 +62,10 @@ export function resolveOverlaps(
       return specificityA > specificityB ? a : b;
     }
 
-    if (a.confidence !== b.confidence) {
-      return a.confidence > b.confidence ? a : b;
+    const confidenceA = typeof a.confidence === 'number' ? a.confidence : 0;
+    const confidenceB = typeof b.confidence === 'number' ? b.confidence : 0;
+    if (confidenceA !== confidenceB) {
+      return confidenceA > confidenceB ? a : b;
     }
 
     const lenA = a.end - a.start;
@@ -113,22 +108,26 @@ export function resolveOverlaps(
       overlapping
         .sort((a, b) => b.index - a.index)
         .forEach(({ index, existing }) => {
+          const existingConfidence = typeof existing.confidence === 'number' ? existing.confidence : 0;
+          const spanConfidence = typeof span.confidence === 'number' ? span.confidence : 0;
           notes.push(
             `Overlap between "${existing.text}" ` +
-            `(${existing.start}-${existing.end}, conf=${existing.confidence.toFixed(2)}) ` +
+            `(${existing.start}-${existing.end}, conf=${existingConfidence.toFixed(2)}) ` +
             `and "${span.text}" ` +
-            `(${span.start}-${span.end}, conf=${span.confidence.toFixed(2)}); ` +
+            `(${span.start}-${span.end}, conf=${spanConfidence.toFixed(2)}); ` +
             `kept "${span.text}".`
           );
           resolved.splice(index, 1);
         });
       resolved.push(span);
     } else {
+      const spanConfidence = typeof span.confidence === 'number' ? span.confidence : 0;
+      const winnerConfidence = typeof winner.confidence === 'number' ? winner.confidence : 0;
       notes.push(
         `Overlap between "${span.text}" ` +
-        `(${span.start}-${span.end}, conf=${span.confidence.toFixed(2)}) ` +
+        `(${span.start}-${span.end}, conf=${spanConfidence.toFixed(2)}) ` +
         `and "${winner.text}" ` +
-        `(${winner.start}-${winner.end}, conf=${winner.confidence.toFixed(2)}); ` +
+        `(${winner.start}-${winner.end}, conf=${winnerConfidence.toFixed(2)}); ` +
         `kept "${winner.text}".`
       );
     }

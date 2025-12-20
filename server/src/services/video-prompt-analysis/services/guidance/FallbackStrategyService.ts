@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
-import { getFallbackModes } from '../../config/fallbackStrategy.js';
-import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '../../types.js';
+import { getFallbackModes } from '@services/video-prompt-analysis/config/fallbackStrategy';
+import type { ConstraintConfig, ConstraintDetails, ConstraintOptions } from '@services/video-prompt-analysis/types';
 
 /**
  * Service responsible for determining fallback constraints when suggestions fail
@@ -17,8 +17,8 @@ export class FallbackStrategyService {
     attemptedModes: Set<string> = new Set(),
     getConstraintsFn: (details: ConstraintDetails, options: ConstraintOptions) => ConstraintConfig
   ): ConstraintConfig | null {
-    // Determine current mode
-    const currentMode = currentConstraints?.mode || null;
+    // Determine current mode (use 'default' if null/undefined)
+    const currentMode = currentConstraints?.mode ?? 'default';
 
     // Get fallback order for current mode
     const fallbackOrder = getFallbackModes(currentMode);

@@ -133,10 +133,10 @@ const PROVIDER_CAPABILITIES: Record<ProviderType, ProviderCapabilities> = {
  * Detect provider from operation name, model name, or environment
  */
 export function detectProvider(options: {
-  operation?: string;
-  model?: string;
-  client?: string;
-  providerEnvVar?: string;
+  operation?: string | undefined;
+  model?: string | undefined;
+  client?: string | undefined;
+  providerEnvVar?: string | undefined;
 }): ProviderType {
   const { operation, model, client, providerEnvVar } = options;
 
@@ -202,10 +202,10 @@ export function getProviderCapabilities(provider: ProviderType): ProviderCapabil
  * Get capabilities based on detection options
  */
 export function detectAndGetCapabilities(options: {
-  operation?: string;
-  model?: string;
-  client?: string;
-  providerEnvVar?: string;
+  operation?: string | undefined;
+  model?: string | undefined;
+  client?: string | undefined;
+  providerEnvVar?: string | undefined;
 }): { provider: ProviderType; capabilities: ProviderCapabilities } {
   const provider = detectProvider(options);
   return {
@@ -218,10 +218,10 @@ export function detectAndGetCapabilities(options: {
  * Check if current operation should use strict JSON schema
  */
 export function shouldUseStrictSchema(options: {
-  operation?: string;
-  model?: string;
-  client?: string;
-  hasSchema?: boolean;
+  operation?: string | undefined;
+  model?: string | undefined;
+  client?: string | undefined;
+  hasSchema?: boolean | undefined;
 }): boolean {
   if (!options.hasSchema) return false;
   
@@ -233,9 +233,9 @@ export function shouldUseStrictSchema(options: {
  * Check if developer message should be used
  */
 export function shouldUseDeveloperMessage(options: {
-  operation?: string;
-  model?: string;
-  client?: string;
+  operation?: string | undefined;
+  model?: string | undefined;
+  client?: string | undefined;
 }): boolean {
   const { capabilities } = detectAndGetCapabilities(options);
   return capabilities.developerRole;

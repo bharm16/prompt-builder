@@ -6,8 +6,8 @@
  */
 
 import Replicate from 'replicate';
-import { logger } from '@infrastructure/Logger.js';
-import type { ImageGenerationOptions, ImageGenerationResult, ImageGenerationServiceOptions } from './types.js';
+import { logger } from '@infrastructure/Logger';
+import type { ImageGenerationOptions, ImageGenerationResult, ImageGenerationServiceOptions } from './types';
 
 interface ReplicateClient {
   predictions: {
@@ -126,14 +126,17 @@ export class ImageGenerationService {
         if (currentPrediction.status === 'succeeded') {
           break;
         } else if (currentPrediction.status === 'failed' || currentPrediction.status === 'canceled') {
-          logger.error('Prediction failed', {
+          const predictionError = new Error(
+            `Image generation failed: ${currentPrediction.error || 'Unknown error'}`
+          );
+          logger.error('Prediction failed', predictionError, {
             predictionId: currentPrediction.id,
             status: currentPrediction.status,
             error: currentPrediction.error,
             logs: currentPrediction.logs,
             userId,
           });
-          throw new Error(`Image generation failed: ${currentPrediction.error || 'Unknown error'}`);
+          throw predictionError;
         }
         
         // Wait before next poll
@@ -158,11 +161,12 @@ export class ImageGenerationService {
 
       // Check if output is null or undefined
       if (output === null || output === undefined) {
-        logger.error('Replicate API returned null/undefined output', {
+        const outputError = new Error('Replicate API returned no output. The image generation may have failed silently.');
+        logger.error('Replicate API returned null/undefined output', outputError, {
           userId,
           duration,
         });
-        throw new Error('Replicate API returned no output. The image generation may have failed silently.');
+        throw outputError;
       }
 
       // Log the raw output for debugging
@@ -240,7 +244,8 @@ export class ImageGenerationService {
             
             // Check if object has any non-enumerable properties or special cases
             if (keys.length === 0 && firstItem !== null) {
-              logger.error('Empty object in array - possible Replicate API issue', {
+              const emptyObjectError = new Error('Empty object in array - possible Replicate API issue');
+              logger.error('Empty object in array - possible Replicate API issue', emptyObjectError, {
                 fullOutput: JSON.stringify(output, null, 2),
                 userId,
               });
@@ -319,7 +324,7 @@ export class ImageGenerationService {
           errorDetails.outputKeys = Object.keys(output);
         }
         
-        logger.error('Unexpected Replicate response format', errorDetails);
+        logger.error('Unexpected Replicate response format', new Error('Unexpected Replicate response format'), errorDetails);
         
         // Provide a more helpful error message
         if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'object' && Object.keys(output[0]).length === 0) {
@@ -331,11 +336,12 @@ export class ImageGenerationService {
 
       // Validate URL format
       if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-        logger.error('Invalid URL format returned', {
+        const urlError = new Error('Invalid image URL format returned from Replicate API');
+        logger.error('Invalid URL format returned', urlError, {
           imageUrl: imageUrl.substring(0, 100),
           userId,
         });
-        throw new Error('Invalid image URL format returned from Replicate API');
+        throw urlError;
       }
 
       logger.info('Image preview generated successfully', {
@@ -392,13 +398,16 @@ export class ImageGenerationService {
         }
       }
       
-      logger.error('Image generation failed', {
-        error: errorMessage,
-        parsedError,
-        statusCode,
-        prompt: prompt.substring(0, 100),
-        userId,
-      });
+      logger.error(
+        'Image generation failed',
+        error instanceof Error ? error : new Error(errorMessage),
+        {
+          parsedError,
+          statusCode,
+          prompt: prompt.substring(0, 100),
+          userId,
+        }
+      );
 
       const enhancedError = new Error(parsedError) as Error & { statusCode?: number };
       enhancedError.statusCode = statusCode;
@@ -406,4 +415,3 @@ export class ImageGenerationService {
     }
   }
 }
-

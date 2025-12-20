@@ -8,7 +8,7 @@ import type {
   CreativeIntent,
   MissingElement,
   ComplementaryElement,
-} from '../../types.js';
+} from '@services/enhancement/services/types';
 
 /**
  * Element Suggester

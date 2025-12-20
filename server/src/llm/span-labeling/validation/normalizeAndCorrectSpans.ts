@@ -3,7 +3,8 @@ import { getParentCategory } from '#shared/taxonomy.ts';
 import { wordCount } from '../utils/textUtils.js';
 import { normalizeSpan } from '../processing/SpanNormalizer.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import type { LLMSpan } from '../types.js';
+import type { LLMSpan, ValidationPolicy } from '../types.js';
+import type { SpanInput, NormalizedSpan } from '../processing/SpanNormalizer.js';
 
 /**
  * Lightly sanitize span text before alignment to improve hit rate on
@@ -19,13 +20,8 @@ function normalizeSpanTextForLookup(value: string): string {
     .trim();
 }
 
-interface ValidationPolicy {
-  nonTechnicalWordLimit?: number;
-  allowOverlap?: boolean;
-}
-
 export interface NormalizeAndCorrectResult {
-  sanitized: Array<LLMSpan & { id?: string }>;
+  sanitized: NormalizedSpan[];
   errors: string[];
   notes: string[];
 }
@@ -56,7 +52,7 @@ export function normalizeAndCorrectSpans(
   const errors: string[] = [];
   const validationNotes: string[] = [];
   const autoFixNotes: string[] = [];
-  const sanitized: Array<LLMSpan & { id?: string }> = [];
+  const sanitized: NormalizedSpan[] = [];
 
   spans.forEach((originalSpan, index) => {
     const label = `span[${index}]`;
@@ -116,11 +112,13 @@ export function normalizeAndCorrectSpans(
     }
 
     // Create corrected span (immutable)
-    const correctedSpan = {
-      ...spanObj,
+    const correctedSpan: SpanInput = {
+      text: typeof spanObj.text === 'string' ? spanObj.text : String(spanObj.text ?? ''),
       start: corrected.start,
       end: corrected.end,
-    } as LLMSpan;
+      role: typeof spanObj.role === 'string' ? spanObj.role : String(spanObj.role ?? ''),
+      ...(typeof spanObj.confidence === 'number' ? { confidence: spanObj.confidence } : {}),
+    };
 
     // Normalize role and confidence (includes ID generation)
     const normalized = normalizeSpan(correctedSpan, text, lenient);
@@ -174,9 +172,6 @@ export function normalizeAndCorrectSpans(
     notes: [...validationNotes, ...autoFixNotes],
   };
 }
-
-
-
 
 
 

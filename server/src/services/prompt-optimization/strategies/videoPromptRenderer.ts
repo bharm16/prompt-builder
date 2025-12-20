@@ -245,7 +245,7 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
 
 export function renderCompactVideoPrompt(
   slots: VideoPromptSlots,
-  options: { maxWords?: number; require?: Array<'camera' | 'lighting'> } = {}
+  options: { maxWords?: number; require?: Array<'camera' | 'lighting' | 'style'> } = {}
 ): string {
   const maxWords = options.maxWords ?? 50;
   const require = new Set(options.require ?? []);

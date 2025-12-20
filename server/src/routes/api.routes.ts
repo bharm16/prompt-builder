@@ -1,9 +1,9 @@
 import express, { type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
-import { asyncHandler } from '../middleware/asyncHandler.js';
-import { validateRequest } from '../middleware/validateRequest.js';
-import { PerformanceMonitor } from '../middleware/performanceMonitor.js';
-import { extractUserId } from '../utils/requestHelpers.js';
+import { asyncHandler } from '@middleware/asyncHandler';
+import { validateRequest } from '@middleware/validateRequest';
+import { PerformanceMonitor } from '@middleware/performanceMonitor';
+import { extractUserId } from '@utils/requestHelpers';
 import {
   promptSchema,
   suggestionSchema,
@@ -14,8 +14,8 @@ import {
   variationsSchema,
   parseConceptSchema,
   videoValidationSchema,
-} from '../utils/validation.js';
-import { extractSemanticSpans } from '../llm/span-labeling/nlp/NlpSpanService.js';
+} from '@utils/validation';
+import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService';
 
 interface ApiServices {
   promptOptimizationService: any;
@@ -680,6 +680,7 @@ export function createAPIRoutes(services: ApiServices): Router {
       const operation = 'test-nlp';
       
       const { prompt } = req.query;
+      const promptValue = Array.isArray(prompt) ? prompt[0] : prompt;
 
       logger.debug('NLP test request received', {
         operation,
@@ -687,7 +688,7 @@ export function createAPIRoutes(services: ApiServices): Router {
         hasPrompt: !!prompt,
       });
 
-      if (!prompt) {
+      if (typeof promptValue !== 'string' || promptValue.trim().length === 0) {
         logger.warn('NLP test request missing prompt parameter', {
           operation,
           requestId,
@@ -696,7 +697,7 @@ export function createAPIRoutes(services: ApiServices): Router {
       }
 
       try {
-        const result = await extractSemanticSpans(prompt);
+        const result = await extractSemanticSpans(promptValue);
 
         logger.info('NLP test request completed', {
           operation,
@@ -705,13 +706,13 @@ export function createAPIRoutes(services: ApiServices): Router {
           spanCount: result?.spans?.length || 0,
         });
 
-        res.json(result);
+        return res.json(result);
       } catch (error: any) {
         logger.error('NLP test request failed', error, {
           operation,
           requestId,
           duration: Date.now() - startTime,
-          promptLength: prompt?.length || 0,
+          promptLength: promptValue.length,
         });
         throw error;
       }

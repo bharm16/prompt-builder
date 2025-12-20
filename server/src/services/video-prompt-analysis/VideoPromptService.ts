@@ -1,17 +1,17 @@
 import { logger } from '@infrastructure/Logger';
-import { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService.js';
-import { PhraseRoleAnalysisService } from './services/analysis/PhraseRoleAnalysisService.js';
-import { ConstraintGenerationService } from './services/analysis/ConstraintGenerationService.js';
-import { FallbackStrategyService } from './services/guidance/FallbackStrategyService.js';
-import { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService.js';
-import { ModelDetectionService } from './services/detection/ModelDetectionService.js';
-import { SectionDetectionService } from './services/detection/SectionDetectionService.js';
-import { TaxonomyValidationService } from '../taxonomy-validation/TaxonomyValidationService.js';
-import { countWords } from './utils/textHelpers.js';
-import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types.js';
-import type { ValidationOptions, ValidationResult, ValidationStats } from '../taxonomy-validation/types.js';
-import type { ModelCapabilities } from './services/detection/ModelDetectionService.js';
-import type { SectionConstraints } from './services/detection/SectionDetectionService.js';
+import { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService';
+import { PhraseRoleAnalysisService } from './services/analysis/PhraseRoleAnalysisService';
+import { ConstraintGenerationService } from './services/analysis/ConstraintGenerationService';
+import { FallbackStrategyService } from './services/guidance/FallbackStrategyService';
+import { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService';
+import { ModelDetectionService } from './services/detection/ModelDetectionService';
+import { SectionDetectionService } from './services/detection/SectionDetectionService';
+import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
+import { countWords } from './utils/textHelpers';
+import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
+import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
+import type { ModelCapabilities } from './services/detection/ModelDetectionService';
+import type { SectionConstraints } from './services/detection/SectionDetectionService';
 
 /**
  * VideoPromptService - Main Orchestrator

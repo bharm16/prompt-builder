@@ -1,17 +1,31 @@
-import { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import SpanLabelingConfig from '../config/SpanLabelingConfig.js';
-import { sanitizePolicy, sanitizeOptions, buildTaskDescription } from '../utils/policyUtils.js';
-import { parseJson, buildUserPayload } from '../utils/jsonUtils.js';
-import { formatValidationErrors } from '../utils/textUtils.js';
-import { validateSchemaOrThrow } from '../validation/SchemaValidator.js';
-import { validateSpans } from '../validation/SpanValidator.js';
-import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, getFewShotExamples } from '../utils/promptBuilder.js';
-import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector.js';
-import { getSpanLabelingSchema } from '@utils/provider/SchemaFactory.js';
+import { SubstringPositionCache } from '../cache/SubstringPositionCache';
+import SpanLabelingConfig from '../config/SpanLabelingConfig';
+import { sanitizePolicy, sanitizeOptions, buildTaskDescription } from '../utils/policyUtils';
+import { parseJson, buildUserPayload } from '../utils/jsonUtils';
+import type { UserPayloadParams } from '../utils/jsonUtils';
+import { formatValidationErrors } from '../utils/textUtils';
+import { validateSchemaOrThrow } from '../validation/SchemaValidator';
+import { validateSpans } from '../validation/SpanValidator';
+import { buildSystemPrompt, BASE_SYSTEM_PROMPT, buildSpanLabelingMessages, getFewShotExamples } from '../utils/promptBuilder';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
+import { getSpanLabelingSchema } from '@utils/provider/SchemaFactory';
 import { logger } from '@infrastructure/Logger';
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan } from '../types.js';
-import type { AIService as BaseAIService } from '../../../types.js';
-import type { LlmSpanParams, ILlmClient } from './ILlmClient.js';
+import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan, LLMMeta } from '../types';
+import type { AIService as BaseAIService } from '@services/enhancement/services/types';
+import type { ExecuteParams } from '@services/ai-model/AIModelService';
+import type { LlmSpanParams, ILlmClient } from './ILlmClient';
+
+/**
+ * Parsed LLM response structure for span labeling
+ */
+interface ParsedLLMResponse {
+  spans?: LLMSpan[];
+  meta?: LLMMeta;
+  isAdversarial?: boolean;
+  is_adversarial?: boolean;
+  analysis_trace?: string | null;
+  [key: string]: unknown;
+}
 
 /**
  * Response from callModel with full metadata
@@ -36,8 +50,8 @@ export interface ProviderRequestOptions {
   useFewShot: boolean;
   useSeedFromConfig: boolean;
   enableLogprobs: boolean;
-  developerMessage?: string;
-  providerName?: string;
+  developerMessage?: string | undefined;
+  providerName?: string | undefined;
 }
 
 /**
@@ -60,7 +74,7 @@ async function callModel({
   providerOptions: ProviderRequestOptions;
   schema?: Record<string, unknown>;
 }): Promise<ModelResponse> {
-  const requestOptions: Record<string, unknown> = {
+  const requestOptions: ExecuteParams = {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
@@ -137,7 +151,7 @@ export class RobustLlmClient implements ILlmClient {
 
     const task = buildTaskDescription(options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans, policy);
 
-    const basePayload = {
+    const basePayload: UserPayloadParams = {
       task,
       policy,
       text,
@@ -147,17 +161,28 @@ export class RobustLlmClient implements ILlmClient {
     // Get provider-specific options from subclass (merge providerName for few-shot lookup)
     const providerName = this._getProviderName();
     const modelConfig = this._getModelConfig(aiService, 'span_labeling');
+    const modelName = modelConfig?.model;
+    const clientName = process.env.SPAN_PROVIDER || providerName;
     const { provider, capabilities } = detectAndGetCapabilities({
       operation: 'span_labeling',
-      model: modelConfig?.model,
-      client: process.env.SPAN_PROVIDER || providerName,
+      ...(modelName && { model: modelName }),
+      ...(clientName && { client: clientName }),
     });
     const supportsSchema = capabilities.strictJsonSchema || provider === 'groq' || provider === 'qwen';
     const spanSchema = supportsSchema
-      ? getSpanLabelingSchema({ operation: 'span_labeling', model: modelConfig?.model, provider })
+      ? getSpanLabelingSchema({ 
+          operation: 'span_labeling', 
+          ...(modelName && { model: modelName }), 
+          provider 
+        })
       : undefined;
+    const baseProviderOptions = this._getProviderRequestOptions();
     const providerOptions: ProviderRequestOptions = {
-      ...this._getProviderRequestOptions(),
+      developerMessage: baseProviderOptions.developerMessage,
+      enableBookending: baseProviderOptions.enableBookending,
+      useFewShot: baseProviderOptions.useFewShot,
+      useSeedFromConfig: baseProviderOptions.useSeedFromConfig,
+      enableLogprobs: baseProviderOptions.enableLogprobs,
       providerName,
     };
 
@@ -180,7 +205,7 @@ export class RobustLlmClient implements ILlmClient {
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
-        schema: spanSchema,
+        ...(spanSchema && { schema: spanSchema }),
       });
     } else {
       // Standard single-pass extraction
@@ -190,7 +215,7 @@ export class RobustLlmClient implements ILlmClient {
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
-        schema: spanSchema,
+        ...(spanSchema && { schema: spanSchema }),
       });
     }
 
@@ -202,27 +227,33 @@ export class RobustLlmClient implements ILlmClient {
       throw new Error(parsedPrimary.error);
     }
 
+    // Cast to expected response type
+    const parsedValue = parsedPrimary.value as ParsedLLMResponse;
+
     // Inject default meta if LLM omitted it
-    this._injectDefensiveMeta(parsedPrimary.value, options, nlpSpansAttempted);
+    this._injectDefensiveMeta(parsedValue, options, nlpSpansAttempted);
 
     // Validate schema
-    validateSchemaOrThrow(parsedPrimary.value, spanSchema);
+    validateSchemaOrThrow(parsedValue as Record<string, unknown>, spanSchema);
 
     const isAdversarial =
-      parsedPrimary.value?.isAdversarial === true ||
-      parsedPrimary.value?.is_adversarial === true;
+      parsedValue?.isAdversarial === true ||
+      parsedValue?.is_adversarial === true;
+
+    // Ensure meta has required properties
+    const meta = parsedValue.meta ?? { version: 'v1', notes: '' };
 
     if (isAdversarial) {
       const validation = validateSpans({
         spans: [],
-        meta: parsedPrimary.value.meta,
+        meta,
         text,
         policy,
         options,
         attempt: 1,
         cache,
         isAdversarial: true,
-        analysisTrace: parsedPrimary.value.analysis_trace || null,
+        analysisTrace: parsedValue.analysis_trace || null,
       });
 
       return this._postProcessResult(validation.result);
@@ -230,15 +261,15 @@ export class RobustLlmClient implements ILlmClient {
 
     // Validate spans (strict mode)
     let validation = validateSpans({
-      spans: parsedPrimary.value.spans || [],
-      meta: parsedPrimary.value.meta,
+      spans: parsedValue.spans || [],
+      meta,
       text,
       policy,
       options,
       attempt: 1,
       cache,
       isAdversarial,
-      analysisTrace: parsedPrimary.value.analysis_trace || null,
+      analysisTrace: parsedValue.analysis_trace || null,
     });
 
     if (validation.ok) {
@@ -248,15 +279,15 @@ export class RobustLlmClient implements ILlmClient {
     // Handle validation failure
     if (!enableRepair) {
       validation = validateSpans({
-        spans: parsedPrimary.value.spans || [],
-        meta: parsedPrimary.value.meta,
+        spans: parsedValue.spans || [],
+        meta,
         text,
         policy,
         options,
         attempt: 2,
         cache,
         isAdversarial,
-        analysisTrace: parsedPrimary.value.analysis_trace || null,
+        analysisTrace: parsedValue.analysis_trace || null,
       });
 
       return this._postProcessResult(validation.result);
@@ -266,7 +297,7 @@ export class RobustLlmClient implements ILlmClient {
     const repairResult = await this._attemptRepair({
       basePayload,
       validationErrors: validation.errors,
-      originalResponse: parsedPrimary.value,
+      originalResponse: parsedValue as Record<string, unknown>,
       text,
       policy,
       options,
@@ -274,7 +305,7 @@ export class RobustLlmClient implements ILlmClient {
       cache,
       estimatedMaxTokens,
       providerOptions,
-      schema: spanSchema,
+      ...(spanSchema && { schema: spanSchema }),
     });
 
     return this._postProcessResult(repairResult);
@@ -427,7 +458,7 @@ Convert this analysis to the required JSON format.`
         ...providerOptions,
         developerMessage: structuringDeveloperMessage,
       },
-      schema,
+      ...(schema && { schema }),
     });
 
     logger.info('Pass 2 (structuring) completed', {
@@ -514,7 +545,7 @@ Convert this analysis to the required JSON format.`
     providerOptions,
     schema,
   }: {
-    basePayload: Record<string, unknown>;
+    basePayload: UserPayloadParams;
     validationErrors: string[];
     originalResponse: Record<string, unknown>;
     text: string;
@@ -526,7 +557,7 @@ Convert this analysis to the required JSON format.`
     providerOptions: ProviderRequestOptions;
     schema?: Record<string, unknown>;
   }): Promise<LabelSpansResult> {
-    const repairPayload = {
+    const repairPayload: UserPayloadParams = {
       ...basePayload,
       validation: {
         errors: validationErrors,
@@ -544,7 +575,7 @@ If validation feedback is provided, correct the issues without altering span tex
       aiService,
       maxTokens: estimatedMaxTokens,
       providerOptions,
-      schema,
+      ...(schema && { schema }),
     });
 
     this._lastResponseMetadata = repairResponse.metadata;
@@ -554,20 +585,22 @@ If validation feedback is provided, correct the issues without altering span tex
       throw new Error(parsedRepair.error);
     }
 
-    validateSchemaOrThrow(parsedRepair.value, schema);
+    const repairValue = parsedRepair.value as ParsedLLMResponse;
+
+    validateSchemaOrThrow(repairValue as Record<string, unknown>, schema);
 
     const validation = validateSpans({
-      spans: parsedRepair.value.spans || [],
-      meta: parsedRepair.value.meta,
+      spans: repairValue.spans || [],
+      meta: repairValue.meta ?? { version: 'v1', notes: '' },
       text,
       policy,
       options,
       attempt: 2,
       cache,
       isAdversarial:
-        parsedRepair.value?.isAdversarial === true ||
-        parsedRepair.value?.is_adversarial === true,
-      analysisTrace: parsedRepair.value.analysis_trace || null,
+        repairValue?.isAdversarial === true ||
+        repairValue?.is_adversarial === true,
+      analysisTrace: repairValue.analysis_trace || null,
     });
 
     if (!validation.ok) {

@@ -5,7 +5,7 @@
  * and provides safe parsing with error handling.
  */
 
-interface UserPayloadParams {
+export interface UserPayloadParams {
   task: string;
   policy: Record<string, unknown>;
   text: string;
@@ -84,7 +84,13 @@ export function buildUserPayload({
   templateVersion,
   validation,
 }: UserPayloadParams): string {
-  const payload = {
+  const payload: {
+    task: string;
+    policy: Record<string, unknown>;
+    text: string;
+    templateVersion: string;
+    validation?: Record<string, unknown>;
+  } = {
     task,
     policy,
     // Wrap user input in XML tags for adversarial safety (PDF Design A, Section 1.6)

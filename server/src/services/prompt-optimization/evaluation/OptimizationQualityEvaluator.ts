@@ -1,6 +1,6 @@
-import type { AIService } from '../types.js';
-import type { LLMSpan } from '../../../llm/span-labeling/types.js';
-import { labelSpans } from '../../../llm/span-labeling/SpanLabelingService.js';
+import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { LLMSpan } from '@llm/span-labeling/types';
+import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
 
 export interface OptimizationTestCase {
   id: string;
@@ -98,7 +98,7 @@ const extractMainVideoPrompt = (optimized: string): string => {
 };
 
 export class OptimizationQualityEvaluator {
-  constructor(private readonly ai: AIService) {}
+  constructor(private readonly ai: AIModelService) {}
 
   private async intentPreservation(
     input: string,

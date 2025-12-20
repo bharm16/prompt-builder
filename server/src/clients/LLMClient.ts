@@ -36,11 +36,8 @@ export class ServiceUnavailableError extends Error {
 
 interface Adapter {
   complete(systemPrompt: string, options?: CompletionOptions): Promise<AIResponse>;
-  streamComplete?(systemPrompt: string, options?: StreamCompletionOptions): Promise<string>;
+  streamComplete?(systemPrompt: string, options: StreamCompletionOptions): Promise<string>;
   healthCheck?(): Promise<{ healthy: boolean; [key: string]: unknown }>;
-  providerName?: string;
-  defaultModel?: string;
-  defaultTimeout?: number;
   capabilities?: {
     streaming?: boolean;
   };
@@ -64,6 +61,9 @@ interface StreamCompletionOptions extends CompletionOptions {
   onChunk: (chunk: string) => void;
 }
 
+// Ensure requestOptions has onChunk for streaming
+type StreamRequestOptions = CompletionOptions & { onChunk: (chunk: string) => void };
+
 interface CircuitBreakerConfig {
   timeout?: number;
   errorThresholdPercentage?: number;
@@ -73,15 +73,21 @@ interface CircuitBreakerConfig {
   name?: string;
 }
 
+interface ConcurrencyLimiterOptions {
+  signal?: AbortSignal;
+  priority?: boolean;
+}
+
 interface ConcurrencyLimiter {
-  execute<T>(fn: () => Promise<T>, options?: { signal?: AbortSignal; priority?: boolean }): Promise<T>;
+  execute<T>(fn: () => Promise<T>, options?: ConcurrencyLimiterOptions): Promise<T>;
   getStats?(): unknown;
   getQueueStatus?(): unknown;
 }
 
 interface LLMClientConfig {
   adapter: Adapter;
-  providerName?: string;
+  providerName: string;
+  defaultModel?: string;
   defaultTimeout?: number;
   circuitBreakerConfig?: CircuitBreakerConfig;
   concurrencyLimiter?: ConcurrencyLimiter | null;
@@ -89,9 +95,10 @@ interface LLMClientConfig {
 
 interface HealthCheckResult {
   healthy: boolean;
-  error?: string;
-  responseTime?: number;
-  circuitBreakerState?: string;
+  provider: string;
+  error?: string | undefined;
+  responseTime?: number | undefined;
+  circuitBreakerState?: string | undefined;
 }
 
 /**
@@ -106,12 +113,14 @@ export class LLMClient implements IAIClient {
   private defaultModel: string;
   private defaultTimeout: number;
   private concurrencyLimiter: ConcurrencyLimiter | null;
-  private capabilities: { streaming: boolean };
-  private breaker: CircuitBreaker<[string, CompletionOptions], AIResponse>;
+  public readonly capabilities: NonNullable<IAIClient['capabilities']>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private breaker: CircuitBreaker<any, AIResponse>;
 
   constructor({
     adapter,
     providerName,
+    defaultModel = '',
     defaultTimeout = 60000,
     circuitBreakerConfig = {},
     concurrencyLimiter = null,
@@ -121,17 +130,12 @@ export class LLMClient implements IAIClient {
     }
 
     this.adapter = adapter;
-    this.providerName = providerName || adapter.providerName || 'llm';
-    this.defaultModel = adapter.defaultModel || '';
-    this.defaultTimeout = defaultTimeout || adapter.defaultTimeout || 60000;
+    this.providerName = providerName;
+    this.defaultModel = defaultModel;
+    this.defaultTimeout = defaultTimeout;
     this.concurrencyLimiter = concurrencyLimiter;
-    this.capabilities = adapter.capabilities || {
-      streaming: typeof adapter.streamComplete === 'function',
-    };
-
-    if (!this.defaultModel) {
-      throw new Error(`Default model required for ${this.providerName} adapter`);
-    }
+    const streaming = adapter.capabilities?.streaming ?? typeof adapter.streamComplete === 'function';
+    this.capabilities = { streaming };
 
     // Merge default circuit breaker options with provider-specific config
     const breakerOptions = {
@@ -184,10 +188,14 @@ export class LLMClient implements IAIClient {
       };
 
       const result = this.concurrencyLimiter
-        ? await this.concurrencyLimiter.execute(executeRequest, {
-            signal: options.signal,
-            priority: options.priority,
-          })
+        ? await this.concurrencyLimiter.execute(executeRequest, 
+            options.signal !== undefined || options.priority !== undefined
+              ? { 
+                  ...(options.signal !== undefined && { signal: options.signal }),
+                  ...(options.priority !== undefined && { priority: options.priority }),
+                }
+              : undefined
+          )
         : await executeRequest();
 
       const duration = Date.now() - startTime;
@@ -211,10 +219,11 @@ export class LLMClient implements IAIClient {
 
       // Handle concurrency limiter errors
       if (errorObj.code === 'QUEUE_TIMEOUT') {
-        logger.error(`${this.providerName} API request timed out in queue`, {
-          endpoint,
-          duration,
-        });
+        logger.error(
+          `${this.providerName} API request timed out in queue`,
+          undefined,
+          { endpoint, duration }
+        );
         throw new TimeoutError(`${this.providerName} API request timed out in queue - system overloaded`);
       }
 
@@ -228,11 +237,11 @@ export class LLMClient implements IAIClient {
         throw new ServiceUnavailableError(`${this.providerName} API is currently unavailable`);
       }
 
-      logger.error(`${this.providerName} API call failed`, {
-        endpoint,
-        duration,
-        error: errorObj.message,
-      });
+      logger.error(
+        `${this.providerName} API call failed`,
+        errorObj,
+        { endpoint, duration }
+      );
       throw errorObj;
     }
   }
@@ -254,10 +263,14 @@ export class LLMClient implements IAIClient {
 
     try {
       return this.concurrencyLimiter
-        ? await this.concurrencyLimiter.execute(executeStream, {
-            signal: options.signal,
-            priority: options.priority,
-          })
+        ? await this.concurrencyLimiter.execute(executeStream, 
+            options.signal !== undefined || options.priority !== undefined
+              ? { 
+                  ...(options.signal !== undefined && { signal: options.signal }),
+                  ...(options.priority !== undefined && { priority: options.priority }),
+                }
+              : undefined
+          )
         : await executeStream();
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -292,7 +305,11 @@ export class LLMClient implements IAIClient {
 
     try {
       const requestOptions = this._applyDefaults(options);
-      fullText = await this.adapter.streamComplete(systemPrompt, requestOptions);
+      const streamOptions: StreamRequestOptions = {
+        ...requestOptions,
+        onChunk: options.onChunk,
+      };
+      fullText = await this.adapter.streamComplete(systemPrompt, streamOptions);
 
       const duration = Date.now() - startTime;
       metricsService.recordClaudeAPICall(`${this.providerName}-stream`, duration, true);
@@ -349,6 +366,7 @@ export class LLMClient implements IAIClient {
       return {
         ...result,
         healthy: result.healthy !== false,
+        provider: this.providerName,
         responseTime: (result.responseTime as number | undefined) || duration,
         circuitBreakerState: this.getCircuitBreakerState(),
       };
@@ -356,6 +374,7 @@ export class LLMClient implements IAIClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         healthy: false,
+        provider: this.providerName,
         error: errorMessage,
         circuitBreakerState: this.getCircuitBreakerState(),
       };
@@ -421,4 +440,3 @@ export class LLMClient implements IAIClient {
     };
   }
 }
-

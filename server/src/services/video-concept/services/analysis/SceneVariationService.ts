@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger.js';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer.js';
-import { variationsOutputSchema } from '@utils/validation.js';
-import type { AIService } from '../../prompt-optimization/types.js';
+import { logger } from '@infrastructure/Logger';
+import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { variationsOutputSchema } from '@utils/validation';
+import type { AIService } from '@services/prompt-optimization/types';
 
 /**
  * Scene variation result

@@ -14,6 +14,19 @@ export interface LLMSpan {
 }
 
 /**
+ * Normalized span shape for processing pipelines
+ */
+export interface SpanLike {
+  text: string;
+  start: number;
+  end: number;
+  role?: string;
+  category?: string;
+  confidence?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Metadata from LLM response
  */
 export interface LLMMeta {
@@ -38,6 +51,7 @@ export interface LLMResponse {
 export interface ValidationPolicy {
   nonTechnicalWordLimit?: number;
   allowOverlap?: boolean;
+  [key: string]: unknown;
 }
 
 /**
@@ -47,6 +61,7 @@ export interface ProcessingOptions {
   maxSpans?: number;
   minConfidence?: number;
   templateVersion?: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -84,4 +99,3 @@ export interface LabelSpansResult {
   isAdversarial?: boolean;
   analysisTrace?: string | null;
 }
-

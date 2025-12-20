@@ -1,10 +1,5 @@
 import { DEFAULT_CONFIDENCE } from '../config/SpanLabelingConfig.js';
-
-interface SpanLike {
-  start: number;
-  end: number;
-  text: string;
-}
+import type { SpanLike } from '../types.js';
 
 /**
  * Text utility functions for span labeling

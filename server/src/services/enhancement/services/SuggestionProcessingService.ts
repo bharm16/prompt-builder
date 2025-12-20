@@ -5,7 +5,7 @@
  * Coordinates multiple processing steps to ensure high-quality suggestions.
  */
 
-import { logger } from '@infrastructure/Logger.js';
+import { logger } from '@infrastructure/Logger';
 import type {
   Suggestion,
   VideoConstraints,
@@ -18,9 +18,10 @@ import type {
   ValidationService,
   CategoryAligner,
   AIService,
-} from './types.js';
-import type { FallbackRegenerationService } from './FallbackRegenerationService.js';
-import type { SuggestionProcessor } from './SuggestionProcessor.js';
+  OutputSchema,
+} from './types';
+import type { FallbackRegenerationService } from './FallbackRegenerationService';
+import type { SuggestionProcessor } from './SuggestionProcessor';
 
 export interface SuggestionProcessingParams {
   suggestions: Suggestion[];
@@ -32,7 +33,7 @@ export interface SuggestionProcessingParams {
   videoConstraints: VideoConstraints | null;
   phraseRole: string | null;
   highlightWordCount: number;
-  schema: Record<string, unknown>;
+  schema: OutputSchema;
   temperature: number;
   contextBefore: string;
   contextAfter: string;

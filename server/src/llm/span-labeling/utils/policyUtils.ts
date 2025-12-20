@@ -3,19 +3,7 @@ import {
   DEFAULT_OPTIONS,
   PERFORMANCE
 } from '../config/SpanLabelingConfig.js';
-
-interface ValidationPolicy {
-  nonTechnicalWordLimit?: number;
-  allowOverlap?: boolean;
-  [key: string]: unknown;
-}
-
-interface ProcessingOptions {
-  maxSpans?: number;
-  minConfidence?: number;
-  templateVersion?: string;
-  [key: string]: unknown;
-}
+import type { ValidationPolicy, ProcessingOptions } from '../types.js';
 
 /**
  * Policy and options sanitization utilities

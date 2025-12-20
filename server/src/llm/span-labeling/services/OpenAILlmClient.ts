@@ -39,7 +39,7 @@ export class OpenAILlmClient extends RobustLlmClient implements ILlmClient {
    * - useSeedFromConfig: Enable seed for reproducibility
    * - enableLogprobs: false - Not needed with strict schema
    */
-  protected _getProviderRequestOptions(): ProviderRequestOptions {
+  protected override _getProviderRequestOptions(): ProviderRequestOptions {
     return {
       enableBookending: true, // OpenAI benefits from bookending
       useFewShot: false, // OpenAI uses schema descriptions instead
@@ -51,7 +51,7 @@ export class OpenAILlmClient extends RobustLlmClient implements ILlmClient {
   /**
    * HOOK: Provider name for logging and prompt building
    */
-  protected _getProviderName(): string {
+  protected override _getProviderName(): string {
     return 'openai';
   }
 
@@ -65,7 +65,7 @@ export class OpenAILlmClient extends RobustLlmClient implements ILlmClient {
    * 
    * Just add provider metadata for debugging.
    */
-  protected _postProcessResult(result: LabelSpansResult): LabelSpansResult {
+  protected override _postProcessResult(result: LabelSpansResult): LabelSpansResult {
     logger.debug('OpenAILlmClient: Returning result without adjustment', {
       spanCount: result.spans?.length || 0,
     });

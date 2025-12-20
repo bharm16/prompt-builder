@@ -16,11 +16,11 @@ vi.mock('uuid', () => ({
 }));
 
 import { logger } from '@infrastructure/Logger';
-import { runWithRequestContext, getRequestContext } from '../../server/src/infrastructure/requestContext.js';
-import { requestIdMiddleware } from '../../server/src/middleware/requestId.js';
-import { asyncHandler } from '../../server/src/middleware/asyncHandler.js';
-import { errorHandler } from '../../server/src/middleware/errorHandler.js';
-import { PerformanceMonitor } from '../../server/src/middleware/performanceMonitor.js';
+import { runWithRequestContext, getRequestContext } from '@infrastructure/requestContext';
+import { requestIdMiddleware } from '@middleware/requestId';
+import { asyncHandler } from '@middleware/asyncHandler';
+import { errorHandler } from '@middleware/errorHandler';
+import { PerformanceMonitor } from '@middleware/performanceMonitor';
 
 const mockedLogger = vi.mocked(logger);
 

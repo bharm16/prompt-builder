@@ -1,5 +1,5 @@
 import { logger } from '@infrastructure/Logger';
-import { normalizeText } from '../../utils/textHelpers.js';
+import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
 
 /**
  * Model-specific detection patterns and keywords

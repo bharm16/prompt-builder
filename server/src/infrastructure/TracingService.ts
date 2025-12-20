@@ -1,11 +1,12 @@
-import { trace, context, SpanStatusCode, type Span, type Tracer } from '@opentelemetry/api';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { trace, context, SpanStatusCode, type Span, type Tracer, type Attributes } from '@opentelemetry/api';
+import { resourceFromAttributes, defaultResource, type Resource } from '@opentelemetry/resources';
+import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import type { IncomingMessage } from 'http';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from './Logger.ts';
 
@@ -70,24 +71,25 @@ export class TracingService {
   private initialize(): void {
     try {
       // Create resource with service information
-      const resource = Resource.default().merge(
-        new Resource({
-          [SemanticResourceAttributes.SERVICE_NAME]: this.config.serviceName,
-          [SemanticResourceAttributes.SERVICE_VERSION]: this.config.serviceVersion,
-          [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: this.config.environment,
-        })
-      );
-
-      // Create tracer provider
-      this.provider = new NodeTracerProvider({
-        resource,
+      const baseResource = defaultResource();
+      const customResource = resourceFromAttributes({
+        [SEMRESATTRS_SERVICE_NAME]: this.config.serviceName,
+        [SEMRESATTRS_SERVICE_VERSION]: this.config.serviceVersion,
+        [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: this.config.environment,
       });
+      const resource = baseResource.merge(customResource);
 
-      // Add span processor
+      // Create span processor
       // In production, use BatchSpanProcessor with OTLP exporter
       // For now, use Console exporter for development
       const exporter = new ConsoleSpanExporter();
-      this.provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+      const spanProcessor = new SimpleSpanProcessor(exporter);
+
+      // Create tracer provider with resource and span processor
+      this.provider = new NodeTracerProvider({
+        resource,
+        spanProcessors: [spanProcessor],
+      });
 
       // Register the provider
       this.provider.register();
@@ -103,10 +105,13 @@ export class TracingService {
         instrumentations: [
           new HttpInstrumentation({
             requestHook: (span, request) => {
-              const headers = request.headers as Record<string, string | string[] | undefined>;
-              const userAgent = headers['user-agent'];
-              if (userAgent && typeof userAgent === 'string') {
-                span.setAttribute('http.user_agent', userAgent);
+              // Type guard to check if request is IncomingMessage (has headers)
+              const incomingMessage = request as IncomingMessage;
+              if (incomingMessage.headers) {
+                const userAgent = incomingMessage.headers['user-agent'];
+                if (userAgent && typeof userAgent === 'string') {
+                  span.setAttribute('http.user_agent', userAgent);
+                }
               }
             },
           }),
@@ -152,9 +157,11 @@ export class TracingService {
 
     const span = this.tracer.startSpan(name);
 
-    // Add custom attributes
+    // Add custom attributes - convert to valid attribute values
     Object.entries(attributes).forEach(([key, value]) => {
-      span.setAttribute(key, String(value));
+      if (value !== null && value !== undefined) {
+        span.setAttribute(key, String(value));
+      }
     });
 
     try {
@@ -214,7 +221,7 @@ export class TracingService {
   /**
    * Add event to current span
    */
-  addEvent(name: string, attributes: Record<string, unknown> = {}): void {
+  addEvent(name: string, attributes: Attributes = {}): void {
     if (!this.config.enabled) return;
 
     const span = trace.getSpan(context.active());

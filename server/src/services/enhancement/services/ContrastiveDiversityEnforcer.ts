@@ -1,6 +1,12 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { Suggestion, AIService, ContrastiveDecodingContext, DiversityMetrics } from './types.js';
+import type {
+  Suggestion,
+  AIService,
+  ContrastiveDecodingContext,
+  DiversityMetrics,
+  OutputSchema,
+} from './types.js';
 
 /**
  * ContrastiveDiversityEnforcer
@@ -102,7 +108,10 @@ export class ContrastiveDiversityEnforcer {
 
       return allSuggestions;
     } catch (error) {
-      logger.error('Contrastive decoding failed, will fallback to standard generation', { error });
+      logger.error(
+        'Contrastive decoding failed, will fallback to standard generation',
+        error as Error
+      );
       return null; // Signal to use standard generation
     }
   }
@@ -151,7 +160,7 @@ export class ContrastiveDiversityEnforcer {
    */
   private async _generateBatch(params: {
     systemPrompt: string;
-    schema: Record<string, unknown>;
+    schema: OutputSchema;
     temperature: number;
     count: number;
     negativeConstraint: string | null;
@@ -314,4 +323,3 @@ export class ContrastiveDiversityEnforcer {
     return intersection.size / union.size;
   }
 }
-

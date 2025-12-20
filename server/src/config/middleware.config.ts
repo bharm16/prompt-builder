@@ -21,8 +21,8 @@ import helmet from 'helmet';
 import rateLimit, { type RateLimitRequestHandler } from 'express-rate-limit';
 import compression from 'compression';
 
-import { requestIdMiddleware } from '../middleware/requestId.js';
-import { requestCoalescing } from '../middleware/requestCoalescing.js';
+import { requestIdMiddleware } from '@middleware/requestId';
+import { requestCoalescing } from '@middleware/requestCoalescing';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
 import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
@@ -372,17 +372,21 @@ export function applyCorsMiddleware(app: Application): void {
 
         // Validate CORS configuration in production
         if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
-          logger.error('ALLOWED_ORIGINS not configured for production', {
-            ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
-            FRONTEND_URL: process.env.FRONTEND_URL,
-          });
+          logger.error(
+            'ALLOWED_ORIGINS not configured for production',
+            undefined,
+            {
+              ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+              FRONTEND_URL: process.env.FRONTEND_URL,
+            }
+          );
           return callback(
             new Error('CORS configuration error: No allowed origins configured for production')
           );
         }
 
         // Check if origin is allowed
-        if (origin && allowedOrigins.includes(origin)) {
+        if (origin && (allowedOrigins as readonly string[]).includes(origin)) {
           callback(null, true);
         } else {
           logger.warn('CORS blocked request from unauthorized origin', {
@@ -466,4 +470,3 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
 
   logger.info('All middleware configured successfully');
 }
-

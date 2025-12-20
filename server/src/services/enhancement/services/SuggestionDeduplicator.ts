@@ -28,10 +28,14 @@ export class SuggestionDiversityEnforcer {
     // Calculate similarity matrix
     const similarities: Array<{ i: number; j: number; similarity: number }> = [];
     for (let i = 0; i < suggestions.length; i++) {
+      const first = suggestions[i];
+      if (!first) continue;
       for (let j = i + 1; j < suggestions.length; j++) {
+        const second = suggestions[j];
+        if (!second) continue;
         const sim = await this.calculateSimilarity(
-          suggestions[i].text,
-          suggestions[j].text
+          first.text,
+          second.text
         );
         similarities.push({ i, j, similarity: sim });
       }
@@ -159,6 +163,13 @@ export class SuggestionDiversityEnforcer {
    */
   async generateDiverseAlternative(suggestions: Suggestion[], indexToReplace: number): Promise<Suggestion> {
     const original = suggestions[indexToReplace];
+    if (!original) {
+      logger.warn('Suggestion index out of range during diversity replacement', {
+        indexToReplace,
+        suggestionCount: suggestions.length,
+      });
+      return { text: '', explanation: 'Unable to generate alternative' };
+    }
     const otherSuggestions = suggestions.filter((_, i) => i !== indexToReplace);
 
     const diversityPrompt = `Generate a diverse alternative that is meaningfully different from the existing suggestions.
@@ -192,10 +203,9 @@ Provide a JSON object with the new suggestion:
       logger.warn('Failed to generate diverse alternative', { error });
       // Fallback: return original with slight modification
       return {
-        text: original.text + ' (alternative approach)',
+        text: `${original.text} (alternative approach)`,
         explanation: original.explanation || 'Alternative variation',
       };
     }
   }
 }
-

@@ -12,43 +12,44 @@
 import { createContainer, type DIContainer } from '@infrastructure/DIContainer';
 import { logger } from '@infrastructure/Logger';
 import { metricsService } from '@infrastructure/MetricsService';
+import type { MetricsService as EnhancementMetricsService } from '@services/enhancement/services/types';
 
 // Import generic LLM client
-import { LLMClient } from '../clients/LLMClient.ts';
-import { OpenAICompatibleAdapter } from '../clients/adapters/OpenAICompatibleAdapter.ts';
-import { GroqLlamaAdapter } from '../clients/adapters/GroqLlamaAdapter.ts';
-import { GroqQwenAdapter } from '../clients/adapters/GroqQwenAdapter.ts';
-import { GeminiAdapter } from '../clients/adapters/GeminiAdapter.ts';
-import { openAILimiter } from '../services/concurrency/ConcurrencyService.ts';
+import { LLMClient } from '@clients/LLMClient';
+import { OpenAICompatibleAdapter } from '@clients/adapters/OpenAICompatibleAdapter';
+import { GroqLlamaAdapter } from '@clients/adapters/GroqLlamaAdapter';
+import { GroqQwenAdapter } from '@clients/adapters/GroqQwenAdapter';
+import { GeminiAdapter } from '@clients/adapters/GeminiAdapter';
+import { openAILimiter } from '@services/concurrency/ConcurrencyService';
 
 // Import AI Model Service
-import { AIModelService } from '../services/ai-model/index.ts';
+import { AIModelService } from '@services/ai-model/index';
 
 // Import services
-import { cacheService } from '../services/cache/CacheService.ts';
-import { PromptOptimizationService } from '../services/prompt-optimization/PromptOptimizationService.ts';
-import { EnhancementService } from '../services/EnhancementService.js';
-import { SceneChangeDetectionService } from '../services/video-concept/services/detection/SceneChangeDetectionService.js';
-import { VideoConceptService } from '../services/VideoConceptService.ts';
-import { initSpanLabelingCache } from '../services/cache/SpanLabelingCacheService.js';
-import { ImageGenerationService } from '../services/image-generation/ImageGenerationService.js';
+import { cacheService } from '@services/cache/CacheService';
+import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import { EnhancementService } from '@services/EnhancementService';
+import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
+import { VideoConceptService } from '@services/VideoConceptService';
+import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
+import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 
 // Import enhancement sub-services
-import { PlaceholderDetectionService } from '../services/enhancement/services/PlaceholderDetectionService.ts';
-import { VideoPromptService } from '../services/video-prompt-analysis/index.js';
-import { BrainstormContextBuilder } from '../services/enhancement/services/BrainstormContextBuilder.ts';
-import { CleanPromptBuilder } from '../services/enhancement/services/CleanPromptBuilder.ts';
-import { SuggestionValidationService } from '../services/enhancement/services/SuggestionValidationService.ts';
-import { SuggestionDiversityEnforcer } from '../services/enhancement/services/SuggestionDeduplicator.ts';
-import { CategoryAlignmentService } from '../services/enhancement/services/CategoryAlignmentService.ts';
+import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
+import { VideoPromptService } from '@services/video-prompt-analysis/index';
+import { BrainstormContextBuilder } from '@services/enhancement/services/BrainstormContextBuilder';
+import { CleanPromptBuilder } from '@services/enhancement/services/CleanPromptBuilder';
+import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
+import { SuggestionDiversityEnforcer } from '@services/enhancement/services/SuggestionDeduplicator';
+import { CategoryAlignmentService } from '@services/enhancement/services/CategoryAlignmentService';
 
 // Import config
 import { createRedisClient } from './redis.ts';
 
 // Import NLP warmup
-import { warmupGliner } from '../llm/span-labeling/nlp/NlpSpanService.js';
+import { warmupGliner } from '@llm/span-labeling/nlp/NlpSpanService';
 
-interface ServiceConfig {
+export interface ServiceConfig {
   openai: {
     apiKey: string | undefined;
     timeout: number;
@@ -368,7 +369,7 @@ export async function configureServices(): Promise<DIContainer> {
       validationService: SuggestionValidationService,
       diversityEnforcer: SuggestionDiversityEnforcer,
       categoryAligner: CategoryAlignmentService,
-      metricsService: typeof metricsService
+      metrics: EnhancementMetricsService
     ) =>
       new EnhancementService(
         aiService,
@@ -379,7 +380,7 @@ export async function configureServices(): Promise<DIContainer> {
         validationService,
         diversityEnforcer,
         categoryAligner,
-        metricsService
+        metrics
       ),
     [
       'aiService',
@@ -412,9 +413,16 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'imageGenerationService',
-    () => new ImageGenerationService({
-      apiToken: process.env.REPLICATE_API_TOKEN,
-    }),
+    () => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      if (!apiToken) {
+        logger.warn('REPLICATE_API_TOKEN not provided, image generation disabled');
+        return null;
+      }
+      return new ImageGenerationService({
+        apiToken,
+      });
+    },
     []
   );
 
@@ -443,9 +451,11 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   const openAIHealth = await claudeClient.healthCheck() as HealthCheckResult;
 
   if (!openAIHealth.healthy) {
-    logger.error('❌ OpenAI API key validation failed', {
-      error: openAIHealth.error,
-    });
+    logger.error(
+      '❌ OpenAI API key validation failed',
+      undefined,
+      { error: openAIHealth.error }
+    );
     console.error('\n❌ FATAL: OpenAI API key validation failed');
     console.error('The application cannot function without a valid OpenAI API key');
     console.error('Please check your OPENAI_API_KEY in .env file\n');
@@ -580,7 +590,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   logger.info('All services initialized and validated successfully');
   
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
-  const { NEURO_SYMBOLIC } = await import('../llm/span-labeling/config/SpanLabelingConfig.js');
+  const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');
   if (NEURO_SYMBOLIC.ENABLED && NEURO_SYMBOLIC.GLINER?.ENABLED && NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP) {
     try {
       const glinerResult = await warmupGliner();

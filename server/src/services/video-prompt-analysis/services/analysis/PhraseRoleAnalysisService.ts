@@ -1,6 +1,6 @@
-import { CATEGORY_PATTERNS, CONTEXT_PATTERNS, DEFAULT_ROLE } from '../../config/categoryMapping.js';
-import { normalizeText } from '../../utils/textHelpers.js';
-import { logger } from '@infrastructure/Logger.js';
+import { CATEGORY_PATTERNS, CONTEXT_PATTERNS, DEFAULT_ROLE } from '@services/video-prompt-analysis/config/categoryMapping';
+import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
+import { logger } from '@infrastructure/Logger';
 
 /**
  * Service responsible for analyzing and detecting phrase roles in video prompts

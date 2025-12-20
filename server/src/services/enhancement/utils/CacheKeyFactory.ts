@@ -1,5 +1,5 @@
-import { cacheService } from '../../cache/CacheService.js';
-import type { VideoConstraints } from '../services/types.js';
+import { cacheService } from '@services/cache/CacheService';
+import type { VideoConstraints, BrainstormSignature } from '../services/types.js';
 
 export interface EnhancementCacheParams {
   highlightedText: string;
@@ -8,7 +8,7 @@ export interface EnhancementCacheParams {
   fullPrompt: string;
   originalUserPrompt: string;
   isVideoPrompt: boolean;
-  brainstormSignature: string;
+  brainstormSignature: BrainstormSignature | null;
   highlightedCategory: string | null;
   highlightWordCount: number;
   phraseRole: string | null;
@@ -61,7 +61,6 @@ export class CacheKeyFactory {
     });
   }
 }
-
 
 
 
