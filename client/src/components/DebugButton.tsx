@@ -39,10 +39,10 @@ export default function DebugButton({
 }: DebugButtonProps): React.ReactElement {
   const state: PromptDebuggerState = {
     inputPrompt,
-    displayedPrompt,
-    optimizedPrompt,
-    selectedMode,
-    promptContext,
+    ...(typeof displayedPrompt === 'string' ? { displayedPrompt } : {}),
+    ...(typeof optimizedPrompt === 'string' ? { optimizedPrompt } : {}),
+    ...(typeof selectedMode === 'string' ? { selectedMode } : {}),
+    ...(promptContext !== undefined ? { promptContext } : {}),
   };
 
   const { capturePromptData, exportToFile, isCapturing } = usePromptDebugger(state);
@@ -171,4 +171,3 @@ export default function DebugButton({
     </div>
   );
 }
-

@@ -11,7 +11,7 @@ import type { SuggestionItem } from '../hooks/types';
 
 interface SuggestionsListProps {
   suggestions?: SuggestionItem[];
-  onSuggestionClick?: (suggestion: SuggestionItem) => void;
+  onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
   isPlaceholder?: boolean;
   showCopyAction?: boolean;
 }
@@ -64,8 +64,11 @@ export function SuggestionsList({
       }}
     >
       {suggestions.map((suggestion, index) => {
-        const suggestionObj = normalizeSuggestion(suggestion) as SuggestionItem;
-        const suggestionText = suggestionObj?.text || '';
+        const suggestionObj = normalizeSuggestion(suggestion);
+        if (!suggestionObj) {
+          return null;
+        }
+        const suggestionText = suggestionObj.text;
 
         return (
           <div
@@ -74,7 +77,7 @@ export function SuggestionsList({
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <button
-              onClick={() => handleSuggestionSelect(suggestionObj || suggestion)}
+              onClick={() => handleSuggestionSelect(suggestionObj)}
               className="w-full text-left relative p-geist-3 rounded-geist-lg bg-geist-background border border-geist-accents-2 hover:bg-geist-accents-1 hover:border-geist-accents-3 hover:shadow-geist-small active:scale-[0.99] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 cursor-pointer group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
@@ -119,4 +122,3 @@ export function SuggestionsList({
     </div>
   );
 }
-

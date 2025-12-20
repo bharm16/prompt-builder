@@ -29,10 +29,10 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
       selectedMode={selectedMode}
       onModeChange={setSelectedMode}
       onOptimize={onOptimize}
-      onShowBrainstorm={onShowBrainstorm}
+      {...(onShowBrainstorm ? { onShowBrainstorm } : {})}
       isProcessing={promptOptimizer.isProcessing}
       modes={modes}
-      aiNames={aiNames}
+      {...(aiNames ? { aiNames } : {})}
       currentAIIndex={currentAIIndex}
     />
   );
@@ -191,4 +191,3 @@ const StandardModeSkeleton = (): React.ReactElement => (
     </div>
   </>
 );
-

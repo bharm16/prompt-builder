@@ -10,7 +10,7 @@ export interface CacheKeyPayload {
   maxSpans?: number;
   minConfidence?: number;
   templateVersion?: string;
-  policy?: Record<string, unknown>;
+  policy?: unknown;
 }
 
 /**
@@ -42,4 +42,3 @@ export const buildCacheKey = (
     derivedId,
   ].join('::');
 };
-

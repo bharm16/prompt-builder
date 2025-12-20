@@ -1,21 +1,15 @@
 import { useCallback } from 'react';
 import { getPromptRepository } from '@/repositories';
 import type { Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '../../context/types';
 
 interface Span {
   id?: string;
-  start?: number;
-  end?: number;
-  category?: string;
+  start: number;
+  end: number;
+  category: string;
+  confidence: number;
   [key: string]: unknown;
-}
-
-interface HighlightSnapshot {
-  spans: Span[];
-  meta: Record<string, unknown> | null;
-  signature: string;
-  cacheId: string | null;
-  updatedAt: string;
 }
 
 interface PersistenceResult {
@@ -23,7 +17,7 @@ interface PersistenceResult {
   meta?: Record<string, unknown> | null;
   signature: string;
   cacheId?: string | null;
-  source?: 'network' | 'cache-fallback' | 'local';
+  source?: string;
 }
 
 interface User {
@@ -156,4 +150,3 @@ export function useHighlightsPersistence({
 
   return { handleHighlightsPersist };
 }
-

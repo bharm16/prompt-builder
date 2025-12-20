@@ -221,7 +221,14 @@ export function useHighlightRendering({
           start: highlightStart,
           end: highlightEnd,
           nodeIndex,
-          createWrapper: () => createHighlightWrapper(root, span, highlightStart, highlightEnd, PromptContext.getCategoryColor),
+          createWrapper: () =>
+            createHighlightWrapper(
+              root,
+              span,
+              highlightStart,
+              highlightEnd,
+              (category?: string) => (category ? PromptContext.getCategoryColor(category) : undefined)
+            ),
         });
 
         // Handle empty wrappers

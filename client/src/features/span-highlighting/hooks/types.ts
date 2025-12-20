@@ -80,6 +80,7 @@ export interface SpanLabelingResult {
   signature: string;
   cacheId: string | null;
   source: 'initial' | 'cache' | 'network' | 'cache-fallback' | 'refresh-cache';
+  [key: string]: unknown;
 }
 
 export type SpanLabelingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale';
@@ -126,7 +127,7 @@ export interface InitialData {
 }
 
 export interface UseSpanLabelingOptions {
-  text: string | null | undefined;
+  text?: string | null;
   initialData?: InitialData | null;
   initialDataVersion?: number;
   cacheKey?: string | null;
@@ -306,4 +307,3 @@ export interface ValidationState {
 }
 
 export type ValidatorFunction = (span: Span) => ValidationResult;
-

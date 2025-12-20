@@ -6,7 +6,7 @@
  */
 
 import { Sparkles, X, RefreshCw } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import type { PanelIcon } from './types';
 
 interface PanelHeaderProps {
   panelTitle?: string;
@@ -16,10 +16,10 @@ interface PanelHeaderProps {
   contextValue?: string;
   contextLabel?: string;
   contextSecondaryValue?: string;
-  contextIcon?: LucideIcon;
+  contextIcon?: PanelIcon;
   showContextBadge?: boolean;
   contextBadgeText?: string;
-  contextBadgeIcon?: LucideIcon;
+  contextBadgeIcon?: PanelIcon;
   isPlaceholder?: boolean;
 }
 
@@ -117,4 +117,3 @@ export function PanelHeader({
     </header>
   );
 }
-

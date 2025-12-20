@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
+export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'prefix'> {
   /**
    * Button variant style
    * @default 'primary'
@@ -350,4 +350,3 @@ export const ButtonLink = React.forwardRef<HTMLAnchorElement, ButtonLinkProps>(
 );
 
 ButtonLink.displayName = 'ButtonLink';
-

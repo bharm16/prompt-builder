@@ -99,7 +99,7 @@ export interface ValidationResult {
  */
 export const validateSpan = (span: Span | null | undefined): ValidationResult => {
   if (!span) {
-    return { span, pass: false, reason: 'missing_span' };
+    return { span: span ?? null, pass: false, reason: 'missing_span' };
   }
 
   // Extract text from span (supports both 'text' and 'quote' fields)
@@ -120,11 +120,11 @@ export const validateSpan = (span: Span | null | undefined): ValidationResult =>
 
   // Strict Taxonomy Check
   if (!category || !VALID_CATEGORIES.has(category)) {
-    return { 
-      span, 
-      pass: false, 
-      category, 
-      reason: 'invalid_taxonomy_id' 
+    return {
+      span,
+      pass: false,
+      reason: 'invalid_taxonomy_id',
+      ...(typeof category === 'string' ? { category } : {}),
     };
   }
 
@@ -149,4 +149,3 @@ export const validateSpan = (span: Span | null | undefined): ValidationResult =>
     reason: null 
   };
 };
-

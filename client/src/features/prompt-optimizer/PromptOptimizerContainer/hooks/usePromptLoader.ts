@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '@/repositories';
-import { createHighlightSignature } from '../../hooks/useSpanLabeling.ts';
+import { createHighlightSignature } from '@/features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
 import type { Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '../../context/types';
 
 interface PromptData {
   id?: string;
@@ -37,10 +38,7 @@ interface UsePromptLoaderParams {
   promptOptimizer: PromptOptimizer;
   setDisplayedPromptSilently: (prompt: string) => void;
   applyInitialHighlightSnapshot: (
-    highlight: {
-      signature?: string;
-      [key: string]: unknown;
-    } | null,
+    highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
@@ -97,13 +95,13 @@ export function usePromptLoader({
           setShowResults(true);
 
           // Restore highlight cache
-          const preloadHighlight = promptData.highlightCache
-            ? {
+          const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
+            ? ({
                 ...promptData.highlightCache,
                 signature:
                   promptData.highlightCache.signature ??
                   createHighlightSignature(promptData.output ?? ''),
-              }
+              } as HighlightSnapshot)
             : null;
           applyInitialHighlightSnapshot(preloadHighlight, {
             bumpVersion: true,
@@ -165,4 +163,3 @@ export function usePromptLoader({
     location,
   ]);
 }
-

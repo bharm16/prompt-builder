@@ -13,10 +13,10 @@
       "@types/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
       "@config/*": ["src/config/*"],
-      "@shared/*": ["../../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "#shared/*": ["../shared/*"]
     }
   },
   "include": ["src/**/*", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-

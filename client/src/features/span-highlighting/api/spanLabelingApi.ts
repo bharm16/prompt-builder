@@ -19,7 +19,7 @@ interface LabelSpansPayload {
   text: string;
   maxSpans?: number;
   minConfidence?: number;
-  policy?: Record<string, unknown>;
+  policy?: unknown;
   templateVersion?: string;
 }
 
@@ -97,4 +97,3 @@ export class SpanLabelingApi {
     };
   }
 }
-

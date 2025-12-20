@@ -18,6 +18,7 @@ interface KeyboardShortcutsCallbacks {
   openSettings?: () => void;
   createNew?: () => void;
   optimize?: () => void;
+  improveFirst?: () => void;
   canCopy?: () => boolean;
   copy?: () => void;
   export?: () => void;
@@ -269,4 +270,3 @@ export const useKeyboardShortcuts = (callbacks: KeyboardShortcutsCallbacks): voi
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [callbacks]);
 };
-

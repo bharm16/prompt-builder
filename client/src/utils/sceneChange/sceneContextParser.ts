@@ -39,16 +39,16 @@ export function extractSceneContext(
 
   let sectionMatch: RegExpExecArray | null;
   while ((sectionMatch = sectionRegex.exec(fullPrompt)) !== null) {
-    const heading = sectionMatch[1].trim();
-    const body = sectionMatch[2] || '';
+    const heading = sectionMatch[1]?.trim() ?? '';
+    const body = sectionMatch[2] ?? '';
     const fields: Record<string, string> = {};
 
     const fieldRegex = /- ([^:]+): \[(.*?)\]/g;
     let fieldMatch: RegExpExecArray | null;
     let foundInSection = false;
     while ((fieldMatch = fieldRegex.exec(body)) !== null) {
-      const fieldName = fieldMatch[1].trim();
-      const fieldValue = fieldMatch[2].trim();
+      const fieldName = fieldMatch[1]?.trim() ?? '';
+      const fieldValue = fieldMatch[2]?.trim() ?? '';
       fields[fieldName] = fieldValue;
 
       if (!foundInSection && normalizedTarget && fieldValue.toLowerCase().includes(normalizedTarget)) {
@@ -92,4 +92,3 @@ export function extractSceneContext(
     sectionContext: context,
   };
 }
-

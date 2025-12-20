@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TAXONOMY, getParentCategory, isAttribute } from '@shared/taxonomy';
+import { TAXONOMY, getParentCategory, isAttribute, type CategoryConfig } from '@shared/taxonomy';
 import { logger } from '../services/LoggingService';
 import type {
   Span,
@@ -205,7 +205,7 @@ function generateOrphanMessage(orphan: OrphanGroup): string {
  * Get human-readable label for category
  */
 function getCategoryLabel(categoryId: string): string {
-  for (const category of Object.values(TAXONOMY)) {
+  for (const category of Object.values(TAXONOMY) as CategoryConfig[]) {
     if (category.id === categoryId) {
       return category.label;
     }
@@ -250,9 +250,8 @@ function generateMissingSuggestions(categoriesPresent: Set<string>): ValidationS
     categoriesPresent.has(TAXONOMY.ENVIRONMENT.id) &&
     !categoriesPresent.has(TAXONOMY.CAMERA.id)
   ) {
-    const hasCameraAttrs = Array.from(categoriesPresent).some((cat) =>
-      Object.values(TAXONOMY.CAMERA.attributes).includes(cat)
-    );
+    const cameraAttributes = Object.values(TAXONOMY.CAMERA.attributes) as string[];
+    const hasCameraAttrs = Array.from(categoriesPresent).some((cat) => cameraAttributes.includes(cat));
 
     if (!hasCameraAttrs) {
       suggestions.push({
@@ -300,4 +299,3 @@ export function useCanAddCategory(categoryId: string | undefined, existingSpans:
 }
 
 export default useHierarchyValidation;
-

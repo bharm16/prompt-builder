@@ -7,7 +7,7 @@
  */
 
 import React, { type ReactNode } from 'react';
-import { ErrorBoundary } from '@components/ErrorBoundary/ErrorBoundary';
+import { ErrorBoundary, type FallbackProps } from '@components/ErrorBoundary/ErrorBoundary';
 import { spanLabelingCache } from '../services/index.ts';
 
 export interface HighlightingErrorBoundaryProps {
@@ -33,11 +33,9 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
   
   return (
     <ErrorBoundary
-      feature="span-highlighting"
       title="Highlighting temporarily unavailable"
       message="Text highlighting has encountered an issue. Your content is safe and you can continue editing."
-      onReset={handleReset}
-      fallback={({ error, resetError }: { error: Error; resetError: () => void }) => (
+      fallback={({ error, resetError }: FallbackProps) => (
         <div className="highlighting-error p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex items-start gap-2">
             <svg 
@@ -74,7 +72,10 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
               )}
               
               <button
-                onClick={resetError}
+                onClick={() => {
+                  handleReset();
+                  resetError();
+                }}
                 className="mt-2 text-sm text-yellow-700 underline hover:text-yellow-800 hover:no-underline"
               >
                 Re-enable highlighting
@@ -90,4 +91,3 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
 }
 
 export default HighlightingErrorBoundary;
-

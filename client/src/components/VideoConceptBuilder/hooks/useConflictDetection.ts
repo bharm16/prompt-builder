@@ -40,7 +40,9 @@ export function useConflictDetection(
 
         if (requestIdRef.current === requestId) {
           const duration = logger.endTimer(operation);
-          const conflicts = Array.isArray(data.conflicts) ? data.conflicts : [];
+          const conflicts = Array.isArray(data.conflicts)
+            ? data.conflicts.map((message) => ({ message }))
+            : [];
           logger.info('Conflict detection completed', {
             hook: 'useConflictDetection',
             operation,
@@ -68,4 +70,3 @@ export function useConflictDetection(
 
   return detectConflicts;
 }
-

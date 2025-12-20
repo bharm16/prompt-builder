@@ -106,7 +106,7 @@ export type VideoConceptAction =
   | { type: 'SUGGESTIONS_LOADED'; payload: string[] }
   | { type: 'SUGGESTIONS_CLEAR' }
   | { type: 'CONFLICTS_LOADING' }
-  | { type: 'CONFLICTS_LOADED'; payload: string[] }
+  | { type: 'CONFLICTS_LOADED'; payload: ConflictItem[] }
   | { type: 'CONFLICTS_CLEAR' }
   | { type: 'REFINEMENTS_LOADING' }
   | { type: 'REFINEMENTS_LOADED'; payload: Record<string, string[]> }
@@ -124,4 +124,3 @@ export type VideoConceptAction =
       payload: { element: ElementKey; value: string };
     }
   | { type: 'RESET' };
-

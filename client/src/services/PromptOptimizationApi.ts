@@ -70,12 +70,13 @@ export class PromptOptimizationApi {
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
+      const requestOptions = signal ? { signal } : {};
       return (await this.client.post('/optimize', {
         prompt,
         mode,
         context,
         brainstormContext,
-      }, { signal })) as OptimizeResult;
+      }, requestOptions)) as OptimizeResult;
     } catch (error) {
       if (this._shouldUseOfflineFallback(error)) {
         const offline = this._buildOfflineResult(
@@ -131,7 +132,7 @@ export class PromptOptimizationApi {
           context,
           brainstormContext,
         },
-        signal,
+        ...(signal ? { signal } : {}),
         onMessage: (event, data) => {
           try {
             switch (event) {
@@ -240,15 +241,19 @@ export class PromptOptimizationApi {
       const apiKey =
         config.config?.defaultHeaders?.['X-API-Key'] || '';
 
-      const response = await fetch(url, {
+      const requestInit: RequestInit = {
         method: method || 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': apiKey,
         },
         body: JSON.stringify(body),
-        signal,
-      });
+      };
+      if (signal) {
+        requestInit.signal = signal;
+      }
+
+      const response = await fetch(url, requestInit);
 
       if (!response.ok) {
         const error = new Error(
@@ -339,7 +344,7 @@ export class PromptOptimizationApi {
       // Try streaming first
       return await this.optimizeWithStreaming({
         ...streamingOptions,
-        signal,
+        ...(signal ? { signal } : {}),
         onError: (error) => {
           streamingError = error;
         },
@@ -371,7 +376,7 @@ export class PromptOptimizationApi {
         mode,
         context,
         brainstormContext,
-        signal,
+        ...(signal ? { signal } : {}),
       });
 
       // Format as two-stage result

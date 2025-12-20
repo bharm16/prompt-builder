@@ -5,7 +5,7 @@
  */
 
 import type { SpanLabelingPayload, SpanLabelingState, SpanMeta, LabeledSpan } from '../hooks/types.ts';
-import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache.ts';
+import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache';
 
 export interface ErrorHandlerOptions {
   requestId: number;
@@ -18,6 +18,7 @@ export interface ErrorHandlerOptions {
 export interface FallbackResult {
   spans: LabeledSpan[];
   meta: SpanMeta;
+  text: string;
   cacheId: string | null;
   signature: string;
 }
@@ -69,6 +70,7 @@ export function createFallbackResult(
       cacheAge,
       error: error.message,
     } as SpanMeta,
+    text: fallback.text ?? payload.text,
     cacheId: fallback.cacheId ?? payload.cacheId ?? null,
     signature: fallback.signature,
   };
@@ -115,4 +117,3 @@ export function logErrorWarning(
     textLength: payload.text?.length,
   });
 }
-

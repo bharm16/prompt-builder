@@ -4,6 +4,7 @@ import { PromptResultsSection } from '../components/PromptResultsSection';
 import SuggestionsPanel from '@components/SuggestionsPanel';
 import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
 import './PromptResultsLayout.css';
 
 /**
@@ -19,13 +20,20 @@ import './PromptResultsLayout.css';
 interface PromptResultsLayoutProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
-  onFetchSuggestions: (data: unknown) => void;
-  onSuggestionClick: (suggestion: unknown) => void;
-  onHighlightsPersist: (result: unknown) => void;
+  onFetchSuggestions: (payload?: SuggestionPayload) => void;
+  onSuggestionClick: (suggestion: SuggestionItem | string) => void;
+  onHighlightsPersist: (result: {
+    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
+    meta: Record<string, unknown> | null;
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
+  }) => void;
   onUndo: () => void;
   onRedo: () => void;
   stablePromptContext: PromptContext | null;
-  suggestionsData: unknown | null;
+  suggestionsData: SuggestionsData | null;
   displayedPrompt?: string;
 }
 
@@ -42,7 +50,7 @@ export const PromptResultsLayout = ({
   displayedPrompt,
 }: PromptResultsLayoutProps): React.ReactElement => {
   // Check if suggestions should be visible based on data presence
-  const isSuggestionsOpen = suggestionsData && (suggestionsData as Record<string, unknown>).show !== false;
+  const isSuggestionsOpen = suggestionsData ? suggestionsData.show !== false : false;
 
   return (
     <div className="prompt-results-layout">
@@ -66,4 +74,3 @@ export const PromptResultsLayout = ({
     </div>
   );
 };
-

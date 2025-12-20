@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { PromptContext } from '@utils/PromptContext';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
 import type { Toast } from '@hooks/types';
+import type { HighlightSnapshot } from '../../context/types';
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
@@ -19,7 +20,7 @@ interface PromptHistory {
     output: string,
     score: number | null,
     mode: string,
-    context: Record<string, unknown>
+    context: unknown
   ) => Promise<{ uuid: string; id?: string | null } | null>;
   [key: string]: unknown;
 }
@@ -36,7 +37,7 @@ interface UseConceptBrainstormParams {
   setDisplayedPromptSilently: (prompt: string) => void;
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
-    snapshot: unknown,
+    snapshot: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
@@ -193,4 +194,3 @@ export function useConceptBrainstorm({
     handleSkipBrainstorm,
   };
 }
-

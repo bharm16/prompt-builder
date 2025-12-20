@@ -96,7 +96,7 @@ export function EmptyState({ emptyState }: EmptyStateProps): React.ReactElement 
 
 interface ErrorStateProps {
   errorState: ErrorStateConfig;
-  errorMessage?: string;
+  errorMessage?: string | null;
 }
 
 export function ErrorState({

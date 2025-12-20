@@ -97,7 +97,6 @@ export interface PromptDocument {
 
 interface FirestoreError extends Error {
   code?: string;
-  message?: string;
 }
 
 function isFirestoreError(error: unknown): error is FirestoreError {
@@ -355,6 +354,9 @@ export async function getPromptByUuid(uuid: string): Promise<PromptDocument | nu
     }
 
     const doc = querySnapshot.docs[0];
+    if (!doc) {
+      return null;
+    }
     const data = doc.data() as FirestorePrompt;
 
     const timestamp = convertTimestamp(data.timestamp);
@@ -375,4 +377,3 @@ export async function getPromptByUuid(uuid: string): Promise<PromptDocument | nu
 }
 
 export { auth, db, analytics };
-

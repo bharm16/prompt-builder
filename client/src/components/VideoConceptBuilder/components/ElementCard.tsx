@@ -6,7 +6,7 @@
  */
 
 import { Star as Sparkles, CheckCircle, AlertCircle, Tag } from '@geist-ui/icons';
-import { Button } from '../../../Button';
+import { Button } from '@components/Button';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
 import type { ElementKey, Elements } from '../hooks/types';
 import type { ElementConfig, CategoryDetection } from './types';
@@ -233,11 +233,11 @@ export function ElementCard({
                 descriptorKey={elementKey}
                 descriptorConfig={descriptorConfig}
                 value={descriptorValue}
-                compatibility={descriptorCompatibility}
-                categoryDetection={categoryDetection}
                 onValueChange={onValueChange}
                 onFetchSuggestions={onFetchSuggestions}
                 descriptorIndex={idx}
+                {...(typeof descriptorCompatibility === 'number' ? { compatibility: descriptorCompatibility } : {})}
+                {...(categoryDetection ? { categoryDetection } : {})}
               />
             );
           })}
@@ -246,4 +246,3 @@ export function ElementCard({
     </div>
   );
 }
-

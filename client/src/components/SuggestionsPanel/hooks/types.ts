@@ -8,6 +8,7 @@ export interface SuggestionItem {
   suggestions?: SuggestionItem[];
   compatibility?: number;
   explanation?: string;
+  [key: string]: unknown;
 }
 
 export interface CategoryGroup {
@@ -26,4 +27,3 @@ export type SuggestionsAction =
   | { type: 'SET_SUGGESTIONS'; payload: SuggestionItem[] }
   | { type: 'SET_ACTIVE_CATEGORY'; payload: string | null }
   | { type: 'SET_LOADING'; payload: boolean };
-

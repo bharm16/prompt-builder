@@ -1,23 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
+import type { HighlightSnapshot, StateSnapshot } from '../../context/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;
   setDisplayedPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   [key: string]: unknown;
-}
-
-interface HighlightSnapshot {
-  signature?: string;
-  [key: string]: unknown;
-}
-
-interface StateSnapshot {
-  text: string;
-  highlight: HighlightSnapshot | null;
-  timestamp: number;
-  version: number;
 }
 
 type ChangeType = 'adding' | 'deleting' | null;
@@ -328,4 +317,3 @@ export function useUndoRedo({
     clearHistory,
   };
 }
-

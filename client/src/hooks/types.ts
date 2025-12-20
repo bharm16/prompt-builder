@@ -45,10 +45,11 @@ export interface CanAddCategoryResult {
 
 export interface PromptDebuggerState {
   inputPrompt: string;
-  displayedPrompt?: string | undefined;
-  optimizedPrompt?: string | undefined;
-  selectedMode?: string | undefined;
-  promptContext?: unknown | undefined;
+  displayedPrompt?: string;
+  optimizedPrompt?: string;
+  selectedMode?: string;
+  promptContext?: unknown;
+  highlights?: Highlight[];
 }
 
 export interface Highlight {
@@ -81,4 +82,3 @@ export interface Toast {
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
 }
-

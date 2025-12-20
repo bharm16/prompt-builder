@@ -17,8 +17,8 @@ export interface SpanMetadata {
 }
 
 export interface SpanWithText {
-  start: number;
-  end: number;
+  start?: number;
+  end?: number;
   quote?: string;
   text?: string;
   role?: string;
@@ -62,8 +62,13 @@ export function findNearbySpans(
     return [];
   }
 
+  type SpanWithRange = SpanWithText & { start: number; end: number };
+
   return allSpans
-    .filter((span) => {
+    .filter((span): span is SpanWithRange => {
+      if (typeof span.start !== 'number' || typeof span.end !== 'number') {
+        return false;
+      }
       // Don't include the selected span itself
       if (span.start === selectedStart && span.end === selectedEnd) {
         return false;
@@ -88,11 +93,11 @@ export function findNearbySpans(
         text: (span.quote || span.text || '').trim(),
         role: span.role || span.category || 'unknown',
         category: span.category || span.role || 'unknown',
-        confidence: span.confidence,
         distance,
         position,
         start: span.start,
         end: span.end,
+        ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
       };
     })
     .filter((span) => span.text) // Filter out spans with empty text
@@ -108,7 +113,7 @@ export function buildSimplifiedSpans(spans: unknown[]): NormalizedSpan[] {
   
   return sanitized
     .map(normalizeSpan)
-    .filter((span): span is NormalizedSpan => span !== null && span.text && span.text.length > 0);
+    .filter((span): span is NormalizedSpan => span !== null && typeof span.text === 'string' && span.text.length > 0);
 }
 
 /**
@@ -133,4 +138,3 @@ export function prepareSpanContext(
     nearbySpans,
   };
 }
-

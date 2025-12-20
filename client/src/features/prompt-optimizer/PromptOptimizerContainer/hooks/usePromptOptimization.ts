@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
+import type { HighlightSnapshot } from '../../context/types';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -23,16 +25,6 @@ interface PromptHistory {
   [key: string]: unknown;
 }
 
-interface PromptContext {
-  toJSON?: () => {
-    elements: unknown;
-    metadata: unknown;
-  };
-  elements?: unknown;
-  metadata?: unknown;
-  [key: string]: unknown;
-}
-
 export interface UsePromptOptimizationParams {
   promptOptimizer: PromptOptimizer;
   promptHistory: PromptHistory;
@@ -43,7 +35,7 @@ export interface UsePromptOptimizationParams {
   setDisplayedPromptSilently: (prompt: string) => void;
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
-    highlight: unknown | null,
+    highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
@@ -152,4 +144,3 @@ export function usePromptOptimization({
 
   return { handleOptimize };
 }
-

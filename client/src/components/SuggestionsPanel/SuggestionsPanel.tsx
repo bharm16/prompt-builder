@@ -15,7 +15,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Hooks
@@ -41,7 +40,7 @@ import {
   DEFAULT_ERROR_STATE,
   DEFAULT_PANEL_CONFIG,
 } from './config/panelConfig';
-import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './components/types';
+import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig, PanelIcon } from './components/types';
 import type { SuggestionItem } from './hooks/types';
 
 interface SuggestionsPanelProps {
@@ -50,8 +49,8 @@ interface SuggestionsPanelProps {
     suggestions?: SuggestionItem[];
     isLoading?: boolean;
     isError?: boolean;
-    errorMessage?: string;
-    onSuggestionClick?: (suggestion: SuggestionItem) => void;
+    errorMessage?: string | null;
+    onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
     onClose?: () => void;
     onRefresh?: () => void;
     selectedText?: string;
@@ -68,10 +67,10 @@ interface SuggestionsPanelProps {
     contextLabel?: string;
     contextValue?: string;
     contextSecondaryValue?: string;
-    contextIcon?: LucideIcon;
+    contextIcon?: PanelIcon;
     showContextBadge?: boolean;
     contextBadgeText?: string;
-    contextBadgeIcon?: LucideIcon;
+    contextBadgeIcon?: PanelIcon;
     keyboardHint?: string;
     emptyState?: EmptyStateConfig;
     errorState?: ErrorStateConfig;
@@ -249,7 +248,10 @@ export function SuggestionsPanel({
             )}
 
             {!isLoading && isError && (
-              <ErrorState errorState={errorState} errorMessage={errorMessage} />
+              <ErrorState
+                errorState={errorState}
+                {...(typeof errorMessage === 'string' ? { errorMessage } : {})}
+              />
             )}
 
             {!isLoading && !isError && currentSuggestions.length > 0 && (
@@ -294,4 +296,3 @@ export function SuggestionsPanel({
   );
 }
 export default SuggestionsPanel;
-

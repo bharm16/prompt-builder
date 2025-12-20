@@ -55,6 +55,9 @@ export function findCategoryForPhrase(
 
   // Second, check semantic groups for related terms
   for (const [groupName, terms] of Object.entries(semanticGroups)) {
+    if (!terms) {
+      continue;
+    }
     for (const term of terms) {
       if (lowerPhrase.includes(term)) {
         // Map group names back to categories
@@ -88,4 +91,3 @@ export function mapGroupToCategory(groupName: string): string | null {
   };
   return mappings[groupName as GroupName] || null;
 }
-

@@ -236,11 +236,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       // Implementation from original
     },
     applySuggestion: (index: number) => {
-      if (suggestionsData && typeof suggestionsData === 'object' && 'suggestions' in suggestionsData) {
-        const suggestions = (suggestionsData as { suggestions: unknown[] }).suggestions;
-        if (suggestions[index]) {
-          handleSuggestionClick(suggestions[index]);
-        }
+      const suggestion = suggestionsData?.suggestions?.[index];
+      if (suggestion) {
+        handleSuggestionClick(suggestion);
       }
     },
     closeModal: () => {
@@ -340,4 +338,3 @@ function PromptOptimizerWorkspace(): React.ReactElement {
 }
 
 export default PromptOptimizerWorkspace;
-

@@ -16,7 +16,7 @@
  * - UI components: components/*.tsx (reusable pieces)
  */
 
-export { default } from './VideoConceptBuilder';
+export { default } from '../VideoConceptBuilder';
 
 // Export hooks for advanced usage
 export { useVideoConceptState } from './hooks/useVideoConceptState';
@@ -31,7 +31,15 @@ export { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 export { VideoConceptApi } from './api/videoConceptApi';
 
 // Export utilities
-export * from './utils/subjectDescriptors';
+export {
+  normalizeDescriptor,
+  splitDescriptorSegments,
+  composeSubjectValue,
+  decomposeSubjectValue,
+  buildComposedElements,
+  type ComposedElements,
+  type DecomposedSubject,
+} from './utils/subjectDescriptors';
 export * from './utils/validation';
 export * from './utils/formatting';
 
@@ -49,4 +57,3 @@ export { RefinementSuggestions } from './components/RefinementSuggestions';
 export { TechnicalBlueprint } from './components/TechnicalBlueprint';
 export { VideoGuidancePanel } from './components/VideoGuidancePanel';
 export { TemplateSelector } from './components/TemplateSelector';
-

@@ -6,17 +6,7 @@ import {
   isAttribute,
   getAllParentCategories,
 } from '@shared/taxonomy';
-
-interface Span {
-  category?: string;
-  start?: number;
-  end?: number;
-  _originalCategory?: string;
-  _mappedTo?: string;
-  _isAttribute?: boolean;
-  _parentCategory?: string;
-  [key: string]: unknown;
-}
+import type { Span } from '../components/types';
 
 interface HierarchyInfo {
   parentCategories: string[];
@@ -249,4 +239,3 @@ export function useCategoryHierarchyInfo(
     };
   }, [categoryId, spans]);
 }
-

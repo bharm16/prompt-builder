@@ -47,7 +47,7 @@ export function useDebugLogger(
   options: UseDebugLoggerOptions = defaultOptions
 ): DebugLogger {
   const renderCount = useRef(0);
-  const prevPropsRef = useRef<Record<string, unknown> | undefined>();
+  const prevPropsRef = useRef<Record<string, unknown> | undefined>(undefined);
   const log = logger.child(componentName);
 
   // Track render count

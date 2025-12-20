@@ -17,47 +17,19 @@
 
 import { useSuggestionApply } from './useSuggestionApply';
 import { useSuggestionFetch } from './useSuggestionFetch';
+import type React from 'react';
 import type { Toast } from '@hooks/types';
-
-interface PromptOptimizer {
-  displayedPrompt: string;
-  [key: string]: unknown;
-}
-
-interface SuggestionsData {
-  show: boolean;
-  selectedText: string;
-  originalText: string;
-  suggestions: Array<{ text: string; [key: string]: unknown }>;
-  isLoading: boolean;
-  isPlaceholder: boolean;
-  fullPrompt: string;
-  range?: Range | null;
-  offsets?: { start?: number; end?: number } | null;
-  metadata?: {
-    category?: string;
-    span?: {
-      category?: string;
-      confidence?: number;
-      [key: string]: unknown;
-    };
-    confidence?: number;
-    [key: string]: unknown;
-  } | null;
-  [key: string]: unknown;
-}
-
-interface StablePromptContext {
-  [key: string]: unknown;
-}
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
+import type { PromptOptimizer } from '../../context/types';
 
 export interface UseEnhancementSuggestionsParams {
   promptOptimizer: PromptOptimizer;
   selectedMode: string;
   suggestionsData: SuggestionsData | null;
-  setSuggestionsData: (data: SuggestionsData | null) => void;
+  setSuggestionsData: React.Dispatch<React.SetStateAction<SuggestionsData | null>>;
   handleDisplayedPromptChange: (prompt: string) => void;
-  stablePromptContext: StablePromptContext | null;
+  stablePromptContext: PromptContext | null;
   toast: Toast;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
@@ -68,7 +40,7 @@ export interface UseEnhancementSuggestionsParams {
 
 export interface UseEnhancementSuggestionsReturn {
   fetchEnhancementSuggestions: () => Promise<void>;
-  handleSuggestionClick: (suggestion: { text: string; [key: string]: unknown } | string) => Promise<void>;
+  handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
 }
 
 /**
@@ -114,4 +86,3 @@ export function useEnhancementSuggestions({
     handleSuggestionClick,
   };
 }
-

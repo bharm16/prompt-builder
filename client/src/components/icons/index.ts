@@ -18,7 +18,7 @@ export {
   Target,
   Calendar,
   MapPin,
-  Palette,
+  Grid as Palette,
   Tag,
   Zap,
   ChevronDown,
@@ -47,4 +47,3 @@ export {
   Twitter,
   Linkedin,
 } from '@geist-ui/icons';
-

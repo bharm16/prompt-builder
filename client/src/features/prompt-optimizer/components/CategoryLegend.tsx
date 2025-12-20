@@ -10,17 +10,15 @@ type CategoryKey = keyof typeof CATEGORY_CONFIG;
  */
 function getCategoryExample(category: CategoryKey): string {
   const examples: Record<CategoryKey, string> = {
+    shot: 'close-up, wide shot, low-angle',
     subject: 'young painter, elderly historian',
-    appearance: 'weathered hands, focused expression',
-    wardrobe: 'worn leather jacket, fedora',
-    movement: 'gripping paintbrush, walking slowly',
+    action: 'gripping paintbrush, walking slowly',
     environment: 'cozy studio, rain-soaked alley',
     lighting: 'soft diffused light, golden hour',
     camera: 'gently pans, dolly in, rack focus',
-    framing: 'close-up, wide shot, low-angle',
-    specs: '4k, 8k, 16:9, shallow DOF',
     style: '35mm film, cyberpunk, noir',
-    quality: 'masterpiece, highly detailed',
+    technical: '4k, 8k, 16:9, shallow DOF',
+    audio: 'low ambient hum, subtle score',
   };
   return examples[category] ?? '';
 }
@@ -34,11 +32,11 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
   if (!show) return null;
 
   // Generate categories dynamically from actual configuration
-  const categories = CATEGORY_ORDER.map(categoryKey => {
+  const categories = (CATEGORY_ORDER as CategoryKey[]).map((categoryKey) => {
     const config = CATEGORY_CONFIG[categoryKey];
     return {
       name: config.label,
-      color: config.color,
+      color: config.backgroundColor,
       border: config.borderColor,
       example: getCategoryExample(categoryKey),
     };
@@ -142,4 +140,3 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
 });
 
 CategoryLegend.displayName = 'CategoryLegend';
-

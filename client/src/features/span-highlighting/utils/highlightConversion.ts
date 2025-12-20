@@ -56,11 +56,11 @@ export interface Highlight {
   startGrapheme?: number;
   endGrapheme?: number;
   version: string;
+  [key: string]: unknown;
 }
 
 export interface CanonicalText {
   graphemeIndexForCodeUnit?: (index: number) => number | undefined;
-  [key: string]: unknown;
 }
 
 /**
@@ -97,9 +97,11 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
 
   const merged: Highlight[] = [];
   let current = highlights[0];
+  if (!current) return highlights;
 
   for (let i = 1; i < highlights.length; i++) {
     const next = highlights[i];
+    if (!next) continue;
 
     // 1. Must be same category/role
     const sameCategory = current.category === next.category;
@@ -120,7 +122,9 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
       // Inherit the right context from the later span
       current.rightCtx = next.rightCtx;
       current.displayRightCtx = next.displayRightCtx;
-      current.endGrapheme = next.endGrapheme;
+      if (typeof next.endGrapheme === 'number') {
+        current.endGrapheme = next.endGrapheme;
+      }
 
       // Combine IDs for debugging (optional)
       current.id = `${current.id}_merged`;
@@ -211,12 +215,11 @@ export const convertLabeledSpansToHighlights = ({
         displayLeftCtx: leftCtx,
         displayRightCtx: rightCtx,
         source: 'llm',
-        confidence:
-          typeof span.confidence === 'number' ? span.confidence : undefined,
         validatorPass: true,
-        startGrapheme,
-        endGrapheme,
         version: LLM_PARSER_VERSION,
+        ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
+        ...(typeof startGrapheme === 'number' ? { startGrapheme } : {}),
+        ...(typeof endGrapheme === 'number' ? { endGrapheme } : {}),
       };
     })
     .filter((highlight): highlight is Highlight => highlight !== null)
@@ -230,4 +233,3 @@ export const convertLabeledSpansToHighlights = ({
   // 2. Merge fragmented spans before returning
   return mergeFragmentedSpans(rawHighlights, text);
 };
-

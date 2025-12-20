@@ -11,8 +11,13 @@ import { logger } from '../services/LoggingService';
 const log = logger.child('usePromptOptimizerState');
 
 export interface SpansData {
-  spans: unknown[];
-  meta: unknown | null;
+  spans: Array<{
+    start: number;
+    end: number;
+    category: string;
+    confidence: number;
+  }>;
+  meta: Record<string, unknown> | null;
   source: string;
   timestamp: number;
 }
@@ -221,4 +226,3 @@ export function usePromptOptimizerState() {
     setIsProcessing,
   };
 }
-

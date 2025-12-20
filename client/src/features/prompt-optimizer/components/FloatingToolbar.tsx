@@ -46,6 +46,7 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [showExportMenu, onToggleExportMenu]);
 
   return (
@@ -163,4 +164,3 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
 });
 
 FloatingToolbar.displayName = 'FloatingToolbar';
-

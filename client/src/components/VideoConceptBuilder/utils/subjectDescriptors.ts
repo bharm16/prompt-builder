@@ -11,8 +11,10 @@ export interface Elements {
   [key: string]: string | undefined;
 }
 
-export interface ComposedElements extends Elements {
+export interface ComposedElements {
+  subject: string;
   subjectDescriptors: string[];
+  [key: string]: string | string[] | undefined;
 }
 
 export interface DecomposedSubject {
@@ -160,4 +162,3 @@ export function buildComposedElements(sourceElements: Elements): ComposedElement
       .filter(Boolean),
   };
 }
-

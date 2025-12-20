@@ -12,7 +12,7 @@ import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '@config/performance.config';
 import { hashString } from '../utils/hashing.ts';
 import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.ts';
 import { getCacheStorage } from './storageAdapter.ts';
-import { getVersionString } from '#shared/version';
+import { getVersionString } from '@shared/version';
 import type { LabeledSpan, SpanMeta } from '../hooks/types';
 
 // Cache version - includes system versions from shared/version.js
@@ -145,7 +145,7 @@ class SpanLabelingCache {
             timestamp: typeof valueObj.timestamp === 'number' ? valueObj.timestamp : Date.now(),
             text: typeof valueObj.text === 'string' ? valueObj.text : '',
             cacheId: typeof valueObj.cacheId === 'string' ? valueObj.cacheId : null,
-            signature: typeof valueObj.signature === 'string' ? valueObj.signature : null,
+            signature: typeof valueObj.signature === 'string' ? valueObj.signature : '',
             version: CURRENT_CACHE_VERSION,
           };
           if (!normalized.text) {
@@ -325,4 +325,3 @@ class SpanLabelingCache {
  * This provides better cache hit rate and memory efficiency
  */
 export const spanLabelingCache = new SpanLabelingCache();
-

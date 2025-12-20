@@ -6,14 +6,14 @@
  */
 
 import { useMemo } from 'react';
-import { calculateGroupProgress } from '../utils/validation';
+import { calculateGroupProgress, type GroupProgress } from '../utils/validation';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
 import { detectDescriptorCategoryClient } from '../../../utils/subjectDescriptorCategories';
 import type { ElementKey, Elements } from './types';
 import type { CategoryDetection } from '../components/types';
 
 export interface VideoConceptComputedValues {
-  groupProgress: number;
+  groupProgress: GroupProgress[];
   conceptPreviewText: string;
   filledCount: number;
   totalElementSlots: number;
@@ -95,4 +95,3 @@ export function useVideoConceptComputed(
     descriptorCategories,
   };
 }
-

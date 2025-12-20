@@ -2,11 +2,15 @@
  * Types for PromptStateContext
  */
 
-import type { ReactNode } from 'react';
+import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
+
+export type { PromptHistoryEntry };
+export type HighlightSnapshot = CanvasHighlightSnapshot;
 
 export interface User {
   uid: string;
@@ -18,11 +22,6 @@ export interface Mode {
   name: string;
   icon: LucideIcon;
   description: string;
-}
-
-export interface HighlightSnapshot {
-  signature: string;
-  [key: string]: unknown;
 }
 
 export interface PromptOptimizer {
@@ -41,14 +40,15 @@ export interface PromptOptimizer {
   draftPrompt: string;
   isDraftReady: boolean;
   isRefining: boolean;
-  draftSpans: unknown | null;
-  refinedSpans: unknown | null;
+  draftSpans: SpansData | null;
+  refinedSpans: SpansData | null;
   optimize: (
     prompt?: string,
     context?: unknown | null,
     brainstormContext?: unknown | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
+  [key: string]: unknown;
 }
 
 export interface PromptHistory {
@@ -69,6 +69,15 @@ export interface PromptHistory {
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
   updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
+  updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  [key: string]: unknown;
+}
+
+export interface StateSnapshot {
+  text: string;
+  highlight: HighlightSnapshot | null;
+  timestamp: number;
+  version: number;
 }
 
 export interface PromptStateContextValue {
@@ -95,8 +104,8 @@ export interface PromptStateContextValue {
   setCurrentAIIndex: (index: number) => void;
 
   // Prompt State
-  suggestionsData: unknown | null;
-  setSuggestionsData: (data: unknown | null) => void;
+  suggestionsData: SuggestionsData | null;
+  setSuggestionsData: Dispatch<SetStateAction<SuggestionsData | null>>;
   conceptElements: unknown | null;
   setConceptElements: (elements: unknown | null) => void;
   promptContext: PromptContext | null;
@@ -119,8 +128,8 @@ export interface PromptStateContextValue {
   // Refs
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
   persistedSignatureRef: React.MutableRefObject<string | null>;
-  undoStackRef: React.MutableRefObject<unknown[]>;
-  redoStackRef: React.MutableRefObject<unknown[]>;
+  undoStackRef: React.MutableRefObject<StateSnapshot[]>;
+  redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   isApplyingHistoryRef: React.MutableRefObject<boolean>;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 
@@ -147,4 +156,3 @@ export interface PromptStateProviderProps {
   children: ReactNode;
   user: User | null;
 }
-

@@ -16,6 +16,7 @@ import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '../../api/en
 import { prepareSpanContext } from '@/features/span-highlighting/utils/spanProcessing';
 import { useEditHistory } from '../../hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
+import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
 
 interface PromptOptimizer {
   displayedPrompt: string;
@@ -23,39 +24,6 @@ interface PromptOptimizer {
   setDisplayedPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   [key: string]: unknown;
-}
-
-interface Suggestion {
-  text: string;
-  [key: string]: unknown;
-}
-
-interface SuggestionsData {
-  show: boolean;
-  selectedText: string;
-  originalText: string;
-  suggestions: Suggestion[];
-  isLoading: boolean;
-  isError?: boolean;
-  errorMessage?: string;
-  isPlaceholder: boolean;
-  fullPrompt: string;
-  range?: Range | null;
-  offsets?: { start?: number; end?: number } | null;
-  metadata?: {
-    category?: string;
-    span?: {
-      category?: string;
-      confidence?: number;
-      startIndex?: number;
-      [key: string]: unknown;
-    };
-    confidence?: number;
-    [key: string]: unknown;
-  } | null;
-  setSuggestions?: (suggestions: Suggestion[], isPlaceholder?: boolean) => void;
-  onSuggestionClick?: (suggestion: Suggestion | string) => Promise<void>;
-  onClose?: () => void;
 }
 
 interface FetchPayload {
@@ -78,7 +46,7 @@ interface UseSuggestionFetchParams {
   setSuggestionsData: SetSuggestionsData;
   stablePromptContext: unknown;
   toast: Toast;
-  handleSuggestionClick: (suggestion: Suggestion | string) => Promise<void>;
+  handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
 }
 
 /**
@@ -144,24 +112,21 @@ export function useSuggestionFetch({
         suggestions: [],
         isLoading: true,
         isError: false,
-        errorMessage: undefined,
+        errorMessage: null,
         isPlaceholder: false,
         fullPrompt: normalizedPrompt,
         range: range ?? null,
         offsets: offsets ?? null,
         metadata: metadata ?? null,
-        setSuggestions: (newSuggestions, newIsPlaceholder) => {
+        setSuggestions: (newSuggestions) => {
           setSuggestionsData((prev) => {
             if (!prev) return prev;
             return {
               ...prev,
               suggestions: newSuggestions,
-              isPlaceholder:
-                newIsPlaceholder !== undefined
-                  ? newIsPlaceholder
-                  : prev.isPlaceholder,
+              isPlaceholder: false,
               isError: false,
-              errorMessage: undefined,
+              ...(prev.errorMessage !== undefined ? { errorMessage: null } : {}),
             };
           });
         },
@@ -196,7 +161,7 @@ export function useSuggestionFetch({
         // Update with results
         setSuggestionsData((prev) => {
           if (!prev) return prev;
-          const suggestionsAsObjects: Suggestion[] = suggestions.map((s) =>
+          const suggestionsAsObjects: SuggestionItem[] = suggestions.map((s) =>
             typeof s === 'string' ? { text: s } : s
           );
           return {
@@ -204,7 +169,7 @@ export function useSuggestionFetch({
             suggestions: suggestionsAsObjects,
             isLoading: false,
             isError: false,
-            errorMessage: undefined,
+            ...(prev.errorMessage !== undefined ? { errorMessage: null } : {}),
             isPlaceholder,
           };
         });

@@ -1,5 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import type { User } from '@hooks/types';
+import type { FormData } from '../../PromptImprovementForm';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
 
 /**
  * Prompt optimization mode configuration
@@ -32,7 +35,7 @@ export interface PromptInputProps {
   onShowBrainstorm?: () => void;
   isProcessing: boolean;
   modes: PromptMode[];
-  aiNames?: string[];
+  aiNames?: readonly string[];
   currentAIIndex?: number;
 }
 
@@ -89,7 +92,7 @@ export interface PromptEditorProps {
  * Props for PromptInputSection component
  */
 export interface PromptInputSectionProps {
-  aiNames?: string[];
+  aiNames?: readonly string[];
   onOptimize: () => void;
   onShowBrainstorm?: () => void;
 }
@@ -105,8 +108,13 @@ export interface LoadingSkeletonProps {
  * Props for PromptModals component
  */
 export interface PromptModalsProps {
-  onImprovementComplete?: () => void;
-  onConceptComplete?: () => void;
+  onImprovementComplete?: (enhancedPrompt: string, formData: FormData) => void;
+  onConceptComplete?: (
+    finalConcept: string,
+    elements: Record<string, unknown>,
+    metadata: Record<string, unknown>
+  ) => void;
+  onSkipBrainstorm?: () => void;
 }
 
 /**
@@ -114,12 +122,19 @@ export interface PromptModalsProps {
  */
 export interface PromptResultsSectionProps {
   onDisplayedPromptChange: (text: string) => void;
-  onFetchSuggestions: () => void;
-  onSuggestionClick: (suggestion: unknown) => void;
-  onHighlightsPersist: (highlights: unknown) => void;
+  onFetchSuggestions: (payload?: SuggestionPayload) => void;
+  onSuggestionClick: (suggestion: SuggestionItem | string) => void;
+  onHighlightsPersist: (highlights: {
+    spans: Array<{ start: number; end: number; category: string; confidence: number }>;
+    meta: Record<string, unknown> | null;
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
+  }) => void;
   onUndo: () => void;
   onRedo: () => void;
-  stablePromptContext?: unknown;
+  stablePromptContext?: PromptContext | null;
 }
 
 /**
@@ -131,4 +146,3 @@ export interface PromptSidebarProps {
 
 // Re-export User type for convenience
 export type { User };
-

@@ -12,7 +12,7 @@ import type { ModeDropdownProps, PromptInputProps } from './types';
 const ModeDropdown = memo<ModeDropdownProps>(({ modes, selectedMode, onModeChange }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const currentMode = modes.find(m => m.id === selectedMode) ?? modes[0];
+  const currentMode = modes.find(m => m.id === selectedMode) ?? modes[0]!;
   const CurrentIcon = currentMode.icon;
 
   // Handle clicks outside dropdown
@@ -27,6 +27,7 @@ const ModeDropdown = memo<ModeDropdownProps>(({ modes, selectedMode, onModeChang
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [isOpen]);
 
   const debug = useDebugLogger('ModeDropdown', { selectedMode });
@@ -206,4 +207,3 @@ export const PromptInput = ({
     </div>
   );
 };
-

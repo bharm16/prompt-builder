@@ -35,6 +35,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   editorRef,
 }) => {
   const { groups } = useSpanGrouping(spans);
+  const orderedCategories = CATEGORY_ORDER as Array<keyof typeof CATEGORY_CONFIG>;
   
   // Memoize click handler to prevent BentoBox re-renders
   const handleSpanClick = useCallback((span: Span): void => {
@@ -68,7 +69,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
           (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
         }}
       >
-        {CATEGORY_ORDER.map(category => {
+        {orderedCategories.map((category) => {
           const config = CATEGORY_CONFIG[category];
           if (!config) return null;
           
@@ -88,4 +89,3 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
 });
 
 SpanBentoGrid.displayName = 'SpanBentoGrid';
-

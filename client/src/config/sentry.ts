@@ -102,19 +102,23 @@ export function initSentry(): void {
 }
 
 // Helper to set user context (call after Firebase auth)
-export function setSentryUser(user: User | null): void {
+export function setSentryUser(
+  user: { uid?: string; email?: string | null; displayName?: string | null } | null
+): void {
   if (!SENTRY_DSN) return;
 
   if (user) {
     const uid = typeof user.uid === 'string' ? user.uid : undefined;
     const email = typeof user.email === 'string' ? user.email : undefined;
     const displayName = typeof user.displayName === 'string' ? user.displayName : undefined;
-    
-    Sentry.setUser({
-      id: uid,
-      email: email,
-      username: displayName || email?.split('@')[0],
-    });
+
+    const username = displayName || email?.split('@')[0];
+    const sentryUser: { id?: string; email?: string; username?: string } = {};
+    if (uid) sentryUser.id = uid;
+    if (email) sentryUser.email = email;
+    if (username) sentryUser.username = username;
+
+    Sentry.setUser(Object.keys(sentryUser).length > 0 ? sentryUser : null);
   } else {
     Sentry.setUser(null);
   }
@@ -167,4 +171,3 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
 }
 
 export default Sentry;
-

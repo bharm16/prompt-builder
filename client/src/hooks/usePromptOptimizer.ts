@@ -76,7 +76,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           mode: selectedMode,
           context,
           brainstormContext,
-          signal,
+          ...(signal ? { signal } : {}),
         });
         
         const duration = logger.endTimer('analyzeAndOptimize');
@@ -194,10 +194,30 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
                 hasMeta: !!meta,
               });
 
+              const normalizedSpans: SpansData['spans'] = Array.isArray(spans)
+                ? spans.filter((span): span is SpansData['spans'][number] => {
+                    if (!span || typeof span !== 'object') {
+                      return false;
+                    }
+                    const candidate = span as {
+                      start?: unknown;
+                      end?: unknown;
+                      category?: unknown;
+                      confidence?: unknown;
+                    };
+                    return (
+                      typeof candidate.start === 'number' &&
+                      typeof candidate.end === 'number' &&
+                      typeof candidate.category === 'string' &&
+                      typeof candidate.confidence === 'number'
+                    );
+                  })
+                : [];
+
               // Store spans based on source (draft or refined)
               const spansData: SpansData = {
-                spans: spans || [],
-                meta: meta || null,
+                spans: normalizedSpans,
+                meta: (meta as Record<string, unknown>) || null,
                 source,
                 timestamp: Date.now(),
               };

@@ -6,6 +6,7 @@ import { Button } from '@components/Button';
 import PromptImprovementForm from '../../../PromptImprovementForm';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';
+import type { FormData } from '../../../PromptImprovementForm';
 
 /**
  * PromptModals - Modal Management
@@ -13,7 +14,11 @@ import type { PromptModalsProps } from '../types';
  * Handles all modals (Settings, Shortcuts, Improver, Brainstorm)
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
-export const PromptModals = ({ onImprovementComplete, onConceptComplete }: PromptModalsProps): React.ReactElement => {
+export const PromptModals = ({
+  onImprovementComplete,
+  onConceptComplete: _onConceptComplete,
+  onSkipBrainstorm: _onSkipBrainstorm,
+}: PromptModalsProps): React.ReactElement => {
   const {
     showSettings,
     setShowSettings,
@@ -26,6 +31,9 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete }: Promp
   } = usePromptState();
 
   const { settings, updateSetting, resetSettings } = useSettings();
+  const handleImprovementComplete =
+    onImprovementComplete ??
+    ((_: string, __: FormData): void => {});
 
   return (
     <>
@@ -67,7 +75,7 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete }: Promp
               </Button>
               <PromptImprovementForm
                 initialPrompt={promptOptimizer.inputPrompt}
-                onComplete={onImprovementComplete}
+                onComplete={handleImprovementComplete}
               />
             </div>
           </div>
@@ -76,4 +84,3 @@ export const PromptModals = ({ onImprovementComplete, onConceptComplete }: Promp
     </>
   );
 };
-

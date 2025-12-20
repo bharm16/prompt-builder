@@ -5,9 +5,9 @@
 import type { Mode } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CanonicalText } from '../../../utils/canonicalText';
-import type { HighlightSpan } from '../span-highlighting/hooks/useHighlightRendering';
+import type { HighlightSpan } from '../../span-highlighting/hooks/useHighlightRendering';
 
-import type { SpanData } from '../span-highlighting/hooks/useHighlightSourceSelection';
+import type { SpanData } from '../../span-highlighting/hooks/useHighlightSourceSelection';
 
 export interface SpansData {
   spans: Array<{
@@ -31,6 +31,8 @@ export interface HighlightSnapshot {
   meta?: Record<string, unknown> | null;
   signature?: string;
   cacheId?: string | null;
+  updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export interface ParseResult {
@@ -75,10 +77,44 @@ export interface SpanClickPayload {
   id?: string;
 }
 
+export interface SuggestionItem {
+  text?: string;
+  category?: string;
+  suggestions?: SuggestionItem[];
+  compatibility?: number;
+  explanation?: string;
+  [key: string]: unknown;
+}
+
 export interface SuggestionsData {
-  show?: boolean;
-  suggestions?: unknown[];
-  isLoading?: boolean;
+  show: boolean;
+  selectedText: string;
+  originalText: string;
+  suggestions: SuggestionItem[];
+  isLoading: boolean;
+  isError?: boolean;
+  errorMessage?: string | null;
+  isPlaceholder: boolean;
+  fullPrompt: string;
+  range?: Range | null;
+  offsets?: { start?: number; end?: number } | null;
+  metadata?: {
+    category?: string;
+    span?: {
+      category?: string;
+      confidence?: number;
+      startIndex?: number;
+      [key: string]: unknown;
+    };
+    confidence?: number;
+    leftCtx?: string;
+    rightCtx?: string;
+    idempotencyKey?: string | null;
+    [key: string]: unknown;
+  } | null;
+  setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
+  onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
+  onClose?: () => void;
   [key: string]: unknown;
 }
 
@@ -115,7 +151,7 @@ export interface PromptCanvasProps {
   onDisplayedPromptChange: (text: string) => void;
   suggestionsData: SuggestionsData | null;
   onFetchSuggestions?: (payload: SuggestionPayload) => void;
-  onSuggestionClick?: (suggestion: unknown) => void;
+  onSuggestionClick?: (suggestion: SuggestionItem | string) => void;
   onCreateNew: () => void;
   initialHighlights?: HighlightSnapshot | null;
   initialHighlightsVersion?: number;
@@ -127,6 +163,10 @@ export interface PromptCanvasProps {
       confidence: number;
     }>;
     meta: Record<string, unknown> | null;
+    signature: string;
+    cacheId?: string | null;
+    source?: string;
+    [key: string]: unknown;
   }) => void;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -137,4 +177,3 @@ export interface PromptCanvasProps {
   draftSpans?: SpansData | null;
   refinedSpans?: SpansData | null;
 }
-

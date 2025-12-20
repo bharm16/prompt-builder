@@ -51,12 +51,13 @@ export const Section = React.forwardRef<HTMLDivElement, SectionProps>(
     // Use custom spacing if provided, otherwise use size-based spacing
     // Support both Geist tokens and standard values
     const sectionMarginBottom = spacing || (mb ? undefined : sectionSpacing[size]);
+    const resolvedMarginBottom = sectionMarginBottom ?? mb;
 
     return (
       <Box
         ref={ref}
-        mb={sectionMarginBottom || mb}
         className={className}
+        {...(resolvedMarginBottom !== undefined ? { mb: resolvedMarginBottom } : {})}
         {...boxProps}
       >
         {children}
@@ -68,4 +69,3 @@ export const Section = React.forwardRef<HTMLDivElement, SectionProps>(
 Section.displayName = 'Section';
 
 export default Section;
-

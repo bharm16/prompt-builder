@@ -19,10 +19,10 @@
       "@utils/*": ["src/utils/*"],
       "@config/*": ["src/config/*"],
       "@llm/*": ["src/llm/*"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "#shared/*": ["../shared/*"]
     }
   },
   "include": ["src/**/*", "index.ts", "instrument.mjs"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
-

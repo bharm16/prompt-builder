@@ -14,28 +14,7 @@ import { useCallback } from 'react';
 import { applySuggestionToPrompt } from '../../utils/applySuggestion.ts';
 import { useEditHistory } from '../../hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
-
-interface Suggestion {
-  text?: string;
-  [key: string]: unknown;
-}
-
-interface SuggestionsData {
-  selectedText: string;
-  fullPrompt: string;
-  range?: Range | null;
-  offsets?: { start?: number; end?: number } | null;
-  metadata?: {
-    category?: string;
-    span?: {
-      category?: string;
-      confidence?: number;
-      [key: string]: unknown;
-    };
-    confidence?: number;
-    [key: string]: unknown;
-  } | null;
-}
+import type { SuggestionItem, SuggestionsData } from '../../PromptCanvas/types';
 
 interface UseSuggestionApplyParams {
   suggestionsData: SuggestionsData | null;
@@ -61,7 +40,7 @@ export function useSuggestionApply({
   currentPromptDocId,
   promptHistory,
 }: UseSuggestionApplyParams): {
-  handleSuggestionClick: (suggestion: Suggestion | string) => Promise<void>;
+  handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
 } {
   // Initialize edit history tracking
   const { addEdit } = useEditHistory();
@@ -70,7 +49,7 @@ export function useSuggestionApply({
    * Handle suggestion click - apply suggestion to prompt
    */
   const handleSuggestionClick = useCallback(
-    async (suggestion: Suggestion | string): Promise<void> => {
+    async (suggestion: SuggestionItem | string): Promise<void> => {
       const suggestionText =
         typeof suggestion === 'string' ? suggestion : suggestion?.text || '';
 
@@ -85,8 +64,8 @@ export function useSuggestionApply({
           suggestionText,
           highlight: selectedText,
           spanMeta: (metadata?.span as Record<string, unknown>) || {},
-          metadata: metadata as Record<string, unknown> | undefined,
-          offsets: offsets as { start?: number; end?: number } | undefined,
+          ...(metadata ? { metadata: metadata as Record<string, unknown> } : {}),
+          ...(offsets ? { offsets: offsets as { start?: number; end?: number } } : {}),
         });
 
         // Update displayed prompt
@@ -136,4 +115,3 @@ export function useSuggestionApply({
     handleSuggestionClick,
   };
 }
-

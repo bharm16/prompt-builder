@@ -60,7 +60,6 @@ export interface UpdateHighlightsOptions {
 
 interface FirestoreError extends Error {
   code?: string;
-  message?: string;
 }
 
 function isFirestoreError(error: unknown): error is FirestoreError {
@@ -89,11 +88,16 @@ function convertHighlightCache(cache: { updatedAt?: Timestamp | string; [key: st
   if (!cache) {
     return null;
   }
-  const converted = { ...cache };
-  if (converted.updatedAt && typeof converted.updatedAt === 'object' && 'toDate' in converted.updatedAt) {
-    converted.updatedAt = (converted.updatedAt as Timestamp).toDate().toISOString();
+  const { updatedAt, ...rest } = cache;
+  const normalized: { updatedAt?: string; [key: string]: unknown } = { ...rest };
+
+  if (typeof updatedAt === 'string') {
+    normalized.updatedAt = updatedAt;
+  } else if (updatedAt && typeof updatedAt === 'object' && 'toDate' in updatedAt) {
+    normalized.updatedAt = (updatedAt as Timestamp).toDate().toISOString();
   }
-  return converted;
+
+  return normalized;
 }
 
 function convertVersions(versions: Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined): Array<{ timestamp?: string; [key: string]: unknown }> {
@@ -101,11 +105,16 @@ function convertVersions(versions: Array<{ timestamp?: Timestamp | string; [key:
     return [];
   }
   return versions.map((entry) => {
-    const item = { ...entry };
-    if (item.timestamp && typeof item.timestamp === 'object' && 'toDate' in item.timestamp) {
-      item.timestamp = (item.timestamp as Timestamp).toDate().toISOString();
+    const { timestamp, ...rest } = entry;
+    const normalized: { timestamp?: string; [key: string]: unknown } = { ...rest };
+
+    if (typeof timestamp === 'string') {
+      normalized.timestamp = timestamp;
+    } else if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
+      normalized.timestamp = (timestamp as Timestamp).toDate().toISOString();
     }
-    return item;
+
+    return normalized;
   });
 }
 
@@ -190,6 +199,9 @@ export class PromptRepository {
       }
 
       const doc = querySnapshot.docs[0];
+      if (!doc) {
+        return null;
+      }
       return this._mapDocumentToPrompt(doc);
     } catch (error) {
       log.error('Error fetching prompt by UUID', error as Error);
@@ -363,10 +375,10 @@ export class LocalStoragePromptRepository {
         input: promptData.input,
         output: promptData.output,
         score: promptData.score ?? null,
-        mode: promptData.mode,
         brainstormContext: promptData.brainstormContext ?? null,
         highlightCache: promptData.highlightCache ?? null,
         versions: promptData.versions ?? [],
+        ...(typeof promptData.mode === 'string' ? { mode: promptData.mode } : {}),
       };
 
       const history = this._getHistory();
@@ -384,7 +396,7 @@ export class LocalStoragePromptRepository {
         }
       }
 
-      return { uuid, id: entry.id };
+      return { uuid, id: entry.id ?? uuid };
     } catch (error) {
       log.error('Error saving to localStorage', error as Error);
       throw new PromptRepositoryError('Failed to save to local storage', error);
@@ -526,4 +538,3 @@ export class LocalStoragePromptRepository {
     }
   }
 }
-

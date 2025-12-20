@@ -370,11 +370,11 @@ export function useSpanLabeling({
 
     const payload: SpanLabelingPayload = {
       text: normalized,
-      cacheId: cacheKey ?? undefined,
       maxSpans,
       minConfidence,
       policy: mergedPolicy,
       templateVersion,
+      ...(typeof cacheKey === 'string' ? { cacheId: cacheKey } : {}),
     };
 
     lastPayloadRef.current = payload;

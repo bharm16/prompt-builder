@@ -18,6 +18,7 @@ import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '@/features/span-highlighting';
 import { useHighlightFingerprint } from '@/features/span-highlighting';
+import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textFormatting';
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
@@ -102,15 +103,7 @@ export function PromptCanvas({
   });
 
   const handleLabelingResult = useCallback(
-    (result: {
-      spans: Array<{
-        start: number;
-        end: number;
-        category: string;
-        confidence: number;
-      }>;
-      meta: Record<string, unknown> | null;
-    }): void => {
+    (result: SpanLabelingResult): void => {
       if (!enableMLHighlighting || !result) {
         return;
       }
@@ -335,15 +328,16 @@ export function PromptCanvas({
         >
           <HighlightingErrorBoundary>
             <SpanBentoGrid
-              spans={parseResult.spans.map((span) => ({
-                id: span.id ?? `span_${span.start}_${span.end}`,
-                quote: span.quote ?? span.text ?? '',
-                confidence: span.confidence,
-                start: span.start,
-                end: span.end,
-                category: span.category,
-                ...span,
-              }))}
+              spans={parseResult.spans.map((span) => {
+                const { confidence, category, ...rest } = span;
+                return {
+                  ...rest,
+                  id: span.id ?? `span_${span.start}_${span.end}`,
+                  quote: span.quote ?? span.text ?? '',
+                  ...(typeof confidence === 'number' ? { confidence } : {}),
+                  ...(category !== undefined ? { category } : {}),
+                };
+              })}
               onSpanClick={handleSpanClickFromBento}
               editorRef={editorRef as React.RefObject<HTMLElement>}
             />

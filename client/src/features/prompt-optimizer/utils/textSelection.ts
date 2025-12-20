@@ -98,8 +98,7 @@ export const restoreSelectionFromOffsets = (
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
-      null,
-      false
+      null
     );
 
     let currentNode = walker.nextNode();
@@ -232,4 +231,3 @@ export class TextSelectionManager {
     selection.addRange(range);
   }
 }
-

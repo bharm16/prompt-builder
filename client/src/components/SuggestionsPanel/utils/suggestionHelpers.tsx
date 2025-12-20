@@ -8,6 +8,7 @@
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { COMPATIBILITY_THRESHOLDS, MAX_KEYBOARD_SHORTCUTS } from '../config/panelConfig';
+import type { SuggestionItem } from '../hooks/types';
 
 // ===========================
 // COMPATIBILITY UTILITIES
@@ -96,7 +97,7 @@ export function getLoadingSkeletonCount(textLength: number, isPlaceholder: boole
 // SUGGESTION NORMALIZATION
 // ===========================
 
-export interface NormalizedSuggestion {
+export interface NormalizedSuggestion extends SuggestionItem {
   text: string;
   [key: string]: unknown;
 }
@@ -104,7 +105,12 @@ export interface NormalizedSuggestion {
 /**
  * Normalize suggestion to object format
  */
-export function normalizeSuggestion(suggestion: string | NormalizedSuggestion): NormalizedSuggestion {
-  return typeof suggestion === 'string' ? { text: suggestion } : suggestion;
+export function normalizeSuggestion(suggestion: string | SuggestionItem): NormalizedSuggestion | null {
+  if (typeof suggestion === 'string') {
+    return { text: suggestion };
+  }
+  if (suggestion && typeof suggestion.text === 'string') {
+    return { ...suggestion, text: suggestion.text };
+  }
+  return null;
 }
-

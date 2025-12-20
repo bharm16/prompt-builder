@@ -186,7 +186,7 @@ class TextFormatter {
   format(): { html: string } {
     for (let i = 0; i < this.lines.length; i += 1) {
       const lineIndex = i;
-      const line = this.lines[i];
+      const line = this.lines[i] ?? '';
       const trimmed = line.trim();
 
       if (!trimmed) {
@@ -206,13 +206,19 @@ class TextFormatter {
 
       // Handle ordered lists
       if (this.isOrderedItem(trimmed)) {
-        while (i < this.lines.length && this.isOrderedItem(this.lines[i].trim())) {
+        while (i < this.lines.length && this.isOrderedItem((this.lines[i] ?? '').trim())) {
           const currentIndex = i;
-          const current = this.lines[currentIndex].trim();
+          const current = (this.lines[currentIndex] ?? '').trim();
           const match = current.match(/^(\d+)\.\s+(.*)$/);
-          const nextBreaks = i + 1 >= this.lines.length || this.lines[i + 1].trim() === '' || !this.isOrderedItem(this.lines[i + 1].trim());
+          const nextLine = this.lines[i + 1] ?? '';
+          const nextTrimmed = nextLine.trim();
+          const nextBreaks =
+            i + 1 >= this.lines.length ||
+            nextTrimmed === '' ||
+            !this.isOrderedItem(nextTrimmed);
           if (match) {
-            this.pushOrderedItem(`${match[1]}.`, match[2], currentIndex, nextBreaks);
+            const itemText = match[2] ?? '';
+            this.pushOrderedItem(`${match[1]}.`, itemText, currentIndex, nextBreaks);
           }
           i += 1;
         }
@@ -222,10 +228,15 @@ class TextFormatter {
 
       // Handle bullet lists
       if (this.isBulletItem(trimmed)) {
-        while (i < this.lines.length && this.isBulletItem(this.lines[i].trim())) {
+        while (i < this.lines.length && this.isBulletItem((this.lines[i] ?? '').trim())) {
           const currentIndex = i;
-          const current = this.lines[currentIndex].trim().replace(/^[-*•]\s+/, '');
-          const nextBreaks = i + 1 >= this.lines.length || this.lines[i + 1].trim() === '' || !this.isBulletItem(this.lines[i + 1].trim());
+          const current = (this.lines[currentIndex] ?? '').trim().replace(/^[-*•]\s+/, '');
+          const nextLine = this.lines[i + 1] ?? '';
+          const nextTrimmed = nextLine.trim();
+          const nextBreaks =
+            i + 1 >= this.lines.length ||
+            nextTrimmed === '' ||
+            !this.isBulletItem(nextTrimmed);
           this.pushBulletItem(current, currentIndex, nextBreaks);
           i += 1;
         }
@@ -274,4 +285,3 @@ export function escapeHTMLForMLHighlighting(text: string): string {
   
   return `<div style="white-space: pre-wrap; line-height: 1.6; font-size: 0.9375rem; font-family: var(--font-geist-sans);">${escaped}</div>`;
 }
-

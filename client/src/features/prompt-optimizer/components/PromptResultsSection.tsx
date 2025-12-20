@@ -16,7 +16,7 @@ export const PromptResultsSection = ({
   onHighlightsPersist,
   onUndo,
   onRedo,
-  stablePromptContext,
+  stablePromptContext = null,
 }: PromptResultsSectionProps): React.ReactElement | null => {
   const {
     showResults,
@@ -93,4 +93,3 @@ export const PromptResultsSection = ({
     </>
   );
 };
-

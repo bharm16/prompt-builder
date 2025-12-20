@@ -52,7 +52,7 @@ function getTechnicalSections(
 
   const keys = Object.keys(technicalParams);
   const ordered = TECHNICAL_SECTION_ORDER.filter((key) => keys.includes(key));
-  const additional = keys.filter((key) => !TECHNICAL_SECTION_ORDER.includes(key));
+  const additional = keys.filter((key) => !(TECHNICAL_SECTION_ORDER as readonly string[]).includes(key));
   const combined = [...ordered, ...additional];
 
   return combined.filter((key) => {
@@ -125,4 +125,3 @@ export function TechnicalBlueprint({
     </div>
   );
 }
-

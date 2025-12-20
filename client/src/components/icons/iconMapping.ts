@@ -19,9 +19,9 @@ export const iconMapping: Record<string, keyof typeof GeistIcons> = {
   'Zap': 'Zap',
   'MapPin': 'MapPin',
   'Calendar': 'Calendar',
-  'Palette': 'Palette',
-  'Sparkles': 'Sparkles', // May need to use Star or similar
-  'Lightbulb': 'Lightbulb', // May need to use Zap or similar
+  'Palette': 'Grid',
+  'Sparkles': 'Star',
+  'Lightbulb': 'Zap',
   'Tag': 'Tag',
   'Target': 'Target',
   'Video': 'Video',
@@ -30,8 +30,6 @@ export const iconMapping: Record<string, keyof typeof GeistIcons> = {
   'Volume2': 'Volume2',
   'Ruler': 'Divider', // Using Divider as alternative for Ruler
   'TreePine': 'Layers', // Using Layers as alternative for TreePine
-  'Lightbulb': 'Zap', // Using Zap as alternative for Lightbulb
-  'Sparkles': 'Star', // Using Star as alternative for Sparkles
   
   // Navigation icons
   'ChevronDown': 'ChevronDown',
@@ -150,4 +148,3 @@ export function hasGeistIcon(lucideIconName: string): boolean {
   if (!geistIconName) return false;
   return geistIconName in GeistIcons;
 }
-

@@ -61,6 +61,7 @@ import { ElementGrid } from './VideoConceptBuilder/components/ElementGrid';
 import SuggestionsPanel from './SuggestionsPanel';
 
 import type { ElementKey, Elements } from './VideoConceptBuilder/hooks/types';
+import type { SuggestionItem } from './SuggestionsPanel/hooks/types';
 import type {
   CategoryDetection,
   ElementConfig,
@@ -150,8 +151,10 @@ export default function VideoConceptBuilder({
     [dispatch, checkCompatibility]
   );
 
-  const handleSuggestionClick = useCallback(
-    (suggestion: { text?: string } | string): void => {
+  const handleSuggestionClick = useCallback<
+    (suggestion: SuggestionItem | string) => void
+  >(
+    (suggestion) => {
       if (!ui.activeElement) return;
       
       const suggestionText =
@@ -315,15 +318,19 @@ export default function VideoConceptBuilder({
   // ===========================
   // SUGGESTIONS PANEL DATA
   // ===========================
-  const suggestionsPanelData = useMemo(() => {
+  const suggestionsPanelData = useMemo<
+    NonNullable<Parameters<typeof SuggestionsPanel>[0]['suggestionsData']>
+  >(() => {
     const activeElementConfig = ui.activeElement
       ? ELEMENT_CONFIG[ui.activeElement]
       : null;
 
+    const mappedSuggestions: SuggestionItem[] = suggestions.items.map((item) => ({
+      text: item,
+    }));
+
     const baseData = {
-      suggestions: suggestions.items.map((item) =>
-        typeof item === 'string' ? { text: item } : (item as { text?: string })
-      ) as Array<{ text?: string; category?: string; suggestions?: unknown[]; compatibility?: number; explanation?: string }>,
+      suggestions: mappedSuggestions,
       isLoading: suggestions.isLoading,
       enableCustomRequest: false,
       panelClassName:
@@ -350,14 +357,14 @@ export default function VideoConceptBuilder({
       return {
         ...baseData,
         show: false,
-        onSuggestionClick: handleSuggestionClick as (suggestion: { text?: string }) => void,
-      } as typeof baseData & { show: boolean; onSuggestionClick: (suggestion: { text?: string }) => void };
+        onSuggestionClick: handleSuggestionClick as (suggestion: SuggestionItem | string) => void,
+      } as typeof baseData & { show: boolean; onSuggestionClick: (suggestion: SuggestionItem | string) => void };
     }
 
     return {
       ...baseData,
       show: true,
-      onSuggestionClick: handleSuggestionClick as (suggestion: { text?: string }) => void,
+      onSuggestionClick: handleSuggestionClick as (suggestion: SuggestionItem | string) => void,
       onClose: clearSuggestions,
       onRefresh: () => {
         if (ui.activeElement) {
@@ -377,7 +384,7 @@ export default function VideoConceptBuilder({
           : undefined,
     } as typeof baseData & {
       show: boolean;
-      onSuggestionClick: (suggestion: { text?: string }) => void;
+      onSuggestionClick: (suggestion: SuggestionItem | string) => void;
       onClose: () => void;
       onRefresh: () => void;
       selectedText: string;
@@ -547,7 +554,7 @@ export default function VideoConceptBuilder({
         </div>
       </div>
 
-      <SuggestionsPanel suggestionsData={suggestionsPanelData as Parameters<typeof SuggestionsPanel>[0]['suggestionsData']} />
+      <SuggestionsPanel suggestionsData={suggestionsPanelData} />
 
       {/* Custom CSS */}
       <style>{`
@@ -565,4 +572,3 @@ export default function VideoConceptBuilder({
     </div>
   );
 }
-

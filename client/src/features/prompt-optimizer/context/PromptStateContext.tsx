@@ -12,14 +12,16 @@ import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
-import { createHighlightSignature } from '../hooks/useSpanLabeling';
+import { createHighlightSignature } from '@/features/span-highlighting';
 import type {
   PromptStateContextValue,
   PromptStateProviderProps,
   HighlightSnapshot,
   Mode,
   PromptHistoryEntry,
+  StateSnapshot,
 } from './types';
+import type { SuggestionsData } from '../PromptCanvas/types';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
 
@@ -65,7 +67,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
 
   // Enhancement suggestions state
-  const [suggestionsData, setSuggestionsData] = useState<unknown | null>(null);
+  const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
   const [conceptElements, setConceptElements] = useState<unknown | null>(null);
   const [promptContext, setPromptContext] = useState<PromptContext | null>(null);
   const [currentPromptUuid, setCurrentPromptUuid] = useState<string | null>(null);
@@ -78,8 +80,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   // Refs
   const latestHighlightRef = useRef<HighlightSnapshot | null>(null);
   const persistedSignatureRef = useRef<string | null>(null);
-  const undoStackRef = useRef<unknown[]>([]);
-  const redoStackRef = useRef<unknown[]>([]);
+  const undoStackRef = useRef<StateSnapshot[]>([]);
+  const redoStackRef = useRef<StateSnapshot[]>([]);
   const isApplyingHistoryRef = useRef<boolean>(false);
   const skipLoadFromUrlRef = useRef<boolean>(false);
 
@@ -273,4 +275,3 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
 }
-

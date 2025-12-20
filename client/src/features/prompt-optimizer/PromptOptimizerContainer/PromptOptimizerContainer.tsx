@@ -263,12 +263,10 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       // Implementation from original
     },
     applySuggestion: (index: number) => {
-      if (suggestionsData && typeof suggestionsData === 'object' && 'suggestions' in suggestionsData) {
-        const suggestions = (suggestionsData as { suggestions: unknown[] }).suggestions;
-        if (suggestions[index]) {
-          debug.logAction('applySuggestion', { index });
-          handleSuggestionClick(suggestions[index]);
-        }
+      const suggestion = suggestionsData?.suggestions?.[index];
+      if (suggestion) {
+        debug.logAction('applySuggestion', { index });
+        handleSuggestionClick(suggestion);
       }
     },
     closeModal: () => {
@@ -370,7 +368,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         <SuggestionsPanel 
           suggestionsData={
             suggestionsData 
-              ? { ...(suggestionsData as Record<string, unknown>), onSuggestionClick: handleSuggestionClick, currentPrompt: promptOptimizer.displayedPrompt } 
+              ? { ...suggestionsData, onSuggestionClick: handleSuggestionClick, currentPrompt: promptOptimizer.displayedPrompt } 
               : { show: false, currentPrompt: promptOptimizer.displayedPrompt }
           } 
         />
@@ -423,4 +421,3 @@ function PromptOptimizerContainer(): React.ReactElement {
 }
 
 export default PromptOptimizerContainer;
-

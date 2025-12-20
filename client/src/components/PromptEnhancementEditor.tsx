@@ -82,13 +82,18 @@ export default function PromptEnhancementEditor({
             ? Number.parseFloat(confidenceAttr)
             : null;
 
+        const normalizedConfidence =
+          typeof parsedConfidence === 'number' &&
+          Number.isFinite(parsedConfidence) &&
+          parsedConfidence >= 0 &&
+          parsedConfidence <= 1
+            ? parsedConfidence
+            : null;
+
         return {
           category: category || null,
           phrase: phrase || null,
-          confidence:
-            Number.isFinite(parsedConfidence) && parsedConfidence >= 0 && parsedConfidence <= 1
-              ? parsedConfidence
-              : null,
+          confidence: normalizedConfidence,
         };
       }
     }
@@ -175,6 +180,8 @@ export default function PromptEnhancementEditor({
     setSuggestions([]);
     setIsPlaceholder(false);
 
+    let highlightCategory: string | null = null;
+
     try {
       // Extract context around the highlighted text (1000 chars for richer semantic understanding)
       const fullText = promptContent;
@@ -194,12 +201,12 @@ export default function PromptEnhancementEditor({
         )
         .trim();
 
-      const highlightCategory =
+      highlightCategory =
         metadata && typeof metadata.category === 'string' && metadata.category.trim().length > 0
           ? metadata.category.trim()
           : null;
       const highlightCategoryConfidence =
-        metadata && Number.isFinite(metadata.confidence)
+        metadata && typeof metadata.confidence === 'number' && Number.isFinite(metadata.confidence)
           ? Math.min(1, Math.max(0, metadata.confidence))
           : null;
 
@@ -306,4 +313,3 @@ export default function PromptEnhancementEditor({
     </div>
   );
 }
-

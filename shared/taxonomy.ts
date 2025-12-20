@@ -341,13 +341,21 @@ export function parseCategoryId(id: string | null | undefined): ParsedCategoryId
   if (!id || typeof id !== 'string') return null;
   
   const parts = id.split('.');
+  const parent = parts[0];
+  if (!parent) {
+    return null;
+  }
   if (parts.length === 1) {
     // Parent category
-    return { parent: parts[0], attribute: null, isParent: true };
+    return { parent, attribute: null, isParent: true };
   }
   
   // Attribute category
-  return { parent: parts[0], attribute: parts[1], isParent: false };
+  const attribute = parts[1];
+  if (!attribute) {
+    return null;
+  }
+  return { parent, attribute, isParent: false };
 }
 
 /**
@@ -435,10 +443,14 @@ export function getCategoryById(categoryId: string | null | undefined): Category
         return category;
       } else {
         // It's an attribute
+        const attribute = parsed.attribute;
+        if (!attribute) {
+          return null;
+        }
         return {
           id: categoryId,
           parent: parsed.parent,
-          attribute: parsed.attribute ?? undefined,
+          attribute,
           isAttribute: true
         };
       }
