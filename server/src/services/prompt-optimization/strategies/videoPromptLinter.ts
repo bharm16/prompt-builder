@@ -167,6 +167,33 @@ export function lintVideoPromptSlots(slots: Partial<VideoPromptSlots>): VideoPro
     errors.push('`style` is too generic; avoid words like "cinematic", use film stock/genre/director references.');
   }
 
+  // Camera movement validation
+  const cameraMove = typeof slots.camera_move === 'string' ? slots.camera_move.trim() : null;
+  if (cameraMove) {
+    // Check for valid cinematographic vocabulary
+    const validMovementTerms = /\b(dolly|tracking|pan|tilt|crane|jib|handheld|steadicam|whip|rack\s*focus|static|zoom|push|pull|orbit|arc|float|drift)\b/i;
+    if (!validMovementTerms.test(cameraMove)) {
+      errors.push('`camera_move` should use cinematographic terms (dolly, tracking, pan, crane, handheld, steadicam, rack focus, static, etc.).');
+    }
+
+    // Check for multiple conflicting movements
+    const movementMatches = cameraMove.toLowerCase().match(/\b(dolly|pan|tilt|crane|tracking|zoom|whip|orbit)\b/gi) || [];
+    if (movementMatches.length > 2) {
+      errors.push('`camera_move` combines too many movements; use one primary movement with optional modifier.');
+    }
+
+    // Check for generic/vague terms without valid movement
+    if (/\b(moves?|cinematic|dynamic|interesting|cool|nice)\b/i.test(cameraMove) && !validMovementTerms.test(cameraMove)) {
+      errors.push('`camera_move` is too generic; specify movement type like "slow dolly in" not "camera moves closer".');
+    }
+
+    // Length check
+    const moveWords = cameraMove.split(/\s+/).filter(Boolean).length;
+    if (moveWords > 10) {
+      errors.push('`camera_move` is too long; keep to 3-8 words describing one movement.');
+    }
+  }
+
   for (const { key, value } of collectStringFields(slots)) {
     if (VIEWER_LANGUAGE.some((re) => re.test(value))) {
       errors.push(`Field \`${key}\` contains viewer/audience language; describe only camera-visible details.`);

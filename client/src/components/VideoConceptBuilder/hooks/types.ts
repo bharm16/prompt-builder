@@ -11,6 +11,7 @@ export type ElementKey =
   | 'subjectDescriptor2'
   | 'subjectDescriptor3'
   | 'action'
+  | 'cameraMovement'
   | 'location'
   | 'time'
   | 'mood'
@@ -23,6 +24,7 @@ export interface Elements {
   subjectDescriptor2: string;
   subjectDescriptor3: string;
   action: string;
+  cameraMovement: string;
   location: string;
   time: string;
   mood: string;

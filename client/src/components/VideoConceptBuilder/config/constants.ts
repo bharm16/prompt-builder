@@ -20,6 +20,7 @@ export const SUBJECT_DESCRIPTOR_KEYS = [
 export const PRIMARY_ELEMENT_KEYS = [
   'subject',
   'action',
+  'cameraMovement',
   'location',
   'time',
   'mood',
@@ -76,6 +77,7 @@ export const ELEMENT_HIERARCHY: Record<string, ElementHierarchyEntry> = {
   subjectDescriptor2: { priority: 1.2, dependencies: ['subject'] },
   subjectDescriptor3: { priority: 1.3, dependencies: ['subject'] },
   action: { priority: 2, dependencies: ['subject'] },
+  cameraMovement: { priority: 2.5, dependencies: ['action'] },
   location: { priority: 3, dependencies: ['subject', 'action'] },
   time: { priority: 4, dependencies: ['location'] },
   mood: { priority: 5, dependencies: ['subject', 'action'] },
@@ -87,6 +89,7 @@ export const ELEMENT_HIERARCHY: Record<string, ElementHierarchyEntry> = {
 export const ELEMENT_GROUPS = {
   core: ['subject', 'action', 'location'],
   subjectDescriptors: SUBJECT_DESCRIPTOR_KEYS,
+  camera: ['cameraMovement'],
   atmosphere: ['mood', 'time'],
   style: ['style'],
   context: ['event'],
