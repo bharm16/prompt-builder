@@ -1,16 +1,12 @@
-import React, { memo, useRef, useEffect } from 'react';
+import React from 'react';
 import {
-  FileText,
   LogIn,
-  LogOut,
   PanelLeft,
   PanelRight,
-  Trash2,
   Plus,
   History,
   User as UserIcon,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
@@ -18,201 +14,8 @@ import { Button } from '@components/Button';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import type { Mode } from '../prompt-optimizer/context/types';
-
-interface HistoryItemProps {
-  entry: PromptHistoryEntry;
-  modes: Mode[];
-  onLoad: (entry: PromptHistoryEntry) => void;
-  onDelete: (id: string) => void;
-}
-
-// Memoized history item component with delete functionality
-const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDelete }) => {
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<boolean>(false);
-  const modeInfo = modes.find((m) => m.id === entry.mode);
-  const ModeIcon: LucideIcon = modeInfo?.icon || FileText;
-
-  const handleDelete = (e: React.MouseEvent): void => {
-    e.stopPropagation();
-    if (showDeleteConfirm) {
-      // Confirmed - actually delete
-      if (entry.id) {
-        onDelete(entry.id);
-      }
-      setShowDeleteConfirm(false);
-    } else {
-      // Show confirmation
-      setShowDeleteConfirm(true);
-    }
-  };
-
-  const handleCancel = (e: React.MouseEvent): void => {
-    e.stopPropagation();
-    setShowDeleteConfirm(false);
-  };
-
-  const handleLoad = (): void => {
-    if (!showDeleteConfirm) {
-      onLoad(entry);
-    }
-  };
-
-  if (showDeleteConfirm) {
-    return (
-      <li>
-        <div className="group w-full rounded-geist-lg p-geist-3 bg-red-50 border border-red-200">
-          <p className="text-label-12 text-red-900 mb-geist-2">Delete this prompt?</p>
-          <div className="flex gap-geist-2">
-            <Button
-              onClick={handleDelete}
-              size="small"
-              variant="primary"
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-            >
-              Delete
-            </Button>
-            <Button
-              onClick={handleCancel}
-              size="small"
-              variant="secondary"
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </li>
-    );
-  }
-
-  return (
-    <li>
-      <div className="group relative w-full rounded-geist-lg transition-colors hover:bg-geist-accents-1">
-        <button
-          onClick={handleLoad}
-          className="w-full p-geist-3 text-left"
-          aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
-        >
-          <div className="flex items-start gap-geist-3">
-            <ModeIcon
-              className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-geist-accents-4"
-              aria-hidden="true"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-label-12 text-geist-foreground line-clamp-1 leading-relaxed">
-                {entry.input}
-              </p>
-              <div className="mt-geist-2 flex items-center gap-geist-2 text-label-12 text-geist-accents-5">
-                <time dateTime={entry.timestamp || ''}>
-                  {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
-                </time>
-              </div>
-            </div>
-          </div>
-        </button>
-        
-        {/* Delete button - shows on hover */}
-        <button
-          onClick={handleDelete}
-          className="absolute right-geist-2 top-geist-2 p-geist-2 opacity-0 group-hover:opacity-100 rounded-geist hover:bg-red-50 transition-all"
-          aria-label="Delete prompt"
-          title="Delete prompt"
-        >
-          <Trash2 className="h-3.5 w-3.5 text-geist-accents-4 hover:text-red-600" />
-        </button>
-      </div>
-    </li>
-  );
-}, (prevProps, nextProps) => {
-  return prevProps.entry.id === nextProps.entry.id &&
-    prevProps.entry.input === nextProps.entry.input &&
-    prevProps.entry.score === nextProps.entry.score;
-});
-
-HistoryItem.displayName = 'HistoryItem';
-
-interface AuthMenuProps {
-  user: User | null;
-  onSignIn: () => void;
-  onSignOut: () => void;
-}
-
-// Auth Menu Component
-function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.ReactElement {
-  const [showAuthMenu, setShowAuthMenu] = React.useState<boolean>(false);
-  const authMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (authMenuRef.current && !authMenuRef.current.contains(event.target as Node)) {
-        setShowAuthMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  if (!user) {
-    return (
-      <Button
-        onClick={onSignIn}
-        size="small"
-        variant="primary"
-        prefix={<LogIn className="h-3.5 w-3.5" />}
-        className="w-full"
-        aria-label="Sign in with Google"
-      >
-        Sign in
-      </Button>
-    );
-  }
-
-  const photoURL = typeof user.photoURL === 'string' ? user.photoURL : '';
-  const displayName = typeof user.displayName === 'string' ? user.displayName : '';
-  const email = typeof user.email === 'string' ? user.email : '';
-
-  return (
-    <div className="relative" ref={authMenuRef}>
-      <button
-        onClick={() => setShowAuthMenu(!showAuthMenu)}
-        className="flex w-full items-center gap-geist-2 rounded-geist-lg p-geist-2 transition-colors hover:bg-geist-accents-1"
-        aria-expanded={showAuthMenu}
-        aria-label="User menu"
-      >
-        {photoURL && (
-          <img
-            src={photoURL}
-            alt=""
-            className="h-7 w-7 flex-shrink-0 rounded-full"
-          />
-        )}
-        <div className="min-w-0 flex-1 text-left">
-          <p className="truncate text-label-12 text-geist-foreground">
-            {displayName}
-          </p>
-          <p className="truncate text-label-12 text-geist-accents-5">
-            {email}
-          </p>
-        </div>
-      </button>
-
-      {showAuthMenu && (
-        <div className="absolute bottom-full mb-geist-2 left-0 w-full bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1">
-          <Button
-            onClick={onSignOut}
-            size="small"
-            variant="ghost"
-            prefix={<LogOut className="h-3.5 w-3.5" />}
-            className="w-full"
-          >
-            Sign out
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
+import { HistoryItem } from './components/HistoryItem';
+import { AuthMenu } from './components/AuthMenu';
 
 export interface HistorySidebarProps {
   showHistory: boolean; // true = expanded, false = collapsed
@@ -229,7 +32,11 @@ export interface HistorySidebarProps {
   modes: Mode[];
 }
 
-// Main History Sidebar Component
+const INITIAL_HISTORY_LIMIT = 5;
+
+/**
+ * History sidebar component with collapsed/expanded states
+ */
 export function HistorySidebar({
   showHistory,
   setShowHistory,
@@ -251,7 +58,6 @@ export function HistorySidebar({
   });
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = React.useState<boolean>(false);
-  const INITIAL_HISTORY_LIMIT = 5;
 
   // Determine which history items to display
   const displayedHistory = showAllHistory 
@@ -483,4 +289,3 @@ export function HistorySidebar({
     </aside>
   );
 }
-

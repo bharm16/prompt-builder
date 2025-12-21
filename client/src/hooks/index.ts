@@ -8,7 +8,7 @@ export { useDebugLogger, withDebugLogging } from './useDebugLogger';
 export { usePromptDebugger } from './usePromptDebugger';
 export { usePromptOptimizer } from './usePromptOptimizer';
 export { usePromptOptimizerState } from './usePromptOptimizerState';
-export { usePromptHistory } from './usePromptHistory';
+export { usePromptHistory } from './usePromptHistory/index';
 export { useHierarchyValidation } from './useHierarchyValidation';
 
 // Re-export types
