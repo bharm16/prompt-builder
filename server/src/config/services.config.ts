@@ -33,6 +33,7 @@ import { SceneChangeDetectionService } from '@services/video-concept/services/de
 import { VideoConceptService } from '@services/VideoConceptService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { VideoToImagePromptTransformer } from '@services/image-generation/VideoToImagePromptTransformer';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -411,19 +412,33 @@ export async function configureServices(): Promise<DIContainer> {
   // Image Generation Service
   // ============================================================================
 
+  // Video-to-image prompt transformer (uses Groq for fast transformation)
+  container.register(
+    'videoToImageTransformer',
+    (groqClient: LLMClient | null) => {
+      if (!groqClient) {
+        logger.warn('Groq client not available, video-to-image transformation disabled');
+        return null;
+      }
+      return new VideoToImagePromptTransformer({
+        llmClient: groqClient,
+        timeoutMs: 5000,
+      });
+    },
+    ['groqClient']
+  );
+
   container.register(
     'imageGenerationService',
-    () => {
+    (transformer: VideoToImagePromptTransformer | null) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       if (!apiToken) {
         logger.warn('REPLICATE_API_TOKEN not provided, image generation disabled');
         return null;
       }
-      return new ImageGenerationService({
-        apiToken,
-      });
+      return new ImageGenerationService({ apiToken }, transformer);
     },
-    []
+    ['videoToImageTransformer']
   );
 
   return container;

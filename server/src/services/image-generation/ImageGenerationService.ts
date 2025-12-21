@@ -3,11 +3,19 @@
  *
  * Handles image generation using Replicate's Flux Schnell model.
  * Provides low-fidelity preview images for prompt validation.
+ *
+ * Uses LLM-powered video-to-image transformation to convert temporal
+ * video prompts into static image descriptions before generation.
  */
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
-import type { ImageGenerationOptions, ImageGenerationResult, ImageGenerationServiceOptions } from './types';
+import type {
+  ImageGenerationOptions,
+  ImageGenerationResult,
+  ImageGenerationServiceOptions,
+} from './types';
+import type { VideoToImagePromptTransformer } from './VideoToImagePromptTransformer';
 
 interface ReplicateClient {
   predictions: {
@@ -39,8 +47,12 @@ interface ReplicatePrediction {
 export class ImageGenerationService {
   private readonly replicate: ReplicateClient | null;
   private readonly model: string;
+  private readonly promptTransformer: VideoToImagePromptTransformer | null;
 
-  constructor(options: ImageGenerationServiceOptions = {}) {
+  constructor(
+    options: ImageGenerationServiceOptions = {},
+    promptTransformer?: VideoToImagePromptTransformer | null
+  ) {
     const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
 
     if (!apiToken) {
@@ -54,6 +66,7 @@ export class ImageGenerationService {
 
     // Flux Schnell model identifier
     this.model = 'black-forest-labs/flux-schnell';
+    this.promptTransformer = promptTransformer ?? null;
   }
 
   /**
@@ -64,7 +77,9 @@ export class ImageGenerationService {
     options: ImageGenerationOptions = {}
   ): Promise<ImageGenerationResult> {
     if (!this.replicate) {
-      throw new Error('Image generation service is not configured. REPLICATE_API_TOKEN is required.');
+      throw new Error(
+        'Image generation service is not configured. REPLICATE_API_TOKEN is required.'
+      );
     }
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -89,8 +104,31 @@ export class ImageGenerationService {
 
     const mappedAspectRatio = aspectRatioMap[aspectRatio] || '16:9';
 
+    const trimmedPrompt = prompt.trim();
+
+    // Transform video prompt to image prompt using LLM
+    let promptForModel: string;
+    let promptWasTransformed = false;
+
+    if (this.promptTransformer) {
+      try {
+        promptForModel = await this.promptTransformer.transform(trimmedPrompt);
+        promptWasTransformed = promptForModel !== trimmedPrompt;
+      } catch (error) {
+        // Fallback to original prompt if transformation fails
+        logger.warn('Prompt transformation failed, using original', {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+        });
+        promptForModel = trimmedPrompt;
+      }
+    } else {
+      promptForModel = trimmedPrompt;
+    }
+
     logger.info('Generating image preview', {
-      prompt: prompt.substring(0, 100), // Log first 100 chars
+      prompt: promptForModel.substring(0, 100),
+      promptWasTransformed,
       aspectRatio: mappedAspectRatio,
       userId,
     });
@@ -98,15 +136,14 @@ export class ImageGenerationService {
     try {
       const startTime = Date.now();
 
-      // Use predictions API directly for better error handling and status visibility
       // Create the prediction
       const prediction = await this.replicate.predictions.create({
         model: this.model,
         input: {
-          prompt: prompt.trim(),
+          prompt: promptForModel,
           aspect_ratio: mappedAspectRatio,
           output_format: 'webp',
-          output_quality: 80, // Lower quality for faster generation
+          output_quality: 80,
         },
       });
 
@@ -121,11 +158,14 @@ export class ImageGenerationService {
       const pollInterval = 1000; // Poll every second
       const endTime = Date.now() + maxWaitTime;
       let currentPrediction = prediction;
-      
+
       while (Date.now() < endTime) {
         if (currentPrediction.status === 'succeeded') {
           break;
-        } else if (currentPrediction.status === 'failed' || currentPrediction.status === 'canceled') {
+        } else if (
+          currentPrediction.status === 'failed' ||
+          currentPrediction.status === 'canceled'
+        ) {
           const predictionError = new Error(
             `Image generation failed: ${currentPrediction.error || 'Unknown error'}`
           );
@@ -138,22 +178,24 @@ export class ImageGenerationService {
           });
           throw predictionError;
         }
-        
+
         // Wait before next poll
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-        
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
         // Get updated prediction status
         currentPrediction = await this.replicate.predictions.get(prediction.id);
-        
+
         logger.debug('Polling prediction', {
           predictionId: currentPrediction.id,
           status: currentPrediction.status,
           userId,
         });
       }
-      
+
       if (currentPrediction.status !== 'succeeded') {
-        throw new Error(`Prediction timed out or failed. Status: ${currentPrediction.status}`);
+        throw new Error(
+          `Prediction timed out or failed. Status: ${currentPrediction.status}`
+        );
       }
 
       const output = currentPrediction.output;
@@ -161,7 +203,9 @@ export class ImageGenerationService {
 
       // Check if output is null or undefined
       if (output === null || output === undefined) {
-        const outputError = new Error('Replicate API returned no output. The image generation may have failed silently.');
+        const outputError = new Error(
+          'Replicate API returned no output. The image generation may have failed silently.'
+        );
         logger.error('Replicate API returned null/undefined output', outputError, {
           userId,
           duration,
@@ -178,165 +222,14 @@ export class ImageGenerationService {
         userId,
       });
 
-      // Handle different response formats from Replicate
-      // Flux Schnell typically returns an array with a single URL string
-      let imageUrl: string | null = null;
-      
-      if (typeof output === 'string') {
-        // Direct URL string
-        imageUrl = output;
-      } else if (Array.isArray(output)) {
-        // Array of URLs or objects containing URLs
-        // First, try to find a direct string URL
-        const stringUrl = output.find(item => {
-          if (typeof item === 'string') {
-            return item.startsWith('http://') || item.startsWith('https://');
-          }
-          return false;
-        });
-        
-        if (stringUrl) {
-          imageUrl = stringUrl as string;
-        } else {
-          // If no string URL found, check if array contains objects with URL properties
-          for (const item of output) {
-            if (item && typeof item === 'object') {
-              const itemObj = item as Record<string, unknown>;
-              // Check common URL fields in the object
-              const urlFromObject = itemObj.url || 
-                                   itemObj.imageUrl || 
-                                   itemObj.output || 
-                                   itemObj.src ||
-                                   (Array.isArray(itemObj.urls) ? itemObj.urls[0] : null) ||
-                                   (Array.isArray(itemObj.files) ? itemObj.files[0] : null);
-              
-              if (urlFromObject && typeof urlFromObject === 'string' && 
-                  (urlFromObject.startsWith('http://') || urlFromObject.startsWith('https://'))) {
-                imageUrl = urlFromObject;
-                break;
-              }
-              
-              // Also check nested structures
-              if (itemObj.output && typeof itemObj.output === 'string' && 
-                  (itemObj.output.startsWith('http://') || itemObj.output.startsWith('https://'))) {
-                imageUrl = itemObj.output;
-                break;
-              }
-            }
-          }
-          
-          // Last resort: if array has one element and it's an object, log it for debugging
-          if (!imageUrl && output.length === 1 && typeof output[0] === 'object') {
-            const firstItem = output[0] as Record<string, unknown>;
-            const keys = Object.keys(firstItem);
-            const values = Object.values(firstItem);
-            const stringified = JSON.stringify(firstItem, null, 2);
-            
-            logger.warn('Array contains object but no URL found', {
-              objectKeys: keys,
-              objectValues: values,
-              objectValue: stringified,
-              objectType: typeof firstItem,
-              isNull: firstItem === null,
-              isEmpty: keys.length === 0,
-              userId,
-            });
-            
-            // Check if object has any non-enumerable properties or special cases
-            if (keys.length === 0 && firstItem !== null) {
-              const emptyObjectError = new Error('Empty object in array - possible Replicate API issue');
-              logger.error('Empty object in array - possible Replicate API issue', emptyObjectError, {
-                fullOutput: JSON.stringify(output, null, 2),
-                userId,
-              });
-            }
-          }
-        }
-      } else if (output && typeof output === 'object') {
-        const outputObj = output as Record<string, unknown>;
-        // Object response - check common fields
-        // First check if it's a prediction object
-        if ('status' in outputObj) {
-          if (outputObj.status === 'succeeded' && outputObj.output) {
-            // Prediction completed, extract from output field
-            if (typeof outputObj.output === 'string') {
-              imageUrl = outputObj.output;
-            } else if (Array.isArray(outputObj.output)) {
-              const url = outputObj.output.find(item => typeof item === 'string' && (item.startsWith('http://') || item.startsWith('https://'))) || outputObj.output[0];
-              imageUrl = typeof url === 'string' ? url : null;
-            }
-          } else if (outputObj.status !== 'succeeded') {
-            logger.warn('Prediction not completed', {
-              status: outputObj.status,
-              error: outputObj.error,
-              output,
-              userId,
-            });
-            throw new Error(`Image generation failed with status: ${outputObj.status}${outputObj.error ? '. ' + outputObj.error : ''}`);
-          }
-        }
-        
-        // Try other common fields
-        if (!imageUrl) {
-          const url = outputObj.url || 
-                     outputObj.imageUrl || 
-                     outputObj.output || 
-                     (Array.isArray(outputObj.output) ? outputObj.output[0] : null) ||
-                     (Array.isArray(outputObj.files) ? outputObj.files[0] : null) ||
-                     (outputObj.urls && Array.isArray(outputObj.urls) ? outputObj.urls[0] : null);
-          imageUrl = typeof url === 'string' ? url : null;
-        }
-        
-        // If still no URL, check if output.output is a nested structure
-        if (!imageUrl && outputObj.output) {
-          if (typeof outputObj.output === 'string') {
-            imageUrl = outputObj.output;
-          } else if (Array.isArray(outputObj.output)) {
-            const url = outputObj.output.find(item => typeof item === 'string' && (item.startsWith('http://') || item.startsWith('https://'))) || outputObj.output[0];
-            imageUrl = typeof url === 'string' ? url : null;
-          } else if (outputObj.output && typeof outputObj.output === 'object') {
-            const nested = outputObj.output as Record<string, unknown>;
-            imageUrl = typeof nested.url === 'string' ? nested.url : null;
-          }
-        }
-      }
-
-      // Validate that we have a valid URL string
-      if (!imageUrl || typeof imageUrl !== 'string') {
-        // Enhanced logging for debugging
-        const errorDetails: Record<string, unknown> = {
-          output: JSON.stringify(output, null, 2).substring(0, 2000),
-          outputType: typeof output,
-          isArray: Array.isArray(output),
-          userId,
-        };
-        
-        if (Array.isArray(output)) {
-          errorDetails.arrayLength = output.length;
-          errorDetails.arrayItems = output.map((item, idx) => ({
-            index: idx,
-            type: typeof item,
-            isObject: typeof item === 'object' && item !== null,
-            keys: typeof item === 'object' && item !== null ? Object.keys(item) : null,
-            value: typeof item === 'object' ? JSON.stringify(item, null, 2).substring(0, 500) : String(item),
-          }));
-        } else if (output && typeof output === 'object') {
-          errorDetails.outputKeys = Object.keys(output);
-        }
-        
-        logger.error('Unexpected Replicate response format', new Error('Unexpected Replicate response format'), errorDetails);
-        
-        // Provide a more helpful error message
-        if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'object' && Object.keys(output[0]).length === 0) {
-          throw new Error('Replicate API returned an empty response. The image generation may have failed or the model is still processing. Please try again.');
-        }
-        
-        throw new Error('Invalid response from Replicate API: no image URL returned. Response format: ' + typeof output + (output && typeof output === 'object' && !Array.isArray(output) ? ', keys: ' + Object.keys(output).join(', ') : ''));
-      }
+      // Extract image URL from response
+      const imageUrl = this.extractImageUrl(output, userId);
 
       // Validate URL format
       if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-        const urlError = new Error('Invalid image URL format returned from Replicate API');
+        const urlError = new Error(
+          'Invalid image URL format returned from Replicate API'
+        );
         logger.error('Invalid URL format returned', urlError, {
           imageUrl: imageUrl.substring(0, 100),
           userId,
@@ -345,8 +238,9 @@ export class ImageGenerationService {
       }
 
       logger.info('Image preview generated successfully', {
-        imageUrl: imageUrl.substring(0, 100), // Log partial URL
+        imageUrl: imageUrl.substring(0, 100),
         duration,
+        promptWasTransformed,
         userId,
       });
 
@@ -361,57 +255,206 @@ export class ImageGenerationService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Parse Replicate API errors for better error messages
       let parsedError = errorMessage;
       let statusCode = 500;
-      
+
       // Check for payment required (402)
-      if (errorMessage.includes('402') || errorMessage.includes('Insufficient credit')) {
+      if (
+        errorMessage.includes('402') ||
+        errorMessage.includes('Insufficient credit')
+      ) {
         statusCode = 402;
         try {
-          // Try to extract JSON from error message
           const jsonMatch = errorMessage.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const errorData = JSON.parse(jsonMatch[0]) as { detail?: string; title?: string };
-            parsedError = errorData.detail || errorData.title || 'Insufficient credit. Please add payment method to your Replicate account.';
+            const errorData = JSON.parse(jsonMatch[0]) as {
+              detail?: string;
+              title?: string;
+            };
+            parsedError =
+              errorData.detail ||
+              errorData.title ||
+              'Insufficient credit. Please add payment method to your Replicate account.';
           } else {
-            parsedError = 'Insufficient credit. Please add payment method to your Replicate account.';
+            parsedError =
+              'Insufficient credit. Please add payment method to your Replicate account.';
           }
         } catch {
-          parsedError = 'Insufficient credit. Please add payment method to your Replicate account.';
+          parsedError =
+            'Insufficient credit. Please add payment method to your Replicate account.';
         }
       }
       // Check for rate limiting (429)
-      else if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('throttled')) {
+      else if (
+        errorMessage.includes('429') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('throttled')
+      ) {
         statusCode = 429;
         try {
           const jsonMatch = errorMessage.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const errorData = JSON.parse(jsonMatch[0]) as { detail?: string };
-            parsedError = errorData.detail || 'Rate limit exceeded. Please wait a moment and try again.';
+            parsedError =
+              errorData.detail ||
+              'Rate limit exceeded. Please wait a moment and try again.';
           } else {
-            parsedError = 'Rate limit exceeded. Please wait a moment and try again.';
+            parsedError =
+              'Rate limit exceeded. Please wait a moment and try again.';
           }
         } catch {
-          parsedError = 'Rate limit exceeded. Please wait a moment and try again.';
+          parsedError =
+            'Rate limit exceeded. Please wait a moment and try again.';
         }
       }
-      
+
       logger.error(
         'Image generation failed',
         error instanceof Error ? error : new Error(errorMessage),
         {
           parsedError,
           statusCode,
-          prompt: prompt.substring(0, 100),
+          prompt: promptForModel.substring(0, 100),
+          promptWasTransformed,
           userId,
         }
       );
 
-      const enhancedError = new Error(parsedError) as Error & { statusCode?: number };
+      const enhancedError = new Error(parsedError) as Error & {
+        statusCode?: number;
+      };
       enhancedError.statusCode = statusCode;
       throw enhancedError;
     }
+  }
+
+  /**
+   * Extract image URL from Replicate response
+   * Handles various response formats from different models
+   */
+  private extractImageUrl(output: unknown, userId: string): string {
+    let imageUrl: string | null = null;
+
+    if (typeof output === 'string') {
+      imageUrl = output;
+    } else if (Array.isArray(output)) {
+      // Try to find a direct string URL
+      const stringUrl = output.find((item) => {
+        if (typeof item === 'string') {
+          return item.startsWith('http://') || item.startsWith('https://');
+        }
+        return false;
+      });
+
+      if (stringUrl) {
+        imageUrl = stringUrl as string;
+      } else {
+        // Check for objects with URL properties
+        for (const item of output) {
+          if (item && typeof item === 'object') {
+            const itemObj = item as Record<string, unknown>;
+            const urlFromObject =
+              itemObj.url ||
+              itemObj.imageUrl ||
+              itemObj.output ||
+              itemObj.src ||
+              (Array.isArray(itemObj.urls) ? itemObj.urls[0] : null) ||
+              (Array.isArray(itemObj.files) ? itemObj.files[0] : null);
+
+            if (
+              urlFromObject &&
+              typeof urlFromObject === 'string' &&
+              (urlFromObject.startsWith('http://') ||
+                urlFromObject.startsWith('https://'))
+            ) {
+              imageUrl = urlFromObject;
+              break;
+            }
+          }
+        }
+
+        // Log warning for debugging
+        if (!imageUrl && output.length === 1 && typeof output[0] === 'object') {
+          const firstItem = output[0] as Record<string, unknown>;
+          const keys = Object.keys(firstItem);
+
+          logger.warn('Array contains object but no URL found', {
+            objectKeys: keys,
+            objectValue: JSON.stringify(firstItem, null, 2).substring(0, 500),
+            userId,
+          });
+        }
+      }
+    } else if (output && typeof output === 'object') {
+      const outputObj = output as Record<string, unknown>;
+
+      // Check if it's a prediction object
+      if ('status' in outputObj) {
+        if (outputObj.status === 'succeeded' && outputObj.output) {
+          if (typeof outputObj.output === 'string') {
+            imageUrl = outputObj.output;
+          } else if (Array.isArray(outputObj.output)) {
+            const url =
+              outputObj.output.find(
+                (item) =>
+                  typeof item === 'string' &&
+                  (item.startsWith('http://') || item.startsWith('https://'))
+              ) || outputObj.output[0];
+            imageUrl = typeof url === 'string' ? url : null;
+          }
+        } else if (outputObj.status !== 'succeeded') {
+          throw new Error(
+            `Image generation failed with status: ${outputObj.status}${outputObj.error ? '. ' + outputObj.error : ''}`
+          );
+        }
+      }
+
+      // Try other common fields
+      if (!imageUrl) {
+        const url =
+          outputObj.url ||
+          outputObj.imageUrl ||
+          outputObj.output ||
+          (Array.isArray(outputObj.files) ? outputObj.files[0] : null) ||
+          (outputObj.urls && Array.isArray(outputObj.urls)
+            ? outputObj.urls[0]
+            : null);
+        imageUrl = typeof url === 'string' ? url : null;
+      }
+    }
+
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      const errorDetails: Record<string, unknown> = {
+        output: JSON.stringify(output, null, 2).substring(0, 2000),
+        outputType: typeof output,
+        isArray: Array.isArray(output),
+        userId,
+      };
+
+      logger.error(
+        'Unexpected Replicate response format',
+        new Error('Unexpected Replicate response format'),
+        errorDetails
+      );
+
+      if (
+        Array.isArray(output) &&
+        output.length > 0 &&
+        typeof output[0] === 'object' &&
+        Object.keys(output[0]).length === 0
+      ) {
+        throw new Error(
+          'Replicate API returned an empty response. The image generation may have failed or the model is still processing. Please try again.'
+        );
+      }
+
+      throw new Error(
+        'Invalid response from Replicate API: no image URL returned.'
+      );
+    }
+
+    return imageUrl;
   }
 }

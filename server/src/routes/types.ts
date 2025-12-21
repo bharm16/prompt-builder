@@ -10,7 +10,7 @@ import type { AIModelService } from '@services/ai-model/AIModelService';
  * Services object for preview routes
  */
 export interface PreviewRoutesServices {
-  imageGenerationService: ImageGenerationService;
+  imageGenerationService: ImageGenerationService | null;
 }
 
 /**

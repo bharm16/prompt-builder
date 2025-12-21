@@ -23,6 +23,15 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.post(
     '/generate',
     asyncHandler(async (req: Request, res: Response) => {
+      // Check if service is available
+      if (!imageGenerationService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Image generation service is not available',
+          message: 'REPLICATE_API_TOKEN is not configured',
+        });
+      }
+
       const { prompt, aspectRatio } = req.body as { prompt?: unknown; aspectRatio?: string };
       const userId = extractUserId(req);
 
