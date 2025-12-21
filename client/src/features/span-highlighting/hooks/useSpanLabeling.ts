@@ -385,12 +385,32 @@ export function useSpanLabeling({
     lastPayloadRef.current = payload;
 
     // Use stableInitialData to prevent infinite loops
+    // Check if this is a local update (from applying a suggestion) - if so, trust it
+    const isLocalUpdate = Boolean(
+      stableInitialData?.meta &&
+      (stableInitialData.meta as Record<string, unknown>).localUpdate === true
+    );
+
     const initialMatch =
       stableInitialData &&
       Array.isArray(stableInitialData.spans) &&
       stableInitialData.spans.length > 0 &&
       stableInitialData.signature === hashString(normalized ?? '') &&
-      stableInitialData.meta?.version === templateVersion;
+      (isLocalUpdate || stableInitialData.meta?.version === templateVersion);
+
+    // Debug: trace initialMatch evaluation
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+      console.debug('[useSpanLabeling] initialMatch check:', {
+        hasStableData: Boolean(stableInitialData),
+        hasSpans: Array.isArray(stableInitialData?.spans) && stableInitialData.spans.length > 0,
+        isLocalUpdate,
+        signatureMatch: stableInitialData?.signature === hashString(normalized ?? ''),
+        stableSignature: stableInitialData?.signature?.slice(0, 16),
+        textSignature: hashString(normalized ?? '').slice(0, 16),
+        versionMatch: stableInitialData?.meta?.version === templateVersion,
+        initialMatch,
+      });
+    }
 
     if (initialMatch) {
       cancelPending();

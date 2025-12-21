@@ -25,6 +25,7 @@ export function useSuggestionDetection({
   const suggestionAppliedRef = useRef<boolean>(false);
   const previousDisplayedPromptRef = useRef<string>(displayedPrompt ?? '');
   const previousSuggestionsOpenRef = useRef<boolean>(isSuggestionsOpen);
+  const promptAtOpenRef = useRef<string | null>(null);
 
   // Detect when a suggestion is applied (suggestions panel closes + prompt changes)
   useEffect(() => {
@@ -33,9 +34,17 @@ export function useSuggestionDetection({
     const wasSuggestionsOpen = previousSuggestionsOpenRef.current;
     const isNowSuggestionsClosed = !isSuggestionsOpen;
 
-    // Detect suggestion application: suggestions panel was open, now closed, and prompt changed
-    if (wasSuggestionsOpen && isNowSuggestionsClosed && currentPrompt !== previousPrompt) {
-      suggestionAppliedRef.current = true;
+    if (isSuggestionsOpen && !wasSuggestionsOpen) {
+      promptAtOpenRef.current = currentPrompt;
+    }
+
+    if (wasSuggestionsOpen && isNowSuggestionsClosed) {
+      const promptAtOpen = promptAtOpenRef.current ?? previousPrompt;
+      // Detect suggestion application: panel closed and prompt changed since it opened
+      if (currentPrompt !== promptAtOpen) {
+        suggestionAppliedRef.current = true;
+      }
+      promptAtOpenRef.current = null;
     }
 
     // Update refs for next comparison
@@ -45,16 +54,15 @@ export function useSuggestionDetection({
 
   // Trigger immediate relabeling when a suggestion is applied
   useEffect(() => {
-    if (suggestionAppliedRef.current) {
+    if (suggestionAppliedRef.current && refreshLabeling) {
       suggestionAppliedRef.current = false;
       // Defer to next tick so useSpanLabeling's main effect runs first
       const timeoutId = setTimeout(() => {
-        refreshLabeling?.();
+        refreshLabeling();
       }, 0);
       return () => clearTimeout(timeoutId);
     }
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayedPrompt]); // Intentionally omit refreshLabeling - we only care about prompt changes
+  }, [displayedPrompt, isSuggestionsOpen]); // Intentionally omit refreshLabeling - trigger after prompt change or panel close
 }
-

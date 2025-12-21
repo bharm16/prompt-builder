@@ -142,6 +142,10 @@ export function useSuggestionFetch({
           allLabeledSpans
         ) as { simplifiedSpans: unknown[]; nearbySpans: unknown[] };
         const { simplifiedSpans, nearbySpans } = spanContext;
+        if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+          console.debug('[SuggestionFetch] allLabeledSpans:', simplifiedSpans.length);
+          console.debug('[SuggestionFetch] metadata:', metadata);
+        }
 
         // Get edit history for context
         const editHistory = getEditSummary(10);

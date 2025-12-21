@@ -20,7 +20,7 @@ import { useSuggestionFetch } from './useSuggestionFetch';
 import type React from 'react';
 import type { Toast } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import type { HighlightSnapshot, SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
 
 export interface UseEnhancementSuggestionsParams {
@@ -31,6 +31,11 @@ export interface UseEnhancementSuggestionsParams {
   handleDisplayedPromptChange: (prompt: string) => void;
   stablePromptContext: PromptContext | null;
   toast: Toast;
+  applyInitialHighlightSnapshot: (
+    snapshot: HighlightSnapshot | null,
+    options: { bumpVersion: boolean; markPersisted: boolean }
+  ) => void;
+  latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
   promptHistory: {
@@ -55,6 +60,8 @@ export function useEnhancementSuggestions({
   handleDisplayedPromptChange,
   stablePromptContext,
   toast,
+  applyInitialHighlightSnapshot,
+  latestHighlightRef,
   currentPromptUuid,
   currentPromptDocId,
   promptHistory,
@@ -64,6 +71,8 @@ export function useEnhancementSuggestions({
     suggestionsData,
     handleDisplayedPromptChange,
     setSuggestionsData,
+    applyInitialHighlightSnapshot,
+    latestHighlightRef,
     toast,
     currentPromptUuid,
     currentPromptDocId,

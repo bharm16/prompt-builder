@@ -139,7 +139,6 @@ export function PromptCanvas({
     status: labelingStatus,
     error: labelingError,
     signature: labelingSignature,
-    refresh: refreshLabeling,
   } = useSpanLabeling({
     text: enableMLHighlighting ? normalizedDisplayedPrompt ?? '' : '',
     initialData: memoizedInitialHighlights,
@@ -159,7 +158,6 @@ export function PromptCanvas({
   useSuggestionDetection({
     displayedPrompt: normalizedDisplayedPrompt,
     isSuggestionsOpen,
-    refreshLabeling,
   });
 
   // Parse result hook
@@ -229,7 +227,6 @@ export function PromptCanvas({
     selectedMode,
     editorRef: editorRef as React.RefObject<HTMLElement>,
     displayedPrompt: normalizedDisplayedPrompt,
-    labeledSpans,
     parseResult,
     onFetchSuggestions,
   });

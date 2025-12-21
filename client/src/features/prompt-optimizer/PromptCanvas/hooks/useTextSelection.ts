@@ -18,12 +18,6 @@ export interface UseTextSelectionOptions {
   selectedMode: string;
   editorRef: RefObject<HTMLElement>;
   displayedPrompt: string | null;
-  labeledSpans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
   parseResult: ParseResult;
   onFetchSuggestions: ((payload: SuggestionPayload) => void) | undefined;
 }
@@ -39,10 +33,11 @@ export function useTextSelection({
   selectedMode,
   editorRef,
   displayedPrompt,
-  labeledSpans,
   parseResult,
   onFetchSuggestions,
 }: UseTextSelectionOptions): UseTextSelectionReturn {
+  const spanContextSpans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
+
   const handleTextSelection = useCallback((): void => {
     if (selectedMode !== 'video') {
       return;
@@ -71,10 +66,10 @@ export function useTextSelection({
         offsets,
         metadata: null,
         trigger: 'selection',
-        allLabeledSpans: labeledSpans,
+        allLabeledSpans: spanContextSpans,
       });
     }
-  }, [selectedMode, editorRef, displayedPrompt, labeledSpans, onFetchSuggestions]);
+  }, [selectedMode, editorRef, displayedPrompt, spanContextSpans, onFetchSuggestions]);
 
   const triggerSuggestionsFromTarget = useCallback(
     (targetElement: EventTarget | null, e: React.MouseEvent | null): void => {
@@ -112,6 +107,10 @@ export function useTextSelection({
         selectRange(range);
 
         // Trigger suggestions
+        if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+          console.debug('[HighlightClick] spanContextCount:', spanContextSpans.length);
+          console.debug('[HighlightClick] metadata:', metadata ?? null);
+        }
         onFetchSuggestions({
           highlightedText: wordText,
           originalText: wordText,
@@ -120,11 +119,11 @@ export function useTextSelection({
           offsets,
           metadata: metadata ?? null,
           trigger: 'highlight',
-          allLabeledSpans: labeledSpans,
+          allLabeledSpans: spanContextSpans,
         });
       }
     },
-    [selectedMode, editorRef, displayedPrompt, labeledSpans, parseResult, onFetchSuggestions]
+    [selectedMode, editorRef, displayedPrompt, parseResult, onFetchSuggestions, spanContextSpans]
   );
 
   const handleHighlightClick = useCallback(
@@ -171,10 +170,10 @@ export function useTextSelection({
           span: span, // Full span object
         },
         trigger: 'bento-grid',
-        allLabeledSpans: labeledSpans,
+        allLabeledSpans: spanContextSpans,
       });
     },
-    [onFetchSuggestions, selectedMode, displayedPrompt, labeledSpans]
+    [onFetchSuggestions, selectedMode, displayedPrompt, spanContextSpans]
   );
 
   return {
@@ -184,4 +183,3 @@ export function useTextSelection({
     handleSpanClickFromBento,
   };
 }
-

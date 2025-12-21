@@ -35,6 +35,23 @@ export function useHighlightSourceSelection({
       return null;
     }
 
+    const hasLocalUpdate =
+      Boolean(initialHighlights?.meta) &&
+      (initialHighlights?.meta as Record<string, unknown>).localUpdate === true;
+
+    if (initialHighlights && hasLocalUpdate) {
+      const resolvedSignature =
+        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+
+      return {
+        spans: initialHighlights.spans,
+        meta: initialHighlights.meta ?? null,
+        signature: resolvedSignature,
+        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: 'persisted',
+      };
+    }
+
     // PRIORITY 1: Use draft spans if available and we're showing draft text
     // This provides instant highlights at ~300ms
     if (draftSpans && isDraftReady && !refinedSpans) {
@@ -88,4 +105,3 @@ export function useHighlightSourceSelection({
     displayedPrompt,
   ]);
 }
-

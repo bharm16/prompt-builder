@@ -31,6 +31,8 @@ export interface ApplySuggestionResult {
   updatedPrompt: string | null;
   replacementTarget?: string;
   idempotencyKey?: string | null;
+  matchStart?: number;
+  matchEnd?: number;
 }
 
 export const applySuggestionToPrompt = ({
@@ -102,8 +104,9 @@ export const applySuggestionToPrompt = ({
     updatedPrompt,
     replacementTarget: workingPrompt.slice(start, end),
     idempotencyKey: spanMeta.idempotencyKey || metadata.idempotencyKey || null,
+    matchStart: start,
+    matchEnd: end,
   };
 };
 
 export default applySuggestionToPrompt;
-

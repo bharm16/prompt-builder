@@ -55,8 +55,9 @@ export interface SuggestionPayload {
   allLabeledSpans?: Array<{
     start: number;
     end: number;
-    category: string;
-    confidence: number;
+    category?: string;
+    confidence?: number;
+    [key: string]: unknown;
   }>;
 }
 
