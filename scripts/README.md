@@ -124,3 +124,36 @@ Ensure these are properly configured in your `.env` file:
 ## Questions or Issues?
 
 Run `npm run verify-keys` first to ensure your API configuration is correct.
+
+## 4. Raw Prompt Collection (`collect-raw-prompts.ts`)
+
+Exports the raw user prompts (“un-optimized” input) from Firestore plus an optional
+localStorage JSON export so you can audit or reprocess every input. The script
+automatically loads credentials from `.env` in the repo root (or use `--env-file`
+to point at another file) so you just need to keep your Firebase vars there.
+
+```bash
+tsx --tsconfig server/tsconfig.json scripts/collect-raw-prompts.ts \
+  --output=reports/raw-prompts.json \
+  --format=json \
+  --limit=2000 \
+  --local-file=~/Downloads/promptHistory-export.json
+```
+
+| Option | Description |
+| --- | --- |
+| `--userId=<id>` | Restrict to a single user for auditing. |
+| `--limit=<n>` | Stop after `<n>` Firestore documents (default: unlimited). |
+| `--batch-size=<n>` | Firestore page size (default: 500). |
+| `--output=<path>` | File to write (creates directories as needed). Default: `raw-prompts.json`. |
+| `--format=json|csv` | Output format (default: `json`). |
+| `--local-file=<path>` | Optional path to a `promptHistory` export from localStorage (JSON array). |
+| `--env-file=<path>` | Optional `.env` file containing Firebase credentials; defaults to project root. |
+
+The script prints a quick summary and saves every raw prompt with metadata like
+`userId`, `mode`, and `timestamp`. CSV outputs escape quotes so you can open them in
+spreadsheet apps. Fill your `.env` with the usual Firebase keys (e.g.,
+`FIREBASE_SERVICE_ACCOUNT_PATH`, `VITE_FIREBASE_PROJECT_ID`, etc.) to let the admin
+client connect.
+
+> The file name includes a timestamp suffix (e.g., `raw-prompts-20240801_153002.json`).
