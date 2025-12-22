@@ -53,6 +53,7 @@ interface SuggestionsPanelProps {
     onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
     onClose?: () => void;
     onRefresh?: () => void;
+    onRetry?: () => void;
     selectedText?: string;
     isPlaceholder?: boolean;
     setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
@@ -104,6 +105,7 @@ export function SuggestionsPanel({
     onSuggestionClick = () => {},
     onClose,
     onRefresh,
+    onRetry,
     selectedText = '',
     isPlaceholder = false,
     setSuggestions,
@@ -251,6 +253,7 @@ export function SuggestionsPanel({
               <ErrorState
                 errorState={errorState}
                 {...(typeof errorMessage === 'string' ? { errorMessage } : {})}
+                {...(onRetry ? { onRetry } : {})}
               />
             )}
 

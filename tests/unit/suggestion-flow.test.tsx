@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fireEvent, render, waitFor, act } from '@testing-library/react';
 
 import { useSuggestionFetch } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch';
 import { useTextSelection } from '@features/prompt-optimizer/PromptCanvas/hooks/useTextSelection';
 import { fetchEnhancementSuggestions } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
+import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
 import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import type { Toast } from '@hooks/types';
 import { createCanonicalText } from '../../client/src/utils/canonicalText';
@@ -17,6 +18,13 @@ vi.mock('@features/prompt-optimizer/api/enhancementSuggestionsApi', () => ({
   enhancementSuggestionsApi: {
     fetchEnhancementSuggestions: vi.fn(),
   },
+}));
+
+// Mock useEditHistory
+vi.mock('@features/prompt-optimizer/hooks/useEditHistory', () => ({
+  useEditHistory: () => ({
+    getEditSummary: vi.fn().mockReturnValue([]),
+  }),
 }));
 
 const promptText = 'The park is sunny today.';
@@ -89,7 +97,7 @@ function SuggestionFlowHarness(): React.ReactElement {
 
   const { handleHighlightClick } = useTextSelection({
     selectedMode: 'video',
-    editorRef,
+    editorRef: editorRef as React.RefObject<HTMLElement>,
     displayedPrompt: promptText,
     parseResult,
     onFetchSuggestions: triggerFetch,
@@ -162,5 +170,222 @@ describe('Suggestion flow', () => {
         end: 17,
       }),
     ]);
+  });
+});
+
+/**
+ * Integration tests for useSuggestionFetch hook
+ * 
+ * Tests the full flow: selection → debounce → cache → API → state
+ * Validates Requirements: 1.1, 1.3, 2.1, 3.1, 6.3
+ */
+describe('useSuggestionFetch integration', () => {
+  const fetchMock = vi.mocked(fetchEnhancementSuggestions);
+  
+  // Test harness component that exposes hook state
+  function TestHarness({ 
+    onStateChange,
+    initialMode = 'video',
+  }: { 
+    onStateChange?: (data: SuggestionsData | null) => void;
+    initialMode?: string;
+  }): React.ReactElement {
+    const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
+    const toast = useMemo(
+      () => ({
+        success: vi.fn(),
+        info: vi.fn(),
+        warning: vi.fn(),
+        error: vi.fn(),
+      }) as Toast,
+      []
+    );
+
+    const promptOptimizer = useMemo(
+      () => ({
+        displayedPrompt: promptText,
+        inputPrompt: promptText,
+        setDisplayedPrompt: vi.fn(),
+        setOptimizedPrompt: vi.fn(),
+      }),
+      []
+    );
+
+    const { fetchEnhancementSuggestions: triggerFetch } = useSuggestionFetch({
+      promptOptimizer,
+      selectedMode: initialMode,
+      suggestionsData,
+      setSuggestionsData,
+      stablePromptContext: null,
+      toast,
+      handleSuggestionClick: async () => {},
+    });
+
+    // Notify parent of state changes
+    useEffect(() => {
+      onStateChange?.(suggestionsData);
+    }, [suggestionsData, onStateChange]);
+
+    return (
+      <div>
+        <button 
+          data-testid="fetch-park" 
+          onClick={() => triggerFetch({ highlightedText: 'park', displayedPrompt: promptText })}
+        >
+          Fetch Park
+        </button>
+        <button 
+          data-testid="fetch-sunny" 
+          onClick={() => triggerFetch({ highlightedText: 'sunny', displayedPrompt: promptText })}
+        >
+          Fetch Sunny
+        </button>
+        <div data-testid="loading">{suggestionsData?.isLoading ? 'loading' : 'not-loading'}</div>
+        <div data-testid="error">{suggestionsData?.isError ? 'error' : 'no-error'}</div>
+        <div data-testid="suggestions">{suggestionsData?.suggestions?.length ?? 0}</div>
+        <div data-testid="has-retry">{suggestionsData?.onRetry ? 'has-retry' : 'no-retry'}</div>
+      </div>
+    );
+  }
+
+  beforeEach(() => {
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValue({
+      suggestions: ['suggestion 1', 'suggestion 2'],
+      isPlaceholder: false,
+    });
+  });
+
+  it('should update state with suggestions after successful fetch', async () => {
+    const { getByTestId } = render(<TestHarness />);
+
+    // Trigger fetch
+    fireEvent.click(getByTestId('fetch-park'));
+
+    // Wait for debounce + API response
+    await waitFor(() => {
+      expect(getByTestId('suggestions').textContent).toBe('2');
+    }, { timeout: 1000 });
+
+    expect(getByTestId('loading').textContent).toBe('not-loading');
+    expect(getByTestId('error').textContent).toBe('no-error');
+  });
+
+  it('should set error state with onRetry callback on API error', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('Network error'));
+
+    const { getByTestId } = render(<TestHarness />);
+
+    // Trigger fetch
+    fireEvent.click(getByTestId('fetch-park'));
+
+    // Wait for error state
+    await waitFor(() => {
+      expect(getByTestId('error').textContent).toBe('error');
+    }, { timeout: 1000 });
+
+    expect(getByTestId('loading').textContent).toBe('not-loading');
+    expect(getByTestId('has-retry').textContent).toBe('has-retry');
+  });
+
+  it('should not update state when request is cancelled (CancellationError)', async () => {
+    fetchMock.mockRejectedValueOnce(new CancellationError('Request cancelled'));
+
+    const { getByTestId } = render(<TestHarness />);
+
+    // Trigger fetch
+    fireEvent.click(getByTestId('fetch-park'));
+
+    // Wait a bit for any state updates
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Should not show error state for cancellation
+    expect(getByTestId('error').textContent).toBe('no-error');
+  });
+
+  it('should not fetch when mode is not video', async () => {
+    const { getByTestId } = render(<TestHarness initialMode="text" />);
+
+    // Trigger fetch
+    fireEvent.click(getByTestId('fetch-park'));
+
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Should not have called API
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('should not fetch for empty highlighted text', async () => {
+    function EmptyTextHarness(): React.ReactElement {
+      const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
+      const toast = useMemo(() => ({
+        success: vi.fn(),
+        info: vi.fn(),
+        warning: vi.fn(),
+        error: vi.fn(),
+      }) as Toast, []);
+
+      const promptOptimizer = useMemo(() => ({
+        displayedPrompt: promptText,
+        inputPrompt: promptText,
+        setDisplayedPrompt: vi.fn(),
+        setOptimizedPrompt: vi.fn(),
+      }), []);
+
+      const { fetchEnhancementSuggestions: triggerFetch } = useSuggestionFetch({
+        promptOptimizer,
+        selectedMode: 'video',
+        suggestionsData,
+        setSuggestionsData,
+        stablePromptContext: null,
+        toast,
+        handleSuggestionClick: async () => {},
+      });
+
+      return (
+        <button 
+          data-testid="fetch-empty" 
+          onClick={() => triggerFetch({ highlightedText: '   ', displayedPrompt: promptText })}
+        >
+          Fetch Empty
+        </button>
+      );
+    }
+
+    const { getByTestId } = render(<EmptyTextHarness />);
+
+    // Trigger fetch with empty text
+    fireEvent.click(getByTestId('fetch-empty'));
+
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Should not have called API
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('should return cached results without API call on second request', async () => {
+    const { getByTestId } = render(<TestHarness />);
+
+    // First fetch
+    fireEvent.click(getByTestId('fetch-park'));
+    
+    await waitFor(() => {
+      expect(getByTestId('suggestions').textContent).toBe('2');
+    }, { timeout: 1000 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Second fetch for same text - should use cache
+    fireEvent.click(getByTestId('fetch-park'));
+    
+    // Should immediately show results (cache hit)
+    await waitFor(() => {
+      expect(getByTestId('suggestions').textContent).toBe('2');
+    });
+
+    // Should not have made another API call (cache hit)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

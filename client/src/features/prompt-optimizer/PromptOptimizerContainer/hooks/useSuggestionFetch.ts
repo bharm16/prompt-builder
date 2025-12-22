@@ -4,17 +4,26 @@
  * Handles fetching enhancement suggestions for highlighted text.
  * Extracted from useEnhancementSuggestions.js.
  *
+ * Features:
+ * - Request cancellation (abort in-flight requests on new selection)
+ * - Deduplication (prevent duplicate requests for same text)
+ * - Trailing-edge debouncing (wait for user to stop selecting)
+ * - TTL-based caching (instant results for repeated selections)
+ * - Proper error handling with retry capability
+ *
  * Architecture: Custom React hook
  * Pattern: Single responsibility - suggestion fetching
  * Reference: VideoConceptBuilder hooks pattern
- * Line count: ~150 lines (within <150 limit for hooks)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import type React from 'react';
 import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
 import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
 import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
+import { SuggestionRequestManager } from '@features/prompt-optimizer/utils/SuggestionRequestManager';
+import { SuggestionCache, simpleHash } from '@features/prompt-optimizer/utils/SuggestionCache';
+import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
 import type { Toast } from '@hooks/types';
 import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 
@@ -49,13 +58,36 @@ interface UseSuggestionFetchParams {
   handleSuggestionClick: (suggestion: SuggestionItem | string) => Promise<void>;
 }
 
+/** Response type from the enhancement suggestions API */
+interface EnhancementSuggestionsResponse {
+  suggestions: string[];
+  isPlaceholder: boolean;
+}
+
+/** Configuration for request manager and cache */
+const REQUEST_CONFIG = {
+  debounceMs: 150,
+  timeoutMs: 3000,
+};
+
+const CACHE_CONFIG = {
+  ttlMs: 300000, // 5 minutes
+  maxEntries: 50,
+};
+
 /**
  * Hook for fetching enhancement suggestions
+ * 
+ * Features:
+ * - Request cancellation on new selection
+ * - Deduplication of in-flight requests
+ * - Trailing-edge debouncing (150ms)
+ * - TTL-based caching (5 minutes)
+ * - Proper error handling with retry
  */
 export function useSuggestionFetch({
   promptOptimizer,
   selectedMode,
-  suggestionsData,
   setSuggestionsData,
   stablePromptContext,
   toast,
@@ -65,8 +97,35 @@ export function useSuggestionFetch({
 } {
   const { getEditSummary } = useEditHistory();
 
+  // Request manager instance (persists across renders)
+  const requestManagerRef = useRef<SuggestionRequestManager>(
+    new SuggestionRequestManager(REQUEST_CONFIG)
+  );
+
+  // Cache instance (persists across renders)
+  const cacheRef = useRef<SuggestionCache<EnhancementSuggestionsResponse>>(
+    new SuggestionCache(CACHE_CONFIG)
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      requestManagerRef.current.dispose();
+    };
+  }, []);
+
   /**
    * Fetch enhancement suggestions for highlighted text
+   * 
+   * Flow:
+   * 1. Validate input and check mode
+   * 2. Check deduplication (skip if same text in-flight)
+   * 3. Cancel any previous request
+   * 4. Check cache (return immediately if hit)
+   * 5. Schedule debounced request
+   * 6. Show loading state after debounce fires
+   * 7. Fetch from API with cancellation support
+   * 8. Cache results and update state
    */
   const fetchEnhancementSuggestions = useCallback(
     async (payload: FetchPayload = {}): Promise<void> => {
@@ -77,7 +136,6 @@ export function useSuggestionFetch({
         range,
         offsets,
         metadata: rawMetadata = null,
-        trigger = 'highlight',
         allLabeledSpans = [],
       } = payload;
 
@@ -96,99 +154,187 @@ export function useSuggestionFetch({
         return;
       }
 
-      // Avoid duplicate requests
-      if (
-        suggestionsData?.selectedText === trimmedHighlight &&
-        suggestionsData?.show
-      ) {
+      // DEDUPLICATION: Use highlighted text as dedup key
+      const dedupKey = trimmedHighlight;
+
+      // Check if same request is already in-flight (prevents duplicate requests)
+      if (requestManagerRef.current.isRequestInFlight(dedupKey)) {
+        return; // Skip duplicate - Requirement 2.1
+      }
+
+      // Cancel any previous request (different text) - Requirement 1.1
+      requestManagerRef.current.cancelCurrentRequest();
+
+      // Get selection position from metadata or find it
+      const startIndex = metadata?.span?.startIndex ?? 
+        normalizedPrompt.indexOf(trimmedHighlight);
+      const safeStartIndex = startIndex === -1 ? 0 : startIndex;
+
+      // Check cache BEFORE showing loading state - Requirement 6.3
+      const contextBefore = normalizedPrompt.slice(
+        Math.max(0, safeStartIndex - 100), 
+        safeStartIndex
+      );
+      const contextAfter = normalizedPrompt.slice(
+        safeStartIndex + trimmedHighlight.length,
+        safeStartIndex + trimmedHighlight.length + 100
+      );
+      const cacheKey = SuggestionCache.generateKey(
+        trimmedHighlight,
+        contextBefore,
+        contextAfter,
+        simpleHash(normalizedPrompt)
+      );
+
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached) {
+        // Cache hit - return immediately without API call
+        const suggestionsAsObjects: SuggestionItem[] = cached.suggestions.map((s) =>
+          typeof s === 'string' ? { text: s } : s
+        );
+        
+        setSuggestionsData((prev) => {
+          const baseData: SuggestionsData = {
+            show: true,
+            selectedText: trimmedHighlight,
+            originalText: originalText || trimmedHighlight,
+            suggestions: suggestionsAsObjects,
+            isLoading: false,
+            isError: false,
+            errorMessage: null,
+            isPlaceholder: cached.isPlaceholder,
+            fullPrompt: normalizedPrompt,
+            range: range ?? null,
+            offsets: offsets ?? null,
+            metadata: metadata ?? null,
+            setSuggestions: (newSuggestions) => {
+              setSuggestionsData((p) => {
+                if (!p) return p;
+                return {
+                  ...p,
+                  suggestions: newSuggestions,
+                  isPlaceholder: false,
+                  isError: false,
+                  errorMessage: null,
+                };
+              });
+            },
+            onSuggestionClick: handleSuggestionClick,
+            onClose: () => setSuggestionsData(null),
+          };
+          return baseData;
+        });
         return;
       }
 
-      // Show loading state immediately
-      const initialData: SuggestionsData = {
-        show: true,
-        selectedText: trimmedHighlight,
-        originalText: originalText || trimmedHighlight,
-        suggestions: [],
-        isLoading: true,
-        isError: false,
-        errorMessage: null,
-        isPlaceholder: false,
-        fullPrompt: normalizedPrompt,
-        range: range ?? null,
-        offsets: offsets ?? null,
-        metadata: metadata ?? null,
-        setSuggestions: (newSuggestions) => {
-          setSuggestionsData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              suggestions: newSuggestions,
-              isPlaceholder: false,
-              isError: false,
-              ...(prev.errorMessage !== undefined ? { errorMessage: null } : {}),
-            };
-          });
-        },
-        onSuggestionClick: handleSuggestionClick,
-        onClose: () => setSuggestionsData(null),
-      };
-      setSuggestionsData(initialData);
+      // Retry function for error state - Requirement 3.3
+      const retryFn = () => fetchEnhancementSuggestions(payload);
 
+      // Schedule debounced request - Requirement 4.1, 4.2
+      // NOTE: Loading state is shown AFTER debounce fires (inside scheduleRequest)
       try {
-        // Prepare span context (sanitized and validated)
-        const spanContext = prepareSpanContext(
-          metadata as Record<string, unknown>,
-          allLabeledSpans
-        ) as { simplifiedSpans: unknown[]; nearbySpans: unknown[] };
-        const { simplifiedSpans, nearbySpans } = spanContext;
-        if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-          console.debug('[SuggestionFetch] allLabeledSpans:', simplifiedSpans.length);
-          console.debug('[SuggestionFetch] metadata:', metadata);
-        }
+        const result = await requestManagerRef.current.scheduleRequest(
+          dedupKey,
+          async (signal) => {
+            // Show loading state when request actually fires (after debounce)
+            // This prevents flickering during rapid selections
+            setSuggestionsData(() => {
+              const loadingData: SuggestionsData = {
+                show: true,
+                selectedText: trimmedHighlight,
+                originalText: originalText || trimmedHighlight,
+                suggestions: [],
+                isLoading: true,
+                isError: false,
+                errorMessage: null,
+                isPlaceholder: false,
+                fullPrompt: normalizedPrompt,
+                range: range ?? null,
+                offsets: offsets ?? null,
+                metadata: metadata ?? null,
+                onRetry: retryFn,
+                setSuggestions: (newSuggestions) => {
+                  setSuggestionsData((p) => {
+                    if (!p) return p;
+                    return {
+                      ...p,
+                      suggestions: newSuggestions,
+                      isPlaceholder: false,
+                      isError: false,
+                      errorMessage: null,
+                    };
+                  });
+                },
+                onSuggestionClick: handleSuggestionClick,
+                onClose: () => setSuggestionsData(null),
+              };
+              return loadingData;
+            });
 
-        // Get edit history for context
-        const editHistory = getEditSummary(10);
+            // Prepare span context (sanitized and validated)
+            const spanContext = prepareSpanContext(
+              metadata as Record<string, unknown>,
+              allLabeledSpans
+            ) as { simplifiedSpans: unknown[]; nearbySpans: unknown[] };
+            const { simplifiedSpans, nearbySpans } = spanContext;
 
-        // Delegate to API layer (VideoConceptBuilder pattern)
-        const { suggestions, isPlaceholder } = await fetchSuggestionsAPI({
-          highlightedText: trimmedHighlight,
-          normalizedPrompt,
-          inputPrompt: promptOptimizer.inputPrompt,
-          brainstormContext: stablePromptContext ?? null,
-          metadata: metadata ?? null,
-          allLabeledSpans: simplifiedSpans,
-          nearbySpans: nearbySpans,
-          editHistory,
-        });
+            // Get edit history for context
+            const editHistory = getEditSummary(10);
 
-        // Update with results
+            // Delegate to API layer with cancellation support - Requirement 1.4, 1.5
+            return fetchSuggestionsAPI({
+              highlightedText: trimmedHighlight,
+              normalizedPrompt,
+              inputPrompt: promptOptimizer.inputPrompt,
+              brainstormContext: stablePromptContext ?? null,
+              metadata: metadata ?? null,
+              allLabeledSpans: simplifiedSpans,
+              nearbySpans: nearbySpans,
+              editHistory,
+              signal, // Pass abort signal for cancellation
+            });
+          }
+        );
+
+        // Cache the result - Requirement 6.1
+        cacheRef.current.set(cacheKey, result);
+
+        // Update state with results
+        const suggestionsAsObjects: SuggestionItem[] = result.suggestions.map((s) =>
+          typeof s === 'string' ? { text: s } : s
+        );
+
         setSuggestionsData((prev) => {
           if (!prev) return prev;
-          const suggestionsAsObjects: SuggestionItem[] = suggestions.map((s) =>
-            typeof s === 'string' ? { text: s } : s
-          );
           return {
             ...prev,
             suggestions: suggestionsAsObjects,
             isLoading: false,
             isError: false,
-            ...(prev.errorMessage !== undefined ? { errorMessage: null } : {}),
-            isPlaceholder,
+            errorMessage: null,
+            isPlaceholder: result.isPlaceholder,
+            onRetry: retryFn,
           };
         });
       } catch (error) {
+        // Silently ignore cancellation - don't update state - Requirement 1.2, 1.3
+        if (error instanceof CancellationError) {
+          return;
+        }
+
         console.error('Error fetching suggestions:', error);
         toast.error('Failed to load suggestions');
 
+        // Set error state with retry callback - Requirement 3.1, 3.3
         setSuggestionsData((prev) => {
           if (!prev) return null;
           const updated: SuggestionsData = {
             ...prev,
             isLoading: false,
             isError: true,
-            errorMessage: 'Failed to load suggestions. Please try again.',
+            errorMessage: (error as Error).message || 'Failed to load suggestions. Please try again.',
             suggestions: [],
+            onRetry: retryFn, // Wire up retry callback
           };
           return updated;
         });
@@ -197,8 +343,6 @@ export function useSuggestionFetch({
     [
       promptOptimizer,
       selectedMode,
-      suggestionsData?.selectedText,
-      suggestionsData?.show,
       setSuggestionsData,
       stablePromptContext,
       toast,

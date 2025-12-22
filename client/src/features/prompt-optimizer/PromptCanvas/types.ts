@@ -79,6 +79,7 @@ export interface SpanClickPayload {
 }
 
 export interface SuggestionItem {
+  id?: string;
   text?: string;
   category?: string;
   suggestions?: SuggestionItem[];
@@ -113,6 +114,7 @@ export interface SuggestionsData {
     idempotencyKey?: string | null;
     [key: string]: unknown;
   } | null;
+  onRetry?: () => void;
   setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
   onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
   onClose?: () => void;

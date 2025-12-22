@@ -18,7 +18,12 @@ export const API_CONFIG = {
   timeout: {
     default: 30000,  // 30 seconds
     optimization: 60000,  // 60 seconds for prompt optimization
-    suggestions: 15000,  // 15 seconds for suggestions
+    suggestions: 3000,  // 3 seconds for suggestions (Requirement 3.5)
+  },
+
+  // Debounce configuration (in milliseconds)
+  debounce: {
+    suggestions: 150,  // 150ms debounce for suggestion requests (Requirement 4.3)
   },
 
   // Retry configuration
@@ -52,6 +57,7 @@ interface ServiceConfig {
   retry?: typeof API_CONFIG.retry;
   cache?: typeof API_CONFIG.cache.suggestions;
   rateLimit?: typeof API_CONFIG.rateLimit.suggestions;
+  debounce?: number;
 }
 
 /**
@@ -67,6 +73,7 @@ export function getAPIConfig(service: ServiceName): ServiceConfig {
       timeout: API_CONFIG.timeout.suggestions,
       cache: API_CONFIG.cache.suggestions,
       rateLimit: API_CONFIG.rateLimit.suggestions,
+      debounce: API_CONFIG.debounce.suggestions,
     },
     default: {
       timeout: API_CONFIG.timeout.default,

@@ -130,6 +130,15 @@ export function useSuggestionsState(
   }, [suggestions, hasCategories, isGroupedFormat]);
 
   // ===========================
+  // SYNC WITH PROP CHANGES
+  // ===========================
+
+  // Sync internal suggestions state when prop changes
+  useEffect(() => {
+    dispatch({ type: ACTIONS.SET_SUGGESTIONS, payload: suggestions });
+  }, [suggestions]);
+
+  // ===========================
   // CATEGORY SELECTION
   // ===========================
 
@@ -141,21 +150,27 @@ export function useSuggestionsState(
       return;
     }
 
+    // Check if current active category still exists in new categories
+    const activeCategoryExists = categories.some(
+      (cat) => cat.category === state.activeCategory
+    );
+
+    // Preserve active category if it still exists (Requirement 8.2)
+    if (state.activeCategory && activeCategoryExists) {
+      return; // Keep current active category
+    }
+
+    // Fall back to initial category if provided and exists, otherwise first category (Requirement 8.3)
     const preferredCategory =
       initialCategory &&
       categories.some((cat) => cat.category === initialCategory)
         ? initialCategory
         : categories[0]?.category || null;
 
-    if (
-      !state.activeCategory ||
-      !categories.some((cat) => cat.category === state.activeCategory)
-    ) {
-      dispatch({
-        type: ACTIONS.SET_ACTIVE_CATEGORY,
-        payload: preferredCategory,
-      });
-    }
+    dispatch({
+      type: ACTIONS.SET_ACTIVE_CATEGORY,
+      payload: preferredCategory,
+    });
   }, [categories, state.activeCategory, initialCategory]);
 
   // ===========================

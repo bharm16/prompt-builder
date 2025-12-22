@@ -97,11 +97,13 @@ export function EmptyState({ emptyState }: EmptyStateProps): React.ReactElement 
 interface ErrorStateProps {
   errorState: ErrorStateConfig;
   errorMessage?: string | null;
+  onRetry?: () => void;
 }
 
 export function ErrorState({
   errorState,
   errorMessage,
+  onRetry,
 }: ErrorStateProps): React.ReactElement {
   const ErrorIcon = errorState.icon;
   const description = errorMessage || errorState.description;
@@ -116,6 +118,14 @@ export function ErrorState({
         </div>
         <p className="text-label-12 text-geist-foreground mb-geist-1">{errorState.title}</p>
         <p className="text-label-12 text-geist-accents-5">{description}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="mt-geist-3 px-geist-3 py-geist-1 text-label-12 font-medium bg-geist-accents-2 hover:bg-geist-accents-3 rounded-geist transition-colors"
+          >
+            Retry
+          </button>
+        )}
       </div>
     </div>
   );

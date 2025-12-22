@@ -37,7 +37,9 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      const target = event.target;
+      if (!target || !(target instanceof Node)) return;
+      if (exportMenuRef.current && !exportMenuRef.current.contains(target)) {
         onToggleExportMenu(false);
       }
     };

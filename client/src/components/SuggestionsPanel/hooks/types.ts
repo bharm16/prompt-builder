@@ -3,6 +3,7 @@
  */
 
 export interface SuggestionItem {
+  id?: string;
   text?: string;
   category?: string;
   suggestions?: SuggestionItem[];
