@@ -53,7 +53,7 @@ export const TAXONOMY = {
     label: 'Shot Type',
     description: 'Framing and vantage of the camera',
     group: 'technical',
-    color: 'teal',
+    color: 'cyan',
     attributes: {
       /** Shot type / framing: "Wide shot", "Close-up", "Bird\'s eye", "Dutch angle" */
       TYPE: 'shot.type',
@@ -104,7 +104,7 @@ export const TAXONOMY = {
     label: 'Action & Motion',
     description: 'What the subject is doing (one continuous action)',
     group: 'entity',
-    color: 'red',
+    color: 'rose',
     attributes: {
       /** Movement / verb phrase: "running", "floating", "leaning" */
       MOVEMENT: 'action.movement',
@@ -128,7 +128,7 @@ export const TAXONOMY = {
     label: 'Environment',
     description: 'Where the scene takes place',
     group: 'setting',
-    color: 'green',
+    color: 'emerald',
     attributes: {
       /** Physical location: "Diner", "Mars", "Forest" */
       LOCATION: 'environment.location',
@@ -179,7 +179,7 @@ export const TAXONOMY = {
     label: 'Camera',
     description: 'Cinematography and framing',
     group: 'technical',
-    color: 'blue',
+    color: 'sky',
     attributes: {
       /** Shot type: "Close-up", "Wide shot", "Medium" */
       FRAMING: 'shot.type',
@@ -207,7 +207,7 @@ export const TAXONOMY = {
     label: 'Style & Aesthetic',
     description: 'Visual treatment and medium',
     group: 'technical',
-    color: 'purple',
+    color: 'violet',
     attributes: {
       /** Aesthetic style: "Cyberpunk", "Noir", "Vintage" */
       AESTHETIC: 'style.aesthetic',
@@ -229,7 +229,7 @@ export const TAXONOMY = {
     label: 'Technical Specs',
     description: 'Video technical parameters',
     group: 'technical',
-    color: 'gray',
+    color: 'slate',
     attributes: {
       /** Aspect ratio: "16:9", "2.39:1", "9:16" */
       ASPECT_RATIO: 'technical.aspectRatio',
@@ -254,7 +254,7 @@ export const TAXONOMY = {
     label: 'Audio',
     description: 'Sound and music elements',
     group: 'technical',
-    color: 'indigo',
+    color: 'fuchsia',
     attributes: {
       /** Music/Score: "Orchestral score", "Ambient music" */
       SCORE: 'audio.score',
