@@ -1,0 +1,5 @@
+# Ignore generated snapshots (can be regenerated)
+latest.json
+
+# Keep baseline for CI/CD comparison
+!baseline.json
