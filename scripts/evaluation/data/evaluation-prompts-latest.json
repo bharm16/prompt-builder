@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "generatedAt": "2025-12-22T23:01:38.287Z",
+    "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/raw-prompts-2025_12_22_15_47_50.json",
+    "promptCount": 2,
+    "successCount": 2,
+    "errorCount": 0,
+    "optimizerVersion": "v2-two-stage",
+    "avgLatencyMs": 11788
+  },
+  "prompts": [
+    {
+      "id": "XUNWKWibskQYhoZvQr8B",
+      "input": "young painter with splattered apron, studying a blank canvas intently, at sunlit artist's studio with large windows",
+      "output": "Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. The camera uses Static Tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by Soft natural light streaming through large windows, warm color temperature. Style reference: Shot on Kodak Portra 400 for warm, natural colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** natural ambience\n- **Camera:** Medium Close-Up on 85mm with shallow focus f/2.8\n- **Lighting:** Soft natural light from large windows, warm color temperature\n- **Style:** Shot on Kodak Portra 400 for warm, natural colors\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Camera):** Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. The camera uses Static Tripod from a bird's-eye view. Lit by Soft natural light streaming through large windows.\n- **Variation 2 (Different Lighting):** Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. Lit by low-key lighting with a single warm key light from the side. The camera uses Static Tripod at eye level.",
+      "generatedAt": "2025-12-22T23:01:26.302Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12594,
+      "error": null
+    },
+    {
+      "id": "j7Wpz9eRhL3zxcniUveI",
+      "input": "subject: man with vintage motorcycle in restoration garage, action: adjusting carburetor with precision tools, mood: warm nostalgic amber glow",
+      "output": "Medium Close-Up of a man with concentrated expression, precision tools, and vintage motorcycle adjusting carburetor with precision tools in a restoration garage. The camera uses Static Tripod from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft amber glow from overhead lights. Style reference: Kodak Portra 400 for warm tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** natural ambience of the workshop\n- **Camera:** Medium Close-Up on 85mm with shallow focus f/2.8\n- **Lighting:** Soft amber glow from overhead lights, casting warm highlights on the motorcycle and tools\n- **Style:** Shot on Kodak Portra 400, evoking a warm, nostalgic aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Camera):** Medium Close-Up of a man with concentrated expression and precision tools adjusting carburetor with precision tools in a restoration garage. The camera uses Static Tripod from a bird's-eye view. Lit by soft amber glow from overhead lights. Style reference: Kodak Portra 400 for warm tones.\n- **Variation 2 (Different Lighting):** Medium Close-Up of a man with concentrated expression and precision tools adjusting carburetor with precision tools in a restoration garage. Lit by low-key lighting with a single warm key light from the side. The camera uses Static Tripod from a low angle. Style reference: Kodak Portra 400 for warm tones.",
+      "generatedAt": "2025-12-22T23:01:38.287Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10982,
+      "error": null
+    }
+  ]
+}

@@ -16,7 +16,6 @@
  */
 
 import { config as loadEnv } from 'dotenv';
-loadEnv();
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
@@ -27,6 +26,8 @@ import { PromptOptimizationService } from '../../server/src/services/prompt-opti
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+loadEnv({ path: join(__dirname, '../..', '.env') });
 
 const DATA_DIR = join(__dirname, 'data');
 
@@ -67,12 +68,19 @@ interface EvaluationDataset {
 
 function createAIService(): AIModelService {
   const clients: Record<string, any> = {};
+  const groqTimeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 5000);
+  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 60000);
+  const groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const groqBaseURL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+  const openaiBaseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
   if (process.env.GROQ_API_KEY) {
     clients.groq = new OpenAICompatibleAdapter({
       apiKey: process.env.GROQ_API_KEY,
-      baseURL: 'https://api.groq.com/openai/v1',
-      defaultModel: 'llama-3.1-8b-instant',
+      baseURL: groqBaseURL,
+      defaultModel: groqModel,
+      defaultTimeout: groqTimeoutMs,
       providerName: 'groq',
     });
   }
@@ -80,16 +88,18 @@ function createAIService(): AIModelService {
   if (process.env.OPENAI_API_KEY) {
     clients.openai = new OpenAICompatibleAdapter({
       apiKey: process.env.OPENAI_API_KEY,
-      baseURL: 'https://api.openai.com/v1',
-      defaultModel: 'gpt-4o-mini',
+      baseURL: openaiBaseURL,
+      defaultModel: openaiModel,
+      defaultTimeout: openaiTimeoutMs,
       providerName: 'openai',
     });
     
     // Also add as chatgpt for draft generation
     clients.chatgpt = new OpenAICompatibleAdapter({
       apiKey: process.env.OPENAI_API_KEY,
-      baseURL: 'https://api.openai.com/v1',
-      defaultModel: 'gpt-4o-mini',
+      baseURL: openaiBaseURL,
+      defaultModel: openaiModel,
+      defaultTimeout: openaiTimeoutMs,
       providerName: 'chatgpt',
     });
   }
