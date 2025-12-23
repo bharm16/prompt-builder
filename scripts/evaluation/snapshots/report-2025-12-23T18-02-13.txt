@@ -1,0 +1,79 @@
+Evaluation Report - 2025-12-23T18:02:13.156Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      18.7/25
+  Average Span Count: 33
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████ 6
+  acceptable (13-17)   ████████████████ 4
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - minimal motion blur (10x)
+  - consistent framing (6x)
+  - subject continuity (6x)
+  - static tripod (3x)
+  - bright eyes (3x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - handheld tracking (2x)
+  - Vibrant (2x)
+  - Eye-level (2x)
+  - daylight (2x)
+  - intricate footwork (1x)
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.20 / 4.60
+  subject      3.60 / 4.40
+  action       3.10 / 4.20
+  environment  3.40 / 4.60
+  lighting     3.60 / 3.70
+  camera       4.10 / 4.40
+  style        2.80 / 3.50
+  technical    4.60 / 4.60
+  audio        4.10 / 4.40
+
+FALSE POSITIVE REASONS:
+  - section_header: 1
+  - abstract_concept: 8
+  - non_visual: 7
+  - duplicate: 5
+  - other: 4
+
+TOP TAXONOMY ERRORS:
+  - environment.context → lighting.source (3x)
+  - technical.aspectRatio → camera.angle (2x)
+  - technical.frameRate → camera.focus (1x)
+  - lighting.source → environment.location (1x)
+  - shot.type → action (1x)
+
+ERRORS BY SECTION:
+  main            missed 55, falsePositives 10
+  technicalSpecs  missed 1, falsePositives 11
+  alternatives    missed 0, falsePositives 4
+
+CONFIDENCE ERROR RATES:
+  high   0.0% (0/174)
+  medium 9.2% (7/76)
+  low    22.5% (18/80)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [17/25] "gorilla with gloves tap dancing in a victorian tra..."
+    Notes: The extraction missed several important visual elements and included some non-visual or abstract con
+  [17/25] "gorilla drinking from a paper cup at a water coole..."
+    Notes: The extraction missed several important visual elements and had some misclassifications, particularl
+  [17/25] "woman dribbling a basketball..."
+    Notes: The extraction missed several important environmental and lighting elements, and some style aspects.
+
+================================================================================

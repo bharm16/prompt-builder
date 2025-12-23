@@ -1,0 +1,89 @@
+Evaluation Report - 2025-12-23T18:18:56.054Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      19.5/25
+  Average Span Count: 32.5
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████████████████ 9
+  acceptable (13-17)   ████ 1
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - minimal motion blur (6x)
+  - static tripod (5x)
+  - consistent framing (3x)
+  - subject continuity (3x)
+  - bright eyes (3x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - Naturalistic (3x)
+  - Vibrant (2x)
+  - window (2x)
+  - the Macarena (2x)
+  - main action (1x)
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: static tripod (camera), eye level (camera), minimal motion blur (style), consistent framing (style), subject continuity (style)
+  MINOR: minimal motion blur (style), maintain consistent framing and subject continuity (style), maintain consistent framing and subject continuity (style)
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.50 / 4.90
+  subject      3.70 / 4.30
+  action       2.90 / 4.80
+  environment  4.00 / 4.70
+  lighting     4.00 / 4.00
+  camera       3.90 / 4.60
+  style        3.60 / 3.60
+  technical    4.90 / 4.80
+  audio        4.20 / 4.10
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 14
+      e.g.: main action, modern look, Vibrant, Vibrant, High-Angle Variation
+  - non_visual: 11
+      e.g.: cycling jersey, Eye-level, window, window, the Macarena
+  - instruction_text: 1
+      e.g.: Different Lighting
+  - duplicate: 2
+      e.g.: handheld tracking, warm sunlight
+
+TOP TAXONOMY ERRORS:
+  - shot.type → camera.focus (3x) (e.g. "deep focus", "shallow focus", "deep focus")
+  - style.aesthetic → camera.movement (2x) (e.g. "handheld tracking", "Static Eye-Level Shot")
+  - environment.context → subject.appearance (1x) (e.g. "glossy paint")
+  - subject.identity → lighting.source (1x) (e.g. "headlights")
+  - technical.aspectRatio → camera.angle (1x) (e.g. "Eye-level")
+
+ERRORS BY SECTION:
+  main            missed 43, falsePositives 11
+  technicalSpecs  missed 0, falsePositives 9
+  alternatives    missed 0, falsePositives 8
+
+CONFIDENCE ERROR RATES:
+  high   1.2% (2/173)
+    Failures: "Macarena" (audio.score), "Terrence Malick" (subject.identity)
+  medium 16.9% (13/77)
+    Failures: "cycling jersey" (action.movement), "warm sunlight" (style.colorGrade), "High-Angle Variation" (style.aesthetic)
+  low    17.3% (13/75)
+    Failures: "main action" (audio.ambient), "modern look" (lighting.quality), "handheld tracking" (style.aesthetic)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [17/25] "intrepid mountain climber hanging from cliff, pausing to scan the horizon, at weathered granite walls lit by golden hour"
+    Notes: The extraction missed some important visual elements related to the subject's appearance and actions. There were also some misclassifications, particularly with camera movements and lighting roles. Precision was affected by the inclusion of non-visual elements.
+  [18/25] "man riding a bike"
+    Notes: The extraction was mostly accurate but missed some important visual elements like 'blooming flowers' and 'soft shadows'. There were some precision issues with non-visual elements being extracted and a taxonomy error with 'Eye-level'.
+  [19/25] "sleek silver sports car with glossy paint, entering a tunnel with headlights illuminating walls, at subterranean highway tunnel with neon art"
+    Notes: The extraction was generally good, but missed some camera and style elements. There were a few taxonomy errors, particularly with lighting and subject roles. Precision was affected by some abstract concepts being extracted.
+
+================================================================================

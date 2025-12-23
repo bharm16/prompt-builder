@@ -205,6 +205,13 @@ export interface SnapshotSummary {
   }>;
   errorsBySection?: ErrorsBySection;
   confidenceAnalysis?: ConfidenceAnalysis;
+  latencyStats?: {
+    avg: number;
+    p50: number;
+    p95: number;
+    p99: number;
+  };
+  missedCountsByCategory?: Record<string, number>;
 }
 
 export interface Snapshot {

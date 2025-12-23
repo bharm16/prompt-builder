@@ -1214,6 +1214,80 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 }
 
 // =============================================================================
+// SECTION HEADER FILTER
+// =============================================================================
+
+/**
+ * Common section header labels that should not be extracted as spans.
+ * These appear in structured prompts as headers like "**Camera:**" or "## Style"
+ */
+const SECTION_HEADER_WORDS = new Set([
+  'camera',
+  'style',
+  'audio',
+  'sound',
+  'lighting',
+  'duration',
+  'technical',
+  'specs',
+  'specifications',
+  'environment',
+  'subject',
+  'action',
+  'shot',
+  'movement',
+  'composition',
+  'framing',
+  'alternatives',
+  'notes',
+  'description',
+]);
+
+/**
+ * Check if a span appears to be a section header rather than actual content.
+ * Section headers are standalone labels like "**Camera:**" or "## Style"
+ */
+function isSectionHeader(text: string, span: NlpSpan): boolean {
+  const spanText = span.text.trim();
+  const spanLower = spanText.toLowerCase();
+  
+  // Only check single-word or very short spans (headers are typically 1-2 words)
+  const wordCount = spanText.split(/\s+/).length;
+  if (wordCount > 2) return false;
+  
+  // Check if it's a known header word
+  if (!SECTION_HEADER_WORDS.has(spanLower)) return false;
+  
+  // Look at the context around the span
+  const contextBefore = text.slice(Math.max(0, span.start - 10), span.start);
+  const contextAfter = text.slice(span.end, Math.min(text.length, span.end + 5));
+  
+  // Check for markdown header patterns: "## Camera" or "**Camera"
+  if (/(?:^|\n)\s*(?:#{1,3}\s*|\*\*\s*)$/.test(contextBefore)) {
+    return true;
+  }
+  
+  // Check for label patterns: "Camera:" or "Camera**:" or "**Camera:**"
+  if (/^\s*\**\s*:/.test(contextAfter)) {
+    return true;
+  }
+  
+  // Check for line-start header: starts at beginning of line and followed by colon
+  if (/(?:^|\n)\s*$/.test(contextBefore) && /^\s*:/.test(contextAfter)) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Filter out spans that are section headers
+ */
+function filterSectionHeaders(text: string, spans: NlpSpan[]): NlpSpan[] {
+  return spans.filter(span => !isSectionHeader(text, span));
+}
+
+// =============================================================================
 // MERGE STRATEGY
 // =============================================================================
 
@@ -1406,7 +1480,10 @@ export async function extractSemanticSpans(
     
     // Merge and deduplicate with role-aware overlap resolution
     const mergedSpans = mergeSpans(closedSpans, openSpans);
-    const outputSpans = mergedSpans.map(({ source: _, ...span }) => span);
+    
+    // Filter out section headers (e.g., "**Camera:**" -> "Camera" false positive)
+    const filteredSpans = filterSectionHeaders(text, mergedSpans);
+    const outputSpans = filteredSpans.map(({ source: _, ...span }) => span);
     
     const totalTime = Math.round(performance.now() - startTime);
     

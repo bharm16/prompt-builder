@@ -1,9 +1,10 @@
 import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
 import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
 import { resolveOverlaps } from '../processing/OverlapResolver.js';
+import { filterHeaders } from '../processing/HeaderFilter.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
-import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.ts';
+import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.js';
 import type {
   ProcessingOptions,
   ValidationPolicy,
@@ -112,9 +113,12 @@ export function validateSpans({
     policy.allowOverlap === true
   );
 
+  // Phase 4.5: Filter out section headers and labels
+  const { spans: headersFiltered, notes: headerNotes } = filterHeaders(resolved);
+
   // Phase 5: Filter by confidence
   const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
-    resolved,
+    headersFiltered,
     options.minConfidence ?? 0
   );
 
@@ -142,6 +146,7 @@ export function validateSpans({
     ...mergeNotes,
     ...dedupeNotes,
     ...overlapNotes,
+    ...headerNotes,
     ...confidenceNotes,
     ...truncationNotes,
   ].filter(Boolean);
@@ -157,6 +162,13 @@ export function validateSpans({
             ? meta.version.trim()
             : (options.templateVersion as string),
         notes: combinedNotes.join(' | '),
+        // Preserve NLP pipeline stats for evaluation/telemetry
+        ...(typeof meta?.closedVocab === 'number' && { closedVocab: meta.closedVocab }),
+        ...(typeof meta?.openVocab === 'number' && { openVocab: meta.openVocab }),
+        ...(typeof meta?.tier1Latency === 'number' && { tier1Latency: meta.tier1Latency }),
+        ...(typeof meta?.tier2Latency === 'number' && { tier2Latency: meta.tier2Latency }),
+        ...(typeof meta?.latency === 'number' && { latency: meta.latency }),
+        ...(typeof meta?.source === 'string' && { source: meta.source }),
       },
       isAdversarial: Boolean(isAdversarial),
       analysisTrace: analysisTrace || null,

@@ -31,6 +31,33 @@ loadEnv({ path: join(__dirname, '../..', '.env') });
 
 const DATA_DIR = join(__dirname, 'data');
 
+// =============================================================================
+// Timestamp Utilities (Local Time)
+// =============================================================================
+
+/**
+ * Get current timestamp in local time, ISO-like format.
+ * Returns: "2025-12-23T11:30:45" (local time, no timezone suffix)
+ */
+function getLocalTimestamp(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Get filename-safe local timestamp.
+ * Returns: "2025-12-23T11-30-45"
+ */
+function getLocalTimestampForFilename(): string {
+  return getLocalTimestamp().replace(/:/g, '-');
+}
+
 interface RawPromptRecord {
   id?: string;
   uuid?: string;
@@ -272,7 +299,7 @@ async function main(): Promise<void> {
       id,
       input,
       output: result.output,
-      generatedAt: new Date().toISOString(),
+      generatedAt: getLocalTimestamp(),
       optimizerVersion: 'v2-two-stage',
       latencyMs: result.latencyMs,
       error: result.error
@@ -292,7 +319,7 @@ async function main(): Promise<void> {
   // Build dataset
   const dataset: EvaluationDataset = {
     metadata: {
-      generatedAt: new Date().toISOString(),
+      generatedAt: getLocalTimestamp(),
       sourceFile: inputFile,
       promptCount: results.length,
       successCount: successResults.length,
@@ -304,7 +331,7 @@ async function main(): Promise<void> {
   };
 
   // Save to file
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const timestamp = getLocalTimestampForFilename();
   const outputPath = join(DATA_DIR, `evaluation-prompts-${timestamp}.json`);
   writeFileSync(outputPath, JSON.stringify(dataset, null, 2));
 

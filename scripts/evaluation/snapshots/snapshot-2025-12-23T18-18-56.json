@@ -1,0 +1,4309 @@
+{
+  "timestamp": "2025-12-23T18:18:56.054Z",
+  "promptCount": 10,
+  "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json",
+  "judgeModel": "gpt-4o",
+  "results": [
+    {
+      "promptId": "5YRd34ZpFN5GPmZX6ha6",
+      "input": "sleek silver sports car with glossy paint, entering a tunnel with headlights illuminating walls, at subterranean highway tunnel with neon art",
+      "output": "Medium Long Shot of a sleek silver sports car with glossy paint, strong headlights, and sleek design entering the tunnel in a subterranean highway tunnel. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by headlights as primary light source, reflecting off glossy tunnel walls with additional neon glow. Style reference: Modern and glossy, inspired by Tron aesthetic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.35:1\n- **Frame Rate:** 24fps\n- **Audio:** None specified\n- **Camera:** Static eye-level, 50mm lens, f/11 for deep focus\n- **Lighting:** Headlights with neon reflections\n- **Style:** Tron-inspired modern look\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A high-angle shot from above captures the sleek silver sports car entering the tunnel, emphasizing the illuminated tunnel walls.\n- **Variation 2 (Neon Lighting Variation):** The car enters the tunnel under intense neon lighting, with colors reflecting off its glossy surface, emphasizing the vibrant art.",
+      "spanCount": 37,
+      "spans": [
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 16,
+          "section": "main"
+        },
+        {
+          "text": "sleek silver sports car",
+          "role": "subject.identity",
+          "confidence": 0.87,
+          "start": 22,
+          "end": 45,
+          "section": "main"
+        },
+        {
+          "text": "glossy paint",
+          "role": "environment.context",
+          "confidence": 0.5,
+          "start": 51,
+          "end": 63,
+          "section": "main"
+        },
+        {
+          "text": "strong headlights",
+          "role": "lighting.source",
+          "confidence": 0.57,
+          "start": 65,
+          "end": 82,
+          "section": "main"
+        },
+        {
+          "text": "headlights",
+          "role": "subject.identity",
+          "confidence": 0.86,
+          "start": 72,
+          "end": 82,
+          "section": "main"
+        },
+        {
+          "text": "sleek design",
+          "role": "subject.appearance",
+          "confidence": 0.5,
+          "start": 88,
+          "end": 100,
+          "section": "main"
+        },
+        {
+          "text": "entering the tunnel in a subterranean highway tunnel",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 101,
+          "end": 153,
+          "section": "main"
+        },
+        {
+          "text": "tunnel",
+          "role": "environment.context",
+          "confidence": 0.57,
+          "start": 114,
+          "end": 120,
+          "section": "main"
+        },
+        {
+          "text": "subterranean highway tunnel",
+          "role": "environment.context",
+          "confidence": 0.55,
+          "start": 126,
+          "end": 153,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.78,
+          "start": 203,
+          "end": 218,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 220,
+          "end": 229,
+          "section": "main"
+        },
+        {
+          "text": "main action",
+          "role": "audio.ambient",
+          "confidence": 0.51,
+          "start": 257,
+          "end": 268,
+          "section": "main"
+        },
+        {
+          "text": "headlights",
+          "role": "lighting.source",
+          "confidence": 0.87,
+          "start": 277,
+          "end": 287,
+          "section": "main"
+        },
+        {
+          "text": "tunnel",
+          "role": "environment.context",
+          "confidence": 0.52,
+          "start": 335,
+          "end": 341,
+          "section": "main"
+        },
+        {
+          "text": "neon",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 364,
+          "end": 368,
+          "section": "main"
+        },
+        {
+          "text": "Modern and glossy",
+          "role": "style.aesthetic",
+          "confidence": 0.51,
+          "start": 392,
+          "end": 409,
+          "section": "main"
+        },
+        {
+          "text": "Tron aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.64,
+          "start": 423,
+          "end": 437,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 573,
+          "end": 575,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "2.35:1",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 596,
+          "end": 602,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 621,
+          "end": 626,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 687,
+          "end": 691,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/11",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 698,
+          "end": 702,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "deep focus",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 707,
+          "end": 717,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Headlights",
+          "role": "lighting.source",
+          "confidence": 0.89,
+          "start": 734,
+          "end": 744,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "neon",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 750,
+          "end": 754,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Tron-inspired modern look",
+          "role": "style.aesthetic",
+          "confidence": 0.54,
+          "start": 780,
+          "end": 805,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "modern look",
+          "role": "lighting.quality",
+          "confidence": 0.58,
+          "start": 794,
+          "end": 805,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 878,
+          "end": 893,
+          "section": "alternatives"
+        },
+        {
+          "text": "sleek silver sports car",
+          "role": "subject.identity",
+          "confidence": 0.82,
+          "start": 918,
+          "end": 941,
+          "section": "alternatives"
+        },
+        {
+          "text": "entering the tunnel",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 942,
+          "end": 961,
+          "section": "alternatives"
+        },
+        {
+          "text": "tunnel",
+          "role": "environment.context",
+          "confidence": 0.55,
+          "start": 955,
+          "end": 961,
+          "section": "alternatives"
+        },
+        {
+          "text": "tunnel",
+          "role": "environment.context",
+          "confidence": 0.58,
+          "start": 991,
+          "end": 997,
+          "section": "alternatives"
+        },
+        {
+          "text": "Neon Lighting",
+          "role": "lighting.source",
+          "confidence": 0.775,
+          "start": 1022,
+          "end": 1035,
+          "section": "alternatives"
+        },
+        {
+          "text": "car",
+          "role": "subject.identity",
+          "confidence": 0.63,
+          "start": 1054,
+          "end": 1057,
+          "section": "alternatives"
+        },
+        {
+          "text": "enters the tunnel under intense neon lighting",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 1058,
+          "end": 1103,
+          "section": "alternatives"
+        },
+        {
+          "text": "tunnel",
+          "role": "environment.context",
+          "confidence": 0.57,
+          "start": 1069,
+          "end": 1075,
+          "section": "alternatives"
+        },
+        {
+          "text": "neon",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 1090,
+          "end": 1094,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (42 spans, 290ms) | Merged 2 adjacent camera spans: \"f/4-f/5.6\" | Merged 2 adjacent lighting spans: \"Neon Lighting\" | span[25] ignored: duplicate span | Dropped header/label \"camera\" at 159-165 (role: subject.identity) | Dropped header/label \"eye level\" at 188-197 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 22,
+        "openVocab": 42,
+        "latency": 290,
+        "tier1Latency": 2,
+        "tier2Latency": 287
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 5
+        },
+        "totalScore": 19,
+        "missedElements": [
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "eye level",
+            "expectedRole": "camera.angle",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "consistent framing",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "subject continuity",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "main action",
+            "assignedRole": "audio.ambient",
+            "reason": "abstract_concept",
+            "spanIndex": 11
+          },
+          {
+            "text": "modern look",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 26
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "glossy paint",
+            "assignedRole": "environment.context",
+            "expectedRole": "subject.appearance",
+            "spanIndex": 2
+          },
+          {
+            "text": "headlights",
+            "assignedRole": "subject.identity",
+            "expectedRole": "lighting.source",
+            "spanIndex": 4
+          },
+          {
+            "text": "deep focus",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.focus",
+            "spanIndex": 22
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "action": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 5,
+            "precision": 4
+          },
+          "camera": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 1,
+            "precision": 1
+          }
+        },
+        "notes": "The extraction was generally good, but missed some camera and style elements. There were a few taxonomy errors, particularly with lighting and subject roles. Precision was affected by some abstract concepts being extracted."
+      },
+      "error": null,
+      "latencyMs": 6697,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 535
+        },
+        "technicalSpecs": {
+          "start": 535,
+          "end": 805
+        },
+        "alternatives": {
+          "start": 805,
+          "end": 1180
+        }
+      }
+    },
+    {
+      "promptId": "YiYmoPZgLfIp2HitjmYu",
+      "input": "dog running up a hill",
+      "output": "Medium Close-Up of a dog with golden fur and bright eyes bounding joyfully up a sunlit hill in a grassy terrain with warm sunlight filtering through trees at mid-morning. The camera uses handheld tracking from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm sunlight filtering through tree leaves, creating dynamic shadows. Style reference: Vibrant, high-energy sports advertisement. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Energetic music with natural sounds of panting and rustling grass\n- **Camera:** Low-angle handheld tracking with 50mm lens, f/2.8\n- **Lighting:** Sunlight filtering through trees, casting playful shadows\n- **Style:** Vibrant, shot on digital for sports ad\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture the dog running up the hill from a high angle, showing its path and the sunlit terrain.\n- **Variation 2 (Golden Hour Lighting):** Film the scene during golden hour, with softer, warmer light enhancing the dog's fur and the surroundings.",
+      "spanCount": 31,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.98,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "golden fur",
+          "role": "subject.identity",
+          "confidence": 0.55,
+          "start": 30,
+          "end": 40,
+          "section": "main"
+        },
+        {
+          "text": "sunlit hill",
+          "role": "lighting.source",
+          "confidence": 0.52,
+          "start": 80,
+          "end": 91,
+          "section": "main"
+        },
+        {
+          "text": "grassy terrain",
+          "role": "environment.location",
+          "confidence": 0.56,
+          "start": 97,
+          "end": 111,
+          "section": "main"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 117,
+          "end": 130,
+          "section": "main"
+        },
+        {
+          "text": "mid-morning",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.85,
+          "start": 158,
+          "end": 169,
+          "section": "main"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 187,
+          "end": 195,
+          "section": "main"
+        },
+        {
+          "text": "handheld tracking",
+          "role": "style.aesthetic",
+          "confidence": 0.57,
+          "start": 187,
+          "end": 204,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 227,
+          "end": 249,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 251,
+          "end": 262,
+          "section": "main"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 300,
+          "end": 313,
+          "section": "main"
+        },
+        {
+          "text": "Vibrant",
+          "role": "lighting.quality",
+          "confidence": 0.53,
+          "start": 388,
+          "end": 395,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 565,
+          "end": 567,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 588,
+          "end": 592,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "60fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 611,
+          "end": 616,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Energetic music",
+          "role": "audio.score",
+          "confidence": 0.9,
+          "start": 630,
+          "end": 645,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "natural sounds",
+          "role": "audio.ambient",
+          "confidence": 0.54,
+          "start": 651,
+          "end": 665,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 720,
+          "end": 728,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld tracking",
+          "role": "style.aesthetic",
+          "confidence": 0.51,
+          "start": 720,
+          "end": 737,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 743,
+          "end": 747,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 754,
+          "end": 759,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 776,
+          "end": 784,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Vibrant",
+          "role": "lighting.quality",
+          "confidence": 0.53,
+          "start": 847,
+          "end": 854,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High-Angle Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.53,
+          "start": 931,
+          "end": 951,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.98,
+          "start": 968,
+          "end": 971,
+          "section": "alternatives"
+        },
+        {
+          "text": "running up the hill from a high angle",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 972,
+          "end": 1009,
+          "section": "alternatives"
+        },
+        {
+          "text": "sunlit terrain",
+          "role": "environment.context",
+          "confidence": 0.53,
+          "start": 1036,
+          "end": 1050,
+          "section": "alternatives"
+        },
+        {
+          "text": "Golden Hour Lighting",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.775,
+          "start": 1069,
+          "end": 1089,
+          "section": "alternatives"
+        },
+        {
+          "text": "golden hour",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 1116,
+          "end": 1127,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.97,
+          "start": 1169,
+          "end": 1172,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (41 spans, 556ms) | Merged 2 adjacent lighting spans: \"warm sunlight\" | Merged 2 adjacent camera spans: \"f/1.8-f/2.8\" | Merged 2 adjacent lighting spans: \"warm sunlight\" | Merged 2 adjacent lighting spans: \"Golden Hour Lighting\" | span[26] ignored: duplicate span | Dropped header/label \"camera\" at 175-181 (role: subject.identity) | Dropped header/label \"low angle\" at 212-221 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 572-584 (role: camera.angle) | Dropped header/label \"Frame Rate\" at 597-607 (role: technical.frameRate) | Dropped header/label \"high angle\" at 999-1009 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 25,
+        "openVocab": 42,
+        "latency": 556,
+        "tier1Latency": 0,
+        "tier2Latency": 555
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 20,
+        "missedElements": [
+          {
+            "text": "bounding joyfully",
+            "expectedRole": "action.movement",
+            "category": "action",
+            "severity": "important"
+          },
+          {
+            "text": "bright eyes",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "dynamic shadows",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "handheld tracking",
+            "assignedRole": "style.aesthetic",
+            "reason": "duplicate",
+            "spanIndex": 8
+          },
+          {
+            "text": "Vibrant",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 12
+          },
+          {
+            "text": "Vibrant",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 23
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "handheld tracking",
+            "assignedRole": "style.aesthetic",
+            "expectedRole": "camera.movement",
+            "spanIndex": 19
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "camera": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction captured most visual elements but missed some important actions and appearances. Precision was affected by abstract concepts and duplicates. Taxonomy was mostly correct, with a minor error in camera movement classification."
+      },
+      "error": null,
+      "latencyMs": 6590,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 527
+        },
+        "technicalSpecs": {
+          "start": 527,
+          "end": 885
+        },
+        "alternatives": {
+          "start": 885,
+          "end": 1200
+        }
+      }
+    },
+    {
+      "promptId": "dC9LIm9kaLlYvQABlPLF",
+      "input": "man riding a bike",
+      "output": "Medium Long Shot of a man with bright blue cycling jersey, black bike helmet, and red mountain bike riding a bike joyfully in a scenic park with lush greenery and blooming flowers at sunny day. The camera uses smooth tracking shot at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by natural daylight creating vibrant colors and soft shadows. Style reference: Light and airy, reminiscent of travel documentaries. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient park sounds with distant laughter\n- **Camera:** Eye-level tracking with Steadicam\n- **Lighting:** Natural daylight, illuminating colors and creating soft shadows\n- **Style:** Travel documentary style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Long Shot from a high angle, capturing a man riding a bike joyfully through a park with a bird's-eye view of the path and surrounding greenery.\n- **Variation 2 (Golden Hour Variation):** A Medium Long Shot at eye-level, capturing a man riding a bike joyfully through a park during golden hour, with warm sunlight highlighting the vibrant colors of the park.",
+      "spanCount": 46,
+      "spans": [
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 16,
+          "section": "main"
+        },
+        {
+          "text": "a man",
+          "role": "subject.identity",
+          "confidence": 0.84,
+          "start": 20,
+          "end": 25,
+          "section": "main"
+        },
+        {
+          "text": "bright blue cycling jersey",
+          "role": "subject.wardrobe",
+          "confidence": 0.6,
+          "start": 31,
+          "end": 57,
+          "section": "main"
+        },
+        {
+          "text": "cycling jersey",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 43,
+          "end": 57,
+          "section": "main"
+        },
+        {
+          "text": "black bike helmet",
+          "role": "subject.wardrobe",
+          "confidence": 0.59,
+          "start": 59,
+          "end": 76,
+          "section": "main"
+        },
+        {
+          "text": "bike",
+          "role": "subject.identity",
+          "confidence": 0.51,
+          "start": 95,
+          "end": 99,
+          "section": "main"
+        },
+        {
+          "text": "riding a bike joyfully in a scenic park",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 100,
+          "end": 139,
+          "section": "main"
+        },
+        {
+          "text": "bike",
+          "role": "subject.identity",
+          "confidence": 0.58,
+          "start": 109,
+          "end": 113,
+          "section": "main"
+        },
+        {
+          "text": "scenic park",
+          "role": "environment.location",
+          "confidence": 0.66,
+          "start": 128,
+          "end": 139,
+          "section": "main"
+        },
+        {
+          "text": "lush greenery",
+          "role": "environment.location",
+          "confidence": 0.56,
+          "start": 145,
+          "end": 158,
+          "section": "main"
+        },
+        {
+          "text": "sunny day",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.69,
+          "start": 183,
+          "end": 192,
+          "section": "main"
+        },
+        {
+          "text": "smooth tracking shot",
+          "role": "shot.type",
+          "confidence": 0.52,
+          "start": 210,
+          "end": 230,
+          "section": "main"
+        },
+        {
+          "text": "tracking shot",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 217,
+          "end": 230,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.86,
+          "start": 249,
+          "end": 264,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 266,
+          "end": 275,
+          "section": "main"
+        },
+        {
+          "text": "natural daylight",
+          "role": "lighting.quality",
+          "confidence": 0.79,
+          "start": 323,
+          "end": 339,
+          "section": "main"
+        },
+        {
+          "text": "vibrant colors",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 349,
+          "end": 363,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 586,
+          "end": 588,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 609,
+          "end": 613,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 632,
+          "end": 637,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.56,
+          "start": 659,
+          "end": 663,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "distant laughter",
+          "role": "audio.ambient",
+          "confidence": 0.5,
+          "start": 676,
+          "end": 692,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-level",
+          "role": "technical.aspectRatio",
+          "confidence": 0.54,
+          "start": 707,
+          "end": 716,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Steadicam",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 731,
+          "end": 740,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Natural daylight",
+          "role": "lighting.quality",
+          "confidence": 0.85,
+          "start": 757,
+          "end": 773,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Travel documentary style",
+          "role": "style.aesthetic",
+          "confidence": 0.55,
+          "start": 834,
+          "end": 858,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High-Angle Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.6,
+          "start": 904,
+          "end": 924,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 931,
+          "end": 947,
+          "section": "alternatives"
+        },
+        {
+          "text": "a man",
+          "role": "subject.identity",
+          "confidence": 0.72,
+          "start": 977,
+          "end": 982,
+          "section": "alternatives"
+        },
+        {
+          "text": "riding a bike joyfully through a park with",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 983,
+          "end": 1025,
+          "section": "alternatives"
+        },
+        {
+          "text": "bike",
+          "role": "subject.identity",
+          "confidence": 0.57,
+          "start": 992,
+          "end": 996,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.67,
+          "start": 1016,
+          "end": 1020,
+          "section": "alternatives"
+        },
+        {
+          "text": "bird's-eye view",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1028,
+          "end": 1043,
+          "section": "alternatives"
+        },
+        {
+          "text": "Golden Hour",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 1099,
+          "end": 1110,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1127,
+          "end": 1143,
+          "section": "alternatives"
+        },
+        {
+          "text": "eye-level",
+          "role": "technical.aspectRatio",
+          "confidence": 0.52,
+          "start": 1147,
+          "end": 1156,
+          "section": "alternatives"
+        },
+        {
+          "text": "a man",
+          "role": "subject.identity",
+          "confidence": 0.72,
+          "start": 1168,
+          "end": 1173,
+          "section": "alternatives"
+        },
+        {
+          "text": "riding a bike joyfully through a park during",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 1174,
+          "end": 1218,
+          "section": "alternatives"
+        },
+        {
+          "text": "bike",
+          "role": "subject.identity",
+          "confidence": 0.56,
+          "start": 1183,
+          "end": 1187,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.67,
+          "start": 1207,
+          "end": 1211,
+          "section": "alternatives"
+        },
+        {
+          "text": "golden hour",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 1219,
+          "end": 1230,
+          "section": "alternatives"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1237,
+          "end": 1241,
+          "section": "alternatives"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "style.colorGrade",
+          "confidence": 0.6,
+          "start": 1237,
+          "end": 1250,
+          "section": "alternatives"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 1242,
+          "end": 1250,
+          "section": "alternatives"
+        },
+        {
+          "text": "vibrant colors",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 1268,
+          "end": 1282,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.64,
+          "start": 1290,
+          "end": 1294,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (52 spans, 833ms) | Merged 2 adjacent camera spans: \"f/4-f/5.6\" | span[15] ignored: duplicate span | Dropped header/label \"camera\" at 198-204 (role: camera.lens) | Dropped header/label \"eye level\" at 234-243 (role: camera.angle) | Dropped header/label \"Frame Rate\" at 618-628 (role: technical.frameRate) | Dropped header/label \"high angle\" at 955-965 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 26,
+        "openVocab": 45,
+        "latency": 833,
+        "tier1Latency": 0,
+        "tier2Latency": 832
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 4
+        },
+        "totalScore": 18,
+        "missedElements": [
+          {
+            "text": "blooming flowers",
+            "expectedRole": "environment.location",
+            "category": "environment",
+            "severity": "important"
+          },
+          {
+            "text": "soft shadows",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "cycling jersey",
+            "assignedRole": "action.movement",
+            "reason": "non_visual",
+            "spanIndex": 3
+          },
+          {
+            "text": "Eye-level",
+            "assignedRole": "technical.aspectRatio",
+            "reason": "non_visual",
+            "spanIndex": 22
+          },
+          {
+            "text": "warm sunlight",
+            "assignedRole": "style.colorGrade",
+            "reason": "duplicate",
+            "spanIndex": 42
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "Eye-level",
+            "assignedRole": "technical.aspectRatio",
+            "expectedRole": "camera.angle",
+            "spanIndex": 22
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "environment": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 4
+          },
+          "audio": {
+            "coverage": 4,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction was mostly accurate but missed some important visual elements like 'blooming flowers' and 'soft shadows'. There were some precision issues with non-visual elements being extracted and a taxonomy error with 'Eye-level'."
+      },
+      "error": null,
+      "latencyMs": 7170,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 548
+        },
+        "technicalSpecs": {
+          "start": 548,
+          "end": 858
+        },
+        "alternatives": {
+          "start": 858,
+          "end": 1295
+        }
+      }
+    },
+    {
+      "promptId": "YJFW3nz993cvUDF9ZXVs",
+      "input": "cat laying in the sun through a window",
+      "output": "Medium Close-Up of a cat with soft fur, striped pattern, and half-closed eyes laying peacefully in a sunlit spot in an indoors with sunlight streaming through at daytime. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm natural sunlight from the window, creating gentle shadows. Style reference: Inspired by Japanese Zen aesthetics with a focus on simplicity and calm. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient room tone with distant bird song\n- **Camera:** Eye-level static on tripod, 50mm lens, f/2.8\n- **Lighting:** Natural sunlight from window, warm and diffused\n- **Style:** Japanese Zen aesthetic, naturalistic approach\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Close-Up of the cat laying peacefully in a sunlit spot, captured from a high angle, emphasizing the gentle shadows and warm sunlight.\n- **Variation 2 (Cooler Lighting Variation):** A Medium Close-Up of the cat laying peacefully in a spot by the window, with cooler morning light casting soft shadows.",
+      "spanCount": 32,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.96,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "half-closed eyes",
+          "role": "subject.appearance",
+          "confidence": 0.56,
+          "start": 61,
+          "end": 77,
+          "section": "main"
+        },
+        {
+          "text": "sunlit spot",
+          "role": "environment.location",
+          "confidence": 0.55,
+          "start": 101,
+          "end": 112,
+          "section": "main"
+        },
+        {
+          "text": "indoors",
+          "role": "environment.location",
+          "confidence": 0.67,
+          "start": 119,
+          "end": 126,
+          "section": "main"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 132,
+          "end": 140,
+          "section": "main"
+        },
+        {
+          "text": "daytime",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.84,
+          "start": 162,
+          "end": 169,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 219,
+          "end": 241,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 243,
+          "end": 254,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 292,
+          "end": 296,
+          "section": "main"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 305,
+          "end": 313,
+          "section": "main"
+        },
+        {
+          "text": "window",
+          "role": "environment.location",
+          "confidence": 0.55,
+          "start": 323,
+          "end": 329,
+          "section": "main"
+        },
+        {
+          "text": "Japanese Zen aesthetics",
+          "role": "style.aesthetic",
+          "confidence": 0.79,
+          "start": 385,
+          "end": 408,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 580,
+          "end": 582,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 603,
+          "end": 607,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 626,
+          "end": 631,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "room tone",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 658,
+          "end": 667,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "distant bird song",
+          "role": "audio.score",
+          "confidence": 0.75,
+          "start": 673,
+          "end": 690,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 733,
+          "end": 737,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 744,
+          "end": 749,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 774,
+          "end": 782,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "window",
+          "role": "environment.location",
+          "confidence": 0.54,
+          "start": 788,
+          "end": 794,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 796,
+          "end": 800,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Japanese Zen aesthetic, naturalistic approach",
+          "role": "style.aesthetic",
+          "confidence": 0.655,
+          "start": 827,
+          "end": 872,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High-Angle Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.6,
+          "start": 918,
+          "end": 938,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 945,
+          "end": 960,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 968,
+          "end": 971,
+          "section": "alternatives"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1071,
+          "end": 1084,
+          "section": "alternatives"
+        },
+        {
+          "text": "Cooler Lighting Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.53,
+          "start": 1103,
+          "end": 1128,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1135,
+          "end": 1150,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.96,
+          "start": 1158,
+          "end": 1161,
+          "section": "alternatives"
+        },
+        {
+          "text": "window",
+          "role": "environment.location",
+          "confidence": 0.54,
+          "start": 1197,
+          "end": 1203,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (40 spans, 1078ms) | Merged 2 adjacent camera spans: \"f/1.8-f/2.8\" | Merged 2 adjacent style spans: \"Japanese Zen aesthetic, naturalistic approach\" | Merged 2 adjacent lighting spans: \"warm sunlight\" | span[23] ignored: duplicate span | Dropped header/label \"camera\" at 175-181 (role: subject.identity) | Dropped header/label \"eye level\" at 204-213 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 587-599 (role: technical.aspectRatio) | Dropped header/label \"high angle\" at 1024-1034 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 27,
+        "openVocab": 38,
+        "latency": 1078,
+        "tier1Latency": 0,
+        "tier2Latency": 1076
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 5,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 21,
+        "missedElements": [
+          {
+            "text": "striped pattern",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "gentle shadows",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "High-Angle Variation",
+            "assignedRole": "style.aesthetic",
+            "reason": "abstract_concept",
+            "spanIndex": 24
+          },
+          {
+            "text": "Cooler Lighting Variation",
+            "assignedRole": "style.aesthetic",
+            "reason": "abstract_concept",
+            "spanIndex": 28
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "distant bird song",
+            "assignedRole": "audio.score",
+            "expectedRole": "audio.ambient",
+            "spanIndex": 17
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 1,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 4
+          }
+        },
+        "notes": "The extraction was mostly accurate, but missed some important visual elements like 'striped pattern' and 'static tripod'. There were a few false positives related to abstract concepts in alternative approaches. Taxonomy was generally correct, with a minor error in audio classification."
+      },
+      "error": null,
+      "latencyMs": 10197,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 542
+        },
+        "technicalSpecs": {
+          "start": 542,
+          "end": 872
+        },
+        "alternatives": {
+          "start": 872,
+          "end": 1252
+        }
+      }
+    },
+    {
+      "promptId": "pNMiJL7lw4C7F0LMPHYy",
+      "input": "cat looking out of a window",
+      "output": "Medium Close-Up of a cat with striped fur, bright green eyes, and delicate whiskers gazing out of the window in a cozy indoor space next to a large window at late afternoon. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light streaming through the window, creating warm highlights and gentle shadows. Style reference: Naturalistic, emulating Kodak Portra 400. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient indoor silence, faint birdsong outside\n- **Camera:** Eye-level static shot with 50mm lens at f/2.8\n- **Lighting:** Natural window light, soft and warm\n- **Style:** Naturalistic, shot on Kodak Portra 400\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A high-angle shot of a cat gazing out of a window, highlighting the cat's vulnerability and the expansive view outside.\n- **Variation 2 (Evening Lighting):** A cat gazes out of a window during twilight, with the cool blue tones of dusk filtering through and casting gentle shadows.",
+      "spanCount": 34,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "a cat",
+          "role": "subject.identity",
+          "confidence": 0.68,
+          "start": 19,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "striped fur, bright green eyes",
+          "role": "subject.appearance",
+          "confidence": 0.5,
+          "start": 30,
+          "end": 60,
+          "section": "main"
+        },
+        {
+          "text": "delicate whiskers",
+          "role": "subject.appearance",
+          "confidence": 0.53,
+          "start": 66,
+          "end": 83,
+          "section": "main"
+        },
+        {
+          "text": "window",
+          "role": "subject.identity",
+          "confidence": 0.57,
+          "start": 102,
+          "end": 108,
+          "section": "main"
+        },
+        {
+          "text": "cozy indoor space",
+          "role": "environment.location",
+          "confidence": 0.66,
+          "start": 114,
+          "end": 131,
+          "section": "main"
+        },
+        {
+          "text": "late afternoon",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.82,
+          "start": 158,
+          "end": 172,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 222,
+          "end": 244,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 246,
+          "end": 257,
+          "section": "main"
+        },
+        {
+          "text": "soft natural light",
+          "role": "lighting.quality",
+          "confidence": 0.58,
+          "start": 295,
+          "end": 313,
+          "section": "main"
+        },
+        {
+          "text": "window",
+          "role": "subject.identity",
+          "confidence": 0.53,
+          "start": 336,
+          "end": 342,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 353,
+          "end": 357,
+          "section": "main"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.77,
+          "start": 406,
+          "end": 418,
+          "section": "main"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 430,
+          "end": 446,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 582,
+          "end": 584,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 605,
+          "end": 609,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 628,
+          "end": 633,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Ambient indoor silence",
+          "role": "environment.context",
+          "confidence": 0.55,
+          "start": 647,
+          "end": 669,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "birdsong",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 677,
+          "end": 685,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 735,
+          "end": 739,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 748,
+          "end": 753,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "window light",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 778,
+          "end": 790,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 801,
+          "end": 805,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.76,
+          "start": 819,
+          "end": 831,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 841,
+          "end": 857,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 920,
+          "end": 935,
+          "section": "alternatives"
+        },
+        {
+          "text": "a cat",
+          "role": "subject.identity",
+          "confidence": 0.64,
+          "start": 939,
+          "end": 944,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.93,
+          "start": 986,
+          "end": 989,
+          "section": "alternatives"
+        },
+        {
+          "text": "Evening Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.74,
+          "start": 1055,
+          "end": 1071,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 1078,
+          "end": 1081,
+          "section": "alternatives"
+        },
+        {
+          "text": "twilight",
+          "role": "environment.context",
+          "confidence": 0.66,
+          "start": 1111,
+          "end": 1119,
+          "section": "alternatives"
+        },
+        {
+          "text": "cool",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1130,
+          "end": 1134,
+          "section": "alternatives"
+        },
+        {
+          "text": "cool blue tones of dusk",
+          "role": "camera.focus",
+          "confidence": 0.61,
+          "start": 1130,
+          "end": 1153,
+          "section": "alternatives"
+        },
+        {
+          "text": "dusk",
+          "role": "environment.context",
+          "confidence": 0.73,
+          "start": 1149,
+          "end": 1153,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (39 spans, 1321ms) | Merged 2 adjacent subject spans: \"striped fur, bright green eyes\" | Merged 2 adjacent camera spans: \"f/1.8-f/2.8\" | span[22] ignored: duplicate span | Dropped header/label \"eye level\" at 207-216 (role: camera.angle) | Dropped header/label \"High Angle\" at 903-913 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 24,
+        "openVocab": 39,
+        "latency": 1321,
+        "tier1Latency": 0,
+        "tier2Latency": 1321
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 5
+        },
+        "totalScore": 19,
+        "missedElements": [
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "eye level",
+            "expectedRole": "camera.angle",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "gentle shadows",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "window",
+            "assignedRole": "subject.identity",
+            "reason": "non_visual",
+            "spanIndex": 4
+          },
+          {
+            "text": "window",
+            "assignedRole": "subject.identity",
+            "reason": "non_visual",
+            "spanIndex": 10
+          },
+          {
+            "text": "Naturalistic",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 12
+          },
+          {
+            "text": "Naturalistic",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 23
+          },
+          {
+            "text": "cool blue tones of dusk",
+            "assignedRole": "camera.focus",
+            "reason": "abstract_concept",
+            "spanIndex": 32
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "Ambient indoor silence",
+            "assignedRole": "environment.context",
+            "expectedRole": "audio.ambient",
+            "spanIndex": 17
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "action": {
+            "coverage": 1,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "camera": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 4,
+            "precision": 4
+          }
+        },
+        "notes": "The extraction captured most visual elements but missed some camera and lighting details. Precision was affected by non-visual and abstract concepts being included. Taxonomy errors were present in audio and lighting roles."
+      },
+      "error": null,
+      "latencyMs": 6719,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 544
+        },
+        "technicalSpecs": {
+          "start": 544,
+          "end": 857
+        },
+        "alternatives": {
+          "start": 857,
+          "end": 1199
+        }
+      }
+    },
+    {
+      "promptId": "4aY5jQq6OYDxFUo067WG",
+      "input": "bengal tiger with vibrant orange stripes, doing the Macarena, at lush jungle canopy during sunrise, during dancing like nobody is watching",
+      "output": "Medium Shot of Bengal tiger with vibrant orange stripes, sleek fur, and bright eyes dancing the Macarena joyfully in a lush jungle canopy at sunrise. The camera uses dynamic handheld from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft, warm light filtering through foliage. Style reference: National Geographic Wildlife Special. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Jungle ambiance with distant bird calls\n- **Camera:** Dynamic low-angle handheld with shallow focus at f/2.8\n- **Lighting:** Warm sunrise backlight with soft fill from foliage reflections\n- **Style:** National Geographic Wildlife Special\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the Bengal tiger dancing the Macarena from a high angle to emphasize its interaction with the jungle canopy.\n- **Variation 2 (Cool Lighting Variation):** Film the Bengal tiger dancing the Macarena with cool, misty morning light filtering through the trees for a serene atmosphere.",
+      "spanCount": 32,
+      "spans": [
+        {
+          "text": "Medium Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 11,
+          "section": "main"
+        },
+        {
+          "text": "Bengal tiger",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 15,
+          "end": 27,
+          "section": "main"
+        },
+        {
+          "text": "dancing the Macarena joyfully in a lush jungle",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 84,
+          "end": 130,
+          "section": "main"
+        },
+        {
+          "text": "the Macarena",
+          "role": "audio.score",
+          "confidence": 0.52,
+          "start": 92,
+          "end": 104,
+          "section": "main"
+        },
+        {
+          "text": "jungle canopy",
+          "role": "environment.context",
+          "confidence": 0.5,
+          "start": 124,
+          "end": 137,
+          "section": "main"
+        },
+        {
+          "text": "sunrise",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.85,
+          "start": 141,
+          "end": 148,
+          "section": "main"
+        },
+        {
+          "text": "dynamic handheld",
+          "role": "shot.type",
+          "confidence": 0.59,
+          "start": 166,
+          "end": 182,
+          "section": "main"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 174,
+          "end": 182,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.68,
+          "start": 205,
+          "end": 220,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 222,
+          "end": 231,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 285,
+          "end": 289,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 512,
+          "end": 514,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 535,
+          "end": 539,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 558,
+          "end": 563,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Jungle ambiance",
+          "role": "audio.ambient",
+          "confidence": 0.84,
+          "start": 577,
+          "end": 592,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "distant bird calls",
+          "role": "audio.ambient",
+          "confidence": 0.52,
+          "start": 598,
+          "end": 616,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 649,
+          "end": 657,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "shallow focus",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 663,
+          "end": 676,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 680,
+          "end": 685,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Warm sunrise backlight",
+          "role": "lighting.colorTemp",
+          "confidence": 0.9025,
+          "start": 702,
+          "end": 724,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High Angle Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.53,
+          "start": 860,
+          "end": 880,
+          "section": "alternatives"
+        },
+        {
+          "text": "Bengal tiger",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 897,
+          "end": 909,
+          "section": "alternatives"
+        },
+        {
+          "text": "dancing the Macarena from a high angle to",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 910,
+          "end": 951,
+          "section": "alternatives"
+        },
+        {
+          "text": "the Macarena",
+          "role": "audio.score",
+          "confidence": 0.54,
+          "start": 918,
+          "end": 930,
+          "section": "alternatives"
+        },
+        {
+          "text": "jungle canopy",
+          "role": "environment.context",
+          "confidence": 0.53,
+          "start": 987,
+          "end": 1000,
+          "section": "alternatives"
+        },
+        {
+          "text": "Cool",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1019,
+          "end": 1023,
+          "section": "alternatives"
+        },
+        {
+          "text": "Cool Lighting Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.55,
+          "start": 1019,
+          "end": 1042,
+          "section": "alternatives"
+        },
+        {
+          "text": "Bengal tiger",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 1056,
+          "end": 1068,
+          "section": "alternatives"
+        },
+        {
+          "text": "dancing the Macarena with cool",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 1069,
+          "end": 1099,
+          "section": "alternatives"
+        },
+        {
+          "text": "Macarena",
+          "role": "audio.score",
+          "confidence": 0.89,
+          "start": 1081,
+          "end": 1089,
+          "section": "alternatives"
+        },
+        {
+          "text": "cool",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1095,
+          "end": 1099,
+          "section": "alternatives"
+        },
+        {
+          "text": "serene atmosphere",
+          "role": "audio.ambient",
+          "confidence": 0.74,
+          "start": 1155,
+          "end": 1172,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (42 spans, 1541ms) | Merged 2 adjacent camera spans: \"f/4-f/5.6\" | Merged 3 adjacent lighting spans: \"Warm sunrise backlight\" | span[21] ignored: duplicate span | span[23] ignored: duplicate span | Dropped header/label \"camera\" at 154-160 (role: camera.lens) | Dropped header/label \"low angle\" at 190-199 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 519-531 (role: camera.angle) | Dropped header/label \"High Angle\" at 860-870 (role: camera.angle) | Dropped header/label \"high angle\" at 938-948 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 25,
+        "openVocab": 35,
+        "latency": 1541,
+        "tier1Latency": 1,
+        "tier2Latency": 1540
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 20,
+        "missedElements": [
+          {
+            "text": "vibrant orange stripes",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "sleek fur",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "bright eyes",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "soft, warm light filtering through foliage",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "National Geographic Wildlife Special",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "the Macarena",
+            "assignedRole": "audio.score",
+            "reason": "non_visual",
+            "spanIndex": 3
+          },
+          {
+            "text": "the Macarena",
+            "assignedRole": "audio.score",
+            "reason": "non_visual",
+            "spanIndex": 23
+          },
+          {
+            "text": "Macarena",
+            "assignedRole": "audio.score",
+            "reason": "non_visual",
+            "spanIndex": 29
+          },
+          {
+            "text": "serene atmosphere",
+            "assignedRole": "audio.ambient",
+            "reason": "abstract_concept",
+            "spanIndex": 31
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "dynamic handheld",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.movement",
+            "spanIndex": 6
+          },
+          {
+            "text": "shallow focus",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.focus",
+            "spanIndex": 17
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "subject": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 4,
+            "precision": 3
+          }
+        },
+        "notes": "The extraction was mostly accurate, but some visual elements were missed, and there were a few false positives related to non-visual elements. Taxonomy errors were present in camera-related roles."
+      },
+      "error": null,
+      "latencyMs": 8013,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 474
+        },
+        "technicalSpecs": {
+          "start": 474,
+          "end": 814
+        },
+        "alternatives": {
+          "start": 814,
+          "end": 1173
+        }
+      }
+    },
+    {
+      "promptId": "2kQffVhqY2sIWXUTBXZA",
+      "input": "view of a widow from within a home facing outward toward a pasture. we see clips of days passed signified by the changing of the seasons",
+      "output": "Wide Shot of the scene in inside a cozy home facing a sprawling pasture. The camera uses static tripod at eye level with deep focus (f/11-f/16) to keep background detail readable. Lit by soft, natural light filtering through the window, highlighting both the interior and the vibrant pasture outside. Style reference: Seasonal time-lapse, reminiscent of Terrence Malick's nature sequences. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient nature sounds with gentle fades\n- **Camera:** Static Eye-Level Shot, 50mm lens, f/11\n- **Lighting:** Natural daylight filtering through, soft and diffused\n- **Style:** Shot on digital with a naturalistic color grade\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** Capture the pasture from a high angle inside the home, emphasizing the vastness of nature.\n- **Variation 2 (Different Lighting):** Use golden hour lighting to enhance the warmth and beauty of the changing seasons.",
+      "spanCount": 23,
+      "spans": [
+        {
+          "text": "Wide Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 9,
+          "section": "main"
+        },
+        {
+          "text": "home",
+          "role": "environment.location",
+          "confidence": 0.58,
+          "start": 40,
+          "end": 44,
+          "section": "main"
+        },
+        {
+          "text": "sprawling pasture",
+          "role": "environment.context",
+          "confidence": 0.52,
+          "start": 54,
+          "end": 71,
+          "section": "main"
+        },
+        {
+          "text": "deep focus",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 121,
+          "end": 131,
+          "section": "main"
+        },
+        {
+          "text": "f/11-f/16",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 133,
+          "end": 142,
+          "section": "main"
+        },
+        {
+          "text": "window",
+          "role": "environment.context",
+          "confidence": 0.5,
+          "start": 229,
+          "end": 235,
+          "section": "main"
+        },
+        {
+          "text": "pasture",
+          "role": "environment.context",
+          "confidence": 0.57,
+          "start": 284,
+          "end": 291,
+          "section": "main"
+        },
+        {
+          "text": "Seasonal",
+          "role": "environment.context",
+          "confidence": 0.74,
+          "start": 318,
+          "end": 326,
+          "section": "main"
+        },
+        {
+          "text": "time-lapse",
+          "role": "lighting.quality",
+          "confidence": 0.52,
+          "start": 327,
+          "end": 337,
+          "section": "main"
+        },
+        {
+          "text": "Terrence Malick",
+          "role": "subject.identity",
+          "confidence": 0.83,
+          "start": 354,
+          "end": 369,
+          "section": "main"
+        },
+        {
+          "text": "8s",
+          "role": "technical.duration",
+          "confidence": 1,
+          "start": 524,
+          "end": 526,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 547,
+          "end": 551,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 570,
+          "end": 575,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Static Eye-Level Shot",
+          "role": "style.aesthetic",
+          "confidence": 0.54,
+          "start": 648,
+          "end": 669,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-Level Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 655,
+          "end": 669,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 671,
+          "end": 675,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/11",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 682,
+          "end": 686,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "naturalistic color grade",
+          "role": "style.colorGrade",
+          "confidence": 0.7,
+          "start": 793,
+          "end": 817,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "pasture",
+          "role": "environment.context",
+          "confidence": 0.59,
+          "start": 890,
+          "end": 897,
+          "section": "alternatives"
+        },
+        {
+          "text": "inside the home",
+          "role": "environment.location",
+          "confidence": 0.55,
+          "start": 916,
+          "end": 931,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.66,
+          "start": 986,
+          "end": 1004,
+          "section": "alternatives"
+        },
+        {
+          "text": "golden hour",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 1013,
+          "end": 1024,
+          "section": "alternatives"
+        },
+        {
+          "text": "changing seasons",
+          "role": "environment.context",
+          "confidence": 0.69,
+          "start": 1074,
+          "end": 1090,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (30 spans, 1751ms) | Merged 2 adjacent camera spans: \"f/11-f/16\" | span[6] ignored: duplicate span | span[20] ignored: duplicate span | Dropped header/label \"camera\" at 77-83 (role: camera.lens) | Dropped header/label \"eye level\" at 106-115 (role: camera.angle) | Dropped header/label \"High Angle\" at 863-873 (role: camera.angle) | Dropped header/label \"high angle\" at 905-915 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 19,
+        "openVocab": 28,
+        "latency": 1751,
+        "tier1Latency": 0,
+        "tier2Latency": 1751
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 20,
+        "missedElements": [
+          {
+            "text": "soft, natural light",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "consistent framing",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "subject continuity",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "Seasonal",
+            "assignedRole": "environment.context",
+            "reason": "abstract_concept",
+            "spanIndex": 7
+          },
+          {
+            "text": "Terrence Malick",
+            "assignedRole": "subject.identity",
+            "reason": "abstract_concept",
+            "spanIndex": 9
+          },
+          {
+            "text": "Different Lighting",
+            "assignedRole": "lighting.quality",
+            "reason": "instruction_text",
+            "spanIndex": 20
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "deep focus",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.focus",
+            "spanIndex": 3
+          },
+          {
+            "text": "time-lapse",
+            "assignedRole": "lighting.quality",
+            "expectedRole": "style.aesthetic",
+            "spanIndex": 8
+          },
+          {
+            "text": "Static Eye-Level Shot",
+            "assignedRole": "style.aesthetic",
+            "expectedRole": "camera.movement",
+            "spanIndex": 13
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "action": {
+            "coverage": 1,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "lighting": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction captured most technical specs accurately but missed some important visual elements like lighting quality and style aesthetics. There were a few false positives related to abstract concepts and instruction text. Taxonomy errors were present in the classification of focus and style elements."
+      },
+      "error": null,
+      "latencyMs": 7123,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 486
+        },
+        "technicalSpecs": {
+          "start": 486,
+          "end": 817
+        },
+        "alternatives": {
+          "start": 817,
+          "end": 1091
+        }
+      }
+    },
+    {
+      "promptId": "7RT3cda5l6Gm0z4aCqNV",
+      "input": "intrepid mountain climber hanging from cliff, pausing to scan the horizon, at weathered granite walls lit by golden hour",
+      "output": "Medium Long Shot of a mountain climber with red climbing harness, chalk-covered hands, and weather-beaten face hanging from a rugged cliff in a weathered granite walls at golden hour. The camera uses slow pan from a high angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm golden hour light casting long shadows across the cliff face. Style reference: Adventure documentary style, akin to National Geographic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Sound of wind and distant bird calls\n- **Camera:** High-angle, slow pan with 50mm lens, f/11\n- **Lighting:** Golden hour sunlight from the side, creating warm highlights and deep shadows\n- **Style:** Adventure documentary, National Geographic aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** A low-angle shot of the climber from below, accentuating their determination against the sky.\n- **Variation 2 (Different Lighting):** Capture under overcast light for a cooler, more dramatic tone, focusing on textures.",
+      "spanCount": 26,
+      "spans": [
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 16,
+          "section": "main"
+        },
+        {
+          "text": "mountain climber",
+          "role": "subject.identity",
+          "confidence": 0.65,
+          "start": 22,
+          "end": 38,
+          "section": "main"
+        },
+        {
+          "text": "climbing harness",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 48,
+          "end": 64,
+          "section": "main"
+        },
+        {
+          "text": "weathered granite walls",
+          "role": "environment.location",
+          "confidence": 0.51,
+          "start": 144,
+          "end": 167,
+          "section": "main"
+        },
+        {
+          "text": "golden hour",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 171,
+          "end": 182,
+          "section": "main"
+        },
+        {
+          "text": "slow pan",
+          "role": "lighting.quality",
+          "confidence": 0.73,
+          "start": 200,
+          "end": 208,
+          "section": "main"
+        },
+        {
+          "text": "pan",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 205,
+          "end": 208,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.84,
+          "start": 232,
+          "end": 247,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 249,
+          "end": 258,
+          "section": "main"
+        },
+        {
+          "text": "warm golden hour",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 306,
+          "end": 322,
+          "section": "main"
+        },
+        {
+          "text": "Adventure documentary style",
+          "role": "style.aesthetic",
+          "confidence": 0.68,
+          "start": 390,
+          "end": 417,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 582,
+          "end": 584,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 605,
+          "end": 609,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 628,
+          "end": 633,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Sound of wind and distant bird calls",
+          "role": "camera.focus",
+          "confidence": 0.62,
+          "start": 647,
+          "end": 683,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "wind",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 656,
+          "end": 660,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "slow pan",
+          "role": "lighting.quality",
+          "confidence": 0.75,
+          "start": 710,
+          "end": 718,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "pan",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 715,
+          "end": 718,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 724,
+          "end": 728,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/11",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 735,
+          "end": 739,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Golden hour sunlight",
+          "role": "lighting.timeOfDay",
+          "confidence": 1,
+          "start": 756,
+          "end": 776,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 801,
+          "end": 805,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Adventure documentary",
+          "role": "lighting.quality",
+          "confidence": 0.64,
+          "start": 847,
+          "end": 868,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "low-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 969,
+          "end": 983,
+          "section": "alternatives"
+        },
+        {
+          "text": "climber",
+          "role": "subject.identity",
+          "confidence": 0.69,
+          "start": 991,
+          "end": 998,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.61,
+          "start": 1078,
+          "end": 1096,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (31 spans, 1975ms) | Merged 2 adjacent camera spans: \"f/4-f/5.6\" | Merged 2 adjacent lighting spans: \"warm golden hour\" | Merged 2 adjacent lighting spans: \"Golden hour sunlight\" | Dropped header/label \"high angle\" at 216-226 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 589-601 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 23,
+        "openVocab": 27,
+        "latency": 1975,
+        "tier1Latency": 0,
+        "tier2Latency": 1975
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 3,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 4
+        },
+        "totalScore": 17,
+        "missedElements": [
+          {
+            "text": "chalk-covered hands",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "weather-beaten face",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "hanging from a rugged cliff",
+            "expectedRole": "action",
+            "category": "action",
+            "severity": "important"
+          },
+          {
+            "text": "long shadows across the cliff face",
+            "expectedRole": "lighting",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "maintain consistent framing and subject continuity",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "climbing harness",
+            "assignedRole": "action.movement",
+            "reason": "non_visual",
+            "spanIndex": 2
+          },
+          {
+            "text": "Sound of wind and distant bird calls",
+            "assignedRole": "camera.focus",
+            "reason": "non_visual",
+            "spanIndex": 14
+          },
+          {
+            "text": "Adventure documentary",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 22
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "slow pan",
+            "assignedRole": "lighting.quality",
+            "expectedRole": "camera.movement",
+            "spanIndex": 5
+          },
+          {
+            "text": "Golden hour sunlight",
+            "assignedRole": "lighting.timeOfDay",
+            "expectedRole": "lighting.source",
+            "spanIndex": 20
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 3,
+            "precision": 4
+          },
+          "action": {
+            "coverage": 3,
+            "precision": 4
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "audio": {
+            "coverage": 4,
+            "precision": 4
+          }
+        },
+        "notes": "The extraction missed some important visual elements related to the subject's appearance and actions. There were also some misclassifications, particularly with camera movements and lighting roles. Precision was affected by the inclusion of non-visual elements."
+      },
+      "error": null,
+      "latencyMs": 8142,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 544
+        },
+        "technicalSpecs": {
+          "start": 544,
+          "end": 899
+        },
+        "alternatives": {
+          "start": 899,
+          "end": 1185
+        }
+      }
+    },
+    {
+      "promptId": "PnvcC4p5Z3eMKSEXlAmN",
+      "input": "woman playing computer games",
+      "output": "Medium Shot of a woman with focused eyes, game controller in hands, and comfortable seating playing computer games intently in a cozy living room with a plush couch and lamp at evening. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft warm glow from a nearby lamp casting gentle shadows. Style reference: Naturalistic, inspired by indie gaming culture. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft background music with game sounds\n- **Camera:** Static eye-level, 50mm lens, f/2.8\n- **Lighting:** Diffused lamp light from the side\n- **Style:** Naturalistic, indie gaming aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation 1: High-Angle):** A high-angle shot captures the woman playing computer games intently, showcasing the game controller in her hands.\n- **Variation 2 (Variation 2: Cool Lighting):** A medium shot of the woman playing computer games in a cozy living room, lit by a cool blue light from a nearby lamp.",
+      "spanCount": 36,
+      "spans": [
+        {
+          "text": "Medium Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 11,
+          "section": "main"
+        },
+        {
+          "text": "a woman",
+          "role": "subject.identity",
+          "confidence": 0.56,
+          "start": 15,
+          "end": 22,
+          "section": "main"
+        },
+        {
+          "text": "game controller",
+          "role": "subject.identity",
+          "confidence": 0.65,
+          "start": 42,
+          "end": 57,
+          "section": "main"
+        },
+        {
+          "text": "hands",
+          "role": "subject.appearance",
+          "confidence": 0.59,
+          "start": 61,
+          "end": 66,
+          "section": "main"
+        },
+        {
+          "text": "playing computer games intently in a cozy living",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 92,
+          "end": 140,
+          "section": "main"
+        },
+        {
+          "text": "computer games",
+          "role": "subject.identity",
+          "confidence": 0.51,
+          "start": 100,
+          "end": 114,
+          "section": "main"
+        },
+        {
+          "text": "cozy living room",
+          "role": "environment.location",
+          "confidence": 0.76,
+          "start": 129,
+          "end": 145,
+          "section": "main"
+        },
+        {
+          "text": "lamp",
+          "role": "subject.identity",
+          "confidence": 0.53,
+          "start": 169,
+          "end": 173,
+          "section": "main"
+        },
+        {
+          "text": "evening",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.82,
+          "start": 177,
+          "end": 184,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.77,
+          "start": 234,
+          "end": 249,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 251,
+          "end": 260,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 313,
+          "end": 317,
+          "section": "main"
+        },
+        {
+          "text": "lamp",
+          "role": "lighting.source",
+          "confidence": 0.57,
+          "start": 337,
+          "end": 341,
+          "section": "main"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "style.aesthetic",
+          "confidence": 0.55,
+          "start": 383,
+          "end": 395,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 565,
+          "end": 567,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 588,
+          "end": 592,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 611,
+          "end": 616,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Soft background music",
+          "role": "audio.score",
+          "confidence": 0.9,
+          "start": 630,
+          "end": 651,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "game sounds",
+          "role": "audio.ambient",
+          "confidence": 0.61,
+          "start": 657,
+          "end": 668,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "eye-level",
+          "role": "subject.appearance",
+          "confidence": 0.63,
+          "start": 690,
+          "end": 699,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 701,
+          "end": 705,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 712,
+          "end": 717,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.57,
+          "start": 781,
+          "end": 793,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "indie gaming aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.67,
+          "start": 795,
+          "end": 817,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 893,
+          "end": 908,
+          "section": "alternatives"
+        },
+        {
+          "text": "woman",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 922,
+          "end": 927,
+          "section": "alternatives"
+        },
+        {
+          "text": "playing computer games intently",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 928,
+          "end": 959,
+          "section": "alternatives"
+        },
+        {
+          "text": "game controller",
+          "role": "subject.identity",
+          "confidence": 0.65,
+          "start": 976,
+          "end": 991,
+          "section": "alternatives"
+        },
+        {
+          "text": "hands",
+          "role": "subject.appearance",
+          "confidence": 0.6,
+          "start": 999,
+          "end": 1004,
+          "section": "alternatives"
+        },
+        {
+          "text": "Cool Lighting",
+          "role": "lighting.colorTemp",
+          "confidence": 0.78,
+          "start": 1036,
+          "end": 1049,
+          "section": "alternatives"
+        },
+        {
+          "text": "medium shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1056,
+          "end": 1067,
+          "section": "alternatives"
+        },
+        {
+          "text": "the woman",
+          "role": "subject.identity",
+          "confidence": 0.55,
+          "start": 1071,
+          "end": 1080,
+          "section": "alternatives"
+        },
+        {
+          "text": "playing computer games in a cozy living room",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 1081,
+          "end": 1125,
+          "section": "alternatives"
+        },
+        {
+          "text": "cozy living room",
+          "role": "environment.location",
+          "confidence": 0.65,
+          "start": 1109,
+          "end": 1125,
+          "section": "alternatives"
+        },
+        {
+          "text": "cool",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 1136,
+          "end": 1140,
+          "section": "alternatives"
+        },
+        {
+          "text": "lamp",
+          "role": "lighting.source",
+          "confidence": 0.57,
+          "start": 1166,
+          "end": 1170,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (41 spans, 2212ms) | span[32] dropped: exceeds non-technical word limit | Merged 2 adjacent camera spans: \"f/4-f/5.6\" | Merged 2 adjacent lighting spans: \"Cool Lighting\" | Dropped header/label \"camera\" at 190-196 (role: subject.identity) | Dropped header/label \"eye level\" at 219-228 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 20,
+        "openVocab": 42,
+        "latency": 2212,
+        "tier1Latency": 0,
+        "tier2Latency": 2211
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 5
+        },
+        "totalScore": 19,
+        "missedElements": [
+          {
+            "text": "comfortable seating",
+            "expectedRole": "environment.context",
+            "category": "environment",
+            "severity": "important"
+          },
+          {
+            "text": "plush couch",
+            "expectedRole": "environment.context",
+            "category": "environment",
+            "severity": "important"
+          },
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "consistent framing",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          },
+          {
+            "text": "subject continuity",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "eye-level",
+            "assignedRole": "subject.appearance",
+            "reason": "non_visual",
+            "spanIndex": 19
+          },
+          {
+            "text": "Naturalistic",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 22
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "hands",
+            "assignedRole": "subject.appearance",
+            "expectedRole": "subject.identity",
+            "spanIndex": 3
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "action": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 4
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction was generally good, but missed some important elements related to environment and style. There were a few false positives and a taxonomy error. Technical specs were well extracted."
+      },
+      "error": null,
+      "latencyMs": 6686,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 527
+        },
+        "technicalSpecs": {
+          "start": 527,
+          "end": 817
+        },
+        "alternatives": {
+          "start": 817,
+          "end": 1171
+        }
+      }
+    },
+    {
+      "promptId": "Xlj7cWsFZjC3WpNOXiZl",
+      "input": "dog looking out of a window",
+      "output": "Medium Close-Up of a dog with soft fur, alert ears, and bright eyes gazing out the window in a cozy indoor space at early morning. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light streaming through the window. Style reference: Kodak Portra 400, warm and inviting. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient indoor sound, distant birds chirping\n- **Camera:** Static Eye-Level Shot with 50mm lens, f/2\n- **Lighting:** Soft natural light from window, early morning\n- **Style:** Shot on Kodak Portra 400\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A high-angle shot captures the dog gazing out, emphasizing the serene indoor setting.\n- **Variation 2 (Evening Light):** Soft evening light streams in, casting a warm glow on the dog as it gazes out.",
+      "spanCount": 28,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "soft fur, alert ears",
+          "role": "subject.appearance",
+          "confidence": 0.52,
+          "start": 30,
+          "end": 50,
+          "section": "main"
+        },
+        {
+          "text": "cozy indoor space",
+          "role": "environment.context",
+          "confidence": 0.66,
+          "start": 95,
+          "end": 112,
+          "section": "main"
+        },
+        {
+          "text": "early morning",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.89,
+          "start": 116,
+          "end": 129,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 179,
+          "end": 201,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 203,
+          "end": 214,
+          "section": "main"
+        },
+        {
+          "text": "soft natural light",
+          "role": "lighting.quality",
+          "confidence": 0.75,
+          "start": 252,
+          "end": 270,
+          "section": "main"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 318,
+          "end": 334,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 336,
+          "end": 340,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 489,
+          "end": 491,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 512,
+          "end": 516,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 535,
+          "end": 540,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Soft ambient indoor sound, distant birds chirping",
+          "role": "audio.ambient",
+          "confidence": 0.6000000000000001,
+          "start": 554,
+          "end": 603,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-Level",
+          "role": "subject.appearance",
+          "confidence": 0.52,
+          "start": 625,
+          "end": 634,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-Level Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 625,
+          "end": 639,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 645,
+          "end": 649,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 656,
+          "end": 659,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Soft natural light",
+          "role": "lighting.quality",
+          "confidence": 0.75,
+          "start": 676,
+          "end": 694,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "early morning",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.79,
+          "start": 708,
+          "end": 721,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 743,
+          "end": 759,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 822,
+          "end": 837,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 851,
+          "end": 854,
+          "section": "alternatives"
+        },
+        {
+          "text": "serene indoor setting",
+          "role": "environment.context",
+          "confidence": 0.61,
+          "start": 883,
+          "end": 904,
+          "section": "alternatives"
+        },
+        {
+          "text": "Evening Light",
+          "role": "lighting.quality",
+          "confidence": 0.76,
+          "start": 923,
+          "end": 936,
+          "section": "alternatives"
+        },
+        {
+          "text": "Soft evening light",
+          "role": "lighting.quality",
+          "confidence": 0.63,
+          "start": 941,
+          "end": 959,
+          "section": "alternatives"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 982,
+          "end": 986,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.94,
+          "start": 999,
+          "end": 1002,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (35 spans, 2427ms) | Merged 2 adjacent subject spans: \"soft fur, alert ears\" | Merged 2 adjacent camera spans: \"f/1.8-f/2.8\" | Merged 2 adjacent audio spans: \"Soft ambient indoor sound, distant birds chirping\" | span[20] ignored: duplicate span | Dropped header/label \"eye level\" at 164-173 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 496-508 (role: camera.angle) | Dropped header/label \"High Angle\" at 805-815 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 21,
+        "openVocab": 34,
+        "latency": 2427,
+        "tier1Latency": 0,
+        "tier2Latency": 2426
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 4,
+          "granularity": 5,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 22,
+        "missedElements": [
+          {
+            "text": "bright eyes",
+            "expectedRole": "subject.appearance",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "gazing out the window",
+            "expectedRole": "action",
+            "category": "action",
+            "severity": "important"
+          },
+          {
+            "text": "maintain consistent framing and subject continuity",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "Eye-Level",
+            "assignedRole": "subject.appearance",
+            "reason": "non_visual",
+            "spanIndex": 14
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "Eye-Level Shot",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.angle",
+            "spanIndex": 15
+          }
+        ],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction was generally good, with some missed elements related to subject appearance and camera movement. Precision was slightly affected by a non-visual element being extracted. Taxonomy errors were minimal, with a misclassification of camera angle."
+      },
+      "error": null,
+      "latencyMs": 5898,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 451
+        },
+        "technicalSpecs": {
+          "start": 451,
+          "end": 759
+        },
+        "alternatives": {
+          "start": 759,
+          "end": 1019
+        }
+      }
+    }
+  ],
+  "summary": {
+    "avgScore": 19.5,
+    "avgSpanCount": 32.5,
+    "scoreDistribution": {
+      "excellent (23-25)": 0,
+      "good (18-22)": 9,
+      "acceptable (13-17)": 1,
+      "poor (8-12)": 0,
+      "failing (0-7)": 0
+    },
+    "commonMissedElements": [
+      "minimal motion blur (6x)",
+      "static tripod (5x)",
+      "consistent framing (3x)",
+      "subject continuity (3x)",
+      "bright eyes (3x)",
+      "eye level (2x)",
+      "gentle shadows (2x)",
+      "maintain consistent framing and subject continuity (2x)",
+      "bounding joyfully (1x)",
+      "dynamic shadows (1x)"
+    ],
+    "commonIncorrectExtractions": [
+      "Naturalistic (3x)",
+      "Vibrant (2x)",
+      "window (2x)",
+      "the Macarena (2x)",
+      "main action (1x)",
+      "modern look (1x)",
+      "handheld tracking (1x)",
+      "cycling jersey (1x)",
+      "Eye-level (1x)",
+      "warm sunlight (1x)"
+    ],
+    "errorCount": 0,
+    "pipelineSources": {
+      "nlp": 10,
+      "llm": 0,
+      "unknown": 0
+    },
+    "spanSources": {
+      "closedVocab": 232,
+      "openVocab": 372,
+      "llm": 0
+    },
+    "avgCategoryScores": {
+      "shot": {
+        "coverage": 4.5,
+        "precision": 4.9
+      },
+      "subject": {
+        "coverage": 3.7,
+        "precision": 4.3
+      },
+      "action": {
+        "coverage": 2.9,
+        "precision": 4.8
+      },
+      "environment": {
+        "coverage": 4,
+        "precision": 4.7
+      },
+      "lighting": {
+        "coverage": 4,
+        "precision": 4
+      },
+      "camera": {
+        "coverage": 3.9,
+        "precision": 4.6
+      },
+      "style": {
+        "coverage": 3.6,
+        "precision": 3.6
+      },
+      "technical": {
+        "coverage": 4.9,
+        "precision": 4.8
+      },
+      "audio": {
+        "coverage": 4.2,
+        "precision": 4.1
+      }
+    },
+    "falsePositiveReasons": {
+      "section_header": 0,
+      "abstract_concept": 14,
+      "non_visual": 11,
+      "instruction_text": 1,
+      "duplicate": 2,
+      "other": 0
+    },
+    "topTaxonomyErrors": [
+      {
+        "assignedRole": "shot.type",
+        "expectedRole": "camera.focus",
+        "count": 3,
+        "examples": [
+          "deep focus",
+          "shallow focus",
+          "deep focus"
+        ]
+      },
+      {
+        "assignedRole": "style.aesthetic",
+        "expectedRole": "camera.movement",
+        "count": 2,
+        "examples": [
+          "handheld tracking",
+          "Static Eye-Level Shot"
+        ]
+      },
+      {
+        "assignedRole": "environment.context",
+        "expectedRole": "subject.appearance",
+        "count": 1,
+        "examples": [
+          "glossy paint"
+        ]
+      },
+      {
+        "assignedRole": "subject.identity",
+        "expectedRole": "lighting.source",
+        "count": 1,
+        "examples": [
+          "headlights"
+        ]
+      },
+      {
+        "assignedRole": "technical.aspectRatio",
+        "expectedRole": "camera.angle",
+        "count": 1,
+        "examples": [
+          "Eye-level"
+        ]
+      },
+      {
+        "assignedRole": "audio.score",
+        "expectedRole": "audio.ambient",
+        "count": 1,
+        "examples": [
+          "distant bird song"
+        ]
+      },
+      {
+        "assignedRole": "environment.context",
+        "expectedRole": "audio.ambient",
+        "count": 1,
+        "examples": [
+          "Ambient indoor silence"
+        ]
+      },
+      {
+        "assignedRole": "shot.type",
+        "expectedRole": "camera.movement",
+        "count": 1,
+        "examples": [
+          "dynamic handheld"
+        ]
+      },
+      {
+        "assignedRole": "lighting.quality",
+        "expectedRole": "style.aesthetic",
+        "count": 1,
+        "examples": [
+          "time-lapse"
+        ]
+      },
+      {
+        "assignedRole": "lighting.quality",
+        "expectedRole": "camera.movement",
+        "count": 1,
+        "examples": [
+          "slow pan"
+        ]
+      }
+    ],
+    "topGranularityErrors": [],
+    "errorsBySection": {
+      "main": {
+        "falsePositives": 11,
+        "missed": 43
+      },
+      "technicalSpecs": {
+        "falsePositives": 9,
+        "missed": 0
+      },
+      "alternatives": {
+        "falsePositives": 8,
+        "missed": 0
+      }
+    },
+    "confidenceAnalysis": {
+      "buckets": {
+        "high": {
+          "range": [
+            0.8,
+            1
+          ],
+          "total": 173,
+          "errors": 2,
+          "errorRate": 0.011560693641618497,
+          "examples": [
+            "\"Macarena\" (audio.score)",
+            "\"Terrence Malick\" (subject.identity)"
+          ]
+        },
+        "medium": {
+          "range": [
+            0.6,
+            0.8
+          ],
+          "total": 77,
+          "errors": 13,
+          "errorRate": 0.16883116883116883,
+          "examples": [
+            "\"cycling jersey\" (action.movement)",
+            "\"warm sunlight\" (style.colorGrade)",
+            "\"High-Angle Variation\" (style.aesthetic)"
+          ]
+        },
+        "low": {
+          "range": [
+            0,
+            0.6
+          ],
+          "total": 75,
+          "errors": 13,
+          "errorRate": 0.17333333333333334,
+          "examples": [
+            "\"main action\" (audio.ambient)",
+            "\"modern look\" (lighting.quality)",
+            "\"handheld tracking\" (style.aesthetic)"
+          ]
+        }
+      },
+      "recommendedThreshold": null,
+      "notes": "No clear confidence threshold recommendation."
+    },
+    "falsePositiveExamples": {
+      "section_header": [],
+      "abstract_concept": [
+        "main action",
+        "modern look",
+        "Vibrant",
+        "Vibrant",
+        "High-Angle Variation"
+      ],
+      "non_visual": [
+        "cycling jersey",
+        "Eye-level",
+        "window",
+        "window",
+        "the Macarena"
+      ],
+      "instruction_text": [
+        "Different Lighting"
+      ],
+      "duplicate": [
+        "handheld tracking",
+        "warm sunlight"
+      ],
+      "other": []
+    },
+    "missedBySeverity": {
+      "critical": [],
+      "important": [
+        "static tripod (camera)",
+        "eye level (camera)",
+        "minimal motion blur (style)",
+        "consistent framing (style)",
+        "subject continuity (style)"
+      ],
+      "minor": [
+        "minimal motion blur (style)",
+        "maintain consistent framing and subject continuity (style)",
+        "maintain consistent framing and subject continuity (style)"
+      ]
+    }
+  }
+}

@@ -13,6 +13,8 @@
  *   --prompts-file  Path to JSON file with input/output pairs (default: finds latest)
  *   --sample N      Only evaluate N random prompts (default: all)
  *   --baseline      Lock current results as baseline
+ *   --concurrency N Number of concurrent requests (default: 10)
+ *   --fast          Use gpt-4o-mini for judging (faster, cheaper)
  */
 
 import { config as loadEnv } from 'dotenv';
@@ -39,6 +41,7 @@ import {
   type EvaluationResult,
   type FalsePositive,
   type FalsePositiveReasonCounts,
+  type FalsePositivesByReason,
   type LegacyJudgeResult,
   type PromptRecord,
   type PromptSections,
@@ -294,6 +297,17 @@ function createEmptyFalsePositiveReasons(): FalsePositiveReasonCounts {
     instruction_text: 0,
     duplicate: 0,
     other: 0,
+  };
+}
+
+function createEmptyFalsePositiveExamples(): FalsePositivesByReason {
+  return {
+    section_header: [],
+    abstract_concept: [],
+    non_visual: [],
+    instruction_text: [],
+    duplicate: [],
+    other: [],
   };
 }
 
@@ -554,9 +568,9 @@ function matchFalsePositivesToSpans(
 
 function computeConfidenceAnalysis(results: EvaluationResult[]): ConfidenceAnalysis {
   const buckets = {
-    high: { range: [0.8, 1.0] as [number, number], total: 0, errors: 0, errorRate: 0 },
-    medium: { range: [0.6, 0.8] as [number, number], total: 0, errors: 0, errorRate: 0 },
-    low: { range: [0.0, 0.6] as [number, number], total: 0, errors: 0, errorRate: 0 },
+    high: { range: [0.8, 1.0] as [number, number], total: 0, errors: 0, errorRate: 0, examples: [] as string[] },
+    medium: { range: [0.6, 0.8] as [number, number], total: 0, errors: 0, errorRate: 0, examples: [] as string[] },
+    low: { range: [0.0, 0.6] as [number, number], total: 0, errors: 0, errorRate: 0, examples: [] as string[] },
   };
 
   let unmatchedFalsePositives = 0;
@@ -579,6 +593,9 @@ function computeConfidenceAnalysis(results: EvaluationResult[]): ConfidenceAnaly
       bucket.total += 1;
       if (matchedIndexes.has(index)) {
         bucket.errors += 1;
+        if (bucket.examples.length < 3) {
+          bucket.examples.push(`"${span.text}" (${span.role})`);
+        }
       }
     });
   }
@@ -610,7 +627,7 @@ function computeConfidenceAnalysis(results: EvaluationResult[]): ConfidenceAnaly
     buckets,
     recommendedThreshold,
     notes: notes.join(' ').trim(),
-  };
+  } as ConfidenceAnalysis;
 }
 
 function formatSpansForJudge(spans: SpanResult[]): string {
@@ -676,18 +693,21 @@ function createAIService(): AIModelService {
 }
 
 /**
- * Create a dedicated GPT-4o client for LLM-as-Judge evaluation.
- * Using a stronger model than the one being evaluated ensures unbiased assessment.
+ * Create a dedicated judge client for LLM-as-Judge evaluation.
  */
-function createJudgeClient(): OpenAICompatibleAdapter {
+function createJudgeClient(useFastModel = false): OpenAICompatibleAdapter {
   if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY required for LLM-as-Judge (uses GPT-4o)');
+    throw new Error('OPENAI_API_KEY required for LLM-as-Judge');
   }
+  
+  const model = useFastModel 
+    ? 'gpt-4o-mini' 
+    : (process.env.OPENAI_JUDGE_MODEL || 'gpt-4o');
   
   return new OpenAICompatibleAdapter({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    defaultModel: process.env.OPENAI_JUDGE_MODEL || 'gpt-4o',
+    defaultModel: model,
     defaultTimeout: Number(process.env.OPENAI_TIMEOUT_MS || 60000),
     providerName: 'openai-judge',
   });
@@ -702,6 +722,7 @@ async function judgeSpanQuality(
   spans: SpanResult[],
   judgeClient: OpenAICompatibleAdapter
 ): Promise<EnhancedJudgeResult> {
+  let content = '';
   const userMessage = `## Original Prompt
 ${prompt}
 
@@ -721,13 +742,14 @@ Evaluate the span extraction quality using the rubric. Return only JSON.`;
         { role: 'user', content: userMessage }
       ],
       temperature: 0.1,
-      maxTokens: 1200,
+      maxTokens: 2048,
     });
 
-    const content = response.content || response.text || '';
+    content = response.content || response.text || '';
     return parseJudgeResponse(content);
   } catch (error) {
     console.error('Judge error:', error);
+    console.error('Failed to parse judge response content:', content);
     return {
       scores: { coverage: 0, precision: 0, granularity: 0, taxonomy: 0, technicalSpecs: 0 },
       totalScore: 0,
@@ -850,10 +872,17 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
   const allMissed: string[] = [];
   const allIncorrect: string[] = [];
   const falsePositiveReasons = createEmptyFalsePositiveReasons();
+  const falsePositiveExamples = createEmptyFalsePositiveExamples();
   const errorsBySection = createEmptyErrorsBySection();
   const confidenceAnalysis = computeConfidenceAnalysis(successfulResults);
 
-  const taxonomyErrorCounts = new Map<string, { assignedRole: string; expectedRole: string; count: number }>();
+  const taxonomyErrorCounts = new Map<string, { assignedRole: string; expectedRole: string; count: number; examples: string[] }>();
+  const missedBySeverity = {
+    critical: [] as string[],
+    important: [] as string[],
+    minor: [] as string[],
+  };
+  const missedCountsByCategory: Record<string, number> = {};
   const granularityErrorCounts = new Map<string, { count: number; examples: string[] }>();
   const categoryTotals: Record<string, { coverageSum: number; precisionSum: number; count: number }> = {};
   for (const category of CATEGORY_NAMES) {
@@ -869,6 +898,14 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
       allMissed.push(missed.text);
       const section = getSectionForText(missed.text, r.output, sections);
       errorsBySection[section].missed++;
+
+      const severity = missed.severity as keyof typeof missedBySeverity;
+      if (missedBySeverity[severity] && missedBySeverity[severity].length < 5) {
+        missedBySeverity[severity].push(`${missed.text} (${missed.category})`);
+      }
+
+      const cat = missed.category || 'unknown';
+      missedCountsByCategory[cat] = (missedCountsByCategory[cat] || 0) + 1;
     }
 
     const { matches } = matchFalsePositivesToSpans(r.spans, judgeResult.falsePositives);
@@ -876,8 +913,14 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
       allIncorrect.push(match.fp.text);
       if (falsePositiveReasons[match.fp.reason] !== undefined) {
         falsePositiveReasons[match.fp.reason] += 1;
+        if (falsePositiveExamples[match.fp.reason].length < 5) {
+          falsePositiveExamples[match.fp.reason].push(match.fp.text);
+        }
       } else {
         falsePositiveReasons.other += 1;
+        if (falsePositiveExamples.other.length < 5) {
+          falsePositiveExamples.other.push(match.fp.text);
+        }
       }
 
       const section = match.spanIndex !== null
@@ -892,8 +935,12 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
         assignedRole: err.assignedRole,
         expectedRole: err.expectedRole,
         count: 0,
+        examples: [],
       };
       current.count += 1;
+      if (current.examples.length < 3) {
+        current.examples.push(err.text);
+      }
       taxonomyErrorCounts.set(key, current);
     }
 
@@ -982,6 +1029,14 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
     }
   }
 
+  const latencies = results.map((r) => r.latencyMs).sort((a, b) => a - b);
+  const latencyStats = {
+    avg: Math.round(latencies.reduce((a, b) => a + b, 0) / (latencies.length || 1)),
+    p50: latencies[Math.floor(latencies.length * 0.5)] || 0,
+    p95: latencies[Math.floor(latencies.length * 0.95)] || 0,
+    p99: latencies[Math.floor(latencies.length * 0.99)] || 0,
+  };
+
   return {
     avgScore: Math.round(avgScore * 100) / 100,
     avgSpanCount: Math.round(avgSpanCount * 100) / 100,
@@ -997,7 +1052,11 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
     topGranularityErrors,
     errorsBySection,
     confidenceAnalysis,
-  };
+    falsePositiveExamples,
+    missedBySeverity,
+    latencyStats,
+    missedCountsByCategory,
+  } as any;
 }
 
 function findLatestPromptsFile(): string | null {
@@ -1055,111 +1114,154 @@ function loadPrompts(filePath: string): PromptRecord[] {
   }));
 }
 
-function printReport(snapshot: Snapshot): void {
-  console.log('\n' + '='.repeat(80));
-  console.log('  SPAN LABELING EVALUATION REPORT');
-  console.log('='.repeat(80));
-  console.log();
+/**
+ * Generate the evaluation report as a string
+ */
+function generateReportText(snapshot: Snapshot): string {
+  const lines: string[] = [];
+  const add = (line = '') => lines.push(line);
 
-  console.log(`📊 SUMMARY (${snapshot.promptCount} prompts evaluated):`);
-  console.log(`  Average Score:      ${snapshot.summary.avgScore}/25`);
-  console.log(`  Average Span Count: ${snapshot.summary.avgSpanCount}`);
-  console.log(`  Errors:             ${snapshot.summary.errorCount}`);
-  console.log();
+  add('='.repeat(80));
+  add('  SPAN LABELING EVALUATION REPORT');
+  add('='.repeat(80));
+  add();
 
-  console.log('📈 SCORE DISTRIBUTION:');
+  add(`📊 SUMMARY (${snapshot.promptCount} prompts evaluated):`);
+  add(`  Average Score:      ${snapshot.summary.avgScore}/25`);
+  add(`  Average Span Count: ${snapshot.summary.avgSpanCount}`);
+  add(`  Errors:             ${snapshot.summary.errorCount}`);
+  add();
+
+  add('📈 SCORE DISTRIBUTION:');
   for (const [range, count] of Object.entries(snapshot.summary.scoreDistribution)) {
     const bar = '█'.repeat(Math.round(count / snapshot.promptCount * 40));
-    console.log(`  ${range.padEnd(20)} ${bar} ${count}`);
+    add(`  ${range.padEnd(20)} ${bar} ${count}`);
   }
-  console.log();
+  add();
 
   const commonMissed = snapshot.summary.commonMissedElements ?? [];
   if (commonMissed.length > 0) {
-    console.log('❌ COMMONLY MISSED ELEMENTS:');
+    add('❌ COMMONLY MISSED ELEMENTS:');
     for (const item of commonMissed.slice(0, 5)) {
-      console.log(`  - ${item}`);
+      add(`  - ${item}`);
     }
-    console.log();
+    add();
   }
 
   const commonIncorrect = snapshot.summary.commonIncorrectExtractions ?? [];
   if (commonIncorrect.length > 0) {
-    console.log('⚠️  COMMONLY INCORRECT EXTRACTIONS:');
+    add('⚠️  COMMONLY INCORRECT EXTRACTIONS:');
     for (const item of commonIncorrect.slice(0, 5)) {
-      console.log(`  - ${item}`);
+      add(`  - ${item}`);
     }
-    console.log();
+    add();
+  }
+
+  if (snapshot.summary.latencyStats) {
+    const l = snapshot.summary.latencyStats;
+    add('⏱️  LATENCY STATS (ms):');
+    add(`  Avg: ${l.avg} | P50: ${l.p50} | P95: ${l.p95} | P99: ${l.p99}`);
+    add();
+  }
+
+  const missedBySeverity = (snapshot.summary as any).missedBySeverity;
+  if (missedBySeverity) {
+    add('MISSED ELEMENTS BY SEVERITY (Examples):');
+    for (const [sev, examples] of Object.entries(missedBySeverity)) {
+      if ((examples as string[]).length > 0) {
+        add(`  ${sev.toUpperCase()}: ${(examples as string[]).join(', ')}`);
+      }
+    }
+    add();
+  }
+
+  if (snapshot.summary.missedCountsByCategory) {
+    const counts = Object.entries(snapshot.summary.missedCountsByCategory as Record<string, number>)
+      .sort((a, b) => b[1] - a[1]);
+    if (counts.length > 0) {
+      add('📉 MISSED ELEMENTS BY CATEGORY (Count):');
+      for (const [cat, count] of counts) {
+        add(`  - ${cat}: ${count}`);
+      }
+      add();
+    }
   }
 
   if (snapshot.summary.avgCategoryScores) {
-    console.log('CATEGORY SCORES (avg coverage/precision):');
+    add('CATEGORY SCORES (avg coverage/precision):');
     for (const category of CATEGORY_NAMES) {
       const scores = snapshot.summary.avgCategoryScores[category];
-      console.log(
-        `  ${category.padEnd(12)} ${scores.coverage.toFixed(2)} / ${scores.precision.toFixed(2)}`
-      );
+      add(`  ${category.padEnd(12)} ${scores.coverage.toFixed(2)} / ${scores.precision.toFixed(2)}`);
     }
-    console.log();
+    add();
   }
 
   if (snapshot.summary.falsePositiveReasons) {
     const reasons = snapshot.summary.falsePositiveReasons;
+    const examples = (snapshot.summary as any).falsePositiveExamples || {};
     const hasReasons = Object.values(reasons).some((count) => count > 0);
     if (hasReasons) {
-      console.log('FALSE POSITIVE REASONS:');
+      add('FALSE POSITIVE REASONS:');
       for (const reason of FALSE_POSITIVE_REASONS) {
         const count = reasons[reason] || 0;
         if (count > 0) {
-          console.log(`  - ${reason}: ${count}`);
+          add(`  - ${reason}: ${count}`);
+          const reasonExamples = examples[reason];
+          if (reasonExamples && reasonExamples.length > 0) {
+            add(`      e.g.: ${reasonExamples.join(', ')}`);
+          }
         }
       }
-      console.log();
+      add();
     }
   }
 
   if (snapshot.summary.topTaxonomyErrors && snapshot.summary.topTaxonomyErrors.length > 0) {
-    console.log('TOP TAXONOMY ERRORS:');
+    add('TOP TAXONOMY ERRORS:');
     for (const item of snapshot.summary.topTaxonomyErrors.slice(0, 5)) {
-      console.log(`  - ${item.assignedRole} → ${item.expectedRole} (${item.count}x)`);
+      const examples = (item as any).examples || [];
+      const exStr = examples.length > 0 ? ` (e.g. "${examples.join('", "')}")` : '';
+      add(`  - ${item.assignedRole} → ${item.expectedRole} (${item.count}x)${exStr}`);
     }
-    console.log();
+    add();
   }
 
   if (snapshot.summary.topGranularityErrors && snapshot.summary.topGranularityErrors.length > 0) {
-    console.log('📐 GRANULARITY ISSUES:');
+    add('📐 GRANULARITY ISSUES:');
     for (const item of snapshot.summary.topGranularityErrors) {
       const example = item.examples[0] ? ` (e.g., "${item.examples[0]}")` : '';
-      console.log(`  - ${item.reason}: ${item.count}x${example}`);
+      add(`  - ${item.reason}: ${item.count}x${example}`);
     }
-    console.log();
+    add();
   }
 
   if (snapshot.summary.errorsBySection) {
-    console.log('ERRORS BY SECTION:');
+    add('ERRORS BY SECTION:');
     for (const section of SECTION_NAMES) {
       const counts = snapshot.summary.errorsBySection[section];
-      console.log(
-        `  ${section.padEnd(15)} missed ${counts.missed}, falsePositives ${counts.falsePositives}`
-      );
+      add(`  ${section.padEnd(15)} missed ${counts.missed}, falsePositives ${counts.falsePositives}`);
     }
-    console.log();
+    add();
   }
 
   if (snapshot.summary.confidenceAnalysis) {
     const analysis = snapshot.summary.confidenceAnalysis;
-    console.log('CONFIDENCE ERROR RATES:');
+    add('CONFIDENCE ERROR RATES:');
     for (const [bucketName, bucket] of Object.entries(analysis.buckets)) {
       const rate = bucket.total > 0 ? (bucket.errorRate * 100).toFixed(1) : '0.0';
-      console.log(`  ${bucketName.padEnd(6)} ${rate}% (${bucket.errors}/${bucket.total})`);
+      const examples = (bucket as any).examples || [];
+      add(`  ${bucketName.padEnd(6)} ${rate}% (${bucket.errors}/${bucket.total})`);
+      if (examples.length > 0) {
+        add(`    Failures: ${examples.join(', ')}`);
+      }
     }
     if (analysis.recommendedThreshold !== null) {
-      console.log(`  Recommended minConfidence: ${analysis.recommendedThreshold.toFixed(2)}`);
+      add(`  Recommended minConfidence: ${analysis.recommendedThreshold.toFixed(2)}`);
     }
     if (analysis.notes) {
-      console.log(`  Notes: ${analysis.notes}`);
+      add(`  Notes: ${analysis.notes}`);
     }
-    console.log();
+    add();
   }
 
   // Show worst performers
@@ -1169,15 +1271,33 @@ function printReport(snapshot: Snapshot): void {
     .slice(0, 3);
 
   if (worstResults.length > 0) {
-    console.log('🔍 WORST PERFORMERS (for debugging):');
+    add('🔍 WORST PERFORMERS (for debugging):');
     for (const r of worstResults) {
-      console.log(`  [${r.judgeResult?.totalScore}/25] "${r.input.slice(0, 50)}..."`);
-      console.log(`    Notes: ${r.judgeResult?.notes?.slice(0, 100)}`);
+      add(`  [${r.judgeResult?.totalScore}/25] "${r.input}"`);
+      add(`    Notes: ${r.judgeResult?.notes || 'No notes'}`);
     }
-    console.log();
+    add();
   }
 
-  console.log('='.repeat(80));
+  add('='.repeat(80));
+  
+  return lines.join('\n');
+}
+
+/**
+ * Print report to console
+ */
+function printReport(snapshot: Snapshot): void {
+  console.log('\n' + generateReportText(snapshot));
+}
+
+/**
+ * Save report to text file
+ */
+function saveReportToFile(snapshot: Snapshot, filePath: string): void {
+  const reportText = generateReportText(snapshot);
+  const header = `Evaluation Report - ${snapshot.timestamp}\nSource: ${snapshot.sourceFile}\nJudge Model: ${snapshot.judgeModel}\n\n`;
+  writeFileSync(filePath, header + reportText);
 }
 
 async function main(): Promise<void> {
@@ -1186,6 +1306,8 @@ async function main(): Promise<void> {
   let promptsFile = findLatestPromptsFile();
   let sampleSize: number | null = null;
   let lockBaseline = false;
+  let concurrency = 2; // Reduced from 10 to avoid rate limits
+  let useFastModel = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--prompts-file' && args[i + 1]) {
@@ -1194,6 +1316,10 @@ async function main(): Promise<void> {
       sampleSize = parseInt(args[++i], 10);
     } else if (args[i] === '--baseline') {
       lockBaseline = true;
+    } else if (args[i] === '--concurrency' && args[i + 1]) {
+      concurrency = parseInt(args[++i], 10);
+    } else if (args[i] === '--fast') {
+      useFastModel = true;
     }
   }
 
@@ -1223,55 +1349,195 @@ async function main(): Promise<void> {
   const aiService = createAIService();
   console.log(`AI service ready`);
 
-  // Create dedicated GPT-4o judge client
-  const judgeClient = createJudgeClient();
-  console.log(`Judge client ready (GPT-4o)`);
+  // Create judge client
+  const judgeModel = useFastModel ? 'gpt-4o-mini' : 'gpt-4o';
+  const judgeClient = createJudgeClient(useFastModel);
+  console.log(`Judge client ready (${judgeModel})`);
 
-  // Evaluate each prompt
-  console.log(`\nEvaluating ${prompts.length} prompts...`);
-  const results: EvaluationResult[] = [];
-
-  for (let i = 0; i < prompts.length; i++) {
-    const prompt = prompts[i];
-    const progress = `[${String(i + 1).padStart(3)}/${prompts.length}]`;
-    const preview = prompt.input.slice(0, 50).replace(/\n/g, ' ');
-    console.log(`${progress} "${preview}..."`);
-    
-    const result = await evaluatePrompt(prompt, aiService, judgeClient);
-    results.push(result);
-    
-    // Show score inline
-    const score = result.judgeResult?.totalScore ?? 'ERR';
-    console.log(`        → Score: ${score}/25, Spans: ${result.spanCount}`);
-
-    // Rate limiting pause
-    await new Promise(resolve => setTimeout(resolve, 500));
+  // =========================================================================
+  // PHASE 1: Extract spans (fast, highly parallel)
+  // =========================================================================
+  console.log(`\n📝 Phase 1: Extracting spans...`);
+  const startPhase1 = Date.now();
+  
+  interface SpanExtractionResult {
+    promptId: string;
+    input: string;
+    output: string;
+    spans: SpanResult[];
+    meta: SpanLabelingMeta | null;
+    sections: PromptSections;
+    error: string | null;
   }
-  console.log('\n');
+  
+  const extractionResults: SpanExtractionResult[] = new Array(prompts.length);
+  let extractedCount = 0;
+  
+  // Run all extractions with high parallelism (NLP path is ~100ms each)
+  const extractionBatchSize = 20;
+  for (let batchStart = 0; batchStart < prompts.length; batchStart += extractionBatchSize) {
+    const batchEnd = Math.min(batchStart + extractionBatchSize, prompts.length);
+    const batch = prompts.slice(batchStart, batchEnd);
+    
+    await Promise.all(batch.map(async (prompt, batchIndex) => {
+      const globalIndex = batchStart + batchIndex;
+      try {
+        const response = await labelSpans({
+          text: prompt.output,
+          maxSpans: 50,
+          minConfidence: 0.5,
+          templateVersion: 'v3.0'
+        }, aiService);
+        
+        const sections = detectSections(prompt.output);
+        const spans: SpanResult[] = (response.spans || []).map((s: any) => {
+          const start = s.start ?? 0;
+          return {
+            text: s.text,
+            role: s.role,
+            confidence: s.confidence ?? 0,
+            start,
+            end: s.end ?? 0,
+            section: getSectionForOffset(start, sections),
+          };
+        });
+        
+        extractionResults[globalIndex] = {
+          promptId: prompt.id,
+          input: prompt.input,
+          output: prompt.output,
+          spans,
+          meta: {
+            version: response.meta?.version || 'unknown',
+            notes: response.meta?.notes || '',
+            source: (response.meta as any)?.source,
+            closedVocab: (response.meta as any)?.closedVocab,
+            openVocab: (response.meta as any)?.openVocab,
+            latency: (response.meta as any)?.latency,
+            tier1Latency: (response.meta as any)?.tier1Latency,
+            tier2Latency: (response.meta as any)?.tier2Latency,
+          },
+          sections,
+          error: null,
+        };
+      } catch (error) {
+        extractionResults[globalIndex] = {
+          promptId: prompt.id,
+          input: prompt.input,
+          output: prompt.output,
+          spans: [],
+          meta: null,
+          sections: { main: { start: 0, end: prompt.output.length }, technicalSpecs: null, alternatives: null },
+          error: (error as Error).message,
+        };
+      }
+      extractedCount++;
+    }));
+    
+    process.stdout.write(`\r  Extracted ${extractedCount}/${prompts.length} prompts`);
+  }
+  
+  const phase1Time = Date.now() - startPhase1;
+  console.log(`\n  ✓ Phase 1 complete in ${(phase1Time / 1000).toFixed(1)}s`);
 
-  // Build snapshot
+  // =========================================================================
+  // PHASE 2: Judge with LLM (slower, rate limited)
+  // =========================================================================
+  console.log(`\n⚖️  Phase 2: Judging quality (concurrency: ${concurrency})...`);
+  const startPhase2 = Date.now();
+  
+  const results: EvaluationResult[] = new Array(prompts.length);
+  let judgedCount = 0;
+  
+  for (let batchStart = 0; batchStart < prompts.length; batchStart += concurrency) {
+    const batchEnd = Math.min(batchStart + concurrency, prompts.length);
+    
+    await Promise.all(
+      extractionResults.slice(batchStart, batchEnd).map(async (extraction, batchIndex) => {
+        const globalIndex = batchStart + batchIndex;
+        const startTime = Date.now();
+        
+        let judgeResult: EnhancedJudgeResult | null = null;
+        if (!extraction.error && extraction.spans.length > 0) {
+          judgeResult = await judgeSpanQuality(extraction.output, extraction.spans, judgeClient);
+        }
+        
+        results[globalIndex] = {
+          promptId: extraction.promptId,
+          input: extraction.input,
+          output: extraction.output,
+          spanCount: extraction.spans.length,
+          spans: extraction.spans,
+          meta: extraction.meta,
+          judgeResult,
+          error: extraction.error,
+          latencyMs: Date.now() - startTime,
+          sections: extraction.sections,
+        };
+        
+        judgedCount++;
+        const score = judgeResult?.totalScore ?? 'ERR';
+        const preview = extraction.input.slice(0, 35).replace(/\n/g, ' ');
+        console.log(`  [${String(judgedCount).padStart(3)}/${prompts.length}] "${preview}..." → ${score}/25`);
+      })
+    );
+    
+    // Small delay between batches to avoid rate limits
+    if (batchEnd < prompts.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  
+  const phase2Time = Date.now() - startPhase2;
+  console.log(`  ✓ Phase 2 complete in ${(phase2Time / 1000).toFixed(1)}s`);
+  console.log(`\n  Total time: ${((phase1Time + phase2Time) / 1000).toFixed(1)}s`);
+
+  // Build snapshot with timestamp
+  const runTimestamp = new Date();
   const snapshot: Snapshot = {
-    timestamp: new Date().toISOString(),
+    timestamp: runTimestamp.toISOString(),
     promptCount: results.length,
     sourceFile: promptsFile,
-    judgeModel: 'gpt-4o',
+    judgeModel,
     results,
     summary: computeSummary(results)
   };
 
-  // Save snapshot
-  const snapshotPath = join(SNAPSHOTS_DIR, 'latest.json');
-  writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
-  console.log(`📄 Snapshot saved to: ${snapshotPath}`);
+  // Create filename-safe timestamp (e.g., 2025-12-23T17-44-21)
+  const fileTimestamp = runTimestamp.toISOString()
+    .replace(/:/g, '-')
+    .replace(/\.\d{3}Z$/, '');
+
+  // Save timestamped snapshot (JSON)
+  const timestampedSnapshotPath = join(SNAPSHOTS_DIR, `snapshot-${fileTimestamp}.json`);
+  writeFileSync(timestampedSnapshotPath, JSON.stringify(snapshot, null, 2));
+  console.log(`\n📄 Snapshot saved to: ${timestampedSnapshotPath}`);
+
+  // Save timestamped report (text file)
+  const timestampedReportPath = join(SNAPSHOTS_DIR, `report-${fileTimestamp}.txt`);
+  saveReportToFile(snapshot, timestampedReportPath);
+  console.log(`📝 Report saved to: ${timestampedReportPath}`);
+
+  // Also save as "latest" for easy access
+  const latestSnapshotPath = join(SNAPSHOTS_DIR, 'latest.json');
+  const latestReportPath = join(SNAPSHOTS_DIR, 'latest-report.txt');
+  writeFileSync(latestSnapshotPath, JSON.stringify(snapshot, null, 2));
+  saveReportToFile(snapshot, latestReportPath);
+  console.log(`📌 Latest copies updated`);
 
   // Optionally lock as baseline
   if (lockBaseline) {
     const baselinePath = join(SNAPSHOTS_DIR, 'baseline.json');
     writeFileSync(baselinePath, JSON.stringify(snapshot, null, 2));
     console.log(`🔒 Baseline locked at: ${baselinePath}`);
+    
+    // Also save baseline report
+    const baselineReportPath = join(SNAPSHOTS_DIR, 'baseline-report.txt');
+    saveReportToFile(snapshot, baselineReportPath);
+    console.log(`📝 Baseline report saved to: ${baselineReportPath}`);
   }
 
-  // Print report
+  // Print report to console
   printReport(snapshot);
 
   process.exit(0);

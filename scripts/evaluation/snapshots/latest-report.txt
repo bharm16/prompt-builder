@@ -1,0 +1,107 @@
+Evaluation Report - 2025-12-23T18:27:11.453Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (54 prompts evaluated):
+  Average Score:      18.76/25
+  Average Span Count: 31.3
+  Errors:             1
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████ 33
+  acceptable (13-17)   █████████ 12
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - minimal motion blur (26x)
+  - consistent framing (16x)
+  - static tripod (14x)
+  - subject continuity (13x)
+  - soft shadows (6x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - Eye-level (10x)
+  - window (7x)
+  - f/1.8-f/2.8 (4x)
+  - Vibrant (4x)
+  - main action (4x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 8464 | P50: 8092 | P95: 12816 | P99: 27647
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: bustling train station (environment), bright natural light streaming through high windows (lighting), stirring a pot (action), casting his line (action)
+  IMPORTANT: outdoor basketball court (environment), green surroundings (environment), soft shadows and highlights (lighting), Ambient court sounds with sneaker squeaks (audio), gazing thoughtfully out of a window (action)
+  MINOR: minimal motion blur (style), consistent framing and subject continuity (style), minimal motion blur (style), minimal motion blur (style), consistent framing (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - style: 69
+  - lighting: 35
+  - subject: 30
+  - camera: 24
+  - environment: 19
+  - action: 15
+  - audio: 9
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.29 / 4.53
+  subject      3.67 / 4.27
+  action       3.04 / 4.42
+  environment  3.82 / 4.60
+  lighting     3.76 / 3.82
+  camera       4.02 / 4.33
+  style        3.24 / 3.38
+  technical    4.78 / 4.80
+  audio        3.96 / 4.44
+
+FALSE POSITIVE REASONS:
+  - section_header: 5
+      e.g.: High-Angle Variation):** A Medium Close-Up, Different Lighting, Alternative Lighting, Alternative Lighting, Alternative Lighting
+  - abstract_concept: 57
+      e.g.: nostalgic and intimate atmosphere, Terrence Malick, Terrence Malick-inspired, Naturalistic, cool blue tones of dusk
+  - non_visual: 42
+      e.g.: f/1.8-f/2.8, f/2.8, window, window, f/1.8-f/2.8
+  - duplicate: 14
+      e.g.: Eye-Level, handheld tracking, warm sunlight, handheld tracking, frisbee
+  - other: 20
+      e.g.: dribbling, Eye-level, f/1.8-f/2.8, Eye-level, tap dancing
+
+TOP TAXONOMY ERRORS:
+  - technical.aspectRatio → camera.angle (7x) (e.g. "Eye-level", "eye-level", "Eye-level")
+  - shot.type → camera.movement (5x) (e.g. "subtle handheld", "handheld tracking", "handheld tracking")
+  - style.aesthetic → camera.movement (5x) (e.g. "Low-angle tracking shot", "handheld tracking", "Static Eye-Level Shot")
+  - shot.type → camera.focus (5x) (e.g. "deep focus", "deep focus", "shallow focus")
+  - lighting.quality → style.aesthetic (4x) (e.g. "Naturalist cinema", "Naturalist cinema", "Documentary style")
+
+📐 GRANULARITY ISSUES:
+  - too_coarse: 6x (e.g., "energetically chasing its own tail in a sunlit backyard")
+
+ERRORS BY SECTION:
+  main            missed 190, falsePositives 56
+  technicalSpecs  missed 11, falsePositives 47
+  alternatives    missed 0, falsePositives 35
+
+CONFIDENCE ERROR RATES:
+  high   1.0% (8/785)
+    Failures: "Terrence Malick" (subject.identity), "Terrence Malick-inspired" (subject.identity), "frisbee" (subject.identity)
+  medium 13.5% (43/318)
+    Failures: "Naturalistic" (lighting.quality), "cool blue tones of dusk" (camera.focus), "Whimsical" (lighting.quality)
+  low    26.0% (87/334)
+    Failures: "dribbling" (shot.type), "Eye-level" (technical.aspectRatio), "f/1.8-f/2.8" (technical.frameRate)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [0/25] "woman playing computer games"
+    Notes: Judge failed: Judge response did not match expected schemas
+  [0/25] "man driving a car"
+    Notes: Judge failed: Judge response did not match expected schemas
+  [0/25] "a large box, exploding outward with full bedroom decor, at in the middle of an empty bedroom, commercial style, during ad for a home decor stoor featuring chic modern furniture bursting out"
+    Notes: Judge failed: Judge response did not match expected schemas
+
+================================================================================
