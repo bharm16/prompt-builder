@@ -147,12 +147,26 @@ function createAIService(): AIModelService {
 // =============================================================================
 
 function findLatestPromptsFile(): string | null {
+  // First check for input-prompts.json in the evaluation directory
+  const evalDir = __dirname;
+  const evalFile = join(evalDir, 'input-prompts.json');
+  if (existsSync(evalFile)) {
+    return evalFile;
+  }
+
+  // Then check project root
   const projectRoot = join(__dirname, '../..');
+  const rootFile = join(projectRoot, 'input-prompts.json');
+  if (existsSync(rootFile)) {
+    return rootFile;
+  }
+
+  // Fall back to timestamped versions (input-prompts-*.json) in project root
   const files = readdirSync(projectRoot)
-    .filter(f => f.startsWith('raw-prompts-') && f.endsWith('.json'))
+    .filter(f => f.startsWith('input-prompts-') && f.endsWith('.json'))
     .sort()
     .reverse();
-  
+
   return files.length > 0 ? join(projectRoot, files[0]) : null;
 }
 
@@ -236,7 +250,7 @@ async function main(): Promise<void> {
   }
 
   if (!inputFile || !existsSync(inputFile)) {
-    console.error('No prompts file found. Specify with --input or place raw-prompts-*.json in project root.');
+    console.error('No prompts file found. Specify with --input or place input-prompts-*.json in project root.');
     process.exit(1);
   }
 

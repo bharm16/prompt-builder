@@ -24,7 +24,6 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingService.js';
-import { PromptOptimizationService } from '../../server/src/services/prompt-optimization/PromptOptimizationService.js';
 import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
 import { warmupGliner } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
@@ -1460,9 +1459,6 @@ async function main(): Promise<void> {
   const aiService = createAIService();
   console.log(`AI service ready`);
 
-  // Create Prompt Optimization Service
-  const promptOptimizer = new PromptOptimizationService(aiService);
-  console.log('Prompt Optimization Service ready');
 
   // Create judge client
   const judgeModel = useFastModel ? 'gpt-4o-mini' : 'gpt-4o';
@@ -1470,11 +1466,11 @@ async function main(): Promise<void> {
   console.log(`Judge client ready (${judgeModel})`);
 
   // =========================================================================
-  // PHASE 1: Re-Optimize & Extract spans
+  // PHASE 1: Extract spans from pre-optimized outputs
   // =========================================================================
-  console.log(`\n📝 Phase 1: Re-optimizing prompts & extracting spans...`);
+  console.log(`\n📝 Phase 1: Extracting spans from pre-optimized outputs...`);
   const startPhase1 = Date.now();
-  
+
   interface SpanExtractionResult {
     promptId: string;
     input: string;
@@ -1484,44 +1480,34 @@ async function main(): Promise<void> {
     sections: PromptSections;
     error: string | null;
   }
-  
+
   const extractionResults: SpanExtractionResult[] = new Array(prompts.length);
   let extractedCount = 0;
-  
-  // Lower batch size since we are running optimization (heavier than just extraction)
-  const extractionBatchSize = 5; 
+
+  // Higher batch size since we're only doing span extraction (no optimization)
+  const extractionBatchSize = 5;
   for (let batchStart = 0; batchStart < prompts.length; batchStart += extractionBatchSize) {
     const batchEnd = Math.min(batchStart + extractionBatchSize, prompts.length);
     const batch = prompts.slice(batchStart, batchEnd);
-    
+
     await Promise.all(batch.map(async (prompt, batchIndex) => {
       const globalIndex = batchStart + batchIndex;
       try {
-        // Step 1: Re-run Optimization
-        let currentOutput = prompt.output;
-        let optMetadata: any = {};
-        
-        if (prompt.input) {
-          try {
-            const optResult = await promptOptimizer.optimizeTwoStage({
-              prompt: prompt.input,
-              mode: 'video'
-            });
-            currentOutput = optResult.refined;
-            optMetadata = optResult.metadata;
-          } catch (optError) {
-            console.warn(`Optimization failed for prompt ${prompt.id}, using existing output:`, optError);
-          }
+        // Use the pre-optimized output directly
+        const currentOutput = prompt.output;
+
+        if (!currentOutput) {
+          throw new Error('No output available - run generate-evaluation-prompts.ts first');
         }
 
-        // Step 2: Extract Spans from NEW output
+        // Extract spans from the existing output
         const response = await labelSpans({
           text: currentOutput,
           maxSpans: 50,
           minConfidence: 0.5,
           templateVersion: 'v3.0'
         }, aiService);
-        
+
         const sections = detectSections(currentOutput);
         const spans: SpanResult[] = (response.spans || []).map((s: any) => {
           const start = s.start ?? 0;
@@ -1534,11 +1520,11 @@ async function main(): Promise<void> {
             section: getSectionForOffset(start, sections),
           };
         });
-        
+
         extractionResults[globalIndex] = {
           promptId: prompt.id,
           input: prompt.input,
-          output: currentOutput, // Store the NEW output
+          output: currentOutput,
           spans,
           meta: {
             version: response.meta?.version || 'unknown',
@@ -1549,7 +1535,6 @@ async function main(): Promise<void> {
             latency: (response.meta as any)?.latency,
             tier1Latency: (response.meta as any)?.tier1Latency,
             tier2Latency: (response.meta as any)?.tier2Latency,
-            optimization: optMetadata, // Store optimization meta
           },
           sections,
           error: null,
@@ -1558,19 +1543,24 @@ async function main(): Promise<void> {
         extractionResults[globalIndex] = {
           promptId: prompt.id,
           input: prompt.input,
-          output: prompt.output,
+          output: prompt.output || '',
           spans: [],
           meta: null,
-          sections: { main: { start: 0, end: prompt.output.length }, technicalSpecs: null, alternatives: null },
+          sections: { main: { start: 0, end: (prompt.output || '').length }, technicalSpecs: null, alternatives: null },
           error: (error as Error).message,
         };
       }
       extractedCount++;
     }));
-    
+
     process.stdout.write(`\r  Processed ${extractedCount}/${prompts.length} prompts`);
+
+    // Small delay between batches to avoid rate limits
+    if (batchEnd < prompts.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
-  
+
   const phase1Time = Date.now() - startPhase1;
   console.log(`\n  ✓ Phase 1 complete in ${(phase1Time / 1000).toFixed(1)}s`);
 
