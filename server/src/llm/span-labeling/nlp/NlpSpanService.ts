@@ -183,6 +183,12 @@ const PATTERN_DEFINITIONS: Array<{
     confidence: 0.9,
   },
   {
+    // f-stop ranges like f/1.8-f/2.8 or f/1.8-2.8 (must come before single f-stop pattern)
+    role: 'camera.focus',
+    regex: /\bf\s*\/\s*\d+(?:\.\d+)?\s*-\s*f?\s*\/?\s*\d+(?:\.\d+)?\b/gi,
+    confidence: 0.9,
+  },
+  {
     role: 'camera.focus',
     regex: /\bf\s*\/\s*\d+(?:\.\d+)?\b/gi,
     confidence: 0.9,

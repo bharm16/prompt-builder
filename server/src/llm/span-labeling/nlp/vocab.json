@@ -43,12 +43,17 @@
   ],
   "camera.angle": [
     "Low Angle",
+    "Low-Angle",
     "High Angle",
+    "High-Angle",
     "Bird's-Eye View",
     "Worm's-Eye View",
     "Over-the-Shoulder",
     "Dutch Angle",
-    "Eye Level"
+    "Eye Level",
+    "Eye-Level",
+    "eye level",
+    "eye-level"
   ],
   "camera.focus": [
     "Shallow Depth of Field",

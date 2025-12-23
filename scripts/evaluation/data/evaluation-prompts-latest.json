@@ -2,11 +2,12 @@
   "metadata": {
     "generatedAt": "2025-12-23T17:11:22.324Z",
     "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/raw-prompts-2025_12_22_15_47_50.json",
-    "promptCount": 54,
+    "promptCount": 51,
     "successCount": 54,
     "errorCount": 0,
     "optimizerVersion": "v2-two-stage",
-    "avgLatencyMs": 12586
+    "avgLatencyMs": 12586,
+    "notes": "Removed 3 prompts that cause judge parsing failures"
   },
   "prompts": [
     {
@@ -16,15 +17,6 @@
       "generatedAt": "2025-12-23T16:54:49.739Z",
       "optimizerVersion": "v2-two-stage",
       "latencyMs": 11874,
-      "error": null
-    },
-    {
-      "id": "PnvcC4p5Z3eMKSEXlAmN",
-      "input": "woman playing computer games",
-      "output": "Medium Shot of a woman with focused eyes, game controller in hands, and comfortable seating playing computer games intently in a cozy living room with a plush couch and lamp at evening. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft warm glow from a nearby lamp casting gentle shadows. Style reference: Naturalistic, inspired by indie gaming culture. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft background music with game sounds\n- **Camera:** Static eye-level, 50mm lens, f/2.8\n- **Lighting:** Diffused lamp light from the side\n- **Style:** Naturalistic, indie gaming aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation 1: High-Angle):** A high-angle shot captures the woman playing computer games intently, showcasing the game controller in her hands.\n- **Variation 2 (Variation 2: Cool Lighting):** A medium shot of the woman playing computer games in a cozy living room, lit by a cool blue light from a nearby lamp.",
-      "generatedAt": "2025-12-23T16:55:04.310Z",
-      "optimizerVersion": "v2-two-stage",
-      "latencyMs": 13570,
       "error": null
     },
     {
@@ -169,15 +161,6 @@
       "generatedAt": "2025-12-23T16:58:26.700Z",
       "optimizerVersion": "v2-two-stage",
       "latencyMs": 15177,
-      "error": null
-    },
-    {
-      "id": "KdmT0ljWyrRRDSYwMZ94",
-      "input": "man driving a car",
-      "output": "Medium Long Shot of a man wearing sunglasses with hands on steering wheel as it confidently driving down a winding road in a winding road framed by lush greenery at mid-afternoon. The camera uses dolly shot alongside at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by sunlight filtering through leaves, creating dappled patterns on the windshield. Style reference: Vibrant color grading to enhance natural beauty. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft engine purr and wind rustling leaves\n- **Camera:** Eye-level dolly shot with a 50mm lens at f/4\n- **Lighting:** Natural sunlight filtered through foliage\n- **Style:** Vibrant color grading, road trip aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture a high angle shot of the car driving down the winding road, emphasizing the curves and path ahead.\n- **Variation 2 (Overcast Lighting Variation):** Capture the same dolly shot under overcast skies, creating a more muted and introspective atmosphere.",
-      "generatedAt": "2025-12-23T16:58:40.138Z",
-      "optimizerVersion": "v2-two-stage",
-      "latencyMs": 12436,
       "error": null
     },
     {
@@ -331,15 +314,6 @@
       "generatedAt": "2025-12-23T17:02:36.693Z",
       "optimizerVersion": "v2-two-stage",
       "latencyMs": 11406,
-      "error": null
-    },
-    {
-      "id": "BOTBWJMaxdM5HTPWYkL4",
-      "input": "a large box, exploding outward with full bedroom decor, at in the middle of an empty bedroom, commercial style, during ad for a home decor stoor featuring chic modern furniture bursting out",
-      "output": "Extreme Wide Shot of a large box with center of room, plain cardboard, and sealed with tape exploding outward with decor in a bright and inviting empty bedroom. The camera uses slow-motion capture from a high angle with deep focus (f/11-f/16) to keep background detail readable. Lit by soft diffused daylight from large windows, filling the room with bright and even light. Style reference: commercial style, showcasing modern home decor. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Energetic music crescendo\n- **Camera:** High-angle, extreme wide lens, f/11\n- **Lighting:** Daylight-balanced soft box lights from above\n- **Style:** Commercial aesthetic with vibrant color grading\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture a Medium Shot from a low angle as the decor pieces settle into place, emphasizing their details.\n- **Variation 2 (Different Lighting):** Use warm, ambient lighting to create a cozy and intimate atmosphere as the decor pieces are revealed.",
-      "generatedAt": "2025-12-23T17:02:50.408Z",
-      "optimizerVersion": "v2-two-stage",
-      "latencyMs": 12714,
       "error": null
     },
     {
