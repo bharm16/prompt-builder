@@ -83,28 +83,56 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
       const { prompt, mode, context, brainstormContext } = req.body;
-      const abortController = new AbortController();
-      const { signal } = abortController;
-      const onAbort = (): void => {
-        if (!signal.aborted) {
-          abortController.abort();
+      
+      // Create a wrapper abort controller that ignores early client disconnects
+      // This prevents curl from aborting the OpenAI calls before they start
+      const internalAbortController = new AbortController();
+      let clientConnected = true;
+      let processingStarted = false;
+      
+      // Only abort internal operations if client disconnects AFTER processing starts
+      const onClientDisconnect = (): void => {
+        clientConnected = false;
+        // Only abort if we've actually started processing AND response is still writable
+        if (processingStarted && !res.writableEnded && res.writable) {
+          internalAbortController.abort();
         }
       };
-      req.on('close', onAbort);
-      req.on('aborted', onAbort);
-
+      
       // Set up Server-Sent Events (SSE) headers
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
+      // Send initial keepalive comment immediately to keep connection alive
+      res.write(': connected\n\n');
+      if (typeof res.flushHeaders === 'function') {
+        res.flushHeaders();
+      }
+      
+      // Set up disconnect handlers AFTER keepalive is sent.
+      // Use response close since the request stream can close after body parsing.
+      res.on('close', onClientDisconnect);
+      req.on('aborted', onClientDisconnect);
+      
+      // Use internal signal that only aborts after processing starts
+      const signal = internalAbortController.signal;
+
       const sendEvent = (eventType: string, data: unknown): void => {
-        if (signal.aborted || res.writableEnded) {
+        if (signal.aborted || res.writableEnded || !clientConnected) {
           return;
         }
-        res.write(`event: ${eventType}\n`);
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        try {
+          res.write(`event: ${eventType}\n`);
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+        } catch (error) {
+          // Ignore write errors if client disconnected
+          if (!clientConnected) {
+            return;
+          }
+          throw error;
+        }
       };
 
       const startTime = Date.now();
@@ -123,6 +151,9 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       });
 
       try {
+        // Mark that processing has started
+        processingStarted = true;
+        
         const result = await promptOptimizationService.optimizeTwoStage({
           prompt,
           mode,

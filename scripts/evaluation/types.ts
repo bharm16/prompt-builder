@@ -134,6 +134,7 @@ export interface SpanLabelingMeta {
   latency?: number;
   tier1Latency?: number;
   tier2Latency?: number;
+  optimization?: Record<string, unknown>;
 }
 
 export interface EvaluationResult {

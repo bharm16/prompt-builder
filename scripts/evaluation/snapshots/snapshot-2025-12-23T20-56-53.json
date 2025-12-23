@@ -1,0 +1,1014 @@
+{
+  "timestamp": "2025-12-23T20:56:53.828Z",
+  "promptCount": 2,
+  "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json",
+  "judgeModel": "gpt-4o",
+  "results": [
+    {
+      "promptId": "pNMiJL7lw4C7F0LMPHYy",
+      "input": "cat looking out of a window",
+      "output": "Medium Close-Up of a cat with soft tabby fur, bright green eyes, and pink nose gazing out the window with curiosity in an indoor window nook with vibrant outdoor view. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light streaming from the window, creating a warm glow on the cat's fur. Style reference: soft, warm aesthetic reminiscent of Kodak Portra 400. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** mute\n- **Camera:** Static eye-level shot on 50mm lens with f/2.2\n- **Lighting:** Natural soft window light, diffused with warm tones\n- **Style:** Soft, warm aesthetic, Kodak Portra 400\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Close-Up of the cat from a high angle, highlighting the window view.\n- **Variation 2 (Evening Light Variation):** A Medium Close-Up with evening light casting long shadows on the cat's face.",
+      "spanCount": 35,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.94,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "soft tabby fur, bright green eyes",
+          "role": "subject.identity",
+          "confidence": 0.515,
+          "start": 30,
+          "end": 63,
+          "section": "main"
+        },
+        {
+          "text": "pink nose",
+          "role": "subject.appearance",
+          "confidence": 0.59,
+          "start": 69,
+          "end": 78,
+          "section": "main"
+        },
+        {
+          "text": "indoor window nook",
+          "role": "environment.location",
+          "confidence": 0.6,
+          "start": 122,
+          "end": 140,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 216,
+          "end": 238,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 240,
+          "end": 251,
+          "section": "main"
+        },
+        {
+          "text": "soft natural light",
+          "role": "lighting.quality",
+          "confidence": 0.62,
+          "start": 289,
+          "end": 307,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 346,
+          "end": 350,
+          "section": "main"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.94,
+          "start": 363,
+          "end": 366,
+          "section": "main"
+        },
+        {
+          "text": "soft, warm aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.55,
+          "start": 391,
+          "end": 411,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 397,
+          "end": 401,
+          "section": "main"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 427,
+          "end": 443,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 579,
+          "end": 581,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 602,
+          "end": 606,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 625,
+          "end": 630,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "mute",
+          "role": "audio.ambient",
+          "confidence": 0.55,
+          "start": 644,
+          "end": 648,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "eye-level",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 670,
+          "end": 679,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "eye-level shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 670,
+          "end": 684,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 688,
+          "end": 692,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.2",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 703,
+          "end": 708,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "window light",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 738,
+          "end": 750,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 766,
+          "end": 770,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm tones",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 766,
+          "end": 776,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Soft, warm aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.59,
+          "start": 790,
+          "end": 810,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 796,
+          "end": 800,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Kodak Portra 400",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 812,
+          "end": 828,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High-Angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 874,
+          "end": 884,
+          "section": "alternatives"
+        },
+        {
+          "text": "High-Angle Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.6,
+          "start": 874,
+          "end": 894,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 901,
+          "end": 916,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.91,
+          "start": 924,
+          "end": 927,
+          "section": "alternatives"
+        },
+        {
+          "text": "Evening Light Variation",
+          "role": "style.aesthetic",
+          "confidence": 0.53,
+          "start": 994,
+          "end": 1017,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1024,
+          "end": 1039,
+          "section": "alternatives"
+        },
+        {
+          "text": "evening light",
+          "role": "lighting.quality",
+          "confidence": 0.5,
+          "start": 1045,
+          "end": 1058,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.93,
+          "start": 1087,
+          "end": 1090,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (41 spans, 235ms) | Merged 2 adjacent subject spans: \"soft tabby fur, bright green eyes\" | span[1] ignored: duplicate span | span[20] ignored: duplicate span | span[33] ignored: duplicate span | Dropped header/label \"eye level\" at 201-210 (role: camera.angle) | Dropped header/label \"high angle\" at 935-945 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 34,
+        "openVocab": 37,
+        "latency": 235,
+        "tier1Latency": 0,
+        "tier2Latency": 235,
+        "optimization": {
+          "draftDuration": 2993,
+          "refinementDuration": 7627,
+          "totalDuration": 15591,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "motion_only",
+            "core_intent": "A cat gazes out of a window, observing the outside world.",
+            "subject": "cat",
+            "action": "looking out",
+            "visual_focus": "the cat's face and the window view",
+            "setting": "indoor, near a window",
+            "time": null,
+            "mood": "curious and serene",
+            "style": null,
+            "camera_move": "static",
+            "camera_angle": "eye-level",
+            "lighting": "natural light from the window",
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness",
+              "multiple actions"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Medium Close-Up at eye level of a cat with soft tabby fur and bright green eyes gazing out the window with curiosity in an indoor window nook with vibrant outdoor view. Lit by soft natural light streaming from the window. Style reference: soft. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 20,
+        "missedElements": [
+          {
+            "text": "gazing out the window with curiosity",
+            "expectedRole": "action",
+            "category": "action",
+            "severity": "important"
+          },
+          {
+            "text": "vibrant outdoor view",
+            "expectedRole": "environment.context",
+            "category": "environment",
+            "severity": "important"
+          },
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "minor"
+          },
+          {
+            "text": "consistent framing and subject continuity",
+            "expectedRole": "style",
+            "category": "style",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "High-Angle Variation",
+            "assignedRole": "style.aesthetic",
+            "reason": "abstract_concept",
+            "spanIndex": 28
+          },
+          {
+            "text": "Evening Light Variation",
+            "assignedRole": "style.aesthetic",
+            "reason": "abstract_concept",
+            "spanIndex": 31
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "eye-level shot",
+            "assignedRole": "shot.type",
+            "expectedRole": "camera.angle",
+            "spanIndex": 18
+          }
+        ],
+        "granularityErrors": [
+          {
+            "text": "soft tabby fur, bright green eyes",
+            "spanIndex": 2,
+            "reason": "too_coarse"
+          }
+        ],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 2,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 5,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction was generally good, but missed some important visual elements like the cat's action and the vibrant outdoor view. There were a few false positives related to abstract concepts in alternative approaches. Granularity was mostly correct, but one span was too coarse. Taxonomy was mostly accurate, with a minor error in camera angle classification."
+      },
+      "error": null,
+      "latencyMs": 12137,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 541
+        },
+        "technicalSpecs": {
+          "start": 541,
+          "end": 828
+        },
+        "alternatives": {
+          "start": 828,
+          "end": 1098
+        }
+      }
+    },
+    {
+      "promptId": "Vk1CC3GTCm1BQq95EWm9",
+      "input": "man cooking a meal in a kitchen",
+      "output": "Medium Close-Up of a man wearing a blue apron with focused expression stirring a pot of stew in a cozy kitchen with a wooden countertop at evening. The camera uses slow pan at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by overhead soft, warm light with a slight golden hue. Style reference: Home cooking show, naturalistic style. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft clinking of utensils and gentle bubbling\n- **Camera:** Eye-level slow pan with 50mm lens at f/3.5\n- **Lighting:** Soft overhead lights with warm gels\n- **Style:** Naturalistic, reminiscent of cooking shows\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** Capture the same scene from a high angle to highlight the ingredients on the countertop.\n- **Variation 2 (Cool Lighting):** Use cool, blue lighting to create a contrasting mood, emphasizing the steam and metallic elements in the kitchen.",
+      "spanCount": 31,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.78,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "blue apron",
+          "role": "subject.wardrobe",
+          "confidence": 0.52,
+          "start": 35,
+          "end": 45,
+          "section": "main"
+        },
+        {
+          "text": "focused expression",
+          "role": "subject.emotion",
+          "confidence": 0.72,
+          "start": 51,
+          "end": 69,
+          "section": "main"
+        },
+        {
+          "text": "pot of stew",
+          "role": "subject.identity",
+          "confidence": 0.53,
+          "start": 81,
+          "end": 92,
+          "section": "main"
+        },
+        {
+          "text": "cozy kitchen",
+          "role": "environment.location",
+          "confidence": 0.63,
+          "start": 98,
+          "end": 110,
+          "section": "main"
+        },
+        {
+          "text": "wooden countertop",
+          "role": "environment.location",
+          "confidence": 0.65,
+          "start": 118,
+          "end": 135,
+          "section": "main"
+        },
+        {
+          "text": "evening",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.85,
+          "start": 139,
+          "end": 146,
+          "section": "main"
+        },
+        {
+          "text": "slow pan",
+          "role": "lighting.source",
+          "confidence": 0.64,
+          "start": 164,
+          "end": 172,
+          "section": "main"
+        },
+        {
+          "text": "pan",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 169,
+          "end": 172,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 191,
+          "end": 213,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 215,
+          "end": 226,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 279,
+          "end": 283,
+          "section": "main"
+        },
+        {
+          "text": "slight golden hue",
+          "role": "style.colorGrade",
+          "confidence": 0.56,
+          "start": 297,
+          "end": 314,
+          "section": "main"
+        },
+        {
+          "text": "Home cooking show, naturalistic style",
+          "role": "lighting.source",
+          "confidence": 0.6000000000000001,
+          "start": 333,
+          "end": 370,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 506,
+          "end": 508,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 529,
+          "end": 533,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 552,
+          "end": 557,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-level",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 631,
+          "end": 640,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "slow pan",
+          "role": "lighting.quality",
+          "confidence": 0.57,
+          "start": 641,
+          "end": 649,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "pan",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 646,
+          "end": 649,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "50mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 655,
+          "end": 659,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/3.5",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 668,
+          "end": 673,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 716,
+          "end": 720,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.51,
+          "start": 739,
+          "end": 751,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "ingredients",
+          "role": "subject.identity",
+          "confidence": 0.52,
+          "start": 900,
+          "end": 911,
+          "section": "alternatives"
+        },
+        {
+          "text": "countertop",
+          "role": "environment.location",
+          "confidence": 0.52,
+          "start": 919,
+          "end": 929,
+          "section": "alternatives"
+        },
+        {
+          "text": "Cool",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 948,
+          "end": 952,
+          "section": "alternatives"
+        },
+        {
+          "text": "cool, blue lighting",
+          "role": "lighting.colorTemp",
+          "confidence": 0.8200000000000001,
+          "start": 970,
+          "end": 989,
+          "section": "alternatives"
+        },
+        {
+          "text": "contrasting mood",
+          "role": "style.aesthetic",
+          "confidence": 0.66,
+          "start": 1002,
+          "end": 1018,
+          "section": "alternatives"
+        },
+        {
+          "text": "kitchen",
+          "role": "environment.location",
+          "confidence": 0.57,
+          "start": 1071,
+          "end": 1078,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (37 spans, 244ms) | Merged 2 adjacent lighting spans: \"Home cooking show, naturalistic style\" | Merged 2 adjacent lighting spans: \"cool, blue lighting\" | Dropped header/label \"camera\" at 152-158 (role: camera.lens) | Dropped header/label \"eye level\" at 176-185 (role: camera.angle) | Dropped header/label \"High Angle\" at 827-837 (role: camera.angle) | Dropped header/label \"high angle\" at 872-882 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 26,
+        "openVocab": 33,
+        "latency": 244,
+        "tier1Latency": 1,
+        "tier2Latency": 242,
+        "optimization": {
+          "draftDuration": 3388,
+          "refinementDuration": 7574,
+          "totalDuration": 15294,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A man is cooking a meal in a kitchen.",
+            "subject": "man",
+            "action": "cooking",
+            "visual_focus": null,
+            "setting": "kitchen",
+            "time": null,
+            "mood": "warm and inviting",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": null,
+            "lighting": "soft, warm lighting",
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness in action",
+              "lack of specific visual details"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Medium Close-Up at eye level of a man wearing a blue apron with focused expression stirring a pot of stew in a cozy kitchen with a wooden countertop at evening. Lit by overhead soft. Style reference: Home cooking show. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 0,
+          "precision": 0,
+          "granularity": 0,
+          "taxonomy": 0,
+          "technicalSpecs": 0
+        },
+        "totalScore": 0,
+        "missedElements": [],
+        "falsePositives": [],
+        "taxonomyErrors": [],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "subject": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "action": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "environment": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "lighting": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "camera": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "style": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "technical": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "audio": {
+            "coverage": 0,
+            "precision": 0
+          }
+        },
+        "notes": "Judge failed: Judge response did not match expected schemas"
+      },
+      "error": null,
+      "latencyMs": 11446,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 468
+        },
+        "technicalSpecs": {
+          "start": 468,
+          "end": 781
+        },
+        "alternatives": {
+          "start": 781,
+          "end": 1079
+        }
+      }
+    }
+  ],
+  "summary": {
+    "avgScore": 20,
+    "avgSpanCount": 33,
+    "scoreDistribution": {
+      "excellent (23-25)": 0,
+      "good (18-22)": 1,
+      "acceptable (13-17)": 0,
+      "poor (8-12)": 0,
+      "failing (0-7)": 0
+    },
+    "commonMissedElements": [
+      "gazing out the window with curiosity (1x)",
+      "vibrant outdoor view (1x)",
+      "static tripod (1x)",
+      "minimal motion blur (1x)",
+      "consistent framing and subject continuity (1x)"
+    ],
+    "commonIncorrectExtractions": [
+      "High-Angle Variation (1x)",
+      "Evening Light Variation (1x)"
+    ],
+    "errorCount": 0,
+    "pipelineSources": {
+      "nlp": 2,
+      "llm": 0,
+      "unknown": 0
+    },
+    "spanSources": {
+      "closedVocab": 60,
+      "openVocab": 70,
+      "llm": 0
+    },
+    "avgCategoryScores": {
+      "shot": {
+        "coverage": 5,
+        "precision": 5
+      },
+      "subject": {
+        "coverage": 4,
+        "precision": 5
+      },
+      "action": {
+        "coverage": 2,
+        "precision": 5
+      },
+      "environment": {
+        "coverage": 3,
+        "precision": 5
+      },
+      "lighting": {
+        "coverage": 5,
+        "precision": 5
+      },
+      "camera": {
+        "coverage": 4,
+        "precision": 5
+      },
+      "style": {
+        "coverage": 3,
+        "precision": 3
+      },
+      "technical": {
+        "coverage": 5,
+        "precision": 5
+      },
+      "audio": {
+        "coverage": 5,
+        "precision": 5
+      }
+    },
+    "falsePositiveReasons": {
+      "section_header": 0,
+      "abstract_concept": 2,
+      "non_visual": 0,
+      "instruction_text": 0,
+      "duplicate": 0,
+      "other": 0
+    },
+    "topTaxonomyErrors": [
+      {
+        "assignedRole": "shot.type",
+        "expectedRole": "camera.angle",
+        "count": 1,
+        "examples": [
+          "eye-level shot"
+        ]
+      }
+    ],
+    "topGranularityErrors": [
+      {
+        "reason": "too_coarse",
+        "count": 1,
+        "examples": [
+          "soft tabby fur, bright green eyes"
+        ]
+      }
+    ],
+    "errorsBySection": {
+      "main": {
+        "falsePositives": 0,
+        "missed": 5
+      },
+      "technicalSpecs": {
+        "falsePositives": 0,
+        "missed": 0
+      },
+      "alternatives": {
+        "falsePositives": 2,
+        "missed": 0
+      }
+    },
+    "confidenceAnalysis": {
+      "buckets": {
+        "high": {
+          "range": [
+            0.8,
+            1
+          ],
+          "total": 25,
+          "errors": 0,
+          "errorRate": 0,
+          "examples": []
+        },
+        "medium": {
+          "range": [
+            0.6,
+            0.8
+          ],
+          "total": 3,
+          "errors": 1,
+          "errorRate": 0.3333333333333333,
+          "examples": [
+            "\"High-Angle Variation\" (style.aesthetic)"
+          ]
+        },
+        "low": {
+          "range": [
+            0,
+            0.6
+          ],
+          "total": 7,
+          "errors": 1,
+          "errorRate": 0.14285714285714285,
+          "examples": [
+            "\"Evening Light Variation\" (style.aesthetic)"
+          ]
+        }
+      },
+      "recommendedThreshold": null,
+      "notes": "No clear confidence threshold recommendation."
+    },
+    "falsePositiveExamples": {
+      "section_header": [],
+      "abstract_concept": [
+        "High-Angle Variation",
+        "Evening Light Variation"
+      ],
+      "non_visual": [],
+      "instruction_text": [],
+      "duplicate": [],
+      "other": []
+    },
+    "missedBySeverity": {
+      "critical": [],
+      "important": [
+        "gazing out the window with curiosity (action)",
+        "vibrant outdoor view (environment)",
+        "static tripod (camera)"
+      ],
+      "minor": [
+        "minimal motion blur (style)",
+        "consistent framing and subject continuity (style)"
+      ]
+    },
+    "latencyStats": {
+      "avg": 11792,
+      "p50": 12137,
+      "p95": 12137,
+      "p99": 12137
+    },
+    "missedCountsByCategory": {
+      "action": 1,
+      "environment": 1,
+      "camera": 1,
+      "style": 2
+    }
+  }
+}

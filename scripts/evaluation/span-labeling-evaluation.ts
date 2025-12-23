@@ -24,6 +24,7 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingService.js';
+import { PromptOptimizationService } from '../../server/src/services/prompt-optimization/PromptOptimizationService.js';
 import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
 import { warmupGliner } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
@@ -105,14 +106,14 @@ A span is a "visual control point" - a phrase that, if changed, would produce a 
 
 - missedElements: visual elements present in the prompt that were not extracted.
   - Provide: text, expectedRole (taxonomy role), category, severity.
-  - category must be one of: shot, subject, action, environment, lighting, camera, style, technical, audio.
-  - severity: critical | important | minor.
+  - category must be EXACTLY one of: shot, subject, action, environment, lighting, camera, style, technical, audio.
+  - severity must be EXACTLY one of: critical, important, minor.
   - Example: { "text": "red leather jacket", "expectedRole": "subject.wardrobe", "category": "subject", "severity": "important" }
 
 - falsePositives: extracted spans that should NOT have been extracted.
   - Provide: text, assignedRole, reason, spanIndex.
   - spanIndex is the 0-based index of the extracted span; use null if no match.
-  - reason must be one of: section_header | abstract_concept | non_visual | instruction_text | duplicate | other.
+  - reason must be EXACTLY one of: section_header, abstract_concept, non_visual, instruction_text, duplicate, other.
   - Example: { "text": "TECHNICAL SPECS", "assignedRole": "technical", "reason": "section_header", "spanIndex": 12 }
   - Example: { "text": "emotional resonance", "assignedRole": "style.mood", "reason": "abstract_concept", "spanIndex": 4 }
 
@@ -122,8 +123,9 @@ A span is a "visual control point" - a phrase that, if changed, would produce a 
   - Example: { "text": "slow pan", "assignedRole": "action.movement", "expectedRole": "camera.movement", "spanIndex": 7 }
 
 - granularityErrors: span boundary issues (too fine or too coarse).
-  - Provide: text, spanIndex, reason (too_fine | too_coarse | other).
+  - Provide: text, spanIndex, reason.
   - spanIndex is the 0-based index of the extracted span; use null if no match.
+  - reason must be EXACTLY one of: too_fine, too_coarse, other.
   - Example: { "text": "soft highlights", "spanIndex": 15, "reason": "too_fine" }
   - Example: { "text": "man in red jacket walking in rain", "spanIndex": 3, "reason": "too_coarse" }
 
@@ -155,7 +157,7 @@ If there are no items for a list, return an empty array.
     {
       "text": "...",
       "expectedRole": "...",
-      "category": "...",
+      "category": "shot|subject|action|environment|lighting|camera|style|technical|audio",
       "severity": "critical|important|minor"
     }
   ],
@@ -196,7 +198,7 @@ If there are no items for a list, return an empty array.
   "notes": "brief explanation of scoring"
 }`;
 
-const SCORE_SCHEMA = z.coerce.number().min(0).max(5);
+const SCORE_SCHEMA = z.coerce.number();
 const SpanIndexSchema = z.preprocess(
   (value) => {
     if (value === null || value === undefined) return value;
@@ -274,6 +276,114 @@ const LegacyJudgeResultSchema = z.object({
   incorrectExtractions: z.array(z.string()).optional(),
   notes: z.string().optional(),
 });
+
+/**
+ * OpenAI Structured Outputs Schema (Strict Mode)
+ */
+const JUDGE_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    scores: {
+      type: "object",
+      properties: {
+        coverage: { type: "number" },
+        precision: { type: "number" },
+        granularity: { type: "number" },
+        taxonomy: { type: "number" },
+        technicalSpecs: { type: "number" }
+      },
+      required: ["coverage", "precision", "granularity", "taxonomy", "technicalSpecs"],
+      additionalProperties: false
+    },
+    totalScore: { type: "number" },
+    missedElements: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          expectedRole: { type: "string" },
+          category: { type: "string", enum: [...CATEGORY_NAMES, "unknown"] },
+          severity: { type: "string", enum: MISSED_SEVERITIES }
+        },
+        required: ["text", "expectedRole", "category", "severity"],
+        additionalProperties: false
+      }
+    },
+    falsePositives: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          assignedRole: { type: "string" },
+          reason: { type: "string", enum: FALSE_POSITIVE_REASONS },
+          spanIndex: { type: ["number", "null"] }
+        },
+        required: ["text", "assignedRole", "reason", "spanIndex"],
+        additionalProperties: false
+      }
+    },
+    taxonomyErrors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          assignedRole: { type: "string" },
+          expectedRole: { type: "string" },
+          spanIndex: { type: ["number", "null"] }
+        },
+        required: ["text", "assignedRole", "expectedRole", "spanIndex"],
+        additionalProperties: false
+      }
+    },
+    granularityErrors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          spanIndex: { type: ["number", "null"] },
+          reason: { type: "string", enum: GRANULARITY_ERROR_TYPES }
+        },
+        required: ["text", "spanIndex", "reason"],
+        additionalProperties: false
+      }
+    },
+    categoryScores: {
+      type: "object",
+      properties: Object.fromEntries(
+        CATEGORY_NAMES.map(cat => [
+          cat,
+          {
+            type: "object",
+            properties: {
+              coverage: { type: "number" },
+              precision: { type: "number" }
+            },
+            required: ["coverage", "precision"],
+            additionalProperties: false
+          }
+        ])
+      ),
+      required: [...CATEGORY_NAMES],
+      additionalProperties: false
+    },
+    notes: { type: "string" }
+  },
+  required: [
+    "scores",
+    "totalScore",
+    "missedElements",
+    "falsePositives",
+    "taxonomyErrors",
+    "granularityErrors",
+    "categoryScores",
+    "notes"
+  ],
+  additionalProperties: false
+};
 
 function createEmptyCategoryScores(): CategoryScores {
   return {
@@ -432,6 +542,8 @@ function parseJudgeResponse(content: string): EnhancedJudgeResult {
     return normalizeJudgeResult(legacy.data, false);
   }
 
+  console.error('Judge schema validation failed:', JSON.stringify(enhanced.error.format(), null, 2));
+  console.error('Parsed object:', JSON.stringify(parsed, null, 2));
   throw new Error('Judge response did not match expected schemas');
 }
 
@@ -741,8 +853,7 @@ Evaluate the span extraction quality using the rubric. Return only JSON.`;
         { role: 'system', content: JUDGE_SYSTEM_PROMPT },
         { role: 'user', content: userMessage }
       ],
-      temperature: 0.1,
-      maxTokens: 2048,
+      schema: JUDGE_JSON_SCHEMA
     });
 
     content = response.content || response.text || '';
@@ -1349,15 +1460,19 @@ async function main(): Promise<void> {
   const aiService = createAIService();
   console.log(`AI service ready`);
 
+  // Create Prompt Optimization Service
+  const promptOptimizer = new PromptOptimizationService(aiService);
+  console.log('Prompt Optimization Service ready');
+
   // Create judge client
   const judgeModel = useFastModel ? 'gpt-4o-mini' : 'gpt-4o';
   const judgeClient = createJudgeClient(useFastModel);
   console.log(`Judge client ready (${judgeModel})`);
 
   // =========================================================================
-  // PHASE 1: Extract spans (fast, highly parallel)
+  // PHASE 1: Re-Optimize & Extract spans
   // =========================================================================
-  console.log(`\n📝 Phase 1: Extracting spans...`);
+  console.log(`\n📝 Phase 1: Re-optimizing prompts & extracting spans...`);
   const startPhase1 = Date.now();
   
   interface SpanExtractionResult {
@@ -1373,8 +1488,8 @@ async function main(): Promise<void> {
   const extractionResults: SpanExtractionResult[] = new Array(prompts.length);
   let extractedCount = 0;
   
-  // Run all extractions with high parallelism (NLP path is ~100ms each)
-  const extractionBatchSize = 20;
+  // Lower batch size since we are running optimization (heavier than just extraction)
+  const extractionBatchSize = 5; 
   for (let batchStart = 0; batchStart < prompts.length; batchStart += extractionBatchSize) {
     const batchEnd = Math.min(batchStart + extractionBatchSize, prompts.length);
     const batch = prompts.slice(batchStart, batchEnd);
@@ -1382,14 +1497,32 @@ async function main(): Promise<void> {
     await Promise.all(batch.map(async (prompt, batchIndex) => {
       const globalIndex = batchStart + batchIndex;
       try {
+        // Step 1: Re-run Optimization
+        let currentOutput = prompt.output;
+        let optMetadata: any = {};
+        
+        if (prompt.input) {
+          try {
+            const optResult = await promptOptimizer.optimizeTwoStage({
+              prompt: prompt.input,
+              mode: 'video'
+            });
+            currentOutput = optResult.refined;
+            optMetadata = optResult.metadata;
+          } catch (optError) {
+            console.warn(`Optimization failed for prompt ${prompt.id}, using existing output:`, optError);
+          }
+        }
+
+        // Step 2: Extract Spans from NEW output
         const response = await labelSpans({
-          text: prompt.output,
+          text: currentOutput,
           maxSpans: 50,
           minConfidence: 0.5,
           templateVersion: 'v3.0'
         }, aiService);
         
-        const sections = detectSections(prompt.output);
+        const sections = detectSections(currentOutput);
         const spans: SpanResult[] = (response.spans || []).map((s: any) => {
           const start = s.start ?? 0;
           return {
@@ -1405,7 +1538,7 @@ async function main(): Promise<void> {
         extractionResults[globalIndex] = {
           promptId: prompt.id,
           input: prompt.input,
-          output: prompt.output,
+          output: currentOutput, // Store the NEW output
           spans,
           meta: {
             version: response.meta?.version || 'unknown',
@@ -1416,6 +1549,7 @@ async function main(): Promise<void> {
             latency: (response.meta as any)?.latency,
             tier1Latency: (response.meta as any)?.tier1Latency,
             tier2Latency: (response.meta as any)?.tier2Latency,
+            optimization: optMetadata, // Store optimization meta
           },
           sections,
           error: null,
@@ -1434,7 +1568,7 @@ async function main(): Promise<void> {
       extractedCount++;
     }));
     
-    process.stdout.write(`\r  Extracted ${extractedCount}/${prompts.length} prompts`);
+    process.stdout.write(`\r  Processed ${extractedCount}/${prompts.length} prompts`);
   }
   
   const phase1Time = Date.now() - startPhase1;

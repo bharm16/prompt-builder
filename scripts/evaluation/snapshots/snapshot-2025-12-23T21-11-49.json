@@ -1,0 +1,1268 @@
+{
+  "timestamp": "2025-12-23T21:11:49.318Z",
+  "promptCount": 3,
+  "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json",
+  "judgeModel": "gpt-4o",
+  "results": [
+    {
+      "promptId": "Ocgn213XFpmorWLbXmOp",
+      "input": "man screaming in rain",
+      "output": "Close-Up of a man with soaked t-shirt, disheveled hair, and open mouth screaming passionately with head tilted back in an outdoors in the pouring rain at dark, overcast skies. The camera uses static tripod from a high angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by natural dim overcast light with raindrops reflecting ambient light. Style reference: Film noir-inspired with high contrast and deep shadows. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Sound of heavy rain and a distant scream\n- **Camera:** High-angle static shot with 85mm lens at f/1.8\n- **Lighting:** Dim overcast with rain reflections\n- **Style:** Film noir-inspired with high contrast\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the same scene from a low-angle shot to emphasize the man's defiance against the storm.\n- **Variation 2 (Different Lighting):** Use a single harsh spotlight from above to highlight the man's face, creating stark shadows and dramatic contrast.",
+      "spanCount": 31,
+      "spans": [
+        {
+          "text": "Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 8,
+          "section": "main"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.93,
+          "start": 14,
+          "end": 17,
+          "section": "main"
+        },
+        {
+          "text": "soaked t-shirt",
+          "role": "subject.wardrobe",
+          "confidence": 0.72,
+          "start": 23,
+          "end": 37,
+          "section": "main"
+        },
+        {
+          "text": "screaming passionately",
+          "role": "camera.movement",
+          "confidence": 0.52,
+          "start": 71,
+          "end": 93,
+          "section": "main"
+        },
+        {
+          "text": "outdoors",
+          "role": "environment.location",
+          "confidence": 0.66,
+          "start": 122,
+          "end": 130,
+          "section": "main"
+        },
+        {
+          "text": "pouring rain",
+          "role": "environment.weather",
+          "confidence": 0.63,
+          "start": 138,
+          "end": 150,
+          "section": "main"
+        },
+        {
+          "text": "rain",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 146,
+          "end": 150,
+          "section": "main"
+        },
+        {
+          "text": "dark, overcast skies",
+          "role": "environment.weather",
+          "confidence": 0.52,
+          "start": 154,
+          "end": 174,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 229,
+          "end": 251,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 253,
+          "end": 264,
+          "section": "main"
+        },
+        {
+          "text": "ambient light",
+          "role": "lighting.quality",
+          "confidence": 1,
+          "start": 355,
+          "end": 368,
+          "section": "main"
+        },
+        {
+          "text": "Film noir-inspired",
+          "role": "lighting.quality",
+          "confidence": 0.77,
+          "start": 387,
+          "end": 405,
+          "section": "main"
+        },
+        {
+          "text": "high contrast",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 411,
+          "end": 424,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 577,
+          "end": 579,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 600,
+          "end": 604,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 623,
+          "end": 628,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "rain",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 657,
+          "end": 661,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "High-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 697,
+          "end": 707,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "85mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 725,
+          "end": 729,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/1.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 738,
+          "end": 743,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Dim overcast",
+          "role": "environment.weather",
+          "confidence": 0.62,
+          "start": 760,
+          "end": 772,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "rain",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 778,
+          "end": 782,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Film noir-inspired",
+          "role": "lighting.quality",
+          "confidence": 0.75,
+          "start": 808,
+          "end": 826,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high contrast",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 832,
+          "end": 845,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "low-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 941,
+          "end": 950,
+          "section": "alternatives"
+        },
+        {
+          "text": "low-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 941,
+          "end": 955,
+          "section": "alternatives"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.93,
+          "start": 973,
+          "end": 976,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.62,
+          "start": 1024,
+          "end": 1042,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting):** Use a single harsh spotlight",
+          "role": "style.aesthetic",
+          "confidence": 0.51,
+          "start": 1024,
+          "end": 1075,
+          "section": "alternatives"
+        },
+        {
+          "text": "spotlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 1066,
+          "end": 1075,
+          "section": "alternatives"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.94,
+          "start": 1104,
+          "end": 1107,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (36 spans, 237ms) | span[24] ignored: duplicate span | Dropped header/label \"camera\" at 180-186 (role: subject.identity) | Dropped header/label \"high angle\" at 213-223 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 584-596 (role: camera.angle) | Dropped header/label \"Frame Rate\" at 609-619 (role: technical.frameRate)",
+        "source": "neuro-symbolic",
+        "closedVocab": 24,
+        "openVocab": 33,
+        "latency": 237,
+        "tier1Latency": 0,
+        "tier2Latency": 237,
+        "optimization": {
+          "draftDuration": 2497,
+          "refinementDuration": 5894,
+          "totalDuration": 12114,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A man is screaming in the rain.",
+            "subject": "man",
+            "action": "screaming",
+            "visual_focus": null,
+            "setting": "outdoors in the rain",
+            "time": null,
+            "mood": "intense and dramatic",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": "High-Angle",
+            "lighting": "dim, overcast lighting",
+            "audio": "sound of rain and a scream",
+            "duration_hint": null,
+            "risks": [
+              "vagueness in action or setting"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Close-Up from a high angle of a man with soaked t-shirt and disheveled hair screaming passionately with head tilted back in an outdoors in the pouring rain at dark, overcast skies. Lit by natural dim overcast light with raindrops reflecting ambient light. Style reference: Film noir-inspired with high contrast and deep shadows. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 0,
+          "precision": 0,
+          "granularity": 0,
+          "taxonomy": 0,
+          "technicalSpecs": 0
+        },
+        "totalScore": 0,
+        "missedElements": [],
+        "falsePositives": [],
+        "taxonomyErrors": [],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "subject": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "action": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "environment": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "lighting": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "camera": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "style": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "technical": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "audio": {
+            "coverage": 0,
+            "precision": 0
+          }
+        },
+        "notes": "Judge failed: openai-judge API error: 400 - {\n  \"error\": {\n    \"message\": \"Invalid schema for response_format 'structured_response': In context=('properties', 'categoryScores'), 'required' is required to be supplied and to be an array including every key in properties. Missing 'shot'.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"response_format\",\n    \"code\": null\n  }\n}"
+      },
+      "error": null,
+      "latencyMs": 153,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 539
+        },
+        "technicalSpecs": {
+          "start": 539,
+          "end": 845
+        },
+        "alternatives": {
+          "start": 845,
+          "end": 1161
+        }
+      }
+    },
+    {
+      "promptId": "YiYmoPZgLfIp2HitjmYu",
+      "input": "dog running up a hill",
+      "output": "Medium Long Shot of a dog with golden retriever, fluffy tail, and red collar bounding joyfully up the grassy hill in a sunlit, grassy hill with tree shadows at mid-morning. The camera uses handheld tracking from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight filtering through tree leaves, casting playful shadows. Style reference: Bright and vibrant, similar to Fujifilm Velvia 50. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Soft rustling of leaves and distant birdsong\n- **Camera:** Low-angle handheld tracking with 85mm lens, f/2.8\n- **Lighting:** Diffused sunlight through foliage, casting moving shadows\n- **Style:** Fujifilm Velvia 50 stock, bright and vibrant\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture from a high-angle shot, looking down at the dog with the landscape visible.\n- **Variation 2 (Different Lighting):** Use backlighting to create a silhouette effect as the dog ascends the hill.",
+      "spanCount": 35,
+      "spans": [
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 16,
+          "section": "main"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.86,
+          "start": 22,
+          "end": 25,
+          "section": "main"
+        },
+        {
+          "text": "golden retriever, fluffy tail",
+          "role": "subject.identity",
+          "confidence": 0.7,
+          "start": 31,
+          "end": 60,
+          "section": "main"
+        },
+        {
+          "text": "red collar",
+          "role": "subject.wardrobe",
+          "confidence": 0.51,
+          "start": 66,
+          "end": 76,
+          "section": "main"
+        },
+        {
+          "text": "grassy hill",
+          "role": "environment.context",
+          "confidence": 0.54,
+          "start": 102,
+          "end": 113,
+          "section": "main"
+        },
+        {
+          "text": "sunlit",
+          "role": "audio.ambient",
+          "confidence": 0.53,
+          "start": 119,
+          "end": 125,
+          "section": "main"
+        },
+        {
+          "text": "grassy hill",
+          "role": "environment.context",
+          "confidence": 0.55,
+          "start": 127,
+          "end": 138,
+          "section": "main"
+        },
+        {
+          "text": "tree shadows",
+          "role": "lighting.source",
+          "confidence": 0.5,
+          "start": 144,
+          "end": 156,
+          "section": "main"
+        },
+        {
+          "text": "mid-morning",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.8,
+          "start": 160,
+          "end": 171,
+          "section": "main"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 189,
+          "end": 197,
+          "section": "main"
+        },
+        {
+          "text": "handheld tracking",
+          "role": "shot.type",
+          "confidence": 0.64,
+          "start": 189,
+          "end": 206,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.85,
+          "start": 229,
+          "end": 244,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 246,
+          "end": 255,
+          "section": "main"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 303,
+          "end": 316,
+          "section": "main"
+        },
+        {
+          "text": "Bright and vibrant",
+          "role": "lighting.quality",
+          "confidence": 0.61,
+          "start": 390,
+          "end": 408,
+          "section": "main"
+        },
+        {
+          "text": "Fujifilm Velvia 50",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 421,
+          "end": 439,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 575,
+          "end": 577,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 598,
+          "end": 602,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "60fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 621,
+          "end": 626,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "birdsong",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 676,
+          "end": 684,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Low-angle handheld",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 699,
+          "end": 717,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld tracking",
+          "role": "style.aesthetic",
+          "confidence": 0.6,
+          "start": 709,
+          "end": 726,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "85mm",
+          "role": "camera.lens",
+          "confidence": 1,
+          "start": 732,
+          "end": 736,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 743,
+          "end": 748,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 774,
+          "end": 782,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "moving shadows",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 808,
+          "end": 822,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Fujifilm Velvia 50",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 836,
+          "end": 854,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "bright and vibrant",
+          "role": "lighting.quality",
+          "confidence": 0.56,
+          "start": 862,
+          "end": 880,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 961,
+          "end": 971,
+          "section": "alternatives"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 961,
+          "end": 976,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.83,
+          "start": 998,
+          "end": 1001,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.58,
+          "start": 1047,
+          "end": 1065,
+          "section": "alternatives"
+        },
+        {
+          "text": "backlighting",
+          "role": "lighting.quality",
+          "confidence": 0.65,
+          "start": 1074,
+          "end": 1086,
+          "section": "alternatives"
+        },
+        {
+          "text": "silhouette effect",
+          "role": "style.aesthetic",
+          "confidence": 0.52,
+          "start": 1099,
+          "end": 1116,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.85,
+          "start": 1124,
+          "end": 1127,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (41 spans, 245ms) | Merged 2 adjacent subject spans: \"golden retriever, fluffy tail\" | Merged 2 adjacent lighting spans: \"warm sunlight\" | Merged 2 adjacent camera spans: \"Low-angle handheld\" | span[26] ignored: duplicate span | Dropped header/label \"low angle\" at 214-223 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 582-594 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 25,
+        "openVocab": 39,
+        "latency": 245,
+        "tier1Latency": 1,
+        "tier2Latency": 244,
+        "optimization": {
+          "draftDuration": 3150,
+          "refinementDuration": 6393,
+          "totalDuration": 12868,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A dog is running up a hill.",
+            "subject": "dog",
+            "action": "running",
+            "visual_focus": null,
+            "setting": "hill",
+            "time": null,
+            "mood": "energetic",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": null,
+            "lighting": null,
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness",
+              "multiple actions"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Medium Long Shot from a low angle of a dog with golden retriever and fluffy tail bounding joyfully up the grassy hill in a sunlit, grassy hill with tree shadows at mid-morning. Lit by warm sunlight filtering through tree leaves. Style reference: Bright and vibrant. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 0,
+          "precision": 0,
+          "granularity": 0,
+          "taxonomy": 0,
+          "technicalSpecs": 0
+        },
+        "totalScore": 0,
+        "missedElements": [],
+        "falsePositives": [],
+        "taxonomyErrors": [],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "subject": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "action": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "environment": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "lighting": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "camera": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "style": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "technical": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "audio": {
+            "coverage": 0,
+            "precision": 0
+          }
+        },
+        "notes": "Judge failed: openai-judge API error: 400 - {\n  \"error\": {\n    \"message\": \"Invalid schema for response_format 'structured_response': In context=('properties', 'categoryScores'), 'required' is required to be supplied and to be an array including every key in properties. Missing 'shot'.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"response_format\",\n    \"code\": null\n  }\n}"
+      },
+      "error": null,
+      "latencyMs": 153,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 537
+        },
+        "technicalSpecs": {
+          "start": 537,
+          "end": 880
+        },
+        "alternatives": {
+          "start": 880,
+          "end": 1145
+        }
+      }
+    },
+    {
+      "promptId": "wkRsbJTclqftnDUW7981",
+      "input": "dog, barking, at home",
+      "output": "Medium Close-Up of a dog with golden retriever breed, floppy ears, and bright collar barking with enthusiasm and joy in a sunlit, cozy living room with soft furnishings at mid-morning. The camera uses handheld pull back at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by sunlight streaming through windows, casting soft shadows. Style reference: Documentary-style with vibrant colors, inspired by Kodak Vision3 250D 5207. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Lively barking and ambient family sounds\n- **Camera:** Eye-level handheld with pull back, f/2.8\n- **Lighting:** Soft natural sunlight through windows\n- **Style:** Vibrant colors, documentary-style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Use a Low-Angle Shot to emphasize the dog's dominance and energy.\n- **Variation 2 (Different Lighting):** Capture the scene under warm, artificial lighting for a cozy evening feel.",
+      "spanCount": 30,
+      "spans": [
+        {
+          "text": "Medium Close-Up",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 15,
+          "section": "main"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.87,
+          "start": 21,
+          "end": 24,
+          "section": "main"
+        },
+        {
+          "text": "golden retriever breed",
+          "role": "subject.identity",
+          "confidence": 0.67,
+          "start": 30,
+          "end": 52,
+          "section": "main"
+        },
+        {
+          "text": "cozy living room",
+          "role": "environment.location",
+          "confidence": 0.75,
+          "start": 130,
+          "end": 146,
+          "section": "main"
+        },
+        {
+          "text": "mid-morning",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.82,
+          "start": 172,
+          "end": 183,
+          "section": "main"
+        },
+        {
+          "text": "handheld pull back",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 201,
+          "end": 219,
+          "section": "main"
+        },
+        {
+          "text": "pull back",
+          "role": "shot.type",
+          "confidence": 0.51,
+          "start": 210,
+          "end": 219,
+          "section": "main"
+        },
+        {
+          "text": "shallow depth of field",
+          "role": "camera.focus",
+          "confidence": 1,
+          "start": 238,
+          "end": 260,
+          "section": "main"
+        },
+        {
+          "text": "f/1.8-f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 262,
+          "end": 273,
+          "section": "main"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 311,
+          "end": 319,
+          "section": "main"
+        },
+        {
+          "text": "Documentary-style",
+          "role": "style.aesthetic",
+          "confidence": 0.79,
+          "start": 386,
+          "end": 403,
+          "section": "main"
+        },
+        {
+          "text": "vibrant colors",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 409,
+          "end": 423,
+          "section": "main"
+        },
+        {
+          "text": "Kodak Vision3 250D 5207",
+          "role": "style.filmStock",
+          "confidence": 1,
+          "start": 437,
+          "end": 460,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 596,
+          "end": 598,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 619,
+          "end": 623,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 642,
+          "end": 647,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "ambient family sounds",
+          "role": "audio.ambient",
+          "confidence": 0.56,
+          "start": 680,
+          "end": 701,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Eye-level",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 716,
+          "end": 725,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 726,
+          "end": 734,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "pull back",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 740,
+          "end": 749,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/2.8",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 751,
+          "end": 756,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 786,
+          "end": 794,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Vibrant colors, documentary-style",
+          "role": "style.colorGrade",
+          "confidence": 0.875,
+          "start": 824,
+          "end": 857,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Low-Angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 929,
+          "end": 938,
+          "section": "alternatives"
+        },
+        {
+          "text": "Low-Angle Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 929,
+          "end": 943,
+          "section": "alternatives"
+        },
+        {
+          "text": "dog",
+          "role": "subject.identity",
+          "confidence": 0.7,
+          "start": 961,
+          "end": 964,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "style.aesthetic",
+          "confidence": 0.53,
+          "start": 1006,
+          "end": 1024,
+          "section": "alternatives"
+        },
+        {
+          "text": "warm, artificial lighting",
+          "role": "lighting.colorTemp",
+          "confidence": 0.855,
+          "start": 1053,
+          "end": 1078,
+          "section": "alternatives"
+        },
+        {
+          "text": "cozy evening feel",
+          "role": "audio.ambient",
+          "confidence": 0.51,
+          "start": 1085,
+          "end": 1102,
+          "section": "alternatives"
+        },
+        {
+          "text": "evening",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.52,
+          "start": 1090,
+          "end": 1097,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (45 spans, 252ms) | Merged 2 adjacent camera spans: \"handheld pull back\" | Merged 2 adjacent style spans: \"Vibrant colors, documentary-style\" | Merged 2 adjacent lighting spans: \"warm, artificial lighting\" | span[1] ignored: duplicate span | span[10] ignored: duplicate span | span[13] ignored: duplicate span | span[15] ignored: duplicate span | span[19] ignored: duplicate span | span[25] ignored: duplicate span | span[28] ignored: duplicate span | span[30] ignored: duplicate span | span[32] ignored: duplicate span | Dropped header/label \"camera\" at 189-195 (role: camera.lens) | Dropped header/label \"eye level\" at 223-232 (role: camera.angle) | Dropped header/label \"Lighting\" at 1016-1024 (role: lighting.quality)",
+        "source": "neuro-symbolic",
+        "closedVocab": 28,
+        "openVocab": 35,
+        "latency": 252,
+        "tier1Latency": 3,
+        "tier2Latency": 248,
+        "optimization": {
+          "draftDuration": 2660,
+          "refinementDuration": 5833,
+          "totalDuration": 11768,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A dog barking energetically at home.",
+            "subject": "dog",
+            "action": "barking",
+            "visual_focus": null,
+            "setting": "home",
+            "time": null,
+            "mood": "lively",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": null,
+            "lighting": null,
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness",
+              "multiple actions"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Medium Close-Up at eye level of a dog with golden retriever breed and floppy ears barking with enthusiasm and joy in a sunlit, cozy living room with soft furnishings at mid-morning. Lit by sunlight streaming through windows. Style reference: Documentary-style with vibrant colors. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 0,
+          "precision": 0,
+          "granularity": 0,
+          "taxonomy": 0,
+          "technicalSpecs": 0
+        },
+        "totalScore": 0,
+        "missedElements": [],
+        "falsePositives": [],
+        "taxonomyErrors": [],
+        "granularityErrors": [],
+        "categoryScores": {
+          "shot": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "subject": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "action": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "environment": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "lighting": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "camera": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "style": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "technical": {
+            "coverage": 0,
+            "precision": 0
+          },
+          "audio": {
+            "coverage": 0,
+            "precision": 0
+          }
+        },
+        "notes": "Judge failed: openai-judge API error: 400 - {\n  \"error\": {\n    \"message\": \"Invalid schema for response_format 'structured_response': In context=('properties', 'categoryScores'), 'required' is required to be supplied and to be an array including every key in properties. Missing 'shot'.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"response_format\",\n    \"code\": null\n  }\n}"
+      },
+      "error": null,
+      "latencyMs": 125,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 558
+        },
+        "technicalSpecs": {
+          "start": 558,
+          "end": 857
+        },
+        "alternatives": {
+          "start": 857,
+          "end": 1103
+        }
+      }
+    }
+  ],
+  "summary": {
+    "avgScore": 0,
+    "avgSpanCount": 32,
+    "scoreDistribution": {
+      "excellent (23-25)": 0,
+      "good (18-22)": 0,
+      "acceptable (13-17)": 0,
+      "poor (8-12)": 0,
+      "failing (0-7)": 0
+    },
+    "commonMissedElements": [],
+    "commonIncorrectExtractions": [],
+    "errorCount": 0,
+    "pipelineSources": {
+      "nlp": 3,
+      "llm": 0,
+      "unknown": 0
+    },
+    "spanSources": {
+      "closedVocab": 77,
+      "openVocab": 107,
+      "llm": 0
+    },
+    "avgCategoryScores": {
+      "shot": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "subject": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "action": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "environment": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "lighting": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "camera": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "style": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "technical": {
+        "coverage": 0,
+        "precision": 0
+      },
+      "audio": {
+        "coverage": 0,
+        "precision": 0
+      }
+    },
+    "falsePositiveReasons": {
+      "section_header": 0,
+      "abstract_concept": 0,
+      "non_visual": 0,
+      "instruction_text": 0,
+      "duplicate": 0,
+      "other": 0
+    },
+    "topTaxonomyErrors": [],
+    "topGranularityErrors": [],
+    "errorsBySection": {
+      "main": {
+        "falsePositives": 0,
+        "missed": 0
+      },
+      "technicalSpecs": {
+        "falsePositives": 0,
+        "missed": 0
+      },
+      "alternatives": {
+        "falsePositives": 0,
+        "missed": 0
+      }
+    },
+    "confidenceAnalysis": {
+      "buckets": {
+        "high": {
+          "range": [
+            0.8,
+            1
+          ],
+          "total": 0,
+          "errors": 0,
+          "errorRate": 0,
+          "examples": []
+        },
+        "medium": {
+          "range": [
+            0.6,
+            0.8
+          ],
+          "total": 0,
+          "errors": 0,
+          "errorRate": 0,
+          "examples": []
+        },
+        "low": {
+          "range": [
+            0,
+            0.6
+          ],
+          "total": 0,
+          "errors": 0,
+          "errorRate": 0,
+          "examples": []
+        }
+      },
+      "recommendedThreshold": null,
+      "notes": "No false positives to analyze. No clear confidence threshold recommendation."
+    },
+    "falsePositiveExamples": {
+      "section_header": [],
+      "abstract_concept": [],
+      "non_visual": [],
+      "instruction_text": [],
+      "duplicate": [],
+      "other": []
+    },
+    "missedBySeverity": {
+      "critical": [],
+      "important": [],
+      "minor": []
+    },
+    "latencyStats": {
+      "avg": 144,
+      "p50": 153,
+      "p95": 153,
+      "p99": 153
+    },
+    "missedCountsByCategory": {}
+  }
+}

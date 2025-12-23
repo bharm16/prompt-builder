@@ -1,0 +1,1613 @@
+{
+  "timestamp": "2025-12-23T21:13:20.547Z",
+  "promptCount": 3,
+  "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json",
+  "judgeModel": "gpt-4o",
+  "results": [
+    {
+      "promptId": "Zp558PMAaZ1Pj9ap70bk",
+      "input": "dog running in a park",
+      "output": "Medium Long Shot of a dog with golden fur and red collar running energetically through the park in a sunlit park with vibrant green grass at afternoon. The camera uses handheld follow shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight casting soft shadows and highlights. Style reference: Naturalistic, vibrant color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Lively birdsong and rustling leaves\n- **Camera:** Handheld low-angle, 50mm lens, f/5.6\n- **Lighting:** Natural sunlight from above, warm and soft\n- **Style:** Naturalistic, vibrant colors\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A Medium Long Shot from a high angle, capturing the dog running energetically through a park, emphasizing the park's layout with a wide view of the green grass and trees.\n- **Variation 2 (Overcast Lighting):** A Medium Long Shot in diffused light, capturing the dog running energetically through a park, with the soft shadows and even light creating a calm atmosphere.",
+      "spanCount": 40,
+      "spans": [
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 16,
+          "section": "main"
+        },
+        {
+          "text": "a dog",
+          "role": "subject.identity",
+          "confidence": 0.52,
+          "start": 20,
+          "end": 25,
+          "section": "main"
+        },
+        {
+          "text": "running energetically through the park in a sunlit",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 57,
+          "end": 107,
+          "section": "main"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.65,
+          "start": 91,
+          "end": 95,
+          "section": "main"
+        },
+        {
+          "text": "sunlit park",
+          "role": "environment.location",
+          "confidence": 0.54,
+          "start": 101,
+          "end": 112,
+          "section": "main"
+        },
+        {
+          "text": "vibrant green grass",
+          "role": "environment.context",
+          "confidence": 0.54,
+          "start": 118,
+          "end": 137,
+          "section": "main"
+        },
+        {
+          "text": "afternoon",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.89,
+          "start": 141,
+          "end": 150,
+          "section": "main"
+        },
+        {
+          "text": "handheld",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 168,
+          "end": 176,
+          "section": "main"
+        },
+        {
+          "text": "handheld follow shot",
+          "role": "shot.type",
+          "confidence": 0.56,
+          "start": 168,
+          "end": 188,
+          "section": "main"
+        },
+        {
+          "text": "follow shot",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 177,
+          "end": 188,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.84,
+          "start": 211,
+          "end": 226,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 228,
+          "end": 237,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 285,
+          "end": 289,
+          "section": "main"
+        },
+        {
+          "text": "warm sunlight",
+          "role": "style.colorGrade",
+          "confidence": 0.64,
+          "start": 285,
+          "end": 298,
+          "section": "main"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 290,
+          "end": 298,
+          "section": "main"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.68,
+          "start": 353,
+          "end": 365,
+          "section": "main"
+        },
+        {
+          "text": "vibrant color palette",
+          "role": "style.colorGrade",
+          "confidence": 0.75,
+          "start": 367,
+          "end": 388,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 524,
+          "end": 526,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 547,
+          "end": 551,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "60fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 570,
+          "end": 575,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "birdsong",
+          "role": "audio.ambient",
+          "confidence": 1,
+          "start": 596,
+          "end": 604,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "rustling leaves",
+          "role": "audio.soundEffect",
+          "confidence": 1,
+          "start": 609,
+          "end": 624,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Handheld low-angle, 50mm",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 639,
+          "end": 663,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 670,
+          "end": 675,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 700,
+          "end": 708,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 721,
+          "end": 725,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "lighting.quality",
+          "confidence": 0.58,
+          "start": 748,
+          "end": 760,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "vibrant colors",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 762,
+          "end": 776,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 839,
+          "end": 855,
+          "section": "alternatives"
+        },
+        {
+          "text": "the dog",
+          "role": "subject.identity",
+          "confidence": 0.5,
+          "start": 885,
+          "end": 892,
+          "section": "alternatives"
+        },
+        {
+          "text": "running energetically through a park",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 893,
+          "end": 929,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.69,
+          "start": 925,
+          "end": 929,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.68,
+          "start": 947,
+          "end": 951,
+          "section": "alternatives"
+        },
+        {
+          "text": "Overcast Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.78,
+          "start": 1025,
+          "end": 1042,
+          "section": "alternatives"
+        },
+        {
+          "text": "Medium Long Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 1049,
+          "end": 1065,
+          "section": "alternatives"
+        },
+        {
+          "text": "diffused light",
+          "role": "lighting.quality",
+          "confidence": 1,
+          "start": 1069,
+          "end": 1083,
+          "section": "alternatives"
+        },
+        {
+          "text": "the dog",
+          "role": "subject.identity",
+          "confidence": 0.53,
+          "start": 1095,
+          "end": 1102,
+          "section": "alternatives"
+        },
+        {
+          "text": "running energetically through a park",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 1103,
+          "end": 1139,
+          "section": "alternatives"
+        },
+        {
+          "text": "park",
+          "role": "environment.location",
+          "confidence": 0.67,
+          "start": 1135,
+          "end": 1139,
+          "section": "alternatives"
+        },
+        {
+          "text": "calm atmosphere",
+          "role": "audio.ambient",
+          "confidence": 0.69,
+          "start": 1189,
+          "end": 1204,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (48 spans, 266ms) | Merged 3 adjacent camera spans: \"Handheld low-angle, 50mm\" | Dropped header/label \"camera\" at 156-162 (role: subject.identity) | Dropped header/label \"low angle\" at 196-205 (role: camera.angle) | Dropped header/label \"Aspect Ratio\" at 531-543 (role: camera.angle) | Dropped header/label \"Frame Rate\" at 556-566 (role: technical.frameRate) | Dropped header/label \"High Angle\" at 822-832 (role: camera.angle) | Dropped header/label \"high angle\" at 863-873 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 32,
+        "openVocab": 43,
+        "latency": 266,
+        "tier1Latency": 1,
+        "tier2Latency": 266,
+        "optimization": {
+          "draftDuration": 3451,
+          "refinementDuration": 5749,
+          "totalDuration": 12620,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A dog is running energetically in a park.",
+            "subject": "dog",
+            "action": "running",
+            "visual_focus": null,
+            "setting": "park",
+            "time": null,
+            "mood": "playful and energetic",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": null,
+            "lighting": null,
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness",
+              "multiple actions"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Medium Long Shot from a low angle of a dog with golden fur and red collar running energetically through the park in a sunlit park with vibrant green grass at afternoon. Lit by warm sunlight casting soft shadows and highlights. Style reference: Naturalistic. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 20,
+        "missedElements": [
+          {
+            "text": "red collar",
+            "expectedRole": "subject.wardrobe",
+            "category": "subject",
+            "severity": "important"
+          },
+          {
+            "text": "low angle",
+            "expectedRole": "camera.angle",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "soft shadows and highlights",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "minimal motion blur",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "minor"
+          },
+          {
+            "text": "consistent framing and subject continuity",
+            "expectedRole": "style.aesthetic",
+            "category": "style",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "warm sunlight",
+            "assignedRole": "style.colorGrade",
+            "reason": "duplicate",
+            "spanIndex": 13
+          },
+          {
+            "text": "Naturalistic",
+            "assignedRole": "lighting.quality",
+            "reason": "abstract_concept",
+            "spanIndex": 15
+          },
+          {
+            "text": "calm atmosphere",
+            "assignedRole": "audio.ambient",
+            "reason": "abstract_concept",
+            "spanIndex": 39
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "Handheld low-angle, 50mm",
+            "assignedRole": "camera.movement",
+            "expectedRole": "camera.angle",
+            "spanIndex": 22
+          }
+        ],
+        "granularityErrors": [
+          {
+            "text": "running energetically through the park in a sunlit",
+            "spanIndex": 2,
+            "reason": "too_coarse"
+          }
+        ],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 3
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 4,
+            "precision": 3
+          }
+        },
+        "notes": "The extraction was generally good, but some important visual elements like 'red collar' and 'low angle' were missed. There were a few false positives related to abstract concepts and duplicates. Taxonomy was mostly correct, with a minor error in camera angle classification. Granularity was mostly appropriate, with one instance of a span being too coarse."
+      },
+      "error": null,
+      "latencyMs": 7654,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 486
+        },
+        "technicalSpecs": {
+          "start": 486,
+          "end": 776
+        },
+        "alternatives": {
+          "start": 776,
+          "end": 1205
+        }
+      }
+    },
+    {
+      "promptId": "R9fOjXuW3oefUnrl3Wq3",
+      "input": "man playing computer games",
+      "output": "Medium Shot of a man with focused expression and headset with microphone playing computer games with intense focus in a dimly lit room at night. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by screen glow as key light, ambient shadows for depth. Style reference: Modern digital aesthetic with an intimate focus. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Muffled game sounds and clicking\n- **Camera:** Static eye-level Medium Shot on digital camera, f/2.8\n- **Lighting:** Screen glow as primary light, creating chiaroscuro effect\n- **Style:** Modern digital aesthetic, intimate focus\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A high-angle shot looking down at the man, emphasizing his immersion and the game screen.\n- **Variation 2 (Brighter Lighting):** Increase the ambient lighting, using a soft fill light to reduce shadow contrast while maintaining screen glow.",
+      "spanCount": 31,
+      "spans": [
+        {
+          "text": "Medium Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 11,
+          "section": "main"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.94,
+          "start": 17,
+          "end": 20,
+          "section": "main"
+        },
+        {
+          "text": "focused expression",
+          "role": "subject.emotion",
+          "confidence": 0.6,
+          "start": 26,
+          "end": 44,
+          "section": "main"
+        },
+        {
+          "text": "headset",
+          "role": "subject.wardrobe",
+          "confidence": 0.51,
+          "start": 49,
+          "end": 56,
+          "section": "main"
+        },
+        {
+          "text": "microphone",
+          "role": "subject.wardrobe",
+          "confidence": 0.51,
+          "start": 62,
+          "end": 72,
+          "section": "main"
+        },
+        {
+          "text": "playing computer games with intense focus in a",
+          "role": "action.movement",
+          "confidence": 0.62,
+          "start": 73,
+          "end": 119,
+          "section": "main"
+        },
+        {
+          "text": "dimly lit room",
+          "role": "environment.location",
+          "confidence": 0.74,
+          "start": 120,
+          "end": 134,
+          "section": "main"
+        },
+        {
+          "text": "night",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.62,
+          "start": 138,
+          "end": 143,
+          "section": "main"
+        },
+        {
+          "text": "selective focus",
+          "role": "camera.focus",
+          "confidence": 0.68,
+          "start": 193,
+          "end": 208,
+          "section": "main"
+        },
+        {
+          "text": "f/4-f/5.6",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 210,
+          "end": 219,
+          "section": "main"
+        },
+        {
+          "text": "screen glow",
+          "role": "lighting.quality",
+          "confidence": 0.76,
+          "start": 267,
+          "end": 278,
+          "section": "main"
+        },
+        {
+          "text": "key light, ambient shadows",
+          "role": "lighting.source",
+          "confidence": 0.78,
+          "start": 282,
+          "end": 308,
+          "section": "main"
+        },
+        {
+          "text": "depth",
+          "role": "camera.focus",
+          "confidence": 0.55,
+          "start": 313,
+          "end": 318,
+          "section": "main"
+        },
+        {
+          "text": "Modern digital aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.86,
+          "start": 337,
+          "end": 361,
+          "section": "main"
+        },
+        {
+          "text": "intimate focus",
+          "role": "camera.focus",
+          "confidence": 0.69,
+          "start": 370,
+          "end": 384,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 520,
+          "end": 522,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 543,
+          "end": 547,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 566,
+          "end": 571,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "eye-level",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 639,
+          "end": 648,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Medium Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 649,
+          "end": 660,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "digital camera, f/2.8",
+          "role": "camera.lens",
+          "confidence": 0.775,
+          "start": 664,
+          "end": 685,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Screen glow",
+          "role": "lighting.quality",
+          "confidence": 0.79,
+          "start": 702,
+          "end": 713,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Modern digital aesthetic",
+          "role": "style.aesthetic",
+          "confidence": 0.85,
+          "start": 773,
+          "end": 797,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "intimate focus",
+          "role": "camera.focus",
+          "confidence": 0.66,
+          "start": 799,
+          "end": 813,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 876,
+          "end": 886,
+          "section": "alternatives"
+        },
+        {
+          "text": "high-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 876,
+          "end": 891,
+          "section": "alternatives"
+        },
+        {
+          "text": "man",
+          "role": "subject.identity",
+          "confidence": 0.92,
+          "start": 912,
+          "end": 915,
+          "section": "alternatives"
+        },
+        {
+          "text": "Brighter Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.77,
+          "start": 981,
+          "end": 998,
+          "section": "alternatives"
+        },
+        {
+          "text": "ambient lighting",
+          "role": "lighting.quality",
+          "confidence": 0.8,
+          "start": 1016,
+          "end": 1032,
+          "section": "alternatives"
+        },
+        {
+          "text": "fill light",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 1047,
+          "end": 1057,
+          "section": "alternatives"
+        },
+        {
+          "text": "screen glow",
+          "role": "lighting.quality",
+          "confidence": 0.74,
+          "start": 1102,
+          "end": 1113,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (36 spans, 242ms) | Merged 2 adjacent lighting spans: \"key light, ambient shadows\" | Merged 2 adjacent camera spans: \"digital camera, f/2.8\" | Dropped header/label \"camera\" at 149-155 (role: camera.lens) | Dropped header/label \"eye level\" at 178-187 (role: camera.angle) | Dropped header/label \"High Angle\" at 859-869 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 23,
+        "openVocab": 34,
+        "latency": 242,
+        "tier1Latency": 3,
+        "tier2Latency": 237,
+        "optimization": {
+          "draftDuration": 2714,
+          "refinementDuration": 6034,
+          "totalDuration": 12026,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "action_shot",
+            "core_intent": "A man is intensely focused on playing computer games.",
+            "subject": "man",
+            "action": "playing computer games",
+            "visual_focus": null,
+            "setting": null,
+            "time": null,
+            "mood": "intense and focused",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": "Medium Shot",
+            "lighting": "dim, with screen glow",
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness in action",
+              "lack of setting context"
+            ],
+            "confidence": 0.8
+          },
+          "previewPrompt": "Medium Shot at eye level of a man with focused expression and headset with microphone playing computer games with intense focus in a dimly lit room at night. Lit by screen glow as key light. Style reference: Modern digital aesthetic with an intimate focus. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 4,
+          "granularity": 4,
+          "taxonomy": 4,
+          "technicalSpecs": 5
+        },
+        "totalScore": 21,
+        "missedElements": [
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "muffled game sounds and clicking",
+            "expectedRole": "audio.soundEffect",
+            "category": "audio",
+            "severity": "important"
+          },
+          {
+            "text": "chiaroscuro effect",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "minor"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "depth",
+            "assignedRole": "camera.focus",
+            "reason": "abstract_concept",
+            "spanIndex": 12
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "playing computer games with intense focus in a",
+            "assignedRole": "action.movement",
+            "expectedRole": "action",
+            "spanIndex": 5
+          }
+        ],
+        "granularityErrors": [
+          {
+            "text": "key light, ambient shadows",
+            "spanIndex": 11,
+            "reason": "too_coarse"
+          }
+        ],
+        "categoryScores": {
+          "shot": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "subject": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "action": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "environment": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "camera": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "technical": {
+            "coverage": 5,
+            "precision": 5
+          },
+          "audio": {
+            "coverage": 3,
+            "precision": 5
+          }
+        },
+        "notes": "The extraction was generally good, with some minor issues in coverage and taxonomy. The technical specs were well captured, but some audio and camera elements were missed. Precision was slightly affected by the inclusion of abstract concepts."
+      },
+      "error": null,
+      "latencyMs": 5299,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 482
+        },
+        "technicalSpecs": {
+          "start": 482,
+          "end": 813
+        },
+        "alternatives": {
+          "start": 813,
+          "end": 1114
+        }
+      }
+    },
+    {
+      "promptId": "YJFW3nz993cvUDF9ZXVs",
+      "input": "cat laying in the sun through a window",
+      "output": "Establishing Shot of a cat with soft fur and relaxed posture laying peacefully in the sunbeam in a cozy indoor space with a sunlit window at daytime. The camera uses static tripod from a high angle with deep focus (f/11-f/16) to keep background detail readable. Lit by natural sunlight streaming through the window, creating soft highlights and gentle shadows. Style reference: naturalistic with a warm, soft aesthetic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Faint bird songs and a gentle breeze\n- **Camera:** Static high-angle on tripod, deep focus, f/11\n- **Lighting:** Natural sunlight from window, soft and warm\n- **Style:** Naturalistic with soft, warm tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A low-angle shot of the cat from ground level, emphasizing the sunbeam's glow on its fur.\n- **Variation 2 (Different Lighting):** Use soft artificial light to mimic the sunbeam, creating a cozy evening atmosphere.",
+      "spanCount": 34,
+      "spans": [
+        {
+          "text": "Establishing Shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 0,
+          "end": 17,
+          "section": "main"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.96,
+          "start": 23,
+          "end": 26,
+          "section": "main"
+        },
+        {
+          "text": "fur",
+          "role": "subject.identity",
+          "confidence": 0.52,
+          "start": 37,
+          "end": 40,
+          "section": "main"
+        },
+        {
+          "text": "relaxed posture",
+          "role": "action.state",
+          "confidence": 0.65,
+          "start": 45,
+          "end": 60,
+          "section": "main"
+        },
+        {
+          "text": "sunbeam",
+          "role": "lighting.source",
+          "confidence": 0.86,
+          "start": 86,
+          "end": 93,
+          "section": "main"
+        },
+        {
+          "text": "cozy indoor space",
+          "role": "environment.location",
+          "confidence": 0.65,
+          "start": 99,
+          "end": 116,
+          "section": "main"
+        },
+        {
+          "text": "daytime",
+          "role": "lighting.timeOfDay",
+          "confidence": 0.85,
+          "start": 141,
+          "end": 148,
+          "section": "main"
+        },
+        {
+          "text": "deep focus",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 203,
+          "end": 213,
+          "section": "main"
+        },
+        {
+          "text": "f/11-f/16",
+          "role": "camera.focus",
+          "confidence": 0.9,
+          "start": 215,
+          "end": 224,
+          "section": "main"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 277,
+          "end": 285,
+          "section": "main"
+        },
+        {
+          "text": "naturalistic",
+          "role": "style.aesthetic",
+          "confidence": 0.55,
+          "start": 378,
+          "end": 390,
+          "section": "main"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 398,
+          "end": 402,
+          "section": "main"
+        },
+        {
+          "text": "6s",
+          "role": "technical.duration",
+          "confidence": 0.9,
+          "start": 554,
+          "end": 556,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "16:9",
+          "role": "technical.aspectRatio",
+          "confidence": 1,
+          "start": 577,
+          "end": 581,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "24fps",
+          "role": "technical.frameRate",
+          "confidence": 1,
+          "start": 600,
+          "end": 605,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Faint bird songs",
+          "role": "audio.score",
+          "confidence": 0.75,
+          "start": 619,
+          "end": 635,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "high-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 677,
+          "end": 687,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "deep focus",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 699,
+          "end": 709,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "deep focus, f/11",
+          "role": "camera.focus",
+          "confidence": 0.8200000000000001,
+          "start": 699,
+          "end": 715,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "f/11",
+          "role": "technical.frameRate",
+          "confidence": 0.56,
+          "start": 711,
+          "end": 715,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "sunlight",
+          "role": "lighting.source",
+          "confidence": 1,
+          "start": 740,
+          "end": 748,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 771,
+          "end": 775,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "Naturalistic",
+          "role": "style.aesthetic",
+          "confidence": 0.51,
+          "start": 789,
+          "end": 801,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm",
+          "role": "lighting.colorTemp",
+          "confidence": 1,
+          "start": 813,
+          "end": 817,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "warm tones",
+          "role": "style.colorGrade",
+          "confidence": 1,
+          "start": 813,
+          "end": 823,
+          "section": "technicalSpecs"
+        },
+        {
+          "text": "low-angle",
+          "role": "camera.angle",
+          "confidence": 1,
+          "start": 891,
+          "end": 900,
+          "section": "alternatives"
+        },
+        {
+          "text": "low-angle shot",
+          "role": "shot.type",
+          "confidence": 1,
+          "start": 891,
+          "end": 905,
+          "section": "alternatives"
+        },
+        {
+          "text": "cat",
+          "role": "subject.identity",
+          "confidence": 0.95,
+          "start": 913,
+          "end": 916,
+          "section": "alternatives"
+        },
+        {
+          "text": "sunbeam",
+          "role": "lighting.source",
+          "confidence": 0.88,
+          "start": 952,
+          "end": 959,
+          "section": "alternatives"
+        },
+        {
+          "text": "fur",
+          "role": "subject.identity",
+          "confidence": 0.53,
+          "start": 974,
+          "end": 977,
+          "section": "alternatives"
+        },
+        {
+          "text": "Different Lighting",
+          "role": "lighting.quality",
+          "confidence": 0.55,
+          "start": 996,
+          "end": 1014,
+          "section": "alternatives"
+        },
+        {
+          "text": "soft artificial light",
+          "role": "lighting.quality",
+          "confidence": 0.55,
+          "start": 1023,
+          "end": 1044,
+          "section": "alternatives"
+        },
+        {
+          "text": "sunbeam",
+          "role": "lighting.source",
+          "confidence": 0.84,
+          "start": 1058,
+          "end": 1065,
+          "section": "alternatives"
+        },
+        {
+          "text": "cozy evening atmosphere",
+          "role": "audio.ambient",
+          "confidence": 0.68,
+          "start": 1078,
+          "end": 1101,
+          "section": "alternatives"
+        }
+      ],
+      "meta": {
+        "version": "nlp-v1",
+        "notes": "Generated via neuro-symbolic (38 spans, 228ms) | Merged 2 adjacent camera spans: \"deep focus, f/11\" | span[10] ignored: duplicate span | Dropped header/label \"camera\" at 154-160 (role: camera.lens) | Dropped header/label \"high angle\" at 187-197 (role: camera.angle)",
+        "source": "neuro-symbolic",
+        "closedVocab": 24,
+        "openVocab": 38,
+        "latency": 228,
+        "tier1Latency": 1,
+        "tier2Latency": 226,
+        "optimization": {
+          "draftDuration": 2671,
+          "refinementDuration": 6115,
+          "totalDuration": 12405,
+          "mode": "video",
+          "usedTwoStage": true,
+          "shotPlan": {
+            "shot_type": "environment_establishing",
+            "core_intent": "A serene shot of a cat laying in the sun through a window.",
+            "subject": "cat",
+            "action": null,
+            "visual_focus": "the cat basking in sunlight",
+            "setting": "indoor space with a window",
+            "time": "daytime",
+            "mood": "calm and peaceful",
+            "style": null,
+            "camera_move": null,
+            "camera_angle": null,
+            "lighting": "natural sunlight",
+            "audio": null,
+            "duration_hint": null,
+            "risks": [
+              "vagueness",
+              "multiple actions"
+            ],
+            "confidence": 0.9
+          },
+          "previewPrompt": "Establishing Shot from a high angle of a cat with soft fur and relaxed posture laying peacefully in the sunbeam in a cozy indoor space with a sunlit window at daytime. Lit by natural sunlight streaming through the window. Style reference: naturalistic with a warm. Single keyframe with crisp detail.",
+          "aspectRatio": "16:9"
+        }
+      },
+      "judgeResult": {
+        "scores": {
+          "coverage": 4,
+          "precision": 3,
+          "granularity": 4,
+          "taxonomy": 3,
+          "technicalSpecs": 4
+        },
+        "totalScore": 18,
+        "missedElements": [
+          {
+            "text": "static tripod",
+            "expectedRole": "camera.movement",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "soft highlights",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "gentle shadows",
+            "expectedRole": "lighting.quality",
+            "category": "lighting",
+            "severity": "important"
+          },
+          {
+            "text": "consistent framing",
+            "expectedRole": "camera",
+            "category": "camera",
+            "severity": "important"
+          },
+          {
+            "text": "subject continuity",
+            "expectedRole": "subject",
+            "category": "subject",
+            "severity": "important"
+          }
+        ],
+        "falsePositives": [
+          {
+            "text": "fur",
+            "assignedRole": "subject.identity",
+            "reason": "non_visual",
+            "spanIndex": 2
+          },
+          {
+            "text": "deep focus",
+            "assignedRole": "shot.type",
+            "reason": "duplicate",
+            "spanIndex": 7
+          },
+          {
+            "text": "deep focus",
+            "assignedRole": "shot.type",
+            "reason": "duplicate",
+            "spanIndex": 17
+          },
+          {
+            "text": "f/11",
+            "assignedRole": "technical.frameRate",
+            "reason": "other",
+            "spanIndex": 19
+          },
+          {
+            "text": "cozy evening atmosphere",
+            "assignedRole": "audio.ambient",
+            "reason": "non_visual",
+            "spanIndex": 33
+          }
+        ],
+        "taxonomyErrors": [
+          {
+            "text": "deep focus, f/11",
+            "assignedRole": "camera.focus",
+            "expectedRole": "camera.lens",
+            "spanIndex": 18
+          }
+        ],
+        "granularityErrors": [
+          {
+            "text": "deep focus, f/11",
+            "spanIndex": 18,
+            "reason": "too_coarse"
+          }
+        ],
+        "categoryScores": {
+          "shot": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "subject": {
+            "coverage": 3,
+            "precision": 3
+          },
+          "action": {
+            "coverage": 3,
+            "precision": 5
+          },
+          "environment": {
+            "coverage": 4,
+            "precision": 5
+          },
+          "lighting": {
+            "coverage": 3,
+            "precision": 4
+          },
+          "camera": {
+            "coverage": 3,
+            "precision": 4
+          },
+          "style": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "technical": {
+            "coverage": 4,
+            "precision": 4
+          },
+          "audio": {
+            "coverage": 3,
+            "precision": 3
+          }
+        },
+        "notes": "The extraction was generally good but missed some important visual elements like 'static tripod' and 'soft highlights'. There were also some false positives, particularly with non-visual elements and duplicates. Taxonomy errors were present, especially in the classification of 'deep focus, f/11'. Granularity was mostly correct, but there was a notable error with 'deep focus, f/11' being too coarse."
+      },
+      "error": null,
+      "latencyMs": 11555,
+      "sections": {
+        "main": {
+          "start": 0,
+          "end": 516
+        },
+        "technicalSpecs": {
+          "start": 516,
+          "end": 823
+        },
+        "alternatives": {
+          "start": 823,
+          "end": 1102
+        }
+      }
+    }
+  ],
+  "summary": {
+    "avgScore": 19.67,
+    "avgSpanCount": 35,
+    "scoreDistribution": {
+      "excellent (23-25)": 0,
+      "good (18-22)": 3,
+      "acceptable (13-17)": 0,
+      "poor (8-12)": 0,
+      "failing (0-7)": 0
+    },
+    "commonMissedElements": [
+      "static tripod (2x)",
+      "red collar (1x)",
+      "low angle (1x)",
+      "soft shadows and highlights (1x)",
+      "minimal motion blur (1x)",
+      "consistent framing and subject continuity (1x)",
+      "muffled game sounds and clicking (1x)",
+      "chiaroscuro effect (1x)",
+      "soft highlights (1x)",
+      "gentle shadows (1x)"
+    ],
+    "commonIncorrectExtractions": [
+      "deep focus (2x)",
+      "warm sunlight (1x)",
+      "Naturalistic (1x)",
+      "calm atmosphere (1x)",
+      "depth (1x)",
+      "fur (1x)",
+      "f/11 (1x)",
+      "cozy evening atmosphere (1x)"
+    ],
+    "errorCount": 0,
+    "pipelineSources": {
+      "nlp": 3,
+      "llm": 0,
+      "unknown": 0
+    },
+    "spanSources": {
+      "closedVocab": 79,
+      "openVocab": 115,
+      "llm": 0
+    },
+    "avgCategoryScores": {
+      "shot": {
+        "coverage": 4.67,
+        "precision": 4.67
+      },
+      "subject": {
+        "coverage": 4,
+        "precision": 4.33
+      },
+      "action": {
+        "coverage": 3.67,
+        "precision": 4.67
+      },
+      "environment": {
+        "coverage": 4.67,
+        "precision": 5
+      },
+      "lighting": {
+        "coverage": 3.67,
+        "precision": 3.67
+      },
+      "camera": {
+        "coverage": 3.67,
+        "precision": 4
+      },
+      "style": {
+        "coverage": 4,
+        "precision": 4
+      },
+      "technical": {
+        "coverage": 4.67,
+        "precision": 4.67
+      },
+      "audio": {
+        "coverage": 3.33,
+        "precision": 3.67
+      }
+    },
+    "falsePositiveReasons": {
+      "section_header": 0,
+      "abstract_concept": 3,
+      "non_visual": 2,
+      "instruction_text": 0,
+      "duplicate": 3,
+      "other": 1
+    },
+    "topTaxonomyErrors": [
+      {
+        "assignedRole": "camera.movement",
+        "expectedRole": "camera.angle",
+        "count": 1,
+        "examples": [
+          "Handheld low-angle, 50mm"
+        ]
+      },
+      {
+        "assignedRole": "action.movement",
+        "expectedRole": "action",
+        "count": 1,
+        "examples": [
+          "playing computer games with intense focus in a"
+        ]
+      },
+      {
+        "assignedRole": "camera.focus",
+        "expectedRole": "camera.lens",
+        "count": 1,
+        "examples": [
+          "deep focus, f/11"
+        ]
+      }
+    ],
+    "topGranularityErrors": [
+      {
+        "reason": "too_coarse",
+        "count": 3,
+        "examples": [
+          "running energetically through the park in a sunlit",
+          "key light, ambient shadows",
+          "deep focus, f/11"
+        ]
+      }
+    ],
+    "errorsBySection": {
+      "main": {
+        "falsePositives": 5,
+        "missed": 11
+      },
+      "technicalSpecs": {
+        "falsePositives": 2,
+        "missed": 2
+      },
+      "alternatives": {
+        "falsePositives": 2,
+        "missed": 0
+      }
+    },
+    "confidenceAnalysis": {
+      "buckets": {
+        "high": {
+          "range": [
+            0.8,
+            1
+          ],
+          "total": 59,
+          "errors": 2,
+          "errorRate": 0.03389830508474576,
+          "examples": [
+            "\"deep focus\" (shot.type)",
+            "\"deep focus\" (shot.type)"
+          ]
+        },
+        "medium": {
+          "range": [
+            0.6,
+            0.8
+          ],
+          "total": 29,
+          "errors": 4,
+          "errorRate": 0.13793103448275862,
+          "examples": [
+            "\"warm sunlight\" (style.colorGrade)",
+            "\"Naturalistic\" (lighting.quality)",
+            "\"calm atmosphere\" (audio.ambient)"
+          ]
+        },
+        "low": {
+          "range": [
+            0,
+            0.6
+          ],
+          "total": 17,
+          "errors": 3,
+          "errorRate": 0.17647058823529413,
+          "examples": [
+            "\"depth\" (camera.focus)",
+            "\"fur\" (subject.identity)",
+            "\"f/11\" (technical.frameRate)"
+          ]
+        }
+      },
+      "recommendedThreshold": null,
+      "notes": "No clear confidence threshold recommendation."
+    },
+    "falsePositiveExamples": {
+      "section_header": [],
+      "abstract_concept": [
+        "Naturalistic",
+        "calm atmosphere",
+        "depth"
+      ],
+      "non_visual": [
+        "fur",
+        "cozy evening atmosphere"
+      ],
+      "instruction_text": [],
+      "duplicate": [
+        "warm sunlight",
+        "deep focus",
+        "deep focus"
+      ],
+      "other": [
+        "f/11"
+      ]
+    },
+    "missedBySeverity": {
+      "critical": [],
+      "important": [
+        "red collar (subject)",
+        "low angle (camera)",
+        "soft shadows and highlights (lighting)",
+        "static tripod (camera)",
+        "muffled game sounds and clicking (audio)"
+      ],
+      "minor": [
+        "minimal motion blur (style)",
+        "consistent framing and subject continuity (style)",
+        "chiaroscuro effect (lighting)"
+      ]
+    },
+    "latencyStats": {
+      "avg": 8169,
+      "p50": 7654,
+      "p95": 11555,
+      "p99": 11555
+    },
+    "missedCountsByCategory": {
+      "subject": 2,
+      "camera": 4,
+      "lighting": 4,
+      "style": 2,
+      "audio": 1
+    }
+  }
+}
