@@ -16,6 +16,7 @@
  */
 
 import { config as loadEnv } from 'dotenv';
+import { z } from 'zod';
 
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
@@ -24,6 +25,30 @@ import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingServi
 import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
 import { warmupGliner } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
+import { VALID_CATEGORIES } from '../../shared/taxonomy.js';
+import {
+  CATEGORY_NAMES,
+  FALSE_POSITIVE_REASONS,
+  GRANULARITY_ERROR_TYPES,
+  MISSED_SEVERITIES,
+  SECTION_NAMES,
+  type CategoryScores,
+  type ConfidenceAnalysis,
+  type ErrorsBySection,
+  type EvaluationDataset,
+  type EvaluationResult,
+  type FalsePositive,
+  type FalsePositiveReasonCounts,
+  type LegacyJudgeResult,
+  type PromptRecord,
+  type PromptSections,
+  type SectionName,
+  type Snapshot,
+  type SpanLabelingMeta,
+  type SpanResult,
+  type EnhancedJudgeResult,
+  type AnyJudgeResult,
+} from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,44 +61,84 @@ const SNAPSHOTS_DIR = join(__dirname, 'snapshots');
 // LLM Judge Rubric
 // =============================================================================
 
+const VALID_ROLE_LIST = [...VALID_CATEGORIES].sort();
+
 const JUDGE_SYSTEM_PROMPT = `You are evaluating span labeling quality for video prompts.
 
 A span is a "visual control point" - a phrase that, if changed, would produce a visually different video.
 
 ## Evaluation Criteria (score each 1-5)
 
-1. **Coverage** (1-5): Did it extract ALL visual control points?
-   - Subjects, actions, environments, lighting, camera movements, technical specs
+1. Coverage (1-5): Did it extract ALL visual control points?
+   - Shot type, subjects, actions, environments, lighting, camera movements, style, technical specs, audio
    - 5 = Comprehensive, nothing missed
    - 1 = Major elements missing
 
-2. **Precision** (1-5): Did it correctly SKIP abstract/non-renderable content?
-   - Should skip: "determination", "inviting the viewer", "enhancing authenticity"
-   - Should include: "focused demeanor" (visible expression), "gripping" (visible action)
+2. Precision (1-5): Did it correctly SKIP abstract/non-renderable content?
+   - Skip: "determination", "inviting the viewer", "enhancing authenticity"
+   - Include: "focused demeanor" (visible expression), "gripping" (visible action)
    - 5 = Only extracted renderable elements
    - 1 = Extracted many abstract concepts
 
-3. **Granularity** (1-5): Are span boundaries correct?
+3. Granularity (1-5): Are span boundaries correct?
    - Not too fine: "soft" + "highlights" should be "soft highlights"
-   - Not too coarse: Don't merge unrelated elements
+   - Not too coarse: Do not merge unrelated elements
    - 5 = All boundaries appropriate
    - 1 = Many boundary errors
 
-4. **Taxonomy** (1-5): Are roles assigned correctly?
+4. Taxonomy (1-5): Are roles assigned correctly?
    - camera.movement vs action.movement
    - shot.type vs camera.angle
    - 5 = All roles correct
    - 1 = Many misclassifications
 
-5. **Technical Specs** (1-5): Did it extract format parameters?
+5. Technical Specs (1-5): Did it extract format parameters?
    - Duration, fps, aspect ratio, resolution
-   - These are often in structured sections
+   - Often in structured sections
    - 5 = All specs extracted
    - 1 = Specs ignored
 
+## Error Types (diagnostics)
+
+- missedElements: visual elements present in the prompt that were not extracted.
+  - Provide: text, expectedRole (taxonomy role), category, severity.
+  - category must be one of: shot, subject, action, environment, lighting, camera, style, technical, audio.
+  - severity: critical | important | minor.
+  - Example: { "text": "red leather jacket", "expectedRole": "subject.wardrobe", "category": "subject", "severity": "important" }
+
+- falsePositives: extracted spans that should NOT have been extracted.
+  - Provide: text, assignedRole, reason, spanIndex.
+  - spanIndex is the 0-based index of the extracted span; use null if no match.
+  - reason must be one of: section_header | abstract_concept | non_visual | instruction_text | duplicate | other.
+  - Example: { "text": "TECHNICAL SPECS", "assignedRole": "technical", "reason": "section_header", "spanIndex": 12 }
+  - Example: { "text": "emotional resonance", "assignedRole": "style.mood", "reason": "abstract_concept", "spanIndex": 4 }
+
+- taxonomyErrors: extracted spans with the wrong role.
+  - Provide: text, assignedRole, expectedRole, spanIndex.
+  - spanIndex is the 0-based index of the extracted span; use null if no match.
+  - Example: { "text": "slow pan", "assignedRole": "action.movement", "expectedRole": "camera.movement", "spanIndex": 7 }
+
+- granularityErrors: span boundary issues (too fine or too coarse).
+  - Provide: text, spanIndex, reason (too_fine | too_coarse | other).
+  - spanIndex is the 0-based index of the extracted span; use null if no match.
+  - Example: { "text": "soft highlights", "spanIndex": 15, "reason": "too_fine" }
+  - Example: { "text": "man in red jacket walking in rain", "spanIndex": 3, "reason": "too_coarse" }
+
+## Category Scores (coverage and precision, 1-5 each)
+
+Return categoryScores for: shot, subject, action, environment, lighting, camera, style, technical, audio.
+
+## Valid Taxonomy Roles
+
+Use ONLY the following roles (exact strings). If uncertain, choose the closest valid role:
+${VALID_ROLE_LIST.join(', ')}
+
 ## Response Format
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with double quotes and no trailing commas.
+If there are many items, include the 12 most impactful (critical and important first).
+If there are no items for a list, return an empty array.
+
 {
   "scores": {
     "coverage": <1-5>,
@@ -83,74 +148,488 @@ Return ONLY valid JSON:
     "technicalSpecs": <1-5>
   },
   "totalScore": <sum of above, max 25>,
-  "missedElements": ["list of visual elements that should have been extracted but weren't"],
-  "incorrectExtractions": ["list of abstract/non-renderable elements that shouldn't have been extracted"],
+  "missedElements": [
+    {
+      "text": "...",
+      "expectedRole": "...",
+      "category": "...",
+      "severity": "critical|important|minor"
+    }
+  ],
+  "falsePositives": [
+    {
+      "text": "...",
+      "assignedRole": "...",
+      "reason": "section_header|abstract_concept|non_visual|instruction_text|duplicate|other",
+      "spanIndex": 0
+    }
+  ],
+  "taxonomyErrors": [
+    {
+      "text": "...",
+      "assignedRole": "...",
+      "expectedRole": "...",
+      "spanIndex": 0
+    }
+  ],
+  "granularityErrors": [
+    {
+      "text": "...",
+      "spanIndex": 0,
+      "reason": "too_fine|too_coarse|other"
+    }
+  ],
+  "categoryScores": {
+    "shot": { "coverage": <1-5>, "precision": <1-5> },
+    "subject": { "coverage": <1-5>, "precision": <1-5> },
+    "action": { "coverage": <1-5>, "precision": <1-5> },
+    "environment": { "coverage": <1-5>, "precision": <1-5> },
+    "lighting": { "coverage": <1-5>, "precision": <1-5> },
+    "camera": { "coverage": <1-5>, "precision": <1-5> },
+    "style": { "coverage": <1-5>, "precision": <1-5> },
+    "technical": { "coverage": <1-5>, "precision": <1-5> },
+    "audio": { "coverage": <1-5>, "precision": <1-5> }
+  },
   "notes": "brief explanation of scoring"
 }`;
 
-interface JudgeResult {
-  scores: {
-    coverage: number;
-    precision: number;
-    granularity: number;
-    taxonomy: number;
-    technicalSpecs: number;
+const SCORE_SCHEMA = z.coerce.number().min(0).max(5);
+const SpanIndexSchema = z.preprocess(
+  (value) => {
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed === '') return null;
+      const parsed = Number(trimmed);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+    return value;
+  },
+  z.number().int().min(-1).nullable()
+);
+const JudgeScoresSchema = z.object({
+  coverage: SCORE_SCHEMA,
+  precision: SCORE_SCHEMA,
+  granularity: SCORE_SCHEMA,
+  taxonomy: SCORE_SCHEMA,
+  technicalSpecs: SCORE_SCHEMA,
+});
+const MissedElementSchema = z.object({
+  text: z.string().min(1),
+  expectedRole: z.string().min(1),
+  category: z.string().min(1),
+  severity: z.enum(MISSED_SEVERITIES),
+});
+const FalsePositiveSchema = z.object({
+  text: z.string().min(1),
+  assignedRole: z.string().min(1),
+  reason: z.enum(FALSE_POSITIVE_REASONS),
+  spanIndex: SpanIndexSchema.optional(),
+});
+const TaxonomyErrorSchema = z.object({
+  text: z.string().min(1),
+  assignedRole: z.string().min(1),
+  expectedRole: z.string().min(1),
+  spanIndex: SpanIndexSchema.optional(),
+});
+const GranularityErrorSchema = z.object({
+  text: z.string().min(1),
+  spanIndex: SpanIndexSchema.optional(),
+  reason: z.enum(GRANULARITY_ERROR_TYPES),
+});
+const CategoryScoreSchema = z.object({
+  coverage: SCORE_SCHEMA,
+  precision: SCORE_SCHEMA,
+});
+const CategoryScoresSchema = z
+  .object({
+    shot: CategoryScoreSchema.optional(),
+    subject: CategoryScoreSchema.optional(),
+    action: CategoryScoreSchema.optional(),
+    environment: CategoryScoreSchema.optional(),
+    lighting: CategoryScoreSchema.optional(),
+    camera: CategoryScoreSchema.optional(),
+    style: CategoryScoreSchema.optional(),
+    technical: CategoryScoreSchema.optional(),
+    audio: CategoryScoreSchema.optional(),
+  })
+  .partial();
+const EnhancedJudgeResultSchema = z.object({
+  scores: JudgeScoresSchema,
+  totalScore: z.coerce.number().optional(),
+  missedElements: z.array(MissedElementSchema).optional(),
+  falsePositives: z.array(FalsePositiveSchema).optional(),
+  taxonomyErrors: z.array(TaxonomyErrorSchema).optional(),
+  granularityErrors: z.array(GranularityErrorSchema).optional(),
+  categoryScores: CategoryScoresSchema.optional(),
+  notes: z.string().optional(),
+});
+const LegacyJudgeResultSchema = z.object({
+  scores: JudgeScoresSchema,
+  totalScore: z.coerce.number().optional(),
+  missedElements: z.array(z.string()).optional(),
+  incorrectExtractions: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+});
+
+function createEmptyCategoryScores(): CategoryScores {
+  return {
+    shot: { coverage: 0, precision: 0 },
+    subject: { coverage: 0, precision: 0 },
+    action: { coverage: 0, precision: 0 },
+    environment: { coverage: 0, precision: 0 },
+    lighting: { coverage: 0, precision: 0 },
+    camera: { coverage: 0, precision: 0 },
+    style: { coverage: 0, precision: 0 },
+    technical: { coverage: 0, precision: 0 },
+    audio: { coverage: 0, precision: 0 },
   };
-  totalScore: number;
-  missedElements: string[];
-  incorrectExtractions: string[];
-  notes: string;
 }
 
-interface PromptRecord {
-  id: string;
-  input: string;
-  output: string;
-  timestamp?: string;
-  generatedAt?: string;
-  error?: string | null;
-}
-
-interface EvaluationDataset {
-  metadata?: {
-    generatedAt: string;
-    promptCount: number;
-  };
-  prompts?: PromptRecord[];
-}
-
-interface SpanResult {
-  text: string;
-  role: string;
-  confidence: number;
-}
-
-interface EvaluationResult {
-  promptId: string;
-  input: string;
-  output: string;
-  spanCount: number;
-  spans: SpanResult[];
-  judgeResult: JudgeResult | null;
-  error: string | null;
-  latencyMs: number;
-}
-
-interface Snapshot {
-  timestamp: string;
-  promptCount: number;
-  sourceFile: string;
-  judgeModel: string;
-  results: EvaluationResult[];
-  summary: {
-    avgScore: number;
-    avgSpanCount: number;
-    scoreDistribution: Record<string, number>;
-    commonMissedElements: string[];
-    commonIncorrectExtractions: string[];
-    errorCount: number;
+function createEmptyFalsePositiveReasons(): FalsePositiveReasonCounts {
+  return {
+    section_header: 0,
+    abstract_concept: 0,
+    non_visual: 0,
+    instruction_text: 0,
+    duplicate: 0,
+    other: 0,
   };
 }
+
+function createEmptyErrorsBySection(): ErrorsBySection {
+  return {
+    main: { falsePositives: 0, missed: 0 },
+    technicalSpecs: { falsePositives: 0, missed: 0 },
+    alternatives: { falsePositives: 0, missed: 0 },
+  };
+}
+
+function clampScore(value: number): number {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(5, Math.round(value * 100) / 100));
+}
+
+function normalizeScores(scores: EnhancedJudgeResult['scores']): EnhancedJudgeResult['scores'] {
+  return {
+    coverage: clampScore(scores.coverage),
+    precision: clampScore(scores.precision),
+    granularity: clampScore(scores.granularity),
+    taxonomy: clampScore(scores.taxonomy),
+    technicalSpecs: clampScore(scores.technicalSpecs),
+  };
+}
+
+function normalizeCategoryScores(input?: Partial<CategoryScores>): CategoryScores {
+  const normalized = createEmptyCategoryScores();
+  if (!input) {
+    return normalized;
+  }
+  for (const category of CATEGORY_NAMES) {
+    const entry = input[category];
+    if (!entry) continue;
+    normalized[category] = {
+      coverage: clampScore(entry.coverage),
+      precision: clampScore(entry.precision),
+    };
+  }
+  return normalized;
+}
+
+function isEnhancedResult(result: AnyJudgeResult): boolean {
+  const candidate = result as Partial<EnhancedJudgeResult>;
+  if (Array.isArray(candidate.falsePositives) || Array.isArray(candidate.taxonomyErrors)) {
+    return true;
+  }
+  if (Array.isArray(candidate.granularityErrors)) {
+    return true;
+  }
+  if (candidate.categoryScores && typeof candidate.categoryScores === 'object') {
+    return true;
+  }
+  if (Array.isArray(candidate.missedElements) && candidate.missedElements.length > 0) {
+    const first = candidate.missedElements[0] as { text?: unknown } | string;
+    return typeof first === 'object' && first !== null && 'text' in first;
+  }
+  return false;
+}
+
+function normalizeJudgeResult(result: AnyJudgeResult, assumeEnhanced = false): EnhancedJudgeResult {
+  const scores = normalizeScores(result.scores);
+  const totalScore =
+    scores.coverage +
+    scores.precision +
+    scores.granularity +
+    scores.taxonomy +
+    scores.technicalSpecs;
+  const notes = 'notes' in result && result.notes ? result.notes : '';
+
+  if (assumeEnhanced || isEnhancedResult(result)) {
+    const enhanced = result as Partial<EnhancedJudgeResult>;
+    return {
+      scores,
+      totalScore,
+      missedElements: enhanced.missedElements ?? [],
+      falsePositives: enhanced.falsePositives ?? [],
+      taxonomyErrors: enhanced.taxonomyErrors ?? [],
+      granularityErrors: enhanced.granularityErrors ?? [],
+      categoryScores: normalizeCategoryScores(enhanced.categoryScores),
+      notes,
+    };
+  }
+
+  const legacy = result as LegacyJudgeResult;
+  return {
+    scores,
+    totalScore,
+    missedElements: (legacy.missedElements ?? []).map((text) => ({
+      text,
+      expectedRole: 'unknown',
+      category: 'unknown',
+      severity: 'minor',
+    })),
+    falsePositives: (legacy.incorrectExtractions ?? []).map((text) => ({
+      text,
+      assignedRole: 'unknown',
+      reason: 'other',
+    })),
+    taxonomyErrors: [],
+    granularityErrors: [],
+    categoryScores: createEmptyCategoryScores(),
+    notes,
+  };
+}
+
+function parseJudgeResponse(content: string): EnhancedJudgeResult {
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('No JSON in judge response');
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  const enhanced = EnhancedJudgeResultSchema.safeParse(parsed);
+  if (enhanced.success) {
+    return normalizeJudgeResult(enhanced.data, true);
+  }
+
+  const legacy = LegacyJudgeResultSchema.safeParse(parsed);
+  if (legacy.success) {
+    return normalizeJudgeResult(legacy.data, false);
+  }
+
+  throw new Error('Judge response did not match expected schemas');
+}
+
+function findHeaderIndex(text: string, regex: RegExp): number | null {
+  const match = text.match(regex);
+  return typeof match?.index === 'number' ? match.index : null;
+}
+
+function detectSections(promptText: string): PromptSections {
+  const technicalIndex = findHeaderIndex(
+    promptText,
+    /(^|\n)\s*\*\*\s*(technical specs|technical specifications)\s*\*\*/i
+  );
+  const alternativesIndex = findHeaderIndex(
+    promptText,
+    /(^|\n)\s*\*\*\s*(alternative[^*]*|variations)\s*\*\*/i
+  );
+
+  const headers: Array<{ key: SectionName; index: number }> = [];
+  if (technicalIndex !== null) {
+    headers.push({ key: 'technicalSpecs', index: technicalIndex });
+  }
+  if (alternativesIndex !== null) {
+    headers.push({ key: 'alternatives', index: alternativesIndex });
+  }
+
+  headers.sort((a, b) => a.index - b.index);
+
+  const mainEnd = headers.length > 0 ? headers[0].index : promptText.length;
+  const sections: PromptSections = {
+    main: { start: 0, end: mainEnd },
+    technicalSpecs: null,
+    alternatives: null,
+  };
+
+  for (let i = 0; i < headers.length; i++) {
+    const header = headers[i];
+    const end = i + 1 < headers.length ? headers[i + 1].index : promptText.length;
+    if (header.key === 'technicalSpecs') {
+      sections.technicalSpecs = { start: header.index, end };
+    } else if (header.key === 'alternatives') {
+      sections.alternatives = { start: header.index, end };
+    }
+  }
+
+  return sections;
+}
+
+function getSectionForOffset(offset: number, sections: PromptSections): SectionName {
+  if (sections.technicalSpecs &&
+      offset >= sections.technicalSpecs.start &&
+      offset < sections.technicalSpecs.end) {
+    return 'technicalSpecs';
+  }
+  if (sections.alternatives &&
+      offset >= sections.alternatives.start &&
+      offset < sections.alternatives.end) {
+    return 'alternatives';
+  }
+  return 'main';
+}
+
+function getSectionForText(text: string, promptText: string, sections: PromptSections): SectionName {
+  const normalizedPrompt = promptText.toLowerCase();
+  const normalizedText = text.trim().toLowerCase();
+  if (!normalizedText) {
+    return 'main';
+  }
+  const index = normalizedPrompt.indexOf(normalizedText);
+  if (index === -1) {
+    return 'main';
+  }
+  return getSectionForOffset(index, sections);
+}
+
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function matchFalsePositivesToSpans(
+  spans: SpanResult[],
+  falsePositives: FalsePositive[]
+): {
+  matches: Array<{ fp: FalsePositive; spanIndex: number | null }>;
+  matchedIndexes: Set<number>;
+  unmatchedCount: number;
+} {
+  const spanIndexByText = new Map<string, number[]>();
+  spans.forEach((span, index) => {
+    const key = normalizeText(span.text);
+    if (!key) return;
+    const list = spanIndexByText.get(key) ?? [];
+    list.push(index);
+    spanIndexByText.set(key, list);
+  });
+
+  const usedIndexes = new Set<number>();
+  const matchedIndexes = new Set<number>();
+  const matches: Array<{ fp: FalsePositive; spanIndex: number | null }> = [];
+  let unmatchedCount = 0;
+
+  for (const fp of falsePositives) {
+    const key = normalizeText(fp.text);
+    const candidates = key ? spanIndexByText.get(key) : undefined;
+    let matchedIndex: number | null = null;
+
+    if (typeof fp.spanIndex === 'number' &&
+        Number.isFinite(fp.spanIndex) &&
+        fp.spanIndex >= 0 &&
+        fp.spanIndex < spans.length) {
+      matchedIndex = fp.spanIndex;
+    } else if (candidates) {
+      for (const idx of candidates) {
+        if (!usedIndexes.has(idx)) {
+          matchedIndex = idx;
+          break;
+        }
+      }
+    }
+
+    if (matchedIndex === null) {
+      unmatchedCount++;
+      matches.push({ fp, spanIndex: null });
+      continue;
+    }
+
+    usedIndexes.add(matchedIndex);
+    matchedIndexes.add(matchedIndex);
+    matches.push({ fp, spanIndex: matchedIndex });
+  }
+
+  return { matches, matchedIndexes, unmatchedCount };
+}
+
+function computeConfidenceAnalysis(results: EvaluationResult[]): ConfidenceAnalysis {
+  const buckets = {
+    high: { range: [0.8, 1.0] as [number, number], total: 0, errors: 0, errorRate: 0 },
+    medium: { range: [0.6, 0.8] as [number, number], total: 0, errors: 0, errorRate: 0 },
+    low: { range: [0.0, 0.6] as [number, number], total: 0, errors: 0, errorRate: 0 },
+  };
+
+  let unmatchedFalsePositives = 0;
+  let totalFalsePositives = 0;
+
+  for (const result of results) {
+    if (!result.judgeResult) continue;
+    const judgeResult = normalizeJudgeResult(result.judgeResult);
+    const { matchedIndexes, unmatchedCount } = matchFalsePositivesToSpans(
+      result.spans,
+      judgeResult.falsePositives
+    );
+
+    unmatchedFalsePositives += unmatchedCount;
+    totalFalsePositives += judgeResult.falsePositives.length;
+
+    result.spans.forEach((span, index) => {
+      const confidence = Number.isFinite(span.confidence) ? span.confidence : 0;
+      const bucket = confidence >= 0.8 ? buckets.high : confidence >= 0.6 ? buckets.medium : buckets.low;
+      bucket.total += 1;
+      if (matchedIndexes.has(index)) {
+        bucket.errors += 1;
+      }
+    });
+  }
+
+  for (const bucket of Object.values(buckets)) {
+    bucket.errorRate = bucket.total > 0 ? bucket.errors / bucket.total : 0;
+  }
+
+  let recommendedThreshold: number | null = null;
+  const notes: string[] = [];
+
+  if (buckets.medium.total >= 5 && buckets.medium.errorRate - buckets.high.errorRate >= 0.2) {
+    recommendedThreshold = 0.8;
+  } else if (buckets.low.total >= 5 && buckets.low.errorRate - buckets.medium.errorRate >= 0.2) {
+    recommendedThreshold = 0.6;
+  }
+
+  if (totalFalsePositives === 0) {
+    notes.push('No false positives to analyze.');
+  }
+  if (unmatchedFalsePositives > 0) {
+    notes.push(`${unmatchedFalsePositives} false positives could not be matched to spans.`);
+  }
+  if (!recommendedThreshold) {
+    notes.push('No clear confidence threshold recommendation.');
+  }
+
+  return {
+    buckets,
+    recommendedThreshold,
+    notes: notes.join(' ').trim(),
+  };
+}
+
+function formatSpansForJudge(spans: SpanResult[]): string {
+  if (spans.length === 0) {
+    return '(none)';
+  }
+
+  return spans
+    .map((span, index) => {
+      const confidence = Number.isFinite(span.confidence)
+        ? span.confidence.toFixed(2)
+        : '0.00';
+      const text = span.text.replace(/\s+/g, ' ').trim();
+      const section = span.section ?? 'main';
+      return `[${index}] "${text}" (${span.role}, ${confidence}, start=${span.start}, end=${span.end}, section=${section})`;
+    })
+    .join('\n');
+}
+
 
 // =============================================================================
 // AI Service Setup
@@ -222,42 +701,42 @@ async function judgeSpanQuality(
   prompt: string,
   spans: SpanResult[],
   judgeClient: OpenAICompatibleAdapter
-): Promise<JudgeResult> {
+): Promise<EnhancedJudgeResult> {
   const userMessage = `## Original Prompt
 ${prompt}
 
 ## Extracted Spans (${spans.length} total)
-${JSON.stringify(spans, null, 2)}
+${formatSpansForJudge(spans)}
+
+Span indices are 0-based and must be used in spanIndex fields.
 
 Evaluate the span extraction quality using the rubric. Return only JSON.`;
 
   try {
-    const response = await judgeClient.complete({
+    // OpenAICompatibleAdapter.complete(systemPrompt: string, options: CompletionOptions)
+    // When options.messages is provided, systemPrompt is ignored, so include system in messages
+    const response = await judgeClient.complete('', {
       messages: [
         { role: 'system', content: JUDGE_SYSTEM_PROMPT },
         { role: 'user', content: userMessage }
       ],
       temperature: 0.1,
-      maxTokens: 1000,
+      maxTokens: 1200,
     });
 
     const content = response.content || response.text || '';
-    
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON in judge response');
-    }
-    
-    return JSON.parse(jsonMatch[0]) as JudgeResult;
+    return parseJudgeResponse(content);
   } catch (error) {
     console.error('Judge error:', error);
     return {
       scores: { coverage: 0, precision: 0, granularity: 0, taxonomy: 0, technicalSpecs: 0 },
       totalScore: 0,
       missedElements: [],
-      incorrectExtractions: [],
-      notes: `Judge failed: ${(error as Error).message}`
+      falsePositives: [],
+      taxonomyErrors: [],
+      granularityErrors: [],
+      categoryScores: createEmptyCategoryScores(),
+      notes: `Judge failed: ${(error as Error).message}`,
     };
   }
 }
@@ -282,11 +761,32 @@ async function evaluatePrompt(
       templateVersion: 'v3.0'
     }, aiService);
 
-    const spans: SpanResult[] = (response.spans || []).map((s: any) => ({
-      text: s.text,
-      role: s.role,
-      confidence: s.confidence
-    }));
+    const sections = detectSections(record.output);
+
+    // Capture spans with offsets
+    const spans: SpanResult[] = (response.spans || []).map((s: any) => {
+      const start = s.start ?? 0;
+      return {
+        text: s.text,
+        role: s.role,
+        confidence: s.confidence ?? 0,
+        start,
+        end: s.end ?? 0,
+        section: getSectionForOffset(start, sections),
+      };
+    });
+
+    // Capture meta for source tracking
+    const meta: SpanLabelingMeta = {
+      version: response.meta?.version || 'unknown',
+      notes: response.meta?.notes || '',
+      source: (response.meta as any)?.source,
+      closedVocab: (response.meta as any)?.closedVocab,
+      openVocab: (response.meta as any)?.openVocab,
+      latency: (response.meta as any)?.latency,
+      tier1Latency: (response.meta as any)?.tier1Latency,
+      tier2Latency: (response.meta as any)?.tier2Latency,
+    };
 
     // Run LLM judge (GPT-4o)
     const judgeResult = await judgeSpanQuality(record.output, spans, judgeClient);
@@ -297,9 +797,11 @@ async function evaluatePrompt(
       output: record.output,
       spanCount: spans.length,
       spans,
+      meta,
       judgeResult,
       error: null,
-      latencyMs: Date.now() - startTime
+      latencyMs: Date.now() - startTime,
+      sections,
     };
   } catch (error) {
     return {
@@ -308,6 +810,7 @@ async function evaluatePrompt(
       output: record.output,
       spanCount: 0,
       spans: [],
+      meta: null,
       judgeResult: null,
       error: (error as Error).message,
       latencyMs: Date.now() - startTime
@@ -316,15 +819,17 @@ async function evaluatePrompt(
 }
 
 function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
-  const successfulResults = results.filter(r => r.judgeResult && r.judgeResult.totalScore > 0);
-  
+  const successfulResults = results.filter(
+    (r) => r.judgeResult && r.judgeResult.totalScore > 0
+  );
+
   const avgScore = successfulResults.length > 0
-    ? successfulResults.reduce((sum, r) => sum + (r.judgeResult?.totalScore || 0), 0) / successfulResults.length
+    ? successfulResults.reduce((sum, r) => sum + (r.judgeResult?.totalScore || 0), 0) /
+      successfulResults.length
     : 0;
 
   const avgSpanCount = results.reduce((sum, r) => sum + r.spanCount, 0) / results.length;
 
-  // Score distribution
   const scoreDistribution: Record<string, number> = {
     'excellent (23-25)': 0,
     'good (18-22)': 0,
@@ -342,20 +847,74 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
     else scoreDistribution['failing (0-7)']++;
   }
 
-  // Aggregate missed/incorrect elements
   const allMissed: string[] = [];
   const allIncorrect: string[] = [];
-  
+  const falsePositiveReasons = createEmptyFalsePositiveReasons();
+  const errorsBySection = createEmptyErrorsBySection();
+  const confidenceAnalysis = computeConfidenceAnalysis(successfulResults);
+
+  const taxonomyErrorCounts = new Map<string, { assignedRole: string; expectedRole: string; count: number }>();
+  const granularityErrorCounts = new Map<string, { count: number; examples: string[] }>();
+  const categoryTotals: Record<string, { coverageSum: number; precisionSum: number; count: number }> = {};
+  for (const category of CATEGORY_NAMES) {
+    categoryTotals[category] = { coverageSum: 0, precisionSum: 0, count: 0 };
+  }
+
   for (const r of successfulResults) {
-    if (r.judgeResult?.missedElements) {
-      allMissed.push(...r.judgeResult.missedElements);
+    if (!r.judgeResult) continue;
+    const judgeResult = normalizeJudgeResult(r.judgeResult);
+    const sections = r.sections ?? detectSections(r.output);
+
+    for (const missed of judgeResult.missedElements) {
+      allMissed.push(missed.text);
+      const section = getSectionForText(missed.text, r.output, sections);
+      errorsBySection[section].missed++;
     }
-    if (r.judgeResult?.incorrectExtractions) {
-      allIncorrect.push(...r.judgeResult.incorrectExtractions);
+
+    const { matches } = matchFalsePositivesToSpans(r.spans, judgeResult.falsePositives);
+    for (const match of matches) {
+      allIncorrect.push(match.fp.text);
+      if (falsePositiveReasons[match.fp.reason] !== undefined) {
+        falsePositiveReasons[match.fp.reason] += 1;
+      } else {
+        falsePositiveReasons.other += 1;
+      }
+
+      const section = match.spanIndex !== null
+        ? (r.spans[match.spanIndex].section ?? getSectionForOffset(r.spans[match.spanIndex].start, sections))
+        : getSectionForText(match.fp.text, r.output, sections);
+      errorsBySection[section].falsePositives++;
+    }
+
+    for (const err of judgeResult.taxonomyErrors) {
+      const key = `${err.assignedRole}|||${err.expectedRole}`;
+      const current = taxonomyErrorCounts.get(key) || {
+        assignedRole: err.assignedRole,
+        expectedRole: err.expectedRole,
+        count: 0,
+      };
+      current.count += 1;
+      taxonomyErrorCounts.set(key, current);
+    }
+
+    for (const err of judgeResult.granularityErrors) {
+      const current = granularityErrorCounts.get(err.reason) || { count: 0, examples: [] };
+      current.count += 1;
+      if (current.examples.length < 3) {
+        current.examples.push(err.text);
+      }
+      granularityErrorCounts.set(err.reason, current);
+    }
+
+    for (const category of CATEGORY_NAMES) {
+      const scores = judgeResult.categoryScores?.[category];
+      if (!scores || (scores.coverage === 0 && scores.precision === 0)) continue;
+      categoryTotals[category].coverageSum += scores.coverage;
+      categoryTotals[category].precisionSum += scores.precision;
+      categoryTotals[category].count += 1;
     }
   }
 
-  // Count frequency and get top issues
   const countFrequency = (arr: string[]): string[] => {
     const counts = new Map<string, number>();
     for (const item of arr) {
@@ -367,13 +926,77 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
       .map(([item, count]) => `${item} (${count}x)`);
   };
 
+  const avgCategoryScores = createEmptyCategoryScores();
+  for (const category of CATEGORY_NAMES) {
+    const total = categoryTotals[category];
+    if (total.count === 0) continue;
+    avgCategoryScores[category] = {
+      coverage: Math.round((total.coverageSum / total.count) * 100) / 100,
+      precision: Math.round((total.precisionSum / total.count) * 100) / 100,
+    };
+  }
+
+  const topTaxonomyErrors = [...taxonomyErrorCounts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const topGranularityErrors = [...granularityErrorCounts.entries()]
+    .map(([reason, data]) => ({
+      reason: reason as import('./types.js').GranularityErrorType,
+      count: data.count,
+      examples: data.examples,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const pipelineSources = { nlp: 0, llm: 0, unknown: 0 };
+  const spanSources = { closedVocab: 0, openVocab: 0, llm: 0 };
+
+  for (const r of results) {
+    if (!r.meta) {
+      pipelineSources.unknown++;
+      continue;
+    }
+
+    const version = r.meta.version || '';
+    const notes = r.meta.notes || '';
+    const isNlpPath = version.includes('nlp') ||
+      notes.includes('neuro-symbolic') ||
+      notes.includes('symbolic-nlp');
+
+    if (isNlpPath) {
+      pipelineSources.nlp++;
+      if (r.meta.closedVocab !== undefined) {
+        spanSources.closedVocab += r.meta.closedVocab;
+      }
+      if (r.meta.openVocab !== undefined) {
+        spanSources.openVocab += r.meta.openVocab;
+      }
+      if (r.meta.closedVocab === undefined && r.meta.openVocab === undefined) {
+        spanSources.closedVocab += r.spanCount;
+      }
+    } else if (r.spanCount > 0) {
+      pipelineSources.llm++;
+      spanSources.llm += r.spanCount;
+    } else {
+      pipelineSources.unknown++;
+    }
+  }
+
   return {
     avgScore: Math.round(avgScore * 100) / 100,
     avgSpanCount: Math.round(avgSpanCount * 100) / 100,
     scoreDistribution,
     commonMissedElements: countFrequency(allMissed),
     commonIncorrectExtractions: countFrequency(allIncorrect),
-    errorCount: results.filter(r => r.error).length
+    errorCount: results.filter(r => r.error).length,
+    pipelineSources,
+    spanSources,
+    avgCategoryScores,
+    falsePositiveReasons,
+    topTaxonomyErrors,
+    topGranularityErrors,
+    errorsBySection,
+    confidenceAnalysis,
   };
 }
 
@@ -451,18 +1074,90 @@ function printReport(snapshot: Snapshot): void {
   }
   console.log();
 
-  if (snapshot.summary.commonMissedElements.length > 0) {
+  const commonMissed = snapshot.summary.commonMissedElements ?? [];
+  if (commonMissed.length > 0) {
     console.log('❌ COMMONLY MISSED ELEMENTS:');
-    for (const item of snapshot.summary.commonMissedElements.slice(0, 5)) {
+    for (const item of commonMissed.slice(0, 5)) {
       console.log(`  - ${item}`);
     }
     console.log();
   }
 
-  if (snapshot.summary.commonIncorrectExtractions.length > 0) {
+  const commonIncorrect = snapshot.summary.commonIncorrectExtractions ?? [];
+  if (commonIncorrect.length > 0) {
     console.log('⚠️  COMMONLY INCORRECT EXTRACTIONS:');
-    for (const item of snapshot.summary.commonIncorrectExtractions.slice(0, 5)) {
+    for (const item of commonIncorrect.slice(0, 5)) {
       console.log(`  - ${item}`);
+    }
+    console.log();
+  }
+
+  if (snapshot.summary.avgCategoryScores) {
+    console.log('CATEGORY SCORES (avg coverage/precision):');
+    for (const category of CATEGORY_NAMES) {
+      const scores = snapshot.summary.avgCategoryScores[category];
+      console.log(
+        `  ${category.padEnd(12)} ${scores.coverage.toFixed(2)} / ${scores.precision.toFixed(2)}`
+      );
+    }
+    console.log();
+  }
+
+  if (snapshot.summary.falsePositiveReasons) {
+    const reasons = snapshot.summary.falsePositiveReasons;
+    const hasReasons = Object.values(reasons).some((count) => count > 0);
+    if (hasReasons) {
+      console.log('FALSE POSITIVE REASONS:');
+      for (const reason of FALSE_POSITIVE_REASONS) {
+        const count = reasons[reason] || 0;
+        if (count > 0) {
+          console.log(`  - ${reason}: ${count}`);
+        }
+      }
+      console.log();
+    }
+  }
+
+  if (snapshot.summary.topTaxonomyErrors && snapshot.summary.topTaxonomyErrors.length > 0) {
+    console.log('TOP TAXONOMY ERRORS:');
+    for (const item of snapshot.summary.topTaxonomyErrors.slice(0, 5)) {
+      console.log(`  - ${item.assignedRole} → ${item.expectedRole} (${item.count}x)`);
+    }
+    console.log();
+  }
+
+  if (snapshot.summary.topGranularityErrors && snapshot.summary.topGranularityErrors.length > 0) {
+    console.log('📐 GRANULARITY ISSUES:');
+    for (const item of snapshot.summary.topGranularityErrors) {
+      const example = item.examples[0] ? ` (e.g., "${item.examples[0]}")` : '';
+      console.log(`  - ${item.reason}: ${item.count}x${example}`);
+    }
+    console.log();
+  }
+
+  if (snapshot.summary.errorsBySection) {
+    console.log('ERRORS BY SECTION:');
+    for (const section of SECTION_NAMES) {
+      const counts = snapshot.summary.errorsBySection[section];
+      console.log(
+        `  ${section.padEnd(15)} missed ${counts.missed}, falsePositives ${counts.falsePositives}`
+      );
+    }
+    console.log();
+  }
+
+  if (snapshot.summary.confidenceAnalysis) {
+    const analysis = snapshot.summary.confidenceAnalysis;
+    console.log('CONFIDENCE ERROR RATES:');
+    for (const [bucketName, bucket] of Object.entries(analysis.buckets)) {
+      const rate = bucket.total > 0 ? (bucket.errorRate * 100).toFixed(1) : '0.0';
+      console.log(`  ${bucketName.padEnd(6)} ${rate}% (${bucket.errors}/${bucket.total})`);
+    }
+    if (analysis.recommendedThreshold !== null) {
+      console.log(`  Recommended minConfidence: ${analysis.recommendedThreshold.toFixed(2)}`);
+    }
+    if (analysis.notes) {
+      console.log(`  Notes: ${analysis.notes}`);
     }
     console.log();
   }
@@ -538,10 +1233,16 @@ async function main(): Promise<void> {
 
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i];
-    process.stdout.write(`\r  Processing ${i + 1}/${prompts.length}: ${prompt.input.slice(0, 40)}...`);
+    const progress = `[${String(i + 1).padStart(3)}/${prompts.length}]`;
+    const preview = prompt.input.slice(0, 50).replace(/\n/g, ' ');
+    console.log(`${progress} "${preview}..."`);
     
     const result = await evaluatePrompt(prompt, aiService, judgeClient);
     results.push(result);
+    
+    // Show score inline
+    const score = result.judgeResult?.totalScore ?? 'ERR';
+    console.log(`        → Score: ${score}/25, Spans: ${result.spanCount}`);
 
     // Rate limiting pause
     await new Promise(resolve => setTimeout(resolve, 500));

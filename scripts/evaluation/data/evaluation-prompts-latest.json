@@ -1,30 +1,679 @@
 {
   "metadata": {
-    "generatedAt": "2025-12-22T23:01:38.287Z",
+    "generatedAt": "2025-12-23T04:30:27.797Z",
     "sourceFile": "/Users/bryceharmon/Desktop/prompt-builder/raw-prompts-2025_12_22_15_47_50.json",
-    "promptCount": 2,
-    "successCount": 2,
+    "promptCount": 132,
+    "successCount": 74,
     "errorCount": 0,
     "optimizerVersion": "v2-two-stage",
-    "avgLatencyMs": 11788
+    "avgLatencyMs": 10793,
+    "totalPrompts": 74
   },
   "prompts": [
     {
+      "id": "KakMLx4S4PsgKXWDrL3P",
+      "input": "woman dribbling a basketball",
+      "output": "Medium Shot of a woman wearing red basketball jersey with athletic build and sweatband on wrist as it skillfully dribbling a basketball in an outdoor basketball court with urban backdrop at sunny afternoon. The camera uses handheld tracking at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft sunlight from above, casting light shadows. Style reference: documentary-style sports coverage. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Ball bounce and ambient city noise\n- **Camera:** Eye-level handheld with 50mm lens, f/4\n- **Lighting:** Natural daylight with slight diffusion\n- **Style:** Documentary-style with vibrant urban tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** Capture the woman skillfully dribbling a basketball from a high angle to emphasize the ball's movement against the court.\n- **Variation 2 (Overcast Lighting):** Film the scene in overcast lighting, softening shadows and creating a more diffused look to focus on her skill.",
+      "generatedAt": "2025-12-23T04:04:44.098Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12233,
+      "error": null
+    },
+    {
+      "id": "PnvcC4p5Z3eMKSEXlAmN",
+      "input": "woman playing computer games",
+      "output": "Medium Close-Up of a woman with focused expression and casual home attire maneuvering the game controller skillfully in a cozy living room at evening. The camera uses static tripod over-the-shoulder with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft ambient light from a nearby lamp, warm glow. Style reference: Domestic realism, inspired by slice-of-life drama. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Faint game sound effects\n- **Camera:** Static Over-the-Shoulder on 50mm, f/2.8\n- **Lighting:** Soft ambient lamp light, warm and diffused\n- **Style:** Inspired by domestic realism\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Medium Close-Up from a low-angle shot\n- **Variation 2 (Alternative Lighting):** Medium Close-Up with strong backlighting from a TV screen",
+      "generatedAt": "2025-12-23T04:04:56.275Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11174,
+      "error": null
+    },
+    {
+      "id": "OBejQdmTWQ9Sxl70B76F",
+      "input": "woman looking out of a window",
+      "output": "Medium Close-Up of a woman with soft woolen sweater, gentle expression, and light brown hair gazing thoughtfully out the window in a cozy living room with a large window at mid-afternoon. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light filtering through window, warm glow. Style reference: European arthouse, naturalistic color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient room noise\n- **Camera:** Eye-level static tripod, 50mm lens, f/2.8\n- **Lighting:** Soft, diffused natural light from the window\n- **Style:** European arthouse, naturalistic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A high-angle shot of a woman gazing out a window, capturing her contemplative expression from above.\n- **Variation 2 (Evening Lighting Variation):** A medium close-up of a woman in warm evening light, gazing thoughtfully out a window.",
+      "generatedAt": "2025-12-23T04:05:07.493Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10216,
+      "error": null
+    },
+    {
+      "id": "mmj2pvjEGwPABdQnLCO2",
+      "input": "man looking out of a window",
+      "output": "Medium Close-Up of a man with soft wool sweater, light stubble, and glasses with thin frames gazing thoughtfully out the window in a softly lit indoor space. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by gentle natural light from the window casting a warm glow. Style reference: Naturalistic, inspired by the works of Terrence Malick. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient room tone, subtle distant city sounds\n- **Camera:** Static tripod at eye level with a 50mm lens, f/2.8\n- **Lighting:** Soft daylight from window, warm and diffused\n- **Style:** Naturalistic, Terrence Malick inspired\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation 1: High Angle):** A Medium Close-Up from a high angle captures the man's thoughtful gaze, with soft natural light highlighting his introspective mood.\n- **Variation 2 (Variation 2: Golden Hour Lighting):** A Medium Close-Up with eye-level framing during the golden hour, casting a warm, amber glow on the man as he gazes out the window.",
+      "generatedAt": "2025-12-23T04:05:20.250Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11756,
+      "error": null
+    },
+    {
+      "id": "pNMiJL7lw4C7F0LMPHYy",
+      "input": "cat looking out of a window",
+      "output": "Medium Close-Up of a cat with expressive eyes, long whiskers, and soft fur gazing out of the window in a cozy indoor room view. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light filtering through window, casting gentle shadows. Style reference: naturalistic with a touch of impressionism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient indoor sounds\n- **Camera:** Static tripod, eye-level, 50mm lens, f/2.8\n- **Lighting:** Soft natural light from window, diffused by curtains\n- **Style:** Captured in a naturalistic style, hint of impressionism\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Close-Up of the cat from a high angle, highlighting its gentle posture against the cozy indoor setting.\n- **Variation 2 (Evening Light Variation):** A Medium Close-Up of the cat at eye-level with warm evening light casting longer shadows across the scene.",
+      "generatedAt": "2025-12-23T04:05:32.419Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11168,
+      "error": null
+    },
+    {
+      "id": "R9fOjXuW3oefUnrl3Wq3",
+      "input": "man playing computer games",
+      "output": "Medium Close-Up of a man with intense gaze, rapid finger movements, and headset with microphone playing computer games with focused intensity in a dimly lit room with gaming setup at night. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft glow from the computer screen creating highlights on the face. Style reference: Modern gaming aesthetic, digital realism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft clicking of keys and game sounds\n- **Camera:** Eye-level static shot with 50mm lens at f/2.8\n- **Lighting:** Computer screen as key light, creating a chiaroscuro effect\n- **Style:** Digital realism, immersive gaming setup\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** Capture a high-angle shot of the man playing games, showcasing the keyboard and screen.\n- **Variation 2 (Bright Room):** Shoot in a brightly lit room with overhead lights, emphasizing a casual gaming experience.",
+      "generatedAt": "2025-12-23T04:05:43.990Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10568,
+      "error": null
+    },
+    {
+      "id": "AfKvdWpNkEUsDfeTOwfY",
+      "input": "man jogging through a park",
+      "output": "Medium Long Shot of a man with bright blue running shoes, lightweight grey jogging suit, and wireless earbuds jogging along a tree-lined path in a vibrant park with blooming flowers and lush trees at midday spring. The camera uses tracking shot at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft, natural sunlight filtering through tree leaves, creating gentle shadows. Style reference: Vivid springtime color palette, akin to Fujifilm Velvia 100. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Light park ambiance with footsteps and birdsong\n- **Camera:** Eye-level tracking shot, 35mm lens, f/8 for medium depth\n- **Lighting:** Natural sunlight through foliage, soft shadows\n- **Style:** Vivid springtime, Fujifilm Velvia 100 aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Long Shot from a high angle, capturing the man jogging along the path, surrounded by the vibrant park.\n- **Variation 2 (Golden Hour Lighting):** A Medium Long Shot at eye-level during golden hour, with warm sunlight casting long shadows as the man jogs through the park.",
+      "generatedAt": "2025-12-23T04:05:55.389Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10398,
+      "error": null
+    },
+    {
+      "id": "z4r8PWILBNgc0IrdbKCV",
+      "input": "man looking at the horizon while driving car",
+      "output": "Medium Shot of a man with focused gaze forward and sunlight on face driving steadily down an open road in inside a car with a clear view of the horizon at golden hour. The camera uses static shot with slight gimbal stabilization from a high angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight streaming through the windshield, casting soft highlights and shadows. Style reference: Inspired by road-trip films, with a focus on the open road and journey.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft engine hum and wind noise\n- **Camera:** High-angle static shot on 35mm with deep focus\n- **Lighting:** Natural golden hour sunlight through windshield\n- **Style:** 35mm film, road-trip aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A low-angle shot from beneath the dashboard, emphasizing the man's focused expression as he drives.\n- **Variation 2 (Different Lighting):** Capture a similar scene during blue hour, with cool, ambient light filtering through the windshield.",
+      "generatedAt": "2025-12-23T04:06:07.195Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10804,
+      "error": null
+    },
+    {
+      "id": "eeYCQlslcHDB7PoaHqq7",
+      "input": "dog looking through a window as the seasons change",
+      "output": "Medium Close-Up of a dog with fluffy golden fur, bright eyes, and patterned collar gazing attentively outside in in a cozy living room at transitioning from autumn to winter. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light filtering through window, casting gentle shadows. Style reference: Shot on Kodak Portra 400 for warm, natural tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient indoor sounds\n- **Camera:** Static eye-level on 50mm lens, f/2.8\n- **Lighting:** Soft natural light from window\n- **Style:** Kodak Portra 400, warm tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** High-angle shot from above, looking down on the dog as it gazes outside.\n- **Variation 2 (Golden Hour Lighting Variation):** Use golden hour light to create warm, dramatic shadows on the dog's face.",
+      "generatedAt": "2025-12-23T04:06:18.083Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9887,
+      "error": null
+    },
+    {
+      "id": "Xlj7cWsFZjC3WpNOXiZl",
+      "input": "dog looking out of a window",
+      "output": "Medium Close-Up of a dog with fluffy golden fur, leather collar, and large brown eyes gazing out the window in a cozy living room with a large window at daytime with changing sunlight. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light through window, creating gentle highlights and shadows. Style reference: Soft, warm color palette, akin to Fujifilm Provia 100F. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient room tone with light rustling from outside\n- **Camera:** Static eye-level on 50mm lens, f/2.8\n- **Lighting:** Window light as key, soft fill from room ambient\n- **Style:** Soft, warm color palette, Fujifilm Provia 100F\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the dog from a high angle looking down, emphasizing the window view.\n- **Variation 2 (Golden Hour Lighting):** Use golden hour lighting to create warm, glowing highlights on the dog's fur.",
+      "generatedAt": "2025-12-23T04:06:29.253Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10169,
+      "error": null
+    },
+    {
+      "id": "RB6hMs6H9x87s72ooMqh",
+      "input": "man looking through a window",
+      "output": "Medium Shot of a man with navy knit sweater, short brown hair, and glasses gazing thoughtfully through the window in a living room with a large window at mid-morning. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft natural light streaming through the window, casting gentle shadows. Style reference: Naturalistic, with emphasis on seasonal transitions. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient sound of gentle wind or falling leaves\n- **Camera:** Static Eye-Level on tripod, 50mm lens, f/11 for deep focus\n- **Lighting:** Soft natural light through the window\n- **Style:** Naturalistic, inspired by Terrence Malick's visual storytelling\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A High-Angle Shot from above, showing the man looking out the window with the reflected world below.\n- **Variation 2 (Different Lighting):** Golden hour light with warm tones, casting longer shadows and highlighting the man's silhouette against the window.",
+      "generatedAt": "2025-12-23T04:06:38.988Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8735,
+      "error": null
+    },
+    {
+      "id": "6Ut6KdjCnlGFaWwYGJOX",
+      "input": "delivery man carrying a pizza",
+      "output": "Medium Long Shot of a delivery man with large pizza box, focused expression, and casual uniform weaving through pedestrians with a pizza box in a bustling urban street with lively storefronts at afternoon. The camera uses tracking shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight from the side casting playful shadows. Style reference: Urban realism, natural color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Urban street noise, distant chatter\n- **Camera:** Low-angle tracking on 35mm, f/5.6\n- **Lighting:** Warm afternoon sunlight, side illumination\n- **Style:** Urban realism, inspired by street photography\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Use a high-angle shot from above to emphasize the bustling street and the delivery man's path through the crowd.\n- **Variation 2 (Different Lighting):** Shoot during golden hour with the sun creating long shadows and a softer, more atmospheric look.",
+      "generatedAt": "2025-12-23T04:06:49.321Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9329,
+      "error": null
+    },
+    {
+      "id": "dC9LIm9kaLlYvQABlPLF",
+      "input": "man riding a bike",
+      "output": "Medium Long Shot of a man with joyful expression, casual clothing, and red bicycle riding a bike joyfully in a vibrant park with lush greenery at daytime, transitioning to autumn. The camera uses smooth tracking at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by natural daylight creating soft shadows. Style reference: Light-hearted, reminiscent of coming-of-age films. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Sounds of chirping birds and rustling leaves\n- **Camera:** Eye-level smooth tracking with deep focus\n- **Lighting:** Natural daylight casting soft shadows\n- **Style:** Light-hearted, reminiscent of coming-of-age films\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A Medium Long Shot from a high angle, capturing a man riding a bike joyfully through a park with lush greenery.\n- **Variation 2 (Golden Hour Lighting):** A Medium Long Shot at eye-level of a man riding a bike joyfully in a park, bathed in the warm glow of golden hour.",
+      "generatedAt": "2025-12-23T04:06:59.710Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9388,
+      "error": null
+    },
+    {
+      "id": "o6SYdf3EJvyqjg4xMs4D",
+      "input": "cat playing with a toy",
+      "output": "Medium Close-Up of a cat with fluffy orange fur, bright green eyes, and colorful feather toy leaping and swatting at the toy in a sunlit living room with wooden floors and a rug at afternoon. The camera uses handheld tracking at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft afternoon sunlight streaming through a window, creating natural highlights and vibrant colors. Style reference: Bright and lively, akin to a pet food commercial. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Lively background music with cat's playful sounds\n- **Camera:** Eye-level handheld tracking with 85mm lens, f/2.8\n- **Lighting:** Natural sunlight from large windows\n- **Style:** Vibrant pet food commercial aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the cat's playful pounce from a high angle, emphasizing the toy's movement and creating a dynamic perspective.\n- **Variation 2 (Warm Indoor Lighting):** Use warm, indoor artificial lighting to create a cozy atmosphere while the cat plays energetically with the toy.",
+      "generatedAt": "2025-12-23T04:07:12.224Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11514,
+      "error": null
+    },
+    {
+      "id": "Zp558PMAaZ1Pj9ap70bk",
+      "input": "dog running in a park",
+      "output": "Medium Long Shot of a dog with golden retriever, shiny coat, and blue collar running energetically through the park in a vibrant park with blooming flowers and green foliage at midday. The camera uses tracking shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by sunlight filtering through trees, casting playful shadows on the grass. Style reference: Vibrant nature film, inspired by BBC Earth. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Lively park sounds with birds chirping\n- **Camera:** Low-angle tracking on 50mm lens at f/8\n- **Lighting:** Natural sunlight with soft shadows and highlights\n- **Style:** Vibrant nature aesthetic, BBC Earth-inspired\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A Medium Long Shot from an Over-the-Shoulder angle of the dog running through the park, highlighting the lush surroundings and playful shadows.\n- **Variation 2 (Different Lighting):** A Medium Long Shot with golden hour lighting, creating a warm glow as the dog runs through the park, casting long shadows.",
+      "generatedAt": "2025-12-23T04:07:22.601Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9377,
+      "error": null
+    },
+    {
+      "id": "iyl2irZsBwLBARKttbBA",
+      "input": "dog chasing its own tail",
+      "output": "Medium Close-Up of a dog with golden retriever, fluffy wagging tail, and bright eyes chasing its own tail energetically in a sunlit backyard with vibrant greenery at daytime. The camera uses handheld tracking from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright sunlight from above, casting playful shadows on the grass. Style reference: Vibrant home video style with warm tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Laughter and dog barks\n- **Camera:** Handheld low-angle with a 50mm lens, f/2.8\n- **Lighting:** Natural sunlight, direct from above, creating soft shadows\n- **Style:** Vibrant home video aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the dog from a high-angle shot, emphasizing the circular motion of its chase.\n- **Variation 2 (Different Lighting):** Use warm golden hour lighting to enhance the dog's fur and create long, playful shadows on the ground.",
+      "generatedAt": "2025-12-23T04:07:33.146Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9541,
+      "error": null
+    },
+    {
+      "id": "BmKD0ekgLKNuLN4ieUEe",
+      "input": "cat chasing a mouse",
+      "output": "Medium Long Shot of a cat with striped fur, bright eyes, and quick paws darting around furniture after a mouse in a cozy living room with soft furniture and a window at daytime. The camera uses tracking shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm natural light streaming through the window, casting soft shadows. Style reference: Domestic realism, akin to a home video aesthetic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Faint rustling and soft footfall sounds\n- **Camera:** Low-angle tracking shot with a 50mm lens at f/5.6\n- **Lighting:** Natural window light with warm tones\n- **Style:** Domestic realism, natural home video look\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the cat from a high-angle shot, emphasizing the overall movement and chaos of the chase.\n- **Variation 2 (Different Lighting):** Use soft overhead lighting to create a gentle, diffused atmosphere without relying on window light.",
+      "generatedAt": "2025-12-23T04:07:44.718Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10571,
+      "error": null
+    },
+    {
+      "id": "T0FWBdL2YILVbO8wAJ44",
+      "input": "dog running",
+      "output": "Full Shot of a dog with fluffy golden fur and bright eyes running energetically across the field in a lush, green grassy field at sunny day. The camera uses tracking shot at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm natural sunlight from a high angle, casting soft shadows. Style reference: Inspired by nature documentaries, vivid color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Joyful, upbeat music with natural sounds of the field\n- **Camera:** Eye-level tracking, 50mm lens, f/11\n- **Lighting:** Natural sunlight, high angle, soft shadows\n- **Style:** Vibrant colors, nature documentary style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation 1: High-Angle):** Capture a dog running energetically across a grassy field from a high angle, showcasing the field's expanse and the dog's path.\n- **Variation 2 (Variation 2: Backlighting):** Capture a dog running energetically across a grassy field with backlighting, highlighting the dog's fur and creating a dramatic silhouette.",
+      "generatedAt": "2025-12-23T04:07:56.494Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10775,
+      "error": null
+    },
+    {
+      "id": "KdmT0ljWyrRRDSYwMZ94",
+      "input": "man driving a car",
+      "output": "Medium Shot of a man with hands gripping steering wheel, sunglasses reflecting road, and leather driving gloves as it confidently navigating winding road in a scenic winding road with lush greenery at daytime, with sunlight filtering through trees. The camera uses dolly alongside car in a POV shot with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by natural sunlight through trees, creating dappled patterns on the road. Style reference: Adventure film, inspired by classic road movies. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.35:1\n- **Frame Rate:** 24fps\n- **Audio:** Engine roar and wind rush\n- **Camera:** POV dolly alongside car, 35mm lens at f/8 for deep focus\n- **Lighting:** Natural daylight with dappled effects from tree shade\n- **Style:** Classic road movie, reminiscent of 1970s adventure films\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternate Angle):** Use a low-angle shot from the front bumper, capturing the driver's intense focus as the car speeds along the road, accentuating the curves and speed.\n- **Variation 2 (Alternate Lighting):** Capture the scene during golden hour, with warm sunlight casting long shadows, enhancing the scenic beauty and adding a nostalgic feel to the drive.",
+      "generatedAt": "2025-12-23T04:08:10.219Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12724,
+      "error": null
+    },
+    {
+      "id": "HdMcsm9TTl8P1I02WWO0",
+      "input": "dog catching a frisbee",
+      "output": "Full Shot of a dog with golden fur, red collar, and frisbee in mouth leaping into the air to catch a frisbee in a grassy field under a clear blue sky at midday. The camera uses handheld tracking from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by bright sunlight from above, casting vibrant reflections. Style reference: Sport photography style with crisp detail. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Sound of wind and distant joyful barking\n- **Camera:** Low-angle handheld with 85mm lens at f/2.8\n- **Lighting:** Direct sunlight, creating bold shadows and highlights\n- **Style:** Vivid sports photography\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the dog leaping to catch a frisbee from a bird's-eye view, emphasizing its trajectory and the landscape below.\n- **Variation 2 (Different Lighting):** Photograph the dog catching a frisbee during golden hour, with warm tones highlighting the scene and casting long shadows.",
+      "generatedAt": "2025-12-23T04:08:20.073Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8851,
+      "error": null
+    },
+    {
+      "id": "cZJZdcMmA6aJ8FvtrwGv",
+      "input": "man throwing frisbee",
+      "output": "Medium Close-Up of a man with determined expression, colorful frisbee, and casual athletic wear throwing a frisbee with a smooth motion in a vibrant park with families and children at sunny day. The camera uses dynamic handheld at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright sunlight from above, creating crisp shadows and highlights. Style reference: Shot in vibrant colors, similar to Kodak Portra 400. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Sounds of children playing and frisbee whooshing\n- **Camera:** Eye-level dynamic handheld with a medium lens at f/5.6\n- **Lighting:** Natural sunlight, top-down, crisp shadows\n- **Style:** Vibrant color palette, akin to Kodak Portra 400\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the man from a high angle as he throws a frisbee with a smooth motion, showing the park's lively atmosphere.\n- **Variation 2 (Backlight Variation):** Capture the man in silhouette as bright sunlight backlights the frisbee, highlighting its colorful design.",
+      "generatedAt": "2025-12-23T04:08:31.319Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10244,
+      "error": null
+    },
+    {
+      "id": "vPgd06WwdwcuAG5trLZJ",
+      "input": "dog catching a ball mid air",
+      "output": "Close-Up of a dog with golden retriever, shiny coat, and bright eyes leaping into the air to catch a ball in a vibrant green park at afternoon. The camera uses slow-motion capture from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by sunlight filtered through leaves, warm and natural. Style reference: Shot on Kodak Vision3 250D 5207, vibrant colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Lively park sounds and dog's bark\n- **Camera:** Low-angle close-up with f/2.8 aperture\n- **Lighting:** Natural sunlight filtered through leaves\n- **Style:** Vibrant colors, Kodak Vision3 stock\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the dog from a high-angle shot as it leaps up.\n- **Variation 2 (Different Lighting):** Shoot the scene during golden hour for a softer, warmer light.",
+      "generatedAt": "2025-12-23T04:08:44.640Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12319,
+      "error": null
+    },
+    {
+      "id": "5hSESaTVsUUKLxM0YX5C",
+      "input": "gorilla drinking from a paper cup at a water cooler",
+      "output": "Medium Close-Up of a gorilla with furry hand, curious eyes, and paper cup drinking from a paper cup in a bright, natural-lit office break room. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft daylight from large windows, filling the room with even light. Style reference: documentary-style realism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient office sounds, light chatter\n- **Camera:** Eye-level static shot with 50mm lens at f/2.8\n- **Lighting:** Daylight streaming through large windows\n- **Style:** Naturalistic, as in a wildlife documentary\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A high-angle shot of a gorilla drinking from a paper cup at a water cooler, emphasizing the humorous situation in the office break room.\n- **Variation 2 (Dramatic Lighting):** A medium close-up of a gorilla drinking from a paper cup with dramatic overhead lighting, creating contrasting shadows in the office break room.",
+      "generatedAt": "2025-12-23T04:08:56.736Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11095,
+      "error": null
+    },
+    {
+      "id": "IP9ax7w0C1SsWeLHdszA",
+      "input": "gorilla wearing white gloves tap dancing in train station",
+      "output": "Medium Close-Up of a gorilla with white gloves, strong muscular build, and black fur as it tap dancing with rhythmic footwork in a bustling train station with large windows at daytime. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright natural light streaming through windows, casting soft shadows. Style reference: Modern dance sequence, inspired by musicals. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Crisp tap sounds echoing on tile floor\n- **Camera:** Eye-level static tripod, 50mm lens, f/2.8\n- **Lighting:** Natural daylight through large windows\n- **Style:** Contemporary dance with precise footwork emphasis\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** High-angle shot from above, focusing on the gorilla's intricate footwork against the tiled floor, surrounded by onlookers.\n- **Variation 2 (Warm Lighting):** Same eye-level shot but with warm, artificial lighting from station lamps, creating a cozy evening ambiance.",
+      "generatedAt": "2025-12-23T04:09:06.944Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9207,
+      "error": null
+    },
+    {
+      "id": "IiDBw9RZifl7oGRnh38Y",
+      "input": "gorilla with gloves tap dancing in a victorian train station",
+      "output": "Medium Shot of a gorilla with elegant tap shoes, white gloves, and thick black fur as it tap dancing gracefully on the polished floor in Victorian train station with ornate pillars and arched windows. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft, warm illumination from overhead chandeliers, highlighting architectural details. Style reference: Vintage, inspired by classic musicals with a nostalgic tone. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Echoing tap sounds blending with station ambience\n- **Camera:** Eye-level static tripod, 50mm lens, f/4 for medium depth of field\n- **Lighting:** Soft, warm overhead chandeliers\n- **Style:** Vintage musical, with a nostalgic tone\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** High-angle shot from above, showing the intricate floor patterns as the gorilla dances.\n- **Variation 2 (Cool Lighting):** Cool, diffused lighting to create a more modern contrast with the vintage setting.",
+      "generatedAt": "2025-12-23T04:09:16.832Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8886,
+      "error": null
+    },
+    {
+      "id": "Vk1CC3GTCm1BQq95EWm9",
+      "input": "man cooking a meal in a kitchen",
+      "output": "Close-Up of a man with hands skillfully chopping, vibrant vegetables, and steam rising from pot chopping vegetables and stirring a pot on the stove in a cozy kitchen with herbs on the counter and a window view at late afternoon. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, warm lighting from overhead and window, creating a welcoming glow. Style reference: Domestic culinary style, reminiscent of food photography. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient kitchen sounds\n- **Camera:** Static eye-level on 50mm lens, f/2.8\n- **Lighting:** Soft overhead and natural window light\n- **Style:** Domestic culinary style, food photography aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** High-angle shot of the man cooking in the kitchen, focusing on the colorful ingredients and steam.\n- **Variation 2 (Cool Lighting Variation):** Close-up of the man cooking with cool, daylight-balanced lighting, contrasting with the warm kitchen.",
+      "generatedAt": "2025-12-23T04:09:28.873Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11040,
+      "error": null
+    },
+    {
+      "id": "zSQYfcrJxB8I72gD25Rm",
+      "input": "dog catching a ball in its mouth",
+      "output": "Medium Close-Up of a dog with golden fur and brightly colored ball jumping up to catch the ball in a lush green park at midday. The camera uses handheld tracking at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright natural daylight from above, casting soft shadows. Style reference: Vibrant and lively, similar to a nature documentary. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Dog's joyful bark and ball's thud\n- **Camera:** Eye-level handheld, 50mm lens, f/2.8\n- **Lighting:** Natural daylight, soft shadows\n- **Style:** Vibrant and lively, nature documentary feel\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A Medium Close-Up from a high angle, capturing the dog's agility from above.\n- **Variation 2 (Golden Hour):** A Medium Close-Up at eye-level using golden hour lighting for warm, soft tones.",
+      "generatedAt": "2025-12-23T04:09:39.306Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9431,
+      "error": null
+    },
+    {
+      "id": "YiYmoPZgLfIp2HitjmYu",
+      "input": "dog running up a hill",
+      "output": "Full Shot of a dog with golden retriever, fluffy tail, and bright collar running energetically up the hill in a sunlit grassy hill at midday. The camera uses dolly move tracking the dog from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by bright sunlight from above, casting soft shadows on the grass. Style reference: Vibrant naturalistic, akin to a nature documentary. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Sound of paws on grass, wind\n- **Camera:** Low-angle dolly on 50mm lens, f/8\n- **Lighting:** Sunlight from above, natural fill\n- **Style:** Vibrant naturalistic, nature documentary aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture a dynamic action shot of a dog running up a sunlit hill from a high-angle viewpoint, emphasizing the landscape and the dog's path.\n- **Variation 2 (Golden Hour Lighting Variation):** Capture a dynamic action shot of a dog running up a hill during golden hour, with warm, soft lighting highlighting the scene.",
+      "generatedAt": "2025-12-23T04:09:50.048Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9741,
+      "error": null
+    },
+    {
+      "id": "YJFW3nz993cvUDF9ZXVs",
+      "input": "cat laying in the sun through a window",
+      "output": "Establishing Shot of a cat with soft fur, relaxed posture, and sunbeam on floor basking peacefully in the sunlight in a cozy indoor room with a large window at daytime. The camera uses static tripod at eye level with deep focus (f/11-f/16) to keep background detail readable. Lit by natural sunlight streaming through the window, casting soft shadows. Style reference: Soft, natural aesthetic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient room sounds, distant bird chirps\n- **Camera:** Static tripod, eye-level, 50mm lens, f/2 for shallow depth of field\n- **Lighting:** Natural daylight, diffused through curtains, soft shadows\n- **Style:** Soft focus, warm color palette\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** A High-Angle Shot looking down on the cat, emphasizing the sunlight pattern.\n- **Variation 2 (Alternative Lighting):** Use a warm tungsten light to simulate early morning sunlight.",
+      "generatedAt": "2025-12-23T04:10:01.768Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10719,
+      "error": null
+    },
+    {
+      "id": "dd1dXAFj3sZe9THDb7iI",
+      "input": "tree being cut down by lumberjack",
+      "output": "Medium Close-Up of a lumberjack with red plaid shirt, bearded face, and worn leather gloves swinging an axe at the tree trunk in a sun-drenched forest at daytime. The camera uses slow dolly in at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by dappled sunlight filtering through leaves, creating dynamic shadows. Style reference: Naturalistic, inspired by classic American landscape photography. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Sound of axe striking wood and rustling leaves\n- **Camera:** Eye-level slow dolly in, 50mm lens, f/2.8 for shallow depth of field\n- **Lighting:** Sunlight filtering through leaves from above, casting dynamic shadows\n- **Style:** Naturalistic, with a hint of Ansel Adams influence\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the lumberjack from a high angle, emphasizing the tree's towering height.\n- **Variation 2 (Golden Hour Lighting):** Film during golden hour for a warm, soft light that enhances the forest's colors.",
+      "generatedAt": "2025-12-23T04:10:12.933Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10164,
+      "error": null
+    },
+    {
+      "id": "T9sULtu1s3DTXGhvXVGu",
+      "input": "log rolling down a forest hill",
+      "output": "Full Shot of a log with rough bark texture, circular growth rings, and moss patches rolling down a steep hill in a lush forest with uneven terrain at midday. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by dappled sunlight filtering through tree branches, creating light and shadow interplay. Style reference: Inspired by nature documentaries, vivid color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Rustling leaves and distant bird calls\n- **Camera:** Eye-level static shot with wide lens, f/11\n- **Lighting:** Natural sunlight filtered through leaves, high contrast\n- **Style:** Nature documentary style, vivid colors\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture a high-angle shot of the log rolling down the hill, emphasizing the steepness of the terrain and the log's journey.\n- **Variation 2 (Golden Hour Lighting Variation):** Use golden hour lighting to cast warm tones over the forest, highlighting the log's path with a softer, more dramatic shadow play.",
+      "generatedAt": "2025-12-23T04:10:22.940Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9005,
+      "error": null
+    },
+    {
+      "id": "Ocgn213XFpmorWLbXmOp",
+      "input": "man screaming in rain",
+      "output": "Close-Up of a man with rain-soaked hair and wide open mouth screaming loudly as rain pours down in an outdoors in a stormy environment at overcast day. The camera uses handheld shot from a high angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by dim, overcast with soft natural light, rain acting as a diffuser. Style reference: Gritty realism, reminiscent of 1990s drama films. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Sound of rain with distant thunder and a scream\n- **Camera:** High-angle handheld with 50mm at f/2.8\n- **Lighting:** Natural overcast light diffused by rain\n- **Style:** Gritty realism, 1990s drama film aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A Close-Up from an Eye-Level Shot, capturing the man's intense expression as rain pours down.\n- **Variation 2 (Different Lighting):** Close-Up with dramatic side-lighting from a street lamp, highlighting the man's wet skin and anguished expression.",
+      "generatedAt": "2025-12-23T04:10:33.299Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9359,
+      "error": null
+    },
+    {
+      "id": "AMaFz30we4vTjC3kpZ9O",
+      "input": "create a shot with a detective",
+      "output": "Medium Close-Up of a detective with classic trench coat and intense expression examining a small object on the floor in a dimly lit crime scene room. The camera uses slow dolly in from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by flickering light casting dramatic shadows, creating a chiaroscuro effect. Style reference: Film noir, with high contrast lighting. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Subtle ambient tension music\n- **Camera:** Low-angle slow dolly in with shallow focus (f/2.8)\n- **Lighting:** Flickering overhead light, creating deep shadows\n- **Style:** Classic film noir aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the detective's face from a high-angle shot, emphasizing vulnerability.\n- **Variation 2 (Different Lighting):** Use a static light source for a more consistent and less flickering effect.",
+      "generatedAt": "2025-12-23T04:10:43.198Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8899,
+      "error": null
+    },
+    {
+      "id": "YozOO2w2DuF9RsF0XV9y",
+      "input": "dog barking in a park",
+      "output": "Close-Up of an energetic dog with perked ears and expressive face barking joyfully with tail wagging in a vibrant park with lush grass and flowers at daytime. The camera uses handheld dynamic move from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright sunlight filtering through leaves, casting playful shadows. Style reference: Vibrant naturalistic, akin to Portra 400. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Joyful dog barks with ambient park sounds\n- **Camera:** Low-angle handheld with shallow DOF at f/2.8\n- **Lighting:** Sunlight filtered through leaves, creating dappled light\n- **Style:** Naturalistic, Portra 400 color palette\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** Capture the dog from a high-angle shot, emphasizing the park's expansive greenery.\n- **Variation 2 (Overcast Lighting Variation):** Film the scene during an overcast day, diffusing the sunlight for a softer mood.",
+      "generatedAt": "2025-12-23T04:10:52.895Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8696,
+      "error": null
+    },
+    {
+      "id": "2kQffVhqY2sIWXUTBXZA",
+      "input": "view of a widow from within a home facing outward toward a pasture. we see clips of days passed signified by the changing of the seasons",
+      "output": "Establishing Shot of the scene in inside a cozy home facing a picturesque pasture at various seasons. The camera uses static tripod at eye level with deep focus (f/11-f/16) to keep background detail readable. Lit by soft, natural lighting filtered through the window, creating gentle shadows. Style reference: Kodak Vision3 250D 5207 for natural color rendition. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient sounds of nature\n- **Camera:** Eye-level static shot using a wide lens at f/11\n- **Lighting:** Soft sunlight through the window with gentle interior shadows\n- **Style:** Naturalistic, with Kodak Vision3 250D for color\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Angle Variation):** Capture from a high angle looking down at the window, emphasizing the seasons outside.\n- **Variation 2 (Lighting Variation):** Use golden hour lighting to enhance the warmth and nostalgia of the scene.",
+      "generatedAt": "2025-12-23T04:11:02.346Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8451,
+      "error": null
+    },
+    {
+      "id": "aT7AFQrMRmdLVF3JTD28",
+      "input": "storyboard with sketches panning from left to right",
+      "output": "Medium Close-Up of a storyboard filled with sketches with dynamic sketches and intricate details revealing progression as camera pans in an artist's studio desk with drawing tools at afternoon. The camera uses slow pan from left to right at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural window light, diffused for even texture. Style reference: Handcrafted animation aesthetic, warm and textured. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft pencil sketching sound effect\n- **Camera:** Eye-level slow pan using a wide lens, f/5.6\n- **Lighting:** Soft natural light from a large window, diffused\n- **Style:** Handcrafted animation aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** A high-angle shot of the storyboard panning left to right, emphasizing the layout.\n- **Variation 2 (Warm Lighting Variation):** Use warm tungsten lighting to enhance the textures and colors of the sketches, providing a cozy atmosphere.",
+      "generatedAt": "2025-12-23T04:11:13.101Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9754,
+      "error": null
+    },
+    {
+      "id": "BOTBWJMaxdM5HTPWYkL4",
+      "input": "a large box, exploding outward with full bedroom decor, at in the middle of an empty bedroom, commercial style, during ad for a home decor stoor featuring chic modern furniture bursting out",
+      "output": "Medium Shot of a large box with cardboard flaps flying open, decor items bursting out, and vibrant colors and textures exploding outward with decor items in an empty modern bedroom. The camera uses rapid dolly out at a Dutch angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by bright and inviting with soft overhead lighting to accentuate colors. Style reference: commercial style, vibrant color grading. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Upbeat, energetic music\n- **Camera:** Dutch angle with rapid dolly out, f/8\n- **Lighting:** Bright, inviting overhead lighting\n- **Style:** Commercial with vibrant color grading\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Capture the box explosion from a high-angle shot, looking down on the decor as it fills the space.\n- **Variation 2 (Alternative Lighting):** Use soft, warm lighting to create a cozy atmosphere as the decor bursts forth.",
+      "generatedAt": "2025-12-23T04:11:24.804Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10702,
+      "error": null
+    },
+    {
+      "id": "owa8tsANTe4CgKT3ApZu",
+      "input": "elderly street musician with weathered hands, dipping brush into vibrant paint, at run-down alley with colorful murals",
+      "output": "Close-Up of an elderly street musician with weathered hands, vibrant paint pot, and brush with colorful bristles dipping brush into vibrant paint in a run-down alley with colorful murals. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by natural sunlight filtering through alley, illuminating colors warmly. Style reference: Realist, emphasis on texture and color. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient street sounds, subtle brush strokes\n- **Camera:** Static tripod, eye-level, macro lens, f/2.8\n- **Lighting:** Natural sunlight filtering through alley\n- **Style:** Realist, with emphasis on vibrancy\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture the musician dipping the brush into paint from a high angle, emphasizing the colorful murals in the background.\n- **Variation 2 (Evening Light Variation):** Shoot the musician under warm evening light, with the sun casting long shadows, adding a nostalgic tone.",
+      "generatedAt": "2025-12-23T04:11:36.907Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11102,
+      "error": null
+    },
+    {
+      "id": "fx2DSBNoqDhBuPcrZNdG",
+      "input": "vintage typewriter with worn keys, lifting a typed page into light, at dimly lit library filled with old books",
+      "output": "Medium Close-Up of a vintage typewriter with worn keys, brass accents, and typed page with serif font as it gracefully lifting a typed page in a dimly lit library filled with old books. The camera uses slow dolly in over-the-shoulder with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by Warm incandescent bulb above, casting soft glow on the page. Style reference: Vintage, reminiscent of classic film noir. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft rustle of paper and distant clock ticking\n- **Camera:** Over-the-shoulder dolly with shallow DOF, f/2.8\n- **Lighting:** Soft, warm overhead light creating gentle shadows\n- **Style:** 35mm film, vintage noir aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Use a high-angle shot to emphasize the typewriter's surface.\n- **Variation 2 (Alternative Lighting):** Employ candlelight for a more intimate, flickering illumination.",
+      "generatedAt": "2025-12-23T04:11:47.355Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9448,
+      "error": null
+    },
+    {
+      "id": "wkRsbJTclqftnDUW7981",
+      "input": "dog, barking, at home",
+      "output": "Medium Shot of a dog with golden retriever breed, fluffy tail, and bright eyes barking with enthusiasm and joy in a cozy living room with warm decor at afternoon. The camera uses handheld from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by sunlight streaming through a window, casting warm, soft shadows. Style reference: Naturalistic, reminiscent of heartwarming family films. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Excited barking and wagging sounds\n- **Camera:** Low-angle handheld, 50mm lens, f/5.6\n- **Lighting:** Soft afternoon sunlight, natural and warm\n- **Style:** Shot in a warm, familial style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation with Different Angle):** A Medium Close-Up from a high angle, capturing the dog's face as it barks joyfully.\n- **Variation 2 (Variation with Different Lighting):** A Medium Shot with soft, diffused lamp lighting, creating a cozy evening atmosphere.",
+      "generatedAt": "2025-12-23T04:11:58.560Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10203,
+      "error": null
+    },
+    {
       "id": "XUNWKWibskQYhoZvQr8B",
       "input": "young painter with splattered apron, studying a blank canvas intently, at sunlit artist's studio with large windows",
-      "output": "Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. The camera uses Static Tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by Soft natural light streaming through large windows, warm color temperature. Style reference: Shot on Kodak Portra 400 for warm, natural colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** natural ambience\n- **Camera:** Medium Close-Up on 85mm with shallow focus f/2.8\n- **Lighting:** Soft natural light from large windows, warm color temperature\n- **Style:** Shot on Kodak Portra 400 for warm, natural colors\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Camera):** Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. The camera uses Static Tripod from a bird's-eye view. Lit by Soft natural light streaming through large windows.\n- **Variation 2 (Different Lighting):** Medium Close-Up of a young painter with splattered apron and focused expression studying the blank canvas in an artist's studio with large windows at daytime. Lit by low-key lighting with a single warm key light from the side. The camera uses Static Tripod at eye level.",
-      "generatedAt": "2025-12-22T23:01:26.302Z",
+      "output": "Medium Close-Up of a young painter with splattered apron, focused expression, and blank canvas studying the canvas intently in a sunlit artist's studio with large windows at daytime. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by natural sunlight streaming through large windows, creating soft, warm illumination. Style reference: Impressionist aesthetic, inspired by natural lighting. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient studio sounds, gentle brush movements\n- **Camera:** Eye-level static shot, 50mm lens, f/2.8\n- **Lighting:** Soft, natural sunlight from large windows\n- **Style:** Impressionist aesthetic, natural light\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A high-angle shot of the artist's studio with the painter and their canvas, emphasizing the creative environment.\n- **Variation 2 (Golden Hour Lighting):** Capture the scene during golden hour with warm, directional sunlight casting long shadows.",
+      "generatedAt": "2025-12-23T04:12:08.357Z",
       "optimizerVersion": "v2-two-stage",
-      "latencyMs": 12594,
+      "latencyMs": 8797,
+      "error": null
+    },
+    {
+      "id": "tyea1RpkeRoVVjUX2yTp",
+      "input": "siberian husky with piercing blue eyes, sprinting across snowy field, at snowy mountain trail, during pausing dramatically, ears alert",
+      "output": "Wide Shot of Siberian husky with sleek fur and alert ears sprinting across the snowy field in a snowy field against snowy mountain trails at bright daylight. The camera uses tracking shot from a low angle with deep focus (f/11-f/16) to keep background detail readable. Lit by bright sunlight with sparkling reflections off fresh snow. Style reference: National Geographic wildlife action. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Sound of wind and soft snow crunching\n- **Camera:** Low-angle tracking shot at f/11\n- **Lighting:** Bright sunlight, high contrast\n- **Style:** Shot on Kodak Ektachrome 100D 7294\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Use a high-angle shot to capture the husky from above, showcasing the snowy trail patterns.\n- **Variation 2 (Different Lighting):** Capture during golden hour for warm hues reflecting off the snow.",
+      "generatedAt": "2025-12-23T04:12:19.759Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10401,
+      "error": null
+    },
+    {
+      "id": "vVZrh26H28MriDBCTDE6",
+      "input": "young botanist with vibrant green gloves, gathering fallen leaves with a canvas bag, at sun-drenched botanical garden pathway",
+      "output": "Medium Close-Up of a young botanist with bright green gloves, cheerful expression, and canvas bag gathering colorful fallen leaves in a sun-drenched botanical garden pathway at daytime. The camera uses slow dolly in at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm sunlight filtering through foliage, creating soft shadows. Style reference: Kodak Portra 160 for vibrant colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient garden sounds, rustling leaves\n- **Camera:** Eye-level, 50mm lens, f/2.8, shallow focus\n- **Lighting:** Natural sunlight with dappled effects through leaves\n- **Style:** Vibrant, shot on Kodak Portra 160\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A Medium Close-Up from a High-Angle shows the botanist gathering leaves among vibrant foliage.\n- **Variation 2 (Cooler Lighting):** A Medium Close-Up with cooler morning light, emphasizing fresh dew on leaves as the botanist collects them.",
+      "generatedAt": "2025-12-23T04:12:32.731Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11970,
+      "error": null
+    },
+    {
+      "id": "YlrqzBiKWaOpt5v1XBmC",
+      "input": "grizzled woman with a weather-beaten face",
+      "output": "Close-Up of a grizzled woman with weather-beaten face, expressive eyes, and wrinkled skin at golden hour. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light from the side, subtly warm. Style reference: Portraiture inspired by classic photojournalism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 4:3\n- **Frame Rate:** 24fps\n- **Audio:** Ambient natural sounds\n- **Camera:** Eye-level static shot with 85mm lens, f/2.8\n- **Lighting:** Soft natural side light, golden hour\n- **Style:** Classic photojournalism portrait\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A Close-Up from a low angle, capturing the woman's face against the sky.\n- **Variation 2 (Different Lighting):** Close-Up under overcast light, highlighting her features in soft, diffused light.",
+      "generatedAt": "2025-12-23T04:12:51.605Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 8006,
+      "error": null
+    },
+    {
+      "id": "hutQ3rLaolvLPoITs8qU",
+      "input": "grizzled fisherman with a weather-beaten face, casting a line into choppy waves, at rundown wooden pier at sunrise",
+      "output": "Medium Close-Up of a grizzled fisherman with weather-beaten face, rugged jacket, and faded cap casting a line into the waves in a rundown wooden pier at sunrise. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, warm sunlight from the horizon, casting gentle shadows. Style reference: Documentary realism with a touch of Impressionism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Gentle waves and seabirds\n- **Camera:** Eye-level on a tripod with a 50mm lens at f/4\n- **Lighting:** Natural sunrise light with soft, warm tones\n- **Style:** Documentary realism\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture the fisherman casting his line from a high-angle shot, emphasizing the vastness of the ocean below.\n- **Variation 2 (Golden Hour Lighting):** Film the scene during golden hour for a more dramatic and rich lighting effect, with long shadows and warm hues.",
+      "generatedAt": "2025-12-23T04:13:04.507Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11901,
+      "error": null
+    },
+    {
+      "id": "O9sA7BGHAibYxpujDrNN",
+      "input": "a dog doing a wheelie on a bicycle in a suburban neighborhood",
+      "output": "Medium Long Shot of a dog with fluffy golden fur, blue collar, and bright eyes balancing on rear wheel of a bicycle in a vibrant suburban neighborhood with lush green lawns and charming houses at daytime. The camera uses tracking shot at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by bright sunlight from above, casting soft shadows. Style reference: Shot on Kodak Portra 400 for vivid colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Cheerful neighborhood sounds\n- **Camera:** Eye-level tracking on 50mm lens\n- **Lighting:** Bright natural daylight, soft shadows\n- **Style:** Kodak Portra 400, vibrant suburban aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Use a low-angle shot to emphasize the dog's skill and the impressive wheelie.\n- **Variation 2 (Alternative Lighting):** Capture the scene during golden hour to add a warm glow to the setting.",
+      "generatedAt": "2025-12-23T04:13:14.650Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9139,
+      "error": null
+    },
+    {
+      "id": "7RT3cda5l6Gm0z4aCqNV",
+      "input": "intrepid mountain climber hanging from cliff, pausing to scan the horizon, at weathered granite walls lit by golden hour",
+      "output": "Medium Shot of a mountain climber with red climbing helmet, weathered ropes, and chalk-dusted hands hanging from a cliff edge in a rugged granite cliff at golden hour. The camera uses static tripod from a high angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft, directional light from the setting sun casting long shadows. Style reference: National Geographic adventure style. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Wind rustling, distant bird calls\n- **Camera:** High-angle medium shot on 50mm lens, f/2.8\n- **Lighting:** Warm golden hour sunlight with soft shadows\n- **Style:** Shot on 35mm, National Geographic aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Use a low-angle shot from below to emphasize the climber's ascent against the sky.\n- **Variation 2 (Different Lighting):** Capture under overcast light for a diffused, softer mood without harsh shadows.",
+      "generatedAt": "2025-12-23T04:14:03.828Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 13158,
+      "error": null
+    },
+    {
+      "id": "54z4V9CFJCWx5esd3zmD",
+      "input": "vintage bicycle with rusted gears, oiling rusted bicycle gears, at dimly lit vintage bicycle shop",
+      "output": "Close-Up of a hand with delicately applying oil, slightly calloused fingertips, and old wristwatch oiling the rusted gears slowly in a dimly lit vintage bicycle shop. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm tungsten light from a desk lamp casting soft shadows. Style reference: Vintage aesthetic with a nostalgic tone. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft mechanical creaks and oil drips\n- **Camera:** Static tripod, eye-level, 50mm lens, f/2\n- **Lighting:** Warm tungsten desk lamp with soft shadow\n- **Style:** Vintage aesthetic, warm color grade\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the hand from a high-angle shot, emphasizing the overall texture of the gears.\n- **Variation 2 (Different Lighting):** Use cooler, mixed lighting to create contrast and highlight the oil sheen.",
+      "generatedAt": "2025-12-23T04:14:14.852Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10024,
+      "error": null
+    },
+    {
+      "id": "MvikRzkWCAGmCIuHcA4A",
+      "input": "young gardener with dirt-streaked hands, sowing seeds meticulously in rows, at sunlit community garden with raised beds",
+      "output": "Medium Close-Up of a young gardener with dirt-streaked hands, green apron, and focused expression as it carefully sowing seeds in neat rows in a vibrant, sunlit community garden with raised beds at daytime. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, golden natural sunlight from the side, highlighting textures. Style reference: Documentary style, natural colors. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient sounds of rustling leaves and distant birds\n- **Camera:** Static tripod at eye-level, 50mm lens, f/4 for medium depth of field\n- **Lighting:** Natural sunlight as key, diffused with reflectors for fill\n- **Style:** Naturalistic, with emphasis on earthy tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture from a high-angle shot, looking down at the gardener's hands.\n- **Variation 2 (Different Lighting):** Use a warm, golden hour lighting to enhance the serene atmosphere.",
+      "generatedAt": "2025-12-23T04:14:37.173Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11056,
+      "error": null
+    },
+    {
+      "id": "5YRd34ZpFN5GPmZX6ha6",
+      "input": "sleek silver sports car with glossy paint, entering a tunnel with headlights illuminating walls, at subterranean highway tunnel with neon art",
+      "output": "Wide Shot of a sleek silver sports car with glossy paint, sleek aerodynamic design, and bright headlights entering the tunnel slowly in a subterranean highway tunnel. The camera uses static tripod at eye level with deep focus (f/11-f/16) to keep background detail readable. Lit by headlights as primary light source, enhancing reflective surfaces and neon art. Style reference: Modern aesthetic, glossy finish, akin to a high-end car commercial. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 24fps\n- **Audio:** Engine hum and subtle echo in tunnel\n- **Camera:** Static eye-level on 35mm, deep focus f/11\n- **Lighting:** Headlights illuminating tunnel, reflecting off glossy surfaces\n- **Style:** Glossy, high-end car commercial style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Low-Angle Variation):** Capture the car from a low angle to emphasize its power and speed as it enters the tunnel.\n- **Variation 2 (Different Lighting Variation):** Use tunnel's integrated LED lights for a more ambient feel, reducing headlight dominance.",
+      "generatedAt": "2025-12-23T04:14:50.495Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12319,
+      "error": null
+    },
+    {
+      "id": "4aY5jQq6OYDxFUo067WG",
+      "input": "bengal tiger with vibrant orange stripes, doing the Macarena, at lush jungle canopy during sunrise, during dancing like nobody is watching",
+      "output": "Medium Close-Up of Bengal tiger with vibrant orange stripes, expressive eyes, and sleek fur dancing the Macarena with fluid movements in a lush jungle canopy at sunrise. The camera uses slow dolly in from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, warm light filtering through the trees. Style reference: Natural documentary style, inspired by \"Planet Earth\" series. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Jungle ambiance with bird calls\n- **Camera:** Low-angle slow dolly in, 50mm lens, f/2.8\n- **Lighting:** Soft, diffused sunlight with warm tones\n- **Style:** Natural documentary style, inspired by \"Planet Earth\"\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** High-angle shot from above, capturing the tiger dancing amidst lush greenery.\n- **Variation 2 (Cool Lighting Variation):** Capture the scene with cooler morning light, emphasizing mist among the trees.",
+      "generatedAt": "2025-12-23T04:15:01.753Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10256,
+      "error": null
+    },
+    {
+      "id": "v6lZI55CSMPtWgsv0fBC",
+      "input": "young dancer with colorful tattoos, spinning gracefully on one foot, at vibrant street mural alleyway",
+      "output": "Medium Close-Up of a young dancer with colorful tattoos and barefoot spinning gracefully on one foot in a vibrant street mural alleyway at midday. The camera uses slow dolly in from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by natural daylight from above, casting soft shadows and warm glow. Style reference: Urban dance video, reminiscent of \"Step Up\". Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft background music with rhythmic beats\n- **Camera:** Low-angle slow dolly in, 50mm lens, f/2.8\n- **Lighting:** Natural daylight from above\n- **Style:** Urban dance video, \"Step Up\" aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Use a High-Angle Shot to capture the dancer from above, emphasizing her connection with the mural ground.\n- **Variation 2 (Different Lighting):** Use golden hour lighting to cast a warm, diffused glow on the dancer and murals.",
+      "generatedAt": "2025-12-23T04:16:02.477Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10766,
+      "error": null
+    },
+    {
+      "id": "Igt5DjHNxnVkOC6PeuhY",
+      "input": "antique typewriter with dusty keys, pan slowly across the typewriter's surface, at dusty attic filled with cobwebs, Camera: handheld, medium shot, Lighting: natural",
+      "output": "Medium Shot of an antique typewriter with dusty keys, brass body, and faded paper sheet revealing dust particles on the keys in a dusty attic with cobwebs at afternoon with sunlight filtering through. The camera uses slow handheld pan at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft natural light filtering through attic window, casting gentle shadows. Style reference: Vintage, inspired by early 20th-century films. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft creaking of floorboards and distant birdsong\n- **Camera:** Handheld medium shot, eye-level, 50mm lens, f/2.8\n- **Lighting:** Soft natural light through attic window\n- **Style:** Vintage look with sepia tone\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** A high-angle shot with a slow pan over the typewriter, highlighting the dust on the keys.\n- **Variation 2 (Golden Hour Lighting Variation):** Same shot with warm golden hour light filtering through the attic, enhancing the nostalgic feel.",
+      "generatedAt": "2025-12-23T04:21:52.409Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11324,
+      "error": null
+    },
+    {
+      "id": "lZT74DrlBI9G8qAQMLV7",
+      "input": "Subject: young ballerina in a tulle tutu, delicate pink ballet shoes, flowing chestnut hair, sparkling crystal tiara, Action: performing a graceful pirouette, Location: a sunlit dance studio with large mirrors, Time: early morning, Mood: elegant and dreamy, Style: romantic ballet, Event: a private rehearsal for an upcoming performance",
+      "output": "Medium Close-Up of a young ballerina with delicate tulle tutu and pink ballet shoes performing a graceful pirouette in a sunlit dance studio with large mirrors at early morning. The camera uses Steadicam tracking at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft sunlight streaming through mirrors, creating a warm glow and gentle reflections. Style reference: romantic ballet, reminiscent of Degas paintings. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft classical piano in the background\n- **Camera:** Steadicam with eye-level tracking, 85mm lens, f/2.8 for gentle background separation\n- **Lighting:** Natural sunlight through mirrors for soft, warm illumination\n- **Style:** Romantic ballet, soft pastels and warm tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A High-Angle Shot capturing the ballerina's pirouette, emphasizing her form and elegance from above.\n- **Variation 2 (Different Lighting):** Use warm artificial spotlights to create a focused, theatrical atmosphere, highlighting her movements against a darkened studio.",
+      "generatedAt": "2025-12-23T04:23:15.438Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9187,
+      "error": null
+    },
+    {
+      "id": "tvPrJL08gsR6ncSsGFkd",
+      "input": "Subject: matte black DJI drone, sleek design, high-tech features, quiet operation, Action: gliding smoothly through the air, Location: a misty forest at dawn, Time: early morning, Mood: mysterious and serene, Style: cinematic and atmospheric, Event: capturing breathtaking aerial views of the landscape",
+      "output": "Extreme Wide Shot of a matte black DJI drone with sleek design, high-tech features, and black finish gliding smoothly through the air in a misty forest at dawn. The camera uses smooth gimbal tracking from a high angle with deep focus (f/11-f/16) to keep background detail readable. Lit by soft dawn light filtering through trees, creating ethereal atmosphere. Style reference: cinematic and atmospheric. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 8s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 24fps\n- **Audio:** Gentle rustle of leaves, distant bird calls\n- **Camera:** High-angle gimbal tracking with wide-angle lens, f/11\n- **Lighting:** Soft dawn light with natural diffusion through mist\n- **Style:** Shot on digital, inspired by nature documentaries\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternate Angle):** Capture the drone from a low-angle shot, emphasizing its dominance against the towering trees.\n- **Variation 2 (Alternate Lighting):** Use a harsher backlight to silhouette the drone as it moves through the forest, enhancing contrast.",
+      "generatedAt": "2025-12-23T04:23:26.794Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10356,
+      "error": null
+    },
+    {
+      "id": "TWnINN8MbNXjhcPZ2Zhs",
+      "input": "Subject: bengal cat, playful, agile, curious, Action: chasing a butterfly, Location: a sunlit garden, Time: early afternoon, Mood: joyful, Style: vibrant and colorful, Event: a warm spring day",
+      "output": "Full Shot of Bengal cat with striped fur, bright green eyes, and strong muscular build chasing a colorful butterfly among flowers in a sunlit garden with blooming flowers at early afternoon. The camera uses tracking shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight from above, casting soft shadows across the garden. Style reference: Vibrant and colorful, inspired by Kodachrome. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Birds chirping and gentle wind rustling leaves\n- **Camera:** Low-angle tracking shot, 50mm lens at f/2.8\n- **Lighting:** Natural sunlight with golden hue\n- **Style:** Vivid color palette, Kodachrome inspired\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A High-Angle Shot of the Bengal cat playfully chasing a butterfly, showcasing the garden's layout and vibrant colors.\n- **Variation 2 (Different Lighting):** Capture the scene during the golden hour, with backlit flowers and a warm glow enhancing the playful atmosphere.",
+      "generatedAt": "2025-12-23T04:23:38.540Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10743,
+      "error": null
+    },
+    {
+      "id": "sSLoaV7q9ymlmTMY6jbB",
+      "input": "Subject: freckled child, curly red hair, bright blue overalls, smiling face, Action: running joyfully, Location: a grassy hilltop, Time: late afternoon, Mood: playful and carefree, Style: vibrant and colorful, Event: the child launching the kite into the sky",
+      "output": "Medium Close-Up of a freckled child with curly red hair, bright blue overalls, and colorful kite with a long tail running while launching the kite in a grassy hilltop at late afternoon. The camera uses slow dolly in at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm sunlight from the west, casting a golden glow on the scene. Style reference: Inspired by Kodak Portra 160 for vibrant colors and soft tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Laughing and kite fluttering in the wind\n- **Camera:** Eye-level slow dolly in, 50mm lens, f/2.8\n- **Lighting:** Warm late afternoon sunlight, golden hour tones\n- **Style:** Vibrant colors, Kodak Portra 160 aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture the freckled child from a high-angle shot, looking down as they run joyfully, adding emphasis on the kite's launch against the sky.\n- **Variation 2 (Backlight Variation):** Use backlighting to silhouette the child and kite against the setting sun, creating a dramatic and playful contrast with the bright sky.",
+      "generatedAt": "2025-12-23T04:23:52.459Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12919,
+      "error": null
+    },
+    {
+      "id": "MIoJ1LP1OdQB6C65B3Ku",
+      "input": "Subject: young painter in splattered overalls, messy bun hairstyle, paint-smeared hands, focused expression, Action: mixing vibrant colors on the palette, Location: a sunlit art studio filled with canvases, Time: mid-afternoon, Mood: inspired and energetic, Style: impressionistic, Event: preparing for an upcoming gallery exhibition",
+      "output": "Medium Close-Up of a young painter with splattered overalls, messy bun, and paint-smeared hands mixing vibrant colors on the palette in a sunlit art studio filled with canvases at mid-afternoon. The camera uses slow dolly in at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by natural sunlight streaming through large windows, creating warm, soft highlights and shadows. Style reference: Impressionistic, emphasizing vibrant colors and dynamic brush strokes. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft classical music playing faintly in background\n- **Camera:** Eye-level slow dolly, 50mm lens, f/2.8\n- **Lighting:** Natural sunlight from large windows, soft directional\n- **Style:** Impressionistic with vibrant color grading\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Capture the scene from a High-Angle Shot to emphasize the painter's workspace and the array of colors on her palette.\n- **Variation 2 (Different Lighting):** Use warm artificial lighting to create a cozy atmosphere, with soft incandescent bulbs casting an amber glow over the studio.",
+      "generatedAt": "2025-12-23T04:24:04.259Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10799,
+      "error": null
+    },
+    {
+      "id": "HDcGNcLbgUTDr7CCEB8B",
+      "input": "Subject: vintage bicycle, rusty handlebars, worn leather seat, spokes with cobwebs, Action: leaning against a weathered wooden fence, Location: a quiet countryside road, Time: late afternoon, Mood: nostalgic, Style: soft focus, Event: a gentle breeze rustling the leaves",
+      "output": "Medium Close-Up of a vintage bicycle with rusty handlebars, worn leather seat, and cobwebbed spokes leaning against the fence in a quiet countryside road at late afternoon. The camera uses static tripod from a high angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm golden sunlight from a low angle, casting long shadows. Style reference: Soft focus, reminiscent of early color photography. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 4:3\n- **Frame Rate:** 24fps\n- **Audio:** Gentle breeze rustling leaves\n- **Camera:** High-angle static shot on 50mm lens, f/2.8\n- **Lighting:** Golden hour sunlight with long soft shadows\n- **Style:** Soft focus, nostalgic aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** A Medium Close-Up of the vintage bicycle from a low angle, emphasizing the sky and surrounding foliage.\n- **Variation 2 (Different Lighting):** A Medium Close-Up of the vintage bicycle in the morning light, with dew glistening on the spokes.",
+      "generatedAt": "2025-12-23T04:24:15.323Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10061,
+      "error": null
+    },
+    {
+      "id": "ebcClGpL69eNeZhY9XIU",
+      "input": "Subject: weathered fisherman, weather-beaten skin, pierced ears adorned with hooks, calloused hands gripping a fishing rod, Action: casting his line into the turbulent sea, Location: a rocky coastal pier, Time: early dawn with the sun barely rising, Mood: reflective and hopeful, Style: gritty realism, Event: the first catch of the day",
+      "output": "Medium Close-Up of a weathered fisherman with calloused hands, pierced ears with hooks, and lined casting his line into the sea in a rocky coastal pier at early dawn. The camera uses slow dolly in from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, early morning light from the horizon, creating a warm glow with gentle shadows. Style reference: gritty realism, akin to a documentary. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 24fps\n- **Audio:** Ambient sound of waves and light wind\n- **Camera:** Low-angle slow dolly in, 50mm lens, f/2.8\n- **Lighting:** Soft dawn light from the horizon\n- **Style:** Documentary realism, natural color palette\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** A Medium Close-Up from a high angle, capturing the fisherman's determined expression as he casts his line into the sea at dawn.\n- **Variation 2 (Dramatic Lighting):** A Medium Close-Up with dramatic side lighting, emphasizing the texture of the fisherman's skin and the glint on his hooks as he casts his line.",
+      "generatedAt": "2025-12-23T04:24:30.945Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 14620,
+      "error": null
+    },
+    {
+      "id": "ljzwRaEvZ4OAafsi7r8r",
+      "input": "Subject: siberian husky, fluffy and energetic, playfully wagging its tail, with a gleaming coat that catches the sunlight, Action: bounding through a sunlit meadow, Location: a vibrant wildflower meadow, Time: late afternoon, Mood: joyful and carefree, Style: cinematic and vibrant, Event: chasing after colorful butterflies",
+      "output": "Full Shot of Siberian husky with fluffy coat and bright blue eyes bounding joyfully through the meadow in a vibrant wildflower meadow at late afternoon. The camera uses handheld follow cam from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm sunlight from a low angle, enhancing golden hues and creating soft shadows. Style reference: Vibrant cinematic style with emphasis on color, reminiscent of Kodak Portra 400. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Light wind rustling through flowers and distant birds\n- **Camera:** Low-angle handheld follow cam with wide lens at f/4\n- **Lighting:** Golden hour sunlight with natural diffusion\n- **Style:** Vibrant cinematic style, Kodak Portra 400\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation 1: High-Angle Shot):** A Full Shot from a high angle, capturing the Siberian husky bounding joyfully through the vibrant wildflower meadow, with butterflies fluttering around in the late afternoon.\n- **Variation 2 (Variation 2: Soft Diffuse Lighting):** A Full Shot from a low angle, capturing the Siberian husky bounding joyfully through the vibrant wildflower meadow, using soft diffuse lighting from a cloudy sky in the late afternoon.",
+      "generatedAt": "2025-12-23T04:24:43.378Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11431,
+      "error": null
+    },
+    {
+      "id": "NDqHFHXLwxWG2vaL8RsS",
+      "input": "Subject: george washington draped in a blue Revolutionary War uniform, Action: gesturing emphatically to soldiers, Location: leaf-strewn battlefield under overcast skies",
+      "output": "Medium Long Shot of George Washington with passionate expression gesturing emphatically to his troops in a leaf-strewn battlefield at overcast skies. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by diffused natural light from the overcast sky. Style reference: Historical epic, with a painterly aesthetic. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 24fps\n- **Audio:** Sound of leaves rustling and distant soldier murmurs\n- **Camera:** Eye-level on a tripod with a 50mm lens at f/2.8\n- **Lighting:** Overcast natural light, soft and diffused\n- **Style:** Shot on digital, color graded for painterly tones\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Capture the scene from a low-angle shot to emphasize Washington's authority.\n- **Variation 2 (Alternative Lighting):** Use a warm fill light to create contrast with the overcast sky, highlighting Washington's features.",
+      "generatedAt": "2025-12-23T04:24:56.480Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12102,
+      "error": null
+    },
+    {
+      "id": "iR8la9rR7l3Y6CbJDuNK",
+      "input": "Subject: elderly street musician with weathered hands holding a silver harmonica, surrounded by curious listeners, with a weathered guitar case at his feet, Location: historic town square with cobbled stones",
+      "output": "Medium Close-Up of an elderly street musician with weathered hands, silver harmonica, and passionate expression playing the harmonica skillfully in a historic town square at daytime. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft natural light with gentle diffusion from overcast sky. Style reference: Documentary-style, reminiscent of street photography. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Melodic harmonica tune with ambient crowd murmur\n- **Camera:** Eye-level static shot, 50mm lens, f/2.8\n- **Lighting:** Soft natural light, overcast sky\n- **Style:** Documentary-style, street photography inspired\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Variation with High Angle):** A Medium Close-Up from a high angle of the elderly street musician playing a harmonica, emphasizing the crowd gathered below.\n- **Variation 2 (Variation with Evening Lighting):** A Medium Close-Up at eye-level of the elderly street musician playing a harmonica in the evening, with warm street lamps casting soft highlights.",
+      "generatedAt": "2025-12-23T04:25:45.685Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10519,
+      "error": null
+    },
+    {
+      "id": "O2uev3GRgHwZQqf0SD39",
+      "input": "subject: elderly street musician with weathered hands, action: strumming guitar under flickering streetlight, shadows dancing on brick wall, location: weathered park bench under a rusted overpass",
+      "output": "Medium Close-Up of an elderly street musician with weathered hands, acoustic guitar, and faded denim jacket strumming guitar under flickering streetlight in a weathered park bench under a rusted overpass at evening. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft flickering streetlight casting warm glows, creating deep shadows. Style reference: Kodak Portra 800, warm nostalgic tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft guitar strumming with light urban ambience\n- **Camera:** Static tripod at eye-level, 85mm lens, f/2.8\n- **Lighting:** Streetlight with soft flicker, warm tone, high contrast\n- **Style:** Shot on 35mm, nostalgic film look\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Use a high-angle shot to capture the musician's entire form from above, emphasizing the environment and artist's solitude in the urban setting.\n- **Variation 2 (Different Lighting):** Illuminate the scene with a cool-toned LED, creating a contrast with the warm ambiance, highlighting the musician's hands against the cooler background.",
+      "generatedAt": "2025-12-23T04:25:59.435Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12747,
+      "error": null
+    },
+    {
+      "id": "rcWXcPleWhjvIvvydLvd",
+      "input": "subject: abraham lincoln standing beside a wooden lectern, action: placing a hand on the lectern, location: vintage Senate chamber with ornate decor",
+      "output": "Medium Close-Up of Abraham Lincoln with top hat, dark suit, and wooden lectern placing a hand on the lectern in a vintage Senate chamber with ornate decor. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, warm lighting from chandeliers, casting gentle shadows. Style reference: Classic historical drama, reminiscent of Spielberg's 'Lincoln'. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft ambient murmurs of the chamber\n- **Camera:** Eye-level static shot with 50mm lens, f/4\n- **Lighting:** Warm chandeliers with soft shadows\n- **Style:** Classic historical drama, Spielberg's 'Lincoln'\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle):** Capture the same scene from a high angle to emphasize the grandeur of the Senate chamber and the historical weight of Lincoln's presence.\n- **Variation 2 (Cooler Lighting):** Capture the scene with cooler lighting to create a starker, more dramatic contrast, highlighting the details of the chamber and Lincoln's presence.",
+      "generatedAt": "2025-12-23T04:26:11.702Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11264,
+      "error": null
+    },
+    {
+      "id": "5XNP0qcYy97PXGNntCWK",
+      "input": "subject: abraham lincoln standing on a podium surrounded by a crowd, action: Lincoln adjusting his glasses with intent, location: historical town square at dusk, time: dusk with vibrant sunset hues, mood: dreamlike haze with swirling colors, style: in the style of Terrence Malick, event: Camera swirling around Lincoln",
+      "output": "Medium Long Shot of Abraham Lincoln with tall stovepipe hat, black frock coat, and glasses perched on nose adjusting his glasses with intent in a historical town square at dusk. The camera uses swirling tracking shot from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm, diffused sunset light casting soft shadows. Style reference: Terrence Malick's ethereal style. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.39:1\n- **Frame Rate:** 24fps\n- **Audio:** Soft murmurs of a captivated crowd\n- **Camera:** Swirling low-angle shot on 35mm, f/11 for deep focus\n- **Lighting:** Sunset as backlight, creating warm, diffused glow\n- **Style:** Terrence Malick inspired, ethereal and natural\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Angle):** Capture the scene from a high-angle shot to emphasize the crowd's perspective.\n- **Variation 2 (Different Lighting):** Use cooler tones of early twilight to create a somber mood.",
+      "generatedAt": "2025-12-23T04:26:25.160Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12457,
+      "error": null
+    },
+    {
+      "id": "9wbULtXExWoqDqs3heb1",
+      "input": "subject: product, action: folding intricate paper model, location: minimalist Japanese tea room with sliding shoji doors, event: close-up of hands folding paper",
+      "output": "Close-Up of a hands with delicate fingers, smooth paper texture, and intricate folding pattern folding paper into a delicate model in a minimalist Japanese tea room with sliding shoji doors. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft, natural light filtering through shoji doors. Style reference: Minimalist, inspired by traditional Japanese aesthetics. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** None, silence enhances focus\n- **Camera:** Static tripod, eye-level, 50mm lens at f/2.8\n- **Lighting:** Soft natural light from shoji doors, diffused\n- **Style:** Minimalist Japanese aesthetic, natural color palette\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High Angle Variation):** A Close-Up from a high angle, focusing on the origami model being folded in the minimalist Japanese tea room.\n- **Variation 2 (Warmer Lighting Variation):** A Close-Up with warmer, golden lighting to enhance the calming atmosphere of the Japanese tea room as the hands fold the paper.",
+      "generatedAt": "2025-12-23T04:27:06.975Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9946,
+      "error": null
+    },
+    {
+      "id": "hNDCIJL7NIgCaswrZL03",
+      "input": "subject: abraham lincoln, action: delivering the Gettysburg Address, location: Gettysburg battlefield cemetery",
+      "output": "Medium Shot of Abraham Lincoln with tall stovepipe hat, black suit, and solemn expression delivering the Gettysburg Address in Gettysburg battlefield cemetery at daytime. The camera uses static tripod at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by soft natural daylight from above, casting gentle shadows. Style reference: Historical reenactment, akin to Ken Burns' documentaries. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Lincoln's voice with ambient crowd murmurs\n- **Camera:** Eye-level static on tripod with 50mm lens\n- **Lighting:** Soft daylight from above, natural shadows\n- **Style:** Historical, Ken Burns style\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A high-angle shot capturing Lincoln's speech at Gettysburg, emphasizing the gravestones' expanse beneath him.\n- **Variation 2 (Golden Hour Lighting Variation):** A medium shot of Lincoln during golden hour, warm light enhancing his solemn expression as he delivers the address.",
+      "generatedAt": "2025-12-23T04:27:28.096Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 10317,
+      "error": null
+    },
+    {
+      "id": "sLEFowkwJ1U0LDtry1Go",
+      "input": "abraham lincoln",
+      "output": "Establishing Shot of the scene in a park or memorial dedicated to Abraham Lincoln at mid-19th century. The camera uses Static from a high angle with deep focus (f/11-f/16) to keep background detail readable. Lit by soft, natural light. Style reference: documentary-style with a focus on realism. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** natural ambience\n- **Camera:** Establishing Shot on 24mm with deep focus f/11\n- **Lighting:** Soft natural light, even distribution, 5600K daylight\n- **Style:** Shot on Kodak Vision3 250D 5207, documentary aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Camera):** Establishing Shot of the scene in a park or memorial dedicated to Abraham Lincoln at mid-19th century. The camera uses Static from a bird's-eye view. Lit by soft. Style reference: documentary-style with a focus on realism.\n- **Variation 2 (Different Lighting):** Establishing Shot of the scene in a park or memorial dedicated to Abraham Lincoln at mid-19th century. Lit by low-key lighting with a single warm key light from the side. The camera uses Static from a high angle. Style reference: documentary-style with a focus on realism.",
+      "generatedAt": "2025-12-23T04:27:46.003Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 16906,
+      "error": null
+    },
+    {
+      "id": "hhZ8Kg12X8vDdBIDVHwv",
+      "input": "subject: abraham lincoln, action: debating Stephen Douglas on stage, location: packed wooden courthouse steps",
+      "output": "Medium Shot of Abraham Lincoln with black frock coat, expressive hands, and beard gesturing emphatically during the debate in a wooden courthouse packed with eager audience at daytime. The camera uses slow dolly in at eye level with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by warm natural daylight filtering through windows, highlighting Lincoln's face. Style reference: Historical drama, inspired by Ken Burns documentaries. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Murmurs of a captivated crowd\n- **Camera:** Eye-level slow dolly in with 50mm lens at f/2.8\n- **Lighting:** Natural daylight through large windows, warm and soft\n- **Style:** Shot digitally with period drama aesthetics\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** High-angle shot from the back of the room, capturing the entire packed audience and stage.\n- **Variation 2 (Different Lighting Variation):** Use candlelight to create a period-authentic atmosphere with flickering shadows on Lincoln's face.",
+      "generatedAt": "2025-12-23T04:27:58.239Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 11235,
+      "error": null
+    },
+    {
+      "id": "XNzMucRYcVxyieI8of36",
+      "input": "subject: professional chef preparing signature dish, action: plating with artistic flourishes, location: sleek modern restaurant kitchen",
+      "output": "Medium Close-Up of a professional chef with white chef's jacket, neatly tied apron, and sleek stainless steel counter plating a dish with artistic flourishes in a modern restaurant kitchen with stainless steel surfaces. The camera uses static tripod at eye level with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright key light from above, soft fills to reduce shadows. Style reference: modern culinary, inspired by high-end restaurant settings. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Ambient kitchen sounds\n- **Camera:** Eye-level static shot on 50mm, f/2.8\n- **Lighting:** Bright overhead with soft fill lights\n- **Style:** High-end, modern culinary aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A Medium Close-Up from a high angle, capturing the chef's plating from above, emphasizing arrangement precision.\n- **Variation 2 (Warm Lighting Variation):** A Medium Close-Up with warm, ambient lighting to create a cozy atmosphere, enhancing the dish's appeal.",
+      "generatedAt": "2025-12-23T04:28:11.555Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 12313,
+      "error": null
+    },
+    {
+      "id": "bVgGid97IJy59WrueDRw",
+      "input": "subject: person, action: walking, time: midnight, mood: dramatic",
+      "output": "Medium Long Shot of a person with dark trench coat, wide-brimmed hat, and leather boots walking purposefully along the empty street in a dimly lit urban street with scattered street lamps at midnight. The camera uses steadicam follow from a low angle with selective focus (f/4-f/5.6) to guide attention to the main action. Lit by street lamps casting soft pools of light, creating deep shadows. Style reference: Film noir aesthetic, with strong contrasts and moody lighting. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 2.35:1\n- **Frame Rate:** 24fps\n- **Audio:** Soft footsteps echoing in the quiet night\n- **Camera:** Low-angle steadicam follow with f/4 aperture\n- **Lighting:** Street lamps providing soft, directional light\n- **Style:** Film Noir, inspired by classic black-and-white detective films\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** A high-angle shot capturing the person walking along the street, emphasizing the deserted surroundings.\n- **Variation 2 (Cool Tone Lighting Variation):** Using cool-toned street lamps to create a more detached and eerie atmosphere.",
+      "generatedAt": "2025-12-23T04:29:36.526Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9964,
       "error": null
     },
     {
       "id": "j7Wpz9eRhL3zxcniUveI",
       "input": "subject: man with vintage motorcycle in restoration garage, action: adjusting carburetor with precision tools, mood: warm nostalgic amber glow",
-      "output": "Medium Close-Up of a man with concentrated expression, precision tools, and vintage motorcycle adjusting carburetor with precision tools in a restoration garage. The camera uses Static Tripod from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by soft amber glow from overhead lights. Style reference: Kodak Portra 400 for warm tones. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** natural ambience of the workshop\n- **Camera:** Medium Close-Up on 85mm with shallow focus f/2.8\n- **Lighting:** Soft amber glow from overhead lights, casting warm highlights on the motorcycle and tools\n- **Style:** Shot on Kodak Portra 400, evoking a warm, nostalgic aesthetic\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Different Camera):** Medium Close-Up of a man with concentrated expression and precision tools adjusting carburetor with precision tools in a restoration garage. The camera uses Static Tripod from a bird's-eye view. Lit by soft amber glow from overhead lights. Style reference: Kodak Portra 400 for warm tones.\n- **Variation 2 (Different Lighting):** Medium Close-Up of a man with concentrated expression and precision tools adjusting carburetor with precision tools in a restoration garage. Lit by low-key lighting with a single warm key light from the side. The camera uses Static Tripod from a low angle. Style reference: Kodak Portra 400 for warm tones.",
-      "generatedAt": "2025-12-22T23:01:38.287Z",
+      "output": "Medium Close-Up of a man with grease-stained hands, rolled-up sleeves, and old leather tool belt adjusting the carburetor with precision tools in a restoration garage filled with vintage motorcycles and scattered tools. The camera uses static tripod from a low angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by warm amber glow from overhead lamps, casting soft shadows and highlighting metal surfaces. Style reference: Nostalgic, reminiscent of classic garage culture. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps\n- **Audio:** Soft background music with light tool sounds\n- **Camera:** Low-angle static tripod with 50mm lens at f/2.0\n- **Lighting:** Overhead amber lamps creating a warm, nostalgic glow\n- **Style:** Warm, nostalgic aesthetic reminiscent of classic garage culture\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (High-Angle Variation):** Capture from a high angle, looking down at the man's hands and tools.\n- **Variation 2 (Cool Lighting Variation):** Use cool blue lighting to contrast with the warm amber glow, creating a more modern feel.",
+      "generatedAt": "2025-12-23T04:29:46.889Z",
       "optimizerVersion": "v2-two-stage",
-      "latencyMs": 10982,
+      "latencyMs": 9360,
+      "error": null
+    },
+    {
+      "id": "m5XlvabPqZarqAgKpDoF",
+      "input": "subject: animal, action: exploding, event: product launch",
+      "output": "Extreme Close-Up of an animal with fur singed by explosion, wide-open eyes, and vibrant feathers exploding into a burst of confetti in a well-lit venue filled with excited attendees. The camera uses crash zoom at a Dutch angle with shallow depth of field (f/1.8-f/2.8) to isolate the main subject. Lit by bright stage lights with colorful gels illuminating the scene. Style reference: High-energy commercial, vibrant color palette. Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.\n\n**TECHNICAL SPECS**\n- **Duration:** 6s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 60fps\n- **Audio:** Crowd gasp and confetti burst sound\n- **Camera:** Dutch Angle, crash zoom, 85mm lens, f/2.8\n- **Lighting:** Stage lights with colorful gels\n- **Style:** Vibrant commercial style, high-energy\n\n**ALTERNATIVE APPROACHES**\n- **Variation 1 (Alternative Angle):** Use a high-angle shot to capture the animal exploding from above, showcasing the crowd's reaction below.\n- **Variation 2 (Alternative Lighting):** Use dramatic spotlighting to highlight the animal's explosion, casting sharp shadows for a theatrical effect.",
+      "generatedAt": "2025-12-23T04:29:57.023Z",
+      "optimizerVersion": "v2-two-stage",
+      "latencyMs": 9135,
       "error": null
     }
   ]

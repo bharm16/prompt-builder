@@ -14,41 +14,19 @@
 import { existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import {
+  CATEGORY_NAMES,
+  SECTION_NAMES,
+  type CategoryName,
+  type ErrorsBySection,
+  type GranularityErrorType,
+  type Snapshot,
+} from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const SNAPSHOTS_DIR = join(__dirname, 'snapshots');
-
-interface Snapshot {
-  timestamp: string;
-  promptCount: number;
-  sourceFile: string;
-  results: Array<{
-    promptId: string;
-    input: string;
-    spanCount: number;
-    judgeResult: {
-      scores: {
-        coverage: number;
-        precision: number;
-        granularity: number;
-        taxonomy: number;
-        technicalSpecs: number;
-      };
-      totalScore: number;
-    } | null;
-    error: string | null;
-  }>;
-  summary: {
-    avgScore: number;
-    avgSpanCount: number;
-    scoreDistribution: Record<string, number>;
-    commonMissedElements: string[];
-    commonIncorrectExtractions: string[];
-    errorCount: number;
-  };
-}
 
 interface Comparison {
   baseline: Snapshot;
@@ -72,6 +50,29 @@ interface Comparison {
   newErrors: string[];
   fixedErrors: string[];
   categoryDeltas: Record<string, number>;
+  categoryScoreDeltas: Record<CategoryName, { coverage: number; precision: number }>;
+  sectionErrorRateDeltas: ErrorsBySection;
+  newTaxonomyConfusions: Array<{
+    assignedRole: string;
+    expectedRole: string;
+    count: number;
+  }>;
+  resolvedTaxonomyConfusions: Array<{
+    assignedRole: string;
+    expectedRole: string;
+    count: number;
+  }>;
+  granularityDeltas: Record<GranularityErrorType, number>;
+  newGranularityIssues: Array<{
+    reason: GranularityErrorType;
+    count: number;
+    examples: string[];
+  }>;
+  resolvedGranularityIssues: Array<{
+    reason: GranularityErrorType;
+    count: number;
+    examples: string[];
+  }>;
 }
 
 function loadSnapshot(path: string): Snapshot {
@@ -81,10 +82,79 @@ function loadSnapshot(path: string): Snapshot {
   return JSON.parse(readFileSync(path, 'utf-8'));
 }
 
+function createEmptyCategoryScores(): Record<CategoryName, { coverage: number; precision: number }> {
+  return {
+    shot: { coverage: 0, precision: 0 },
+    subject: { coverage: 0, precision: 0 },
+    action: { coverage: 0, precision: 0 },
+    environment: { coverage: 0, precision: 0 },
+    lighting: { coverage: 0, precision: 0 },
+    camera: { coverage: 0, precision: 0 },
+    style: { coverage: 0, precision: 0 },
+    technical: { coverage: 0, precision: 0 },
+    audio: { coverage: 0, precision: 0 },
+  };
+}
+
+function createEmptyErrorsBySection(): ErrorsBySection {
+  return {
+    main: { falsePositives: 0, missed: 0 },
+    technicalSpecs: { falsePositives: 0, missed: 0 },
+    alternatives: { falsePositives: 0, missed: 0 },
+  };
+}
+
+function normalizeSnapshot(snapshot: Snapshot): Snapshot {
+  return {
+    ...snapshot,
+    summary: {
+      ...snapshot.summary,
+      avgCategoryScores: snapshot.summary.avgCategoryScores ?? createEmptyCategoryScores(),
+      topTaxonomyErrors: snapshot.summary.topTaxonomyErrors ?? [],
+      topGranularityErrors: snapshot.summary.topGranularityErrors ?? [],
+      errorsBySection: snapshot.summary.errorsBySection ?? createEmptyErrorsBySection(),
+    },
+  };
+}
+
+function computeSectionErrorRates(snapshot: Snapshot): ErrorsBySection {
+  const counts = snapshot.summary.errorsBySection ?? createEmptyErrorsBySection();
+  const promptCount = snapshot.promptCount > 0 ? snapshot.promptCount : 0;
+
+  const rate = (value: number) => (promptCount > 0 ? value / promptCount : 0);
+
+  return {
+    main: {
+      falsePositives: rate(counts.main.falsePositives),
+      missed: rate(counts.main.missed),
+    },
+    technicalSpecs: {
+      falsePositives: rate(counts.technicalSpecs.falsePositives),
+      missed: rate(counts.technicalSpecs.missed),
+    },
+    alternatives: {
+      falsePositives: rate(counts.alternatives.falsePositives),
+      missed: rate(counts.alternatives.missed),
+    },
+  };
+}
+
+function buildTaxonomyErrorMap(snapshot: Snapshot): Map<string, { assignedRole: string; expectedRole: string; count: number }> {
+  const map = new Map<string, { assignedRole: string; expectedRole: string; count: number }>();
+  for (const item of snapshot.summary.topTaxonomyErrors ?? []) {
+    const key = `${item.assignedRole}|||${item.expectedRole}`;
+    map.set(key, item);
+  }
+  return map;
+}
+
 function compareSnapshots(baseline: Snapshot, current: Snapshot): Comparison {
+  const normalizedBaseline = normalizeSnapshot(baseline);
+  const normalizedCurrent = normalizeSnapshot(current);
+
   // Build lookup maps
-  const baselineMap = new Map(baseline.results.map(r => [r.promptId, r]));
-  const currentMap = new Map(current.results.map(r => [r.promptId, r]));
+  const baselineMap = new Map(normalizedBaseline.results.map(r => [r.promptId, r]));
+  const currentMap = new Map(normalizedCurrent.results.map(r => [r.promptId, r]));
 
   const regressions: Comparison['regressions'] = [];
   const improvements: Comparison['improvements'] = [];
@@ -156,17 +226,112 @@ function compareSnapshots(baseline: Snapshot, current: Snapshot): Comparison {
     }
   }
 
+  const categoryScoreDeltas = {} as Record<CategoryName, { coverage: number; precision: number }>;
+  for (const category of CATEGORY_NAMES) {
+    const baseScores = normalizedBaseline.summary.avgCategoryScores?.[category] || { coverage: 0, precision: 0 };
+    const currScores = normalizedCurrent.summary.avgCategoryScores?.[category] || { coverage: 0, precision: 0 };
+    categoryScoreDeltas[category] = {
+      coverage: currScores.coverage - baseScores.coverage,
+      precision: currScores.precision - baseScores.precision,
+    };
+  }
+
+  const baselineSectionRates = computeSectionErrorRates(normalizedBaseline);
+  const currentSectionRates = computeSectionErrorRates(normalizedCurrent);
+  const sectionErrorRateDeltas: ErrorsBySection = {
+    main: {
+      falsePositives: currentSectionRates.main.falsePositives - baselineSectionRates.main.falsePositives,
+      missed: currentSectionRates.main.missed - baselineSectionRates.main.missed,
+    },
+    technicalSpecs: {
+      falsePositives: currentSectionRates.technicalSpecs.falsePositives - baselineSectionRates.technicalSpecs.falsePositives,
+      missed: currentSectionRates.technicalSpecs.missed - baselineSectionRates.technicalSpecs.missed,
+    },
+    alternatives: {
+      falsePositives: currentSectionRates.alternatives.falsePositives - baselineSectionRates.alternatives.falsePositives,
+      missed: currentSectionRates.alternatives.missed - baselineSectionRates.alternatives.missed,
+    },
+  };
+
+  const baselineTaxonomyMap = buildTaxonomyErrorMap(normalizedBaseline);
+  const currentTaxonomyMap = buildTaxonomyErrorMap(normalizedCurrent);
+  const newTaxonomyConfusions: Comparison['newTaxonomyConfusions'] = [];
+  const resolvedTaxonomyConfusions: Comparison['resolvedTaxonomyConfusions'] = [];
+
+  for (const [key, value] of currentTaxonomyMap.entries()) {
+    if (!baselineTaxonomyMap.has(key)) {
+      newTaxonomyConfusions.push(value);
+    }
+  }
+
+  for (const [key, value] of baselineTaxonomyMap.entries()) {
+    if (!currentTaxonomyMap.has(key)) {
+      resolvedTaxonomyConfusions.push(value);
+    }
+  }
+
+  newTaxonomyConfusions.sort((a, b) => b.count - a.count);
+  resolvedTaxonomyConfusions.sort((a, b) => b.count - a.count);
+
+  // Granularity error deltas
+  const baselineGranularityMap = new Map<GranularityErrorType, { count: number; examples: string[] }>();
+  const currentGranularityMap = new Map<GranularityErrorType, { count: number; examples: string[] }>();
+
+  for (const item of normalizedBaseline.summary.topGranularityErrors ?? []) {
+    baselineGranularityMap.set(item.reason, { count: item.count, examples: item.examples });
+  }
+  for (const item of normalizedCurrent.summary.topGranularityErrors ?? []) {
+    currentGranularityMap.set(item.reason, { count: item.count, examples: item.examples });
+  }
+
+  const granularityDeltas = {} as Record<GranularityErrorType, number>;
+  const allReasons: GranularityErrorType[] = ['too_fine', 'too_coarse', 'other'];
+  for (const reason of allReasons) {
+    const baseCount = baselineGranularityMap.get(reason)?.count ?? 0;
+    const currCount = currentGranularityMap.get(reason)?.count ?? 0;
+    granularityDeltas[reason] = currCount - baseCount;
+  }
+
+  const newGranularityIssues: Comparison['newGranularityIssues'] = [];
+  const resolvedGranularityIssues: Comparison['resolvedGranularityIssues'] = [];
+
+  for (const [reason, data] of currentGranularityMap.entries()) {
+    if (!baselineGranularityMap.has(reason)) {
+      newGranularityIssues.push({ reason, count: data.count, examples: data.examples });
+    }
+  }
+
+  for (const [reason, data] of baselineGranularityMap.entries()) {
+    if (!currentGranularityMap.has(reason)) {
+      resolvedGranularityIssues.push({ reason, count: data.count, examples: data.examples });
+    }
+  }
+
+  newGranularityIssues.sort((a, b) => b.count - a.count);
+  resolvedGranularityIssues.sort((a, b) => b.count - a.count);
+
   return {
-    baseline,
-    current,
-    scoreDelta: current.summary.avgScore - baseline.summary.avgScore,
-    spanCountDelta: current.summary.avgSpanCount - baseline.summary.avgSpanCount,
+    baseline: normalizedBaseline,
+    current: normalizedCurrent,
+    scoreDelta: normalizedCurrent.summary.avgScore - normalizedBaseline.summary.avgScore,
+    spanCountDelta: normalizedCurrent.summary.avgSpanCount - normalizedBaseline.summary.avgSpanCount,
     regressions,
     improvements,
     newErrors,
     fixedErrors,
-    categoryDeltas
+    categoryDeltas,
+    categoryScoreDeltas,
+    sectionErrorRateDeltas,
+    newTaxonomyConfusions,
+    resolvedTaxonomyConfusions,
+    granularityDeltas,
+    newGranularityIssues,
+    resolvedGranularityIssues,
   };
+}
+
+function formatDelta(value: number, digits = 3): string {
+  return value >= 0 ? `+${value.toFixed(digits)}` : value.toFixed(digits);
 }
 
 function printComparison(comp: Comparison): void {
@@ -190,13 +355,78 @@ function printComparison(comp: Comparison): void {
   console.log();
 
   // Category deltas
-  console.log('📈 BY CATEGORY:');
+  console.log('📈 BY RUBRIC:');
   for (const [cat, delta] of Object.entries(comp.categoryDeltas)) {
-    const deltaStr = delta >= 0 ? `+${delta.toFixed(3)}` : delta.toFixed(3);
+    const deltaStr = formatDelta(delta, 3);
     const indicator = delta > 0.1 ? '✅' : delta < -0.1 ? '❌' : '➖';
     console.log(`  ${indicator} ${cat.padEnd(15)} ${deltaStr}`);
   }
   console.log();
+
+  console.log('CATEGORY SCORE CHANGE (avg coverage/precision):');
+  for (const category of CATEGORY_NAMES) {
+    const delta = comp.categoryScoreDeltas[category];
+    console.log(
+      `  ${category.padEnd(12)} cov ${formatDelta(delta.coverage, 2)}  prec ${formatDelta(delta.precision, 2)}`
+    );
+  }
+  console.log();
+
+  console.log('SECTION ERROR RATE CHANGE (per prompt):');
+  for (const section of SECTION_NAMES) {
+    const delta = comp.sectionErrorRateDeltas[section];
+    console.log(
+      `  ${section.padEnd(15)} FP ${formatDelta(delta.falsePositives, 3)}  Missed ${formatDelta(delta.missed, 3)}`
+    );
+  }
+  console.log();
+
+  if (comp.newTaxonomyConfusions.length > 0) {
+    console.log('NEW TAXONOMY CONFUSIONS:');
+    for (const item of comp.newTaxonomyConfusions.slice(0, 5)) {
+      console.log(`  - ${item.assignedRole} -> ${item.expectedRole} (${item.count}x)`);
+    }
+    console.log();
+  }
+
+  if (comp.resolvedTaxonomyConfusions.length > 0) {
+    console.log('RESOLVED TAXONOMY CONFUSIONS:');
+    for (const item of comp.resolvedTaxonomyConfusions.slice(0, 5)) {
+      console.log(`  - ${item.assignedRole} -> ${item.expectedRole} (${item.count}x)`);
+    }
+    console.log();
+  }
+
+  // Granularity deltas
+  const hasGranularityChanges = Object.values(comp.granularityDeltas).some((d) => d !== 0);
+  if (hasGranularityChanges) {
+    console.log('📐 GRANULARITY ISSUE CHANGE:');
+    for (const [reason, delta] of Object.entries(comp.granularityDeltas)) {
+      if (delta !== 0) {
+        const indicator = delta > 0 ? '❌' : '✅';
+        console.log(`  ${indicator} ${reason}: ${formatDelta(delta, 0)}`);
+      }
+    }
+    console.log();
+  }
+
+  if (comp.newGranularityIssues.length > 0) {
+    console.log('NEW GRANULARITY ISSUES:');
+    for (const item of comp.newGranularityIssues) {
+      const example = item.examples[0] ? ` (e.g., "${item.examples[0]}")` : '';
+      console.log(`  - ${item.reason}: ${item.count}x${example}`);
+    }
+    console.log();
+  }
+
+  if (comp.resolvedGranularityIssues.length > 0) {
+    console.log('RESOLVED GRANULARITY ISSUES:');
+    for (const item of comp.resolvedGranularityIssues) {
+      const example = item.examples[0] ? ` (e.g., "${item.examples[0]}")` : '';
+      console.log(`  - ${item.reason}: ${item.count}x${example}`);
+    }
+    console.log();
+  }
 
   // Regressions
   if (comp.regressions.length > 0) {
