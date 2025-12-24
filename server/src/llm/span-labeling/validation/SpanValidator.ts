@@ -2,6 +2,7 @@ import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
 import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
 import { resolveOverlaps } from '../processing/OverlapResolver.js';
 import { filterHeaders } from '../processing/HeaderFilter.js';
+import { filterNonVisualSpans } from '../processing/VisualOnlyFilter.js';
 import { filterByConfidence } from '../processing/ConfidenceFilter.js';
 import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
 import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.js';
@@ -116,9 +117,15 @@ export function validateSpans({
   // Phase 4.5: Filter out section headers and labels
   const { spans: headersFiltered, notes: headerNotes } = filterHeaders(resolved);
 
+  // Phase 4.75: Filter out non-visual spans and alternative sections
+  const { spans: nonVisualFiltered, notes: nonVisualNotes } = filterNonVisualSpans(
+    headersFiltered,
+    text
+  );
+
   // Phase 5: Filter by confidence
   const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
-    headersFiltered,
+    nonVisualFiltered,
     options.minConfidence ?? 0
   );
 
@@ -147,6 +154,7 @@ export function validateSpans({
     ...dedupeNotes,
     ...overlapNotes,
     ...headerNotes,
+    ...nonVisualNotes,
     ...confidenceNotes,
     ...truncationNotes,
   ].filter(Boolean);

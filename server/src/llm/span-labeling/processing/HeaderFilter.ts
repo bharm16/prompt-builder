@@ -72,6 +72,7 @@ const STANDALONE_LABELS = new Set([
   'alternatives',
   'variations',
   'style reference',
+  'film stock',
   
   // Angle/movement labels (when standalone)
   'eye-level',

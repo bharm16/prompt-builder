@@ -3,7 +3,7 @@ import { getParentCategory } from '#shared/taxonomy.ts';
 import { wordCount } from '../utils/textUtils.js';
 import { normalizeSpan } from '../processing/SpanNormalizer.js';
 import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import type { LLMSpan, ValidationPolicy } from '../types.js';
+import type { ValidationPolicy } from '../types.js';
 import type { SpanInput, NormalizedSpan } from '../processing/SpanNormalizer.js';
 
 /**
@@ -18,6 +18,21 @@ function normalizeSpanTextForLookup(value: string): string {
     .replace(/\*\*/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Validates and corrects span roles. 
+ * Formerly contained brittle regex overrides; now relies on the upstream model
+ * and strict taxonomy validation.
+ */
+function remapSpanRole(text: string, role: string): { role: string; note?: string } {
+  if (!text || !role) return { role };
+  
+  // Logic removed: Brittle regex overrides (FOCUS_PATTERN, etc.) were deleting
+  // valid spans that didn't match the regex. Trust the model's output or
+  // valid taxonomy roles.
+  
+  return { role };
 }
 
 export interface NormalizeAndCorrectResult {
@@ -112,11 +127,18 @@ export function normalizeAndCorrectSpans(
     }
 
     // Create corrected span (immutable)
+    const spanText = typeof spanObj.text === 'string' ? spanObj.text : String(spanObj.text ?? '');
+    const spanRole = typeof spanObj.role === 'string' ? spanObj.role : String(spanObj.role ?? '');
+    const remapped = remapSpanRole(spanText, spanRole);
+    if (remapped.note) {
+      autoFixNotes.push(`${label} ${remapped.note}`);
+    }
+
     const correctedSpan: SpanInput = {
-      text: typeof spanObj.text === 'string' ? spanObj.text : String(spanObj.text ?? ''),
+      text: spanText,
       start: corrected.start,
       end: corrected.end,
-      role: typeof spanObj.role === 'string' ? spanObj.role : String(spanObj.role ?? ''),
+      role: remapped.role,
       ...(typeof spanObj.confidence === 'number' ? { confidence: spanObj.confidence } : {}),
     };
 
@@ -172,7 +194,6 @@ export function normalizeAndCorrectSpans(
     notes: [...validationNotes, ...autoFixNotes],
   };
 }
-
 
 
 

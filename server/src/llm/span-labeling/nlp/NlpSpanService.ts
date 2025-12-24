@@ -17,6 +17,7 @@ import { Worker } from 'worker_threads';
 import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, VALID_CATEGORIES, getParentCategory } from '#shared/taxonomy.ts';
 import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig';
+import { SECTION_HEADER_WORDS } from '../config/SemanticConfig.js';
 import type {
   NlpSpan,
   ExtractionOptions,
@@ -72,17 +73,8 @@ function buildAhoCorasickAutomaton(): {
 
 const { ac: ahoCorasick, patternToTaxonomy } = buildAhoCorasickAutomaton();
 
-const AMBIGUOUS_CAMERA_TERMS = new Set([
-  'pan', 'roll', 'tilt', 'zoom', 'drone', 'crane', 'boom', 'truck'
-]);
-
-function hasCameraContext(text: string, start: number, end: number): boolean {
-  const contextRadius = 50;
-  const contextStart = Math.max(0, start - contextRadius);
-  const contextEnd = Math.min(text.length, end + contextRadius);
-  const context = text.substring(contextStart, contextEnd).toLowerCase();
-  return /(camera|shot|lens|frame|cinematography|cinematic|filming|video|footage)/.test(context);
-}
+// Brittle camera context heuristic removed as it was part of the fragile logic.
+// We now rely on the dictionary precision or GLiNER context.
 
 const WORD_CHAR_REGEX = /[A-Za-z0-9]/;
 
@@ -200,374 +192,9 @@ const PATTERN_DEFINITIONS: Array<{
   },
 ];
 
-const ACTION_MAX_TOKENS = 8;
-const ACTION_STOP_WORDS = new Set([
-  'and',
-  'then',
-  'while',
-  'as',
-  'but',
-  'or',
-  'nor',
-  'yet',
-  'so',
-  'because',
-  'although',
-  'though',
-  'whereas',
-  'if',
-  'when',
-]);
-const ACTION_ADVERB_BLACKLIST = new Set(['family']);
-
-const IRREGULAR_VERB_FORMS: Record<string, string[]> = {
-  run: ['run', 'runs', 'running', 'ran'],
-  sit: ['sit', 'sits', 'sitting', 'sat'],
-  stand: ['stand', 'stands', 'standing', 'stood'],
-  lie: ['lie', 'lies', 'lying', 'lay'],
-  fly: ['fly', 'flies', 'flying', 'flew'],
-  swim: ['swim', 'swims', 'swimming', 'swam'],
-  drive: ['drive', 'drives', 'driving', 'drove'],
-  ride: ['ride', 'rides', 'riding', 'rode'],
-  hold: ['hold', 'holds', 'holding', 'held'],
-  catch: ['catch', 'catches', 'catching', 'caught'],
-  throw: ['throw', 'throws', 'throwing', 'threw'],
-  kneel: ['kneel', 'kneels', 'kneeling', 'knelt'],
-  dive: ['dive', 'dives', 'diving', 'dove'],
-};
-
-function buildVerbForms(base: string): string[] {
-  const lower = base.toLowerCase();
-  if (IRREGULAR_VERB_FORMS[lower]) {
-    return IRREGULAR_VERB_FORMS[lower];
-  }
-
-  const forms = new Set<string>([lower]);
-
-  if (lower.endsWith('y') && !/[aeiou]y$/.test(lower)) {
-    forms.add(`${lower.slice(0, -1)}ies`);
-    forms.add(`${lower.slice(0, -1)}ied`);
-    forms.add(`${lower.slice(0, -1)}ying`);
-    return Array.from(forms);
-  }
-
-  if (lower.endsWith('e') && !lower.endsWith('ee')) {
-    forms.add(`${lower}s`);
-    forms.add(`${lower}d`);
-    forms.add(`${lower.slice(0, -1)}ing`);
-    return Array.from(forms);
-  }
-
-  forms.add(`${lower}s`);
-  forms.add(`${lower}ed`);
-  forms.add(`${lower}ing`);
-  return Array.from(forms);
-}
-
-const ACTION_VERB_ROLE = new Map<string, 'action.movement' | 'action.state' | 'action.gesture'>();
-
-const ACTION_MOVEMENT_BASE = [
-  'walk',
-  'run',
-  'jog',
-  'sprint',
-  'stride',
-  'stroll',
-  'wander',
-  'march',
-  'hike',
-  'climb',
-  'crawl',
-  'swim',
-  'fly',
-  'dance',
-  'jump',
-  'leap',
-  'hop',
-  'skip',
-  'spin',
-  'twirl',
-  'turn',
-  'rotate',
-  'flip',
-  'roll',
-  'slide',
-  'glide',
-  'skate',
-  'surf',
-  'dive',
-  'drive',
-  'ride',
-  'cycle',
-  'pedal',
-  'carry',
-  'hold',
-  'lift',
-  'push',
-  'pull',
-  'drag',
-  'throw',
-  'catch',
-  'grab',
-  'grip',
-  'reach',
-  'stretch',
-  'kick',
-  'punch',
-  'swing',
-  'toss',
-  'practice',
-  'rehearse',
-  'arrange',
-  'mend',
-  'study',
-  'pound',
-  'carve',
-  'shape',
-  'play',
-  'eat',
-  'prowl',
-  'float',
-  'approach',
-  'enter',
-  'exit',
-  'move',
-  'follow',
-  'chase',
-  'wait',
-  'pan',
-  'steady',
-  'tighten',
-  'shade',
-  'plate',
-];
-
-const ACTION_STATE_BASE = [
-  'stand',
-  'sit',
-  'kneel',
-  'lean',
-  'crouch',
-  'pose',
-  'rest',
-  'lounge',
-  'lie',
-  'perch',
-  'squat',
-];
-
-const ACTION_GESTURE_BASE = [
-  'wave',
-  'point',
-  'nod',
-  'shake',
-  'smile',
-  'grin',
-  'laugh',
-  'gesture',
-  'salute',
-  'bow',
-  'clap',
-  'raise',
-  'lower',
-  'beckon',
-];
-
-for (const verb of ACTION_MOVEMENT_BASE) {
-  for (const form of buildVerbForms(verb)) {
-    ACTION_VERB_ROLE.set(form, 'action.movement');
-  }
-}
-
-for (const verb of ACTION_STATE_BASE) {
-  for (const form of buildVerbForms(verb)) {
-    ACTION_VERB_ROLE.set(form, 'action.state');
-  }
-}
-
-for (const verb of ACTION_GESTURE_BASE) {
-  for (const form of buildVerbForms(verb)) {
-    ACTION_VERB_ROLE.set(form, 'action.gesture');
-  }
-}
-
-const ACTION_VERB_FORMS = new Set(ACTION_VERB_ROLE.keys());
-const ACTION_VERB_ALLOWED_BASE = new Set(['wait']);
-const ACTION_VERB_ALLOWED_FORMS = new Set(
-  Array.from(ACTION_VERB_ALLOWED_BASE).flatMap((verb) => buildVerbForms(verb))
-);
-const IRREGULAR_VERB_FORMS_SET = new Set(
-  Object.values(IRREGULAR_VERB_FORMS).flatMap((forms) => forms)
-);
-
-const ACTION_STANDALONE_BASE = [
-  'walk',
-  'run',
-  'jog',
-  'sprint',
-  'stroll',
-  'wander',
-  'march',
-  'hike',
-  'climb',
-  'crawl',
-  'swim',
-  'fly',
-  'dance',
-  'jump',
-  'leap',
-  'hop',
-  'skip',
-  'spin',
-  'twirl',
-  'float',
-  'drive',
-  'ride',
-  'stand',
-  'sit',
-  'kneel',
-  'crouch',
-  'lean',
-  'pose',
-  'rest',
-  'lounge',
-  'lie',
-  'perch',
-  'squat',
-  'wave',
-  'point',
-  'nod',
-  'shake',
-  'smile',
-  'grin',
-  'laugh',
-  'clap',
-  'bow',
-  'salute',
-  'beckon',
-  'raise',
-  'lower',
-];
-
-const ACTION_STANDALONE_FORMS = new Set(
-  ACTION_STANDALONE_BASE.flatMap((verb) => buildVerbForms(verb))
-);
-
-const CAMERA_VERB_BASE = ['pan', 'tilt', 'zoom', 'track', 'dolly', 'crane', 'follow', 'sweep', 'truck', 'pedestal'];
-const CAMERA_VERB_FORMS = new Set(
-  CAMERA_VERB_BASE.flatMap((verb) => buildVerbForms(verb))
-);
-
-function tokenizeWords(text: string): Array<{ text: string; lower: string; start: number; end: number }> {
-  const tokens: Array<{ text: string; lower: string; start: number; end: number }> = [];
-  const wordRegex = /\b[\p{L}\p{N}'-]+\b/gu;
-  let match: RegExpExecArray | null;
-  wordRegex.lastIndex = 0;
-
-  while ((match = wordRegex.exec(text)) !== null) {
-    const word = match[0];
-    tokens.push({
-      text: word,
-      lower: word.toLowerCase(),
-      start: match.index,
-      end: match.index + word.length,
-    });
-  }
-
-  return tokens;
-}
-
-function isAdverbToken(token: { lower: string }): boolean {
-  if (!token.lower.endsWith('ly')) return false;
-  if (token.lower.length <= 3) return false;
-  return !ACTION_ADVERB_BLACKLIST.has(token.lower);
-}
-
-function isLikelyVerbToken(token: { lower: string }): boolean {
-  if (token.lower.endsWith('ing') || token.lower.endsWith('ed') || token.lower.endsWith('s')) {
-    return true;
-  }
-  if (ACTION_VERB_ALLOWED_BASE.has(token.lower)) return true;
-  return IRREGULAR_VERB_FORMS_SET.has(token.lower);
-}
-
-function hasHardBoundary(text: string, prevEnd: number, nextStart: number): boolean {
-  const between = text.slice(prevEnd, nextStart);
-  return /[.,!?;:\n\r]/.test(between);
-}
-
-function extractActionSpans(text: string): NlpSpan[] {
-  const spans: NlpSpan[] = [];
-  const tokens = tokenizeWords(text);
-
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    if (!token) continue;
-    const role = ACTION_VERB_ROLE.get(token.lower);
-    if (!role) continue;
-    if (!isLikelyVerbToken(token)) continue;
-
-    if (CAMERA_VERB_FORMS.has(token.lower) && hasCameraContext(text, token.start, token.end)) {
-      continue;
-    }
-
-    let startIndex = i;
-    const prevToken = tokens[i - 1];
-    if (i > 0 && prevToken && isAdverbToken(prevToken)) {
-      startIndex = i - 1;
-    }
-
-    let endIndex = i;
-    let usedTokens = 1;
-
-    for (let j = i + 1; j < tokens.length && usedTokens < ACTION_MAX_TOKENS; j++) {
-      const prevTok = tokens[j - 1];
-      const currTok = tokens[j];
-      if (!prevTok || !currTok) break;
-      if (hasHardBoundary(text, prevTok.end, currTok.start)) break;
-      if (ACTION_STOP_WORDS.has(currTok.lower)) break;
-      if (ACTION_VERB_FORMS.has(currTok.lower)) break;
-
-      endIndex = j;
-      usedTokens += 1;
-    }
-
-    let hasNonAdverbAfterVerb = false;
-    for (let j = i + 1; j <= endIndex; j++) {
-      const tok = tokens[j];
-      if (tok && !isAdverbToken(tok)) {
-        hasNonAdverbAfterVerb = true;
-        break;
-      }
-    }
-
-    if (!hasNonAdverbAfterVerb) {
-      const verbForm = token.lower;
-      if (!ACTION_STANDALONE_FORMS.has(verbForm) && !ACTION_VERB_ALLOWED_FORMS.has(verbForm)) {
-        continue;
-      }
-    }
-
-    const startToken = tokens[startIndex];
-    const endToken = tokens[endIndex];
-    if (!startToken || !endToken) continue;
-    const start = startToken.start;
-    const end = endToken.end;
-    const phrase = text.slice(start, end).trim();
-    if (!phrase) continue;
-
-    spans.push({
-      text: phrase,
-      role,
-      confidence: 0.62,
-      start,
-      end,
-      source: 'heuristic',
-    });
-  }
-
-  return spans;
-}
+// NOTE: Brittle heuristic action extraction (extractActionSpans) and its 
+// associated lists (ACTION_MOVEMENT_BASE, etc.) have been removed.
+// We now rely on GLiNER (Tier 2) to extract actions semantically.
 
 function extractPatternSpans(text: string): NlpSpan[] {
   const spans: NlpSpan[] = [];
@@ -618,15 +245,8 @@ function extractClosedVocabulary(text: string): NlpSpan[] {
         continue;
       }
       
-      if (info.taxonomyId === 'camera.movement' && AMBIGUOUS_CAMERA_TERMS.has(pattern)) {
-        const beforeContext = text.substring(Math.max(0, start - 20), start).toLowerCase();
-        if (/(frying|sauté|sauce|iron|bread|dinner|hair)\s*$/.test(beforeContext)) {
-          continue;
-        }
-        if (!hasCameraContext(text, start, end)) {
-          continue;
-        }
-      }
+      // Removed "Ambiguous Camera Terms" check. If it's in the vocab, we trust it.
+      // Or rely on LLM to filter false positives later.
       
       spans.push({
         text: matchedText,
@@ -640,7 +260,7 @@ function extractClosedVocabulary(text: string): NlpSpan[] {
   }
 
   spans.push(...extractPatternSpans(text));
-  spans.push(...extractActionSpans(text));
+  // Removed extractActionSpans(text) call
   
   return spans;
 }
@@ -1222,32 +842,6 @@ async function extractOpenVocabulary(text: string): Promise<NlpSpan[]> {
 // =============================================================================
 // SECTION HEADER FILTER
 // =============================================================================
-
-/**
- * Common section header labels that should not be extracted as spans.
- * These appear in structured prompts as headers like "**Camera:**" or "## Style"
- */
-const SECTION_HEADER_WORDS = new Set([
-  'camera',
-  'style',
-  'audio',
-  'sound',
-  'lighting',
-  'duration',
-  'technical',
-  'specs',
-  'specifications',
-  'environment',
-  'subject',
-  'action',
-  'shot',
-  'movement',
-  'composition',
-  'framing',
-  'alternatives',
-  'notes',
-  'description',
-]);
 
 /**
  * Check if a span appears to be a section header rather than actual content.
