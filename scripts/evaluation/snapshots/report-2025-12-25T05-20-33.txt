@@ -1,0 +1,107 @@
+Evaluation Report - 2025-12-25T05:20:33.796Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      18.9/25
+  Average Span Count: 24.7
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████████████████████ 8
+  acceptable (13-17)   ████████ 2
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - maintain consistent framing and subject continuity (6x)
+  - static tripod (4x)
+  - soft shadows (4x)
+  - minimal motion blur (3x)
+  - consistent framing and subject continuity (3x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - windshield (2x)
+  - drenched botanical garden pathway (1x)
+  - naturalist aesthetic (1x)
+  - low-angle dolly (1x)
+  - bright natural daylight (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 3940 | P50: 3948 | P95: 4649 | P99: 4649
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: gathering fallen leaves into a canvas bag (action), casting playful shadows (lighting), Vibrant naturalist aesthetic (style), Cheerful rustle of leaves (audio), vibrant street mural alleyway (environment)
+  MINOR: gentle shadows (lighting), soft curls (subject), minimal motion blur (style), cozy rug (environment), minimal motion blur (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - camera: 14
+  - lighting: 10
+  - style: 8
+  - subject: 4
+  - action: 3
+  - audio: 3
+  - environment: 3
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         4.50 / 4.80
+  subject      3.80 / 4.00
+  action       3.40 / 4.20
+  environment  4.00 / 4.50
+  lighting     3.60 / 3.90
+  camera       3.50 / 3.80
+  style        3.50 / 3.30
+  technical    4.80 / 5.00
+  audio        4.30 / 4.60
+
+FALSE POSITIVE REASONS:
+  - section_header: 1
+      e.g.: - **Style:** Bright,
+  - abstract_concept: 6
+      e.g.: naturalist aesthetic, Naturalistic, Terrence Malick-inspired, playful aesthetic, naturalistic maritime aesthetic
+  - non_visual: 12
+      e.g.: drenched botanical garden pathway, low-angle dolly, parked car, windshield, windshield
+  - duplicate: 4
+      e.g.: window, handheld tracking, park, warm
+  - other: 4
+      e.g.: bright natural daylight, tattoos, murals, Natural daylight
+
+TOP TAXONOMY ERRORS:
+  - subject.identity → subject.appearance (2x) (e.g. "colorful leaves", "fallen leaves")
+  - camera.angle → camera.movement (2x) (e.g. "Low-angle handheld follow cam", "Low-angle handheld follow cam, 50mm")
+  - action.movement → action.gesture (2x) (e.g. "gazing thoughtfully", "gazing thoughtfully")
+  - audio.score → audio.ambient (1x) (e.g. "Ambient city sounds")
+  - style.aesthetic → camera.movement (1x) (e.g. "static shot")
+
+📐 GRANULARITY ISSUES:
+  - too_fine: 1x (e.g., "f/4-f/5.6")
+  - too_coarse: 1x (e.g., "golden retriever, bright red collar")
+
+ERRORS BY SECTION:
+  main            missed 40, falsePositives 15
+  technicalSpecs  missed 5, falsePositives 12
+  alternatives    missed 0, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   1.9% (3/156)
+    Failures: "tattoos" (subject.identity), "Terrence Malick-inspired" (subject.identity), "warm" (lighting.colorTemp)
+  medium 25.5% (13/51)
+    Failures: "drenched botanical garden pathway" (action.movement), "Natural daylight" (style.colorGrade), "parked car" (subject.identity)
+  low    27.5% (11/40)
+    Failures: "naturalist aesthetic" (lighting.quality), "low-angle dolly" (subject.identity), "bright natural daylight" (style.colorGrade)
+  Recommended minConfidence: 0.80
+
+🔍 WORST PERFORMERS (for debugging):
+  [16/25] "dog catching a frisbee"
+    Notes: The extraction missed some important elements like 'blue collar', 'static tripod', and 'motion blur minimal'. There were also some false positives and taxonomy errors, particularly in lighting and style categories. Technical specs were mostly well extracted.
+  [17/25] "grizzled fisherman with a weather-beaten face, casting a line into choppy waves, at rundown wooden pier at sunrise"
+    Notes: The extraction missed some important elements like the action of casting a line and audio details. Some non-visual elements were incorrectly extracted, and there were a few taxonomy errors. Technical specs were mostly well extracted.
+  [18/25] "young botanist with vibrant green gloves, gathering fallen leaves with a canvas bag, at sun-drenched botanical garden pathway"
+    Notes: The extraction missed some important elements like the action of gathering leaves and the playful shadows. There were also some false positives and taxonomy errors, particularly in subject and lighting categories. Technical specs were well extracted.
+
+================================================================================

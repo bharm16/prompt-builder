@@ -70,18 +70,32 @@ const JUDGE_SYSTEM_PROMPT = `You are evaluating span labeling quality for video 
 
 A span is a "visual control point" - a phrase that, if changed, would produce a visually different video.
 
+## Prompt Structure
+
+The prompts have THREE sections:
+1. **Main paragraph**: Dense description of the primary shot (shot type, subject, action, environment, lighting, camera, style)
+2. **TECHNICAL SPECS section**: Bulleted list with Duration, Aspect Ratio, Frame Rate, Audio, Camera, Lighting, Style
+3. **ALTERNATIVE APPROACHES section**: 2 variations describing alternate shots (different angles, lighting, etc.)
+
+Section headers like "**TECHNICAL SPECS**" and "**ALTERNATIVE APPROACHES**" are NOT visual content and should NOT be extracted.
+Variation labels like "**Variation 1 (Alternate Angle):**" are headers, not content.
+BUT the actual content within alternatives (e.g., "high-angle shot", "golden hour lighting") ARE visual control points and SHOULD be extracted.
+
 ## Evaluation Criteria (score each 1-5)
 
-1. Coverage (1-5): Did it extract ALL visual control points?
-   - Shot type, subjects, actions, environments, lighting, camera movements, style, technical specs, audio
-   - 5 = Comprehensive, nothing missed
+1. Coverage (1-5): Did it extract ALL visual control points from ALL sections?
+   - Main: Shot type, subjects, subject actions (physical movements BY subjects), environments, lighting, camera movements, style
+   - Technical Specs: Duration, fps/frame rate, aspect ratio, audio description, camera settings, lighting setup, style reference
+   - Alternatives: Shot types, angles, lighting variations described in alternative approaches
+   - Note: "actions" = what subjects physically DO (running, gazing). Framing/continuity = camera category.
+   - 5 = Comprehensive across all sections
    - 1 = Major elements missing
 
 2. Precision (1-5): Did it correctly SKIP abstract/non-renderable content?
-   - Skip: "determination", "inviting the viewer", "enhancing authenticity"
+   - Skip: "determination", "inviting the viewer", "enhancing authenticity", section headers, variation labels
    - Include: "focused demeanor" (visible expression), "gripping" (visible action)
    - 5 = Only extracted renderable elements
-   - 1 = Extracted many abstract concepts
+   - 1 = Extracted many abstract concepts or headers
 
 3. Granularity (1-5): Are span boundaries correct?
    - Not too fine: "soft" + "highlights" should be "soft highlights"
@@ -92,14 +106,15 @@ A span is a "visual control point" - a phrase that, if changed, would produce a 
 4. Taxonomy (1-5): Are roles assigned correctly?
    - camera.movement vs action.movement
    - shot.type vs camera.angle
+   - technical.duration vs technical.framerate
    - 5 = All roles correct
    - 1 = Many misclassifications
 
-5. Technical Specs (1-5): Did it extract format parameters?
-   - Duration, fps, aspect ratio, resolution
-   - Often in structured sections
-   - 5 = All specs extracted
-   - 1 = Specs ignored
+5. Technical Specs (1-5): Did it extract format parameters from the TECHNICAL SPECS section?
+   - Duration (e.g., "6s"), Frame Rate (e.g., "60fps"), Aspect Ratio (e.g., "16:9")
+   - Audio description, Camera settings (lens, aperture), Lighting setup, Style reference
+   - 5 = All specs extracted with correct roles
+   - 1 = Specs ignored or misclassified
 
 ## Error Types (diagnostics)
 
@@ -107,13 +122,23 @@ A span is a "visual control point" - a phrase that, if changed, would produce a 
   - Provide: text, expectedRole (taxonomy role), category, severity.
   - category must be EXACTLY one of: shot, subject, action, environment, lighting, camera, style, technical, audio.
   - severity must be EXACTLY one of: critical, important, minor.
+  - CATEGORY DEFINITIONS:
+    - action = ONLY physical movements/gestures by subjects (running, jumping, waving, gazing)
+    - camera = camera movement, framing, angles, continuity (pan, zoom, consistent framing, subject continuity)
+    - shot = shot type/composition (close-up, wide shot, establishing shot)
+  - "consistent framing and subject continuity" → category: "camera", NOT "action"
+  - "maintain visual flow" → category: "camera" or "style", NOT "action"
   - Example: { "text": "red leather jacket", "expectedRole": "subject.wardrobe", "category": "subject", "severity": "important" }
+  - Example: { "text": "high-angle shot", "expectedRole": "camera.angle", "category": "camera", "severity": "important" } (from alternatives section)
+  - Example: { "text": "60fps", "expectedRole": "technical.framerate", "category": "technical", "severity": "important" } (from tech specs)
 
 - falsePositives: extracted spans that should NOT have been extracted.
   - Provide: text, assignedRole, reason, spanIndex.
   - spanIndex is the 0-based index of the extracted span; use null if no match.
   - reason must be EXACTLY one of: section_header, abstract_concept, non_visual, instruction_text, duplicate, other.
+  - Section headers include: "TECHNICAL SPECS", "ALTERNATIVE APPROACHES", "Variation 1", "Variation 2", field labels like "Duration:", "Frame Rate:"
   - Example: { "text": "TECHNICAL SPECS", "assignedRole": "technical", "reason": "section_header", "spanIndex": 12 }
+  - Example: { "text": "Variation 1 (Alternate Angle)", "assignedRole": "shot.type", "reason": "section_header", "spanIndex": 8 }
   - Example: { "text": "emotional resonance", "assignedRole": "style.mood", "reason": "abstract_concept", "spanIndex": 4 }
 
 - taxonomyErrors: extracted spans with the wrong role.

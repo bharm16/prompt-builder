@@ -132,8 +132,39 @@ export const NLP_FAST_PATH = {
 } as const;
 
 /**
+ * Compromise NLP Configuration (Tier 1.5)
+ * Verb phrase extraction for action detection
+ * Positioned between Aho-Corasick (Tier 1) and GLiNER (Tier 2)
+ */
+export const COMPROMISE = {
+  // Enable Compromise-based verb extraction
+  ENABLED: true,
+
+  // Minimum confidence for extracted actions
+  MIN_CONFIDENCE: 0.75,
+
+  // Extract full verb phrases (e.g., "running through the park")
+  EXTRACT_VERB_PHRASES: true,
+
+  // Extract standalone gerunds (e.g., "running", "jogging")
+  EXTRACT_GERUNDS: true,
+
+  // Include adverbs in verb phrases (e.g., "running energetically")
+  INCLUDE_ADVERBS: true,
+
+  // Include objects in verb phrases (e.g., "catching a ball")
+  INCLUDE_OBJECTS: true,
+
+  // Maximum words in a verb phrase
+  MAX_PHRASE_WORDS: 5,
+
+  // Pre-warm on server startup
+  PREWARM_ON_STARTUP: true,
+} as const;
+
+/**
  * Neuro-Symbolic NLP Configuration
- * 3-Tier architecture: Aho-Corasick → GLiNER → LLM
+ * 4-Tier architecture: Aho-Corasick → Compromise → GLiNER → LLM
  */
 export const NEURO_SYMBOLIC = {
   // Master switch for neuro-symbolic pipeline
@@ -268,6 +299,7 @@ const SpanLabelingConfig = {
   VALIDATION_MODES,
   CHUNKING,
   NLP_FAST_PATH,
+  COMPROMISE,
   NEURO_SYMBOLIC,
   SYMBOLIC_NLP, // @deprecated - kept for backward compatibility
   estimateMaxTokens,

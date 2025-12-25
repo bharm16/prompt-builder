@@ -15,7 +15,7 @@
     "@sentry/vite-plugin": "^4.5.0",
     "ahocorasick": "^1.0.2",
     "compression": "^1.8.1",
-    "compromise": "^14.14.4",
+    "compromise": "^14.14.5",
     "cors": "^2.8.5",
     "dompurify": "^3.3.0",
     "dotenv": "^16.6.1",

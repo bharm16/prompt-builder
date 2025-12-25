@@ -40,6 +40,9 @@ coverage/
 .nyc_output/
 *.lcov
 
+# Evaluation snapshots (generated during test runs)
+scripts/evaluation/snapshots/snapshot-*.json
+
 # Build artifacts
 build/
 !config/build/

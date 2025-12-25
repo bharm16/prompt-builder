@@ -39,7 +39,15 @@
     "Follow Shot",
     "Follow Cam",
     "Camera Follows",
-    "Tracking Move"
+    "Tracking Move",
+    "Tripod",
+    "Static Tripod",
+    "Static Camera",
+    "Static Shot",
+    "Locked Off",
+    "Locked-Off",
+    "Fixed Camera",
+    "Stationary"
   ],
   "camera.angle": [
     "Low Angle",
@@ -61,7 +69,20 @@
     "Deep Focus",
     "Blurred Background",
     "Softly Blurred Background",
-    "Bokeh"
+    "Bokeh",
+    "f/1.2",
+    "f/1.4",
+    "f/1.8",
+    "f/2",
+    "f/2.0",
+    "f/2.8",
+    "f/4",
+    "f/4.0",
+    "f/5.6",
+    "f/8",
+    "f/11",
+    "f/16",
+    "f/22"
   ],
   "shot.type": [
     "Extreme Close-Up",

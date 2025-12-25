@@ -235,11 +235,10 @@ export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
 
   const paragraph = [sentence1, sentence2, sentence3, sentence4].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 
-  // Ensure a reasonable density; if extremely short, add one concrete technical sentence without abstract narration.
-  if (countWords(paragraph) < 85) {
-    return `${paragraph} Keep motion blur minimal and maintain consistent framing and subject continuity across the clip.`;
-  }
-
+  // Short prompts are fine - modern video models (Sora 2, Runway Gen 4.5) prefer
+  // concrete visual descriptions over padding with meta-instructions.
+  // Removed: "maintain consistent framing and subject continuity" - this is an
+  // abstract meta-instruction, not a visual control point.
   return paragraph;
 }
 

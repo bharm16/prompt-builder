@@ -12,7 +12,7 @@ export interface NlpSpan {
   confidence: number;
   start: number;
   end: number;
-  source?: 'aho-corasick' | 'gliner' | 'pattern' | 'heuristic';
+  source?: 'aho-corasick' | 'gliner' | 'pattern' | 'heuristic' | 'compromise';
 }
 
 /**
@@ -43,8 +43,10 @@ export interface ExtractionStats {
   openVocabSpans: number;
   patternSpans?: number;
   heuristicSpans?: number;
+  compromiseSpans?: number;
   glinerReady?: boolean;
   tier1Latency: number;
+  tier15Latency?: number;
   tier2Latency: number;
   totalLatency: number;
 }
