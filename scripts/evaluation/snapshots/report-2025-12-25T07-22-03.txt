@@ -1,0 +1,101 @@
+Evaluation Report - 2025-12-25T07:22:03.491Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      17.3/25
+  Average Span Count: 31.6
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████████████ 4
+  acceptable (13-17)   ████████████████████████ 6
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - high angle (2x)
+  - large brown eyes (1x)
+  - soft golden fur (1x)
+  - warm highlights (1x)
+  - inviting aesthetic (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - window (5x)
+  - 1860s (2x)
+  - family drama (1x)
+  - Family drama (1x)
+  - white (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 4183 | P50: 4358 | P95: 5528 | P99: 5528
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: large brown eyes (subject), soft golden fur (subject), warm highlights (lighting), inviting aesthetic (style), naturalistic tone (style)
+  MINOR: painted lines (environment), emphasize the climber's strength (style), reminiscent of home garden commercials (style), convey the weight of leadership (style)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - style: 9
+  - subject: 8
+  - environment: 8
+  - lighting: 7
+  - action: 5
+  - camera: 5
+  - audio: 3
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.70 / 4.20
+  subject      3.30 / 3.60
+  action       2.60 / 3.20
+  environment  3.00 / 4.00
+  lighting     3.70 / 3.70
+  camera       3.90 / 3.80
+  style        3.10 / 3.10
+  technical    4.10 / 4.10
+  audio        3.40 / 3.60
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 4
+      e.g.: family drama, Family drama, Adventure film aesthetic, Documentary realism
+  - non_visual: 26
+      e.g.: window, white, climbing, gaming, intense focus
+  - duplicate: 8
+      e.g.: handheld tracking, sneakers, climber, High-angle shot, golden hour light
+  - other: 2
+      e.g.: f/2.8, High-contrast digital
+
+TOP TAXONOMY ERRORS:
+  - shot.type → camera.movement (2x) (e.g. "handheld tracking", "slow tracking shot")
+  - camera.lens → subject.wardrobe (2x) (e.g. "black gaming headset", "black game controller")
+  - lighting.quality → style.aesthetic (2x) (e.g. "Naturalistic", "High-contrast digital")
+  - style.colorGrade → lighting.source (2x) (e.g. "warm sunlight", "Warm sunlight")
+  - action.movement → action.gesture (1x) (e.g. "gazing")
+
+ERRORS BY SECTION:
+  main            missed 34, falsePositives 19
+  technicalSpecs  missed 7, falsePositives 13
+  alternatives    missed 4, falsePositives 8
+
+CONFIDENCE ERROR RATES:
+  high   3.6% (7/195)
+    Failures: "High-angle shot" (shot.type), "Dorothea Lange" (subject.identity), "High-Angle Shot" (shot.type)
+  medium 27.0% (20/74)
+    Failures: "Family drama" (lighting.quality), "handheld tracking" (shot.type), "sneakers" (subject.identity)
+  low    27.7% (13/47)
+    Failures: "window" (subject.identity), "family drama" (lighting.source), "white" (style.colorGrade)
+  Recommended minConfidence: 0.80
+
+🔍 WORST PERFORMERS (for debugging):
+  [14/25] "woman playing computer games"
+    Notes: The extraction missed several important elements, particularly in subject and environment categories. There were also multiple taxonomy errors, especially with subject-related items being misclassified. Precision was low due to non-visual elements being extracted.
+  [17/25] "dog looking out of a window"
+    Notes: The extraction missed some important visual elements like the dog's appearance and style references. There were also some false positives related to abstract concepts and non-visual elements. Taxonomy errors were minimal, but there was a misclassification of 'gazing' as a movement instead of a gesture.
+  [17/25] "man looking through a window"
+    Notes: The extraction missed some important elements like 'gazing thoughtfully' and 'eye level'. There were also several false positives related to non-visual elements like 'wearing' and 'window'. Taxonomy errors were present, particularly with 'Naturalistic' being misclassified. Technical specs were mostly well-extracted, but some audio elements were missed.
+
+================================================================================

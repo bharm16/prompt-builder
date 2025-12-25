@@ -1,0 +1,100 @@
+Evaluation Report - 2025-12-25T06:17:22.064Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      17/25
+  Average Span Count: 25.3
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████████ 2
+  acceptable (13-17)   ████████████████████████████████ 8
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - golden hour (5x)
+  - high-angle shot (5x)
+  - low-angle shot (2x)
+  - golden hour lighting (2x)
+  - soft shadows (2x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - window (4x)
+  - handheld tracking (2x)
+  - Establishing (2x)
+  - f/11 (2x)
+  - warm sunlight (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 4986 | P50: 4280 | P95: 8490 | P99: 8490
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: dirt-streaked hands (subject), lush raised beds (environment), Naturalistic gardening aesthetic (style), low-angle shot (camera), golden hour lighting (lighting)
+  MINOR: painted lines (environment)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 21
+  - camera: 12
+  - subject: 7
+  - style: 7
+  - environment: 6
+  - action: 3
+  - audio: 2
+  - shot: 1
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.30 / 3.90
+  subject      2.40 / 4.20
+  action       2.20 / 3.20
+  environment  3.20 / 3.90
+  lighting     3.10 / 3.50
+  camera       3.30 / 3.40
+  style        2.90 / 3.20
+  technical    3.80 / 4.00
+  audio        3.10 / 3.80
+
+FALSE POSITIVE REASONS:
+  - non_visual: 21
+      e.g.: athletic build, bright sunlight, Natural sunlight, crunching under paws, white
+  - duplicate: 10
+      e.g.: warm sunlight, Warm sunlight, snowy field, handheld tracking, sneakers
+  - other: 8
+      e.g.: f/2.8, Soft natural daylight, naturalistic style, f/11, deep focus
+
+TOP TAXONOMY ERRORS:
+  - lighting.quality → style.aesthetic (3x) (e.g. "natural light aesthetic", "natural light aesthetic", "Modern musical")
+  - shot.type → camera.movement (2x) (e.g. "tracking shot", "slow pan")
+  - shot.type → camera.focus (2x) (e.g. "deep focus", "deep focus")
+  - environment.context → audio.ambient (1x) (e.g. "gentle breeze")
+  - subject.wardrobe → subject.appearance (1x) (e.g. "red sports shirt, blue shorts")
+
+ERRORS BY SECTION:
+  main            missed 33, falsePositives 19
+  technicalSpecs  missed 2, falsePositives 20
+  alternatives    missed 24, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   3.3% (5/151)
+    Failures: "deep focus" (shot.type), "natural light aesthetic" (lighting.quality), "eye-level shot" (shot.type)
+  medium 40.7% (22/54)
+    Failures: "warm sunlight" (style.colorGrade), "bright sunlight" (style.colorGrade), "Natural sunlight" (style.colorGrade)
+  low    25.0% (12/48)
+    Failures: "Warm sunlight" (style.colorGrade), "athletic build" (environment.location), "snowy field" (environment.context)
+  Recommended minConfidence: 0.80
+
+🔍 WORST PERFORMERS (for debugging):
+  [13/25] "gorilla wearing white gloves tap dancing in train station"
+    Notes: The extraction missed several important visual elements, such as 'shiny black fur' and 'reflective surfaces highlighting movement'. There were also several false positives, particularly with non-visual elements being extracted. Taxonomy errors were present, with incorrect roles assigned to some spans. Technical specs were mostly covered, but some roles were misclassified.
+  [16/25] "siberian husky with piercing blue eyes, sprinting across snowy field, at snowy mountain trail, during pausing dramatically, ears alert"
+    Notes: The extraction missed several important elements, especially in lighting and audio. There were also issues with duplicate and incorrect extractions, affecting precision. Taxonomy errors were present, particularly in camera roles.
+  [16/25] "abraham lincoln"
+    Notes: The extraction missed several elements from the alternative approaches, particularly related to shot types and lighting. Some non-visual elements were incorrectly extracted, and there were a few taxonomy errors, especially in distinguishing between camera and shot roles. Technical specs were partially covered but had some misclassifications.
+
+================================================================================

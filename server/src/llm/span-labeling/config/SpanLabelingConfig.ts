@@ -132,7 +132,7 @@ export const NLP_FAST_PATH = {
 } as const;
 
 /**
- * Compromise NLP Configuration (Tier 1.5)
+ * Compromise NLP Configuration (Tier 1.5a)
  * Verb phrase extraction for action detection
  * Positioned between Aho-Corasick (Tier 1) and GLiNER (Tier 2)
  */
@@ -159,6 +159,31 @@ export const COMPROMISE = {
   MAX_PHRASE_WORDS: 5,
 
   // Pre-warm on server startup
+  PREWARM_ON_STARTUP: true,
+} as const;
+
+/**
+ * Lighting Extraction Configuration (Tier 1.5b)
+ * Pattern-based lighting phrase extraction using Compromise + semantic embeddings
+ * Runs in parallel with COMPROMISE for action extraction
+ *
+ * Architecture:
+ * - Extract: POS patterns (#Adjective* + lighting_noun)
+ * - Classify: Semantic embeddings (LightingSemantics.ts)
+ *
+ * Fixes the "soft shadows", "gentle shadows" extraction issue from baseline.
+ */
+export const LIGHTING = {
+  // Enable lighting extraction service
+  ENABLED: true,
+
+  // Minimum confidence for extracted lighting spans
+  MIN_CONFIDENCE: 0.70,
+
+  // Maximum words in a lighting phrase
+  MAX_PHRASE_WORDS: 5,
+
+  // Pre-warm semantic classifier on server startup
   PREWARM_ON_STARTUP: true,
 } as const;
 
@@ -300,6 +325,7 @@ const SpanLabelingConfig = {
   CHUNKING,
   NLP_FAST_PATH,
   COMPROMISE,
+  LIGHTING,
   NEURO_SYMBOLIC,
   SYMBOLIC_NLP, // @deprecated - kept for backward compatibility
   estimateMaxTokens,

@@ -1,11 +1,13 @@
 /**
  * NLP Span Service - Neuro-Symbolic Architecture v3 (TypeScript)
- * 
- * 3-Tier extraction pipeline:
- * 1. Aho-Corasick (Tier 1): Closed vocabulary - O(N) single pass, 100% precision
- * 2. GLiNER (Tier 2): Open vocabulary - via official 'gliner' npm package  
- * 3. LLM Fallback (Tier 3): Complex reasoning - handled by SpanLabelingService
- * 
+ *
+ * 5-Tier extraction pipeline:
+ * 1.   Aho-Corasick (Tier 1): Closed vocabulary - O(N) single pass, 100% precision
+ * 1.5a Compromise (Tier 1.5a): Verb phrase extraction for actions
+ * 1.5b Lighting (Tier 1.5b): Pattern-based lighting extraction with semantic classification
+ * 2.   GLiNER (Tier 2): Open vocabulary - via official 'gliner' npm package
+ * 3.   LLM Fallback (Tier 3): Complex reasoning - handled by SpanLabelingService
+ *
  * REQUIRES: npm install gliner
  */
 
@@ -16,7 +18,7 @@ import { dirname, join } from 'path';
 import { Worker } from 'worker_threads';
 import { logger } from '@infrastructure/Logger';
 import { TAXONOMY, VALID_CATEGORIES, getParentCategory } from '#shared/taxonomy.ts';
-import { NEURO_SYMBOLIC, COMPROMISE } from '@llm/span-labeling/config/SpanLabelingConfig';
+import { NEURO_SYMBOLIC, COMPROMISE, LIGHTING } from '@llm/span-labeling/config/SpanLabelingConfig';
 import { SECTION_HEADER_WORDS } from '../config/SemanticConfig.js';
 import {
   extractActionSpans as extractCompromiseSpans,
@@ -24,6 +26,12 @@ import {
   isCompromiseAvailable,
   type CompromiseConfig
 } from './CompromiseService.js';
+import {
+  extractLightingSpans,
+  warmupLightingService,
+  isLightingServiceAvailable,
+  type LightingConfig
+} from './LightingService.js';
 import type {
   NlpSpan,
   ExtractionOptions,
@@ -948,8 +956,9 @@ function deduplicateSpans(spans: NlpSpan[]): NlpSpan[] {
 
     const getSourcePriority = (source?: NlpSpan['source']): number => {
       if (!preferClosed) return 0;
-      if (source === 'aho-corasick' || source === 'pattern') return 3;
-      if (source === 'compromise') return 2; // Tier 1.5: between closed vocab and GLiNER
+      if (source === 'aho-corasick' || source === 'pattern') return 4;
+      if (source === 'compromise') return 3; // Tier 1.5a: action extraction
+      if (source === 'lighting') return 2;   // Tier 1.5b: lighting extraction
       if (source === 'gliner') return 1;
       if (source === 'heuristic') return 0;
       return 0;
@@ -1033,11 +1042,12 @@ const ALL_GLINER_LABELS = generateGlinerLabelsFromTaxonomy();
 /**
  * Extract semantic spans using neuro-symbolic pipeline
  *
- * 4-Tier Architecture:
- * - Tier 1:   Aho-Corasick + Regex (technical terms, camera settings)
- * - Tier 1.5: Compromise (verb phrases, actions)
- * - Tier 2:   GLiNER (semantic entities: subjects, locations, style)
- * - Tier 3:   LLM fallback (handled by SpanLabelingService)
+ * 5-Tier Architecture:
+ * - Tier 1:    Aho-Corasick + Regex (technical terms, camera settings)
+ * - Tier 1.5a: Compromise (verb phrases, actions)
+ * - Tier 1.5b: Lighting (pattern-based lighting extraction with semantic classification)
+ * - Tier 2:    GLiNER (semantic entities: subjects, locations, style)
+ * - Tier 3:    LLM fallback (handled by SpanLabelingService)
  */
 export async function extractSemanticSpans(
   text: string,
@@ -1047,11 +1057,13 @@ export async function extractSemanticSpans(
   const startTime = performance.now();
   const useGliner = options.useGliner ?? (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false);
   const useCompromise = COMPROMISE?.ENABLED ?? true;
+  const useLighting = LIGHTING?.ENABLED ?? true;
 
   log.debug('Starting semantic span extraction', {
     operation,
     useGliner,
     useCompromise,
+    useLighting,
     textLength: text?.length ?? 0,
   });
 
@@ -1065,6 +1077,7 @@ export async function extractSemanticSpans(
         openVocabSpans: 0,
         tier1Latency: 0,
         tier15Latency: 0,
+        tier15bLatency: 0,
         tier2Latency: 0,
         totalLatency: 0
       }
@@ -1079,12 +1092,12 @@ export async function extractSemanticSpans(
     const patternSpans = closedSpans.filter((span) => span.source === 'pattern').length;
     const heuristicSpans = closedSpans.filter((span) => span.source === 'heuristic').length;
 
-    // Tier 1.5: Compromise (verb phrase extraction for actions)
+    // Tier 1.5a: Compromise (verb phrase extraction for actions)
     let compromiseSpans: NlpSpan[] = [];
-    let tier15Time = 0;
+    let tier15aTime = 0;
 
     if (useCompromise) {
-      const tier15Start = performance.now();
+      const tier15aStart = performance.now();
       const compromiseConfig: Partial<CompromiseConfig> = {
         enabled: true,
         minConfidence: COMPROMISE?.MIN_CONFIDENCE ?? 0.75,
@@ -1096,14 +1109,38 @@ export async function extractSemanticSpans(
       };
       const compromiseResult = await extractCompromiseSpans(text, compromiseConfig);
       compromiseSpans = compromiseResult.spans;
-      tier15Time = compromiseResult.stats.latencyMs;
+      tier15aTime = compromiseResult.stats.latencyMs;
 
       log.debug('Compromise extraction completed', {
         operation,
         spansExtracted: compromiseSpans.length,
         verbPhrases: compromiseResult.stats.verbPhrases,
         gerunds: compromiseResult.stats.gerunds,
-        latencyMs: tier15Time,
+        latencyMs: tier15aTime,
+      });
+    }
+
+    // Tier 1.5b: Lighting (pattern-based lighting extraction with semantic classification)
+    let lightingSpans: NlpSpan[] = [];
+    let tier15bTime = 0;
+
+    if (useLighting) {
+      const tier15bStart = performance.now();
+      const lightingConfig: Partial<LightingConfig> = {
+        enabled: true,
+        minConfidence: LIGHTING?.MIN_CONFIDENCE ?? 0.70,
+        maxPhraseWords: LIGHTING?.MAX_PHRASE_WORDS ?? 5,
+      };
+      const lightingResult = await extractLightingSpans(text, lightingConfig);
+      lightingSpans = lightingResult.spans;
+      tier15bTime = lightingResult.stats.latencyMs;
+
+      log.debug('Lighting extraction completed', {
+        operation,
+        spansExtracted: lightingSpans.length,
+        shadowPhrases: lightingResult.stats.shadowPhrases,
+        lightPhrases: lightingResult.stats.lightPhrases,
+        latencyMs: tier15bTime,
       });
     }
 
@@ -1122,9 +1159,10 @@ export async function extractSemanticSpans(
       });
     }
 
-    // Merge all tiers: Tier 1 + Tier 1.5 + Tier 2
-    // Priority: Aho-Corasick > Compromise > GLiNER (handled by deduplicateSpans)
-    const tier1AndHalfSpans = mergeSpans(closedSpans, compromiseSpans);
+    // Merge all tiers: Tier 1 + Tier 1.5a + Tier 1.5b + Tier 2
+    // Priority: Aho-Corasick > Compromise > Lighting > GLiNER (handled by deduplicateSpans)
+    const tier1AndCompromise = mergeSpans(closedSpans, compromiseSpans);
+    const tier1AndHalfSpans = mergeSpans(tier1AndCompromise, lightingSpans);
     const mergedSpans = mergeSpans(tier1AndHalfSpans, openSpans);
 
     // Filter out section headers (e.g., "**Camera:**" -> "Camera" false positive)
@@ -1139,11 +1177,13 @@ export async function extractSemanticSpans(
       totalSpans: outputSpans.length,
       closedVocabSpans: closedSpans.length,
       compromiseSpans: compromiseSpans.length,
+      lightingSpans: lightingSpans.length,
       patternSpans,
       heuristicSpans,
       openVocabSpans: openSpans.length,
       useGliner,
       useCompromise,
+      useLighting,
     });
 
     return {
@@ -1154,11 +1194,13 @@ export async function extractSemanticSpans(
         closedVocabSpans: closedSpans.length,
         openVocabSpans: openSpans.length,
         compromiseSpans: compromiseSpans.length,
+        lightingSpans: lightingSpans.length,
         patternSpans,
         heuristicSpans,
         glinerReady: isGlinerReady(),
         tier1Latency: tier1Time,
-        tier15Latency: tier15Time,
+        tier15Latency: tier15aTime,
+        tier15bLatency: tier15bTime,
         tier2Latency: tier2Time,
         totalLatency: totalTime,
       }
@@ -1299,6 +1341,7 @@ export async function warmupGliner(): Promise<WarmupResult> {
 export async function warmupNlpServices(): Promise<{
   gliner: WarmupResult;
   compromise: { success: boolean; latencyMs: number };
+  lighting: { success: boolean; latencyMs: number };
 }> {
   const operation = 'warmupNlpServices';
   log.info(`${operation}: Starting warmup of all NLP services`);
@@ -1309,15 +1352,21 @@ export async function warmupNlpServices(): Promise<{
   // Warmup Compromise + semantic verb classifier (async)
   const compromiseResult = await warmupCompromise();
 
+  // Warmup Lighting service + semantic lighting classifier (async)
+  const lightingResult = await warmupLightingService();
+
   log.info(`${operation}: Warmup complete`, {
     gliner: glinerResult.success,
     compromise: compromiseResult.success,
     compromiseLatencyMs: compromiseResult.latencyMs,
+    lighting: lightingResult.success,
+    lightingLatencyMs: lightingResult.latencyMs,
   });
 
   return {
     gliner: glinerResult,
-    compromise: compromiseResult
+    compromise: compromiseResult,
+    lighting: lightingResult
   };
 }
 
@@ -1325,3 +1374,8 @@ export async function warmupNlpServices(): Promise<{
  * Check if Compromise is available
  */
 export { isCompromiseAvailable };
+
+/**
+ * Check if LightingService is available
+ */
+export { isLightingServiceAvailable };

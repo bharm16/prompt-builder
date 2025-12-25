@@ -1,0 +1,96 @@
+Evaluation Report - 2025-12-25T07:29:31.190Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      21.2/25
+  Average Span Count: 31.9
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    ████ 1
+  good (18-22)         ████████████████████████████████████ 9
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - soft natural light (3x)
+  - curiosity (1x)
+  - shiny coat (1x)
+  - dappled patterns on the ground (1x)
+  - diffused by overcast sky (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - handheld tracking (2x)
+  - f/2.8 (1x)
+  - daylight (1x)
+  - grading (1x)
+  - Establishing (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 13938 | P50: 14501 | P95: 19051 | P99: 19051
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: curiosity (subject), soft natural light (lighting), shiny coat (subject), dappled patterns on the ground (lighting), soft natural light (lighting)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 9
+  - subject: 5
+  - action: 4
+  - environment: 3
+  - style: 2
+  - audio: 2
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.30 / 3.60
+  subject      3.50 / 3.50
+  action       2.10 / 2.50
+  environment  2.80 / 3.00
+  lighting     3.30 / 3.30
+  camera       4.10 / 4.10
+  style        2.89 / 2.89
+  technical    5.00 / 4.90
+  audio        1.71 / 1.71
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 1
+      e.g.: Establishing
+  - duplicate: 2
+      e.g.: handheld tracking, handheld tracking
+  - other: 6
+      e.g.: f/2.8, daylight, grading, smooth pan, Low-angle pan
+
+TOP TAXONOMY ERRORS:
+  - lighting.quality → style.aesthetic (3x) (e.g. "naturalistic style", "natural light aesthetic", "natural light aesthetic")
+  - shot.type → camera.movement (2x) (e.g. "tracking shot", "handheld tracking")
+  - lighting.source → style (1x) (e.g. "family drama")
+  - lighting.quality → style (1x) (e.g. "Family drama")
+  - environment.context → lighting.source (1x) (e.g. "soft natural daylight")
+
+ERRORS BY SECTION:
+  main            missed 20, falsePositives 6
+  technicalSpecs  missed 5, falsePositives 3
+  alternatives    missed 0, falsePositives 0
+
+CONFIDENCE ERROR RATES:
+  high   0.0% (0/202)
+  medium 6.1% (4/66)
+    Failures: "grading" (action.gesture), "handheld tracking" (shot.type), "handheld tracking, wide lens, f/5.6" (action.gesture)
+  low    9.8% (5/51)
+    Failures: "f/2.8" (technical.frameRate), "daylight" (style.colorGrade), "smooth pan" (lighting.quality)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [18/25] "siberian husky with piercing blue eyes, sprinting across snowy field, at snowy mountain trail, during pausing dramatically, ears alert"
+    Notes: The extraction missed several important visual elements related to lighting and style, and there were some taxonomy errors in the roles assigned to extracted spans.
+  [20/25] "cat laying in the sun through a window"
+    Notes: The extraction missed some important visual elements related to the subject's appearance and the quality of lighting. There were also some misclassifications in taxonomy, particularly with lighting and style roles.
+  [21/25] "young dancer with colorful tattoos, spinning gracefully on one foot, at vibrant street mural alleyway"
+    Notes: The extraction was mostly accurate, but some important visual elements were missed, particularly regarding the subject's appearance and specific lighting qualities. There were also some misclassifications in the audio and style categories.
+
+================================================================================

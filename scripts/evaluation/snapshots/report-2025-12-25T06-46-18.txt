@@ -1,0 +1,104 @@
+Evaluation Report - 2025-12-25T06:46:18.847Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (10 prompts evaluated):
+  Average Score:      16.2/25
+  Average Span Count: 31.8
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ████ 1
+  acceptable (13-17)   ████████████████████████████████████ 9
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - dappled shadows (2x)
+  - Documentary style (2x)
+  - soft shadows (2x)
+  - soft highlights and shadows (1x)
+  - soft pitter-patter of paws (1x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - 1860s (2x)
+  - dolly tracking (2x)
+  - slow dolly in (2x)
+  - grading (2x)
+  - collar (1x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 5505 | P50: 5073 | P95: 8533 | P99: 8533
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  IMPORTANT: soft highlights and shadows (lighting), soft pitter-patter of paws (audio), playful jingling of the collar bell (audio), Family-friendly, akin to a live-action children's movie (style), steady gaze (action)
+  MINOR: window (environment)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 15
+  - style: 11
+  - audio: 7
+  - environment: 6
+  - subject: 6
+  - action: 4
+  - camera: 3
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         3.50 / 3.80
+  subject      2.90 / 3.30
+  action       2.50 / 3.00
+  environment  2.70 / 3.30
+  lighting     2.80 / 3.20
+  camera       3.70 / 3.40
+  style        2.80 / 3.00
+  technical    3.90 / 3.80
+  audio        3.10 / 3.40
+
+FALSE POSITIVE REASONS:
+  - abstract_concept: 3
+      e.g.: serene atmosphere, dramatic emotional focus, Documentary realism, texture-focused
+  - non_visual: 20
+      e.g.: showing, holding, blurred historical background, 1860s, 1860s
+  - duplicate: 6
+      e.g.: collar, Low-angle tracking shot, low-angle shot, High-Angle Shot, rain
+  - other: 8
+      e.g.: dolly tracking, dolly tracking, f/11, adventure aesthetic, f/2.8
+
+TOP TAXONOMY ERRORS:
+  - subject.identity → environment (3x) (e.g. "trees", "tree", "leaves")
+  - lighting.quality → style.aesthetic (2x) (e.g. "Family-friendly", "Neo-noir")
+  - subject.identity → style.filmStock (2x) (e.g. "Kodak Vision3", "Kodak Vision3")
+  - action.movement → style.aesthetic (1x) (e.g. "- **Style:** Family-friendly, live-action")
+  - style.aesthetic → camera.movement (1x) (e.g. "slow pan")
+
+📐 GRANULARITY ISSUES:
+  - too_coarse: 1x (e.g., "sounds, soft brush strokes")
+
+ERRORS BY SECTION:
+  main            missed 41, falsePositives 16
+  technicalSpecs  missed 10, falsePositives 14
+  alternatives    missed 1, falsePositives 7
+
+CONFIDENCE ERROR RATES:
+  high   3.3% (6/184)
+    Failures: "1860s" (technical.duration), "1860s" (technical.duration), "low-angle shot" (shot.type)
+  medium 21.3% (17/80)
+    Failures: "collar" (subject.identity), "showing" (action.movement), "serene atmosphere" (audio.ambient)
+  low    25.9% (14/54)
+    Failures: "Low-angle tracking shot" (shot.type), "scene" (environment.context), "dolly tracking" (style.aesthetic)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [13/25] "tree being cut down by lumberjack"
+    Notes: The extraction missed several important visual elements, such as 'weathered hands' and 'powerful swing'. There were also several false positives, particularly with non-visual elements being extracted. Taxonomy errors were present, especially with misclassification of 'tree' and 'leaves'. Technical specs were mostly covered, but some audio elements were missed.
+  [13/25] "elderly street musician with weathered hands, dipping brush into vibrant paint, at run-down alley with colorful murals"
+    Notes: The extraction missed several important elements, particularly in lighting and style. There were multiple false positives, especially with non-visual elements being extracted. Taxonomy errors were present, notably in the misclassification of vibrant paint palette and lighting. Granularity issues were minor but present in some spans.
+  [15/25] "cat chasing a mouse"
+    Notes: The extraction missed several important elements, especially in audio and style. There were duplicate and non-visual extractions, affecting precision. Taxonomy errors were present in style classification.
+
+================================================================================

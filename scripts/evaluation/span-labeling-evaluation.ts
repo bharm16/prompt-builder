@@ -26,7 +26,7 @@ import { fileURLToPath } from 'url';
 import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingService.js';
 import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
-import { warmupGliner } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
+import { warmupNlpServices } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
 import { VALID_CATEGORIES } from '../../shared/taxonomy.js';
 import {
   CATEGORY_NAMES,
@@ -1475,10 +1475,12 @@ async function main(): Promise<void> {
       .slice(0, sampleSize);
   }
 
-  // Warmup GLiNER
-  console.log('Warming up GLiNER model...');
-  const warmup = await warmupGliner();
-  console.log(`GLiNER: ${warmup.success ? 'ready' : 'not ready'}`);
+  // Warmup all NLP services (GLiNER, Compromise, Lighting)
+  console.log('Warming up NLP services...');
+  const warmup = await warmupNlpServices();
+  console.log(`GLiNER: ${warmup.gliner.success ? 'ready' : 'not ready'}`);
+  console.log(`Compromise: ${warmup.compromise.success ? 'ready' : 'not ready'}`);
+  console.log(`Lighting: ${warmup.lighting.success ? 'ready' : 'not ready'}`);
 
   // Create AI service (for span labeling)
   const aiService = createAIService();

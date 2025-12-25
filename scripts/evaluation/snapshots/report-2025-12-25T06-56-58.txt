@@ -1,0 +1,103 @@
+Evaluation Report - 2025-12-25T06:56:58.388Z
+Source: /Users/bryceharmon/Desktop/prompt-builder/scripts/evaluation/data/evaluation-prompts-latest.json
+Judge Model: gpt-4o-mini
+
+================================================================================
+  SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (54 prompts evaluated):
+  Average Score:      20.65/25
+  Average Span Count: 32.22
+  Errors:             0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    █████ 7
+  good (18-22)         ██████████████████████████████████ 46
+  acceptable (13-17)   █ 1
+  poor (8-12)           0
+  failing (0-7)         0
+
+❌ COMMONLY MISSED ELEMENTS:
+  - gentle shadows (11x)
+  - soft shadows (7x)
+  - dappled shadows (3x)
+  - soft ambient room tone (2x)
+  - soft natural light (2x)
+
+⚠️  COMMONLY INCORRECT EXTRACTIONS:
+  - leaves (4x)
+  - handheld tracking (3x)
+  - Establishing (3x)
+  - grading (2x)
+  - TECHNICAL SPECS (2x)
+
+⏱️  LATENCY STATS (ms):
+  Avg: 11381 | P50: 10823 | P95: 16242 | P99: 18006
+
+MISSED ELEMENTS BY SEVERITY (Examples):
+  CRITICAL: dog barking and distant children's laughter (audio), soft ambient studio sounds, like pencil on paper (audio), casting a line (action), rugged cliff with weathered granite walls (environment), soft metallic clinking and oil drops (audio)
+  IMPORTANT: agility (action), soft shadows (lighting), intense focus (action), digital, with a warm and inviting look (style), gazing thoughtfully out of a window (action)
+  MINOR: dynamic energy and physical prowess (action), gentle shadows (lighting), highlighting grass texture (lighting), expanse (environment), soft (lighting)
+
+📉 MISSED ELEMENTS BY CATEGORY (Count):
+  - lighting: 69
+  - action: 27
+  - environment: 21
+  - subject: 21
+  - audio: 17
+  - style: 12
+
+CATEGORY SCORES (avg coverage/precision):
+  shot         2.33 / 2.50
+  subject      2.61 / 2.86
+  action       1.98 / 2.17
+  environment  1.91 / 2.06
+  lighting     2.65 / 2.83
+  camera       3.20 / 3.33
+  style        2.06 / 2.25
+  technical    4.43 / 4.37
+  audio        1.41 / 1.59
+
+FALSE POSITIVE REASONS:
+  - section_header: 13
+      e.g.: TECHNICAL SPECS, ALTERNATIVE APPROACHES, Variation 1 (Different Angle):, Variation 2 (Different Lighting):, - **Style:** Family-friendly, live-action
+  - abstract_concept: 11
+      e.g.: focus on motion, Establishing, Establishing, showing more, Macarena
+  - non_visual: 19
+      e.g.: seasonal decor, grading, jogging, - **Style:** Bright,, barking
+  - duplicate: 8
+      e.g.: window, Natural daylight, handheld tracking, handheld tracking, dog
+  - other: 25
+      e.g.: black gaming headset, black game controller, Over-the-shoulder static shot, f/2.8, Eye-level static tripod, deep focus, f/11, wind
+
+TOP TAXONOMY ERRORS:
+  - lighting.quality → lighting.source (10x) (e.g. "soft, diffused natural light", "Natural light", "soft natural light")
+  - lighting.quality → style (7x) (e.g. "Naturalistic, warm", "naturalistic style", "Family drama")
+  - technical.frameRate → camera.focus (5x) (e.g. "f/2.8", "f/11", "f/11")
+  - shot.type → camera.movement (4x) (e.g. "handheld tracking", "handheld tracking", "handheld tracking")
+  - action.movement → action.gesture (4x) (e.g. "showing", "joyfully riding", "energetic movements")
+
+ERRORS BY SECTION:
+  main            missed 135, falsePositives 27
+  technicalSpecs  missed 24, falsePositives 37
+  alternatives    missed 8, falsePositives 12
+
+CONFIDENCE ERROR RATES:
+  high   2.2% (23/1051)
+    Failures: "Over-the-shoulder static shot, f/2.8" (camera.angle), "Eye-level static tripod, deep focus, f/11" (camera.angle), "6s" (technical.duration)
+  medium 8.1% (33/408)
+    Failures: "black gaming headset" (camera.lens), "grading" (action.movement), "window" (lighting.source)
+  low    6.8% (19/281)
+    Failures: "black game controller" (camera.lens), "seasonal decor" (audio.ambient), "jogging" (audio.ambient)
+  Notes: No clear confidence threshold recommendation.
+
+🔍 WORST PERFORMERS (for debugging):
+  [17/25] "man riding a bike"
+    Notes: The extraction missed several important visual elements, particularly in the action and audio categories. There were also some false positives and taxonomy errors, particularly with the classification of subjects and actions.
+  [18/25] "woman playing computer games"
+    Notes: The extraction missed some important elements related to action states and style. There were also some misclassifications regarding camera and action roles.
+  [18/25] "man looking out of a window"
+    Notes: The extraction missed several important visual control points, particularly in the action and environment categories. There were also some misclassifications in taxonomy and a false positive extraction.
+
+================================================================================

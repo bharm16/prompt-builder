@@ -104,18 +104,59 @@ function isMetaSpanText(spanText: string): boolean {
   return false;
 }
 
+/**
+ * Check if a span is a variation header like "Variation 1 (Alternate Angle):"
+ * These appear in the alternatives section and should be filtered out.
+ */
+function isVariationHeader(spanText: string, span: SpanLike, text: string): boolean {
+  const start = typeof span.start === 'number' ? span.start : 0;
+  const end = typeof span.end === 'number' ? span.end : start + spanText.length;
+
+  // Look at surrounding context
+  const contextBefore = text.slice(Math.max(0, start - 20), start);
+  const contextAfter = text.slice(end, Math.min(text.length, end + 10));
+
+  // Check if preceded by "**Variation" or similar pattern
+  if (/\*\*\s*variation\s*\d*\s*\(/i.test(contextBefore)) {
+    return true;
+  }
+
+  // Check if followed by "):" or ").**" (closing the variation header)
+  if (/^\s*\)\s*[:\*]/i.test(contextAfter)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function filterNonVisualSpans(spans: SpanLike[], text: string): FilterResult {
   const notes: string[] = [];
   const altStart = findAlternativeSectionStart(text);
 
   const filtered = spans.filter((span) => {
     const spanText = typeof span.text === 'string' ? span.text : '';
+    const isInAlternatives = typeof span.start === 'number' && altStart !== null && span.start >= altStart;
 
-    if (typeof span.start === 'number' && altStart !== null && span.start >= altStart) {
-      notes.push(
-        `Dropped alternative-section span "${spanText}" at ${span.start}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
-      );
-      return false;
+    // For alternatives section: only filter out variation headers and meta-text, not visual content
+    if (isInAlternatives) {
+      // Filter variation headers like "Alternate Angle" inside "**Variation 1 (Alternate Angle):**"
+      if (spanText && isVariationHeader(spanText, span, text)) {
+        notes.push(
+          `Dropped variation-header span "${spanText}" at ${span.start}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+        );
+        return false;
+      }
+
+      // Filter meta-text but keep visual control points
+      if (spanText && isMetaSpanText(spanText)) {
+        notes.push(
+          `Dropped non-visual span in alternatives "${spanText}" at ${span.start ?? '?'}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+        );
+        return false;
+      }
+
+      // Keep all other spans from alternatives (they're visual content!)
+      return true;
     }
 
     if (spanText && isStyleReferenceSpan(spanText, span, text)) {
