@@ -36,4 +36,4 @@ export interface ILlmClient {
 /**
  * Provider type for factory selection
  */
-export type LlmClientProvider = 'groq' | 'openai' | 'anthropic' | 'unknown';
+export type LlmClientProvider = 'groq' | 'openai' | 'anthropic' | 'gemini' | 'unknown';

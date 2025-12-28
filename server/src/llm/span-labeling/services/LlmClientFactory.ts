@@ -12,6 +12,7 @@ import { logger } from '@infrastructure/Logger';
 import { RobustLlmClient } from './RobustLlmClient';
 import { GroqLlmClient } from './GroqLlmClient';
 import { OpenAILlmClient } from './OpenAILlmClient';
+import { GeminiLlmClient } from './GeminiLlmClient';
 import { detectProvider } from '@utils/provider/ProviderDetector';
 import type { ILlmClient, LlmClientProvider } from './ILlmClient';
 
@@ -48,6 +49,9 @@ export function createLlmClient(options: LlmClientFactoryOptions = {}): ILlmClie
     
     case 'groq':
       return new GroqLlmClient();
+
+    case 'gemini':
+      return new GeminiLlmClient();
     
     default:
       // Default to RobustLlmClient which has generic handling
@@ -71,14 +75,14 @@ function resolveProvider(options: LlmClientFactoryOptions): LlmClientProvider {
 
   // 2. Environment variable for span labeling
   const envProvider = process.env.SPAN_PROVIDER?.toLowerCase();
-  if (envProvider === 'openai' || envProvider === 'groq' || envProvider === 'anthropic') {
+  if (envProvider === 'openai' || envProvider === 'groq' || envProvider === 'anthropic' || envProvider === 'gemini') {
     return envProvider as LlmClientProvider;
   }
 
   // 3. Auto-detect from model name
   if (options.model) {
     const detected = detectProvider({ model: options.model });
-    if (detected === 'openai' || detected === 'groq') {
+    if (detected === 'openai' || detected === 'groq' || detected === 'gemini') {
       return detected;
     }
   }
@@ -87,7 +91,7 @@ function resolveProvider(options: LlmClientFactoryOptions): LlmClientProvider {
   if (options.operation) {
     const operationUpper = options.operation.toUpperCase().replace(/-/g, '_');
     const operationProvider = process.env[`${operationUpper}_PROVIDER`]?.toLowerCase();
-    if (operationProvider === 'openai' || operationProvider === 'groq') {
+    if (operationProvider === 'openai' || operationProvider === 'groq' || operationProvider === 'gemini') {
       return operationProvider as LlmClientProvider;
     }
   }
