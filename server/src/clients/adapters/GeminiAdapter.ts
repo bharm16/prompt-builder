@@ -286,7 +286,7 @@ export class GeminiAdapter {
     const { systemInstruction, contents } = this._buildMessages(systemPrompt, options);
     const generationConfig: GeminiPayload['generationConfig'] = {
       temperature: options.temperature !== undefined ? options.temperature : 0.7,
-      maxOutputTokens: options.maxTokens || 2048,
+      maxOutputTokens: options.maxTokens || 8192,
     };
 
     if (options.jsonMode && !options.isArray) {

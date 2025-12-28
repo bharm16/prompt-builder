@@ -1,20 +1,22 @@
 #!/usr/bin/env tsx
 
 /**
- * Span Labeling Evaluation Script
- * 
- * Uses real production prompts + LLM-as-Judge evaluation.
- * No ground truth annotation required.
- * 
+ * Span Labeling Evaluation Script (Gemini Edition)
+ *
+ * Uses Gemini for span extraction with taxonomy passed as system instruction.
+ * Automatically discovers available models and selects the best one.
+ * Uses GPT-4o as LLM-as-Judge for quality evaluation.
+ *
  * Usage:
- *   npx tsx scripts/evaluation/span-labeling-evaluation.ts [--prompts-file path] [--sample N]
- * 
+ *   npx tsx scripts/evaluation/span-labeling-evaluation-gemini.ts [--prompts-file path] [--sample N]
+ *
  * Options:
  *   --prompts-file  Path to JSON file with input/output pairs (default: finds latest)
  *   --sample N      Only evaluate N random prompts (default: all)
  *   --baseline      Lock current results as baseline
- *   --concurrency N Number of concurrent requests (default: 10)
+ *   --concurrency N Number of concurrent requests (default: 2)
  *   --fast          Use gpt-4o-mini for judging (faster, cheaper)
+ *   --model NAME    Preferred Gemini model (auto-selects best available if not found)
  */
 
 import { config as loadEnv } from 'dotenv';
@@ -23,11 +25,8 @@ import { z } from 'zod';
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { labelSpans } from '../../server/src/llm/span-labeling/SpanLabelingService.js';
-import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
 import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
-import { warmupNlpServices } from '../../server/src/llm/span-labeling/nlp/NlpSpanService.js';
-import { VALID_CATEGORIES } from '../../shared/taxonomy.js';
+import { VALID_CATEGORIES, TAXONOMY } from '../../shared/taxonomy.js';
 import {
   CATEGORY_NAMES,
   FALSE_POSITIVE_REASONS,
@@ -41,7 +40,6 @@ import {
   type EvaluationResult,
   type FalsePositive,
   type FalsePositiveReasonCounts,
-  type FalsePositivesByReason,
   type LegacyJudgeResult,
   type PromptRecord,
   type PromptSections,
@@ -61,7 +59,256 @@ loadEnv({ path: join(__dirname, '../..', '.env') });
 const SNAPSHOTS_DIR = join(__dirname, 'snapshots');
 
 // =============================================================================
-// LLM Judge Rubric
+// Gemini API Configuration
+// =============================================================================
+
+const GEMINI_API_KEY = process.env.GOOGLE_API_KEY || '';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+// =============================================================================
+// Model Discovery
+// =============================================================================
+
+interface GeminiModel {
+  name: string;
+  displayName?: string;
+  supportedGenerationMethods?: string[];
+}
+
+async function listAvailableModels(): Promise<string[]> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GOOGLE_API_KEY is required');
+  }
+
+  const url = `${GEMINI_BASE_URL}/models?key=${GEMINI_API_KEY}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to list models: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const models = (data.models || []) as GeminiModel[];
+
+  return models
+    .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+    .map(m => m.name.replace('models/', ''));
+}
+
+async function selectBestModel(preferredModel?: string): Promise<string> {
+  const available = await listAvailableModels();
+
+  console.log(`📋 Available Gemini models: ${available.slice(0, 10).join(', ')}${available.length > 10 ? '...' : ''}`);
+
+  // If user specified a model, check if it exists
+  if (preferredModel) {
+    if (available.includes(preferredModel)) {
+      return preferredModel;
+    }
+    // Try with 'models/' prefix removed
+    const cleanName = preferredModel.replace('models/', '');
+    if (available.includes(cleanName)) {
+      return cleanName;
+    }
+    console.warn(`⚠️  Preferred model "${preferredModel}" not found, selecting best alternative...`);
+  }
+
+  // Priority order for model selection
+  const priorities = [
+    'gemini-2.5-flash-preview-04-17',  // Latest 2.5 flash preview
+    'gemini-2.5-flash',                 // Stable 2.5 flash
+    'gemini-2.0-flash',                 // 2.0 flash
+    'gemini-1.5-flash',                 // 1.5 flash (stable)
+    'gemini-1.5-pro',                   // 1.5 pro as fallback
+  ];
+
+  for (const model of priorities) {
+    if (available.includes(model)) {
+      return model;
+    }
+    // Also check for variants
+    const variant = available.find(m => m.startsWith(model));
+    if (variant) {
+      return variant;
+    }
+  }
+
+  // Last resort: any flash model
+  const anyFlash = available.find(m => m.includes('flash') && !m.includes('8b'));
+  if (anyFlash) {
+    return anyFlash;
+  }
+
+  // Very last resort: first available model
+  if (available.length > 0) {
+    return available[0];
+  }
+
+  throw new Error('No suitable Gemini models found');
+}
+
+// =============================================================================
+// Taxonomy System Instruction for Gemini
+// =============================================================================
+
+function buildTaxonomySystemPrompt(): string {
+  const validRoles = [...VALID_CATEGORIES].sort();
+
+  const categoryDescriptions = Object.entries(TAXONOMY)
+    .map(([key, config]) => {
+      const attrs = config.attributes
+        ? Object.entries(config.attributes)
+            .map(([attrKey, attrId]) => `    - ${attrId}`)
+            .join('\n')
+        : '    (no sub-attributes)';
+      return `  ${config.id} (${config.label}): ${config.description}\n${attrs}`;
+    })
+    .join('\n\n');
+
+  return `You are an expert video prompt analyzer. Your task is to extract "visual control point" spans from video prompts.
+
+A span is a phrase that, if changed, would produce a visually different video output.
+
+## Taxonomy (Valid Roles)
+
+Use ONLY these exact role IDs when labeling spans:
+
+${categoryDescriptions}
+
+## Valid Role IDs (for reference)
+${validRoles.join(', ')}
+
+## Extraction Guidelines
+
+1. **What to Extract:**
+   - Shot types: "Medium shot", "Close-up", "Wide angle"
+   - Subjects: "a woman", "a cowboy", "an astronaut"
+   - Subject attributes: "bright blue jersey", "weathered face", "black braided hair"
+   - Actions: "dribbling a basketball", "running", "gazing at the horizon"
+   - Environments: "outdoor basketball court", "desert landscape", "neon-lit alley"
+   - Lighting: "natural daylight", "golden hour", "soft shadows"
+   - Camera: "handheld tracking", "dolly shot", "low angle"
+   - Style: "cinematic", "documentary style", "Kodak Portra"
+   - Technical specs: "6s", "60fps", "16:9", "4K"
+   - Audio: "sound of sneakers", "ambient wind", "orchestral score"
+
+2. **What NOT to Extract:**
+   - Section headers like "TECHNICAL SPECS", "ALTERNATIVE APPROACHES"
+   - Variation labels like "Variation 1 (Alternate Angle):"
+   - Abstract concepts: "emotional resonance", "inviting the viewer"
+   - Instructions to the AI/viewer
+   - Field labels: "Duration:", "Frame Rate:", "Camera:"
+
+3. **Span Boundaries:**
+   - Keep semantically complete phrases together
+   - "soft highlights" stays together, not split into "soft" + "highlights"
+   - Don't merge unrelated concepts
+   - Include modifiers with their nouns: "bright blue sports jersey" not just "jersey"
+
+4. **Confidence Scoring:**
+   - 0.9-1.0: Highly confident, clear visual element
+   - 0.7-0.89: Confident, some ambiguity
+   - 0.5-0.69: Uncertain, might be abstract or borderline
+
+## Output Format
+
+Return ONLY valid JSON with this exact structure:
+{
+  "spans": [
+    {
+      "text": "the exact text from the prompt",
+      "role": "one of the valid role IDs",
+      "confidence": 0.5 to 1.0,
+      "start": character offset where span starts,
+      "end": character offset where span ends
+    }
+  ]
+}
+
+Extract ALL visual control points. Do not skip technical specs, alternative approaches content, or audio descriptions.`;
+}
+
+// =============================================================================
+// Gemini API Client
+// =============================================================================
+
+interface GeminiSpan {
+  text: string;
+  role: string;
+  confidence: number;
+  start: number;
+  end: number;
+}
+
+interface GeminiSpanResponse {
+  spans: GeminiSpan[];
+}
+
+async function extractSpansWithGemini(
+  text: string,
+  modelName: string
+): Promise<{ spans: GeminiSpan[]; latencyMs: number }> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GOOGLE_API_KEY is required for Gemini span extraction');
+  }
+
+  const systemPrompt = buildTaxonomySystemPrompt();
+
+  const payload = {
+    contents: [{
+      role: 'user',
+      parts: [{ text }]
+    }],
+    systemInstruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0.1
+    }
+  };
+
+  const url = `${GEMINI_BASE_URL}/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const startTime = performance.now();
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const latencyMs = performance.now() - startTime;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  if (result.error) {
+    throw new Error(`Gemini API error: ${JSON.stringify(result.error)}`);
+  }
+
+  const candidate = result.candidates?.[0];
+  const textContent = candidate?.content?.parts?.[0]?.text;
+
+  if (!textContent) {
+    throw new Error('No content in Gemini response');
+  }
+
+  try {
+    const parsed = JSON.parse(textContent) as GeminiSpanResponse;
+    return { spans: parsed.spans || [], latencyMs };
+  } catch (e) {
+    console.error('Failed to parse Gemini JSON response:', textContent);
+    throw new Error(`Failed to parse Gemini response: ${(e as Error).message}`);
+  }
+}
+
+// =============================================================================
+// LLM Judge Rubric (Same as original)
 // =============================================================================
 
 const VALID_ROLE_LIST = [...VALID_CATEGORIES].sort();
@@ -221,6 +468,10 @@ If there are no items for a list, return an empty array.
   },
   "notes": "brief explanation of scoring"
 }`;
+
+// =============================================================================
+// Zod Schemas (Same as original)
+// =============================================================================
 
 const SCORE_SCHEMA = z.coerce.number();
 const SpanIndexSchema = z.preprocess(
@@ -408,6 +659,12 @@ const JUDGE_JSON_SCHEMA = {
   ],
   additionalProperties: false
 };
+
+// =============================================================================
+// Helper Functions (Same as original)
+// =============================================================================
+
+type FalsePositivesByReason = Record<(typeof FALSE_POSITIVE_REASONS)[number], string[]>;
 
 function createEmptyCategoryScores(): CategoryScores {
   return {
@@ -783,63 +1040,19 @@ function formatSpansForJudge(spans: SpanResult[]): string {
     .join('\n');
 }
 
-
 // =============================================================================
-// AI Service Setup
+// Judge Client Setup
 // =============================================================================
 
-function createAIService(): AIModelService {
-  const clients: Record<string, any> = {};
-  const groqTimeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 5000);
-  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 60000);
-  const groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-  const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-  const groqBaseURL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
-  const openaiBaseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-
-  if (process.env.GROQ_API_KEY) {
-    clients.groq = new OpenAICompatibleAdapter({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: groqBaseURL,
-      defaultModel: groqModel,
-      defaultTimeout: groqTimeoutMs,
-      providerName: 'groq',
-    });
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    clients.openai = new OpenAICompatibleAdapter({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: openaiBaseURL,
-      defaultModel: openaiModel,
-      defaultTimeout: openaiTimeoutMs,
-      providerName: 'openai',
-    });
-  }
-
-  if (!clients.openai && clients.groq) {
-    clients.openai = clients.groq;
-  }
-
-  if (Object.keys(clients).length === 0) {
-    throw new Error('No AI API keys found. Set GROQ_API_KEY or OPENAI_API_KEY');
-  }
-
-  return new AIModelService({ clients });
-}
-
-/**
- * Create a dedicated judge client for LLM-as-Judge evaluation.
- */
 function createJudgeClient(useFastModel = false): OpenAICompatibleAdapter {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY required for LLM-as-Judge');
   }
-  
-  const model = useFastModel 
-    ? 'gpt-4o-mini' 
+
+  const model = useFastModel
+    ? 'gpt-4o-mini'
     : (process.env.OPENAI_JUDGE_MODEL || 'gpt-4o');
-  
+
   return new OpenAICompatibleAdapter({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
@@ -870,8 +1083,6 @@ Span indices are 0-based and must be used in spanIndex fields.
 Evaluate the span extraction quality using the rubric. Return only JSON.`;
 
   try {
-    // OpenAICompatibleAdapter.complete(systemPrompt: string, options: CompletionOptions)
-    // When options.messages is provided, systemPrompt is ignored, so include system in messages
     const response = await judgeClient.complete('', {
       messages: [
         { role: 'system', content: JUDGE_SYSTEM_PROMPT },
@@ -899,81 +1110,8 @@ Evaluate the span extraction quality using the rubric. Return only JSON.`;
 }
 
 // =============================================================================
-// Main Evaluation
+// Summary Computation
 // =============================================================================
-
-async function evaluatePrompt(
-  record: PromptRecord,
-  aiService: AIModelService,
-  judgeClient: OpenAICompatibleAdapter
-): Promise<EvaluationResult> {
-  const startTime = Date.now();
-  
-  try {
-    // Run span labeling
-    const response = await labelSpans({
-      text: record.output,
-      maxSpans: 50,
-      minConfidence: 0.5,
-      templateVersion: 'v3.0'
-    }, aiService);
-
-    const sections = detectSections(record.output);
-
-    // Capture spans with offsets
-    const spans: SpanResult[] = (response.spans || []).map((s: any) => {
-      const start = s.start ?? 0;
-      return {
-        text: s.text,
-        role: s.role,
-        confidence: s.confidence ?? 0,
-        start,
-        end: s.end ?? 0,
-        section: getSectionForOffset(start, sections),
-      };
-    });
-
-    // Capture meta for source tracking
-    const meta: SpanLabelingMeta = {
-      version: response.meta?.version || 'unknown',
-      notes: response.meta?.notes || '',
-      source: (response.meta as any)?.source,
-      closedVocab: (response.meta as any)?.closedVocab,
-      openVocab: (response.meta as any)?.openVocab,
-      latency: (response.meta as any)?.latency,
-      tier1Latency: (response.meta as any)?.tier1Latency,
-      tier2Latency: (response.meta as any)?.tier2Latency,
-    };
-
-    // Run LLM judge (GPT-4o)
-    const judgeResult = await judgeSpanQuality(record.output, spans, judgeClient);
-
-    return {
-      promptId: record.id,
-      input: record.input,
-      output: record.output,
-      spanCount: spans.length,
-      spans,
-      meta,
-      judgeResult,
-      error: null,
-      latencyMs: Date.now() - startTime,
-      sections,
-    };
-  } catch (error) {
-    return {
-      promptId: record.id,
-      input: record.input,
-      output: record.output,
-      spanCount: 0,
-      spans: [],
-      meta: null,
-      judgeResult: null,
-      error: (error as Error).message,
-      latencyMs: Date.now() - startTime
-    };
-  }
-}
 
 function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
   const successfulResults = results.filter(
@@ -1139,29 +1277,9 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
       continue;
     }
 
-    const version = r.meta.version || '';
-    const notes = r.meta.notes || '';
-    const isNlpPath = version.includes('nlp') ||
-      notes.includes('neuro-symbolic') ||
-      notes.includes('symbolic-nlp');
-
-    if (isNlpPath) {
-      pipelineSources.nlp++;
-      if (r.meta.closedVocab !== undefined) {
-        spanSources.closedVocab += r.meta.closedVocab;
-      }
-      if (r.meta.openVocab !== undefined) {
-        spanSources.openVocab += r.meta.openVocab;
-      }
-      if (r.meta.closedVocab === undefined && r.meta.openVocab === undefined) {
-        spanSources.closedVocab += r.spanCount;
-      }
-    } else if (r.spanCount > 0) {
-      pipelineSources.llm++;
-      spanSources.llm += r.spanCount;
-    } else {
-      pipelineSources.unknown++;
-    }
+    // For Gemini, all spans come from LLM
+    pipelineSources.llm++;
+    spanSources.llm += r.spanCount;
   }
 
   const latencies = results.map((r) => r.latencyMs).sort((a, b) => a - b);
@@ -1194,6 +1312,10 @@ function computeSummary(results: EvaluationResult[]): Snapshot['summary'] {
   } as any;
 }
 
+// =============================================================================
+// File Loading
+// =============================================================================
+
 function findLatestPromptsFile(): string | null {
   // First check for generated evaluation prompts in data directory
   const dataDir = join(__dirname, 'data');
@@ -1202,31 +1324,31 @@ function findLatestPromptsFile(): string | null {
     if (existsSync(latestPath)) {
       return latestPath;
     }
-    
+
     // Fall back to timestamped files
     const evalFiles = readdirSync(dataDir)
       .filter(f => f.startsWith('evaluation-prompts-') && f.endsWith('.json'))
       .sort()
       .reverse();
-    
+
     if (evalFiles.length > 0) {
       return join(dataDir, evalFiles[0]);
     }
   }
-  
+
   // Fall back to raw prompts in project root
   const projectRoot = join(__dirname, '../..');
   const files = readdirSync(projectRoot)
     .filter(f => f.startsWith('raw-prompts-') && f.endsWith('.json'))
     .sort()
     .reverse();
-  
+
   return files.length > 0 ? join(projectRoot, files[0]) : null;
 }
 
 function loadPrompts(filePath: string): PromptRecord[] {
   const data = JSON.parse(readFileSync(filePath, 'utf-8'));
-  
+
   // Handle new evaluation dataset format
   if (data.metadata && data.prompts) {
     const dataset = data as EvaluationDataset;
@@ -1239,7 +1361,7 @@ function loadPrompts(filePath: string): PromptRecord[] {
         timestamp: item.generatedAt || item.timestamp
       }));
   }
-  
+
   // Handle legacy raw prompts format
   return data.map((item: any, index: number) => ({
     id: item.id || item.uuid || `prompt-${index}`,
@@ -1249,19 +1371,21 @@ function loadPrompts(filePath: string): PromptRecord[] {
   }));
 }
 
-/**
- * Generate the evaluation report as a string
- */
+// =============================================================================
+// Report Generation
+// =============================================================================
+
 function generateReportText(snapshot: Snapshot): string {
   const lines: string[] = [];
   const add = (line = '') => lines.push(line);
 
   add('='.repeat(80));
-  add('  SPAN LABELING EVALUATION REPORT');
+  add('  SPAN LABELING EVALUATION REPORT (GEMINI 2.5)');
   add('='.repeat(80));
   add();
 
-  add(`📊 SUMMARY (${snapshot.promptCount} prompts evaluated):`);
+  add(`📊 SUMMARY (${snapshot.promptCount} prompts evaluated):`)
+  add(`  Model:              ${(snapshot as any).geminiModel || 'gemini-2.5-flash-preview-05-20'}`);
   add(`  Average Score:      ${snapshot.summary.avgScore}/25`);
   add(`  Average Span Count: ${snapshot.summary.avgSpanCount}`);
   add(`  Errors:             ${snapshot.summary.errorCount}`);
@@ -1415,25 +1539,23 @@ function generateReportText(snapshot: Snapshot): string {
   }
 
   add('='.repeat(80));
-  
+
   return lines.join('\n');
 }
 
-/**
- * Print report to console
- */
 function printReport(snapshot: Snapshot): void {
   console.log('\n' + generateReportText(snapshot));
 }
 
-/**
- * Save report to text file
- */
 function saveReportToFile(snapshot: Snapshot, filePath: string): void {
   const reportText = generateReportText(snapshot);
-  const header = `Evaluation Report - ${snapshot.timestamp}\nSource: ${snapshot.sourceFile}\nJudge Model: ${snapshot.judgeModel}\n\n`;
+  const header = `Evaluation Report (Gemini 2.5) - ${snapshot.timestamp}\nSource: ${snapshot.sourceFile}\nGemini Model: ${(snapshot as any).geminiModel}\nJudge Model: ${snapshot.judgeModel}\n\n`;
   writeFileSync(filePath, header + reportText);
 }
+
+// =============================================================================
+// Main
+// =============================================================================
 
 async function main(): Promise<void> {
   // Parse CLI args
@@ -1441,8 +1563,9 @@ async function main(): Promise<void> {
   let promptsFile = findLatestPromptsFile();
   let sampleSize: number | null = null;
   let lockBaseline = false;
-  let concurrency = 2; // Reduced from 10 to avoid rate limits
+  let concurrency = 2;
   let useFastModel = false;
+  let preferredGeminiModel: string | undefined = undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--prompts-file' && args[i + 1]) {
@@ -1455,15 +1578,26 @@ async function main(): Promise<void> {
       concurrency = parseInt(args[++i], 10);
     } else if (args[i] === '--fast') {
       useFastModel = true;
+    } else if (args[i] === '--model' && args[i + 1]) {
+      preferredGeminiModel = args[++i];
     }
   }
+
+  if (!GEMINI_API_KEY) {
+    console.error('❌ GOOGLE_API_KEY is required. Set it in .env or environment.');
+    process.exit(1);
+  }
+
+  // Discover and select the best available Gemini model
+  console.log('🔍 Discovering available Gemini models...');
+  const geminiModel = await selectBestModel(preferredGeminiModel);
+  console.log(`✅ Selected Gemini Model: ${geminiModel}`);
 
   if (!promptsFile || !existsSync(promptsFile)) {
     console.error('No prompts file found. Specify with --prompts-file or place raw-prompts-*.json in project root.');
     process.exit(1);
   }
-
-  console.log(`Loading prompts from: ${promptsFile}`);
+  console.log(`📂 Loading prompts from: ${promptsFile}`);
   let prompts = loadPrompts(promptsFile);
   console.log(`Found ${prompts.length} prompts`);
 
@@ -1475,31 +1609,15 @@ async function main(): Promise<void> {
       .slice(0, sampleSize);
   }
 
-  // Warmup all NLP services (GLiNER, Compromise, Lighting)
-  console.log('Warming up NLP services...');
-  const warmup = await warmupNlpServices();
-  console.log(`GLiNER: ${warmup.gliner.success ? 'ready' : 'not ready'}`);
-  console.log(`Compromise: ${warmup.compromise.success ? 'ready' : 'not ready'}`);
-  console.log(`Lighting: ${warmup.lighting.success ? 'ready' : 'not ready'}`);
-
-  // Create AI service (for span labeling)
-  const aiService = createAIService();
-  console.log(`AI service ready`);
-
-
   // Create judge client
   const judgeModel = useFastModel ? 'gpt-4o-mini' : 'gpt-4o';
   const judgeClient = createJudgeClient(useFastModel);
-  console.log(`Judge client ready (${judgeModel})`);
+  console.log(`⚖️  Judge client ready (${judgeModel})`);
 
   // =========================================================================
-  // PHASE 1: Extract spans from pre-optimized outputs
+  // PHASE 1: Extract spans with Gemini
   // =========================================================================
-  // Higher batch size since we're only doing span extraction (no optimization)
-  const extractionBatchSize = 5;
-  
-  console.log(`\n📝 Phase 1: Extracting spans from pre-optimized outputs...`);
-  console.log(`  Processing ${prompts.length} prompts in batches of ${extractionBatchSize}`);
+  console.log(`\n📝 Phase 1: Extracting spans with ${geminiModel}...`);
   const startPhase1 = Date.now();
 
   interface SpanExtractionResult {
@@ -1510,100 +1628,58 @@ async function main(): Promise<void> {
     meta: SpanLabelingMeta | null;
     sections: PromptSections;
     error: string | null;
+    geminiLatencyMs: number;
   }
 
   const extractionResults: SpanExtractionResult[] = new Array(prompts.length);
   let extractedCount = 0;
-  let successCount = 0;
-  let errorCount = 0;
-  const extractionLatencies: number[] = [];
-  const totalBatches = Math.ceil(prompts.length / extractionBatchSize);
-  let currentBatch = 0;
-  
+
+  const extractionBatchSize = 3; // Lower batch size for Gemini rate limits
   for (let batchStart = 0; batchStart < prompts.length; batchStart += extractionBatchSize) {
-    currentBatch++;
     const batchEnd = Math.min(batchStart + extractionBatchSize, prompts.length);
     const batch = prompts.slice(batchStart, batchEnd);
-    
-    if (totalBatches > 1) {
-      console.log(`  Batch ${currentBatch}/${totalBatches} (prompts ${batchStart + 1}-${batchEnd})...`);
-    }
 
     await Promise.all(batch.map(async (prompt, batchIndex) => {
       const globalIndex = batchStart + batchIndex;
-      const promptStartTime = Date.now();
-      const promptNum = globalIndex + 1;
-      
       try {
-        // Use the pre-optimized output directly
         const currentOutput = prompt.output;
 
         if (!currentOutput) {
           throw new Error('No output available - run generate-evaluation-prompts.ts first');
         }
 
-        // Extract spans from the existing output
-        const response = await labelSpans({
-          text: currentOutput,
-          maxSpans: 50,
-          minConfidence: 0.5,
-          templateVersion: 'v3.0'
-        }, aiService);
+        // Extract spans with Gemini
+        const { spans: geminiSpans, latencyMs } = await extractSpansWithGemini(currentOutput, geminiModel);
 
         const sections = detectSections(currentOutput);
-        const spans: SpanResult[] = (response.spans || []).map((s: any) => {
+        const spans: SpanResult[] = geminiSpans.map((s) => {
           const start = s.start ?? 0;
           return {
             text: s.text,
             role: s.role,
-            confidence: s.confidence ?? 0,
+            confidence: s.confidence ?? 0.8,
             start,
             end: s.end ?? 0,
             section: getSectionForOffset(start, sections),
           };
         });
 
-        const promptLatency = Date.now() - promptStartTime;
-        extractionLatencies.push(promptLatency);
-        
-        const meta = {
-          version: response.meta?.version || 'unknown',
-          notes: response.meta?.notes || '',
-          source: (response.meta as any)?.source,
-          closedVocab: (response.meta as any)?.closedVocab,
-          openVocab: (response.meta as any)?.openVocab,
-          latency: (response.meta as any)?.latency,
-          tier1Latency: (response.meta as any)?.tier1Latency,
-          tier2Latency: (response.meta as any)?.tier2Latency,
-        };
-        
-        const pipelineSource = meta.version.includes('nlp') || meta.notes.includes('neuro-symbolic') || meta.notes.includes('symbolic-nlp')
-          ? 'NLP'
-          : 'LLM';
-        const sourceInfo = meta.source ? ` (${meta.source})` : '';
-        const spanInfo = meta.closedVocab !== undefined && meta.openVocab !== undefined
-          ? ` [${meta.closedVocab}C/${meta.openVocab}O]`
-          : '';
-        
         extractionResults[globalIndex] = {
           promptId: prompt.id,
           input: prompt.input,
           output: currentOutput,
           spans,
-          meta,
+          meta: {
+            version: `gemini-${geminiModel}`,
+            notes: 'Extracted with Gemini 2.5 using taxonomy system instruction',
+            source: 'gemini',
+            latency: latencyMs,
+          },
           sections,
           error: null,
+          geminiLatencyMs: latencyMs,
         };
-        
-        successCount++;
-        const preview = prompt.input.slice(0, 40).replace(/\n/g, ' ');
-        console.log(`  [${String(promptNum).padStart(3)}/${prompts.length}] ✓ "${preview}..." → ${spans.length} spans (${pipelineSource}${sourceInfo}${spanInfo}, ${promptLatency}ms)`);
       } catch (error) {
-        const promptLatency = Date.now() - promptStartTime;
-        errorCount++;
-        const preview = prompt.input.slice(0, 40).replace(/\n/g, ' ');
-        console.error(`  [${String(promptNum).padStart(3)}/${prompts.length}] ✗ "${preview}..." → ERROR: ${(error as Error).message}`);
-        
         extractionResults[globalIndex] = {
           promptId: prompt.id,
           input: prompt.input,
@@ -1612,66 +1688,45 @@ async function main(): Promise<void> {
           meta: null,
           sections: { main: { start: 0, end: (prompt.output || '').length }, technicalSpecs: null, alternatives: null },
           error: (error as Error).message,
+          geminiLatencyMs: 0,
         };
       }
       extractedCount++;
     }));
 
-    // Small delay between batches to avoid rate limits
+    process.stdout.write(`\r  Processed ${extractedCount}/${prompts.length} prompts`);
+
+    // Delay between batches to avoid rate limits
     if (batchEnd < prompts.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
   const phase1Time = Date.now() - startPhase1;
-  
-  // Calculate Phase 1 statistics
-  const totalSpans = extractionResults.reduce((sum, r) => sum + r.spans.length, 0);
-  const avgSpansPerPrompt = successCount > 0 ? (totalSpans / successCount).toFixed(1) : '0';
-  const avgLatency = extractionLatencies.length > 0
-    ? Math.round(extractionLatencies.reduce((a, b) => a + b, 0) / extractionLatencies.length)
-    : 0;
-  const p50Latency = extractionLatencies.length > 0
-    ? extractionLatencies.sort((a, b) => a - b)[Math.floor(extractionLatencies.length * 0.5)]
-    : 0;
-  const p95Latency = extractionLatencies.length > 0
-    ? extractionLatencies.sort((a, b) => a - b)[Math.floor(extractionLatencies.length * 0.95)]
-    : 0;
-  
   console.log(`\n  ✓ Phase 1 complete in ${(phase1Time / 1000).toFixed(1)}s`);
-  console.log(`  Summary: ${successCount} succeeded, ${errorCount} failed, ${totalSpans} total spans extracted`);
-  console.log(`  Avg spans/prompt: ${avgSpansPerPrompt}, Latency: avg=${avgLatency}ms, p50=${p50Latency}ms, p95=${p95Latency}ms`);
 
   // =========================================================================
-  // PHASE 2: Judge with LLM (slower, rate limited)
+  // PHASE 2: Judge with LLM (GPT-4o)
   // =========================================================================
   console.log(`\n⚖️  Phase 2: Judging quality (concurrency: ${concurrency})...`);
-  const totalJudgeBatches = Math.ceil(prompts.length / concurrency);
-  console.log(`  Processing ${prompts.length} extractions in ${totalJudgeBatches} batch(es)`);
   const startPhase2 = Date.now();
-  
+
   const results: EvaluationResult[] = new Array(prompts.length);
   let judgedCount = 0;
-  let judgeBatchNum = 0;
-  
+
   for (let batchStart = 0; batchStart < prompts.length; batchStart += concurrency) {
-    judgeBatchNum++;
     const batchEnd = Math.min(batchStart + concurrency, prompts.length);
-    
-    if (totalJudgeBatches > 1) {
-      console.log(`  Judge batch ${judgeBatchNum}/${totalJudgeBatches} (${batchEnd - batchStart} prompts)...`);
-    }
-    
+
     await Promise.all(
       extractionResults.slice(batchStart, batchEnd).map(async (extraction, batchIndex) => {
         const globalIndex = batchStart + batchIndex;
         const startTime = Date.now();
-        
+
         let judgeResult: EnhancedJudgeResult | null = null;
         if (!extraction.error && extraction.spans.length > 0) {
           judgeResult = await judgeSpanQuality(extraction.output, extraction.spans, judgeClient);
         }
-        
+
         results[globalIndex] = {
           promptId: extraction.promptId,
           input: extraction.input,
@@ -1681,90 +1736,68 @@ async function main(): Promise<void> {
           meta: extraction.meta,
           judgeResult,
           error: extraction.error,
-          latencyMs: Date.now() - startTime,
+          latencyMs: extraction.geminiLatencyMs + (Date.now() - startTime),
           sections: extraction.sections,
         };
-        
+
         judgedCount++;
         const score = judgeResult?.totalScore ?? 'ERR';
-        const preview = extraction.input.slice(0, 40).replace(/\n/g, ' ');
-        const judgeLatency = Date.now() - startTime;
-        const spanCount = extraction.spans.length;
-        const status = extraction.error ? 'ERR' : (judgeResult ? '✓' : 'SKIP');
-        console.log(`  [${String(judgedCount).padStart(3)}/${prompts.length}] ${status} "${preview}..." → ${score}/25 (${spanCount} spans, ${judgeLatency}ms)`);
+        const preview = extraction.input.slice(0, 35).replace(/\n/g, ' ');
+        console.log(`  [${String(judgedCount).padStart(3)}/${prompts.length}] "${preview}..." → ${score}/25`);
       })
     );
-    
-    // Small delay between batches to avoid rate limits
+
+    // Delay between batches
     if (batchEnd < prompts.length) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-  
+
   const phase2Time = Date.now() - startPhase2;
-  
-  // Calculate Phase 2 statistics
-  const successfulJudgments = results.filter(r => r.judgeResult && r.judgeResult.totalScore > 0).length;
-  const skippedJudgments = results.filter(r => !r.error && r.spans.length === 0).length;
-  const failedJudgments = results.filter(r => r.error).length;
-  const avgJudgeScore = successfulJudgments > 0
-    ? (results.reduce((sum, r) => sum + (r.judgeResult?.totalScore || 0), 0) / successfulJudgments).toFixed(2)
-    : '0.00';
-  const judgeLatencies = results.map(r => r.latencyMs).filter(l => l > 0);
-  const avgJudgeLatency = judgeLatencies.length > 0
-    ? Math.round(judgeLatencies.reduce((a, b) => a + b, 0) / judgeLatencies.length)
-    : 0;
-  
   console.log(`  ✓ Phase 2 complete in ${(phase2Time / 1000).toFixed(1)}s`);
-  console.log(`  Summary: ${successfulJudgments} judged, ${skippedJudgments} skipped, ${failedJudgments} failed`);
-  console.log(`  Avg score: ${avgJudgeScore}/25, Avg judge latency: ${avgJudgeLatency}ms`);
   console.log(`\n  Total time: ${((phase1Time + phase2Time) / 1000).toFixed(1)}s`);
 
-  // Build snapshot with timestamp
-  console.log(`\n📊 Computing summary statistics...`);
+  // Build snapshot
   const runTimestamp = new Date();
-  const snapshot: Snapshot = {
+  const snapshot: Snapshot & { geminiModel: string } = {
     timestamp: runTimestamp.toISOString(),
     promptCount: results.length,
     sourceFile: promptsFile,
     judgeModel,
+    geminiModel,
     results,
     summary: computeSummary(results)
   };
-  
-  console.log(`  Summary computed: avg score ${snapshot.summary.avgScore}/25, ${snapshot.summary.avgSpanCount} avg spans/prompt`);
 
-  // Create filename-safe timestamp (e.g., 2025-12-23T17-44-21)
+  // Create filename-safe timestamp
   const fileTimestamp = runTimestamp.toISOString()
     .replace(/:/g, '-')
     .replace(/\.\d{3}Z$/, '');
 
-  // Save timestamped snapshot (JSON)
-  console.log(`\n💾 Saving results...`);
-  const timestampedSnapshotPath = join(SNAPSHOTS_DIR, `snapshot-${fileTimestamp}.json`);
+  // Save timestamped snapshot
+  const timestampedSnapshotPath = join(SNAPSHOTS_DIR, `snapshot-gemini-${fileTimestamp}.json`);
   writeFileSync(timestampedSnapshotPath, JSON.stringify(snapshot, null, 2));
-  console.log(`  ✓ Snapshot saved to: ${timestampedSnapshotPath}`);
+  console.log(`\n📄 Snapshot saved to: ${timestampedSnapshotPath}`);
 
-  // Save timestamped report (text file)
-  const timestampedReportPath = join(SNAPSHOTS_DIR, `report-${fileTimestamp}.txt`);
+  // Save timestamped report
+  const timestampedReportPath = join(SNAPSHOTS_DIR, `report-gemini-${fileTimestamp}.txt`);
   saveReportToFile(snapshot, timestampedReportPath);
-  console.log(`  ✓ Report saved to: ${timestampedReportPath}`);
+  console.log(`📝 Report saved to: ${timestampedReportPath}`);
 
-  // Also save as "latest" for easy access
-  const latestSnapshotPath = join(SNAPSHOTS_DIR, 'latest.json');
-  const latestReportPath = join(SNAPSHOTS_DIR, 'latest-report.txt');
+  // Save as "latest-gemini" for easy access
+  const latestSnapshotPath = join(SNAPSHOTS_DIR, 'latest-gemini.json');
+  const latestReportPath = join(SNAPSHOTS_DIR, 'latest-gemini-report.txt');
   writeFileSync(latestSnapshotPath, JSON.stringify(snapshot, null, 2));
   saveReportToFile(snapshot, latestReportPath);
-  console.log(`  ✓ Latest copies updated (latest.json, latest-report.txt)`);
+  console.log(`📌 Latest Gemini copies updated`);
 
   // Optionally lock as baseline
   if (lockBaseline) {
-    const baselinePath = join(SNAPSHOTS_DIR, 'baseline.json');
+    const baselinePath = join(SNAPSHOTS_DIR, 'baseline-gemini.json');
     writeFileSync(baselinePath, JSON.stringify(snapshot, null, 2));
     console.log(`🔒 Baseline locked at: ${baselinePath}`);
-    
-    // Also save baseline report
-    const baselineReportPath = join(SNAPSHOTS_DIR, 'baseline-report.txt');
+
+    const baselineReportPath = join(SNAPSHOTS_DIR, 'baseline-gemini-report.txt');
     saveReportToFile(snapshot, baselineReportPath);
     console.log(`📝 Baseline report saved to: ${baselineReportPath}`);
   }

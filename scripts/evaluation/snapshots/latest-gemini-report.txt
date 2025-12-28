@@ -1,0 +1,65 @@
+Evaluation Report - 2025-12-28T03:08:11.423Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o-mini
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (54 prompts evaluated):
+  Average Score:      21.94/25
+  Average Span Count: 27.02
+  Success/Errors:     54/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)    ██████████████████████████████ 29
+  good (18-22)         █████████████████████████ 24
+  acceptable (13-17)   ██ 1
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=0 | P50=0 | P95=0
+  Judge:      Avg=7838 | P50=7256 | P95=12836
+
+CATEGORY SCORES (avg coverage/precision):
+  shot           2.50 / 2.54
+  subject        2.85 / 3.00
+  action         2.41 / 2.63
+  environment    2.41 / 2.54
+  lighting       2.87 / 3.11
+  camera         3.11 / 3.17
+  style          2.76 / 2.83
+  technical      3.74 / 3.78
+  audio          2.43 / 2.63
+
+❌ COMMONLY MISSED ELEMENTS:
+  - soft shadows (3x, lighting)
+  - soft natural light (2x, lighting)
+  - gentle shadows (2x, lighting)
+  - golden hour (2x, lighting)
+  - dynamic shadows (2x, lighting)
+
+⚠️  COMMON FALSE POSITIVES:
+  - to isolate the main subject (2x, abstract_concept)
+  - static tripod (1x, duplicate)
+  - naturalistic, with an emphasis on gentle, warm tones (1x, abstract_concept)
+  - naturalistic, warm color grading (1x, abstract_concept)
+  - technical specs (1x, section_header)
+
+🔄 TOP TAXONOMY ERRORS:
+  - camera.focus → camera.focus (19x) e.g. "shallow depth of field"
+  - camera.angle → camera.angle (14x) e.g. "Low-angle"
+  - camera.movement → camera.movement (12x) e.g. "static"
+  - style.aesthetic → style.aesthetic (8x) e.g. "Naturalistic"
+  - lighting.quality → lighting.quality (7x) e.g. "gentle shadows"
+
+🔍 WORST PERFORMERS (for debugging):
+  [17/25] "sleek silver sports car with glossy pain..."
+    Notes: The extraction missed several important visual elements, particularly in the subject and lighting ca
+  [18/25] "view of a widow from within a home facin..."
+    Notes: The extraction missed some important elements related to lighting and camera movement. There were al
+  [18/25] "a large box, exploding outward with full..."
+    Notes: The extraction missed several important visual elements, particularly in the subject and lighting ca
+
+================================================================================
