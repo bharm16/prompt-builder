@@ -43,6 +43,8 @@ import {
 import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig, PanelIcon } from './components/types';
 import type { SuggestionItem } from './hooks/types';
 
+const EMPTY_SUGGESTIONS: SuggestionItem[] = [];
+
 interface SuggestionsPanelProps {
   suggestionsData?: {
     show?: boolean;
@@ -98,7 +100,7 @@ export function SuggestionsPanel({
   // ===========================
   const {
     show = false,
-    suggestions = [],
+    suggestions = EMPTY_SUGGESTIONS,
     isLoading = false,
     isError = false,
     errorMessage,

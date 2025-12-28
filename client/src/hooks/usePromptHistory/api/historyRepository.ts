@@ -137,13 +137,8 @@ export async function updateHighlights(
   const repository = getPromptRepositoryForUser(!!userId);
 
   if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
-    const updateFn = repository.updateHighlights as (
-      uuid: string,
-      options: { highlightCache?: unknown; versionEntry?: unknown }
-    ) => Promise<void>;
-
     try {
-      await updateFn(uuid, { highlightCache });
+      await repository.updateHighlights(uuid, { highlightCache });
     } catch (error) {
       log.warn('Unable to persist updated highlights', {
         uuid,

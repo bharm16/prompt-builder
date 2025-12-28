@@ -4,6 +4,7 @@ import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
 import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import { getCurrentSpanProvider } from '@llm/span-labeling/services/LlmClientFactory';
 import { spanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { LabelSpansParams, LabelSpansResult } from '@llm/span-labeling/types';
@@ -111,10 +112,12 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
       if (spanLabelingCache) {
         const cacheStartTime = performance.now();
+        const cacheProvider = getCurrentSpanProvider();
         const cached = (await spanLabelingCache.get(
           text,
           cachePolicy,
-          cacheTemplateVersion
+          cacheTemplateVersion,
+          cacheProvider
         )) as LabelSpansResult | null;
 
         if (cached) {
@@ -171,7 +174,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
                 cachePolicy,
                 cacheTemplateVersion,
                 computed,
-                { ttl }
+                { ttl, provider: getCurrentSpanProvider() }
               );
             }
 
@@ -208,7 +211,20 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       if (!result) {
         return res.status(502).json({ error: 'Span labeling failed to produce a result' });
       }
-      return res.json(result);
+      
+      // Transform response: backend uses 'role' internally, frontend expects 'category'
+      const transformedResult = {
+        ...result,
+        spans: (result.spans || []).map(span => ({
+          text: span.text,
+          start: span.start,
+          end: span.end,
+          category: span.role, // Map role → category for frontend
+          confidence: span.confidence,
+        })),
+      };
+      
+      return res.json(transformedResult);
     } catch (error) {
       logger.error(`${operation} failed`, error as Error, {
         operation,

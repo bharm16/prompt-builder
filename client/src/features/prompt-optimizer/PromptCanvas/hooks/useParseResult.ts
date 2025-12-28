@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/services/LoggingService';
 import { createCanonicalText } from '@utils/canonicalText';
 import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
 import type { CanonicalText } from '@utils/canonicalText';
@@ -36,6 +37,7 @@ export function useParseResult({
   enableMLHighlighting,
   displayedPrompt,
 }: UseParseResultOptions): ParseResult {
+  const log = logger.child('ParseResult');
   const [parseResult, setParseResult] = useState<ParseResult>(() => {
     const canonical = createCanonicalText(displayedPrompt ?? '') as CanonicalText;
     return {
@@ -68,6 +70,15 @@ export function useParseResult({
     }
 
     if (!signatureMatches) {
+      if (enableMLHighlighting && labeledSpans.length > 0) {
+        log.debug('Span signature mismatch; dropping labeled spans', {
+          labeledSpanCount: labeledSpans.length,
+          labelingStatus,
+          textLength: currentText.length,
+          labelingSignature: labelingSignature ? labelingSignature.slice(0, 12) : null,
+          currentSignature: currentSignature.slice(0, 12),
+        });
+      }
       setParseResult({
         canonical,
         spans: [] as HighlightSpan[],
@@ -84,6 +95,23 @@ export function useParseResult({
       text: currentText,
       canonical,
     });
+
+    const highlightCount = highlights.length;
+
+    if (enableMLHighlighting && labeledSpans.length > 1 && highlightCount <= 1) {
+      log.debug('Span conversion produced minimal highlights', {
+        labeledSpanCount: labeledSpans.length,
+        highlightCount,
+        labelingStatus,
+        textLength: currentText.length,
+        signature: currentSignature.slice(0, 12),
+        spanSamples: labeledSpans.slice(0, 3).map((span) => ({
+          start: span.start,
+          end: span.end,
+          role: span.category ?? (span as { role?: string }).role ?? null,
+        })),
+      });
+    }
 
     setParseResult({
       canonical,

@@ -3,10 +3,10 @@ import fs from 'fs';
 import path from 'path';
 
 // 1. Setup & Configuration
-const API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyB-JtJpY5gMwXVOWCbs3fvIQiFlN0eycDU';
+const API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
 
 if (!API_KEY) {
-  console.error("❌ Error: GOOGLE_API_KEY is not set in the environment.");
+  console.error("❌ Error: GOOGLE_API_KEY or GEMINI_API_KEY is not set in the environment.");
   process.exit(1);
 }
 

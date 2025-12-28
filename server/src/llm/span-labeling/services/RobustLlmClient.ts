@@ -160,8 +160,15 @@ export class RobustLlmClient implements ILlmClient {
 
     // Get provider-specific options from subclass (merge providerName for few-shot lookup)
     const providerName = this._getProviderName();
+    const isGemini = providerName === 'gemini';
+    const validationPolicy: ValidationPolicy = isGemini
+      ? { ...(policy || {}), nonTechnicalWordLimit: 0 }
+      : policy;
+    const validationOptions: ProcessingOptions = isGemini
+      ? { ...options, minConfidence: Math.min(options.minConfidence ?? 0.5, 0.2) }
+      : options;
     const modelConfig = this._getModelConfig(aiService, 'span_labeling');
-    const modelName = modelConfig?.model;
+    const modelName = modelConfig?.model || process.env.SPAN_MODEL || '';
     const clientName = process.env.SPAN_PROVIDER || providerName;
     const { provider, capabilities } = detectAndGetCapabilities({
       operation: 'span_labeling',
@@ -186,13 +193,16 @@ export class RobustLlmClient implements ILlmClient {
       providerName,
     };
 
+    const userPayload = isGemini ? text : buildUserPayload(basePayload);
+
     // Build system prompt
     const contextAwareSystemPrompt = buildSystemPrompt(text, true, providerName, Boolean(spanSchema));
 
     // Check for two-pass architecture (GPT-4o-mini with complex schemas)
-    const isMini = modelConfig?.model?.includes('mini') || 
-                   modelConfig?.model?.includes('gpt-4o-mini') ||
-                   process.env.SPAN_MODEL?.includes('mini');
+    // Note: Must check for 'gpt-4o-mini' specifically, NOT just 'mini' substring
+    // because 'gemini' contains 'mini' but doesn't need two-pass architecture
+    const isMini = modelName.includes('gpt-4o-mini') ||
+                   (modelName.includes('mini') && !modelName.includes('gemini'));
     const hasComplexSchema = this._isComplexSchemaForSpans();
 
     let primaryResponse: ModelResponse;
@@ -201,7 +211,7 @@ export class RobustLlmClient implements ILlmClient {
       // Two-Pass Architecture for mini models
       primaryResponse = await this._twoPassExtraction({
         systemPrompt: contextAwareSystemPrompt,
-        userPayload: buildUserPayload(basePayload),
+        userPayload,
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
@@ -211,7 +221,7 @@ export class RobustLlmClient implements ILlmClient {
       // Standard single-pass extraction
       primaryResponse = await callModel({
         systemPrompt: contextAwareSystemPrompt,
-        userPayload: buildUserPayload(basePayload),
+        userPayload,
         aiService,
         maxTokens: estimatedMaxTokens,
         providerOptions,
@@ -222,19 +232,72 @@ export class RobustLlmClient implements ILlmClient {
     // Store metadata for subclass access
     this._lastResponseMetadata = primaryResponse.metadata;
 
-    const parsedPrimary = parseJson(primaryResponse.text);
+    const parsedPrimary = this._parseResponseText(primaryResponse.text);
     if (!parsedPrimary.ok) {
       throw new Error(parsedPrimary.error);
     }
 
     // Cast to expected response type
-    const parsedValue = parsedPrimary.value as ParsedLLMResponse;
+    let parsedValue = parsedPrimary.value as ParsedLLMResponse;
+
+    // Allow provider-specific normalization before validation
+    parsedValue = this._normalizeParsedResponse(parsedValue) as ParsedLLMResponse;
 
     // Inject default meta if LLM omitted it
-    this._injectDefensiveMeta(parsedValue, options, nlpSpansAttempted);
+    this._injectDefensiveMeta(parsedValue, validationOptions, nlpSpansAttempted);
 
     // Validate schema
     validateSchemaOrThrow(parsedValue as Record<string, unknown>, spanSchema);
+
+    const rawSpans = Array.isArray(parsedValue.spans)
+      ? (parsedValue.spans as Array<Partial<LLMSpan>>)
+      : [];
+
+    if (providerName === 'gemini') {
+      const spanSamples = rawSpans.slice(0, 3).map((span) => {
+        const textValue = typeof span.text === 'string' ? span.text : '';
+        const roleValue = typeof span.role === 'string' ? span.role : '';
+        return {
+          text: textValue ? textValue.slice(0, 80) : null,
+          role: roleValue ? roleValue : null,
+          confidence: typeof span.confidence === 'number' ? span.confidence : null,
+        };
+      });
+      const missingTextCount = rawSpans.filter((span) => {
+        const textValue = typeof span.text === 'string' ? span.text.trim() : '';
+        return !textValue;
+      }).length;
+      const missingRoleCount = rawSpans.filter((span) => {
+        const roleValue = typeof span.role === 'string' ? span.role.trim() : '';
+        return !roleValue;
+      }).length;
+
+      logger.debug('Gemini span response parsed', {
+        operation: 'span_labeling',
+        provider: providerName,
+        rawSpanCount: rawSpans.length,
+        missingTextCount,
+        missingRoleCount,
+        spanSamples,
+      });
+    }
+
+    const logGeminiSummary = (stage: string, result: LabelSpansResult): void => {
+      if (providerName !== 'gemini') return;
+      const notesPreview =
+        typeof result.meta?.notes === 'string'
+          ? result.meta.notes.slice(0, 240)
+          : null;
+
+      logger.debug('Gemini span validation summary', {
+        operation: 'span_labeling',
+        provider: providerName,
+        stage,
+        rawSpanCount: rawSpans.length,
+        finalSpanCount: result.spans?.length ?? 0,
+        notesPreview,
+      });
+    };
 
     const isAdversarial =
       parsedValue?.isAdversarial === true ||
@@ -248,14 +311,15 @@ export class RobustLlmClient implements ILlmClient {
         spans: [],
         meta,
         text,
-        policy,
-        options,
+        policy: validationPolicy,
+        options: validationOptions,
         attempt: 1,
         cache,
         isAdversarial: true,
         analysisTrace: parsedValue.analysis_trace || null,
       });
 
+      logGeminiSummary('adversarial', validation.result);
       return this._postProcessResult(validation.result);
     }
 
@@ -264,8 +328,8 @@ export class RobustLlmClient implements ILlmClient {
       spans: parsedValue.spans || [],
       meta,
       text,
-      policy,
-      options,
+      policy: validationPolicy,
+      options: validationOptions,
       attempt: 1,
       cache,
       isAdversarial,
@@ -273,6 +337,7 @@ export class RobustLlmClient implements ILlmClient {
     });
 
     if (validation.ok) {
+      logGeminiSummary('strict', validation.result);
       return this._postProcessResult(validation.result);
     }
 
@@ -282,14 +347,15 @@ export class RobustLlmClient implements ILlmClient {
         spans: parsedValue.spans || [],
         meta,
         text,
-        policy,
-        options,
+        policy: validationPolicy,
+        options: validationOptions,
         attempt: 2,
         cache,
         isAdversarial,
         analysisTrace: parsedValue.analysis_trace || null,
       });
 
+      logGeminiSummary('lenient', validation.result);
       return this._postProcessResult(validation.result);
     }
 
@@ -299,8 +365,8 @@ export class RobustLlmClient implements ILlmClient {
       validationErrors: validation.errors,
       originalResponse: parsedValue as Record<string, unknown>,
       text,
-      policy,
-      options,
+      policy: validationPolicy,
+      options: validationOptions,
       aiService,
       cache,
       estimatedMaxTokens,
@@ -308,6 +374,7 @@ export class RobustLlmClient implements ILlmClient {
       ...(spanSchema && { schema: spanSchema }),
     });
 
+    logGeminiSummary('repair', repairResult);
     return this._postProcessResult(repairResult);
   }
 
@@ -352,6 +419,24 @@ export class RobustLlmClient implements ILlmClient {
   protected _postProcessResult(result: LabelSpansResult): LabelSpansResult {
     // Default: No post-processing
     return result;
+  }
+
+  /**
+   * HOOK: Parse response text into JSON
+   *
+   * Override in subclasses to provide provider-specific parsing or repair.
+   */
+  protected _parseResponseText(text: string): ReturnType<typeof parseJson> {
+    return parseJson(text);
+  }
+
+  /**
+   * HOOK: Normalize parsed response before validation
+   *
+   * Override in subclasses to map provider-specific fields.
+   */
+  protected _normalizeParsedResponse<T extends Record<string, unknown>>(value: T): T {
+    return value;
   }
 
   // ============================================================
@@ -567,8 +652,13 @@ Convert this analysis to the required JSON format.`
       },
     };
 
+    const providerName = this._getProviderName();
+    const repairSystemPrompt = providerName === 'gemini'
+      ? buildSystemPrompt('', false, providerName, Boolean(schema))
+      : BASE_SYSTEM_PROMPT;
+
     const repairResponse = await callModel({
-      systemPrompt: `${BASE_SYSTEM_PROMPT}
+      systemPrompt: `${repairSystemPrompt}
 
 If validation feedback is provided, correct the issues without altering span text.`,
       userPayload: buildUserPayload(repairPayload),
@@ -580,12 +670,19 @@ If validation feedback is provided, correct the issues without altering span tex
 
     this._lastResponseMetadata = repairResponse.metadata;
 
-    const parsedRepair = parseJson(repairResponse.text);
+    const parsedRepair = this._parseResponseText(repairResponse.text);
     if (!parsedRepair.ok) {
       throw new Error(parsedRepair.error);
     }
 
-    const repairValue = parsedRepair.value as ParsedLLMResponse;
+    let repairValue = parsedRepair.value as ParsedLLMResponse;
+
+    // Allow provider-specific normalization before validation
+    repairValue = this._normalizeParsedResponse(repairValue) as ParsedLLMResponse;
+
+    if (providerName === 'gemini') {
+      this._injectDefensiveMeta(repairValue, options);
+    }
 
     validateSchemaOrThrow(repairValue as Record<string, unknown>, schema);
 
@@ -593,8 +690,8 @@ If validation feedback is provided, correct the issues without altering span tex
       spans: repairValue.spans || [],
       meta: repairValue.meta ?? { version: 'v1', notes: '' },
       text,
-      policy,
-      options,
+      policy: validationPolicy,
+      options: validationOptions,
       attempt: 2,
       cache,
       isAdversarial:

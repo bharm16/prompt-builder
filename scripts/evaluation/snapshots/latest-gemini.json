@@ -1,173 +1,93 @@
 {
-  "timestamp": "2025-12-28T03:08:11.423Z",
+  "timestamp": "2025-12-28T07:52:57.137Z",
   "extractionModel": "gemini-2.5-flash",
-  "judgeModel": "gpt-4o-mini",
-  "promptCount": 54,
+  "judgeModel": "gpt-4o",
+  "promptCount": 1,
   "sourceFile": null,
   "summary": {
-    "avgScore": 21.944444444444443,
-    "avgSpanCount": 27.01851851851852,
-    "successCount": 54,
+    "avgScore": 22,
+    "avgSpanCount": 30,
+    "successCount": 1,
     "errorCount": 0,
     "scoreDistribution": {
-      "excellent": 29,
-      "good": 24,
-      "acceptable": 1,
+      "excellent": 0,
+      "good": 1,
+      "acceptable": 0,
       "poor": 0,
       "failing": 0
     }
   },
   "latencyStats": {
     "extraction": {
-      "avg": 0,
-      "p50": 0,
-      "p95": 0
+      "avg": 7239,
+      "p50": 7239,
+      "p95": 7239
     },
     "judge": {
-      "avg": 7838,
-      "p50": 7256,
-      "p95": 12836
+      "avg": 4302,
+      "p50": 4302,
+      "p95": 4302
     }
   },
   "categoryScores": {
     "shot": {
-      "coverage": 2.5,
-      "precision": 2.537037037037037
+      "coverage": 5,
+      "precision": 5
     },
     "subject": {
-      "coverage": 2.8518518518518516,
-      "precision": 3
+      "coverage": 5,
+      "precision": 5
     },
     "action": {
-      "coverage": 2.4074074074074074,
-      "precision": 2.6296296296296298
+      "coverage": 3,
+      "precision": 5
     },
     "environment": {
-      "coverage": 2.4074074074074074,
-      "precision": 2.537037037037037
+      "coverage": 5,
+      "precision": 5
     },
     "lighting": {
-      "coverage": 2.8703703703703702,
-      "precision": 3.111111111111111
+      "coverage": 5,
+      "precision": 4
     },
     "camera": {
-      "coverage": 3.111111111111111,
-      "precision": 3.1666666666666665
+      "coverage": 4,
+      "precision": 4
     },
     "style": {
-      "coverage": 2.759259259259259,
-      "precision": 2.8333333333333335
+      "coverage": 5,
+      "precision": 5
     },
     "technical": {
-      "coverage": 3.740740740740741,
-      "precision": 3.7777777777777777
+      "coverage": 5,
+      "precision": 5
     },
     "audio": {
-      "coverage": 2.425925925925926,
-      "precision": 2.6296296296296298
+      "coverage": 5,
+      "precision": 5
     }
   },
   "commonErrors": {
     "missedElements": [
       {
-        "text": "soft shadows",
-        "count": 3,
-        "category": "lighting"
+        "text": "precision and agility",
+        "count": 1,
+        "category": "action"
       },
       {
-        "text": "soft natural light",
-        "count": 2,
-        "category": "lighting"
-      },
-      {
-        "text": "gentle shadows",
-        "count": 2,
-        "category": "lighting"
-      },
-      {
-        "text": "golden hour",
-        "count": 2,
-        "category": "lighting"
-      },
-      {
-        "text": "dynamic shadows",
-        "count": 2,
-        "category": "lighting"
-      },
-      {
-        "text": "dappled patterns",
-        "count": 2,
-        "category": "lighting"
-      },
-      {
-        "text": "shallow depth of field",
-        "count": 2,
+        "text": "f/4-f/5.6",
+        "count": 1,
         "category": "camera"
-      },
-      {
-        "text": "joyfully",
-        "count": 2,
-        "category": "action"
-      },
-      {
-        "text": "dribbling a basketball",
-        "count": 1,
-        "category": "action"
-      },
-      {
-        "text": "intense focus",
-        "count": 1,
-        "category": "subject"
       }
     ],
     "falsePositives": [
       {
-        "text": "to isolate the main subject",
-        "count": 2,
-        "reason": "abstract_concept"
-      },
-      {
-        "text": "static tripod",
+        "text": "handheld tracking",
         "count": 1,
         "reason": "duplicate"
       },
       {
-        "text": "naturalistic, with an emphasis on gentle, warm tones",
-        "count": 1,
-        "reason": "abstract_concept"
-      },
-      {
-        "text": "naturalistic, warm color grading",
-        "count": 1,
-        "reason": "abstract_concept"
-      },
-      {
-        "text": "technical specs",
-        "count": 1,
-        "reason": "section_header"
-      },
-      {
-        "text": "alternative approaches",
-        "count": 1,
-        "reason": "section_header"
-      },
-      {
-        "text": "variation 1 (alternative angle):",
-        "count": 1,
-        "reason": "section_header"
-      },
-      {
-        "text": "variation 2 (alternative lighting):",
-        "count": 1,
-        "reason": "section_header"
-      },
-      {
-        "text": "low-angle",
-        "count": 1,
-        "reason": "duplicate"
-      },
-      {
-        "text": "soft natural light",
+        "text": "sun",
         "count": 1,
         "reason": "duplicate"
       }
@@ -175,483 +95,21 @@
     "taxonomyErrors": [
       {
         "from": "camera.focus",
-        "to": "camera.focus",
-        "count": 19,
+        "to": "camera.lens",
+        "count": 1,
         "examples": [
-          "shallow depth of field",
-          "f/1.8-f/2.8",
-          "selective focus"
-        ]
-      },
-      {
-        "from": "camera.angle",
-        "to": "camera.angle",
-        "count": 14,
-        "examples": [
-          "Low-angle",
-          "eye level",
-          "Eye-level"
-        ]
-      },
-      {
-        "from": "camera.movement",
-        "to": "camera.movement",
-        "count": 12,
-        "examples": [
-          "static",
-          "static tripod",
-          "Tracking eye-level"
-        ]
-      },
-      {
-        "from": "style.aesthetic",
-        "to": "style.aesthetic",
-        "count": 8,
-        "examples": [
-          "Naturalistic",
-          "emulating Kodak Portra 400",
-          "Family-friendly, akin to a live-action children's movie"
-        ]
-      },
-      {
-        "from": "lighting.quality",
-        "to": "lighting.quality",
-        "count": 7,
-        "examples": [
-          "gentle shadows",
-          "casting long shadows",
-          "enhancing shadows"
-        ]
-      },
-      {
-        "from": "lighting.source",
-        "to": "lighting.source",
-        "count": 6,
-        "examples": [
-          "soft natural light streaming through the window",
-          "Natural window light from the side",
-          "warm backlighting"
-        ]
-      },
-      {
-        "from": "camera.focus",
-        "to": "camera.aperture",
-        "count": 5,
-        "examples": [
-          "f/1.8-f/2.8",
-          "(f/4-f/5.6)",
           "f/4-f/5.6"
-        ]
-      },
-      {
-        "from": "lighting.quality",
-        "to": "lighting.source",
-        "count": 5,
-        "examples": [
-          "soft, natural light",
-          "soft glow on the gears",
-          "creating highlights and shadows"
-        ]
-      },
-      {
-        "from": "camera.movement",
-        "to": "camera.angle",
-        "count": 3,
-        "examples": [
-          "Static Eye-Level Shot",
-          "Eye-level tracking shot",
-          "Eye-level tracking shot"
-        ]
-      },
-      {
-        "from": "style.aesthetic",
-        "to": "style",
-        "count": 2,
-        "examples": [
-          "vintage aesthetic",
-          "akin to Kodak Portra 400"
         ]
       }
     ]
   },
   "results": [
     {
-      "promptId": "KakMLx4S4PsgKXWDrL3P",
-      "input": "woman dribbling a basketball",
+      "promptId": "test-prompt-1",
+      "input": "Test input",
       "spanCount": 30,
       "score": 22,
-      "notes": "Overall, the extraction is strong with minor issues in coverage and taxonomy. The action 'dribbling a basketball' was extracted but not fully captured in terms of its role, and there was a duplicate extraction of 'handheld tracking'."
-    },
-    {
-      "promptId": "PnvcC4p5Z3eMKSEXlAmN",
-      "input": "woman playing computer games",
-      "spanCount": 27,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important emotional and camera angle elements were missed. The taxonomy for aperture was misclassified."
-    },
-    {
-      "promptId": "OBejQdmTWQ9Sxl70B76F",
-      "input": "woman looking out of a window",
-      "spanCount": 26,
-      "score": 22,
-      "notes": "The extraction is mostly comprehensive, but there are some missed elements in the action and lighting categories. There is also a taxonomy error with the classification of 'Static Eye-Level Shot'."
-    },
-    {
-      "promptId": "mmj2pvjEGwPABdQnLCO2",
-      "input": "man looking out of a window",
-      "spanCount": 30,
-      "score": 20,
-      "notes": "The extraction covered many visual control points but missed some important actions and lighting variations. There was a duplicate extraction of 'static tripod'. Overall, the technical specs were well captured."
-    },
-    {
-      "promptId": "pNMiJL7lw4C7F0LMPHYy",
-      "input": "cat looking out of a window",
-      "spanCount": 30,
-      "score": 20,
-      "notes": "The extraction is mostly accurate, but some important elements were missed, particularly in the action and lighting categories. There are also some abstract concepts extracted that should not have been."
-    },
-    {
-      "promptId": "R9fOjXuW3oefUnrl3Wq3",
-      "input": "man playing computer games",
-      "spanCount": 22,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements were missed, particularly regarding the action state and environment. There was also a taxonomy error with the classification of 'vibrant game colors'."
-    },
-    {
-      "promptId": "AfKvdWpNkEUsDfeTOwfY",
-      "input": "man jogging through a park",
-      "spanCount": 36,
-      "score": 22,
-      "notes": "The extraction is mostly accurate, but some critical elements were missed, particularly the action and specific lighting details. There are also some taxonomy errors regarding the roles assigned to certain spans."
-    },
-    {
-      "promptId": "z4r8PWILBNgc0IrdbKCV",
-      "input": "man looking at the horizon while driving car",
-      "spanCount": 28,
-      "score": 21,
-      "notes": "The extraction is mostly comprehensive, but it missed some important actions and qualities related to lighting. Overall, the technical specs were well captured."
-    },
-    {
-      "promptId": "eeYCQlslcHDB7PoaHqq7",
-      "input": "dog looking through a window as the seasons change",
-      "spanCount": 31,
-      "score": 22,
-      "notes": "The extraction is mostly comprehensive, but some important lighting qualities were missed. There was a minor taxonomy error with the role of 'static'. Overall, the extraction is strong."
-    },
-    {
-      "promptId": "Xlj7cWsFZjC3WpNOXiZl",
-      "input": "dog looking out of a window",
-      "spanCount": 37,
-      "score": 22,
-      "notes": "The extraction was mostly accurate, but several important lighting and style elements were missed. The overall structure and granularity were well maintained."
-    },
-    {
-      "promptId": "RB6hMs6H9x87s72ooMqh",
-      "input": "man looking through a window",
-      "spanCount": 28,
-      "score": 23,
-      "notes": "The extraction is mostly comprehensive, but some important elements related to the environment and lighting were missed. The precision is high, with no abstract concepts extracted. Taxonomy roles are mostly correct, but there are some misclassifications."
-    },
-    {
-      "promptId": "6Ut6KdjCnlGFaWwYGJOX",
-      "input": "delivery man carrying a pizza",
-      "spanCount": 26,
-      "score": 22,
-      "notes": "The extraction is mostly accurate, but some important lighting elements were missed, and there was a taxonomy error with the aperture classification."
-    },
-    {
-      "promptId": "dC9LIm9kaLlYvQABlPLF",
-      "input": "man riding a bike",
-      "spanCount": 27,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to the subject's appearance and lighting quality were missed. Taxonomy roles were mostly correct, but there were some misclassifications."
-    },
-    {
-      "promptId": "o6SYdf3EJvyqjg4xMs4D",
-      "input": "cat playing with a toy",
-      "spanCount": 27,
-      "score": 21,
-      "notes": "The extraction is mostly accurate, but the colorful toy was missed as a subject identity. There are some duplicates in the extracted spans, which slightly affect precision."
-    },
-    {
-      "promptId": "Zp558PMAaZ1Pj9ap70bk",
-      "input": "dog running in a park",
-      "spanCount": 29,
-      "score": 23,
-      "notes": "The extraction was mostly accurate, but some important action elements and lighting qualities were missed. There were also some taxonomy errors regarding the classification of aperture and color temperature."
-    },
-    {
-      "promptId": "iyl2irZsBwLBARKttbBA",
-      "input": "dog chasing its own tail",
-      "spanCount": 22,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to lighting were missed, and there was a taxonomy error with the role assigned to 'shallow depth of field'."
-    },
-    {
-      "promptId": "BmKD0ekgLKNuLN4ieUEe",
-      "input": "cat chasing a mouse",
-      "spanCount": 27,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but the action 'energetically chasing' was missed, which is critical. The taxonomy is mostly correct, but there is a minor issue with the style extraction. Overall, the precision is high, and the technical specs were well captured."
-    },
-    {
-      "promptId": "T0FWBdL2YILVbO8wAJ44",
-      "input": "dog running",
-      "spanCount": 26,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to the environment and lighting variations were missed. There are also some taxonomy errors regarding the roles assigned to certain spans."
-    },
-    {
-      "promptId": "KdmT0ljWyrRRDSYwMZ94",
-      "input": "man driving a car",
-      "spanCount": 31,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important actions were missed, and there are minor taxonomy errors. Overall, the extraction is precise and well-structured."
-    },
-    {
-      "promptId": "HdMcsm9TTl8P1I02WWO0",
-      "input": "dog catching a frisbee",
-      "spanCount": 27,
-      "score": 23,
-      "notes": "Overall, the extraction is strong with minor issues in coverage and taxonomy. The missed element of 'soft shadows' is important for lighting quality, and there is a taxonomy error with the 'low angle' span which is correctly classified but appears twice."
-    },
-    {
-      "promptId": "cZJZdcMmA6aJ8FvtrwGv",
-      "input": "man throwing frisbee",
-      "spanCount": 30,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but there are some missed elements in the environment category and a taxonomy error regarding the action role."
-    },
-    {
-      "promptId": "vPgd06WwdwcuAG5trLZJ",
-      "input": "dog catching a ball mid air",
-      "spanCount": 26,
-      "score": 23,
-      "notes": "Overall, the extraction is strong with minor issues in coverage and taxonomy. The missed element relates to the lighting source, and there is a taxonomy error with the camera focus role."
-    },
-    {
-      "promptId": "5hSESaTVsUUKLxM0YX5C",
-      "input": "gorilla drinking from a paper cup at a water cooler",
-      "spanCount": 25,
-      "score": 23,
-      "notes": "Overall, the extraction is strong with minor coverage issues in the environment category and a taxonomy error regarding the camera movement role."
-    },
-    {
-      "promptId": "IP9ax7w0C1SsWeLHdszA",
-      "input": "gorilla wearing white gloves tap dancing in train station",
-      "spanCount": 28,
-      "score": 23,
-      "notes": "The extraction is mostly comprehensive, but there are some missed elements related to lighting and camera focus. The precision is high, with no abstract concepts extracted. Taxonomy roles are mostly correct, but there is a minor issue with the classification of camera focus."
-    },
-    {
-      "promptId": "IiDBw9RZifl7oGRnh38Y",
-      "input": "gorilla with gloves tap dancing in a victorian train station",
-      "spanCount": 29,
-      "score": 22,
-      "notes": "Overall, the extraction is strong with minor issues in coverage and precision due to a missed focus setting and a duplicate style reference."
-    },
-    {
-      "promptId": "Vk1CC3GTCm1BQq95EWm9",
-      "input": "man cooking a meal in a kitchen",
-      "spanCount": 30,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but it missed specific actions related to chopping and stirring, which are important visual control points. The taxonomy roles are mostly correct, but there are some redundant extractions that could be streamlined."
-    },
-    {
-      "promptId": "zSQYfcrJxB8I72gD25Rm",
-      "input": "dog catching a ball in its mouth",
-      "spanCount": 27,
-      "score": 20,
-      "notes": "The extraction missed some important lighting elements and included several abstract concepts that should not have been extracted. Overall, the technical specs were well captured."
-    },
-    {
-      "promptId": "YiYmoPZgLfIp2HitjmYu",
-      "input": "dog running up a hill",
-      "spanCount": 33,
-      "score": 23,
-      "notes": "The extraction was mostly accurate, but there were some missed elements in the action category and some taxonomy errors in the camera and lighting roles."
-    },
-    {
-      "promptId": "YJFW3nz993cvUDF9ZXVs",
-      "input": "cat laying in the sun through a window",
-      "spanCount": 24,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but there are some missed elements and taxonomy errors related to camera movement. Overall, the precision is high, and the granularity is appropriate."
-    },
-    {
-      "promptId": "dd1dXAFj3sZe9THDb7iI",
-      "input": "tree being cut down by lumberjack",
-      "spanCount": 35,
-      "score": 20,
-      "notes": "The extraction is mostly accurate but misses some important elements and includes some duplicates and abstract concepts that should not have been extracted."
-    },
-    {
-      "promptId": "T9sULtu1s3DTXGhvXVGu",
-      "input": "log rolling down a forest hill",
-      "spanCount": 24,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important visual elements were missed, particularly in the subject and lighting categories. Taxonomy roles were mostly correct, but there were some misclassifications."
-    },
-    {
-      "promptId": "Ocgn213XFpmorWLbXmOp",
-      "input": "man screaming in rain",
-      "spanCount": 24,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to action and camera were missed. The taxonomy roles for focus were correctly assigned, but the extraction could be improved in terms of coverage."
-    },
-    {
-      "promptId": "AMaFz30we4vTjC3kpZ9O",
-      "input": "create a shot with a detective",
-      "spanCount": 25,
-      "score": 20,
-      "notes": "The extraction missed some important elements related to style and lighting quality. There was also an abstract concept extracted as a false positive."
-    },
-    {
-      "promptId": "YozOO2w2DuF9RsF0XV9y",
-      "input": "dog barking in a park",
-      "spanCount": 25,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important action states and lighting qualities were missed. Taxonomy roles were mostly correct, but there were some misclassifications in the camera focus."
-    },
-    {
-      "promptId": "2kQffVhqY2sIWXUTBXZA",
-      "input": "view of a widow from within a home facing outward toward a pasture. we see clips of days passed signified by the changing of the seasons",
-      "spanCount": 26,
-      "score": 18,
-      "notes": "The extraction missed some important elements related to lighting and camera movement. There were also some duplicates and taxonomy errors in the extracted spans."
-    },
-    {
-      "promptId": "aT7AFQrMRmdLVF3JTD28",
-      "input": "storyboard with sketches panning from left to right",
-      "spanCount": 25,
-      "score": 23,
-      "notes": "The extraction is mostly comprehensive, but some important elements related to subject appearance and lighting quality were missed. The taxonomy is mostly correct, but there was a misclassification of the depth of field span."
-    },
-    {
-      "promptId": "BOTBWJMaxdM5HTPWYkL4",
-      "input": "a large box, exploding outward with full bedroom decor, at in the middle of an empty bedroom, commercial style, during ad for a home decor stoor featuring chic modern furniture bursting out",
-      "spanCount": 17,
-      "score": 18,
-      "notes": "The extraction missed several important visual elements, particularly in the subject and lighting categories. Some spans were extracted correctly but were misclassified, affecting the taxonomy score."
-    },
-    {
-      "promptId": "owa8tsANTe4CgKT3ApZu",
-      "input": "elderly street musician with weathered hands, dipping brush into vibrant paint, at run-down alley with colorful murals",
-      "spanCount": 31,
-      "score": 22,
-      "notes": "Overall, the extraction is strong with minor missed elements and some taxonomy errors. The coverage is high, but a few important audio and lighting elements were not extracted."
-    },
-    {
-      "promptId": "fx2DSBNoqDhBuPcrZNdG",
-      "input": "vintage typewriter with worn keys, lifting a typed page into light, at dimly lit library filled with old books",
-      "spanCount": 29,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but there are some missed elements in the environment category. The taxonomy has minor errors with the angle classification, but overall, the precision is high."
-    },
-    {
-      "promptId": "wkRsbJTclqftnDUW7981",
-      "input": "dog, barking, at home",
-      "spanCount": 30,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important action elements were missed, and there was a taxonomy error regarding the aperture classification."
-    },
-    {
-      "promptId": "XUNWKWibskQYhoZvQr8B",
-      "input": "young painter with splattered apron, studying a blank canvas intently, at sunlit artist's studio with large windows",
-      "spanCount": 28,
-      "score": 22,
-      "notes": "Overall, the extraction is strong with minor issues in missed elements and false positives. The taxonomy is mostly accurate, but there is a redundancy in the camera movement extraction."
-    },
-    {
-      "promptId": "tyea1RpkeRoVVjUX2yTp",
-      "input": "siberian husky with piercing blue eyes, sprinting across snowy field, at snowy mountain trail, during pausing dramatically, ears alert",
-      "spanCount": 24,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to action and environment were missed. The taxonomy roles for focus were correctly assigned."
-    },
-    {
-      "promptId": "vVZrh26H28MriDBCTDE6",
-      "input": "young botanist with vibrant green gloves, gathering fallen leaves with a canvas bag, at sun-drenched botanical garden pathway",
-      "spanCount": 25,
-      "score": 22,
-      "notes": "The extraction is mostly accurate, but some important elements were missed, particularly in the action and subject categories. The taxonomy roles for depth of field were correctly assigned, but there were some overlaps in the focus descriptions."
-    },
-    {
-      "promptId": "YlrqzBiKWaOpt5v1XBmC",
-      "input": "grizzled woman with a weather-beaten face",
-      "spanCount": 27,
-      "score": 23,
-      "notes": "The extraction was mostly accurate, but some important visual control points from the alternatives section were missed. There was also a taxonomy error with the role assigned to 'static tripod'."
-    },
-    {
-      "promptId": "hutQ3rLaolvLPoITs8qU",
-      "input": "grizzled fisherman with a weather-beaten face, casting a line into choppy waves, at rundown wooden pier at sunrise",
-      "spanCount": 28,
-      "score": 22,
-      "notes": "Overall, the extraction is strong with minor issues in coverage and precision. The missed element regarding weather is important, and there is a duplicate extraction of the style aesthetic."
-    },
-    {
-      "promptId": "O9sA7BGHAibYxpujDrNN",
-      "input": "a dog doing a wheelie on a bicycle in a suburban neighborhood",
-      "spanCount": 21,
-      "score": 22,
-      "notes": "The extraction is mostly accurate, but there are some missed elements and taxonomy errors related to lighting and style classifications."
-    },
-    {
-      "promptId": "7RT3cda5l6Gm0z4aCqNV",
-      "input": "intrepid mountain climber hanging from cliff, pausing to scan the horizon, at weathered granite walls lit by golden hour",
-      "spanCount": 31,
-      "score": 22,
-      "notes": "Overall, the extraction is strong with minor coverage issues in the environment category. All technical specs were accurately captured."
-    },
-    {
-      "promptId": "54z4V9CFJCWx5esd3zmD",
-      "input": "vintage bicycle with rusted gears, oiling rusted bicycle gears, at dimly lit vintage bicycle shop",
-      "spanCount": 21,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements related to action state and lighting source were missed. Taxonomy roles for some extracted spans were misclassified."
-    },
-    {
-      "promptId": "MvikRzkWCAGmCIuHcA4A",
-      "input": "young gardener with dirt-streaked hands, sowing seeds meticulously in rows, at sunlit community garden with raised beds",
-      "spanCount": 24,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but there are some missed elements and a taxonomy error regarding the aperture classification."
-    },
-    {
-      "promptId": "5YRd34ZpFN5GPmZX6ha6",
-      "input": "sleek silver sports car with glossy paint, entering a tunnel with headlights illuminating walls, at subterranean highway tunnel with neon art",
-      "spanCount": 22,
-      "score": 17,
-      "notes": "The extraction missed several important visual elements, particularly in the subject and lighting categories. There were also duplicates in the extracted spans, affecting precision. Taxonomy roles were mostly correct, but some elements were misclassified."
-    },
-    {
-      "promptId": "4aY5jQq6OYDxFUo067WG",
-      "input": "bengal tiger with vibrant orange stripes, doing the Macarena, at lush jungle canopy during sunrise, during dancing like nobody is watching",
-      "spanCount": 26,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but there are some missed elements and taxonomy errors related to action and lighting roles."
-    },
-    {
-      "promptId": "v6lZI55CSMPtWgsv0fBC",
-      "input": "young dancer with colorful tattoos, spinning gracefully on one foot, at vibrant street mural alleyway",
-      "spanCount": 22,
-      "score": 19,
-      "notes": "The extraction missed some important lighting elements and had a false positive with the depth of field description. Overall, coverage is lacking in some areas, particularly in shot and action categories."
-    },
-    {
-      "promptId": "sLEFowkwJ1U0LDtry1Go",
-      "input": "abraham lincoln",
-      "spanCount": 30,
-      "score": 18,
-      "notes": "The extraction missed some critical elements, particularly in the subject and lighting categories. There were also some false positives from section headers. Overall, the extraction was fairly precise but lacked comprehensive coverage."
-    },
-    {
-      "promptId": "Hgf7d2FmAWJcRf0j6Uty",
-      "input": "abraham lincoln g",
-      "spanCount": 20,
-      "score": 23,
-      "notes": "The extraction is mostly accurate, but some important elements were missed, and there are a few taxonomy errors regarding the roles assigned to certain spans."
+      "notes": "The extraction was mostly accurate, with good coverage and precision. However, there were some duplicate entries and a few missed elements, particularly in the action category. The taxonomy was mostly correct, but there was a misclassification of the camera focus role."
     }
   ]
 }

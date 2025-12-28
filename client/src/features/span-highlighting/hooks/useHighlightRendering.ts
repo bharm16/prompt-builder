@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { logger } from '@/services/LoggingService';
 import { PromptContext } from '@utils/PromptContext';
 import {
   buildTextNodeIndex,
@@ -29,7 +30,7 @@ import {
   hasOverlap,
   addToCoverage,
 } from '../utils/index.ts';
-import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES } from '../config/index.ts';
+import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES, DEBUG_HIGHLIGHTS } from '../config/index.ts';
 import type {
   HighlightSpan,
   ParseResult,
@@ -45,6 +46,8 @@ export type {
   ParseResult,
   UseHighlightRenderingOptions,
 } from './types';
+
+const log = logger.child('HighlightRendering');
 
 /**
  * Custom hook for rendering highlights in the editor
@@ -176,6 +179,9 @@ export function useHighlightRendering({
     
     // Process and sort incoming spans
     const sortedSpans = processAndSortSpans(spans, displayText);
+    let skippedOverlap = 0;
+    let skippedMismatch = 0;
+    let skippedEmptyWrapper = 0;
     
     // Create a set of new span IDs
     const newSpanIds = new Set<string>();
@@ -215,6 +221,7 @@ export function useHighlightRendering({
 
       // Skip overlapping spans
       if (hasOverlap(coverage, highlightStart, highlightEnd)) {
+        skippedOverlap += 1;
         return;
       }
 
@@ -223,6 +230,7 @@ export function useHighlightRendering({
       const actualSlice = displayText.slice(highlightStart, highlightEnd);
 
       if (!validateHighlightText(expectedText, actualSlice, span, highlightStart, highlightEnd)) {
+        skippedMismatch += 1;
         return;
       }
 
@@ -262,6 +270,7 @@ export function useHighlightRendering({
         // Handle empty wrappers
         if (!segmentWrappers.length) {
           logEmptyWrappers(span, highlightStart, highlightEnd, nodeIndex, root);
+          skippedEmptyWrapper += 1;
           spanMap.delete(spanId);
           return;
         }
@@ -281,6 +290,22 @@ export function useHighlightRendering({
       // Track coverage
       addToCoverage(coverage, highlightStart, highlightEnd);
     });
+
+    if (DEBUG_HIGHLIGHTS) {
+      const skippedTotal = skippedOverlap + skippedMismatch + skippedEmptyWrapper;
+      const renderedSpanCount = spanMap.size;
+      if (sortedSpans.length > 1 && (renderedSpanCount <= 1 || skippedTotal > 0)) {
+        log.debug('Highlight rendering summary', {
+          attemptedSpanCount: sortedSpans.length,
+          renderedSpanCount,
+          skippedOverlap,
+          skippedMismatch,
+          skippedEmptyWrapper,
+          fingerprint: fingerprint ?? null,
+          textLength: displayText.length,
+        });
+      }
+    }
 
     // Update fingerprint
     highlightStateRef.current.fingerprint = fingerprint ?? null;

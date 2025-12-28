@@ -30,6 +30,7 @@ const LEGACY_ROLE_TO_CATEGORY: Record<string, string> = {
 export interface LLMSpan {
   id?: string;
   role?: string;
+  category?: string; // API returns 'category', legacy responses may have 'role'
   start: number;
   end: number;
   confidence?: number;
@@ -192,8 +193,12 @@ export const convertLabeledSpansToHighlights = ({
       }
 
       // Normalize role to valid taxonomy ID (handles both new and legacy formats)
-      const role = typeof span.role === 'string' ? span.role : TAXONOMY.SUBJECT.id;
-      const category = normalizeRole(role);
+      // API returns 'category', but legacy responses may have 'role'
+      const rawRole = typeof span.category === 'string' ? span.category
+                    : typeof span.role === 'string' ? span.role
+                    : TAXONOMY.SUBJECT.id;
+      const category = normalizeRole(rawRole);
+      const role = rawRole;
 
       const start = Number(span.start);
       const end = Number(span.end);

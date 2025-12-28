@@ -10,7 +10,8 @@ import type {
 } from './types';
 
 // Bump this to invalidate old cached span results when the NLP/LLM pipeline changes.
-const SPAN_LABELING_CACHE_KEY_VERSION = '2';
+// v4: Fixed role → category transformation for Gemini provider (2024-12-28)
+const SPAN_LABELING_CACHE_KEY_VERSION = '4';
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -75,7 +76,12 @@ export class SpanLabelingCacheService {
   /**
    * Generate cache key from text, policy, and template version
    */
-  private _generateCacheKey(text: string, policy: SpanLabelingPolicy | null, templateVersion: string | null): string {
+  private _generateCacheKey(
+    text: string,
+    policy: SpanLabelingPolicy | null,
+    templateVersion: string | null,
+    provider: string | null = null
+  ): string {
     // Create a deterministic hash of the text
     const textHash = createHash('sha256')
       .update(text)
@@ -87,6 +93,7 @@ export class SpanLabelingCacheService {
       v: SPAN_LABELING_CACHE_KEY_VERSION,
       policy: policy || {},
       templateVersion: templateVersion || 'v1',
+      provider: provider || 'unknown',
     });
 
     const policyHash = createHash('sha256')
@@ -103,10 +110,11 @@ export class SpanLabelingCacheService {
   async get(
     text: string,
     policy: SpanLabelingPolicy | null,
-    templateVersion: string | null
+    templateVersion: string | null,
+    provider: string | null = null
   ): Promise<unknown | null> {
     const startTime = Date.now();
-    const cacheKey = this._generateCacheKey(text, policy, templateVersion);
+    const cacheKey = this._generateCacheKey(text, policy, templateVersion, provider);
 
     try {
       // Try Redis first
@@ -187,9 +195,14 @@ export class SpanLabelingCacheService {
     policy: SpanLabelingPolicy | null,
     templateVersion: string | null,
     result: unknown,
-    options: { ttl?: number } = {}
+    options: { ttl?: number; provider?: string | null } = {}
   ): Promise<boolean> {
-    const cacheKey = this._generateCacheKey(text, policy, templateVersion);
+    const cacheKey = this._generateCacheKey(
+      text,
+      policy,
+      templateVersion,
+      options.provider ?? null
+    );
     const ttl = options.ttl || this.defaultTTL;
 
     try {

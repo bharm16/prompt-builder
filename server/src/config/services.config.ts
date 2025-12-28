@@ -122,7 +122,7 @@ export async function configureServices(): Promise<DIContainer> {
       model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
     },
     gemini: {
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
       model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
@@ -558,12 +558,17 @@ export async function initializeServices(container: DIContainer): Promise<DICont
 
       if (!geminiHealth.healthy) {
         logger.warn(
-          '⚠️  Gemini API key validation failed - adapter disabled',
+          '⚠️  Gemini API key validation failed',
           {
             error: geminiHealth.error,
           }
         );
-        container.registerValue('geminiClient', null);
+        if (process.env.NODE_ENV === 'production') {
+          logger.warn('⚠️  Gemini adapter disabled (production safeguard)');
+          container.registerValue('geminiClient', null);
+        } else {
+          logger.warn('Keeping Gemini adapter enabled in non-production for debugging');
+        }
       } else {
         logger.info('✅ Gemini API key validated successfully', {
           responseTime: geminiHealth.responseTime,
@@ -572,12 +577,17 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.warn(
-        '⚠️  Failed to validate Gemini API key - adapter disabled',
+        '⚠️  Failed to validate Gemini API key',
         {
           error: errorMessage,
         }
       );
-      container.registerValue('geminiClient', null);
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn('⚠️  Gemini adapter disabled (production safeguard)');
+        container.registerValue('geminiClient', null);
+      } else {
+        logger.warn('Keeping Gemini adapter enabled in non-production for debugging');
+      }
     }
   }
 

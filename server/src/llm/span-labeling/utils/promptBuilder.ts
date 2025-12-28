@@ -30,6 +30,7 @@ import {
   OPENAI_FEW_SHOT_EXAMPLES,
   VALID_TAXONOMY_IDS
 } from '../schemas/OpenAISchema.js';
+import { GEMINI_SIMPLE_SYSTEM_PROMPT } from '../schemas/GeminiSchema.js';
 
 // Groq/Llama 3-specific imports
 import {
@@ -68,6 +69,11 @@ export function buildSystemPrompt(
     // OpenAI: Minimal prompt, rules in schema descriptions
     basePrompt = OPENAI_MINIMAL_PROMPT;
     logger.debug('Using OpenAI minimal prompt (rules in schema descriptions)');
+  } else if (normalizedProvider === 'gemini') {
+    // Gemini: Use the lightweight test prompt for fast span extraction
+    basePrompt = GEMINI_SIMPLE_SYSTEM_PROMPT;
+    logger.debug('Using Gemini simple prompt');
+    return basePrompt.trim();
   } else {
     // Groq/Llama 3: Full prompt, rules in system message
     // When json_schema is active, remove redundant format instructions

@@ -167,6 +167,10 @@ export function useSuggestionsState(
         ? initialCategory
         : categories[0]?.category || null;
 
+    if (preferredCategory === state.activeCategory) {
+      return;
+    }
+
     dispatch({
       type: ACTIONS.SET_ACTIVE_CATEGORY,
       payload: preferredCategory,
@@ -202,4 +206,3 @@ export function useSuggestionsState(
     actions: ACTIONS,
   };
 }
-

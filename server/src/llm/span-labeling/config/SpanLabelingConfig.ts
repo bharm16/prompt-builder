@@ -47,8 +47,8 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier - v2: Updated role taxonomy (Movement, Camera, Specs, Style, Quality)
-  templateVersion: 'v2',
+  // Template version identifier - v2.1: Updated to invalidate cache and fix single-span issue
+  templateVersion: 'v2.1',
 } as const;
 
 /**
@@ -111,7 +111,7 @@ export const CHUNKING = {
 export const NLP_FAST_PATH = {
   // Enable NLP-based dictionary matching
   // Combines NLP technical terms with GLiNER semantic extraction
-  ENABLED: true,  // ✅ Enabled - GLiNER is working and tested
+  ENABLED: false,  // ❌ Disabled - Using Gemini for span extraction
   
   // Minimum spans to consider NLP sufficient 
   MIN_SPANS_THRESHOLD: 3,
@@ -138,7 +138,7 @@ export const NLP_FAST_PATH = {
  */
 export const COMPROMISE = {
   // Enable Compromise-based verb extraction
-  ENABLED: true,
+  ENABLED: false,  // ❌ Disabled - Using Gemini for action extraction
 
   // Minimum confidence for extracted actions
   MIN_CONFIDENCE: 0.75,
@@ -175,7 +175,7 @@ export const COMPROMISE = {
  */
 export const LIGHTING = {
   // Enable lighting extraction service
-  ENABLED: true,
+  ENABLED: false,  // ❌ Disabled - Using Gemini for lighting extraction
 
   // Minimum confidence for extracted lighting spans
   MIN_CONFIDENCE: 0.70,
@@ -195,7 +195,7 @@ export const NEURO_SYMBOLIC = {
   // Master switch for neuro-symbolic pipeline
   // ENABLED: Now uses AHO_CORASICK for technical terms (100% accurate)
   // then falls back to LLM for open vocabulary (subjects, actions, etc.)
-  ENABLED: true,
+  ENABLED: false,  // ❌ Disabled - Using pure Gemini for span extraction
   
   // Tier 1: Aho-Corasick (Closed Vocabulary)
   AHO_CORASICK: {
