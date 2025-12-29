@@ -13,12 +13,32 @@ The POE will be implemented as a pipeline with three distinct phases:
 3.  **Augmentation (The "Inject" Phase):** Adding model-specific triggers and physics compliance.
 
 ### Core Interface
+**Target File:** `server/src/services/video-prompt-analysis/types.ts` (Update or Create `strategies/types.ts`)
+
 ```typescript
-interface PromptOptimizationStrategy {
+export interface PromptOptimizationStrategy {
   modelId: string;
-  normalize(input: string): string; // Strip phase
-  transform(input: string, context?: PromptContext): string | object; // Translation phase
-  augment(input: string | object): string | object; // Inject phase
+  /**
+   * Phase 1: Strip incompatible tokens and normalize input
+   */
+  normalize(input: string): string; 
+  
+  /**
+   * Phase 2: Translate intent into model-native structure (Text, JSON, or Chain)
+   */
+  transform(input: string, context?: PromptContext): string | object; 
+  
+  /**
+   * Phase 3: Inject model-specific triggers and enforce physics/consistency
+   */
+  augment(input: string | object): string | object;
+}
+
+export interface PromptContext {
+    userIntent: string;
+    detectedSection?: string;
+    constraints?: ConstraintConfig;
+    history?: EditHistoryEntry[];
 }
 ```
 
@@ -27,6 +47,7 @@ interface PromptOptimizationStrategy {
 ## 3. Model-Specific Implementation Specs
 
 ### 3.1 Runway Gen-4.5 Alpha ("Whisper Thunder")
+**File:** `server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts`
 **Architecture:** Autoregressive-to-Diffusion (A2D)
 **Goal:** Structural-Literalism via "CSAE" Protocol.
 
@@ -45,6 +66,7 @@ interface PromptOptimizationStrategy {
     *   **Strip:** "Morphing", "Blur" (unless requested as style).
 
 ### 3.2 Luma Ray-3
+**File:** `server/src/services/video-prompt-analysis/strategies/LumaStrategy.ts`
 **Architecture:** Reasoning-Based Diffusion Transformer
 **Goal:** Causal Reasoning & HDR Pipeline.
 
@@ -60,6 +82,7 @@ interface PromptOptimizationStrategy {
     *   **Strip:** "4k", "8k" (Redundant tokens for this architecture).
 
 ### 3.3 Kling AI 2.6
+**File:** `server/src/services/video-prompt-analysis/strategies/KlingStrategy.ts`
 **Architecture:** Multimodal Diffusion Transformer (MDT) with MemFlow
 **Goal:** Audio-Visual Script & Narrative Consistency.
 
@@ -75,6 +98,7 @@ interface PromptOptimizationStrategy {
     *   **Strip:** Visual quality tokens ("4k") from the *audio* description section.
 
 ### 3.4 OpenAI Sora 2
+**File:** `server/src/services/video-prompt-analysis/strategies/SoraStrategy.ts`
 **Architecture:** Spacetime Patch-based Transformer
 **Goal:** Physics Simulation & Temporal Segmentation.
 
@@ -88,6 +112,7 @@ interface PromptOptimizationStrategy {
     *   **Safety:** Aggressively strip public figure names (unless "Cameo" authorized) to prevent API rejections.
 
 ### 3.5 Google Veo 4
+**File:** `server/src/services/video-prompt-analysis/strategies/VeoStrategy.ts`
 **Architecture:** Transformer-based Latent Diffusion (Gemini-integrated)
 **Goal:** Structured Data Object (JSON).
 
@@ -113,6 +138,7 @@ interface PromptOptimizationStrategy {
 ## 4. Shared Middleware Components
 
 ### 4.1 The "TechStripper"
+**File:** `server/src/services/video-prompt-analysis/utils/TechStripper.ts`
 A shared utility to remove "placebo tokens" that degrade performance in modern models.
 *   **Targets:** "4k", "8k", "trending on artstation", "award winning".
 *   **Logic:**
@@ -120,11 +146,13 @@ A shared utility to remove "placebo tokens" that degrade performance in modern m
     *   *Remove* for Runway/Luma (waste context/confuse architecture).
 
 ### 4.2 The "SafetySanitizer"
+**File:** `server/src/services/video-prompt-analysis/utils/SafetySanitizer.ts`
 Pre-flight check to prevent account bans.
 *   **Blocklist:** NSFW terms, unauthorized celebrity names (Taylor Swift, etc.), violent acts.
 *   **Action:** Replace with generic descriptors (e.g., "Taylor Swift" -> "Pop star with blonde hair").
 
 ### 4.3 Multimodal Asset Manager (MAM)
+**File:** `server/src/services/video-prompt-analysis/services/MultimodalAssetManager.ts`
 *   **Function:** Handles `@Image`, `@Element`, and `@Cameo` references.
 *   **Workflow:** Upload to model specific storage -> Get Token/UUID -> Inject Token into text prompt.
 
@@ -133,14 +161,18 @@ Pre-flight check to prevent account bans.
 ## 5. Implementation Roadmap
 
 ### Phase 1: Text-Based Optimization (The "Translator")
-*   Implement `PromptOptimizationStrategy` for all 5 models.
-*   Build the `CSAE` sorter for Runway.
-*   Build the "Causal Expander" (LLM prompt) for Luma.
-*   Build the "Screenplay Formatter" for Kling.
+1.  **Update Model Detection:**
+    *   Update `server/src/services/video-prompt-analysis/services/detection/ModelDetectionService.ts` to include patterns for Gen-4.5, Ray-3, Kling 2.6, Sora 2, and Veo 4.
+2.  **Define Strategy Interface:**
+    *   Create `PromptOptimizationStrategy` interface in `server/src/services/video-prompt-analysis/types.ts`.
+3.  **Implement Strategies:**
+    *   Create basic `normalize`, `transform`, `augment` implementations for all 5 strategies in `server/src/services/video-prompt-analysis/strategies/`.
+4.  **Integrate with VideoPromptService:**
+    *   Update `VideoPromptService.ts` to use the new strategies based on detected model.
 
 ### Phase 2: Structured & JSON Control
-*   Implement `VeoJsonBuilder` to map text to Veo's JSON schema.
-*   Implement Sora's temporal segmentation logic (`Shot 1` -> `Shot 2`).
+*   Implement `VeoJsonBuilder` in `VeoStrategy.ts` to map text to Veo's JSON schema.
+*   Implement Sora's temporal segmentation logic (`Shot 1` -> `Shot 2`) in `SoraStrategy.ts`.
 
 ### Phase 3: Advanced Pipeline Features
 *   Integrate **Multimodal Asset Manager** for handling image references.
