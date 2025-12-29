@@ -164,3 +164,25 @@ LivePortrait is not a text-to-video model but a "driving" model.
 3.  **Structuring:** Reorder text into `Subject -> Action -> Scene -> Style` for Kling/Wan2.1.
 4.  **Parameterization:** Convert keywords like "widescreen" into `-ar 16:9` for Pika.
 5.  **Quality Injection:** Append model-specific quality boosters (e.g., "hyperrealistic" for Mochi, "Master Mode" style for HunYuan).
+
+---
+
+## Project-Based Prioritization (Current Codebase)
+
+These recommendations reflect the current product constraints: narrative prompt rendering, no negative prompt fields, no reference-image workflow, and model detection already covering Sora/Veo3/Runway/Kling/Luma.
+
+### Start Here (Best Fit)
+1.  **Runway Gen-3 Alpha:** Narrative prompts, no negative prompts, and strong alignment with current rendering.
+2.  **Luma Dream Machine:** Positive, conversational prompting; aligns with narrative expansion. Detection exists but UI support should be added.
+3.  **Kling AI:** Structured 4-layer rule maps cleanly to existing Subject/Action/Context/Style slots; negative prompts are optional.
+4.  **Sora + Veo3:** Core product positioning already supports them in detection; add optimization sections to match.
+
+### Hold Off / Later
+1.  **Pika 2.0:** Requires CLI-style parameterization and explicit negative prompt fields.
+2.  **MiniMax (Hailuo):** Formula-heavy camera commands imply a new structured template path.
+3.  **HunYuan:** Relies on rewrite/Master Mode behavior not represented in the renderer.
+4.  **Wan2.1:** Dimension-based ordering and long prompt sweet spot require custom reordering logic.
+5.  **Vidu:** Best with character/reference frames; needs reference-image workflow.
+6.  **LivePortrait:** Motion-transfer model requiring source and driving assets, not text-only prompts.
+7.  **DeepSeek Janus-Pro:** Multimodal bridge tool, not a primary video generator.
+8.  **Mochi 1:** Photoreal-only open-source focus; lower priority vs core commercial targets.
