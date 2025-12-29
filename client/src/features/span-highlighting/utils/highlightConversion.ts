@@ -85,8 +85,10 @@ function normalizeRole(role: string | null | undefined): string {
     return LEGACY_ROLE_TO_CATEGORY[role];
   }
 
+  // Debugging: Log invalid roles to help identify drift
+  console.warn(`[highlightConversion] Invalid role "${role}" not in taxonomy. Defaulting to "${TAXONOMY.SUBJECT.id}". Valid categories:`, Array.from(VALID_CATEGORIES));
+
   // Fallback for unknown roles
-  console.warn(`[highlightConversion] Unknown role "${role}", defaulting to subject`);
   return TAXONOMY.SUBJECT.id;
 }
 
@@ -181,6 +183,14 @@ export const convertLabeledSpansToHighlights = ({
   text: string;
   canonical?: CanonicalText;
 }): Highlight[] => {
+  if (import.meta.env.DEV) {
+    console.debug('[convertLabeledSpansToHighlights] Input', {
+      spanCount: Array.isArray(spans) ? spans.length : 0,
+      textLength: text?.length,
+      sampleSpans: spans?.slice(0, 3)
+    });
+  }
+
   if (!Array.isArray(spans) || !text) {
     return [];
   }
@@ -189,6 +199,7 @@ export const convertLabeledSpansToHighlights = ({
   const rawHighlights = spans
     .map((span, index): Highlight | null => {
       if (!span || typeof span !== 'object') {
+        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Invalid span object', span);
         return null;
       }
 
@@ -204,17 +215,20 @@ export const convertLabeledSpansToHighlights = ({
       const end = Number(span.end);
 
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Invalid indices', { start, end, span });
         return null;
       }
 
       const clampedStart = Math.max(0, Math.min(text.length, start));
       const clampedEnd = Math.max(clampedStart, Math.min(text.length, end));
       if (clampedEnd <= clampedStart) {
+        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Clamped empty range', { clampedStart, clampedEnd, span });
         return null;
       }
 
       const slice = text.slice(clampedStart, clampedEnd);
       if (!slice) {
+         if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Empty slice', { clampedStart, clampedEnd, span });
         return null;
       }
 
@@ -265,5 +279,14 @@ export const convertLabeledSpansToHighlights = ({
     });
 
   // 2. Merge fragmented spans before returning
-  return mergeFragmentedSpans(rawHighlights, text);
+  const merged = mergeFragmentedSpans(rawHighlights, text);
+  
+  if (import.meta.env.DEV) {
+    console.debug('[convertLabeledSpansToHighlights] Result', {
+      rawCount: rawHighlights.length,
+      mergedCount: merged.length
+    });
+  }
+  
+  return merged;
 };

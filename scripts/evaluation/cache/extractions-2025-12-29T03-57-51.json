@@ -1,7 +1,7 @@
 {
   "metadata": {
     "model": "gemini-2.5-flash",
-    "timestamp": "2025-12-29T04:13:46.239Z",
+    "timestamp": "2025-12-29T03:57:51.281Z",
     "promptsFile": null,
     "sampleSize": null,
     "totalPrompts": 1,
@@ -111,10 +111,10 @@
           "section": "main"
         },
         {
-          "text": "soft shadows",
+          "text": "casting soft shadows",
           "role": "lighting.quality",
           "confidence": 1,
-          "start": 388,
+          "start": 380,
           "end": 400,
           "section": "main"
         },
@@ -159,12 +159,20 @@
           "section": "technicalSpecs"
         },
         {
-          "text": "Low-angle handheld tracking",
-          "role": "camera.movement",
+          "text": "Low-angle",
+          "role": "camera.angle",
           "confidence": 1,
           "start": 619,
-          "end": 646,
+          "end": 628,
           "section": "technicalSpecs"
+        },
+        {
+          "text": "handheld tracking",
+          "role": "camera.movement",
+          "confidence": 1,
+          "start": 235,
+          "end": 252,
+          "section": "main"
         },
         {
           "text": "50mm lens",
@@ -208,7 +216,7 @@
         }
       ],
       "error": null,
-      "latency": 5527
+      "latency": 5917
     }
   ]
 }

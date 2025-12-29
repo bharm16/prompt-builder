@@ -212,6 +212,7 @@ export class GeminiAdapter {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith(':')) continue;
 
+        // Standard Gemini SSE format
         if (trimmed.startsWith('data: ')) {
           const data = trimmed.slice(6);
           if (data === '[DONE]') continue;
@@ -227,11 +228,28 @@ export class GeminiAdapter {
               onChunk(content);
             }
           } catch {
-            this.log.debug('Skipping malformed Gemini SSE chunk', {
+            // If it fails to parse as JSON, treat it as raw text if it's not structural
+            // This is a fallback for some edge cases in Gemini's stream
+             this.log.debug('Skipping malformed Gemini SSE chunk', {
               operation: 'streamComplete',
               chunk: data.substring(0, 100),
             });
           }
+        } else {
+             // Fallback: Sometimes content comes without "data:" prefix in raw streams
+             // Attempt to parse as direct JSON if it looks like it
+             try {
+                const parsed = JSON.parse(trimmed) as GeminiResponse;
+                 const content = this.responseParser.extractTextFromParts(
+                  parsed.candidates?.[0]?.content?.parts
+                );
+                if (content) {
+                  fullText += content;
+                  onChunk(content);
+                }
+             } catch {
+                // Ignore truly non-JSON lines (noise)
+             }
         }
       }
     }

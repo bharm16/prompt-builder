@@ -6,6 +6,7 @@
  */
 
 import { API_CONFIG } from '@config/api.config';
+import { logger } from '@/services/LoggingService';
 
 /**
  * Default headers for span labeling API requests
@@ -53,6 +54,8 @@ function buildBody(payload: LabelSpansPayload): string {
  * Span Labeling API
  */
 export class SpanLabelingApi {
+  private static log = logger.child('SpanLabelingApi');
+
   /**
    * Labels spans in the provided text
    *
@@ -109,6 +112,11 @@ export class SpanLabelingApi {
     onChunk: (span: LabelSpansResponse['spans'][0]) => void,
     signal: AbortSignal | null = null
   ): Promise<LabelSpansResponse> {
+    this.log.debug('Stream started', {
+      textLength: payload.text.length,
+      maxSpans: payload.maxSpans
+    });
+
     const res = await fetch('/llm/label-spans/stream', {
       method: 'POST',
       headers: DEFAULT_HEADERS,
@@ -119,6 +127,7 @@ export class SpanLabelingApi {
     if (!res.ok) {
         // Fallback to blocking if stream endpoint missing (404) or error
         if (res.status === 404) {
+            this.log.warn('Stream endpoint not found, falling back to blocking', { status: 404 });
             const blocking = await this.labelSpans(payload, signal);
             blocking.spans.forEach(onChunk);
             return blocking;
@@ -136,6 +145,7 @@ export class SpanLabelingApi {
         }
         const error = new Error(message) as Error & { status?: number };
         error.status = res.status;
+        this.log.error('Stream request failed', error, { status: res.status });
         throw error;
     }
     
@@ -158,18 +168,22 @@ export class SpanLabelingApi {
             
             for (const line of lines) {
                 if (!line.trim()) continue;
+                this.log.debug('Stream chunk received', { line });
                 try {
                     const span = JSON.parse(line);
                     if (span.error) {
                          // Stream reported error
                          throw new Error(span.error);
                     }
-                    if (span.text && span.category) {
+                    if (span.text && (span.category || span.role)) {
                          onChunk(span);
                          spans.push(span);
                     }
                 } catch (e) {
-                    console.warn('Failed to parse NDJSON line:', line, e);
+                    this.log.warn('JSON parse failed', {
+                        line,
+                        error: (e as Error).message
+                    });
                 }
             }
         }
@@ -177,6 +191,7 @@ export class SpanLabelingApi {
         reader.releaseLock();
     }
     
+    this.log.info('Stream completed', { spanCount: spans.length });
     return { spans, meta: { streaming: true } };
   }
 }

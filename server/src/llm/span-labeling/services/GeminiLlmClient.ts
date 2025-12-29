@@ -52,7 +52,9 @@ export class GeminiLlmClient extends RobustLlmClient {
     };
 
     // Start streaming in background
-    aiService.stream('span_labeling', {
+    // Use explicit 'span_labeling_gemini' operation to ensure we use Gemini client
+    // regardless of what the generic 'span_labeling' is configured to.
+    aiService.stream('span_labeling_gemini', {
       systemPrompt,
       userMessage: text,
       maxTokens: 16384,
@@ -75,7 +77,33 @@ export class GeminiLlmClient extends RobustLlmClient {
           if (line) {
              try {
                // Handle potential code block fences if model ignores instruction
-               const cleanLine = line.replace(/^```json/, '').replace(/^```/, '');
+               let cleanLine = line.replace(/^```json/, '').replace(/^```/, '');
+               
+               // Handle JSON array wrapping (Gemini often wraps in [ ... ] despite NDJSON request)
+               // 1. Skip opening bracket lines
+               if (cleanLine === '[') continue;
+               // 2. Skip closing bracket lines
+               if (cleanLine === ']') continue;
+               
+               // 3. Remove leading '[' if it starts a line (e.g. "[{...}")
+               if (cleanLine.startsWith('[')) {
+                 cleanLine = cleanLine.substring(1).trim();
+               }
+
+               // 4. Remove trailing comma (e.g., "{...},")
+               if (cleanLine.endsWith(',')) {
+                 cleanLine = cleanLine.slice(0, -1).trim();
+               }
+               
+               // 5. Remove trailing ']' or '],' (e.g. "...}]")
+               if (cleanLine.endsWith(']')) {
+                 cleanLine = cleanLine.slice(0, -1).trim();
+               }
+               // Check comma again after bracket removal
+               if (cleanLine.endsWith(',')) {
+                 cleanLine = cleanLine.slice(0, -1).trim();
+               }
+
                if (!cleanLine) continue;
 
                const span = JSON.parse(cleanLine);
@@ -86,6 +114,7 @@ export class GeminiLlmClient extends RobustLlmClient {
                }
              } catch (e) {
                // Ignore parse errors for partial lines or noise
+               // log.debug('Failed to parse line', { line, error: (e as Error).message });
              }
           }
         }
@@ -112,7 +141,7 @@ export class GeminiLlmClient extends RobustLlmClient {
   protected override _getProviderRequestOptions(): ProviderRequestOptions {
     return {
       enableBookending: false, // Gemini follows instructions well without bookending
-      useFewShot: false,      // Zero-shot works well with Flash 1.5/2.0
+      useFewShot: false,      // Zero-shot works well with Flash 2.5/2.0
       useSeedFromConfig: false, // Gemini doesn't support seed in the same way as OpenAI
       enableLogprobs: false,   // Not typically used for Gemini JSON mode
     };
@@ -122,7 +151,7 @@ export class GeminiLlmClient extends RobustLlmClient {
    * HOOK: Post-process result with provider-specific adjustments
    */
   protected override _postProcessResult(result: LabelSpansResult): LabelSpansResult {
-    // Gemini 1.5 Flash is very fast but can sometimes be verbose
+    // Gemini 2.5 Flash is very fast but can sometimes be verbose
     // No specific post-processing needed yet, but keeping hook available
     return result;
   }

@@ -104,7 +104,7 @@ const PROVIDER_CAPABILITIES: Record<ProviderType, ProviderCapabilities> = {
     needsPromptFormatInstructions: true,
   },
   gemini: {
-    strictJsonSchema: false,
+    strictJsonSchema: true, // Supports responseSchema
     developerRole: false,
     seed: false,
     logprobs: false,

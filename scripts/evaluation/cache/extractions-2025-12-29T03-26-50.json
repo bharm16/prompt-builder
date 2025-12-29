@@ -1,7 +1,7 @@
 {
   "metadata": {
     "model": "gemini-2.5-flash",
-    "timestamp": "2025-12-29T04:13:46.239Z",
+    "timestamp": "2025-12-29T03:26:50.603Z",
     "promptsFile": null,
     "sampleSize": null,
     "totalPrompts": 1,
@@ -16,7 +16,7 @@
       "spans": [
         {
           "text": "Medium Shot",
-          "role": "shot.type",
+          "role": "Visual",
           "confidence": 1,
           "start": 0,
           "end": 11,
@@ -24,7 +24,7 @@
         },
         {
           "text": "woman",
-          "role": "subject.identity",
+          "role": "Visual",
           "confidence": 1,
           "start": 17,
           "end": 22,
@@ -32,7 +32,7 @@
         },
         {
           "text": "bright blue sports jersey",
-          "role": "subject.wardrobe",
+          "role": "Visual",
           "confidence": 1,
           "start": 28,
           "end": 53,
@@ -40,7 +40,7 @@
         },
         {
           "text": "white high-top sneakers",
-          "role": "subject.wardrobe",
+          "role": "Visual",
           "confidence": 1,
           "start": 55,
           "end": 78,
@@ -48,23 +48,31 @@
         },
         {
           "text": "black braided hair",
-          "role": "subject.appearance",
+          "role": "Visual",
           "confidence": 1,
           "start": 84,
           "end": 102,
           "section": "main"
         },
         {
-          "text": "dribbling a basketball with precision and agility",
-          "role": "action.movement",
+          "text": "dribbling a basketball",
+          "role": "Visual",
           "confidence": 1,
           "start": 103,
+          "end": 125,
+          "section": "main"
+        },
+        {
+          "text": "precision and agility",
+          "role": "Visual",
+          "confidence": 1,
+          "start": 131,
           "end": 152,
           "section": "main"
         },
         {
           "text": "outdoor basketball court with painted lines",
-          "role": "environment.location",
+          "role": "Visual",
           "confidence": 1,
           "start": 159,
           "end": 202,
@@ -72,7 +80,7 @@
         },
         {
           "text": "mid-morning",
-          "role": "lighting.timeOfDay",
+          "role": "Visual",
           "confidence": 1,
           "start": 206,
           "end": 217,
@@ -80,7 +88,7 @@
         },
         {
           "text": "handheld tracking",
-          "role": "camera.movement",
+          "role": "Technical",
           "confidence": 1,
           "start": 235,
           "end": 252,
@@ -88,7 +96,7 @@
         },
         {
           "text": "low angle",
-          "role": "camera.angle",
+          "role": "Technical",
           "confidence": 1,
           "start": 260,
           "end": 269,
@@ -96,7 +104,7 @@
         },
         {
           "text": "selective focus (f/4-f/5.6)",
-          "role": "camera.focus",
+          "role": "Technical",
           "confidence": 1,
           "start": 275,
           "end": 302,
@@ -104,7 +112,7 @@
         },
         {
           "text": "natural daylight from the sun",
-          "role": "lighting.source",
+          "role": "Technical",
           "confidence": 1,
           "start": 349,
           "end": 378,
@@ -112,7 +120,7 @@
         },
         {
           "text": "soft shadows",
-          "role": "lighting.quality",
+          "role": "Visual",
           "confidence": 1,
           "start": 388,
           "end": 400,
@@ -120,87 +128,63 @@
         },
         {
           "text": "sports photography clarity",
-          "role": "style.aesthetic",
+          "role": "Visual",
           "confidence": 1,
           "start": 429,
           "end": 455,
           "section": "main"
         },
         {
-          "text": "6s",
-          "role": "technical.duration",
+          "text": "Duration: 6s",
+          "role": "Technical",
           "confidence": 1,
-          "start": 494,
-          "end": 496,
-          "section": "technicalSpecs"
+          "start": 0,
+          "end": 0,
+          "section": "main"
         },
         {
-          "text": "16:9",
-          "role": "technical.aspectRatio",
+          "text": "Aspect Ratio: 16:9",
+          "role": "Technical",
           "confidence": 1,
-          "start": 517,
-          "end": 521,
-          "section": "technicalSpecs"
+          "start": 0,
+          "end": 0,
+          "section": "main"
         },
         {
-          "text": "60fps",
-          "role": "technical.frameRate",
+          "text": "Frame Rate: 60fps",
+          "role": "Technical",
           "confidence": 1,
-          "start": 540,
-          "end": 545,
-          "section": "technicalSpecs"
+          "start": 0,
+          "end": 0,
+          "section": "main"
         },
         {
           "text": "Sound of sneakers on court and ball dribbling",
-          "role": "audio.soundEffect",
+          "role": "Audio",
           "confidence": 1,
           "start": 559,
           "end": 604,
           "section": "technicalSpecs"
         },
         {
-          "text": "Low-angle handheld tracking",
-          "role": "camera.movement",
+          "text": "Low-angle handheld tracking with a 50mm lens, f/2.8",
+          "role": "Technical",
           "confidence": 1,
           "start": 619,
-          "end": 646,
-          "section": "technicalSpecs"
-        },
-        {
-          "text": "50mm lens",
-          "role": "camera.lens",
-          "confidence": 1,
-          "start": 654,
-          "end": 663,
-          "section": "technicalSpecs"
-        },
-        {
-          "text": "f/2.8",
-          "role": "camera.focus",
-          "confidence": 1,
-          "start": 665,
           "end": 670,
           "section": "technicalSpecs"
         },
         {
-          "text": "Natural daylight from the sun",
-          "role": "lighting.source",
+          "text": "Natural daylight from the sun, high CRI",
+          "role": "Technical",
           "confidence": 1,
           "start": 687,
-          "end": 716,
-          "section": "technicalSpecs"
-        },
-        {
-          "text": "high CRI",
-          "role": "lighting.quality",
-          "confidence": 1,
-          "start": 718,
           "end": 726,
           "section": "technicalSpecs"
         },
         {
           "text": "Dynamic sports photography",
-          "role": "style.aesthetic",
+          "role": "Visual",
           "confidence": 1,
           "start": 740,
           "end": 766,
@@ -208,7 +192,7 @@
         }
       ],
       "error": null,
-      "latency": 5527
+      "latency": 3789
     }
   ]
 }

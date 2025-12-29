@@ -313,8 +313,20 @@ export async function* labelSpansStream(
     return;
   }
 
-  // Create client
-  const llmClient = createLlmClient({ operation: 'span_labeling' });
+  // Resolve model from AI Service config to ensure correct provider detection
+  let modelName: string | undefined;
+  try {
+     const config = aiService.getOperationConfig('span_labeling');
+     modelName = config?.model;
+  } catch (e) {
+     // Ignore config lookup errors
+  }
+
+  // Create client with explicit model for auto-detection
+  const llmClient = createLlmClient({ 
+      operation: 'span_labeling',
+      model: modelName
+  });
 
   // Fallback if streaming not supported
   if (!llmClient.streamSpans) {
@@ -358,6 +370,17 @@ export async function* labelSpansStream(
           start: typeof rawSpan.start === 'number' ? rawSpan.start : undefined,
           end: typeof rawSpan.end === 'number' ? rawSpan.end : undefined,
       };
+
+      // Calculate indices if missing
+      if (typeof span.start !== 'number' || typeof span.end !== 'number') {
+        const match = cache.findBestMatch(params.text, span.text);
+        if (match) {
+          span.start = match.start;
+          span.end = match.end;
+          // Use exact text from source to ensure alignment
+          span.text = params.text.slice(match.start, match.end); 
+        }
+      }
       
       yield span;
   }

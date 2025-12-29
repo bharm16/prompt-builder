@@ -22,6 +22,7 @@ import {
   OPENAI_SPAN_LABELING_JSON_SCHEMA,
   GROQ_SPAN_LABELING_JSON_SCHEMA,
 } from '@llm/span-labeling/schemas/SpanLabelingSchema';
+import { GEMINI_JSON_SCHEMA } from '@llm/span-labeling/schemas/GeminiSchema';
 
 export interface JSONSchema {
   type: string | string[];
@@ -228,9 +229,13 @@ export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSche
  * Span Labeling Schema Factory
  */
 export function getSpanLabelingSchema(options: SchemaOptions = {}): JSONSchema {
-  const { capabilities } = detectAndGetCapabilities(
+  const { provider, capabilities } = detectAndGetCapabilities(
     buildCapabilityOptions(options, 'span_labeling')
   );
+
+  if (provider === 'gemini') {
+    return GEMINI_JSON_SCHEMA as unknown as JSONSchema;
+  }
 
   if (capabilities.strictJsonSchema) {
     return OPENAI_SPAN_LABELING_JSON_SCHEMA;

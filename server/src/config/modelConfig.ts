@@ -400,6 +400,19 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
+   * Explicit Gemini configuration for span labeling
+   * Used by GeminiLlmClient to force Gemini usage regardless of SPAN_PROVIDER
+   */
+  span_labeling_gemini: {
+    client: 'gemini',
+    model: 'gemini-2.5-flash',
+    temperature: 0.1,
+    maxTokens: 16384,
+    timeout: 45000,
+    useSeed: true,
+  },
+
+  /**
    * Role classification for spans
    * Temperature 0.0 for deterministic classification
    */

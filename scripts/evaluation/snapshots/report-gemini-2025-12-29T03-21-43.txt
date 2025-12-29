@@ -1,0 +1,59 @@
+Evaluation Report - 2025-12-29T03:21:43.698Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (1 prompts evaluated):
+  Average Score:      22.00/25
+  Average Span Count: 25.00
+  Success/Errors:     1/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ██████████████████████████████ 1
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=10768 | P50=10768 | P95=10768
+  Judge:      Avg=5062 | P50=5062 | P95=5062
+
+CATEGORY SCORES (avg coverage/precision):
+  shot           5.00 / 5.00
+  subject        3.00 / 3.00
+  action         4.00 / 4.00
+  environment    4.00 / 4.00
+  lighting       4.00 / 4.00
+  camera         5.00 / 5.00
+  style          5.00 / 5.00
+  technical      5.00 / 5.00
+  audio          5.00 / 5.00
+
+❌ COMMONLY MISSED ELEMENTS:
+  - woman (1x, subject)
+  - bright blue sports jersey (1x, subject)
+  - white high-top sneakers (1x, subject)
+  - black braided hair (1x, subject)
+  - dribbling a basketball (1x, action)
+
+⚠️  COMMON FALSE POSITIVES:
+  - woman (1x, non_visual)
+  - bright blue sports jersey (1x, non_visual)
+  - white high-top sneakers (1x, non_visual)
+  - black braided hair (1x, non_visual)
+  - basketball (1x, non_visual)
+
+🔄 TOP TAXONOMY ERRORS:
+  - action → action.movement (1x) e.g. "dribbling a basketball with precision and agility"
+  - lighting_source → lighting (1x) e.g. "natural daylight from the sun"
+  - lighting_effect → lighting.quality (1x) e.g. "casting soft shadows"
+
+🔍 WORST PERFORMERS (for debugging):
+  [22/25] "Test input..."
+    Notes: The extraction was mostly accurate, but there were some issues with taxonomy roles and non-visual el
+
+================================================================================

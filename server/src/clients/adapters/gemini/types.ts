@@ -22,6 +22,7 @@ export interface CompletionOptions {
   isArray?: boolean;
   messages?: Array<{ role: string; content: string | unknown }>;
   onChunk?: (chunk: string) => void;
+  responseSchema?: object;
 }
 
 /**
@@ -75,6 +76,7 @@ export interface GeminiGenerationConfig {
   temperature: number;
   maxOutputTokens: number;
   responseMimeType?: string;
+  responseSchema?: object;
 }
 
 /**

@@ -1,0 +1,57 @@
+Evaluation Report - 2025-12-29T03:26:54.771Z
+Extraction Model: gemini-2.5-flash
+Judge Model: gpt-4o
+
+================================================================================
+  GEMINI SPAN LABELING EVALUATION REPORT
+================================================================================
+
+📊 SUMMARY (1 prompts evaluated):
+  Average Score:      19.00/25
+  Average Span Count: 22.00
+  Success/Errors:     1/0
+
+📈 SCORE DISTRIBUTION:
+  excellent (23-25)     0
+  good (18-22)         ██████████████████████████████ 1
+  acceptable (13-17)    0
+  poor (8-12)           0
+  failing (0-7)         0
+
+⏱️  LATENCY STATS (ms):
+  Extraction: Avg=3789 | P50=3789 | P95=3789
+  Judge:      Avg=4165 | P50=4165 | P95=4165
+
+CATEGORY SCORES (avg coverage/precision):
+  shot           5.00 / 5.00
+  subject        5.00 / 5.00
+  action         3.00 / 3.00
+  environment    5.00 / 5.00
+  lighting       5.00 / 5.00
+  camera         3.00 / 3.00
+  style          5.00 / 5.00
+  technical      3.00 / 3.00
+  audio          5.00 / 5.00
+
+❌ COMMONLY MISSED ELEMENTS:
+  - 6s (1x, technical)
+  - 16:9 (1x, technical)
+  - 60fps (1x, technical)
+  - 50mm lens (1x, camera)
+  - f/2.8 (1x, camera)
+
+⚠️  COMMON FALSE POSITIVES:
+  - precision and agility (1x, abstract_concept)
+  - duration: 6s (1x, section_header)
+  - aspect ratio: 16:9 (1x, section_header)
+  - frame rate: 60fps (1x, section_header)
+
+🔄 TOP TAXONOMY ERRORS:
+  - technical → camera.movement (1x) e.g. "handheld tracking"
+  - technical → camera.angle (1x) e.g. "low angle"
+
+🔍 WORST PERFORMERS (for debugging):
+  [19/25] "Test input..."
+    Notes: The extraction missed some technical specs and camera details, and included some non-visual concepts
+
+================================================================================

@@ -31,7 +31,7 @@ export const PERFORMANCE = {
  */
 export const DEFAULT_POLICY = {
   // Maximum word count for non-technical spans
-  nonTechnicalWordLimit: 6,
+  nonTechnicalWordLimit: 15,
 
   // Whether to allow overlapping spans
   allowOverlap: false,
@@ -47,8 +47,8 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier - v2.1: Updated to invalidate cache and fix single-span issue
-  templateVersion: 'v2.1',
+  // Template version identifier - v2.2: Relaxed word limit and fixed fuzzy matching window
+  templateVersion: 'v2.2',
 } as const;
 
 /**

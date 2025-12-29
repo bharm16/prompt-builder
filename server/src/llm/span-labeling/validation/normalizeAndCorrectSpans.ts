@@ -35,6 +35,74 @@ function remapSpanRole(text: string, role: string): { role: string; note?: strin
   return { role };
 }
 
+/**
+ * Refine span boundaries to exclude leading/trailing punctuation and leading/trailing prepositions/articles.
+ * e.g. "with a woman," -> "woman"
+ * e.g. "on 35mm with" -> "35mm"
+ */
+function refineSpanBoundaries(text: string, start: number, end: number): { start: number; end: number; text: string } {
+  let newStart = start;
+  let newEnd = end;
+  
+  // 1. Initial Trim: leading/trailing non-alphanumeric
+  // Re-calculate spanText at each step to ensure validity
+  let spanText = text.substring(newStart, newEnd);
+  
+  const startTrimMatch = spanText.match(/^[^a-zA-Z0-9$]+/);
+  if (startTrimMatch) {
+    newStart += startTrimMatch[0].length;
+  }
+
+  spanText = text.substring(newStart, newEnd);
+  const endTrimMatch = spanText.match(/[^a-zA-Z0-9%)]+$/);
+  if (endTrimMatch) {
+    newEnd -= endTrimMatch[0].length;
+  }
+
+  if (newStart >= newEnd) {
+    return { start, end, text: text.substring(start, end) };
+  }
+
+  // 2. Loop to strip leading prepositions/articles (recursively for "in the", "of a")
+  // List: of, with, in, on, at, by, from, to, for, a, an, the
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const innerText = text.substring(newStart, newEnd);
+    const leadingMatch = innerText.match(/^(of|with|in|on|at|by|from|to|for|a|an|the)\s+/i);
+    if (leadingMatch) {
+      newStart += leadingMatch[0].length;
+      changed = true;
+    }
+  }
+
+  // 3. Loop to strip trailing prepositions/articles (e.g. "camera with")
+  changed = true;
+  while (changed) {
+    changed = false;
+    const innerText = text.substring(newStart, newEnd);
+    const trailingMatch = innerText.match(/\s+(of|with|in|on|at|by|from|to|for|a|an|the)$/i);
+    if (trailingMatch) {
+      newEnd -= trailingMatch[0].length;
+      changed = true;
+    }
+  }
+
+  // 4. Final safety trim for any exposed punctuation after word removal
+  // e.g. "end," -> "end" if punctuation wasn't caught before
+  spanText = text.substring(newStart, newEnd);
+  const finalTrimMatch = spanText.match(/[^a-zA-Z0-9%)]+$/);
+  if (finalTrimMatch) {
+    newEnd -= finalTrimMatch[0].length;
+  }
+
+  return {
+    start: newStart,
+    end: newEnd,
+    text: text.substring(newStart, newEnd)
+  };
+}
+
 export interface NormalizeAndCorrectResult {
   sanitized: NormalizedSpan[];
   errors: string[];
@@ -119,15 +187,19 @@ export function normalizeAndCorrectSpans(
       return;
     }
 
+    // Refine boundaries (trim punctuation/prepositions)
+    const refined = refineSpanBoundaries(text, corrected.start, corrected.end);
+
     // Apply auto-corrected indices
-    if (spanObj.start !== corrected.start || spanObj.end !== corrected.end) {
+    if (spanObj.start !== refined.start || spanObj.end !== refined.end) {
       autoFixNotes.push(
-        `${label} indices auto-adjusted from ${spanObj.start}-${spanObj.end} to ${corrected.start}-${corrected.end}`
+        `${label} indices adjusted: ${spanObj.start}-${spanObj.end} -> ${refined.start}-${refined.end} ("${refined.text}")`
       );
     }
 
     // Create corrected span (immutable)
-    const spanText = typeof spanObj.text === 'string' ? spanObj.text : String(spanObj.text ?? '');
+    // Use refined.text instead of original spanObj.text
+    const spanText = refined.text;
     const spanRole = typeof spanObj.role === 'string' ? spanObj.role : String(spanObj.role ?? '');
     const remapped = remapSpanRole(spanText, spanRole);
     if (remapped.note) {
@@ -136,8 +208,8 @@ export function normalizeAndCorrectSpans(
 
     const correctedSpan: SpanInput = {
       text: spanText,
-      start: corrected.start,
-      end: corrected.end,
+      start: refined.start,
+      end: refined.end,
       role: remapped.role,
       ...(typeof spanObj.confidence === 'number' ? { confidence: spanObj.confidence } : {}),
     };

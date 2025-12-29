@@ -1,17 +1,17 @@
 {
-  "timestamp": "2025-12-28T07:52:57.137Z",
+  "timestamp": "2025-12-29T04:13:49.550Z",
   "extractionModel": "gemini-2.5-flash",
   "judgeModel": "gpt-4o",
   "promptCount": 1,
   "sourceFile": null,
   "summary": {
-    "avgScore": 22,
-    "avgSpanCount": 30,
+    "avgScore": 23,
+    "avgSpanCount": 24,
     "successCount": 1,
     "errorCount": 0,
     "scoreDistribution": {
-      "excellent": 0,
-      "good": 1,
+      "excellent": 1,
+      "good": 0,
       "acceptable": 0,
       "poor": 0,
       "failing": 0
@@ -19,14 +19,14 @@
   },
   "latencyStats": {
     "extraction": {
-      "avg": 7239,
-      "p50": 7239,
-      "p95": 7239
+      "avg": 5527,
+      "p50": 5527,
+      "p95": 5527
     },
     "judge": {
-      "avg": 4302,
-      "p50": 4302,
-      "p95": 4302
+      "avg": 3309,
+      "p50": 3309,
+      "p95": 3309
     }
   },
   "categoryScores": {
@@ -39,7 +39,7 @@
       "precision": 5
     },
     "action": {
-      "coverage": 3,
+      "coverage": 5,
       "precision": 5
     },
     "environment": {
@@ -48,7 +48,7 @@
     },
     "lighting": {
       "coverage": 5,
-      "precision": 4
+      "precision": 5
     },
     "camera": {
       "coverage": 4,
@@ -70,11 +70,6 @@
   "commonErrors": {
     "missedElements": [
       {
-        "text": "precision and agility",
-        "count": 1,
-        "category": "action"
-      },
-      {
         "text": "f/4-f/5.6",
         "count": 1,
         "category": "camera"
@@ -82,34 +77,20 @@
     ],
     "falsePositives": [
       {
-        "text": "handheld tracking",
+        "text": "selective focus (f/4-f/5.6)",
         "count": 1,
-        "reason": "duplicate"
-      },
-      {
-        "text": "sun",
-        "count": 1,
-        "reason": "duplicate"
+        "reason": "other"
       }
     ],
-    "taxonomyErrors": [
-      {
-        "from": "camera.focus",
-        "to": "camera.lens",
-        "count": 1,
-        "examples": [
-          "f/4-f/5.6"
-        ]
-      }
-    ]
+    "taxonomyErrors": []
   },
   "results": [
     {
       "promptId": "test-prompt-1",
       "input": "Test input",
-      "spanCount": 30,
-      "score": 22,
-      "notes": "The extraction was mostly accurate, with good coverage and precision. However, there were some duplicate entries and a few missed elements, particularly in the action category. The taxonomy was mostly correct, but there was a misclassification of the camera focus role."
+      "spanCount": 24,
+      "score": 23,
+      "notes": "The extraction was mostly accurate, with a minor issue in the camera category where the aperture value was not separately extracted. Precision was slightly affected by the incorrect grouping of 'selective focus' and aperture values."
     }
   ]
 }

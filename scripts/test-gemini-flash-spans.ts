@@ -6,6 +6,7 @@ import { config as loadEnv } from 'dotenv';
 import { z } from 'zod';
 import { GeminiAdapter } from '../server/src/clients/adapters/GeminiAdapter.js';
 import { OpenAICompatibleAdapter } from '../server/src/clients/adapters/OpenAICompatibleAdapter.js';
+import { GEMINI_SIMPLE_SYSTEM_PROMPT, GEMINI_JSON_SCHEMA } from '../server/src/llm/span-labeling/schemas/GeminiSchema.js';
 import { VALID_CATEGORIES } from '../shared/taxonomy.js';
 import {
   CATEGORY_NAMES,
@@ -847,7 +848,7 @@ Evaluate the span extraction quality using the rubric. Return only JSON.`;
 // 1. Setup & Configuration
 // Support both GOOGLE_API_KEY (from .env) and GOOGLE_GENERATIVE_AI_API_KEY (legacy)
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
 
 if (!API_KEY) {
@@ -947,44 +948,7 @@ if (useSinglePrompt || (!promptsFile && !findLatestPromptsFile())) {
 }
 
 // 4. System Instruction
-const SYSTEM_INSTRUCTION = `You are an expert video prompt analyzer. 
-Your goal is to extract specific text spans from the user's prompt and categorize them according to the following taxonomy.
-
-Taxonomy Categories:
-- shot.type (e.g., "Medium Shot", "Close-up")
-- subject.identity (e.g., "woman", "basketball")
-- subject.appearance (e.g., "black braided hair")
-- subject.wardrobe (e.g., "bright blue sports jersey", "white high-top sneakers")
-- action.movement (e.g., "dribbling a basketball")
-- environment.location (e.g., "outdoor basketball court")
-- environment.context (e.g., "painted lines")
-- lighting.source (e.g., "natural daylight", "sun")
-- lighting.quality (e.g., "soft shadows", "high CRI")
-- lighting.timeOfDay (e.g., "mid-morning")
-- camera.movement (e.g., "handheld tracking")
-- camera.angle (e.g., "low angle")
-- camera.lens (e.g., "50mm lens")
-- camera.focus (e.g., "selective focus", "f/4-f/5.6", "f/2.8")
-- style.aesthetic (e.g., "sports photography clarity", "Dynamic sports photography")
-- technical.duration (e.g., "6s")
-- technical.aspectRatio (e.g., "16:9")
-- technical.frameRate (e.g., "60fps")
-- audio.soundEffect (e.g., "Sound of sneakers on court")
-
-Output Format:
-Return a JSON object with a "spans" array.
-Each span should have:
-- "text": The exact substring from the input.
-- "category": The taxonomy category ID.
-- "confidence": A number between 0.0 and 1.0.
-
-Example JSON Output:
-{
-  "spans": [
-    { "text": "Medium Shot", "category": "shot.type", "confidence": 1.0 },
-    { "text": "woman", "category": "subject.identity", "confidence": 1.0 }
-  ]
-}`;
+const SYSTEM_INSTRUCTION = GEMINI_SIMPLE_SYSTEM_PROMPT;
 
 // 5. Process prompts
 async function processPrompts() {
@@ -1056,6 +1020,7 @@ async function processPrompts() {
         const response = await geminiAdapter.complete(SYSTEM_INSTRUCTION, {
           messages: [{ role: 'user', content: INPUT_TEXT }],
           jsonMode: true,
+          responseSchema: GEMINI_JSON_SCHEMA,
           temperature: 0.1,
           maxTokens: 16384, // Ensure plenty of tokens for JSON output
         });
@@ -1082,6 +1047,11 @@ async function processPrompts() {
             const cleanedText = cleanJson(textContent);
             const parsedContent = JSON.parse(cleanedText);
             const spans = Array.isArray(parsedContent.spans) ? parsedContent.spans : [];
+            
+            if (spans.length === 0) {
+              console.warn(`    ⚠️ No spans found. Raw text preview: "${textContent.slice(0, 500)}..."`);
+              console.warn(`    Parsed object keys: ${Object.keys(parsedContent).join(', ')}`);
+            }
             
             const spanResults: SpanResult[] = spans.map((span: any) => {
               const text = span.text || '';

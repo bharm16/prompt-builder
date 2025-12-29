@@ -29,6 +29,12 @@ export class GeminiMessageBuilder {
       generationConfig.responseMimeType = 'application/json';
     }
 
+    if (options.responseSchema) {
+      generationConfig.responseSchema = options.responseSchema;
+      // When schema is provided, responseMimeType must be application/json
+      generationConfig.responseMimeType = 'application/json';
+    }
+
     const payload: GeminiPayload = {
       contents,
       generationConfig,

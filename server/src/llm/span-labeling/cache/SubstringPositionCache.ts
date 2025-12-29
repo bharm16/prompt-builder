@@ -156,9 +156,12 @@ export class SubstringPositionCache {
       const cleanedWindow = this._cleanForMatch(window);
       if (!cleanedWindow) continue;
 
-      const distance = this._levenshtein(cleanedTarget, cleanedWindow);
+      // Truncate window to comparable length to avoid penalizing trailing characters
+      // We allow a small margin (5 chars) for insertions/expansion in source text
+      const compareWindow = cleanedWindow.slice(0, cleanedTarget.length + 5);
+      const distance = this._levenshtein(cleanedTarget, compareWindow);
       const normalized =
-        distance / Math.max(cleanedTarget.length, cleanedWindow.length || 1);
+        distance / Math.max(cleanedTarget.length, compareWindow.length || 1);
 
       if (best === null || normalized < best.score) {
         best = { start, end: start + window.length, score: normalized };

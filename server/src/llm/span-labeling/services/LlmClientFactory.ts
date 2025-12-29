@@ -79,6 +79,15 @@ function resolveProvider(options: LlmClientFactoryOptions): LlmClientProvider {
     return envProvider as LlmClientProvider;
   }
 
+  // 2.5 Auto-detect from SPAN_MODEL env var
+  const envModel = process.env.SPAN_MODEL;
+  if (envModel) {
+    const detected = detectProvider({ model: envModel });
+    if (detected === 'openai' || detected === 'groq' || detected === 'gemini') {
+      return detected;
+    }
+  }
+
   // 3. Auto-detect from model name
   if (options.model) {
     const detected = detectProvider({ model: options.model });

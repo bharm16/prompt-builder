@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logger } from '@/services/LoggingService';
 import { DEFAULT_POLICY, DEFAULT_OPTIONS } from '../config/index.ts';
 import { sanitizeText, hashString } from '../utils/index.ts';
 import { SpanLabelingApi } from '../api/index.ts';
@@ -77,36 +78,6 @@ function useDeepCompareMemoize<T>(value: T): T {
 
 /**
  * Hook to call the /llm/label-spans endpoint with debounce + cancellation.
- *
- * @example
- * ```tsx
- * // ✅ RECOMMENDED: Use useMemo for policy to ensure referential stability
- * // This is especially important if you plan to add user-configurable settings later
- * const policy = useMemo(() => ({
- *   allowOverlap: true,
- *   nonTechnicalWordLimit: 10
- * }), []); // Empty deps if static, or [userSetting] if dynamic
- *
- * useSpanLabeling({
- *   text: input,
- *   policy
- * });
- * ```
- *
- * @example
- * ```tsx
- * // ✅ Also works: Dynamic policy based on user settings
- * const policy = useMemo(() => ({
- *   allowOverlap: userSettings.allowOverlaps,
- *   nonTechnicalWordLimit: userSettings.wordLimit
- * }), [userSettings.allowOverlaps, userSettings.wordLimit]);
- * ```
- *
- * **Why useMemo?**
- * - Ensures referential stability (object identity doesn't change on every render)
- * - Future-proofs for user-configurable settings
- * - Follows React best practices for object dependencies
- * - Prevents unnecessary re-renders and cache invalidation
  */
 export function useSpanLabeling({
   text,
@@ -123,6 +94,8 @@ export function useSpanLabeling({
   useSmartDebounce = DEFAULT_OPTIONS.useSmartDebounce,
   onResult,
 }: UseSpanLabelingOptions = {}): UseSpanLabelingReturn {
+  const log = useMemo(() => logger.child('useSpanLabeling'), []);
+  
   const [state, setState] = useState<SpanLabelingState>({
     spans: [],
     meta: null,
@@ -195,6 +168,7 @@ export function useSpanLabeling({
       return SpanLabelingApi.labelSpansStream(
           payload, 
           (span) => {
+              log.debug('Span received', { text: span.text, category: span.category });
               accumSpans.push(span);
               // Optimistic update: Show spans as they arrive
               // Use functional update to merge with potentially existing state if needed,
@@ -216,7 +190,7 @@ export function useSpanLabeling({
           signal
       );
     },
-    []
+    [log]
   );
 
   const emitResult = useCallback(
@@ -245,6 +219,7 @@ export function useSpanLabeling({
         return;
       }
       lastEmitKeyRef.current = key;
+      log.info('Result emitted', { spanCount: spans.length, source });
       onResultRef.current({
         spans,
         meta: meta ?? null,
@@ -254,7 +229,7 @@ export function useSpanLabeling({
         source,
       });
     },
-    []
+    [log]
   );
 
   // Memoize callbacks to prevent recreating the schedule function on every render
@@ -277,6 +252,8 @@ export function useSpanLabeling({
         signature,
       };
 
+      log.info('Success', { spanCount: normalizedResult.spans.length });
+
       setState({
         spans: normalizedResult.spans,
         meta: normalizedResult.meta,
@@ -297,11 +274,12 @@ export function useSpanLabeling({
         'network'
       );
     },
-    [setCacheForPayload, emitResult]
+    [setCacheForPayload, emitResult, log]
   );
 
   const onError = useCallback(
     (error: Error, payload: SpanLabelingPayload) => {
+      log.error('Error', error);
       const fallbackResult = createFallbackResult(payload, error, cacheService);
 
       if (fallbackResult) {
@@ -313,7 +291,7 @@ export function useSpanLabeling({
 
       setState(createErrorState(error));
     },
-    [emitResult, cacheService]
+    [emitResult, cacheService, log]
   );
 
   // Stabilize callbacks object to prevent infinite re-renders
@@ -426,15 +404,11 @@ export function useSpanLabeling({
       (isLocalUpdate || stableInitialData.meta?.version === templateVersion);
 
     // Debug: trace initialMatch evaluation
-    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-      console.debug('[useSpanLabeling] initialMatch check:', {
+    if (import.meta.env.DEV) {
+      log.debug('initialMatch check', {
         hasStableData: Boolean(stableInitialData),
         hasSpans: Array.isArray(stableInitialData?.spans) && stableInitialData.spans.length > 0,
         isLocalUpdate,
-        signatureMatch: stableInitialData?.signature === hashString(normalized ?? ''),
-        stableSignature: stableInitialData?.signature?.slice(0, 16),
-        textSignature: hashString(normalized ?? '').slice(0, 16),
-        versionMatch: stableInitialData?.meta?.version === templateVersion,
         initialMatch,
       });
     }
@@ -482,6 +456,7 @@ export function useSpanLabeling({
     initialDataVersion,
     emitResult,
     immediate,
+    log
   ]);
 
   const refresh = useCallback((): void => {
