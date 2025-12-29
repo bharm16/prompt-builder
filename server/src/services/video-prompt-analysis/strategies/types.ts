@@ -3,7 +3,9 @@
  * Defines interfaces for the 3-phase optimization pipeline (Normalize → Transform → Augment)
  */
 
-import type { ConstraintConfig, EditHistoryEntry } from '../types';
+import type { ConstraintConfig, EditHistoryEntry, VideoPromptIR } from '../types';
+
+export type { VideoPromptIR };
 
 /**
  * Result of a single pipeline phase

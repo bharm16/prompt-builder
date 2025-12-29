@@ -22,7 +22,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext } from './types';
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
  * Generic sound/noise terms to strip (prevent white noise generation)
@@ -320,7 +320,7 @@ export class KlingStrategy extends BaseStrategy {
 
       if (!isPartOfCompound) {
         // Only strip standalone generic terms, not specific sound descriptions
-        const standalonePattern = new RegExp(`\\b${this.escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`, 'gi');
+        const standalonePattern = new RegExp(`\b${this.escapeRegex(term)}\b(?!\s+(?:of|effect|track|design))`, 'gi');
         if (standalonePattern.test(text)) {
           const before = text;
           text = text.replace(standalonePattern, '');
@@ -359,11 +359,29 @@ export class KlingStrategy extends BaseStrategy {
   /**
    * Transform input into screenplay format with dialogue and audio blocks
    */
-  protected doTransform(input: string, context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
 
-    // Parse the input into screenplay structure
-    const screenplay = this.parseScreenplay(input, context);
+    // Parse the input into screenplay structure using raw input for dialogue fidelity
+    const screenplay = this.parseScreenplay(ir.raw, context);
+    
+    // We can enrich the visual description using the IR if we want,
+    // but Kling screenplay parsing already separates dialogue from visual.
+    // Let's ensure the visual part is clean.
+    if (!screenplay.visual || screenplay.visual.length < 10) {
+        // If parsed visual is empty/weak, try to synthesize from IR
+        const visualParts = [];
+        if (ir.camera.shotType) visualParts.push(ir.camera.shotType);
+        if (ir.subjects.length > 0) visualParts.push(ir.subjects.map(s => s.text).join(' and '));
+        if (ir.actions.length > 0) visualParts.push(ir.actions.join(' and '));
+        if (ir.environment.setting) visualParts.push(`in ${ir.environment.setting}`);
+        
+        const synthesizedVisual = visualParts.join(' ');
+        if (synthesizedVisual.length > screenplay.visual.length) {
+            screenplay.visual = synthesizedVisual;
+            changes.push('Synthesized visual description from IR (parsed visual was sparse)');
+        }
+    }
 
     // Build the formatted prompt
     let prompt = this.formatScreenplay(screenplay);
@@ -432,9 +450,9 @@ export class KlingStrategy extends BaseStrategy {
     };
   }
 
-  // ============================================================
+  // ============================================================ 
   // Private Helper Methods
-  // ============================================================
+  // ============================================================ 
 
   /**
    * Parse input into screenplay structure

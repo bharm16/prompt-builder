@@ -91,3 +91,37 @@ export interface CategoryRelationships {
   opportunities: string[];
 }
 
+/**
+ * Intermediate Representation (IR) of a video prompt
+ * Used to normalize user intent before synthesis into model-specific formats
+ */
+export interface VideoPromptIR {
+  subjects: Array<{
+    text: string;
+    count?: number;
+    attributes: string[]; // e.g., "sad", "cyberpunk"
+  }>;
+  actions: string[];      // e.g., "running", "exploding"
+  camera: {
+    movements: string[];  // e.g., "dolly in", "pan left"
+    angle?: string;       // e.g., "low angle"
+    shotType?: string;    // e.g., "wide shot"
+  };
+  environment: {
+    setting: string;
+    lighting: string[];
+    weather?: string;
+  };
+  audio: {
+    dialogue?: string;
+    music?: string;
+    sfx?: string;
+  };
+  meta: {
+    mood: string[];
+    style: string[];
+    temporal?: string[]; // e.g., "then", "after"
+  };
+  raw: string; // Original input text
+}
+

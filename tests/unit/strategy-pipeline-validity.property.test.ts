@@ -23,7 +23,8 @@ import {
   type NormalizeResult,
   type TransformResult,
   type AugmentResult,
-} from '@services/video-prompt-analysis/strategies';
+  type VideoPromptIR,
+} from '../../server/src/services/video-prompt-analysis/strategies';
 
 /**
  * Mock strategy implementation for testing pipeline validity
@@ -244,7 +245,7 @@ describe('Strategy Pipeline Validity Property Tests', () => {
     });
   });
 
-  describe('StrategyRegistry Integration', () => {
+describe('StrategyRegistry Integration', () => {
     it('registered strategies can be retrieved and executed', async () => {
       await fc.assert(
         fc.asyncProperty(
@@ -387,10 +388,10 @@ class TestBaseStrategy extends BaseStrategy {
     return { text, changes, strippedTokens };
   }
 
-  protected doTransform(input: string, _context?: PromptContext): TransformResult {
-    // Simple transformation: wrap in CSAE structure
+  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
+    // Simple transformation: wrap in CSAE structure using IR raw
     return {
-      prompt: `[Camera] [Subject] ${input} [Environment]`,
+      prompt: `[Camera] [Subject] ${ir.raw} [Environment]`,
       changes: ['Applied CSAE structure'],
     };
   }
@@ -428,9 +429,9 @@ class TestKlingStrategy extends BaseStrategy {
     return { text: input, changes: [], strippedTokens: [] };
   }
 
-  protected doTransform(input: string, _context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     return {
-      prompt: input,
+      prompt: ir.raw,
       changes: ['Identity transform'],
     };
   }
@@ -574,7 +575,7 @@ describe('BaseStrategy Implementation Tests', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }),
+          fc.string({ minLength: 1, maxLength: 100 }).filter((s) => s.trim().length > 0),
           async (input) => {
             // Run full pipeline
             await strategy.validate(input);

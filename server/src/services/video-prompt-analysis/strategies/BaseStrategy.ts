@@ -10,12 +10,14 @@
 
 import { TechStripper, techStripper } from '../utils/TechStripper';
 import { SafetySanitizer, safetySanitizer } from '../utils/SafetySanitizer';
+import { VideoPromptAnalyzer } from '../services/analysis/VideoPromptAnalyzer';
 import type {
   PromptOptimizationStrategy,
   PromptOptimizationResult,
   PromptContext,
   OptimizationMetadata,
   PhaseResult,
+  VideoPromptIR,
 } from './types';
 
 /**
@@ -29,12 +31,13 @@ const PIPELINE_VERSION = '1.0.0';
  * Subclasses must implement:
  * - `doValidate`: Model-specific validation logic
  * - `doNormalize`: Model-specific normalization after common processing
- * - `doTransform`: Model-specific transformation logic
+ * - `doTransform`: Model-specific transformation logic using VideoPromptIR
  * - `doAugment`: Model-specific augmentation logic
  *
  * The base class handles:
  * - TechStripper integration (model-aware placebo token removal)
  * - SafetySanitizer integration (safety compliance)
+ * - VideoPromptAnalyzer integration (structural analysis)
  * - Timing and metadata tracking for each phase
  * - Error handling and recovery
  */
@@ -44,6 +47,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
   protected readonly techStripper: TechStripper;
   protected readonly safetySanitizer: SafetySanitizer;
+  protected readonly analyzer: VideoPromptAnalyzer;
 
   // Accumulated metadata during pipeline execution
   private currentMetadata: OptimizationMetadata | null = null;
@@ -54,6 +58,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   ) {
     this.techStripper = techStripperInstance;
     this.safetySanitizer = safetySanitizerInstance;
+    this.analyzer = new VideoPromptAnalyzer();
   }
 
   /**
@@ -204,12 +209,16 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
   /**
    * Phase 2: Transform normalized input into model-native structure
+   * Uses VideoPromptAnalyzer to generate IR, then delegates to doTransform
    */
   transform(input: string, context?: PromptContext): PromptOptimizationResult {
     const startTime = performance.now();
 
-    // Perform model-specific transformation
-    const transformResult = this.doTransform(input, context);
+    // Analyze text to produce Intermediate Representation (IR)
+    const ir = this.analyzer.analyze(input);
+
+    // Perform model-specific transformation using IR
+    const transformResult = this.doTransform(ir, context);
 
     // Record phase result
     const durationMs = performance.now() - startTime;
@@ -300,12 +309,12 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   /**
    * Model-specific transformation logic
    *
-   * @param input - Normalized text
+   * @param ir - VideoPromptIR from the analyzer
    * @param context - Optional context
    * @returns Transformed prompt with changes
    */
   protected abstract doTransform(
-    input: string,
+    ir: VideoPromptIR,
     context?: PromptContext
   ): TransformResult;
 

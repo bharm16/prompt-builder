@@ -20,7 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext } from './types';
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
  * Emotional/abstract terms to strip (unless translatable to lighting)
@@ -99,174 +99,6 @@ const MORPHING_BLUR_TERMS = [
 ] as const;
 
 /**
- * Camera movement terms for CSAE ordering
- */
-const CAMERA_MOVEMENT_TERMS = [
-  'pan',
-  'panning',
-  'tilt',
-  'tilting',
-  'truck',
-  'trucking',
-  'pedestal',
-  'dolly',
-  'dollying',
-  'zoom',
-  'zooming',
-  'crane',
-  'jib',
-  'steadicam',
-  'handheld',
-  'tracking',
-  'follow',
-  'following',
-  'orbit',
-  'orbiting',
-  'arc',
-  'arcing',
-  'push in',
-  'pull out',
-  'push-in',
-  'pull-out',
-] as const;
-
-/**
- * Camera angle terms
- */
-const CAMERA_ANGLE_TERMS = [
-  'low angle',
-  'high angle',
-  'eye level',
-  'eye-level',
-  'dutch angle',
-  'dutch tilt',
-  'birds eye',
-  'bird\'s eye',
-  'worms eye',
-  'worm\'s eye',
-  'overhead',
-  'aerial',
-  'ground level',
-  'ground-level',
-] as const;
-
-/**
- * Camera lens terms
- */
-const CAMERA_LENS_TERMS = [
-  'wide angle',
-  'wide-angle',
-  'telephoto',
-  'macro',
-  'fisheye',
-  'fish-eye',
-  'anamorphic',
-  'prime lens',
-  'zoom lens',
-  '35mm',
-  '50mm',
-  '85mm',
-  '24mm',
-  '70mm',
-  '200mm',
-] as const;
-
-/**
- * Subject indicator terms
- */
-const SUBJECT_INDICATORS = [
-  'a man',
-  'a woman',
-  'a person',
-  'a child',
-  'a dog',
-  'a cat',
-  'an animal',
-  'a car',
-  'a building',
-  'a tree',
-  'the man',
-  'the woman',
-  'the person',
-  'the child',
-  'someone',
-  'something',
-  'figure',
-  'character',
-  'protagonist',
-  'subject',
-] as const;
-
-/**
- * Action indicator terms
- */
-const ACTION_INDICATORS = [
-  'walking',
-  'running',
-  'jumping',
-  'sitting',
-  'standing',
-  'moving',
-  'dancing',
-  'talking',
-  'looking',
-  'watching',
-  'holding',
-  'reaching',
-  'falling',
-  'flying',
-  'swimming',
-  'driving',
-  'riding',
-  'climbing',
-  'descending',
-  'ascending',
-  'turning',
-  'spinning',
-  'rotating',
-  'flowing',
-  'drifting',
-  'floating',
-] as const;
-
-/**
- * Environment indicator terms
- */
-const ENVIRONMENT_INDICATORS = [
-  'in a',
-  'in the',
-  'at a',
-  'at the',
-  'on a',
-  'on the',
-  'inside',
-  'outside',
-  'outdoors',
-  'indoors',
-  'forest',
-  'beach',
-  'city',
-  'street',
-  'room',
-  'building',
-  'mountain',
-  'ocean',
-  'desert',
-  'field',
-  'garden',
-  'park',
-  'studio',
-  'background',
-  'setting',
-  'scene',
-  'location',
-  'environment',
-  'landscape',
-  'skyline',
-  'horizon',
-] as const;
-
-/**
  * Depth/3D terms that map to dolly camera motion
  */
 const DEPTH_TERMS = ['depth', '3d feel', '3d effect', 'dimensional', 'parallax'] as const;
@@ -327,31 +159,15 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   /**
-   * Normalize input by stripping emotional/abstract and morphing/blur terms
+   * Normalize input by stripping morphing/blur terms
    */
-  protected doNormalize(input: string, context?: PromptContext): NormalizeResult {
+  protected doNormalize(input: string, _context?: PromptContext): NormalizeResult {
     let text = input;
     const changes: string[] = [];
     const strippedTokens: string[] = [];
 
     // Check if morphing/blur is explicitly requested as style
     const isStyleRequest = this.isExplicitStyleRequest(text);
-
-    // Strip emotional/abstract terms
-    for (const term of EMOTIONAL_TERMS) {
-      if (this.containsWord(text, term)) {
-        // Check if term can be translated to lighting
-        const lightingTranslation = this.translateToLighting(term);
-        if (lightingTranslation) {
-          text = this.replaceWord(text, term, lightingTranslation);
-          changes.push(`Translated "${term}" to lighting term "${lightingTranslation}"`);
-        } else {
-          text = this.replaceWord(text, term, '');
-          changes.push(`Stripped emotional term: "${term}"`);
-          strippedTokens.push(term);
-        }
-      }
-    }
 
     // Strip morphing/blur terms unless explicitly requested as style
     if (!isStyleRequest) {
@@ -371,58 +187,82 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input using CSAE protocol (Camera → Subject → Action → Environment)
+   * Transform input using CSAE protocol via Natural Language Synthesis
+   * Uses VideoPromptIR to construct a fluid sentence.
    */
-  protected doTransform(input: string, context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
+    const parts: string[] = [];
 
-    // Extract components
-    const camera = this.extractCameraElements(input);
-    const subject = this.extractSubjectElements(input);
-    const action = this.extractActionElements(input);
-    const environment = this.extractEnvironmentElements(input);
-    const remaining = this.extractRemainingElements(input, [camera, subject, action, environment]);
+    // 1. Camera (Start with shot type/movement)
+    let cameraPart = '';
+    
+    // Enrich camera from raw text for depth/vertigo terms (legacy logic)
+    this.enrichCameraFromRaw(ir);
 
-    // Apply camera motion mapping
-    const mappedCamera = this.applyCameraMotionMapping(camera, input);
-    if (mappedCamera !== camera) {
-      changes.push(`Mapped camera motion: "${camera}" → "${mappedCamera}"`);
+    if (ir.camera.shotType) {
+      cameraPart = ir.camera.shotType;
+    }
+    if (ir.camera.angle) {
+      cameraPart = cameraPart ? `${cameraPart}, ${ir.camera.angle}` : ir.camera.angle;
+    }
+    if (ir.camera.movements.length > 0) {
+      const move = ir.camera.movements.join(' and '); // e.g., "dolly and pan"
+      cameraPart = cameraPart ? `${cameraPart} with ${move}` : move;
     }
 
-    // Build CSAE-ordered prompt
-    const csaeComponents: string[] = [];
-
-    if (mappedCamera.trim()) {
-      csaeComponents.push(mappedCamera.trim());
-      changes.push('Camera terms moved to start (CSAE protocol)');
+    if (cameraPart) {
+      // Capitalize first letter
+      cameraPart = cameraPart.charAt(0).toUpperCase() + cameraPart.slice(1);
+      parts.push(cameraPart + ' of');
+      changes.push('Synthesized camera description');
     }
 
-    if (subject.trim()) {
-      csaeComponents.push(subject.trim());
+    // 2. Subject & Action
+    let subjectPart = '';
+    if (ir.subjects.length > 0) {
+      // Join subjects naturally
+      subjectPart = ir.subjects.map(s => s.text).join(' and ');
+    }
+    
+    // Add action
+    if (ir.actions.length > 0) {
+      const actionText = ir.actions.join(' and ');
+      if (subjectPart) {
+        subjectPart += ` ${actionText}`; // "a dog running"
+      } else {
+        subjectPart = actionText; // just "running" (if no subject)
+      }
     }
 
-    if (action.trim()) {
-      csaeComponents.push(action.trim());
+    if (subjectPart) {
+      parts.push(subjectPart);
+      changes.push('Synthesized subject and action');
     }
 
-    if (environment.trim()) {
-      csaeComponents.push(environment.trim());
+    // 3. Environment
+    if (ir.environment.setting) {
+      parts.push(`in ${ir.environment.setting}`);
     }
 
-    if (remaining.trim()) {
-      csaeComponents.push(remaining.trim());
+    // 4. Lighting & Weather
+    const conditions = [...ir.environment.lighting];
+    if (ir.environment.weather) conditions.push(ir.environment.weather);
+    
+    if (conditions.length > 0) {
+      parts.push(`with ${conditions.join(', ')}`);
     }
 
-    // Join with appropriate separators
-    let prompt = csaeComponents.filter(c => c.length > 0).join(', ');
-    prompt = this.cleanWhitespace(prompt);
+    // 5. Construct full prompt
+    let prompt = parts.join(' ');
 
-    // If no restructuring was possible, use original
-    if (!prompt || prompt.length < input.length * 0.3) {
-      prompt = input;
-      changes.push('Minimal restructuring applied (input already well-structured)');
+    // Fallback: If synthesis yielded very little (e.g., regexes failed), use raw input
+    // to avoid returning "with sunlight" as the whole prompt.
+    if (prompt.length < 10 && ir.raw.length > 10) {
+      prompt = ir.raw;
+      changes.push('Reverted to raw input due to sparse analysis');
     } else {
-      changes.push('Applied CSAE reordering');
+      changes.push('Constructed natural language prompt from IR');
     }
 
     // Handle visual reference descriptions from context
@@ -500,169 +340,16 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   /**
-   * Translate emotional terms to lighting equivalents where possible
+   * Enrich camera movements in IR based on raw text triggers (depth, vertigo)
    */
-  private translateToLighting(term: string): string | null {
-    const lightingMap: Record<string, string> = {
-      'melancholy': 'low-key lighting',
-      'melancholic': 'low-key lighting',
-      'sad': 'low-key lighting',
-      'sadness': 'low-key lighting',
-      'happy': 'high-key lighting',
-      'happiness': 'high-key lighting',
-      'joyful': 'bright lighting',
-      'joyous': 'bright lighting',
-      'mysterious': 'chiaroscuro lighting',
-      'mystery': 'chiaroscuro lighting',
-      'romantic': 'golden hour lighting',
-      'romance': 'golden hour lighting',
-      'tense': 'harsh shadows',
-      'tension': 'harsh shadows',
-      'peaceful': 'soft diffused lighting',
-      'serene': 'soft diffused lighting',
-      'serenity': 'soft diffused lighting',
-      'calm': 'even lighting',
-      'calming': 'even lighting',
-      'dreamy': 'soft backlight',
-      'dreamlike': 'soft backlight',
-      'ethereal': 'rim lighting',
-    };
-
-    return lightingMap[term.toLowerCase()] ?? null;
-  }
-
-  /**
-   * Extract camera-related elements from text
-   */
-  private extractCameraElements(text: string): string {
-    const cameraTerms: string[] = [];
-
-    // Extract camera movements
-    for (const term of CAMERA_MOVEMENT_TERMS) {
-      const regex = new RegExp(`\\b${this.escapeRegex(term)}(?:\\s+\\w+)?\\b`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        cameraTerms.push(...matches);
-      }
-    }
-
-    // Extract camera angles
-    for (const term of CAMERA_ANGLE_TERMS) {
-      const regex = new RegExp(`\\b${this.escapeRegex(term)}\\b`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        cameraTerms.push(...matches);
-      }
-    }
-
-    // Extract camera lens terms
-    for (const term of CAMERA_LENS_TERMS) {
-      const regex = new RegExp(`\\b${this.escapeRegex(term)}\\b`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        cameraTerms.push(...matches);
-      }
-    }
-
-    return [...new Set(cameraTerms)].join(', ');
-  }
-
-  /**
-   * Extract subject-related elements from text
-   */
-  private extractSubjectElements(text: string): string {
-    const subjectPhrases: string[] = [];
-
-    // Look for subject patterns - extract the subject phrase with limited following words
-    for (const indicator of SUBJECT_INDICATORS) {
-      // Match the indicator followed by up to 5 words (adjectives/descriptors)
-      const regex = new RegExp(`${this.escapeRegex(indicator)}(?:\\s+\\w+){0,5}`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        // Filter out matches that contain action terms (to avoid capturing "a man walking")
-        const filteredMatches = matches.filter(match => {
-          const lowerMatch = match.toLowerCase();
-          return !ACTION_INDICATORS.some(action => lowerMatch.includes(action.toLowerCase()));
-        });
-        subjectPhrases.push(...filteredMatches);
-      }
-    }
-
-    // Deduplicate and join
-    const uniquePhrases = [...new Set(subjectPhrases.map(p => p.trim()))];
-    return uniquePhrases.slice(0, 2).join(', '); // Limit to avoid over-extraction
-  }
-
-  /**
-   * Extract action-related elements from text
-   * Only extracts the action verb itself, not following content that might be subjects
-   */
-  private extractActionElements(text: string): string {
-    const actionPhrases: string[] = [];
-
-    for (const indicator of ACTION_INDICATORS) {
-      // Match just the action term, possibly with an adverb before or after
-      const regex = new RegExp(`(?:\\w+ly\\s+)?\\b${this.escapeRegex(indicator)}\\b(?:\\s+\\w+ly)?`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        actionPhrases.push(...matches);
-      }
-    }
-
-    const uniquePhrases = [...new Set(actionPhrases.map(p => p.trim()))];
-    return uniquePhrases.slice(0, 2).join(', ');
-  }
-
-  /**
-   * Extract environment-related elements from text
-   */
-  private extractEnvironmentElements(text: string): string {
-    const envPhrases: string[] = [];
-
-    for (const indicator of ENVIRONMENT_INDICATORS) {
-      const regex = new RegExp(`${this.escapeRegex(indicator)}[^,\\.;]*`, 'gi');
-      const matches = text.match(regex);
-      if (matches) {
-        envPhrases.push(...matches);
-      }
-    }
-
-    const uniquePhrases = [...new Set(envPhrases.map(p => p.trim()))];
-    return uniquePhrases.slice(0, 2).join(', ');
-  }
-
-  /**
-   * Extract remaining elements not captured by CSAE categories
-   */
-  private extractRemainingElements(text: string, extracted: string[]): string {
-    let remaining = text;
-
-    // Remove extracted elements
-    for (const element of extracted) {
-      if (element) {
-        for (const part of element.split(',')) {
-          const trimmed = part.trim();
-          if (trimmed) {
-            remaining = remaining.replace(new RegExp(this.escapeRegex(trimmed), 'gi'), '');
-          }
-        }
-      }
-    }
-
-    return this.cleanWhitespace(remaining);
-  }
-
-  /**
-   * Apply camera motion mapping for depth/vertigo terms
-   */
-  private applyCameraMotionMapping(camera: string, fullText: string): string {
-    let result = camera;
-
+  private enrichCameraFromRaw(ir: VideoPromptIR): void {
+    const lowerRaw = ir.raw.toLowerCase();
+    
     // Check for depth terms → dolly
     for (const term of DEPTH_TERMS) {
-      if (this.containsWord(fullText, term)) {
-        if (!result.toLowerCase().includes('dolly')) {
-          result = result ? `dolly, ${result}` : 'dolly';
+      if (lowerRaw.includes(term)) {
+        if (!ir.camera.movements.includes('dolly')) {
+          ir.camera.movements.push('dolly');
         }
         break;
       }
@@ -670,15 +357,13 @@ export class RunwayStrategy extends BaseStrategy {
 
     // Check for vertigo terms → zoom
     for (const term of VERTIGO_TERMS) {
-      if (this.containsWord(fullText, term)) {
-        if (!result.toLowerCase().includes('zoom')) {
-          result = result ? `zoom, ${result}` : 'zoom';
+      if (lowerRaw.includes(term)) {
+        if (!ir.camera.movements.includes('zoom')) {
+          ir.camera.movements.push('zoom');
         }
         break;
       }
     }
-
-    return result;
   }
 
   /**

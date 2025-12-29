@@ -22,76 +22,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext } from './types';
-
-/**
- * Public figure names that should be stripped (representative sample)
- * Production would use a more comprehensive list
- */
-const PUBLIC_FIGURE_NAMES = [
-  'taylor swift',
-  'beyonce',
-  'beyoncé',
-  'elon musk',
-  'donald trump',
-  'joe biden',
-  'kim kardashian',
-  'kanye west',
-  'ye',
-  'rihanna',
-  'drake',
-  'ariana grande',
-  'justin bieber',
-  'selena gomez',
-  'dwayne johnson',
-  'the rock',
-  'tom cruise',
-  'brad pitt',
-  'angelina jolie',
-  'jennifer lawrence',
-  'leonardo dicaprio',
-  'scarlett johansson',
-  'chris hemsworth',
-  'robert downey jr',
-  'keanu reeves',
-  'zendaya',
-  'timothee chalamet',
-  'timothée chalamet',
-  'billie eilish',
-  'harry styles',
-  'emma watson',
-  'chris evans',
-  'mark zuckerberg',
-  'jeff bezos',
-  'bill gates',
-  'oprah winfrey',
-  'barack obama',
-  'michelle obama',
-  'lebron james',
-  'cristiano ronaldo',
-  'lionel messi',
-  'serena williams',
-  'tom brady',
-  'michael jordan',
-  'will smith',
-  'johnny depp',
-  'amber heard',
-  'margot robbie',
-  'ryan reynolds',
-  'gal gadot',
-  'jason momoa',
-  'chris pratt',
-  'jennifer aniston',
-  'george clooney',
-  'julia roberts',
-  'meryl streep',
-  'denzel washington',
-  'morgan freeman',
-  'samuel l jackson',
-  'tom hanks',
-  'matt damon',
-  'ben affleck',
-] as const;
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
  * Pattern to match @Cameo tokens that should be preserved
@@ -277,19 +208,6 @@ export class SoraStrategy extends BaseStrategy {
   readonly modelId = 'sora-2';
   readonly modelName = 'OpenAI Sora 2';
 
-  // Pre-compiled patterns for public figure names
-  private publicFigurePatterns: Map<RegExp, string>;
-
-  constructor() {
-    super();
-    // Pre-compile patterns for efficiency
-    this.publicFigurePatterns = new Map();
-    for (const name of PUBLIC_FIGURE_NAMES) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(name)}\\b`, 'gi');
-      this.publicFigurePatterns.set(pattern, name);
-    }
-  }
-
   /**
    * Validate input against Sora-specific constraints
    */
@@ -324,45 +242,13 @@ export class SoraStrategy extends BaseStrategy {
   }
 
   /**
-   * Normalize input by stripping public figure names while preserving @Cameo tokens
+   * Normalize input
+   * (Removed redundant public figure stripping; SafetySanitizer handles this now)
    */
   protected doNormalize(input: string, _context?: PromptContext): NormalizeResult {
     let text = input;
     const changes: string[] = [];
     const strippedTokens: string[] = [];
-
-    // First, extract and preserve @Cameo tokens
-    const cameoTokens: { token: string; placeholder: string }[] = [];
-    let cameoIndex = 0;
-    text = text.replace(CAMEO_TOKEN_PATTERN, (match) => {
-      const placeholder = `__CAMEO_PLACEHOLDER_${cameoIndex++}__`;
-      cameoTokens.push({ token: match, placeholder });
-      return placeholder;
-    });
-
-    // Strip public figure names
-    for (const [pattern, name] of this.publicFigurePatterns) {
-      if (pattern.test(text)) {
-        // Reset lastIndex for global regex
-        pattern.lastIndex = 0;
-        const matches = text.match(pattern);
-        if (matches) {
-          for (const match of matches) {
-            changes.push(`Stripped public figure name: "${match}"`);
-            strippedTokens.push(match);
-          }
-        }
-        text = text.replace(pattern, 'a person');
-      }
-    }
-
-    // Restore @Cameo tokens
-    for (const { token, placeholder } of cameoTokens) {
-      text = text.replace(placeholder, token);
-      if (!changes.some(c => c.includes('@Cameo'))) {
-        changes.push(`Preserved @Cameo token: "${token}"`);
-      }
-    }
 
     // Clean up whitespace
     text = this.cleanWhitespace(text);
@@ -373,27 +259,30 @@ export class SoraStrategy extends BaseStrategy {
   /**
    * Transform input with physics analysis and temporal segmentation
    */
-  protected doTransform(input: string, _context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
 
     // Analyze physics interactions
-    const physics = this.analyzePhysics(input);
+    const physics = this.analyzePhysics(ir.raw);
     if (physics.gravity || physics.momentum || physics.collisions || physics.friction) {
       changes.push('Detected physics interactions for grounding');
     }
 
     // Check if temporal segmentation is needed
-    const needsSegmentation = this.needsTemporalSegmentation(input);
+    // We use ir.raw for segmentation as Analyzer doesn't produce multi-shot IR yet
+    const needsSegmentation = this.needsTemporalSegmentation(ir.raw);
     
     let prompt: string;
     if (needsSegmentation) {
       // Segment into temporal sequences
-      const sequence = this.segmentIntoShots(input);
+      const sequence = this.segmentIntoShots(ir.raw);
       prompt = this.formatSequence(sequence);
       changes.push(`Segmented into ${sequence.shots.length} temporal shot(s)`);
     } else {
-      // Single shot - just clean up the prompt
-      prompt = input;
+      // Single shot - just use the raw input or synthesized if we wanted to
+      // For Sora, preserving natural language of the raw prompt is often best unless we want to restructure it.
+      // We'll stick to raw for now, as Sora handles complex NL well.
+      prompt = ir.raw;
       changes.push('Single shot detected; no temporal segmentation needed');
     }
 
@@ -454,9 +343,9 @@ export class SoraStrategy extends BaseStrategy {
     };
   }
 
-  // ============================================================
+  // ============================================================ 
   // Private Helper Methods
-  // ============================================================
+  // ============================================================ 
 
   /**
    * Analyze physics interactions in the prompt
@@ -559,7 +448,7 @@ export class SoraStrategy extends BaseStrategy {
   private splitByTemporalIndicators(input: string): string[] {
     // Create pattern from temporal indicators
     const indicatorPattern = new RegExp(
-      `\\b(${TEMPORAL_INDICATORS.join('|')})\\b`,
+      `\b(${TEMPORAL_INDICATORS.join('|')})\b`,
       'gi'
     );
 
@@ -616,27 +505,6 @@ export class SoraStrategy extends BaseStrategy {
     }
 
     return parts.join(' ');
-  }
-
-  /**
-   * Check if a name is a public figure
-   */
-  public isPublicFigure(name: string): boolean {
-    const lowerName = name.toLowerCase();
-    return PUBLIC_FIGURE_NAMES.some(figure => figure === lowerName);
-  }
-
-  /**
-   * Check if text contains any public figure names
-   */
-  public containsPublicFigure(text: string): boolean {
-    for (const [pattern] of this.publicFigurePatterns) {
-      pattern.lastIndex = 0;
-      if (pattern.test(text)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

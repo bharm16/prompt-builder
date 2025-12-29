@@ -21,7 +21,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext } from './types';
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
  * Markdown patterns to strip
@@ -56,7 +56,7 @@ const CONVERSATIONAL_FILLERS = [
   'can you',
   'could you',
   'would you',
-  'i\'d like',
+  "i'd like",
   'i\'m looking for',
   'i\'m thinking of',
   'i was thinking',
@@ -83,134 +83,6 @@ const CONVERSATIONAL_FILLERS = [
   'anyway',
   'anyways',
 ] as const;
-
-/**
- * Camera type keywords
- */
-const CAMERA_TYPES: Record<string, string> = {
-  'wide shot': 'wide',
-  'wide angle': 'wide',
-  'establishing shot': 'establishing',
-  'close up': 'close-up',
-  'close-up': 'close-up',
-  'closeup': 'close-up',
-  'extreme close up': 'extreme-close-up',
-  'extreme close-up': 'extreme-close-up',
-  'medium shot': 'medium',
-  'medium close up': 'medium-close-up',
-  'full shot': 'full',
-  'long shot': 'long',
-  'aerial shot': 'aerial',
-  'aerial view': 'aerial',
-  'bird\'s eye': 'birds-eye',
-  'birds eye': 'birds-eye',
-  'overhead': 'overhead',
-  'low angle': 'low-angle',
-  'high angle': 'high-angle',
-  'dutch angle': 'dutch',
-  'pov': 'pov',
-  'point of view': 'pov',
-  'over the shoulder': 'over-shoulder',
-  'two shot': 'two-shot',
-};
-
-/**
- * Camera movement keywords
- */
-const CAMERA_MOVEMENTS: Record<string, string> = {
-  'pan': 'pan',
-  'panning': 'pan',
-  'pan left': 'pan-left',
-  'pan right': 'pan-right',
-  'tilt': 'tilt',
-  'tilting': 'tilt',
-  'tilt up': 'tilt-up',
-  'tilt down': 'tilt-down',
-  'dolly': 'dolly',
-  'dolly in': 'dolly-in',
-  'dolly out': 'dolly-out',
-  'truck': 'truck',
-  'trucking': 'truck',
-  'zoom': 'zoom',
-  'zoom in': 'zoom-in',
-  'zoom out': 'zoom-out',
-  'tracking': 'tracking',
-  'tracking shot': 'tracking',
-  'follow': 'follow',
-  'following': 'follow',
-  'crane': 'crane',
-  'crane shot': 'crane',
-  'steadicam': 'steadicam',
-  'handheld': 'handheld',
-  'static': 'static',
-  'stationary': 'static',
-  'orbit': 'orbit',
-  'orbiting': 'orbit',
-  'push in': 'push-in',
-  'pull out': 'pull-out',
-};
-
-/**
- * Lighting keywords
- */
-const LIGHTING_KEYWORDS: Record<string, string> = {
-  'natural light': 'natural',
-  'natural lighting': 'natural',
-  'daylight': 'daylight',
-  'sunlight': 'sunlight',
-  'golden hour': 'golden-hour',
-  'blue hour': 'blue-hour',
-  'sunset': 'sunset',
-  'sunrise': 'sunrise',
-  'moonlight': 'moonlight',
-  'candlelight': 'candlelight',
-  'neon': 'neon',
-  'neon lights': 'neon',
-  'fluorescent': 'fluorescent',
-  'dramatic lighting': 'dramatic',
-  'soft lighting': 'soft',
-  'hard lighting': 'hard',
-  'backlit': 'backlit',
-  'backlighting': 'backlit',
-  'silhouette': 'silhouette',
-  'rim light': 'rim',
-  'rim lighting': 'rim',
-  'low key': 'low-key',
-  'high key': 'high-key',
-  'chiaroscuro': 'chiaroscuro',
-  'ambient': 'ambient',
-  'studio lighting': 'studio',
-  'three point': 'three-point',
-  'volumetric': 'volumetric',
-  'volumetric lighting': 'volumetric',
-};
-
-/**
- * Weather keywords
- */
-const WEATHER_KEYWORDS: Record<string, string> = {
-  'sunny': 'sunny',
-  'cloudy': 'cloudy',
-  'overcast': 'overcast',
-  'rainy': 'rainy',
-  'rain': 'rainy',
-  'raining': 'rainy',
-  'snowy': 'snowy',
-  'snow': 'snowy',
-  'snowing': 'snowy',
-  'foggy': 'foggy',
-  'fog': 'foggy',
-  'misty': 'misty',
-  'mist': 'misty',
-  'stormy': 'stormy',
-  'storm': 'stormy',
-  'thunderstorm': 'thunderstorm',
-  'windy': 'windy',
-  'wind': 'windy',
-  'clear': 'clear',
-  'hazy': 'hazy',
-  'humid': 'humid',
-};
 
 /**
  * Style preset keywords
@@ -365,7 +237,7 @@ export class VeoStrategy extends BaseStrategy {
 
     // Strip conversational filler phrases
     for (const filler of CONVERSATIONAL_FILLERS) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(filler)}\\b`, 'gi');
+      const pattern = new RegExp(`\b${this.escapeRegex(filler)}\b`, 'gi');
       if (pattern.test(text)) {
         text = text.replace(pattern, '');
         changes.push(`Stripped conversational filler: "${filler}"`);
@@ -380,22 +252,22 @@ export class VeoStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input into Veo JSON schema
+   * Transform input into Veo JSON schema using VideoPromptIR
    */
-  protected doTransform(input: string, context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
 
-    // Check if this is an edit instruction (Flow mode)
-    const editInfo = this.detectEditMode(input);
+    // Check if this is an edit instruction (Flow mode) using raw input
+    const editInfo = this.detectEditMode(ir.raw);
     
     let schema: VeoPromptSchema;
     
     if (editInfo) {
-      schema = this.buildEditSchema(input, editInfo, context);
+      schema = this.buildEditSchema(ir.raw, editInfo, context);
       changes.push('Detected Flow editing mode');
     } else {
-      schema = this.buildGenerateSchema(input, context);
-      changes.push('Built generation schema');
+      schema = this.buildGenerateSchema(ir, context);
+      changes.push('Built generation schema from IR');
     }
 
     // Track what was extracted
@@ -454,15 +326,14 @@ export class VeoStrategy extends BaseStrategy {
 
     // Detect and inject style_preset if not already set
     if (!schema.style_preset) {
-      const detectedStyle = this.detectStylePreset(
-        typeof result.prompt === 'string' 
-          ? result.prompt 
-          : JSON.stringify(result.prompt)
-      );
+      // Check if we can infer from raw string again as fallback
+      const rawPrompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+      const detectedStyle = this.detectStylePreset(rawPrompt);
+      
       if (detectedStyle) {
-        schema.style_preset = detectedStyle;
-        triggersInjected.push(`style_preset: ${detectedStyle}`);
-        changes.push(`Injected style_preset: "${detectedStyle}"`);
+         schema.style_preset = detectedStyle;
+         triggersInjected.push(`style_preset: ${detectedStyle}`);
+         changes.push(`Injected style_preset: "${detectedStyle}"`);
       } else {
         // Default to cinematic if no style detected
         schema.style_preset = 'cinematic';
@@ -576,24 +447,87 @@ export class VeoStrategy extends BaseStrategy {
   }
 
   /**
-   * Build schema for generation mode
+   * Build schema for generation mode using VideoPromptIR
    */
-  private buildGenerateSchema(input: string, context?: PromptContext): VeoPromptSchema {
-    const subject = this.extractSubject(input);
-    const camera = this.extractCamera(input);
-    const environment = this.extractEnvironment(input);
-    const audio = this.extractAudio(input);
+  private buildGenerateSchema(ir: VideoPromptIR, context?: PromptContext): VeoPromptSchema {
+    // 1. Subject & Action
+    let description = '';
+    let action = '';
+
+    if (ir.subjects.length > 0) {
+      description = ir.subjects.map(s => s.text).join(' and ');
+    } else {
+        // Fallback to raw first few words if no subject detected
+        description = ir.raw.split(' ').slice(0, 5).join(' ');
+    }
+
+    if (ir.actions.length > 0) {
+        action = ir.actions.join(' and ');
+    } else {
+        action = 'moving naturally'; // Default
+    }
+
+    // 2. Camera
+    let type = 'medium';
+    if (ir.camera.shotType) {
+        // Clean up shot type to match Veo enums if possible
+        const shot = ir.camera.shotType.toLowerCase();
+        if (shot.includes('close')) type = 'close-up';
+        else if (shot.includes('wide')) type = 'wide';
+        else if (shot.includes('aerial')) type = 'aerial';
+        else if (shot.includes('low')) type = 'low-angle'; // angle acts as type sometimes
+    } else if (ir.camera.angle) {
+        const angle = ir.camera.angle.toLowerCase();
+         if (angle.includes('low')) type = 'low-angle';
+         else if (angle.includes('high')) type = 'high-angle';
+         else if (angle.includes('bird')) type = 'birds-eye';
+    }
+
+    let movement = 'static';
+    if (ir.camera.movements.length > 0) {
+        const move = ir.camera.movements[0].toLowerCase(); // Take primary movement
+        if (move.includes('pan')) movement = 'pan';
+        else if (move.includes('tilt')) movement = 'tilt';
+        else if (move.includes('dolly') || move.includes('push') || move.includes('pull')) movement = 'dolly';
+        else if (move.includes('zoom')) movement = 'zoom';
+        else if (move.includes('truck') || move.includes('track')) movement = 'truck';
+        else if (move.includes('handheld')) movement = 'handheld';
+    }
+
+    // 3. Environment
+    let lighting = 'natural';
+    if (ir.environment.lighting.length > 0) {
+        lighting = ir.environment.lighting[0];
+    }
+    
+    let weather = ir.environment.weather;
+    let setting = ir.environment.setting;
 
     const schema: VeoPromptSchema = {
       mode: 'generate',
-      subject,
-      camera,
-      environment,
+      subject: { description, action },
+      camera: { type, movement },
+      environment: { lighting, weather, setting },
     };
 
-    // Only add audio if we found any
-    if (audio.dialogue || audio.ambience || audio.music) {
-      schema.audio = audio;
+    // 4. Audio
+    if (ir.audio) {
+       schema.audio = {};
+       if (ir.audio.dialogue) schema.audio.dialogue = ir.audio.dialogue;
+       if (ir.audio.music) schema.audio.music = ir.audio.music;
+       if (ir.audio.sfx) schema.audio.ambience = ir.audio.sfx; // Map sfx to ambience/sfx
+    }
+
+    // 5. Style Preset from IR
+    if (ir.meta.style.length > 0) {
+        // Map detected style to preset
+        for (const style of ir.meta.style) {
+            const mapped = this.mapStyleToPreset(style);
+            if (mapped) {
+                schema.style_preset = mapped;
+                break;
+            }
+        }
     }
 
     // Add negative prompt if provided in context
@@ -605,193 +539,26 @@ export class VeoStrategy extends BaseStrategy {
   }
 
   /**
-   * Extract subject information from input
+   * Helper to map style string to Veo preset
    */
-  private extractSubject(input: string): { description: string; action: string } {
-    const sentences = this.extractSentences(input);
-    
-    // Look for subject patterns
-    const subjectPatterns = [
-      /(?:a|an|the)\s+(\w+(?:\s+\w+){0,4})\s+(?:is|are|was|were)\s+(\w+ing\b[^.]*)/i,
-      /(\w+(?:\s+\w+){0,4})\s+(\w+s?\b[^.]*)/i,
-    ];
-
-    let description = '';
-    let action = '';
-
-    for (const sentence of sentences) {
-      for (const pattern of subjectPatterns) {
-        const match = sentence.match(pattern);
-        if (match && match[1] && match[2]) {
-          if (!description) {
-            description = match[1].trim();
-          }
-          if (!action) {
-            action = match[2].trim();
-          }
-          break;
-        }
+  private mapStyleToPreset(style: string): string | null {
+      const lowerStyle = style.toLowerCase();
+      for (const [key, value] of Object.entries(STYLE_PRESETS)) {
+          if (lowerStyle.includes(key)) return value;
       }
-      if (description && action) break;
-    }
-
-    // Fallback: use first sentence as description, look for verbs for action
-    if (!description && sentences.length > 0) {
-      const firstSentence = sentences[0];
-      description = firstSentence ?? '';
-    }
-    if (!action) {
-      const verbMatch = input.match(/\b(\w+ing)\b/);
-      action = verbMatch && verbMatch[1] ? verbMatch[1] : 'moving';
-    }
-
-    return { description, action };
+      return null;
   }
-
+  
   /**
-   * Extract camera information from input
-   */
-  private extractCamera(input: string): { type: string; movement: string } {
-    const lowerInput = input.toLowerCase();
-    
-    let type = 'medium'; // default
-    let movement = 'static'; // default
-
-    // Detect camera type
-    for (const [keyword, value] of Object.entries(CAMERA_TYPES)) {
-      if (lowerInput.includes(keyword)) {
-        type = value;
-        break;
-      }
-    }
-
-    // Detect camera movement
-    for (const [keyword, value] of Object.entries(CAMERA_MOVEMENTS)) {
-      if (lowerInput.includes(keyword)) {
-        movement = value;
-        break;
-      }
-    }
-
-    return { type, movement };
-  }
-
-  /**
-   * Extract environment information from input
-   */
-  private extractEnvironment(input: string): { lighting: string; weather?: string; setting?: string } {
-    const lowerInput = input.toLowerCase();
-    
-    let lighting = 'natural'; // default
-    let weather: string | undefined;
-    let setting: string | undefined;
-
-    // Detect lighting
-    for (const [keyword, value] of Object.entries(LIGHTING_KEYWORDS)) {
-      if (lowerInput.includes(keyword)) {
-        lighting = value;
-        break;
-      }
-    }
-
-    // Detect weather
-    for (const [keyword, value] of Object.entries(WEATHER_KEYWORDS)) {
-      if (lowerInput.includes(keyword)) {
-        weather = value;
-        break;
-      }
-    }
-
-    // Extract setting from location patterns
-    const settingPatterns = [
-      /(?:in|at|on)\s+(?:a|an|the)\s+(\w+(?:\s+\w+){0,3})/i,
-      /(?:inside|outside|within)\s+(?:a|an|the)?\s*(\w+(?:\s+\w+){0,3})/i,
-    ];
-
-    for (const pattern of settingPatterns) {
-      const match = input.match(pattern);
-      if (match && match[1]) {
-        setting = match[1].trim();
-        break;
-      }
-    }
-
-    const result: { lighting: string; weather?: string; setting?: string } = { lighting };
-    if (weather) result.weather = weather;
-    if (setting) result.setting = setting;
-
-    return result;
-  }
-
-  /**
-   * Extract audio information from input
-   */
-  private extractAudio(input: string): { dialogue?: string; ambience?: string; music?: string } {
-    const result: { dialogue?: string; ambience?: string; music?: string } = {};
-
-    // Extract dialogue
-    const dialoguePatterns = [
-      /["']([^"']+)["']/g,
-      /says?\s+["']([^"']+)["']/gi,
-      /speaking\s+["']([^"']+)["']/gi,
-    ];
-
-    for (const pattern of dialoguePatterns) {
-      const match = input.match(pattern);
-      if (match) {
-        // Extract the actual dialogue content
-        const dialogueMatch = match[0].match(/["']([^"']+)["']/);
-        if (dialogueMatch && dialogueMatch[1]) {
-          result.dialogue = dialogueMatch[1];
-          break;
-        }
-      }
-    }
-
-    // Extract ambience
-    const ambiencePatterns = [
-      /(?:ambient|ambience|background)\s*(?:sound|noise|audio)?[:\s]+([^.!?,]+)/i,
-      /(?:sounds?\s+of|hearing)\s+([^.!?,]+)/i,
-    ];
-
-    for (const pattern of ambiencePatterns) {
-      const match = input.match(pattern);
-      if (match && match[1]) {
-        result.ambience = match[1].trim();
-        break;
-      }
-    }
-
-    // Extract music
-    const musicPatterns = [
-      /(?:music|soundtrack|score)[:\s]+([^.!?,]+)/i,
-      /(?:playing|with)\s+(\w+\s+music)/i,
-      /(\w+\s+(?:music|melody|tune))/i,
-    ];
-
-    for (const pattern of musicPatterns) {
-      const match = input.match(pattern);
-      if (match && match[1]) {
-        result.music = match[1].trim();
-        break;
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Detect style preset from input
+   * Helper to detect style preset from raw string (fallback)
    */
   private detectStylePreset(input: string): string | null {
     const lowerInput = input.toLowerCase();
-
     for (const [keyword, value] of Object.entries(STYLE_PRESETS)) {
       if (lowerInput.includes(keyword)) {
         return value;
       }
     }
-
     return null;
   }
 

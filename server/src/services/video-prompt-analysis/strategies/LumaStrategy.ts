@@ -7,7 +7,7 @@
  * Key features:
  * - Strips "loop"/"seamless" when loop:true API parameter is active
  * - Strips redundant resolution tokens like "4k"/"8k"
- * - Expands static descriptions into causal chains
+ * - Expands static descriptions into causal chains (conditionally)
  * - Injects HDR pipeline triggers
  * - Supports keyframe structure for first-to-last frame interpolation
  *
@@ -20,7 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext } from './types';
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
 
 /**
  * Loop-related terms to strip when loop:true is active
@@ -210,15 +210,26 @@ export class LumaStrategy extends BaseStrategy {
   /**
    * Transform input with causal chain expansion for static descriptions
    */
-  protected doTransform(input: string, context?: PromptContext): TransformResult {
+  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    let prompt = input;
+    let prompt = ir.raw; // Luma works well with raw text usually
 
-    // Apply causal chain expansion for static descriptions
-    const expandedPrompt = this.applyCausalChainExpansion(prompt);
-    if (expandedPrompt !== prompt) {
-      prompt = expandedPrompt;
-      changes.push('Applied causal chain expansion for static descriptions');
+    // Check for explicit static/frozen request in camera or style
+    // If user asked for "frozen", "static", "time-stop", we should SKIP expansion
+    const isExplicitlyStatic = 
+       ir.camera.movements.includes('static') || 
+       ir.meta.style.includes('frozen') ||
+       /\b(time.?stop|frozen|statue)\b/i.test(ir.raw);
+
+    if (!isExplicitlyStatic) {
+        // Apply causal chain expansion for static descriptions
+        const expandedPrompt = this.applyCausalChainExpansion(prompt);
+        if (expandedPrompt !== prompt) {
+            prompt = expandedPrompt;
+            changes.push('Applied causal chain expansion for static descriptions');
+        }
+    } else {
+        changes.push('Skipped causal expansion due to explicit static request');
     }
 
     // Handle keyframe structure if assets are provided
@@ -298,7 +309,7 @@ export class LumaStrategy extends BaseStrategy {
         const expansion = CAUSAL_EXPANSIONS[indicator];
         if (expansion) {
           // Add the causal expansion after the static term
-          const regex = new RegExp(`(\\b${this.escapeRegex(indicator)}\\b)`, 'gi');
+          const regex = new RegExp(`(\b${this.escapeRegex(indicator)}\b)`, 'gi');
           result = result.replace(regex, `$1, ${expansion}`);
         }
       }
