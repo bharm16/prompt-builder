@@ -286,3 +286,79 @@ async function labelSpansChunked(
     ...(validation.result.analysisTrace !== undefined && { analysisTrace: validation.result.analysisTrace }),
   };
 }
+
+/**
+ * Stream spans using an LLM.
+ * Bypasses NLP fast-path for immediate feedback.
+ */
+export async function* labelSpansStream(
+  params: LabelSpansParams,
+  aiService: BaseAIService
+): AsyncGenerator<SpanLike, void, unknown> {
+  if (!params || typeof params.text !== 'string' || !params.text.trim()) {
+    throw new Error('text is required');
+  }
+
+  if (!aiService) {
+    throw new Error('aiService is required');
+  }
+
+  // Pre-check for adversarial input
+  const adversarialCheck = detectInjectionPatterns(params.text);
+  if (adversarialCheck.hasPatterns) {
+    logger.warn('Adversarial input detected in stream', { 
+      operation: 'labelSpansStream',
+      patterns: adversarialCheck.patterns 
+    });
+    return;
+  }
+
+  // Create client
+  const llmClient = createLlmClient({ operation: 'span_labeling' });
+
+  // Fallback if streaming not supported
+  if (!llmClient.streamSpans) {
+    logger.debug('Client does not support streaming, falling back to blocking', {
+       operation: 'labelSpansStream',
+       client: llmClient.constructor.name 
+    });
+    const result = await labelSpans(params, aiService);
+    for (const span of result.spans) {
+      yield span;
+    }
+    return;
+  }
+
+  // Setup params
+  const policy = sanitizePolicy(params.policy ?? null);
+  const sanitizedOptions = sanitizeOptions({
+    ...(params.maxSpans !== undefined && { maxSpans: params.maxSpans }),
+    ...(params.minConfidence !== undefined && { minConfidence: params.minConfidence }),
+    ...(params.templateVersion !== undefined && { templateVersion: params.templateVersion }),
+  });
+  
+  const cache = new SubstringPositionCache();
+  const streamParams = {
+      text: params.text,
+      policy,
+      options: sanitizedOptions,
+      enableRepair: params.enableRepair === true,
+      aiService,
+      cache,
+      nlpSpansAttempted: 0, 
+  };
+
+  // Stream
+  for await (const rawSpan of llmClient.streamSpans(streamParams)) {
+      // Basic validation/normalization
+      const span: SpanLike = {
+          text: String(rawSpan.text || ''),
+          role: String(rawSpan.role || rawSpan.category || ''),
+          confidence: typeof rawSpan.confidence === 'number' ? rawSpan.confidence : 0.5,
+          start: typeof rawSpan.start === 'number' ? rawSpan.start : undefined,
+          end: typeof rawSpan.end === 'number' ? rawSpan.end : undefined,
+      };
+      
+      yield span;
+  }
+}

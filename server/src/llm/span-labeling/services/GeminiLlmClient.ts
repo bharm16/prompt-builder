@@ -1,8 +1,10 @@
 import { RobustLlmClient, type ProviderRequestOptions } from './RobustLlmClient';
 import { parseJson, cleanJsonEnvelope } from '../utils/jsonUtils';
 import type { LabelSpansResult } from '../types';
+import type { LlmSpanParams } from './ILlmClient';
 import { attemptJsonRepair } from '@clients/adapters/ResponseValidator';
 import { logger } from '@infrastructure/Logger';
+import { GEMINI_STREAMING_SYSTEM_PROMPT } from '../schemas/GeminiSchema';
 
 const log = logger.child({ service: 'GeminiLlmClient' });
 
@@ -13,6 +15,90 @@ const log = logger.child({ service: 'GeminiLlmClient' });
  * Extends RobustLlmClient to reuse the "try, validate, repair" cycle.
  */
 export class GeminiLlmClient extends RobustLlmClient {
+  /**
+   * Stream spans using NDJSON format
+   */
+  async *streamSpans(params: LlmSpanParams): AsyncGenerator<Record<string, unknown>, void, unknown> {
+    const { text, aiService } = params;
+    const systemPrompt = GEMINI_STREAMING_SYSTEM_PROMPT;
+    
+    const queue: string[] = [];
+    let resolveNext: (() => void) | null = null;
+    let done = false;
+    let error: Error | null = null;
+
+    const push = (chunk: string) => {
+      queue.push(chunk);
+      if (resolveNext) {
+        resolveNext();
+        resolveNext = null;
+      }
+    };
+
+    const finish = () => {
+      done = true;
+      if (resolveNext) {
+        resolveNext();
+        resolveNext = null;
+      }
+    };
+
+    const fail = (err: Error) => {
+      error = err;
+      if (resolveNext) {
+        resolveNext();
+        resolveNext = null;
+      }
+    };
+
+    // Start streaming in background
+    aiService.stream('span_labeling', {
+      systemPrompt,
+      userMessage: text,
+      maxTokens: 16384,
+      temperature: 0.1,
+      onChunk: push
+    }).then(() => finish()).catch(fail);
+
+    let buffer = '';
+
+    while (true) {
+      while (queue.length > 0) {
+        const chunk = queue.shift()!;
+        buffer += chunk;
+        
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          
+          if (line) {
+             try {
+               // Handle potential code block fences if model ignores instruction
+               const cleanLine = line.replace(/^```json/, '').replace(/^```/, '');
+               if (!cleanLine) continue;
+
+               const span = JSON.parse(cleanLine);
+               if (span && typeof span === 'object') {
+                 // Normalize
+                 if (span.role && !span.category) span.category = span.role;
+                 yield span;
+               }
+             } catch (e) {
+               // Ignore parse errors for partial lines or noise
+             }
+          }
+        }
+      }
+
+      if (done) break;
+      if (error) throw error;
+
+      // Wait for next chunk
+      await new Promise<void>(resolve => { resolveNext = resolve; });
+    }
+  }
+
   /**
    * HOOK: Get provider name for logging and prompt building
    */

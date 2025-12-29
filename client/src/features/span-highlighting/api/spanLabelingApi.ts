@@ -96,4 +96,87 @@ export class SpanLabelingApi {
       meta: data?.meta ?? null,
     };
   }
+
+  /**
+   * Labels spans using streaming (NDJSON)
+   *
+   * @param payload - The span labeling request payload
+   * @param onChunk - Callback for each received span
+   * @param signal - Optional abort signal for cancellation
+   */
+  static async labelSpansStream(
+    payload: LabelSpansPayload,
+    onChunk: (span: LabelSpansResponse['spans'][0]) => void,
+    signal: AbortSignal | null = null
+  ): Promise<LabelSpansResponse> {
+    const res = await fetch('/llm/label-spans/stream', {
+      method: 'POST',
+      headers: DEFAULT_HEADERS,
+      body: buildBody(payload),
+      ...(signal && { signal }),
+    });
+
+    if (!res.ok) {
+        // Fallback to blocking if stream endpoint missing (404) or error
+        if (res.status === 404) {
+            const blocking = await this.labelSpans(payload, signal);
+            blocking.spans.forEach(onChunk);
+            return blocking;
+        }
+        
+        // Error handling matches labelSpans
+        let message = `Request failed with status ${res.status}`;
+        try {
+            const errorBody = (await res.json()) as { message?: string };
+            if (errorBody?.message) {
+            message = errorBody.message;
+            }
+        } catch {
+             // Ignore
+        }
+        const error = new Error(message) as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+    }
+    
+    // Process NDJSON stream
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('Response body not readable');
+    
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const spans: LabelSpansResponse['spans'] = [];
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep last incomplete line
+            
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const span = JSON.parse(line);
+                    if (span.error) {
+                         // Stream reported error
+                         throw new Error(span.error);
+                    }
+                    if (span.text && span.category) {
+                         onChunk(span);
+                         spans.push(span);
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse NDJSON line:', line, e);
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+    
+    return { spans, meta: { streaming: true } };
+  }
 }

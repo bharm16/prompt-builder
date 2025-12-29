@@ -3,7 +3,7 @@ import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
-import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import { labelSpans, labelSpansStream } from '@llm/span-labeling/SpanLabelingService';
 import { getCurrentSpanProvider } from '@llm/span-labeling/services/LlmClientFactory';
 import { spanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import type { AIModelService } from '@services/ai-model/AIModelService';
@@ -48,6 +48,87 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
 
     return `span:${textHash}:${policyHash}`;
   };
+
+  router.post('/stream', async (req: Request, res: Response) => {
+    const { text, maxSpans, minConfidence, policy, templateVersion } = (req.body || {}) as {
+      text?: unknown;
+      maxSpans?: unknown;
+      minConfidence?: unknown;
+      policy?: ValidationPolicy;
+      templateVersion?: string;
+    };
+
+    if (typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+
+    const safeMaxSpans = sanitizeNumber(maxSpans);
+    if (safeMaxSpans !== undefined && (!Number.isInteger(safeMaxSpans) || safeMaxSpans <= 0 || safeMaxSpans > 80)) {
+      return res.status(400).json({ error: 'maxSpans must be an integer between 1 and 80' });
+    }
+
+    const safeMinConfidence = sanitizeNumber(minConfidence);
+    if (
+      safeMinConfidence !== undefined &&
+      (typeof safeMinConfidence !== 'number' ||
+        Number.isNaN(safeMinConfidence) ||
+        safeMinConfidence < 0 ||
+        safeMinConfidence > 1)
+    ) {
+      return res.status(400).json({ error: 'minConfidence must be between 0 and 1' });
+    }
+
+    const payload: LabelSpansParams = {
+      text,
+      ...(safeMaxSpans !== undefined ? { maxSpans: safeMaxSpans } : {}),
+      ...(safeMinConfidence !== undefined ? { minConfidence: safeMinConfidence } : {}),
+      ...(policy ? { policy } : {}),
+      ...(templateVersion ? { templateVersion } : {}),
+    };
+
+    const requestId = (req as Request & { id?: string }).id;
+    const userId = extractUserId(req);
+    const operation = 'labelSpansStream';
+
+    logger.debug(`Starting ${operation}`, {
+      operation,
+      requestId,
+      userId,
+      textLength: text.length,
+    });
+
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    try {
+      const stream = labelSpansStream(payload, aiService);
+      for await (const span of stream) {
+        const transformed = {
+          text: span.text,
+          start: span.start,
+          end: span.end,
+          category: span.role,
+          confidence: span.confidence,
+        };
+        res.write(JSON.stringify(transformed) + '\n');
+      }
+      res.end();
+    } catch (error) {
+      logger.error(`${operation} failed`, error as Error, {
+        operation,
+        requestId,
+        userId,
+      });
+      // Try to write error to stream if possible
+      if (!res.headersSent) {
+          res.status(502).json({ error: 'Streaming failed' });
+      } else {
+          res.write(JSON.stringify({ error: 'Streaming failed' }) + '\n');
+          res.end();
+      }
+    }
+  });
 
   router.post('/', async (req: Request, res: Response) => {
     const { text, maxSpans, minConfidence, policy, templateVersion } = (req.body || {}) as {

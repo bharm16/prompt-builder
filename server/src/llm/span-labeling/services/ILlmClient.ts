@@ -31,6 +31,11 @@ export interface ILlmClient {
    * Get spans using LLM with validation and optional repair
    */
   getSpans(params: LlmSpanParams): Promise<LabelSpansResult>;
+
+  /**
+   * Stream spans using LLM (optional support)
+   */
+  streamSpans?(params: LlmSpanParams): AsyncGenerator<Record<string, unknown>, void, unknown>;
 }
 
 /**

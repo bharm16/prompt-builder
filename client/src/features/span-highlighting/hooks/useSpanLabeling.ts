@@ -187,7 +187,34 @@ export function useSpanLabeling({
       payload: SpanLabelingPayload,
       signal: AbortSignal | null
     ): Promise<{ spans: LabeledSpan[]; meta: SpanMeta | null }> => {
-      return SpanLabelingApi.labelSpans(payload, signal);
+      // Use streaming API
+      // We accumulate spans in a local array and update state incrementally
+      const accumSpans: LabeledSpan[] = [];
+      const signature = hashString(payload.text ?? '');
+      
+      return SpanLabelingApi.labelSpansStream(
+          payload, 
+          (span) => {
+              accumSpans.push(span);
+              // Optimistic update: Show spans as they arrive
+              // Use functional update to merge with potentially existing state if needed,
+              // but here we just replace spans for this specific request
+              setState(prev => {
+                  // Only update if we are still 'loading' or processing this request
+                  // (Validation happens in hook state management, but this gives immediate feedback)
+                  if (prev.status === 'error') return prev; 
+                  return {
+                      ...prev,
+                      status: 'success', // Show as success/partial immediately
+                      spans: [...accumSpans], // Copy to trigger render
+                      signature,
+                      // Keep existing meta or use placeholder until done
+                      meta: prev.meta || { streaming: true }
+                  };
+              });
+          },
+          signal
+      );
     },
     []
   );
