@@ -98,29 +98,39 @@ ${categories.join('\n')}
 **CRITICAL EXTRACTION RULES:**
 1.  **Extract EXACT text**: Do NOT paraphrase, summarize, or change a single character.
 2.  **No Labels**: Do NOT include field labels like "Duration:", "Aspect Ratio:", "Camera:", "Lighting:". Extract ONLY the value (e.g., "6s", "16:9").
-3.  **Semantic Categorization**: In "TECHNICAL SPECS" sections, categorize items by their *meaning*, not just their location.
+3.  **Handle Duplicates**: If a term appears in BOTH the narrative and the "TECHNICAL SPECS", create **TWO SEPARATE SPANS**. Do not merge them.
+4.  **Split Mixed Specs**: Split descriptive text from technical values. 
+    *   "shallow depth of field (f/1.8)" -> "shallow depth of field" (\`camera.lens\`) AND "f/1.8" (\`camera.focus\`).
+5.  **Lighting Context**: Do NOT label generic words like "side" or "screen" as lighting unless they include illumination terms (e.g., "light from the side").
+6.  **Semantic Categorization**: In "TECHNICAL SPECS" sections, categorize items by their *meaning*, not just their location.
     *   "50mm lens" -> \`camera.lens\` (NOT technical)
     *   "Low-angle" -> \`camera.angle\` (NOT technical)
     *   "Natural daylight" -> \`lighting.source\` (NOT technical)
     *   "60fps" -> \`technical.frameRate\` (YES technical)
 
 Output Format:
-You must return a valid JSON object with EXACTLY ONE key: "spans".
-The "spans" key must be an array of objects.
-Each object in the "spans" array must have:
-- "text": The exact substring from the input.
-- "category": The taxonomy category ID.
-- "confidence": A number between 0.0 and 1.0.
-
-Do NOT nest specific attributes like "shot_type" or "subject" at the top level.
-Do NOT create your own schema. Use ONLY the "spans" array.
+You must return a valid JSON object matching this structure:
+{
+  "analysis_trace": "Step-by-step reasoning about entities, intent, and span boundaries...",
+  "spans": [
+    { "text": "exact substring", "role": "taxonomy.id", "confidence": 0.9 }
+  ],
+  "meta": {
+    "version": "v3",
+    "notes": "Any processing notes"
+  },
+  "isAdversarial": false
+}
 
 Example JSON Output:
 {
+  "analysis_trace": "I see 'Medium Shot' in the narrative and 'Medium Shot' in specs. I will label both.",
   "spans": [
-    { "text": "Medium Shot", "category": "shot.type", "confidence": 1.0 },
-    { "text": "woman", "category": "subject.identity", "confidence": 1.0 }
-  ]
+    { "text": "Medium Shot", "role": "shot.type", "confidence": 1.0 },
+    { "text": "Medium Shot", "role": "shot.type", "confidence": 1.0 }
+  ],
+  "meta": { "version": "v3", "notes": "Handled duplicates" },
+  "isAdversarial": false
 }`;
 }
 
@@ -228,21 +238,34 @@ export const GEMINI_STREAMING_SYSTEM_PROMPT = buildGeminiStreamingSystemPrompt()
 export const GEMINI_JSON_SCHEMA = {
   type: "object",
   properties: {
+    analysis_trace: { 
+      type: "string",
+      description: "Step-by-step reasoning about entities, intent, and span boundaries" 
+    },
     spans: {
       type: "array",
       items: {
         type: "object",
         properties: {
           text: { type: "string" },
-          category: { 
+          role: { 
             type: "string", 
             enum: [...VALID_CATEGORIES].sort() 
           },
           confidence: { type: "number" }
         },
-        required: ["text", "category", "confidence"]
+        required: ["text", "role", "confidence"]
       }
-    }
+    },
+    meta: {
+      type: "object",
+      properties: {
+        version: { type: "string" },
+        notes: { type: "string" }
+      },
+      required: ["version", "notes"]
+    },
+    isAdversarial: { type: "boolean" }
   },
-  required: ["spans"]
+  required: ["analysis_trace", "spans", "meta"]
 };

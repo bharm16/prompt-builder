@@ -214,6 +214,25 @@ export class SubstringPositionCache {
   }
 
   /**
+   * Get all occurrences of a substring in text (public wrapper)
+   *
+   * @param {string} text - Source text
+   * @param {string} substring - Substring to find
+   * @returns {Array<MatchResult>} All matches found
+   */
+  findAllMatches(text: string, substring: string): MatchResult[] {
+    if (!substring) return [];
+    
+    const occurrences = this._getOccurrences(text, substring);
+    const len = substring.length;
+    
+    return occurrences.map(start => ({
+      start,
+      end: start + len
+    }));
+  }
+
+  /**
    * Find best matching indices for substring with binary search optimization
    *
    * Uses binary search to find the occurrence closest to the preferred position.

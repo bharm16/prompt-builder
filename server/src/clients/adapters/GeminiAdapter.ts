@@ -69,6 +69,11 @@ export class GeminiAdapter {
       jsonMode: options.jsonMode,
     });
 
+    // Map IAIClient 'schema' to Gemini 'responseSchema' if present
+    if (options.schema && !options.responseSchema) {
+      options.responseSchema = options.schema;
+    }
+
     try {
       const payload = this.messageBuilder.buildPayload(systemPrompt, options);
       const model = encodeURIComponent(options.model || this.defaultModel);

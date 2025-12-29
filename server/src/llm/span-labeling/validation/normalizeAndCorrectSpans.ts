@@ -136,6 +136,7 @@ export function normalizeAndCorrectSpans(
   const validationNotes: string[] = [];
   const autoFixNotes: string[] = [];
   const sanitized: NormalizedSpan[] = [];
+  const claimedKeys = new Set<string>();
 
   spans.forEach((originalSpan, index) => {
     const label = `span[${index}]`;
@@ -158,9 +159,31 @@ export function normalizeAndCorrectSpans(
 
     // Find correct indices in source text
     const preferredStart = Number.isInteger(spanObj.start) ? (spanObj.start as number) : 0;
-    let corrected = cache.findBestMatch(text, spanObj.text, preferredStart);
+    let corrected: { start: number; end: number } | null = null;
 
-    // Retry with normalized text (remove quotes/markdown, collapse spaces) if no direct hit
+    // 1. Try exact matches (all occurrences) and pick best unclaimed
+    const exactMatches = cache.findAllMatches(text, spanObj.text);
+    if (exactMatches.length > 0) {
+       // Sort by distance to preferredStart
+       exactMatches.sort((a, b) => Math.abs(a.start - preferredStart) - Math.abs(b.start - preferredStart));
+       
+       // Pick first unclaimed
+       for (const m of exactMatches) {
+           const key = `${m.start}:${m.end}`;
+           if (!claimedKeys.has(key)) {
+               corrected = m;
+               claimedKeys.add(key);
+               break;
+           }
+       }
+       
+       // If all claimed, fallback to best one (will be deduped later if exact duplicate)
+       if (!corrected) {
+           corrected = exactMatches[0];
+       }
+    }
+
+    // 2. Retry with normalized text if no exact match found
     if (!corrected) {
       const cleanedText = normalizeSpanTextForLookup(spanObj.text);
       if (cleanedText && cleanedText !== spanObj.text) {
@@ -168,7 +191,7 @@ export function normalizeAndCorrectSpans(
       }
     }
 
-    // Last-resort case-insensitive search to catch minor casing mismatches
+    // 3. Last-resort case-insensitive search to catch minor casing mismatches
     if (!corrected) {
       const loweredSource = text.toLowerCase();
       const loweredTarget = normalizeSpanTextForLookup(spanObj.text).toLowerCase();
@@ -185,6 +208,11 @@ export function normalizeAndCorrectSpans(
         validationNotes.push(`${label} dropped: text not found in source`);
       }
       return;
+    }
+
+    // If we found a match via fallback (2 or 3), mark it as claimed
+    if (corrected) {
+        claimedKeys.add(`${corrected.start}:${corrected.end}`);
     }
 
     // Refine boundaries (trim punctuation/prepositions)
