@@ -1,10 +1,17 @@
-import { logger } from '@infrastructure/Logger';
 import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
 
 /**
  * Model-specific detection patterns and keywords
+ * 
+ * Includes both legacy model patterns and new POE model patterns:
+ * - runway-gen45: Runway Gen-4.5 (A2D architecture)
+ * - luma-ray3: Luma Ray-3 (causal chain expansion)
+ * - kling-26: Kling AI 2.6 (MDT with audio-visual)
+ * - sora-2: OpenAI Sora 2 (physics simulation)
+ * - veo-4: Google Veo 4 (JSON schema)
  */
 const MODEL_PATTERNS = {
+  // Legacy patterns (kept for backward compatibility)
   sora: {
     keywords: ['sora', 'openai video', 'openai gen'],
     technicalMarkers: ['realistic motion', 'physics simulation', 'long-form'],
@@ -30,12 +37,40 @@ const MODEL_PATTERNS = {
     technicalMarkers: ['surreal', 'abstract', 'morphing', 'dreamlike'],
     indicators: /\b(luma|dream\s*machine|surreal|morphing\s*effects|abstract\s*visual)\b/i,
   },
+  
+  // New POE model patterns (Requirements 2.1-2.6)
+  'runway-gen45': {
+    keywords: ['gen-4.5', 'gen4.5', 'gen 4.5', 'runway gen 4.5', 'whisper thunder'],
+    technicalMarkers: ['csae', 'a2d', 'continuous shot', 'fluid motion'],
+    indicators: /\b(gen[_\s-]?4\.?5|runway\s*gen\s*4\.?5|whisper\s*thunder)\b/i,
+  },
+  'luma-ray3': {
+    keywords: ['ray-3', 'ray3', 'ray 3', 'luma ray', 'luma ray-3'],
+    technicalMarkers: ['causal chain', 'hdr', 'keyframes'],
+    indicators: /\b(ray[_\s-]?3|luma\s*ray[_\s-]?3?)\b/i,
+  },
+  'kling-26': {
+    keywords: ['kling 2.6', 'kling2.6', 'kling ai 2.6'],
+    technicalMarkers: ['screenplay', 'dialogue', 'memflow', 'synced lips'],
+    indicators: /\b(kling[_\s-]?2\.?6|kling\s*ai\s*2\.?6)\b/i,
+  },
+  'sora-2': {
+    keywords: ['sora 2', 'sora2', 'openai sora 2'],
+    technicalMarkers: ['newtonian physics', 'momentum conservation', 'temporal sequence'],
+    indicators: /\b(sora[_\s-]?2|openai\s*sora\s*2)\b/i,
+  },
+  'veo-4': {
+    keywords: ['veo 4', 'veo4', 'google veo 4'],
+    technicalMarkers: ['json schema', 'style_preset', 'flow editing'],
+    indicators: /\b(veo[_\s-]?4|google\s*veo\s*4)\b/i,
+  },
 } as const;
 
 /**
  * Model strengths and optimal use cases
  */
 const MODEL_STRENGTHS = {
+  // Legacy models
   sora: {
     primary: ['Realistic motion', 'Physics simulation', 'Long takes (up to 60s)', 'Natural movement'],
     secondary: ['Consistent characters', 'Complex camera moves', 'Environmental physics'],
@@ -61,12 +96,40 @@ const MODEL_STRENGTHS = {
     secondary: ['Experimental content', 'Transitions', 'Non-realistic imagery'],
     weaknesses: ['Photorealism', 'Precise control', 'Technical accuracy'],
   },
+  
+  // New POE models
+  'runway-gen45': {
+    primary: ['A2D architecture', 'CSAE protocol', 'Continuous shots', 'Fluid motion'],
+    secondary: ['Cinematographic triggers', 'Consistent geometry', 'Camera motion mapping'],
+    weaknesses: ['Emotional/abstract terms', 'Morphing effects', 'Blur effects'],
+  },
+  'luma-ray3': {
+    primary: ['Causal chain expansion', 'HDR pipeline', 'Keyframe interpolation', 'Motion triggers'],
+    secondary: ['16-bit color', 'ACES colorspace', 'Slow motion'],
+    weaknesses: ['Loop/seamless when API loop enabled', 'Redundant resolution tokens'],
+  },
+  'kling-26': {
+    primary: ['Audio-visual sync', 'Screenplay formatting', 'Dialogue scenes', 'MemFlow context'],
+    secondary: ['Synced lips', 'Natural speech', 'High fidelity audio'],
+    weaknesses: ['Generic sound terms', 'Visual tokens in audio sections'],
+  },
+  'sora-2': {
+    primary: ['Physics grounding', 'Temporal segmentation', 'Newtonian physics', 'Momentum conservation'],
+    secondary: ['Cameo identity tokens', 'Aspect ratio validation', 'JSON response format'],
+    weaknesses: ['Public figure names', 'Unauthorized celebrity references'],
+  },
+  'veo-4': {
+    primary: ['JSON schema serialization', 'Gemini integration', 'Flow editing', 'Style presets'],
+    secondary: ['Brand context injection', 'Structured prompts', 'Edit mode support'],
+    weaknesses: ['Markdown formatting', 'Conversational filler'],
+  },
 } as const;
 
 /**
  * Model-specific optimal parameters
  */
 const MODEL_OPTIMAL_PARAMS = {
+  // Legacy models
   sora: {
     duration: '10-60 seconds',
     motion: 'Continuous, natural',
@@ -102,6 +165,43 @@ const MODEL_OPTIMAL_PARAMS = {
     lighting: 'Surreal, dreamlike',
     style: 'Abstract, experimental',
   },
+  
+  // New POE models
+  'runway-gen45': {
+    duration: '5-20 seconds',
+    motion: 'Single continuous shot, fluid motion',
+    camera: 'CSAE protocol (Camera first)',
+    lighting: 'Cinematographic, shallow depth of field',
+    style: 'A2D optimized, consistent geometry',
+  },
+  'luma-ray3': {
+    duration: '5-15 seconds',
+    motion: 'Causal chain, cause-effect sequences',
+    camera: 'Keyframe interpolation',
+    lighting: 'HDR, 16-bit color, ACES',
+    style: 'High dynamic range',
+  },
+  'kling-26': {
+    duration: '5-30 seconds',
+    motion: 'Character-focused, dialogue sync',
+    camera: 'Close to medium for dialogue',
+    lighting: 'Clear for lip-sync',
+    style: 'Screenplay format, audio-visual',
+  },
+  'sora-2': {
+    duration: '10-60 seconds',
+    motion: 'Physics-grounded, Newtonian',
+    camera: 'Temporal sequences',
+    lighting: 'Physically accurate',
+    style: 'Physics simulation, momentum conservation',
+  },
+  'veo-4': {
+    duration: '5-30 seconds',
+    motion: 'Structured JSON control',
+    camera: 'Schema-defined movements',
+    lighting: 'Environment-specified',
+    style: 'JSON schema, style presets',
+  },
 } as const;
 
 export type ModelId = keyof typeof MODEL_PATTERNS;
@@ -127,11 +227,22 @@ interface ModelPatterns {
 }
 
 /**
+ * POE model IDs - the new versioned models that should take priority
+ */
+const POE_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'kling-26', 'sora-2', 'veo-4'] as const;
+
+/**
  * Service responsible for detecting target AI video model
  */
 export class ModelDetectionService {
   /**
    * Detect which AI video model the prompt is targeting
+   * 
+   * Priority order:
+   * 1. POE models (versioned, more specific) - runway-gen45, luma-ray3, kling-26, sora-2, veo-4
+   * 2. Legacy models - sora, veo3, runway, kling, luma
+   * 
+   * When no model pattern is detected, returns null (Requirement 2.6)
    */
   detectTargetModel(fullPrompt: string | null | undefined): ModelId | null {
     if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
@@ -143,7 +254,7 @@ export class ModelDetectionService {
 
     // Score each model based on pattern matches
     for (const [model, patterns] of Object.entries(MODEL_PATTERNS)) {
-      scores[model] = this._scoreModel(normalized, patterns);
+      scores[model] = this._scoreModel(normalized, patterns, model);
     }
 
     // Find model with highest score
@@ -155,14 +266,24 @@ export class ModelDetectionService {
       return null; // No clear model detected
     }
 
-    const detectedModel = entries.find(([, score]) => score === maxScore)?.[0];
-    return (detectedModel as ModelId) || null;
+    // Get all models with the max score
+    const topModels = entries.filter(([, score]) => score === maxScore).map(([model]) => model);
+
+    // If multiple models tie, prefer POE models (more specific)
+    const poeMatch = topModels.find((model) => POE_MODEL_IDS.includes(model as (typeof POE_MODEL_IDS)[number]));
+    if (poeMatch) {
+      return poeMatch as ModelId;
+    }
+
+    // Otherwise return the first match
+    return (topModels[0] as ModelId) || null;
   }
 
   /**
    * Score a model based on pattern matches
+   * POE models get a slight boost to prefer versioned models over legacy
    */
-  private _scoreModel(normalizedText: string, patterns: ModelPatterns): number {
+  private _scoreModel(normalizedText: string, patterns: ModelPatterns, modelId: string): number {
     let score = 0;
 
     // Check regex indicator (strong signal)
@@ -183,6 +304,12 @@ export class ModelDetectionService {
         score += 1;
       }
     });
+
+    // POE models get a small boost when they have any match
+    // This ensures versioned models are preferred over legacy when both match
+    if (score > 0 && POE_MODEL_IDS.includes(modelId as (typeof POE_MODEL_IDS)[number])) {
+      score += 0.5;
+    }
 
     return score;
   }

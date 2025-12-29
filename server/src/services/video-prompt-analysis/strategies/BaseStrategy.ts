@@ -1,0 +1,416 @@
+/**
+ * BaseStrategy Abstract Class
+ *
+ * Provides common pipeline logic for all model-specific optimization strategies.
+ * Implements shared validate, normalize, transform, augment scaffolding with
+ * integrated TechStripper and SafetySanitizer calls, plus metadata tracking and timing.
+ *
+ * @module BaseStrategy
+ */
+
+import { TechStripper, techStripper } from '../utils/TechStripper';
+import { SafetySanitizer, safetySanitizer } from '../utils/SafetySanitizer';
+import type {
+  PromptOptimizationStrategy,
+  PromptOptimizationResult,
+  PromptContext,
+  OptimizationMetadata,
+  PhaseResult,
+} from './types';
+
+/**
+ * Pipeline version for tracking optimization changes
+ */
+const PIPELINE_VERSION = '1.0.0';
+
+/**
+ * BaseStrategy provides common pipeline infrastructure for all model strategies.
+ *
+ * Subclasses must implement:
+ * - `doValidate`: Model-specific validation logic
+ * - `doNormalize`: Model-specific normalization after common processing
+ * - `doTransform`: Model-specific transformation logic
+ * - `doAugment`: Model-specific augmentation logic
+ *
+ * The base class handles:
+ * - TechStripper integration (model-aware placebo token removal)
+ * - SafetySanitizer integration (safety compliance)
+ * - Timing and metadata tracking for each phase
+ * - Error handling and recovery
+ */
+export abstract class BaseStrategy implements PromptOptimizationStrategy {
+  abstract readonly modelId: string;
+  abstract readonly modelName: string;
+
+  protected readonly techStripper: TechStripper;
+  protected readonly safetySanitizer: SafetySanitizer;
+
+  // Accumulated metadata during pipeline execution
+  private currentMetadata: OptimizationMetadata | null = null;
+
+  constructor(
+    techStripperInstance: TechStripper = techStripper,
+    safetySanitizerInstance: SafetySanitizer = safetySanitizer
+  ) {
+    this.techStripper = techStripperInstance;
+    this.safetySanitizer = safetySanitizerInstance;
+  }
+
+  /**
+   * Initialize fresh metadata for a new pipeline run
+   */
+  protected initializeMetadata(): OptimizationMetadata {
+    return {
+      modelId: this.modelId,
+      pipelineVersion: PIPELINE_VERSION,
+      phases: [],
+      warnings: [],
+      tokensStripped: [],
+      triggersInjected: [],
+    };
+  }
+
+  /**
+   * Record a phase result in the current metadata
+   */
+  protected recordPhaseResult(result: PhaseResult): void {
+    if (this.currentMetadata) {
+      this.currentMetadata.phases.push(result);
+    }
+  }
+
+  /**
+   * Add a warning to the current metadata
+   */
+  protected addWarning(warning: string): void {
+    if (this.currentMetadata && !this.currentMetadata.warnings.includes(warning)) {
+      this.currentMetadata.warnings.push(warning);
+    }
+  }
+
+  /**
+   * Record stripped tokens in metadata
+   */
+  protected recordStrippedTokens(tokens: string[]): void {
+    if (this.currentMetadata) {
+      for (const token of tokens) {
+        if (!this.currentMetadata.tokensStripped.includes(token)) {
+          this.currentMetadata.tokensStripped.push(token);
+        }
+      }
+    }
+  }
+
+  /**
+   * Record injected triggers in metadata
+   */
+  protected recordInjectedTriggers(triggers: string[]): void {
+    if (this.currentMetadata) {
+      for (const trigger of triggers) {
+        if (!this.currentMetadata.triggersInjected.includes(trigger)) {
+          this.currentMetadata.triggersInjected.push(trigger);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get the current metadata (for use in transform/augment phases)
+   */
+  protected getMetadata(): OptimizationMetadata {
+    if (!this.currentMetadata) {
+      this.currentMetadata = this.initializeMetadata();
+    }
+    return this.currentMetadata;
+  }
+
+  // ============================================================
+  // Public Pipeline Methods (implements PromptOptimizationStrategy)
+  // ============================================================
+
+  /**
+   * Phase 0: Validate input against model constraints
+   * Runs model-specific validation after basic checks
+   */
+  async validate(input: string, context?: PromptContext): Promise<void> {
+    // Basic validation
+    if (!input || typeof input !== 'string') {
+      throw new Error('Input must be a non-empty string');
+    }
+
+    if (input.trim().length === 0) {
+      throw new Error('Input cannot be empty or whitespace only');
+    }
+
+    // Model-specific validation
+    await this.doValidate(input, context);
+  }
+
+  /**
+   * Phase 1: Normalize input by stripping incompatible tokens
+   *
+   * Pipeline:
+   * 1. Apply SafetySanitizer (safety compliance)
+   * 2. Apply TechStripper (model-aware placebo removal)
+   * 3. Apply model-specific normalization
+   */
+  normalize(input: string, context?: PromptContext): string {
+    const startTime = performance.now();
+    const changes: string[] = [];
+
+    // Initialize metadata for this pipeline run
+    this.currentMetadata = this.initializeMetadata();
+
+    let processedText = input;
+
+    // Step 1: Safety sanitization
+    const sanitizerResult = this.safetySanitizer.sanitize(processedText);
+    if (sanitizerResult.wasModified) {
+      processedText = sanitizerResult.text;
+      for (const replacement of sanitizerResult.replacements) {
+        changes.push(`Replaced "${replacement.original}" with "${replacement.replacement}" (${replacement.category})`);
+        this.recordStrippedTokens([replacement.original]);
+      }
+    }
+
+    // Step 2: Tech stripping (model-aware)
+    const stripperResult = this.techStripper.strip(processedText, this.modelId);
+    if (stripperResult.tokensWereStripped) {
+      processedText = stripperResult.text;
+      for (const token of stripperResult.strippedTokens) {
+        changes.push(`Stripped placebo token: "${token}"`);
+      }
+      this.recordStrippedTokens(stripperResult.strippedTokens);
+    }
+
+    // Step 3: Model-specific normalization
+    const modelNormalizeResult = this.doNormalize(processedText, context);
+    if (modelNormalizeResult.text !== processedText) {
+      processedText = modelNormalizeResult.text;
+      changes.push(...modelNormalizeResult.changes);
+      this.recordStrippedTokens(modelNormalizeResult.strippedTokens);
+    }
+
+    // Record phase result
+    const durationMs = performance.now() - startTime;
+    this.recordPhaseResult({
+      phase: 'normalize',
+      durationMs,
+      changes,
+    });
+
+    return processedText;
+  }
+
+  /**
+   * Phase 2: Transform normalized input into model-native structure
+   */
+  transform(input: string, context?: PromptContext): PromptOptimizationResult {
+    const startTime = performance.now();
+
+    // Perform model-specific transformation
+    const transformResult = this.doTransform(input, context);
+
+    // Record phase result
+    const durationMs = performance.now() - startTime;
+    this.recordPhaseResult({
+      phase: 'transform',
+      durationMs,
+      changes: transformResult.changes,
+    });
+
+    // Build result with current metadata
+    const result: PromptOptimizationResult = {
+      prompt: transformResult.prompt,
+      metadata: this.getMetadata(),
+    };
+
+    if (transformResult.negativePrompt !== undefined) {
+      result.negativePrompt = transformResult.negativePrompt;
+    }
+
+    return result;
+  }
+
+  /**
+   * Phase 3: Augment result with model-specific triggers
+   */
+  augment(
+    result: PromptOptimizationResult,
+    context?: PromptContext
+  ): PromptOptimizationResult {
+    const startTime = performance.now();
+
+    // Perform model-specific augmentation
+    const augmentResult = this.doAugment(result, context);
+
+    // Record injected triggers
+    this.recordInjectedTriggers(augmentResult.triggersInjected);
+
+    // Record phase result
+    const durationMs = performance.now() - startTime;
+    this.recordPhaseResult({
+      phase: 'augment',
+      durationMs,
+      changes: augmentResult.changes,
+    });
+
+    // Return final result with complete metadata
+    const finalResult: PromptOptimizationResult = {
+      prompt: augmentResult.prompt,
+      metadata: this.getMetadata(),
+    };
+
+    if (augmentResult.negativePrompt !== undefined) {
+      finalResult.negativePrompt = augmentResult.negativePrompt;
+    }
+
+    return finalResult;
+  }
+
+  // ============================================================
+  // Abstract Methods (must be implemented by subclasses)
+  // ============================================================
+
+  /**
+   * Model-specific validation logic
+   * Override to add constraints like aspect ratio, duration, physics checks
+   *
+   * @param input - The input text to validate
+   * @param context - Optional context with constraints and history
+   * @throws Error if validation fails
+   */
+  protected abstract doValidate(
+    input: string,
+    context?: PromptContext
+  ): Promise<void>;
+
+  /**
+   * Model-specific normalization after common processing
+   *
+   * @param input - Text after SafetySanitizer and TechStripper
+   * @param context - Optional context
+   * @returns Normalized text with changes and stripped tokens
+   */
+  protected abstract doNormalize(
+    input: string,
+    context?: PromptContext
+  ): NormalizeResult;
+
+  /**
+   * Model-specific transformation logic
+   *
+   * @param input - Normalized text
+   * @param context - Optional context
+   * @returns Transformed prompt with changes
+   */
+  protected abstract doTransform(
+    input: string,
+    context?: PromptContext
+  ): TransformResult;
+
+  /**
+   * Model-specific augmentation logic
+   *
+   * @param result - Result from transform phase
+   * @param context - Optional context
+   * @returns Augmented result with triggers
+   */
+  protected abstract doAugment(
+    result: PromptOptimizationResult,
+    context?: PromptContext
+  ): AugmentResult;
+
+  // ============================================================
+  // Utility Methods (available to subclasses)
+  // ============================================================
+
+  /**
+   * Clean up whitespace in text
+   */
+  protected cleanWhitespace(text: string): string {
+    return text
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*,/g, ',')
+      .replace(/,\s*$/g, '')
+      .replace(/^\s*,/g, '')
+      .replace(/\s*,/g, ',')
+      .replace(/,\s*/g, ', ')
+      .trim();
+  }
+
+  /**
+   * Extract sentences from text
+   */
+  protected extractSentences(text: string): string[] {
+    return text
+      .split(/[.!?]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
+  /**
+   * Check if text contains a word (case-insensitive, word boundary)
+   */
+  protected containsWord(text: string, word: string): boolean {
+    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'i');
+    return pattern.test(text);
+  }
+
+  /**
+   * Replace a word in text (case-insensitive, word boundary)
+   */
+  protected replaceWord(text: string, word: string, replacement: string): string {
+    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'gi');
+    return text.replace(pattern, replacement);
+  }
+
+  /**
+   * Escape special regex characters
+   */
+  protected escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+}
+
+// ============================================================
+// Result Types for Abstract Methods
+// ============================================================
+
+/**
+ * Result from model-specific normalization
+ */
+export interface NormalizeResult {
+  /** The normalized text */
+  text: string;
+  /** Description of changes made */
+  changes: string[];
+  /** Tokens that were stripped */
+  strippedTokens: string[];
+}
+
+/**
+ * Result from model-specific transformation
+ */
+export interface TransformResult {
+  /** The transformed prompt (string or object) */
+  prompt: string | Record<string, unknown>;
+  /** Optional negative prompt */
+  negativePrompt?: string;
+  /** Description of changes made */
+  changes: string[];
+}
+
+/**
+ * Result from model-specific augmentation
+ */
+export interface AugmentResult {
+  /** The augmented prompt */
+  prompt: string | Record<string, unknown>;
+  /** Optional negative prompt */
+  negativePrompt?: string;
+  /** Description of changes made */
+  changes: string[];
+  /** Triggers that were injected */
+  triggersInjected: string[];
+}

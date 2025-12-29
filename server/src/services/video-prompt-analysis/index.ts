@@ -18,8 +18,58 @@ export { ConstraintGenerationService } from './services/analysis/ConstraintGener
 export { FallbackStrategyService } from './services/guidance/FallbackStrategyService';
 export { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService';
 
+// Export Multimodal Asset Manager
+export {
+  MultimodalAssetManager,
+  multimodalAssetManager,
+} from './services/MultimodalAssetManager';
+export type {
+  AssetType,
+  ProviderType,
+  AssetUploadRequest,
+  StagedAsset,
+  ProviderUploadResult,
+  CameoValidationResult,
+  AssetDescriptionResult,
+} from './services/MultimodalAssetManager';
+
 // Export utilities
 export { countWords, isSentence, normalizeText } from './utils/textHelpers';
+export { TechStripper, techStripper } from './utils/TechStripper';
+export type { TechStripperResult } from './utils/TechStripper';
+export { SafetySanitizer, safetySanitizer } from './utils/SafetySanitizer';
+export type {
+  SafetySanitizerResult,
+  SanitizationReplacement,
+} from './utils/SafetySanitizer';
+
+// Export strategies, registry, and strategy types
+export {
+  StrategyRegistry,
+  BaseStrategy,
+  RunwayStrategy,
+  runwayStrategy,
+  LumaStrategy,
+  lumaStrategy,
+  KlingStrategy,
+  klingStrategy,
+  SoraStrategy,
+  soraStrategy,
+  VeoStrategy,
+  veoStrategy,
+} from './strategies';
+export type {
+  PromptOptimizationResult,
+  OptimizationMetadata,
+  PhaseResult,
+  PromptContext,
+  AssetReference,
+  PromptOptimizationStrategy,
+  NormalizeResult,
+  TransformResult,
+  AugmentResult,
+  VeoPromptSchema,
+} from './strategies';
 
 // Export config for testing/debugging
 export * from './config/detectionMarkers';
