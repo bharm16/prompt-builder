@@ -145,9 +145,16 @@ export class RobustLlmClient implements ILlmClient {
   async getSpans(params: LlmSpanParams): Promise<LabelSpansResult> {
     const { text, policy, options, enableRepair, aiService, cache, nlpSpansAttempted } = params;
 
-    const estimatedMaxTokens = SpanLabelingConfig.estimateMaxTokens(
-      options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
-    );
+    // Get provider-specific options from subclass (merge providerName for few-shot lookup)
+    const providerName = this._getProviderName();
+    const isGemini = providerName === 'gemini';
+
+    // Use higher maxTokens for Gemini Flash to handle multi-paragraph responses
+    const estimatedMaxTokens = isGemini
+      ? 16384  // Match test script - allows full multi-paragraph extraction
+      : SpanLabelingConfig.estimateMaxTokens(
+          options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans
+        );
 
     const task = buildTaskDescription(options.maxSpans || SpanLabelingConfig.DEFAULT_OPTIONS.maxSpans, policy);
 
@@ -157,10 +164,6 @@ export class RobustLlmClient implements ILlmClient {
       text,
       templateVersion: options.templateVersion || SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion,
     };
-
-    // Get provider-specific options from subclass (merge providerName for few-shot lookup)
-    const providerName = this._getProviderName();
-    const isGemini = providerName === 'gemini';
     const validationPolicy: ValidationPolicy = isGemini
       ? { ...(policy || {}), nonTechnicalWordLimit: 0 }
       : policy;
