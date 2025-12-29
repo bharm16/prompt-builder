@@ -4,14 +4,14 @@ This document provides a detailed technical breakdown of prompt engineering requ
 
 ---
 
-## 1. Runway Gen-3 Alpha
+## 1. Runway Gen-4.5 Alpha
 
-Runway Gen-3 Alpha is highly sensitive to structure and favors cinematic terminology over raw technical parameters.
+Runway Gen-4.5 Alpha is the current #1 ranked video model (as of Dec 2025). It uses an **Autoregressive-to-Diffusion (A2D)** architecture for unprecedented physical accuracy and character expression.
 
 ### Technical Constraints
 *   **Character Limit:** 1000 characters.
-*   **Negative Prompts:** **Not Supported.** Using negative words (e.g., "no", "without") often triggers the model to *include* that element.
-*   **Optimization Strategy:** Convert negative constraints into positive environmental descriptions.
+*   **Negative Prompts:** **Not Supported.** Use positive environmental descriptions.
+*   **Architecture:** A2D (NVIDIA-backed).
 
 ### Core Syntax
 Recommended format:
@@ -19,14 +19,14 @@ Recommended format:
 
 ---
 
-## 2. Kling AI
+## 2. Kling AI (2.6 / O1 / MemFlow)
 
-Kling AI is a structured model that benefits from clear separation of elements and supports native negative prompting.
+Kling 2.6 (Dec 2025) is the first to feature **Native Audio** generation and the **MemFlow** dynamic memory mechanism for narrative coherence in long videos.
 
 ### Technical Constraints
 *   **Aspect Ratios:** Native support for `16:9`, `9:16`, `1:1`.
-*   **Negative Prompts:** Fully supported via a separate field or specific keywords at the end.
-*   **Motion Control:** Handled via descriptive verbs and "Camera Language" modifiers.
+*   **Negative Prompts:** Fully supported via a separate field.
+*   **Consistent Characters:** Kling O1 supports multi-angle reference images.
 
 ### Core Structure (The 4-Layer Rule)
 1.  **Subject:** Physical appearance, posture, clothing.
@@ -36,153 +36,117 @@ Kling AI is a structured model that benefits from clear separation of elements a
 
 ---
 
-## 3. Luma Dream Machine
+## 3. Luma AI (Ray-3)
 
-Luma emphasizes natural language "conversations" and sophisticated temporal transitions.
+Luma Ray-3 (Sept 2025) is a reasoning-driven model that can "think" through scene descriptions to refine results.
 
 ### Technical Constraints
-*   **Negative Prompts:** Discouraged. Like Runway, it performs better with positive descriptions.
-*   **Transitions:** Supports "Keyframes" (Start Image + End Image).
-*   **Max Length:** 5 seconds (standard), extendable to 9+ seconds.
+*   **HDR Pipeline:** First-to-market native 16-bit High Dynamic Range generation.
+*   **Draft Mode:** High-speed preview generation.
+*   **Keyframes:** Advanced first/middle/last frame control.
 
 ### Key Features
-*   **Looping:** Native support via the keyword `loop` or `looping video`.
-*   **Enhance Prompt:** Luma has an internal expansion engine; if this is off, the prompt must be extremely detailed.
+*   **Reasoning-Driven:** Automatically evaluates its own outputs for prompt adherence.
+*   **Modify Video:** Supports character reference and complex video-to-video transformations.
 
 ---
 
-## 4. Pika Labs (Pika 2.0)
+## 4. Pika Labs (Pika 2.2 / 3.0)
 
-Pika is unique for its "Command Line" style parameter system appended to the end of prompts.
+Pika 2.2 (June 2025) and the 3.0 preview focus on **Pikaswaps** (video inpainting) and **Pikadditions**.
 
 ### Technical Parameters
 | Parameter | Description | Values |
 | :--- | :--- | :--- |
-| `-fps` | Frames per second | `8 - 24` (Default: 24) |
-| `-motion` | Motion intensity | `0 - 4` (Default: 1) |
-| `-gs` | Guidance Scale | `8 - 24` (Default: 12) |
+| `-fps` | Frames per second | `8 - 60` |
+| `-motion` | Motion intensity | `0 - 4` |
+| `-gs` | Guidance Scale | `8 - 24` |
 | `-neg` | Negative Prompt | Space-separated keywords |
 | `-ar` | Aspect Ratio | `16:9`, `9:16`, `1:1`, `4:5` |
 
-### Special Effects (Pikaffects)
-Pika 2.0 supports specific transformation keywords:
-`crush it`, `melt it`, `inflate it`, `cake-ify it`, `explode it`.
-
 ---
 
-## 5. MiniMax (Hailuo AI)
+## 5. MiniMax (Hailuo 2.3 Fast / 3.0)
 
-Hailuo AI is currently one of the highest-rated models for motion fidelity and instruction following.
+Hailuo 2.3 Fast is optimized for "super-fast" 30-second turnaround for 6-second clips.
 
 ### Core Formula
 `[Camera Shot + Motion] + [Subject + Description] + [Action] + [Scene + Description] + [Lighting] + [Style/Aesthetic] + [Atmosphere]`
 
-### Advanced Control (Hailuo 02)
-*   **Camera Prompting:** Supports direct commands like `walk-right`, `zoom-in`.
-*   **Scene Anchoring:** Better at maintaining object positions compared to earlier models.
+---
+
+## 6. Mochi 1.5 (Genmo)
+
+Mochi 1.5 is the upgraded open-source model (Apache 2.0) with improved 720p/1080p photorealism.
 
 ---
 
-## 6. Mochi 1 (Genmo)
+## 7. HunYuan Video (Tencent 2.0/2.5)
 
-Mochi 1 is an open-source model (Apache 2.0) with 10B parameters, optimized for photorealism.
-
-### Technical Constraints
-*   **Architecture:** Asymmetric Diffusion Transformer (AsymmDiT).
-*   **Resolution:** 480p (initial), 720p (planned).
-*   **Duration:** 5.4 seconds at 30 fps.
-*   **Strength:** Excellent adherence to complex motion instructions.
-*   **Weakness:** Poor performance with animation/stylized content; strictly photoreal.
+HunyuanVideo 2.0 (Sept 2025) introduced the `image_embed_interlaved` algorithm for high-fidelity Img2Video.
 
 ---
 
-## 7. HunYuan Video (Tencent)
+## 8. Vidu AI (2.5 / Q3)
 
-Tencent's large-scale open-source model which benefits from "Prompt Rewriting" logic.
-
-### Optimization Strategy
-*   **Rewrite Model:** HunYuan has a built-in "Master Mode" that prioritizes composition and lighting over raw semantic detail.
-*   **Subject First:** Prompts should always start with the subject and immediately follow with the scene.
-*   **Cinematography:** Responds exceptionally well to specific lens descriptions (e.g., "anamorphic lens", "bokeh").
+Vidu Q3 (Dec 2025) features advanced emotional reasoning and complex "Pedestal" shot support.
 
 ---
 
-## 8. Vidu AI
+## 9. Wan (Wan 2.6 / 3.0)
 
-Vidu is a powerful model emphasizing emotional depth and multi-entity consistency.
-
-### Best Practices
-*   **Emotional Detail:** Describe the *reason* for an expression (e.g., "tears of joy as she sees her long-lost brother").
-*   **Reference Integration:** Optimized for "Character Reference" and "Start/End Frame" consistency.
-*   **Shot Types:** Supports complex "Pedestal shots" (straight up/down movement).
-
----
-
-## 9. Wan2.1
-
-Wan2.1 uses a highly structured "Dimension-based" prompting system.
-
-### Advanced Formulas
-*   **Transformation Formula:** `[Subject A] + [Transformation Process] + [Subject B] + [Scene] + [Motion]...`
-*   **Camera Movement Formula:** Prepend the camera description to the very beginning of the prompt.
-*   **Length:** Responds best to 80-100 word prompts for high-detail generations.
+Wan 3.0 (Late 2025) introduced **First-to-Last Frame control** and native synchronized speech.
 
 ---
 
 ## 10. DeepSeek Janus-Pro (Multimodal)
 
-Janus-Pro is a unified model for both image understanding and generation, which can be used to "Bridge" prompts.
-
-### Technical Bridge
-*   **Image-to-Prompt:** Can take a source frame and generate a high-detail descriptive prompt that other video models (like Sora or Kling) can consume.
-*   **Instruction Following:** Known for superior alignment with complex layout instructions (e.g., "Subject A on the left, Subject B on the right").
+Janus-Pro remains the primary multimodal bridge for high-detail descriptive prompt generation.
 
 ---
 
-## 11. LivePortrait (Motion Transfer)
+## 11. Sora 2 (OpenAI)
 
-LivePortrait is not a text-to-video model but a "driving" model.
+Sora 2 (Sept 2025) now includes a **Disney Licensed Character** module (Dec 2025) for select users.
 
-### Optimization Strategy
-*   **Identity Anchors:** When generating the *source image* for LivePortrait, use "Identity Anchors" (scars, moles, specific asymmetries) to prevent the face from "averaging out" during animation.
-*   **Neutral Start:** Source images must be neutral; driving videos should start with a neutral expression for best calibration.
+---
+
+## 12. Veo 3.1 / 4 (Google)
+
+Veo 3.1/4 generates up to **60-second 4K** video with native synchronized audio.
 
 ---
 
 ## Summary of Strategy for Prompt Builder
 
-| Feature | Runway | Kling | Luma | Pika | Hailuo | HunYuan | Wan2.1 |
+| Feature | Runway | Kling | Luma | Pika | Hailuo | HunYuan | Wan |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Neg Prompt** | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **Param Style** | Narrative | Layered | Natural | CLI | Formula | Master | Dim. |
-| **Motion Cap** | High | Med | High | High | Ultra | Med | Med |
-| **Max Tokens** | 1000ch | High | Med | Med | High | Ultra | High |
+| **Param Style** | Narrative | Layered | Reasoning | CLI | Formula | Master | MoE |
+| **Motion Cap** | Ultra | Ultra | Ultra | High | Ultra | High | High |
+| **Max Tokens** | 1000ch | High | High | Med | High | Ultra | High |
 
 ### Optimizer Logic:
 1.  **Normalization:** Strip all existing parameters (`--ar`, `-motion`, etc.).
-2.  **Expansion:** Use the "Narrative Expansion" for Sora/Luma/Runway.
-3.  **Structuring:** Reorder text into `Subject -> Action -> Scene -> Style` for Kling/Wan2.1.
+2.  **Expansion:** Use the "Reasoning-Driven Expansion" for Luma Ray-3 and Sora 2.
+3.  **Structuring:** Reorder text into `Subject -> Action -> Scene -> Style` for Kling/Wan.
 4.  **Parameterization:** Convert keywords like "widescreen" into `-ar 16:9` for Pika.
-5.  **Quality Injection:** Append model-specific quality boosters (e.g., "hyperrealistic" for Mochi, "Master Mode" style for HunYuan).
+5.  **Quality Injection:** Append model-specific quality boosters (e.g., "HDR Cinematic" for Luma, "A2D Photorealism" for Runway).
 
 ---
 
 ## Project-Based Prioritization (Current Codebase)
 
-These recommendations reflect the current product constraints: narrative prompt rendering, no negative prompt fields, no reference-image workflow, and model detection already covering Sora/Veo3/Runway/Kling/Luma.
-
 ### Start Here (Best Fit)
-1.  **Runway Gen-3 Alpha:** Narrative prompts, no negative prompts, and strong alignment with current rendering.
-2.  **Luma Dream Machine:** Positive, conversational prompting; aligns with narrative expansion. Detection exists but UI support should be added.
-3.  **Kling AI:** Structured 4-layer rule maps cleanly to existing Subject/Action/Context/Style slots; negative prompts are optional.
-4.  **Sora + Veo3:** Core product positioning already supports them in detection; add optimization sections to match.
+1.  **Runway Gen-4.5 Alpha:** Narrative prompts, A2D architecture.
+2.  **Luma Ray-3:** Reasoning-driven prompting; aligns with narrative expansion.
+3.  **Kling AI 2.6:** Structured 4-layer rule + Native Audio.
+4.  **Sora 2 + Veo 3.1/4:** Standard narrative targets with 60s/4K support.
 
 ### Hold Off / Later
-1.  **Pika 2.0:** Requires CLI-style parameterization and explicit negative prompt fields.
-2.  **MiniMax (Hailuo):** Formula-heavy camera commands imply a new structured template path.
-3.  **HunYuan:** Relies on rewrite/Master Mode behavior not represented in the renderer.
-4.  **Wan2.1:** Dimension-based ordering and long prompt sweet spot require custom reordering logic.
-5.  **Vidu:** Best with character/reference frames; needs reference-image workflow.
-6.  **LivePortrait:** Motion-transfer model requiring source and driving assets, not text-only prompts.
-7.  **DeepSeek Janus-Pro:** Multimodal bridge tool, not a primary video generator.
-8.  **Mochi 1:** Photoreal-only open-source focus; lower priority vs core commercial targets.
+1.  **Pika 2.2/3.0:** Requires CLI-style parameterization and explicit inpainting/addition fields.
+2.  **MiniMax (Hailuo 2.3 Fast):** Fast-path workflow.
+3.  **Wan 3.0:** First-to-Last frame logic.
+4.  **Vidu Q3:** Emotional reasoning focus.
+5.  **DeepSeek Janus-Pro:** Multimodal bridge tool.
+6.  **Mochi 1.5:** Open-source photoreal focus.
