@@ -320,7 +320,7 @@ export class KlingStrategy extends BaseStrategy {
 
       if (!isPartOfCompound) {
         // Only strip standalone generic terms, not specific sound descriptions
-        const standalonePattern = new RegExp(`\b${this.escapeRegex(term)}\b(?!\s+(?:of|effect|track|design))`, 'gi');
+        const standalonePattern = new RegExp(`\\b${this.escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`, 'gi');
         if (standalonePattern.test(text)) {
           const before = text;
           text = text.replace(standalonePattern, '');
@@ -333,21 +333,48 @@ export class KlingStrategy extends BaseStrategy {
     }
 
     // Identify audio sections and strip visual quality tokens from them
-    const audioSectionPattern = /(?:audio|sound|music|sfx|ambience)[:\s]+[^.!?]+[.!?]?/gi;
-    const audioSections = text.match(audioSectionPattern) || [];
-
-    for (const section of audioSections) {
-      let cleanedSection = section;
-      for (const token of VISUAL_QUALITY_TOKENS) {
-        if (this.containsWord(cleanedSection, token)) {
-          cleanedSection = this.replaceWord(cleanedSection, token, '');
-          changes.push(`Stripped visual token "${token}" from audio section`);
-          strippedTokens.push(token);
+    const audioSectionPattern = /(?:audio|sound|music|sfx|ambience)[:\s]+([^.!?\n]+(?:[.!?][^.!?\n]+)?)/gi;
+    let match;
+    
+    // Collect replacements to apply them safely
+    const replacements: Array<{start: number, end: number, replacement: string}> = [];
+    
+    while ((match = audioSectionPattern.exec(text)) !== null) {
+        if (match.index === undefined) continue;
+        
+        const sectionFull = match[0];
+        const sectionContent = match[1];
+        if (!sectionContent) continue;
+        
+        const contentStart = match.index + sectionFull.indexOf(sectionContent);
+        
+        let cleanedContent = sectionContent;
+        let modified = false;
+        
+        for (const token of VISUAL_QUALITY_TOKENS) {
+            if (this.containsWord(cleanedContent, token)) {
+                cleanedContent = this.replaceWord(cleanedContent, token, '');
+                changes.push(`Stripped visual token "${token}" from audio section`);
+                strippedTokens.push(token);
+                modified = true;
+            }
         }
-      }
-      if (cleanedSection !== section) {
-        text = text.replace(section, cleanedSection);
-      }
+        
+        if (modified) {
+            replacements.push({
+                start: contentStart,
+                end: contentStart + sectionContent.length,
+                replacement: cleanedContent
+            });
+        }
+    }
+    
+    // Apply replacements from back to front to keep indices valid
+    for (let i = replacements.length - 1; i >= 0; i--) {
+        const r = replacements[i];
+        if (r) {
+            text = text.substring(0, r.start) + r.replacement + text.substring(r.end);
+        }
     }
 
     // Clean up whitespace
@@ -357,77 +384,23 @@ export class KlingStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input into screenplay format with dialogue and audio blocks
+   * Final adjustments after LLM rewrite
    */
-  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
+    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
 
-    // Parse the input into screenplay structure using raw input for dialogue fidelity
-    const screenplay = this.parseScreenplay(ir.raw, context);
-
-    // Merge audio from IR (which might come from Technical Specs)
-    // Only add if not already captured in the screenplay parsing (to avoid duplicates)
-    if (ir.audio.sfx) {
-      const alreadyHasSfx = screenplay.audio.some(a => a.type === 'sfx' && a.description.includes(ir.audio.sfx!));
-      if (!alreadyHasSfx) {
-        screenplay.audio.push({ type: 'sfx', description: ir.audio.sfx });
-        changes.push('Merged SFX from structured IR');
-      }
-    }
-
-    if (ir.audio.music) {
-      const alreadyHasMusic = screenplay.audio.some(a => a.type === 'music' && a.description.includes(ir.audio.music!));
-      if (!alreadyHasMusic) {
-        screenplay.audio.push({ type: 'music', description: ir.audio.music });
-        changes.push('Merged Music from structured IR');
-      }
-    }
-    
-    if (ir.audio.dialogue) {
-        // If IR has dialogue but screenplay doesn't, try to add it
-        // Note: IR dialogue is simple string, screenplay needs parsing. 
-        // We assume IR dialogue is formatted or simple enough to handle if screenplay missed it.
-        // For now, simpler to rely on screenplay parsing of raw narrative for dialogue, 
-        // as IR dialogue extraction is primitive.
-    }
-
-    // We can enrich the visual description using the IR if we want,
-    // but Kling screenplay parsing already separates dialogue from visual.
-    // Let's ensure the visual part is clean.
-    if (!screenplay.visual || screenplay.visual.length < 10) {
-        // If parsed visual is empty/weak, try to synthesize from IR
-        const visualParts = [];
-        if (ir.camera.shotType) visualParts.push(ir.camera.shotType);
-        if (ir.subjects.length > 0) visualParts.push(ir.subjects.map(s => s.text).join(' and '));
-        if (ir.actions.length > 0) visualParts.push(ir.actions.join(' and '));
-        if (ir.environment.setting) visualParts.push(`in ${ir.environment.setting}`);
-        
-        const synthesizedVisual = visualParts.join(' ');
-        if (synthesizedVisual.length > screenplay.visual.length) {
-            screenplay.visual = synthesizedVisual;
-            changes.push('Synthesized visual description from IR (parsed visual was sparse)');
+    // Add @Element references from context assets (Kling specific requirement)
+    if (context?.assets) {
+      for (const asset of context.assets) {
+        if (asset.type === 'image' && asset.token) {
+          if (!prompt.includes(`@Element(${asset.token})`)) {
+            prompt = `${prompt}. @Element(${asset.token})`;
+            changes.push(`Added @Element reference: ${asset.token}`);
+          }
         }
+      }
     }
-
-    // Build the formatted prompt
-    let prompt = this.formatScreenplay(screenplay);
-
-    // Track changes
-    if (screenplay.dialogue.length > 0) {
-      changes.push(`Formatted ${screenplay.dialogue.length} dialogue line(s) to screenplay format`);
-    }
-    if (screenplay.audio.length > 0) {
-      changes.push(`Extracted ${screenplay.audio.length} audio block(s)`);
-    }
-    if (screenplay.elementReferences.length > 0) {
-      changes.push(`Added ${screenplay.elementReferences.length} @Element reference(s)`);
-    }
-    if (screenplay.memflowContext) {
-      changes.push('Added MemFlow context for continuity');
-    }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
 
     return { prompt, changes };
   }

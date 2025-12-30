@@ -340,7 +340,7 @@ export class VideoPromptService {
 
       // Phase 2: Transform
       const transformStart = Date.now();
-      const transformResult = strategy.transform(normalizedText, context);
+      const transformResult = await strategy.transform(normalizedText, context);
       const transformDuration = Date.now() - transformStart;
 
       this.log.debug('Transform phase complete', {

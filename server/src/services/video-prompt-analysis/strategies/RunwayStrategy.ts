@@ -187,85 +187,13 @@ export class RunwayStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input using CSAE protocol via Natural Language Synthesis
-   * Uses VideoPromptIR to construct a fluid sentence.
+   * Final adjustments after LLM rewrite
    */
-  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    const parts: string[] = [];
+    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
 
-    // 1. Camera (Start with shot type/movement)
-    let cameraPart = '';
-    
-    // Enrich camera from raw text for depth/vertigo terms (legacy logic)
-    this.enrichCameraFromRaw(ir);
-
-    if (ir.camera.shotType) {
-      cameraPart = ir.camera.shotType;
-    }
-    if (ir.camera.angle) {
-      cameraPart = cameraPart ? `${cameraPart}, ${ir.camera.angle}` : ir.camera.angle;
-    }
-    if (ir.camera.movements.length > 0) {
-      const move = ir.camera.movements.join(' and '); // e.g., "dolly and pan"
-      cameraPart = cameraPart ? `${cameraPart} with ${move}` : move;
-    }
-
-    if (cameraPart) {
-      // Capitalize first letter
-      cameraPart = cameraPart.charAt(0).toUpperCase() + cameraPart.slice(1);
-      parts.push(cameraPart + ' of');
-      changes.push('Synthesized camera description');
-    }
-
-    // 2. Subject & Action
-    let subjectPart = '';
-    if (ir.subjects.length > 0) {
-      // Join subjects naturally
-      subjectPart = ir.subjects.map(s => s.text).join(' and ');
-    }
-    
-    // Add action
-    if (ir.actions.length > 0) {
-      const actionText = ir.actions.join(' and ');
-      if (subjectPart) {
-        subjectPart += ` ${actionText}`; // "a dog running"
-      } else {
-        subjectPart = actionText; // just "running" (if no subject)
-      }
-    }
-
-    if (subjectPart) {
-      parts.push(subjectPart);
-      changes.push('Synthesized subject and action');
-    }
-
-    // 3. Environment
-    if (ir.environment.setting) {
-      parts.push(`in ${ir.environment.setting}`);
-    }
-
-    // 4. Lighting & Weather
-    const conditions = [...ir.environment.lighting];
-    if (ir.environment.weather) conditions.push(ir.environment.weather);
-    
-    if (conditions.length > 0) {
-      parts.push(`with ${conditions.join(', ')}`);
-    }
-
-    // 5. Construct full prompt
-    let prompt = parts.join(' ');
-
-    // Fallback: If synthesis yielded very little (e.g., regexes failed), use raw input
-    // to avoid returning "with sunlight" as the whole prompt.
-    if (prompt.length < 10 && ir.raw.length > 10) {
-      prompt = ir.raw;
-      changes.push('Reverted to raw input due to sparse analysis');
-    } else {
-      changes.push('Constructed natural language prompt from IR');
-    }
-
-    // Handle visual reference descriptions from context
+    // Handle visual reference descriptions from context (Runway specific requirement)
     if (context?.assets) {
       for (const asset of context.assets) {
         if (asset.type === 'image' && asset.description) {
@@ -345,9 +273,13 @@ export class RunwayStrategy extends BaseStrategy {
   private enrichCameraFromRaw(ir: VideoPromptIR): void {
     const lowerRaw = ir.raw.toLowerCase();
     
-    // Check for depth terms → dolly
+    // Check for depth terms → dolly (EXCLUDING depth of field)
     for (const term of DEPTH_TERMS) {
       if (lowerRaw.includes(term)) {
+        // Specifically avoid "depth of field"
+        if (term === 'depth' && lowerRaw.includes('depth of field')) {
+            continue;
+        }
         if (!ir.camera.movements.includes('dolly')) {
           ir.camera.movements.push('dolly');
         }

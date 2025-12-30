@@ -1,8 +1,12 @@
+import nlp from 'compromise';
+import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
 import type { VideoPromptIR } from '../../types';
 
 /**
  * Service responsible for analyzing raw text and extracting structured VideoPromptIR
- * Consolidates regex patterns and logic from various strategies into a single source of truth.
+ * Uses a hybrid approach:
+ * 1. Deterministic structural parsing (Narrative vs Specs)
+ * 2. Semantic Entity Extraction (GLiNER) for high-fidelity role detection
  */
 export class VideoPromptAnalyzer {
   
@@ -12,7 +16,7 @@ export class VideoPromptAnalyzer {
    * @param text - The raw user input
    * @returns Structured VideoPromptIR
    */
-  analyze(text: string): VideoPromptIR {
+  async analyze(text: string): Promise<VideoPromptIR> {
     const ir: VideoPromptIR = {
       subjects: [],
       actions: [],
@@ -28,26 +32,29 @@ export class VideoPromptAnalyzer {
         mood: [],
         style: [],
       },
+      technical: {},
       raw: text,
     };
 
-    // 1. Structural Parsing
+    // 1. Structural Parsing (Markdown headers / JSON)
     const sections = this.parseInputStructure(text);
-    
-    // Update raw to be only the narrative part to prevent context leakage in fallback strategies
     ir.raw = sections.narrative;
-    
     const cleanNarrative = this.cleanText(sections.narrative);
 
-    // 2. Extraction Pipeline (Run primarily on Narrative)
-    this.extractCamera(cleanNarrative, ir);
-    this.extractEnvironment(cleanNarrative, ir); // Setting, lighting, weather
-    this.extractSubjectsAndActions(cleanNarrative, ir); // Subjects and their actions
-    this.extractAudio(cleanNarrative, ir);
-    this.extractMeta(cleanNarrative, ir); // Mood, style, temporal
+    // 2. Semantic Extraction (Tier 2 NLP: GLiNER)
+    // We use the existing high-fidelity NLP service to detect roles semantically
+    try {
+      // Use the project's established ML pipeline for open-vocabulary extraction
+      const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner: true });
+      this.mapSpansToIR(extractionResult.spans, ir);
+    } catch (error) {
+      // Fallback to basic heuristics if the ML service is unavailable
+      this.extractBasicHeuristics(cleanNarrative, ir);
+    }
 
-    // 3. Structured Enrichment (From Technical Specs / JSON fields)
+    // 3. Structured Enrichment (From Technical Specs)
     if (sections.technical) {
+      ir.technical = sections.technical;
       this.enrichFromTechnicalSpecs(sections.technical, ir);
     }
 
@@ -55,6 +62,205 @@ export class VideoPromptAnalyzer {
     this.enrichIR(ir);
 
     return ir;
+  }
+
+  /**
+   * Map semantic spans from GLiNER/Aho-Corasick to IR fields
+   */
+  private mapSpansToIR(spans: any[], ir: VideoPromptIR): void {
+    for (const span of spans) {
+      const category = span.category || '';
+      const text = span.text?.trim();
+      if (!text) continue;
+
+      const lowerText = text.toLowerCase();
+
+      // Subject Mapping
+      if (category.startsWith('subject.')) {
+        if (!ir.subjects.some(s => s.text.toLowerCase() === lowerText)) {
+          ir.subjects.push({ text, attributes: [] });
+        }
+      } 
+      // Action Mapping
+      else if (category.startsWith('action.')) {
+        if (!ir.actions.includes(lowerText)) {
+          ir.actions.push(lowerText);
+        }
+      } 
+      // Camera Mapping
+      else if (category.startsWith('camera.') || category.startsWith('shot.')) {
+        if (category === 'camera.movement') {
+          if (!ir.camera.movements.includes(lowerText)) {
+            ir.camera.movements.push(lowerText);
+          }
+        } else if (category === 'camera.angle') {
+          ir.camera.angle = lowerText;
+        } else if (category === 'shot.type') {
+          ir.camera.shotType = lowerText;
+        }
+      } 
+      // Environment Mapping
+      else if (category.startsWith('environment.')) {
+        if (category === 'environment.location') {
+          ir.environment.setting = text;
+        } else if (category === 'environment.weather') {
+          ir.environment.weather = lowerText;
+        }
+      } 
+      // Lighting Mapping
+      else if (category.startsWith('lighting.')) {
+        if (!ir.environment.lighting.includes(lowerText)) {
+          ir.environment.lighting.push(lowerText);
+        }
+      } 
+      // Style Mapping
+      else if (category.startsWith('style.')) {
+        if (!ir.meta.style.includes(lowerText)) {
+          ir.meta.style.push(lowerText);
+        }
+      } 
+      // Audio Mapping
+      else if (category.startsWith('audio.')) {
+        if (category === 'audio.score') ir.audio.music = text;
+        else if (category === 'audio.soundEffect') ir.audio.sfx = text;
+      }
+    }
+  }
+
+  /**
+   * Robust fallback using regex and compromise for full IR extraction
+   * Now non-destructive: analyzes text without stripping/mangling it
+   */
+  private extractBasicHeuristics(text: string, ir: VideoPromptIR): void {
+    const lowerText = text.toLowerCase();
+    
+    // 1. Camera Extraction (Movements first, longest first)
+    const movements: Record<string, string> = {
+      'tracking shot': 'tracking shot', 'crane shot': 'crane shot',
+      'pan left': 'pan left', 'pan right': 'pan right',
+      'tilt up': 'tilt up', 'tilt down': 'tilt down',
+      'zoom in': 'zoom in', 'zoom out': 'zoom out',
+      'dolly in': 'dolly in', 'dolly out': 'dolly out',
+      'truck left': 'truck left', 'truck right': 'truck right',
+      'pan': 'pan', 'tilt': 'tilt', 'dolly': 'dolly', 'zoom': 'zoom',
+      'truck': 'truck', 'crane': 'crane', 'tracking': 'tracking', 'steadicam': 'steadicam',
+      'handheld': 'handheld', 'follow': 'follow', 'push in': 'push in', 'pull out': 'pull out'
+    };
+    
+    const sortedMovementKeys = Object.keys(movements).sort((a, b) => b.length - a.length);
+    for (const key of sortedMovementKeys) {
+        if (lowerText.includes(key)) {
+            const val = movements[key]!;
+            if (!ir.camera.movements.includes(val)) ir.camera.movements.push(val);
+        }
+    }
+
+    const shotTypes: Record<string, string> = {
+      'extreme close up': 'extreme close-up', 'close up': 'close-up', 
+      'wide shot': 'wide shot', 'long shot': 'long shot', 'full shot': 'full shot',
+      'medium shot': 'medium shot', 'establishing shot': 'establishing shot', 
+      'two shot': 'two shot', 'cowboy shot': 'cowboy shot', 'pov shot': 'POV', 'pov': 'POV'
+    };
+    const sortedShotKeys = Object.keys(shotTypes).sort((a, b) => b.length - a.length);
+    for (const key of sortedShotKeys) {
+        if (lowerText.includes(key)) {
+            const val = shotTypes[key];
+            if (val) ir.camera.shotType = val;
+            break;
+        }
+    }
+
+    const angles: Record<string, string> = {
+      'bird\'s eye view': 'bird\'s eye view', 'bird\'s eye': 'bird\'s eye view',
+      'worm\'s eye view': 'worm\'s eye view', 'worm\'s eye': 'worm\'s eye view',
+      'low angle': 'low angle', 'high angle': 'high angle', 'overhead': 'overhead',
+      'dutch angle': 'dutch angle', 'eye level': 'eye level', 'wide angle': 'wide angle',
+      'telephoto': 'telephoto'
+    };
+    const sortedAngleKeys = Object.keys(angles).sort((a, b) => b.length - a.length);
+    for (const key of sortedAngleKeys) {
+        if (lowerText.includes(key)) {
+            const val = angles[key];
+            if (val) ir.camera.angle = val;
+            break;
+        }
+    }
+
+    // 2. Environment Extraction
+    const lightingTerms = ['natural light', 'sunlight', 'daylight', 'moonlight', 'neon', 'cinematic lighting', 'golden hour', 'blue hour'];
+    for (const term of lightingTerms.sort((a, b) => b.length - a.length)) {
+        if (lowerText.includes(term)) {
+            ir.environment.lighting.push(term);
+        }
+    }
+
+    const weatherTerms = ['sunny', 'cloudy', 'rainy', 'snowing', 'snowy', 'stormy', 'foggy', 'misty', 'windy', 'hazy'];
+    for (const term of weatherTerms) {
+        if (new RegExp(`\\b${term}\\b`, 'i').test(lowerText)) {
+            ir.environment.weather = term;
+            break;
+        }
+    }
+
+    const commonLocations = ['outside', 'inside', 'indoors', 'outdoors'];
+    for (const loc of commonLocations) {
+        if (new RegExp(`\\b${loc}\\b`, 'i').test(lowerText)) {
+            ir.environment.setting = loc;
+            break;
+        }
+    }
+
+    const settingPattern = /\b(?:in|at|on|inside|outside)\s+(?:a|an|the)?\s*([a-z]+(?:\s+[a-z]+){0,2})\b/i;
+    const match = lowerText.match(settingPattern);
+    if (match && match[1]) {
+      const val = match[1].trim();
+      const nonSettings = ['morning', 'afternoon', 'evening', 'night', 'day', 'sunrise', 'sunset', 'is', 'was'];
+      if (val.length > 2 && !nonSettings.includes(val)) {
+        ir.environment.setting = val;
+      }
+    }
+
+    // 3. Subject Extraction (Simple NLP detection)
+    const commonSubjects = ['man', 'woman', 'person', 'child', 'dog', 'cat', 'someone', 'figure', 'character', 'protagonist', 'subject'];
+    for (const s of commonSubjects) {
+        const subjectPattern = new RegExp(`\\b(a|an|the)?\\s*${s}\\b`, 'i');
+        if (subjectPattern.test(lowerText)) {
+            if (!ir.subjects.some(existing => existing.text.toLowerCase() === s)) {
+                ir.subjects.push({ text: s, attributes: [] });
+            }
+        }
+    }
+
+    // Fallback: Use NLP to find the main noun if no common subject found
+    if (ir.subjects.length === 0) {
+        const doc = nlp(text); // Use original case text for better NLP
+        const firstNoun = doc.nouns().first().text('normal').toLowerCase();
+        if (firstNoun && firstNoun.length > 2 && !this.isCameraOrStyle(firstNoun)) {
+            ir.subjects.push({ text: firstNoun, attributes: [] });
+        }
+    }
+
+    // 4. Action Extraction
+    const commonActions = ['walking', 'running', 'jumping', 'sitting', 'standing', 'dancing', 'talking', 'looking', 'holding', 'reaching', 'falling', 'flying', 'swimming', 'driving', 'staring'];
+    for (const a of commonActions) {
+        if (new RegExp(`\\b${a}\\b`, 'i').test(lowerText)) {
+            if (!ir.actions.includes(a)) ir.actions.push(a);
+        }
+    }
+
+    if (ir.actions.length === 0) {
+        const doc = nlp(text);
+        const firstVerb = doc.verbs().filter(v => !v.has('#Auxiliary')).first().text('normal').toLowerCase();
+        if (firstVerb && firstVerb.length > 2) ir.actions.push(firstVerb);
+    }
+
+    // 5. Style Extraction
+    const styles = ['cinematic', 'photorealistic', 'anime', 'cartoon', 'noir', 'vintage', 'retro', 'cyberpunk', 'realism', 'surreal'];
+    for (const style of styles) {
+      if (lowerText.includes(style)) {
+          if (!ir.meta.style.includes(style)) ir.meta.style.push(style);
+      }
+    }
   }
 
   private cleanText(text: string): string {
@@ -66,12 +272,9 @@ export class VideoPromptAnalyzer {
   // ============================================================
 
   private parseInputStructure(text: string): { narrative: string; technical?: Record<string, string>; alternatives?: any[] } {
-    // 1. Try JSON Parsing
     if (text.trim().startsWith('{')) {
       try {
         const parsed = JSON.parse(text);
-        // Map JSON schema to our structure
-        // Expected schema: { narrative: string, technical: {}, alternatives: [] }
         if (parsed.narrative || parsed.description) {
           return {
             narrative: parsed.narrative || parsed.description,
@@ -79,36 +282,25 @@ export class VideoPromptAnalyzer {
             alternatives: parsed.alternatives
           };
         }
-      } catch (e) {
-        // Not valid JSON, fall back to text parsing
-      }
+      } catch (e) {}
     }
 
-    // 2. Markdown Section Parsing
+    // Match common markdown headers or bold capitalized labels
+    const specsMatch = text.match(/\n?\s*(?:\*\*|##)\s*(?:TECHNICAL SPECS|Technical Specs)\s*(?:\*\*|:)?/i);
+    const altsMatch = text.match(/\n?\s*(?:\*\*|##)\s*(?:ALTERNATIVE APPROACHES|Alternative Approaches)\s*(?:\*\*|:)?/i);
+
+    let narrativeEndIndex = text.length;
+    if (specsMatch && specsMatch.index !== undefined) {
+      narrativeEndIndex = Math.min(narrativeEndIndex, specsMatch.index);
+    }
+    if (altsMatch && altsMatch.index !== undefined) {
+      narrativeEndIndex = Math.min(narrativeEndIndex, altsMatch.index);
+    }
+
     const sections: { narrative: string; technical?: Record<string, string>; alternatives?: any[] } = {
-      narrative: text
+      narrative: text.substring(0, narrativeEndIndex).trim()
     };
 
-    // Split by common headers
-    // Regex to find **TECHNICAL SPECS** or similar headers
-    const specsMatch = text.match(/\*\*TECHNICAL SPECS\*\*|\*\*Technical Specs\*\*|## Technical Specs/);
-    const altsMatch = text.match(/\*\*ALTERNATIVE APPROACHES\*\*|\*\*Alternative Approaches\*\*|## Alternative Approaches/);
-
-    if (specsMatch || altsMatch) {
-      let narrativeEndIndex = text.length;
-      
-      if (specsMatch && specsMatch.index !== undefined) {
-        narrativeEndIndex = Math.min(narrativeEndIndex, specsMatch.index);
-      }
-      
-      if (altsMatch && altsMatch.index !== undefined) {
-        narrativeEndIndex = Math.min(narrativeEndIndex, altsMatch.index);
-      }
-
-      sections.narrative = text.substring(0, narrativeEndIndex).trim();
-    }
-
-    // Extract Technical Specs
     if (specsMatch) {
       const specsSection = this.extractSectionText(text, specsMatch[0]);
       if (specsSection) {
@@ -124,8 +316,7 @@ export class VideoPromptAnalyzer {
     if (start === -1) return null;
 
     const contentStart = start + header.length;
-    // Find next header or end of string
-    const nextHeaderMatch = fullText.substring(contentStart).match(/\n\s*(\*\*|## |\[)/);
+    const nextHeaderMatch = fullText.substring(contentStart).match(/\n\s*(\*\*|##)/);
     
     if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
       return fullText.substring(contentStart, contentStart + nextHeaderMatch.index).trim();
@@ -137,22 +328,14 @@ export class VideoPromptAnalyzer {
   private parseTechnicalSpecs(specsText: string): Record<string, string> {
     const specs: Record<string, string> = {};
     const lines = specsText.split('\n');
-    
-    // Robust regex: capture key and value loosely, then clean up artifacts
     const regex = /[-*]\s*(.+?)\s*:\s*(.+)/;
     
     for (const line of lines) {
       const match = line.match(regex);
-      if (match) {
+      if (match && match[1] && match[2]) {
         let key = match[1].replace(/\*\*/g, '').trim().toLowerCase();
         let value = match[2].trim();
-        
-        // Clean up artifact where closing bold of key leaks into value
-        // e.g. "**Key:** Value" -> Key="**Key", Value="** Value"
-        if (value.startsWith('**')) {
-             value = value.substring(2).trim();
-        }
-        
+        if (value.startsWith('**')) value = value.substring(2).trim();
         specs[key] = value;
       }
     }
@@ -160,40 +343,27 @@ export class VideoPromptAnalyzer {
   }
 
   private enrichFromTechnicalSpecs(technical: Record<string, string>, ir: VideoPromptIR): void {
-    // Map Technical Specs to IR fields
-    
-    // Camera
     if (technical['camera']) {
-      // e.g. "High-angle, 50mm lens, f/2.8"
-      // We can try to extract more specific data or just trust the regexes found in the narrative.
-      // But typically specs are more accurate.
       const val = technical['camera'].toLowerCase();
-      // If we didn't find a shot type in narrative, try to find it here
       if (!ir.camera.shotType) {
         if (val.includes('close-up')) ir.camera.shotType = 'close-up';
         else if (val.includes('wide')) ir.camera.shotType = 'wide shot';
-        // ... simplified mapping
       }
-      // Angle
       if (!ir.camera.angle) {
         if (val.includes('high-angle')) ir.camera.angle = 'high angle';
         else if (val.includes('low-angle')) ir.camera.angle = 'low angle';
       }
     }
 
-    // Lighting
     if (technical['lighting']) {
       const val = technical['lighting'];
-      // If lighting list is empty or generic, push this spec
       if (ir.environment.lighting.length === 0) {
         ir.environment.lighting.push(val);
       }
     }
 
-    // Audio
     if (technical['audio']) {
       const val = technical['audio'];
-      // Decide if it's SFX, Ambience, or Music based on keywords
       if (val.toLowerCase().includes('music') || val.toLowerCase().includes('score')) {
          ir.audio.music = val;
       } else if (val.toLowerCase().includes('dialogue')) {
@@ -203,250 +373,11 @@ export class VideoPromptAnalyzer {
       }
     }
 
-    // Style
     if (technical['style']) {
       const val = technical['style'];
       if (!ir.meta.style.includes(val)) {
         ir.meta.style.push(val);
       }
-    }
-  }
-
-  // ============================================================ 
-  // Extraction Logic
-  // ============================================================ 
-
-  private extractCamera(text: string, ir: VideoPromptIR): void {
-    const lowerText = text.toLowerCase();
-
-    // Shot Types
-    const shotTypes: Record<string, string> = {
-      'wide shot': 'wide shot', 'long shot': 'long shot', 'full shot': 'full shot',
-      'medium shot': 'medium shot', 'close up': 'close-up', 'extreme close up': 'extreme close-up',
-      'macro': 'macro shot', 'establishing shot': 'establishing shot', 'two shot': 'two shot',
-      'cowboy shot': 'cowboy shot', 'over the shoulder': 'over-the-shoulder', 'pov': 'POV'
-    };
-
-    for (const [key, value] of Object.entries(shotTypes)) {
-      if (lowerText.includes(key)) {
-        ir.camera.shotType = value;
-        break; // Assume one primary shot type
-      }
-    }
-
-    // Camera Angles
-    const angles: Record<string, string> = {
-      'low angle': 'low angle', 'high angle': 'high angle', 'overhead': 'overhead',
-      'bird\'s eye': 'bird\'s eye view', 'worm\'s eye': 'worm\'s eye view',
-      'dutch angle': 'dutch angle', 'eye level': 'eye level'
-    };
-
-    for (const [key, value] of Object.entries(angles)) {
-      if (lowerText.includes(key)) {
-        ir.camera.angle = value;
-        break;
-      }
-    }
-
-    // Camera Movements
-    const movements: Record<string, string> = {
-      'pan': 'pan', 'tilt': 'tilt', 'dolly': 'dolly', 'zoom': 'zoom',
-      'truck': 'truck', 'crane': 'crane', 'handheld': 'handheld', 'steadicam': 'steadicam',
-      'tracking': 'tracking', 'follow': 'follow', 'push in': 'push in', 'pull out': 'pull out',
-      'orbit': 'orbit', 'arc': 'arc'
-    };
-
-    for (const [key, value] of Object.entries(movements)) {
-      // Check for whole words to avoid matching "pan" in "company"
-      if (new RegExp(`\b${key}\b`, 'i').test(lowerText)) {
-        ir.camera.movements.push(value);
-      }
-    }
-  }
-
-  private extractEnvironment(text: string, ir: VideoPromptIR): void {
-    const lowerText = text.toLowerCase();
-
-    // Lighting
-    const lightingTerms = [
-      'natural light', 'sunlight', 'daylight', 'moonlight', 'neon', 'cinematic lighting',
-      'studio lighting', 'soft lighting', 'hard lighting', 'volumetric', 'rim light',
-      'backlit', 'golden hour', 'blue hour', 'low key', 'high key', 'chiaroscuro'
-    ];
-
-    for (const term of lightingTerms) {
-      if (lowerText.includes(term)) {
-        ir.environment.lighting.push(term);
-      }
-    }
-
-    // Weather
-    const weatherTerms = [
-      'sunny', 'cloudy', 'rainy', 'snowing', 'stormy', 'foggy', 'misty', 'windy', 'hazy'
-    ];
-
-    for (const term of weatherTerms) {
-      if (new RegExp(`\b${term}\b`, 'i').test(lowerText)) {
-        ir.environment.weather = term;
-        break;
-      }
-    }
-
-    // Setting (Heuristic: "in [location]", "at [location]")
-    // This is hard to perfect with regex, but we can catch common patterns.
-    const settingPattern = /\b(?:in|at|on|inside|outside)\s+(?:a|an|the)?\s*([a-z]+(?:\s+[a-z]+){0,3})\b/i;
-    const match = text.match(settingPattern);
-    if (match && match[1]) {
-      // Filter out non-settings like "in the morning", "at night" (temporal)
-      const nonSettings = ['morning', 'afternoon', 'evening', 'night', 'day', 'sunrise', 'sunset'];
-      if (!nonSettings.includes(match[1].toLowerCase())) {
-        ir.environment.setting = match[1].trim();
-      }
-    }
-  }
-
-  private extractSubjectsAndActions(text: string, ir: VideoPromptIR): void {
-    // Subject Extraction
-    // Look for noun phrases that are likely subjects
-    // "A [adjective] [noun] [verb]"
-    
-    // Simplistic subject finder: look for "a/an/the [words] is/are/walking/etc"
-    // or just capture the first likely noun phrase
-    
-    const subjectIndicators = ['man', 'woman', 'person', 'child', 'dog', 'cat', 'car', 'robot', 'creature', 'character'];
-    const subjectsFound: Set<string> = new Set();
-
-    // Check for specific common subjects
-    for (const indicator of subjectIndicators) {
-      const regex = new RegExp(`\b(?:a|an|the)?\s*(\w+\s+)?${indicator}\b`, 'gi');
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        subjectsFound.add(match[0].trim());
-      }
-    }
-    
-    // If explicit common subjects found, use them
-    if (subjectsFound.size > 0) {
-      for (const subj of subjectsFound) {
-         ir.subjects.push({ text: subj, attributes: [] });
-      }
-    } else {
-      // Fallback: Try to grab the start of the prompt if it looks like a subject
-      // e.g. "Futuristic city with..."
-      const startMatch = text.match(/^([a-z]+(?:\s+[a-z]+){0,2})/i);
-      if (startMatch && startMatch[1] && !this.isCameraOrStyle(startMatch[1])) {
-         ir.subjects.push({ text: startMatch[1], attributes: [] });
-      }
-    }
-
-    // Attributes (Adjectives attached to subjects or general style)
-    // This is hard to link to specific subjects with regex, so we'll do general attribute extraction if needed later.
-    // For now, we rely on the synthesis step to place adjectives correctly if they were part of the subject string.
-
-    // Action Extraction
-    // Look for gerunds (-ing words)
-    const actionRegex = /\b(\w+ing)\b/gi;
-    let actionMatch;
-    const ignoredIngs = ['lighting', 'setting', 'morning', 'evening', 'amazing', 'interesting', 'building'];
-    
-    while ((actionMatch = actionRegex.exec(text)) !== null) {
-      const word = actionMatch[1].toLowerCase();
-      if (!ignoredIngs.includes(word)) {
-        ir.actions.push(word);
-      }
-    }
-  }
-
-  private extractAudio(text: string, ir: VideoPromptIR): void {
-    const lowerText = text.toLowerCase();
-
-    // Dialogue
-    const dialoguePatterns = [
-      /["']([^"']+)["']/g,
-      /says?\s+["']([^"']+)["']/gi,
-      /speaking\s+["']([^"']+)["']/gi,
-    ];
-
-    for (const pattern of dialoguePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        // Extract content from quotes if present
-        const content = match[0].match(/["']([^"']+)["']/);
-        if (content && content[1]) {
-          ir.audio.dialogue = content[1];
-          break; // Assume one main dialogue line for now
-        }
-      }
-    }
-
-    // Music
-    const musicPatterns = [
-      /(?:music|soundtrack|score)[:\s]+([^.!?,]+)/i,
-      /(?:playing|with)\s+(\w+\s+music)/i,
-      /(\w+\s+(?:music|melody|tune))/i,
-    ];
-
-    for (const pattern of musicPatterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        ir.audio.music = match[1].trim();
-        break;
-      }
-    }
-
-    // SFX / Ambience
-    const sfxPatterns = [
-      /(?:ambient|ambience|background)\s*(?:sound|noise|audio)?[:\s]+([^.!?,]+)/i,
-      /(?:sounds?\s+of|hearing)\s+([^.!?,]+)/i,
-    ];
-
-    for (const pattern of sfxPatterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        ir.audio.sfx = match[1].trim();
-        break;
-      }
-    }
-  }
-
-  private extractMeta(text: string, ir: VideoPromptIR): void {
-    const lowerText = text.toLowerCase();
-
-    // Styles
-    const styles = [
-      'cinematic', 'photorealistic', 'anime', 'cartoon', 'oil painting', 'sketch',
-      'cyberpunk', 'steampunk', 'noir', 'vintage', 'retro', 'minimalist', 'abstract',
-      'surreal', 'fantasy', 'sci-fi', 'documentary', '3d render', 'unreal engine'
-    ];
-
-    for (const style of styles) {
-      if (lowerText.includes(style)) {
-        ir.meta.style.push(style);
-      }
-    }
-
-    // Moods
-    const moods = [
-      'happy', 'sad', 'angry', 'scary', 'tense', 'peaceful', 'calm', 'energetic',
-      'melancholic', 'romantic', 'mysterious', 'dreamy', 'dark', 'gloomy', 'bright'
-    ];
-
-    for (const mood of moods) {
-      if (lowerText.includes(mood)) {
-        ir.meta.mood.push(mood);
-      }
-    }
-    
-    // Temporal
-    const temporalTerms = ['then', 'after', 'before', 'later', 'suddenly', 'meanwhile'];
-    const temporalFound: string[] = [];
-    for (const term of temporalTerms) {
-        if (new RegExp(`\b${term}\b`, 'i').test(lowerText)) {
-            temporalFound.push(term);
-        }
-    }
-    if (temporalFound.length > 0) {
-        ir.meta.temporal = temporalFound;
     }
   }
 
@@ -456,41 +387,21 @@ export class VideoPromptAnalyzer {
            lower.includes('style') || lower.includes('render');
   }
 
-  // ============================================================ 
-  // Enrichment Logic (Inference)
-  // ============================================================ 
+  /**
+   * Escape special regex characters
+   */
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
   private enrichIR(ir: VideoPromptIR): void {
-    // 1. Infer Lighting from Style/Mood
     if (ir.environment.lighting.length === 0) {
-      if (ir.meta.style.includes('cyberpunk') || ir.meta.style.includes('sci-fi')) {
-        ir.environment.lighting.push('neon lighting');
-      } else if (ir.meta.style.includes('noir') || ir.meta.mood.includes('mysterious')) {
-        ir.environment.lighting.push('low key lighting');
-        ir.environment.lighting.push('shadows');
-      } else if (ir.meta.mood.includes('happy') || ir.environment.weather === 'sunny') {
-        ir.environment.lighting.push('bright sunlight');
-      } else if (ir.meta.style.includes('cinematic')) {
-        ir.environment.lighting.push('dramatic lighting');
-      }
+      if (ir.meta.style.includes('cyberpunk')) ir.environment.lighting.push('neon lighting');
+      else if (ir.meta.style.includes('cinematic')) ir.environment.lighting.push('dramatic lighting');
     }
 
-    // 2. Infer Camera from Action
     if (ir.camera.movements.length === 0) {
-      if (ir.actions.includes('running') || ir.actions.includes('chasing')) {
-        ir.camera.movements.push('tracking shot'); // or "dolly"
-      } else if (ir.actions.includes('flying')) {
-        ir.camera.movements.push('aerial view'); // strictly an angle/shot type but fits here for movement implication
-      }
-    }
-    
-    // 3. Infer Setting if missing
-    if (!ir.environment.setting) {
-        if (ir.meta.style.includes('cyberpunk')) {
-            ir.environment.setting = 'futuristic city street';
-        } else if (ir.meta.style.includes('fantasy')) {
-            ir.environment.setting = 'magical forest';
-        }
+      if (ir.actions.includes('running')) ir.camera.movements.push('tracking shot');
     }
   }
 }

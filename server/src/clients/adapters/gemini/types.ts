@@ -23,6 +23,7 @@ export interface CompletionOptions {
   messages?: Array<{ role: string; content: string | unknown }>;
   onChunk?: (chunk: string) => void;
   responseSchema?: object;
+  schema?: object;
 }
 
 /**

@@ -52,7 +52,7 @@ async function executePipeline(
 ): Promise<{ prompt: string; metadata: { triggersInjected: string[] } }> {
   await strategy.validate(input);
   const normalized = strategy.normalize(input);
-  const transformed = strategy.transform(normalized);
+  const transformed = await strategy.transform(normalized);
   const augmented = strategy.augment(transformed);
 
   return {

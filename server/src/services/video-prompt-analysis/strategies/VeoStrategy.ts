@@ -237,7 +237,7 @@ export class VeoStrategy extends BaseStrategy {
 
     // Strip conversational filler phrases
     for (const filler of CONVERSATIONAL_FILLERS) {
-      const pattern = new RegExp(`\b${this.escapeRegex(filler)}\b`, 'gi');
+      const pattern = new RegExp(`\\b${this.escapeRegex(filler)}\\b`, 'gi');
       if (pattern.test(text)) {
         text = text.replace(pattern, '');
         changes.push(`Stripped conversational filler: "${filler}"`);
@@ -252,46 +252,33 @@ export class VeoStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input into Veo JSON schema using VideoPromptIR
+   * Final adjustments after LLM rewrite
    */
-  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
-
-    // Check if this is an edit instruction (Flow mode) using raw input
-    const editInfo = this.detectEditMode(ir.raw);
     
-    let schema: VeoPromptSchema;
-    
-    if (editInfo) {
-      schema = this.buildEditSchema(ir.raw, editInfo, context);
-      changes.push('Detected Flow editing mode');
+    // Validate that we received an object (the LLM should have generated JSON for Veo)
+    let schema: Record<string, unknown>;
+    if (typeof llmPrompt === 'object' && llmPrompt !== null) {
+      schema = llmPrompt as Record<string, unknown>;
     } else {
-      schema = this.buildGenerateSchema(ir, context);
-      changes.push('Built generation schema from IR');
-    }
-
-    // Track what was extracted
-    if (schema.subject.description) {
-      changes.push('Extracted subject description');
-    }
-    if (schema.subject.action) {
-      changes.push('Extracted subject action');
-    }
-    if (schema.camera.type !== 'medium') {
-      changes.push(`Detected camera type: ${schema.camera.type}`);
-    }
-    if (schema.camera.movement !== 'static') {
-      changes.push(`Detected camera movement: ${schema.camera.movement}`);
-    }
-    if (schema.environment.weather) {
-      changes.push(`Detected weather: ${schema.environment.weather}`);
-    }
-    if (schema.audio) {
-      changes.push('Extracted audio information');
+      // Fallback: parse if it's a string
+      try {
+        schema = JSON.parse(llmPrompt as string);
+      } catch {
+        // Absolute fallback to a dummy schema if parsing fails
+        schema = {
+          mode: 'generate',
+          subject: { description: String(llmPrompt), action: 'acting naturally' },
+          camera: { type: 'medium', movement: 'static' },
+          environment: { lighting: 'natural' }
+        };
+        changes.push('Failed to parse LLM JSON; used emergency fallback schema');
+      }
     }
 
     return { 
-      prompt: schema as unknown as Record<string, unknown>, 
+      prompt: schema, 
       changes 
     };
   }
@@ -451,31 +438,20 @@ export class VeoStrategy extends BaseStrategy {
    */
   private buildGenerateSchema(ir: VideoPromptIR, context?: PromptContext): VeoPromptSchema {
     // 1. Subject & Action
-    let description = '';
-    let action = '';
-
-    if (ir.subjects.length > 0) {
-      description = ir.subjects.map(s => s.text).join(' and ');
-    } else {
-        // Fallback to raw first few words if no subject detected
-        description = ir.raw.split(' ').slice(0, 5).join(' ');
-    }
-
-    if (ir.actions.length > 0) {
-        action = ir.actions.join(' and ');
-    } else {
-        action = 'moving naturally'; // Default
-    }
+    // Use the clean narrative as the description to preserve flow
+    const description = ir.raw;
+    
+    // Use extracted actions for the specific field, or a default
+    const action = ir.actions.length > 0 ? ir.actions.join(' and ') : 'moving naturally';
 
     // 2. Camera
     let type = 'medium';
     if (ir.camera.shotType) {
-        // Clean up shot type to match Veo enums if possible
         const shot = ir.camera.shotType.toLowerCase();
         if (shot.includes('close')) type = 'close-up';
         else if (shot.includes('wide')) type = 'wide';
         else if (shot.includes('aerial')) type = 'aerial';
-        else if (shot.includes('low')) type = 'low-angle'; // angle acts as type sometimes
+        else if (shot.includes('low')) type = 'low-angle';
     } else if (ir.camera.angle) {
         const angle = ir.camera.angle.toLowerCase();
          if (angle.includes('low')) type = 'low-angle';
@@ -485,7 +461,7 @@ export class VeoStrategy extends BaseStrategy {
 
     let movement = 'static';
     if (ir.camera.movements.length > 0) {
-        const move = ir.camera.movements[0].toLowerCase(); // Take primary movement
+        const move = ir.camera.movements[0]?.toLowerCase() || '';
         if (move.includes('pan')) movement = 'pan';
         else if (move.includes('tilt')) movement = 'tilt';
         else if (move.includes('dolly') || move.includes('push') || move.includes('pull')) movement = 'dolly';
@@ -497,23 +473,28 @@ export class VeoStrategy extends BaseStrategy {
     // 3. Environment
     let lighting = 'natural';
     if (ir.environment.lighting.length > 0) {
-        lighting = ir.environment.lighting[0];
+        lighting = ir.environment.lighting[0] || 'natural';
     }
     
-    let weather = ir.environment.weather;
-    let setting = ir.environment.setting;
+    // Construct environment object respecting exactOptionalPropertyTypes
+    const environment: { lighting: string; weather?: string; setting?: string } = { lighting };
+    if (ir.environment.weather) environment.weather = ir.environment.weather;
+    if (ir.environment.setting) environment.setting = ir.environment.setting;
 
     const schema: VeoPromptSchema = {
       mode: 'generate',
       subject: { description, action },
       camera: { type, movement },
-      environment: { lighting, weather, setting },
+      environment,
     };
 
     // 4. Audio
     if (ir.audio) {
        schema.audio = {};
-       if (ir.audio.dialogue) schema.audio.dialogue = ir.audio.dialogue;
+       // Only include dialogue if it looks like actual speech or script
+       if (ir.audio.dialogue && (ir.audio.dialogue.includes('"') || ir.audio.dialogue.length > 5)) {
+           schema.audio.dialogue = ir.audio.dialogue;
+       }
        if (ir.audio.music) schema.audio.music = ir.audio.music;
        if (ir.audio.sfx) schema.audio.ambience = ir.audio.sfx; // Map sfx to ambience/sfx
     }

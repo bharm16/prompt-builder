@@ -85,7 +85,7 @@ export interface PromptOptimizationStrategy {
   /**
    * Phase 2: Translate intent into model-native structure
    */
-  transform(input: string, context?: PromptContext): PromptOptimizationResult;
+  transform(input: string, context?: PromptContext): Promise<PromptOptimizationResult>;
 
   /**
    * Phase 3: Inject model-specific triggers and enforce compliance

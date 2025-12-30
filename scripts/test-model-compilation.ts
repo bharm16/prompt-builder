@@ -5,7 +5,15 @@ import { configureServices, initializeServices } from '../server/src/config/serv
 import { logger } from '../server/src/infrastructure/Logger';
 
 // Load environment variables from .env file in root
-dotenv.config({ path: path.join(process.cwd(), '.env') });
+const result = dotenv.config({ path: path.join(process.cwd(), '.env') });
+if (result.error) {
+  console.error('Error loading .env file:', result.error);
+}
+console.log('Environment loaded.');
+console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+if (process.env.GEMINI_API_KEY) {
+    console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY.length);
+}
 
 async function runTest() {
   console.log('🚀 Starting Model Compilation Test Script');

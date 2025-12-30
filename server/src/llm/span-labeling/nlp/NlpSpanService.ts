@@ -545,6 +545,12 @@ function getOrCreateGlinerWorker(): Worker | null {
   if (glinerWorker) return glinerWorker;
   const operation = 'getOrCreateGlinerWorker';
 
+  // Skip worker in test environments or if import.meta.url is problematic
+  if (process.env.NODE_ENV === 'test' || typeof import.meta?.url !== 'string' || !import.meta.url.startsWith('file:')) {
+    log.debug(`${operation}: Skipping worker thread in current environment`);
+    return null;
+  }
+
   try {
     const workerUrl = new URL('./glinerWorker.js', import.meta.url);
     glinerWorker = new Worker(workerUrl, {

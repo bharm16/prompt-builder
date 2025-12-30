@@ -122,6 +122,7 @@ export interface VideoPromptIR {
     style: string[];
     temporal?: string[]; // e.g., "then", "after"
   };
+  technical: Record<string, string>; // Key-value pairs from technical specifications (duration, aspect ratio, etc.)
   raw: string; // Original input text
 }
 

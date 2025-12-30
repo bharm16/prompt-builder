@@ -177,6 +177,30 @@ export class GeminiAdapter {
     }
   }
 
+  async generateText(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    const response = await this.complete(prompt, options);
+    return response.text || '';
+  }
+
+  async generateStructuredOutput(prompt: string, schema: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await this.complete(prompt, {
+      responseSchema: schema,
+      jsonMode: true,
+      maxTokens: 2048, // Ensure enough tokens for JSON
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini for structured output');
+    }
+
+    try {
+      return JSON.parse(response.text);
+    } catch (e) {
+      this.log.error('Failed to parse structured output', e as Error, { text: response.text });
+      throw new Error('Invalid JSON response from Gemini');
+    }
+  }
+
   async healthCheck(): Promise<{ healthy: boolean; provider: string; error?: string }> {
     try {
       await this.complete('Respond with valid JSON containing: {"status": "healthy"}', {

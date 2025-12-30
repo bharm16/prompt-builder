@@ -11,6 +11,7 @@
 import { TechStripper, techStripper } from '../utils/TechStripper';
 import { SafetySanitizer, safetySanitizer } from '../utils/SafetySanitizer';
 import { VideoPromptAnalyzer } from '../services/analysis/VideoPromptAnalyzer';
+import { VideoPromptLLMRewriter } from '../services/rewriter/VideoPromptLLMRewriter';
 import type {
   PromptOptimizationStrategy,
   PromptOptimizationResult,
@@ -23,7 +24,7 @@ import type {
 /**
  * Pipeline version for tracking optimization changes
  */
-const PIPELINE_VERSION = '1.0.0';
+const PIPELINE_VERSION = '2.0.0';
 
 /**
  * BaseStrategy provides common pipeline infrastructure for all model strategies.
@@ -31,15 +32,8 @@ const PIPELINE_VERSION = '1.0.0';
  * Subclasses must implement:
  * - `doValidate`: Model-specific validation logic
  * - `doNormalize`: Model-specific normalization after common processing
- * - `doTransform`: Model-specific transformation logic using VideoPromptIR
+ * - `doTransform`: Final model-specific adjustments after LLM rewrite
  * - `doAugment`: Model-specific augmentation logic
- *
- * The base class handles:
- * - TechStripper integration (model-aware placebo token removal)
- * - SafetySanitizer integration (safety compliance)
- * - VideoPromptAnalyzer integration (structural analysis)
- * - Timing and metadata tracking for each phase
- * - Error handling and recovery
  */
 export abstract class BaseStrategy implements PromptOptimizationStrategy {
   abstract readonly modelId: string;
@@ -48,6 +42,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   protected readonly techStripper: TechStripper;
   protected readonly safetySanitizer: SafetySanitizer;
   protected readonly analyzer: VideoPromptAnalyzer;
+  protected readonly llmRewriter: VideoPromptLLMRewriter;
 
   // Accumulated metadata during pipeline execution
   private currentMetadata: OptimizationMetadata | null = null;
@@ -59,6 +54,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     this.techStripper = techStripperInstance;
     this.safetySanitizer = safetySanitizerInstance;
     this.analyzer = new VideoPromptAnalyzer();
+    this.llmRewriter = new VideoPromptLLMRewriter();
   }
 
   /**
@@ -208,27 +204,26 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   }
 
   /**
-   * Phase 2: Transform normalized input into model-native structure
-   * Uses VideoPromptAnalyzer to generate IR, then delegates to doTransform
+   * Phase 2: Transform normalized input into model-native structure using LLM
    */
-  transform(input: string, context?: PromptContext): PromptOptimizationResult {
+  async transform(input: string, context?: PromptContext): Promise<PromptOptimizationResult> {
     const startTime = performance.now();
 
-    // Analyze text to produce Intermediate Representation (IR)
-    const ir = this.analyzer.analyze(input);
+    // 1. IR Analysis (Now the primary driver for LLM rewrite)
+    const ir = await this.analyzer.analyze(input);
 
-    // Perform model-specific transformation using IR
-    const transformResult = this.doTransform(ir, context);
+    // 2. LLM-powered rewrite (Consumes structured IR)
+    const rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId);
 
-    // Record phase result
-    const durationMs = performance.now() - startTime;
+    // 3. Model-specific final adjustments
+    const transformResult = this.doTransform(rewrittenPrompt, ir, context);
+
     this.recordPhaseResult({
       phase: 'transform',
-      durationMs,
-      changes: transformResult.changes,
+      durationMs: performance.now() - startTime,
+      changes: [...transformResult.changes, 'LLM-powered model rewrite from IR'],
     });
 
-    // Build result with current metadata
     const result: PromptOptimizationResult = {
       prompt: transformResult.prompt,
       metadata: this.getMetadata(),
@@ -307,13 +302,10 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   ): NormalizeResult;
 
   /**
-   * Model-specific transformation logic
-   *
-   * @param ir - VideoPromptIR from the analyzer
-   * @param context - Optional context
-   * @returns Transformed prompt with changes
+   * Model-specific final adjustments after LLM rewrite
    */
   protected abstract doTransform(
+    llmPrompt: string | Record<string, unknown>,
     ir: VideoPromptIR,
     context?: PromptContext
   ): TransformResult;

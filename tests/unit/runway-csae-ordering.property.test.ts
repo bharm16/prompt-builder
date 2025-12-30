@@ -161,7 +161,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             for (const input of inputs) {
               // Run normalize first (required before transform)
               const normalized = strategy.normalize(input);
-              const result = strategy.transform(normalized);
+              const result = await strategy.transform(normalized);
               const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
               // If both terms are present in output, camera should come first
@@ -188,7 +188,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${otherContent} ${cameraTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Camera term should be near the start (within first 50 chars or first element)
@@ -220,7 +220,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${actionTerm} ${filler} ${subjectTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             const subjectPos = findTermPosition(prompt, subjectTerm);
@@ -247,7 +247,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${envTerm} ${filler} ${actionTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             const actionPos = findTermPosition(prompt, actionTerm);
@@ -275,7 +275,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${envTerm}, ${actionTerm}, ${subjectTerm}, ${cameraTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             const cameraPos = findTermPosition(prompt, cameraTerm);
@@ -313,7 +313,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${subjectTerm} with ${depthTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Should contain dolly camera motion
@@ -335,7 +335,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${subjectTerm} with ${vertigoTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Should contain zoom camera motion
@@ -356,7 +356,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = cameraTerm;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             expect(result.prompt).not.toBeNull();
             expect(result.prompt).not.toBeUndefined();
@@ -379,7 +379,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
           }),
           async (input) => {
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             // Should still produce valid output
             expect(result.prompt).not.toBeNull();
@@ -400,7 +400,7 @@ describe('Runway CSAE Ordering Property Tests', () => {
             const input = `${actionTerm} ${subjectTerm} ${cameraTerm}`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
             const lowerPrompt = prompt.toLowerCase();
 

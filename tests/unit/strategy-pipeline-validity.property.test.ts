@@ -48,7 +48,7 @@ class MockStrategy implements PromptOptimizationStrategy {
     return input.trim();
   }
 
-  transform(input: string, _context?: PromptContext): PromptOptimizationResult {
+  async transform(input: string, _context?: PromptContext): Promise<PromptOptimizationResult> {
     return {
       prompt: input,
       metadata: {
@@ -97,7 +97,7 @@ async function executePipeline(
   const normalized = strategy.normalize(input, context);
 
   // Phase 2: Transform
-  const transformed = strategy.transform(normalized, context);
+  const transformed = await strategy.transform(normalized, context);
 
   // Phase 3: Augment
   const augmented = strategy.augment(transformed, context);
@@ -537,7 +537,7 @@ describe('BaseStrategy Implementation Tests', () => {
             // Run full pipeline
             await strategy.validate(inputWithPlacebo);
             const normalized = strategy.normalize(inputWithPlacebo);
-            const transformed = strategy.transform(normalized);
+            const transformed = await strategy.transform(normalized);
             const result = strategy.augment(transformed);
 
             // Metadata should contain stripped tokens
@@ -559,7 +559,7 @@ describe('BaseStrategy Implementation Tests', () => {
             // Run full pipeline
             await strategy.validate(input);
             const normalized = strategy.normalize(input);
-            const transformed = strategy.transform(normalized);
+            const transformed = await strategy.transform(normalized);
             const result = strategy.augment(transformed);
 
             // Metadata should contain injected triggers
@@ -580,7 +580,7 @@ describe('BaseStrategy Implementation Tests', () => {
             // Run full pipeline
             await strategy.validate(input);
             const normalized = strategy.normalize(input);
-            const transformed = strategy.transform(normalized);
+            const transformed = await strategy.transform(normalized);
             const result = strategy.augment(transformed);
 
             // Should have all three phases
@@ -610,7 +610,7 @@ describe('BaseStrategy Implementation Tests', () => {
             // Run full pipeline
             await strategy.validate(input);
             const normalized = strategy.normalize(input);
-            const transformed = strategy.transform(normalized);
+            const transformed = await strategy.transform(normalized);
             const result = strategy.augment(transformed);
 
             expect(result.metadata.modelId).toBe('runway-gen45');

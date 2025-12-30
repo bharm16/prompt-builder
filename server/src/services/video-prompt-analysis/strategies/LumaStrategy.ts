@@ -208,58 +208,11 @@ export class LumaStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input with causal chain expansion for static descriptions
+   * Final adjustments after LLM rewrite
    */
-  protected doTransform(ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    let prompt = ir.raw; // Luma works well with raw text usually
-
-    // Re-inject Technical Specs if they were stripped from raw (to prevent leakage) but are valid for the prompt
-    // Luma benefits from explicit camera and lighting descriptions appended to the narrative
-    const specsToAdd: string[] = [];
-
-    // Camera
-    if (ir.camera.shotType && !prompt.toLowerCase().includes(ir.camera.shotType.toLowerCase())) {
-        specsToAdd.push(ir.camera.shotType);
-    }
-    if (ir.camera.angle && !prompt.toLowerCase().includes(ir.camera.angle.toLowerCase())) {
-        specsToAdd.push(ir.camera.angle);
-    }
-    // Lighting
-    for (const light of ir.environment.lighting) {
-        if (!prompt.toLowerCase().includes(light.toLowerCase())) {
-            specsToAdd.push(light);
-        }
-    }
-    // Style
-    for (const style of ir.meta.style) {
-        if (!prompt.toLowerCase().includes(style.toLowerCase())) {
-            specsToAdd.push(`Style: ${style}`);
-        }
-    }
-
-    if (specsToAdd.length > 0) {
-        prompt = `${prompt}. ${specsToAdd.join(', ')}.`;
-        changes.push('Appended technical specs from IR');
-    }
-
-    // Check for explicit static/frozen request in camera or style
-    // If user asked for "frozen", "static", "time-stop", we should SKIP expansion
-    const isExplicitlyStatic = 
-       ir.camera.movements.includes('static') || 
-       ir.meta.style.includes('frozen') ||
-       /\b(time.?stop|frozen|statue)\b/i.test(ir.raw);
-
-    if (!isExplicitlyStatic) {
-        // Apply causal chain expansion for static descriptions
-        const expandedPrompt = this.applyCausalChainExpansion(prompt);
-        if (expandedPrompt !== prompt) {
-            prompt = expandedPrompt;
-            changes.push('Applied causal chain expansion for static descriptions');
-        }
-    } else {
-        changes.push('Skipped causal expansion due to explicit static request');
-    }
+    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
 
     // Handle keyframe structure if assets are provided
     if (context?.assets) {
@@ -276,9 +229,6 @@ export class LumaStrategy extends BaseStrategy {
         changes.push('Keyframe structure detected for first-to-last frame interpolation');
       }
     }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
 
     return { prompt, changes };
   }
@@ -338,7 +288,7 @@ export class LumaStrategy extends BaseStrategy {
         const expansion = CAUSAL_EXPANSIONS[indicator];
         if (expansion) {
           // Add the causal expansion after the static term
-          const regex = new RegExp(`(\b${this.escapeRegex(indicator)}\b)`, 'gi');
+          const regex = new RegExp(`(\\b${this.escapeRegex(indicator)}\\b)`, 'gi');
           result = result.replace(regex, `$1, ${expansion}`);
         }
       }

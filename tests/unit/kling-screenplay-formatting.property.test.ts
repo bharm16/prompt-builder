@@ -184,7 +184,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${character} ${verb} "${line}"`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain formatted dialogue with [Character]
@@ -214,7 +214,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${character}: "${line}"`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain formatted dialogue
@@ -241,7 +241,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${character} ${emotion} says "${line}"`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain formatted dialogue
@@ -275,7 +275,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${visualContent}. The sound of ${sfx} echoes.`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain Audio block
@@ -305,7 +305,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${visualContent}. ${ambience} in the background.`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain Audio block
@@ -328,7 +328,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${visualContent}. ${music} plays softly.`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain Audio block
@@ -356,7 +356,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
           }),
           async (input) => {
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             // Should still produce valid output
             expect(result.prompt).not.toBeNull();
@@ -378,7 +378,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
               .join('. ');
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain formatted dialogue
@@ -405,7 +405,7 @@ describe('Kling Screenplay Formatting Property Tests', () => {
             const input = `${visualContent}. ${character} ${verb} "${line}"`;
 
             const normalized = strategy.normalize(input);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
             const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
             // Output should contain both visual content and formatted dialogue

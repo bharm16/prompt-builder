@@ -101,13 +101,13 @@ describe('VeoStrategy Property Tests', () => {
    * **Validates: Requirements 7.2, 7.3, 7.5**
    */
   describe('Property 5: Veo JSON Schema Validity', () => {
-    it('produces valid JSON schema for any prompt', () => {
-      fc.assert(
-        fc.property(
+    it('produces valid JSON schema for any prompt', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...samplePrompts),
-          (prompt) => {
+          async (prompt) => {
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             // Result should be an object (JSON schema)
             expect(typeof result.prompt).toBe('object');
@@ -140,15 +140,15 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('detects camera types correctly', () => {
-      fc.assert(
-        fc.property(
+    it('detects camera types correctly', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...cameraTypes),
           fc.string({ minLength: 5, maxLength: 30 }),
-          (cameraType, suffix) => {
+          async (cameraType, suffix) => {
             const prompt = `A person ${suffix} ${cameraType}`;
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 
@@ -162,15 +162,15 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('detects camera movements correctly', () => {
-      fc.assert(
-        fc.property(
+    it('detects camera movements correctly', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...cameraMovements),
           fc.string({ minLength: 5, maxLength: 30 }),
-          (movement, prefix) => {
+          async (movement, prefix) => {
             const prompt = `${prefix} with ${movement}`;
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 
@@ -184,15 +184,15 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('detects lighting correctly', () => {
-      fc.assert(
-        fc.property(
+    it('detects lighting correctly', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...lightingKeywords),
           fc.string({ minLength: 5, maxLength: 30 }),
-          (lighting, prefix) => {
+          async (lighting, prefix) => {
             const prompt = `${prefix} with ${lighting}`;
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 
@@ -206,15 +206,15 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('detects weather when present', () => {
-      fc.assert(
-        fc.property(
+    it('detects weather when present', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...weatherKeywords),
           fc.string({ minLength: 5, maxLength: 30 }),
-          (weather, prefix) => {
+          async (weather, prefix) => {
             const prompt = `${prefix} on a ${weather} day`;
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 
@@ -227,13 +227,13 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('isValidSchema correctly validates schema structure', () => {
-      fc.assert(
-        fc.property(
+    it('isValidSchema correctly validates schema structure', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...samplePrompts),
-          (prompt) => {
+          async (prompt) => {
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             // The schema should pass validation
             expect(strategy.isValidSchema(result.prompt)).toBe(true);
@@ -268,13 +268,13 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('augment injects style_preset', () => {
-      fc.assert(
-        fc.property(
+    it('augment injects style_preset', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...samplePrompts),
-          (prompt) => {
+          async (prompt) => {
             const normalized = strategy.normalize(prompt);
-            const transformResult = strategy.transform(normalized);
+            const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
             const schema = augmentResult.prompt as unknown as VeoPromptSchema;
@@ -289,15 +289,15 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('detects style presets from keywords', () => {
-      fc.assert(
-        fc.property(
+    it('detects style presets from keywords', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...stylePresets),
           fc.string({ minLength: 5, maxLength: 30 }),
-          (style, suffix) => {
+          async (style, suffix) => {
             const prompt = `A ${style} shot of ${suffix}`;
             const normalized = strategy.normalize(prompt);
-            const transformResult = strategy.transform(normalized);
+            const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
             const schema = augmentResult.prompt as unknown as VeoPromptSchema;
@@ -310,13 +310,13 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('preserves JSON structure during augmentation', () => {
-      fc.assert(
-        fc.property(
+    it('preserves JSON structure during augmentation', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...samplePrompts),
-          (prompt) => {
+          async (prompt) => {
             const normalized = strategy.normalize(prompt);
-            const transformResult = strategy.transform(normalized);
+            const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
             const schema = augmentResult.prompt as unknown as VeoPromptSchema;
@@ -336,11 +336,11 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('handles random text inputs gracefully', () => {
-      fc.assert(
-        fc.property(
+    it('handles random text inputs gracefully', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 10, maxLength: 100 }),
-          (randomText) => {
+          async (randomText) => {
             // Filter out empty or whitespace-only strings
             if (randomText.trim().length === 0) return;
 
@@ -349,7 +349,7 @@ describe('VeoStrategy Property Tests', () => {
             // Skip if normalization resulted in empty string
             if (normalized.trim().length === 0) return;
 
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             // Should still produce valid schema structure
             expect(typeof result.prompt).toBe('object');
@@ -421,9 +421,9 @@ describe('VeoStrategy Property Tests', () => {
   });
 
   describe('Flow Editing Mode', () => {
-    it('detects edit instructions', () => {
-      fc.assert(
-        fc.property(
+    it('detects edit instructions', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(
             'Remove the car from the scene',
             'Delete the background',
@@ -431,9 +431,9 @@ describe('VeoStrategy Property Tests', () => {
             'Change the color to blue',
             'Replace the sky with sunset',
           ),
-          (editInstruction) => {
+          async (editInstruction) => {
             const normalized = strategy.normalize(editInstruction);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 
@@ -447,13 +447,13 @@ describe('VeoStrategy Property Tests', () => {
       );
     });
 
-    it('preserves generation mode for non-edit prompts', () => {
-      fc.assert(
-        fc.property(
+    it('preserves generation mode for non-edit prompts', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...samplePrompts),
-          (prompt) => {
+          async (prompt) => {
             const normalized = strategy.normalize(prompt);
-            const result = strategy.transform(normalized);
+            const result = await strategy.transform(normalized);
 
             const schema = result.prompt as unknown as VeoPromptSchema;
 

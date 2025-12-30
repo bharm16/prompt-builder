@@ -257,61 +257,11 @@ export class SoraStrategy extends BaseStrategy {
   }
 
   /**
-   * Transform input with physics analysis and temporal segmentation
+   * Final adjustments after LLM rewrite
    */
-  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
-
-    // Re-inject Technical Specs if they were stripped from raw
-    // Sora handles natural language technical specs well
-    let enrichedRaw = ir.raw;
-    const specsToAdd: string[] = [];
-
-    // Camera
-    if (ir.camera.shotType && !enrichedRaw.toLowerCase().includes(ir.camera.shotType.toLowerCase())) {
-        specsToAdd.push(ir.camera.shotType);
-    }
-    if (ir.camera.angle && !enrichedRaw.toLowerCase().includes(ir.camera.angle.toLowerCase())) {
-        specsToAdd.push(ir.camera.angle);
-    }
-    // Lighting
-    for (const light of ir.environment.lighting) {
-        if (!enrichedRaw.toLowerCase().includes(light.toLowerCase())) {
-            specsToAdd.push(light);
-        }
-    }
-    
-    if (specsToAdd.length > 0) {
-        enrichedRaw = `${enrichedRaw}. ${specsToAdd.join(', ')}.`;
-        changes.push('Appended technical specs from IR');
-    }
-
-    // Analyze physics interactions
-    const physics = this.analyzePhysics(enrichedRaw);
-    if (physics.gravity || physics.momentum || physics.collisions || physics.friction) {
-      changes.push('Detected physics interactions for grounding');
-    }
-
-    // Check if temporal segmentation is needed
-    // We use enrichedRaw for segmentation as Analyzer doesn't produce multi-shot IR yet
-    const needsSegmentation = this.needsTemporalSegmentation(enrichedRaw);
-    
-    let prompt: string;
-    if (needsSegmentation) {
-      // Segment into temporal sequences
-      const sequence = this.segmentIntoShots(enrichedRaw);
-      prompt = this.formatSequence(sequence);
-      changes.push(`Segmented into ${sequence.shots.length} temporal shot(s)`);
-    } else {
-      // Single shot - just use the raw input or synthesized if we wanted to
-      // For Sora, preserving natural language of the raw prompt is often best unless we want to restructure it.
-      // We'll stick to raw for now, as Sora handles complex NL well.
-      prompt = enrichedRaw;
-      changes.push('Single shot detected; no temporal segmentation needed');
-    }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
+    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
 
     return { prompt, changes };
   }
