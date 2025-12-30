@@ -214,6 +214,35 @@ export class LumaStrategy extends BaseStrategy {
     const changes: string[] = [];
     let prompt = ir.raw; // Luma works well with raw text usually
 
+    // Re-inject Technical Specs if they were stripped from raw (to prevent leakage) but are valid for the prompt
+    // Luma benefits from explicit camera and lighting descriptions appended to the narrative
+    const specsToAdd: string[] = [];
+
+    // Camera
+    if (ir.camera.shotType && !prompt.toLowerCase().includes(ir.camera.shotType.toLowerCase())) {
+        specsToAdd.push(ir.camera.shotType);
+    }
+    if (ir.camera.angle && !prompt.toLowerCase().includes(ir.camera.angle.toLowerCase())) {
+        specsToAdd.push(ir.camera.angle);
+    }
+    // Lighting
+    for (const light of ir.environment.lighting) {
+        if (!prompt.toLowerCase().includes(light.toLowerCase())) {
+            specsToAdd.push(light);
+        }
+    }
+    // Style
+    for (const style of ir.meta.style) {
+        if (!prompt.toLowerCase().includes(style.toLowerCase())) {
+            specsToAdd.push(`Style: ${style}`);
+        }
+    }
+
+    if (specsToAdd.length > 0) {
+        prompt = `${prompt}. ${specsToAdd.join(', ')}.`;
+        changes.push('Appended technical specs from IR');
+    }
+
     // Check for explicit static/frozen request in camera or style
     // If user asked for "frozen", "static", "time-stop", we should SKIP expansion
     const isExplicitlyStatic = 

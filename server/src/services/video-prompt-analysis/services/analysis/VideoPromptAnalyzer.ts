@@ -31,16 +31,27 @@ export class VideoPromptAnalyzer {
       raw: text,
     };
 
-    const cleanText = this.cleanText(text);
+    // 1. Structural Parsing
+    const sections = this.parseInputStructure(text);
+    
+    // Update raw to be only the narrative part to prevent context leakage in fallback strategies
+    ir.raw = sections.narrative;
+    
+    const cleanNarrative = this.cleanText(sections.narrative);
 
-    // Extraction Pipeline
-    this.extractCamera(cleanText, ir);
-    this.extractEnvironment(cleanText, ir); // Setting, lighting, weather
-    this.extractSubjectsAndActions(cleanText, ir); // Subjects and their actions
-    this.extractAudio(cleanText, ir);
-    this.extractMeta(cleanText, ir); // Mood, style, temporal
+    // 2. Extraction Pipeline (Run primarily on Narrative)
+    this.extractCamera(cleanNarrative, ir);
+    this.extractEnvironment(cleanNarrative, ir); // Setting, lighting, weather
+    this.extractSubjectsAndActions(cleanNarrative, ir); // Subjects and their actions
+    this.extractAudio(cleanNarrative, ir);
+    this.extractMeta(cleanNarrative, ir); // Mood, style, temporal
 
-    // Enrichment (Basic inference)
+    // 3. Structured Enrichment (From Technical Specs / JSON fields)
+    if (sections.technical) {
+      this.enrichFromTechnicalSpecs(sections.technical, ir);
+    }
+
+    // 4. Basic Inference Enrichment
     this.enrichIR(ir);
 
     return ir;
@@ -48,6 +59,157 @@ export class VideoPromptAnalyzer {
 
   private cleanText(text: string): string {
     return text.trim().replace(/\s+/g, ' ');
+  }
+
+  // ============================================================
+  // Structural Parsing
+  // ============================================================
+
+  private parseInputStructure(text: string): { narrative: string; technical?: Record<string, string>; alternatives?: any[] } {
+    // 1. Try JSON Parsing
+    if (text.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(text);
+        // Map JSON schema to our structure
+        // Expected schema: { narrative: string, technical: {}, alternatives: [] }
+        if (parsed.narrative || parsed.description) {
+          return {
+            narrative: parsed.narrative || parsed.description,
+            technical: parsed.technical,
+            alternatives: parsed.alternatives
+          };
+        }
+      } catch (e) {
+        // Not valid JSON, fall back to text parsing
+      }
+    }
+
+    // 2. Markdown Section Parsing
+    const sections: { narrative: string; technical?: Record<string, string>; alternatives?: any[] } = {
+      narrative: text
+    };
+
+    // Split by common headers
+    // Regex to find **TECHNICAL SPECS** or similar headers
+    const specsMatch = text.match(/\*\*TECHNICAL SPECS\*\*|\*\*Technical Specs\*\*|## Technical Specs/);
+    const altsMatch = text.match(/\*\*ALTERNATIVE APPROACHES\*\*|\*\*Alternative Approaches\*\*|## Alternative Approaches/);
+
+    if (specsMatch || altsMatch) {
+      let narrativeEndIndex = text.length;
+      
+      if (specsMatch && specsMatch.index !== undefined) {
+        narrativeEndIndex = Math.min(narrativeEndIndex, specsMatch.index);
+      }
+      
+      if (altsMatch && altsMatch.index !== undefined) {
+        narrativeEndIndex = Math.min(narrativeEndIndex, altsMatch.index);
+      }
+
+      sections.narrative = text.substring(0, narrativeEndIndex).trim();
+    }
+
+    // Extract Technical Specs
+    if (specsMatch) {
+      const specsSection = this.extractSectionText(text, specsMatch[0]);
+      if (specsSection) {
+        sections.technical = this.parseTechnicalSpecs(specsSection);
+      }
+    }
+
+    return sections;
+  }
+
+  private extractSectionText(fullText: string, header: string): string | null {
+    const start = fullText.indexOf(header);
+    if (start === -1) return null;
+
+    const contentStart = start + header.length;
+    // Find next header or end of string
+    const nextHeaderMatch = fullText.substring(contentStart).match(/\n\s*(\*\*|## |\[)/);
+    
+    if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
+      return fullText.substring(contentStart, contentStart + nextHeaderMatch.index).trim();
+    }
+    
+    return fullText.substring(contentStart).trim();
+  }
+
+  private parseTechnicalSpecs(specsText: string): Record<string, string> {
+    const specs: Record<string, string> = {};
+    const lines = specsText.split('\n');
+    
+    // Robust regex: capture key and value loosely, then clean up artifacts
+    const regex = /[-*]\s*(.+?)\s*:\s*(.+)/;
+    
+    for (const line of lines) {
+      const match = line.match(regex);
+      if (match) {
+        let key = match[1].replace(/\*\*/g, '').trim().toLowerCase();
+        let value = match[2].trim();
+        
+        // Clean up artifact where closing bold of key leaks into value
+        // e.g. "**Key:** Value" -> Key="**Key", Value="** Value"
+        if (value.startsWith('**')) {
+             value = value.substring(2).trim();
+        }
+        
+        specs[key] = value;
+      }
+    }
+    return specs;
+  }
+
+  private enrichFromTechnicalSpecs(technical: Record<string, string>, ir: VideoPromptIR): void {
+    // Map Technical Specs to IR fields
+    
+    // Camera
+    if (technical['camera']) {
+      // e.g. "High-angle, 50mm lens, f/2.8"
+      // We can try to extract more specific data or just trust the regexes found in the narrative.
+      // But typically specs are more accurate.
+      const val = technical['camera'].toLowerCase();
+      // If we didn't find a shot type in narrative, try to find it here
+      if (!ir.camera.shotType) {
+        if (val.includes('close-up')) ir.camera.shotType = 'close-up';
+        else if (val.includes('wide')) ir.camera.shotType = 'wide shot';
+        // ... simplified mapping
+      }
+      // Angle
+      if (!ir.camera.angle) {
+        if (val.includes('high-angle')) ir.camera.angle = 'high angle';
+        else if (val.includes('low-angle')) ir.camera.angle = 'low angle';
+      }
+    }
+
+    // Lighting
+    if (technical['lighting']) {
+      const val = technical['lighting'];
+      // If lighting list is empty or generic, push this spec
+      if (ir.environment.lighting.length === 0) {
+        ir.environment.lighting.push(val);
+      }
+    }
+
+    // Audio
+    if (technical['audio']) {
+      const val = technical['audio'];
+      // Decide if it's SFX, Ambience, or Music based on keywords
+      if (val.toLowerCase().includes('music') || val.toLowerCase().includes('score')) {
+         ir.audio.music = val;
+      } else if (val.toLowerCase().includes('dialogue')) {
+         ir.audio.dialogue = val;
+      } else {
+         ir.audio.sfx = val;
+      }
+    }
+
+    // Style
+    if (technical['style']) {
+      const val = technical['style'];
+      if (!ir.meta.style.includes(val)) {
+        ir.meta.style.push(val);
+      }
+    }
   }
 
   // ============================================================ 

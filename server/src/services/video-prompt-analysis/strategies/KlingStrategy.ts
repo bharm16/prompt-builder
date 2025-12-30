@@ -364,7 +364,33 @@ export class KlingStrategy extends BaseStrategy {
 
     // Parse the input into screenplay structure using raw input for dialogue fidelity
     const screenplay = this.parseScreenplay(ir.raw, context);
+
+    // Merge audio from IR (which might come from Technical Specs)
+    // Only add if not already captured in the screenplay parsing (to avoid duplicates)
+    if (ir.audio.sfx) {
+      const alreadyHasSfx = screenplay.audio.some(a => a.type === 'sfx' && a.description.includes(ir.audio.sfx!));
+      if (!alreadyHasSfx) {
+        screenplay.audio.push({ type: 'sfx', description: ir.audio.sfx });
+        changes.push('Merged SFX from structured IR');
+      }
+    }
+
+    if (ir.audio.music) {
+      const alreadyHasMusic = screenplay.audio.some(a => a.type === 'music' && a.description.includes(ir.audio.music!));
+      if (!alreadyHasMusic) {
+        screenplay.audio.push({ type: 'music', description: ir.audio.music });
+        changes.push('Merged Music from structured IR');
+      }
+    }
     
+    if (ir.audio.dialogue) {
+        // If IR has dialogue but screenplay doesn't, try to add it
+        // Note: IR dialogue is simple string, screenplay needs parsing. 
+        // We assume IR dialogue is formatted or simple enough to handle if screenplay missed it.
+        // For now, simpler to rely on screenplay parsing of raw narrative for dialogue, 
+        // as IR dialogue extraction is primitive.
+    }
+
     // We can enrich the visual description using the IR if we want,
     // but Kling screenplay parsing already separates dialogue from visual.
     // Let's ensure the visual part is clean.

@@ -262,27 +262,51 @@ export class SoraStrategy extends BaseStrategy {
   protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
 
+    // Re-inject Technical Specs if they were stripped from raw
+    // Sora handles natural language technical specs well
+    let enrichedRaw = ir.raw;
+    const specsToAdd: string[] = [];
+
+    // Camera
+    if (ir.camera.shotType && !enrichedRaw.toLowerCase().includes(ir.camera.shotType.toLowerCase())) {
+        specsToAdd.push(ir.camera.shotType);
+    }
+    if (ir.camera.angle && !enrichedRaw.toLowerCase().includes(ir.camera.angle.toLowerCase())) {
+        specsToAdd.push(ir.camera.angle);
+    }
+    // Lighting
+    for (const light of ir.environment.lighting) {
+        if (!enrichedRaw.toLowerCase().includes(light.toLowerCase())) {
+            specsToAdd.push(light);
+        }
+    }
+    
+    if (specsToAdd.length > 0) {
+        enrichedRaw = `${enrichedRaw}. ${specsToAdd.join(', ')}.`;
+        changes.push('Appended technical specs from IR');
+    }
+
     // Analyze physics interactions
-    const physics = this.analyzePhysics(ir.raw);
+    const physics = this.analyzePhysics(enrichedRaw);
     if (physics.gravity || physics.momentum || physics.collisions || physics.friction) {
       changes.push('Detected physics interactions for grounding');
     }
 
     // Check if temporal segmentation is needed
-    // We use ir.raw for segmentation as Analyzer doesn't produce multi-shot IR yet
-    const needsSegmentation = this.needsTemporalSegmentation(ir.raw);
+    // We use enrichedRaw for segmentation as Analyzer doesn't produce multi-shot IR yet
+    const needsSegmentation = this.needsTemporalSegmentation(enrichedRaw);
     
     let prompt: string;
     if (needsSegmentation) {
       // Segment into temporal sequences
-      const sequence = this.segmentIntoShots(ir.raw);
+      const sequence = this.segmentIntoShots(enrichedRaw);
       prompt = this.formatSequence(sequence);
       changes.push(`Segmented into ${sequence.shots.length} temporal shot(s)`);
     } else {
       // Single shot - just use the raw input or synthesized if we wanted to
       // For Sora, preserving natural language of the raw prompt is often best unless we want to restructure it.
       // We'll stick to raw for now, as Sora handles complex NL well.
-      prompt = ir.raw;
+      prompt = enrichedRaw;
       changes.push('Single shot detected; no temporal segmentation needed');
     }
 
