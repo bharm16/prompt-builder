@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from '@/services/ApiClient';
+import { API_CONFIG } from '@/config/api.config';
 
 export interface GeneratePreviewRequest {
   prompt: string;
@@ -45,5 +46,33 @@ export async function generatePreview(
     prompt: prompt.trim(),
     ...(aspectRatio ? { aspectRatio } : {}),
   }) as Promise<GeneratePreviewResponse>;
+}
+
+export interface GenerateVideoResponse {
+  success: boolean;
+  videoUrl?: string;
+  error?: string;
+  message?: string;
+}
+
+/**
+ * Generate a preview video from a prompt
+ */
+export async function generateVideoPreview(
+  prompt: string,
+  aspectRatio?: string,
+  model?: string
+): Promise<GenerateVideoResponse> {
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    throw new Error('Prompt is required and must be a non-empty string');
+  }
+
+  return apiClient.post('/preview/video/generate', {
+    prompt: prompt.trim(),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(model ? { model } : {}),
+  }, {
+    timeout: API_CONFIG.timeout.video
+  }) as Promise<GenerateVideoResponse>;
 }
 

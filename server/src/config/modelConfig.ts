@@ -461,6 +461,26 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 };
 
 /**
+ * Video Models Configuration (Dec 2025 Update)
+ * 
+ * Defines the hierarchy of video generation models used in the application.
+ */
+export const VIDEO_MODELS = {
+  /** ⚡ DRAFT TIER: Extremely cheap ($0.01), fast, decent motion. */
+  DRAFT: "wan-video/wan-2.2-t2v-fast", 
+  
+  /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
+  PRO: "wan-video/wan-2.2-t2v-fast", 
+  
+  /** 🎨 ARTISTIC / SPECIALIZED: High style adherence. */
+  ARTISTIC: "genmo/mochi-1-final",
+  
+  /** 🔒 PROPRIETARY FALLBACKS (API Wrappers / BYOK) */
+  TIER_1: "minimax/video-02", // Hailuo-02
+  TIER_2: "google/veo-3"      // Google Veo
+};
+
+/**
  * Default configuration for operations not explicitly defined
  * Temperature 0.0 for structured outputs by default
  */

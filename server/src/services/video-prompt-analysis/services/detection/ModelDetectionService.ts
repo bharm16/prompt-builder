@@ -64,6 +64,11 @@ const MODEL_PATTERNS = {
     technicalMarkers: ['json schema', 'style_preset', 'flow editing'],
     indicators: /\b(veo[_\s-]?4|google\s*veo\s*4)\b/i,
   },
+  'wan-2.2': {
+    keywords: ['wan 2.1', 'wan 2.2', 'wan2.1', 'wan2.2', 'wan t2v', 'alibaba wan'],
+    technicalMarkers: ['moe', 'bilingual', '1080p 30fps', 'mixture of experts'],
+    indicators: /\b(wan[_\s-]?[2]\.?[12]|alibaba\s*wan|moe\s*architecture)\b/i,
+  },
 } as const;
 
 /**
@@ -122,6 +127,11 @@ const MODEL_STRENGTHS = {
     primary: ['JSON schema serialization', 'Gemini integration', 'Flow editing', 'Style presets'],
     secondary: ['Brand context injection', 'Structured prompts', 'Edit mode support'],
     weaknesses: ['Markdown formatting', 'Conversational filler'],
+  },
+  'wan-2.2': {
+    primary: ['Mixture-of-Experts (MoE) efficiency', '1080p 30fps native', 'Bilingual prompt adherence', 'Variable aspect ratios'],
+    secondary: ['Cinematic motion', 'Complex scene understanding', 'Prompt-to-video alignment'],
+    weaknesses: ['English-only without translations', 'Low-resolution legacy triggers'],
   },
 } as const;
 
@@ -202,6 +212,13 @@ const MODEL_OPTIMAL_PARAMS = {
     lighting: 'Environment-specified',
     style: 'JSON schema, style presets',
   },
+  'wan-2.2': {
+    duration: '5-20 seconds',
+    motion: 'MoE-optimized cinematic motion',
+    camera: 'Variable aspect ratio support',
+    lighting: 'Highly detailed, 1080p native',
+    style: 'Bilingual narrative, high fidelity',
+  },
 } as const;
 
 export type ModelId = keyof typeof MODEL_PATTERNS;
@@ -229,7 +246,7 @@ interface ModelPatterns {
 /**
  * POE model IDs - the new versioned models that should take priority
  */
-const POE_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'kling-26', 'sora-2', 'veo-4'] as const;
+const POE_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'kling-26', 'sora-2', 'veo-4', 'wan-2.2'] as const;
 
 /**
  * Service responsible for detecting target AI video model

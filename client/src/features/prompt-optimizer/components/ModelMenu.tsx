@@ -43,6 +43,8 @@ export const ModelMenu = memo<ModelMenuProps>(({ promptText, onCopy, onClose }):
         return 'text-blue-600';
       case 'kling':
         return 'text-orange-600';
+      case 'wan':
+        return 'text-red-500';
       default:
         return 'text-geist-accents-7';
     }

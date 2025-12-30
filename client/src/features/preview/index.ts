@@ -5,7 +5,9 @@
  */
 
 export { VisualPreview } from './components/VisualPreview';
+export { VideoPreview } from './components/VideoPreview';
 export { useImagePreview } from './hooks/useImagePreview';
-export { generatePreview } from './api/previewApi';
-export type { GeneratePreviewRequest, GeneratePreviewResponse } from './api/previewApi';
+export { useVideoPreview } from './hooks/useVideoPreview';
+export { generatePreview, generateVideoPreview } from './api/previewApi';
+export type { GeneratePreviewRequest, GeneratePreviewResponse, GenerateVideoResponse } from './api/previewApi';
 

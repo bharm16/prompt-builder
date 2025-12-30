@@ -33,6 +33,7 @@ import { SceneChangeDetectionService } from '@services/video-concept/services/de
 import { VideoConceptService } from '@services/VideoConceptService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import { VideoToImagePromptTransformer } from '@services/image-generation/VideoToImagePromptTransformer';
 
 // Import enhancement sub-services
@@ -439,6 +440,19 @@ export async function configureServices(): Promise<DIContainer> {
       return new ImageGenerationService({ apiToken }, transformer);
     },
     ['videoToImageTransformer']
+  );
+
+  container.register(
+    'videoGenerationService',
+    () => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      if (!apiToken) {
+        logger.warn('REPLICATE_API_TOKEN not provided, video generation disabled');
+        return null;
+      }
+      return new VideoGenerationService({ apiToken });
+    },
+    []
   );
 
   return container;

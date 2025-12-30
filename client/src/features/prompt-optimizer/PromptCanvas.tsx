@@ -35,7 +35,7 @@ import { PromptEditor } from './components/PromptEditor';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import SuggestionsPanel from '@components/SuggestionsPanel';
-import { VisualPreview } from '@/features/preview/components/VisualPreview';
+import { VisualPreview, VideoPreview } from '@/features/preview';
 
 // Styles
 import './PromptCanvas.css';
@@ -480,13 +480,20 @@ export function PromptCanvas({
           }}
         >
           {/* Image Generation Section */}
-          <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0">
+          <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0 space-y-6">
             <VisualPreview
               prompt={previewSource}
               previewPrompt={previewPrompt}
               aspectRatio={previewAspectRatio}
               isVisible={true}
             />
+            {selectedMode === 'video' && (
+              <VideoPreview
+                prompt={normalizedDisplayedPrompt ?? ''}
+                aspectRatio={previewAspectRatio}
+                isVisible={true}
+              />
+            )}
           </div>
 
           {/* AI Suggestions Section */}

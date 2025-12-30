@@ -114,6 +114,19 @@ INSTRUCTIONS for Google Veo 4:
 
 Output ONLY the valid JSON object.`;
 
+      case 'wan-2.2':
+        return `${baseHeader}
+INSTRUCTIONS for Wan 2.2 (MoE):
+1. Use a highly descriptive, cinematic narrative style.
+2. For maximum adherence to Alibaba's Wan 2.2 MoE architecture, use DUAL-TEXT (Bilingual) prompting for key visual elements.
+3. Structure: "Description in English (中文描述)".
+4. Map 'subjects', 'actions', and 'environment' from the IR into this bilingual structure.
+5. Emphasize complex interactions and lighting consistency.
+6. Target 1080p 30fps quality triggers (e.g., "ultra-high definition", "masterpiece").
+7. Ensure all 'technical' specifications from the IR are reflected.
+
+Output ONLY the optimized bilingual prompt.`;
+
       default:
         return `${baseHeader} Optimize this prompt for high-quality video generation.`;
     }

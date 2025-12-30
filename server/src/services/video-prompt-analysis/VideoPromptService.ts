@@ -15,6 +15,7 @@ import {
   klingStrategy,
   soraStrategy,
   veoStrategy,
+  wanStrategy,
 } from './strategies';
 import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
 import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
@@ -62,6 +63,7 @@ export class VideoPromptService {
     this.strategyRegistry.register(klingStrategy);
     this.strategyRegistry.register(soraStrategy);
     this.strategyRegistry.register(veoStrategy);
+    this.strategyRegistry.register(wanStrategy);
   }
 
   /**

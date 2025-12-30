@@ -18,6 +18,7 @@ export const API_CONFIG = {
   timeout: {
     default: 30000,  // 30 seconds
     optimization: 60000,  // 60 seconds for prompt optimization
+    video: 90000, // 90 seconds for video generation (allow buffer over user's 60s)
     suggestions: 3000,  // 3 seconds for suggestions (Requirement 3.5)
   },
 

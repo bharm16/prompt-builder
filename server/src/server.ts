@@ -48,8 +48,9 @@ export async function startServer(
       });
 
       // Configure server timeouts
-      server.keepAliveTimeout = 65000; // 65 seconds (> ALB idle timeout)
-      server.headersTimeout = 66000;   // 66 seconds (> keepAliveTimeout)
+      server.keepAliveTimeout = 125000; // 125 seconds
+      server.headersTimeout = 126000;   // 126 seconds
+      server.timeout = 120000;          // 120 seconds (2 minutes)
 
       // Handle server errors
       server.on('error', (error) => {

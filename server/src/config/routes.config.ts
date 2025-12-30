@@ -87,11 +87,12 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
 
   // ============================================================================
-  // Preview Routes (image generation)
+  // Preview Routes (image and video generation)
   // ============================================================================
 
   const previewRoutes = createPreviewRoutes({
     imageGenerationService: container.resolve('imageGenerationService'),
+    videoGenerationService: container.resolve('videoGenerationService'),
   });
   app.use('/api/preview', apiAuthMiddleware, previewRoutes);
 
