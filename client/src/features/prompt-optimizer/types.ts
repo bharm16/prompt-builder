@@ -31,6 +31,8 @@ export interface PromptInputProps {
   onInputChange: (value: string) => void;
   selectedMode: string;
   onModeChange: (modeId: string) => void;
+  selectedModel?: string; // New: selected video model
+  onModelChange?: (modelId: string) => void; // New: handler for model change
   onOptimize: () => void;
   onShowBrainstorm?: () => void;
   isProcessing: boolean;

@@ -13,6 +13,8 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
   const {
     selectedMode,
     setSelectedMode,
+    selectedModel,
+    setSelectedModel,
     modes,
     currentAIIndex,
     promptOptimizer,
@@ -28,6 +30,8 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
       onInputChange={promptOptimizer.setInputPrompt}
       selectedMode={selectedMode}
       onModeChange={setSelectedMode}
+      selectedModel={selectedModel}
+      onModelChange={setSelectedModel}
       onOptimize={onOptimize}
       {...(onShowBrainstorm ? { onShowBrainstorm } : {})}
       isProcessing={promptOptimizer.isProcessing}

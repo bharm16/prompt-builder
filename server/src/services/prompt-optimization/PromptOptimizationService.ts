@@ -12,6 +12,7 @@ import { QualityAssessmentService } from './services/QualityAssessmentService';
 import { StrategyFactory } from './services/StrategyFactory';
 import { ShotInterpreterService } from './services/ShotInterpreterService';
 import { templateService } from './services/TemplateService';
+import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
 import type {
   AIService,
   OptimizationMode,
@@ -44,18 +45,19 @@ export class PromptOptimizationService {
   private readonly contextInference: ContextInferenceService;
   private readonly modeDetection: ModeDetectionService;
   private readonly qualityAssessment: QualityAssessmentService;
-  private readonly strategyFactory: StrategyFactory;
-  private readonly shotInterpreter: ShotInterpreterService;
-  private readonly cacheConfig: { ttl: number; namespace: string };
-  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
-  private readonly log: ILogger;
-
-  constructor(aiService: AIService) {
-    this.ai = aiService;
-    this.log = logger.child({ service: 'PromptOptimizationService' });
-
-    // Initialize specialized services
-    this.contextInference = new ContextInferenceService(aiService);
+    private readonly strategyFactory: StrategyFactory;
+    private readonly shotInterpreter: ShotInterpreterService;
+    private readonly videoPromptService: VideoPromptService | null;
+    private readonly cacheConfig: { ttl: number; namespace: string };
+    private readonly templateVersions: typeof OptimizationConfig.templateVersions;
+    private readonly log: ILogger;
+  
+    constructor(aiService: AIService, videoPromptService: VideoPromptService | null = null) {
+      this.ai = aiService;
+      this.videoPromptService = videoPromptService;
+      this.log = logger.child({ service: 'PromptOptimizationService' });
+  
+      // Initialize specialized services    this.contextInference = new ContextInferenceService(aiService);
     this.modeDetection = new ModeDetectionService(aiService);
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, templateService);
@@ -302,6 +304,7 @@ export class PromptOptimizationService {
     useIterativeRefinement = false,
     onMetadata,
     signal,
+    targetModel, // Extract targetModel
   }: OptimizationRequest): Promise<string> {
     const startTime = performance.now();
     const operation = 'optimize';
@@ -419,6 +422,63 @@ export class PromptOptimizationService {
         // Apply constitutional AI review if requested
         if (useConstitutionalAI) {
           optimizedPrompt = await this.applyConstitutionalAI(optimizedPrompt, finalMode, signal);
+        }
+      }
+
+      // STAGE 3: Model-Specific Compilation (The "Compiler" Phase)
+      // If we are in video mode and have the video service, compile the generic LLM output
+      // into the exact syntax required by the target model (Runway, Luma, Veo, etc.)
+      if (finalMode === 'video' && this.videoPromptService) {
+        // 1. Determine target model (explicit request > detection)
+        const explicitModel = targetModel;
+        const detectedModel = this.videoPromptService.detectTargetModel(prompt) || 
+                              this.videoPromptService.detectTargetModel(optimizedPrompt); // Check both inputs
+        
+        const resolvedTargetModel = explicitModel || detectedModel;
+
+        if (resolvedTargetModel) {
+          this.log.info('Compiling prompt for target model', {
+            operation,
+            targetModel: resolvedTargetModel,
+            genericLength: optimizedPrompt.length
+          });
+
+          try {
+            // 2. Compile using the Strategy Pipeline (Analyzer -> IR -> Synthesizer)
+            // This applies CSAE, JSON schemas, physics tokens, etc.
+            const compilationResult = await this.videoPromptService.optimizeForModel(
+              optimizedPrompt,
+              resolvedTargetModel
+            );
+
+            // 3. Update the prompt with the compiled version
+            // For JSON outputs (Veo), this will be a stringified object
+            const compiledPrompt = typeof compilationResult.prompt === 'string'
+              ? compilationResult.prompt
+              : JSON.stringify(compilationResult.prompt, null, 2);
+
+            this.log.info('Prompt compiled successfully', {
+              operation,
+              targetModel: resolvedTargetModel,
+              compiledLength: compiledPrompt.length,
+              changes: compilationResult.metadata.phases.flatMap(p => p.changes).length
+            });
+
+            optimizedPrompt = compiledPrompt;
+
+            // Merge compilation metadata
+            handleMetadata({
+              compiledFor: resolvedTargetModel,
+              compilationMeta: compilationResult.metadata
+            });
+
+          } catch (compilationError) {
+            this.log.error('Model compilation failed, reverting to generic optimization', compilationError as Error, {
+              operation,
+              targetModel: resolvedTargetModel
+            });
+            // Fallback: optimizedPrompt remains the generic LLM output
+          }
         }
       }
 

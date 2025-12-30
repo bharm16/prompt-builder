@@ -27,7 +27,7 @@ import type { Toast } from './types';
 
 const log = logger.child('usePromptOptimizer');
 
-export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = true) => {
+export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
   const toast = useToast() as Toast;
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
@@ -62,11 +62,13 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
       prompt: string,
       context: unknown | null = null,
       brainstormContext: unknown | null = null,
-      signal?: AbortSignal
+      signal?: AbortSignal,
+      targetModel?: string // New
     ) => {
       log.debug('analyzeAndOptimize called', {
         promptLength: prompt.length,
         mode: selectedMode,
+        targetModel,
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
       });
@@ -76,6 +78,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
         const data = await promptOptimizationApiV2.optimizeLegacy({
           prompt,
           mode: selectedMode,
+          targetModel, // New
           context,
           brainstormContext,
           ...(signal ? { signal } : {}),
@@ -141,6 +144,7 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
           const result = await promptOptimizationApiV2.optimizeWithFallback({
             prompt: promptToOptimize,
             mode: selectedMode,
+            targetModel: selectedModel, // New
             context,
             brainstormContext,
             signal: abortController.signal,
@@ -348,7 +352,8 @@ export const usePromptOptimizer = (selectedMode: string, useTwoStage: boolean = 
             promptToOptimize,
             context,
             brainstormContext,
-            abortController.signal
+            abortController.signal,
+            selectedModel // New
           );
           const optimized = response.optimizedPrompt;
           const score = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, optimized);

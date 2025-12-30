@@ -9,7 +9,8 @@ interface PromptOptimizer {
   optimize: (
     prompt: string,
     context: unknown | null,
-    brainstormContext: unknown | null
+    brainstormContext: unknown | null,
+    targetModel?: string // New: optional target model
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
@@ -30,6 +31,7 @@ export interface UsePromptOptimizationParams {
   promptHistory: PromptHistory;
   promptContext: PromptContext | null;
   selectedMode: string;
+  selectedModel?: string; // New: optional selected model
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setDisplayedPromptSilently: (prompt: string) => void;
@@ -57,6 +59,7 @@ export function usePromptOptimization({
   promptHistory,
   promptContext,
   selectedMode,
+  selectedModel, // Extract new param
   setCurrentPromptUuid,
   setCurrentPromptDocId,
   setDisplayedPromptSilently,
@@ -93,7 +96,12 @@ export function usePromptOptimization({
         : null;
 
       // Optimize the prompt
-      const result = await promptOptimizer.optimize(prompt, ctx, brainstormContextData);
+      const result = await promptOptimizer.optimize(
+        prompt, 
+        ctx, 
+        brainstormContextData, 
+        selectedMode === 'video' ? selectedModel : undefined // Pass target model only in video mode
+      );
       
       if (result) {
         // Save to history
@@ -130,6 +138,7 @@ export function usePromptOptimization({
       promptHistory,
       promptContext,
       selectedMode,
+      selectedModel, // Added dependency
       setCurrentPromptUuid,
       setCurrentPromptDocId,
       setDisplayedPromptSilently,

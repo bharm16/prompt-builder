@@ -58,6 +58,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   // UI State
   const [selectedMode, setSelectedMode] = useState<string>('video');
+  const [selectedModel, setSelectedModel] = useState<string>(''); // New: selected video model
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -86,7 +87,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const skipLoadFromUrlRef = useRef<boolean>(false);
 
   // Custom hooks
-  const promptOptimizer = usePromptOptimizer(selectedMode);
+  const promptOptimizer = usePromptOptimizer(selectedMode, selectedModel);
   const promptHistory = usePromptHistory(user);
 
   const currentMode: Mode = useMemo(
@@ -216,6 +217,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     selectedMode,
     setSelectedMode,
     currentMode,
+    selectedModel, // New
+    setSelectedModel, // New
 
     // UI State
     showHistory,

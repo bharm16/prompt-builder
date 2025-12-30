@@ -63,26 +63,25 @@ export interface ShotPlan {
 export interface OptimizationRequest {
   prompt: string;
   mode?: OptimizationMode;
+  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
   shotPlan?: ShotPlan | null;
   shotPlanAttempted?: boolean;
+  domainContent?: string | null;
   useConstitutionalAI?: boolean;
   useIterativeRefinement?: boolean;
-  domainContent?: unknown;
   onMetadata?: (metadata: Record<string, unknown>) => void;
   signal?: AbortSignal;
 }
 
-/**
- * Two-stage optimization request
- */
 export interface TwoStageOptimizationRequest {
   prompt: string;
   mode?: OptimizationMode;
+  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
-  onDraft?: ((draft: string, spans?: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
+  onDraft?: ((draft: string, spans: any) => void) | null;
   signal?: AbortSignal;
 }
 

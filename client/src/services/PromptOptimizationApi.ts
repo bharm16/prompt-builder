@@ -13,6 +13,7 @@ const log = logger.child('PromptOptimizationApi');
 interface OptimizeOptions {
   prompt: string;
   mode: string;
+  targetModel?: string; // New
   context?: unknown | null;
   brainstormContext?: unknown | null;
   signal?: AbortSignal;
@@ -65,6 +66,7 @@ export class PromptOptimizationApi {
   async optimizeLegacy({
     prompt,
     mode,
+    targetModel, // New
     context = null,
     brainstormContext = null,
     signal,
@@ -74,6 +76,7 @@ export class PromptOptimizationApi {
       return (await this.client.post('/optimize', {
         prompt,
         mode,
+        targetModel, // New
         context,
         brainstormContext,
       }, requestOptions)) as OptimizeResult;
@@ -129,6 +132,7 @@ export class PromptOptimizationApi {
         body: {
           prompt,
           mode,
+          targetModel: options.targetModel, // New
           context,
           brainstormContext,
         },

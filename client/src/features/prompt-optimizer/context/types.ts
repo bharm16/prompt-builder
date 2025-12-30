@@ -90,6 +90,8 @@ export interface PromptStateContextValue {
   selectedMode: string;
   setSelectedMode: (mode: string) => void;
   currentMode: Mode;
+  selectedModel: string; // New: selected video model
+  setSelectedModel: (model: string) => void; // New: setter for model
 
   // UI State
   showHistory: boolean;

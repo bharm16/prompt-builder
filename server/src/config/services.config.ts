@@ -354,9 +354,9 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'promptOptimizationService',
-    (aiService: AIModelService) =>
-      new PromptOptimizationService(aiService),
-    ['aiService']
+    (aiService: AIModelService, videoService: VideoPromptService) =>
+      new PromptOptimizationService(aiService, videoService),
+    ['aiService', 'videoService']
   );
 
   container.register(
