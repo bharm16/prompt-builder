@@ -46,6 +46,16 @@ export class VideoPromptService {
   /** Pipeline version for metadata tracking */
   private static readonly PIPELINE_VERSION = '1.0.0';
 
+  // Mapping from short IDs to strategy IDs
+  public static readonly MODEL_ID_MAP: Record<string, string> = {
+    'runway': 'runway-gen45',
+    'luma': 'luma-ray3',
+    'kling': 'kling-26',
+    'sora': 'sora-2',
+    'veo': 'veo-4',
+    'wan': 'wan-2.2'
+  };
+
   constructor() {
     this.detector = new VideoPromptDetectionService();
     this.phraseRoleAnalyzer = new PhraseRoleAnalysisService();
@@ -161,7 +171,12 @@ export class VideoPromptService {
    * Detect which AI video model is being targeted
    */
   detectTargetModel(fullPrompt: string | null | undefined): string | null {
-    return this.modelDetector.detectTargetModel(fullPrompt);
+    const detected = this.modelDetector.detectTargetModel(fullPrompt);
+    // Always resolve to full strategy ID if possible
+    if (detected && VideoPromptService.MODEL_ID_MAP[detected]) {
+      return VideoPromptService.MODEL_ID_MAP[detected];
+    }
+    return detected;
   }
 
   /**
@@ -277,7 +292,12 @@ export class VideoPromptService {
     const startTime = Date.now();
 
     // Detect model if not provided
-    const detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
+    let detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
+
+    // Resolve short ID to full strategy ID
+    if (detectedModelId && VideoPromptService.MODEL_ID_MAP[detectedModelId]) {
+      detectedModelId = VideoPromptService.MODEL_ID_MAP[detectedModelId];
+    }
 
     this.log.info('Starting prompt optimization', {
       operation,

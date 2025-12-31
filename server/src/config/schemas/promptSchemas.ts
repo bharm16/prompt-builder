@@ -13,6 +13,10 @@ export const promptSchema = z.object({
   mode: z.enum(['video'])
     .optional()
     .default('video'),
+  targetModel: z.string()
+    .max(64, 'Target model must not exceed 64 characters')
+    .optional()
+    .nullable(),
   context: z.object({
     specificAspects: z.string().max(5000).optional(),
     backgroundLevel: z.string().max(1000).optional(),
@@ -31,4 +35,3 @@ export const promptSchema = z.object({
 });
 
 export type PromptRequest = z.infer<typeof promptSchema>;
-

@@ -5,23 +5,25 @@
  * for the model selection menu in PromptActions component.
  */
 
-export const AI_MODEL_IDS = ['runway', 'sora', 'veo', 'kling', 'wan'] as const;
+export const AI_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'sora-2', 'veo-4', 'kling-26', 'wan-2.2'] as const;
 
 export type AIModelId = typeof AI_MODEL_IDS[number];
 
 export const AI_MODEL_URLS: Record<AIModelId, string> = {
-  runway: 'https://runwayml.com/',
-  sora: 'https://openai.com/sora',
-  veo: 'https://deepmind.google/models/veo/',
-  kling: 'https://kling.ai/',
-  wan: 'https://wanvideo.alibaba.com/',
+  'runway-gen45': 'https://runwayml.com/',
+  'luma-ray3': 'https://lumalabs.ai/',
+  'sora-2': 'https://openai.com/sora',
+  'veo-4': 'https://deepmind.google/models/veo/',
+  'kling-26': 'https://kling.ai/',
+  'wan-2.2': 'https://wanvideo.alibaba.com/',
 } as const;
 
 export const AI_MODEL_LABELS: Record<AIModelId, string> = {
-  runway: 'Open Runway',
-  sora: 'Open Sora',
-  veo: 'Open Veo',
-  kling: 'Open Kling',
-  wan: 'Open Wan 2.2',
+  'runway-gen45': 'Open Runway',
+  'luma-ray3': 'Open Luma',
+  'sora-2': 'Open Sora',
+  'veo-4': 'Open Veo',
+  'kling-26': 'Open Kling',
+  'wan-2.2': 'Open Wan 2.2',
 } as const;
 

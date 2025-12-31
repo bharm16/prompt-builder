@@ -57,8 +57,9 @@ export class PromptOptimizationService {
       this.videoPromptService = videoPromptService;
       this.log = logger.child({ service: 'PromptOptimizationService' });
   
-      // Initialize specialized services    this.contextInference = new ContextInferenceService(aiService);
-    this.modeDetection = new ModeDetectionService(aiService);
+      // Initialize specialized services
+      this.contextInference = new ContextInferenceService(aiService);
+      this.modeDetection = new ModeDetectionService(aiService);
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, templateService);
     this.shotInterpreter = new ShotInterpreterService(aiService);
@@ -85,6 +86,7 @@ export class PromptOptimizationService {
   async optimizeTwoStage({
     prompt,
     mode,
+    targetModel,
     context = null,
     brainstormContext = null,
     onDraft = null,
@@ -142,6 +144,7 @@ export class PromptOptimizationService {
       const result = await this.optimize({
         prompt,
         mode: finalMode,
+        ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
         onMetadata: (metadata) => {
@@ -205,6 +208,7 @@ export class PromptOptimizationService {
       const refined = await this.optimize({
         prompt: draft, // Use draft as input for refinement
         mode: finalMode,
+        ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext: {
           ...(brainstormContext || {}),
@@ -266,6 +270,7 @@ export class PromptOptimizationService {
       const result = await this.optimize({
         prompt,
         mode: finalMode,
+        ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
         shotPlan,
@@ -360,7 +365,7 @@ export class PromptOptimizationService {
     }
 
     // Check cache
-    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext);
+    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext, targetModel);
     const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
     const cached = await cacheService.get<string>(cacheKey);
     if (cached) {
@@ -413,7 +418,7 @@ export class PromptOptimizationService {
           prompt,
           context,
           brainstormContext,
-          domainContent,
+          domainContent: domainContent as string | null,
           shotPlan: interpretedShotPlan,
           onMetadata: handleMetadata,
           ...(signal ? { signal } : {}),
@@ -430,12 +435,21 @@ export class PromptOptimizationService {
       // into the exact syntax required by the target model (Runway, Luma, Veo, etc.)
       if (finalMode === 'video' && this.videoPromptService) {
         // 1. Determine target model (explicit request > detection)
-        const explicitModel = targetModel;
-        const detectedModel = this.videoPromptService.detectTargetModel(prompt) || 
-                              this.videoPromptService.detectTargetModel(optimizedPrompt); // Check both inputs
+        // Ensure we treat empty string as "Auto-detect" (null/undefined/empty)
+        const explicitModel = targetModel && targetModel.trim() !== '' ? targetModel : undefined;
         
-        const resolvedTargetModel = explicitModel || detectedModel;
+        // Resolve explicit model ID to full strategy ID if needed
+        let resolvedTargetModel = explicitModel;
+        if (resolvedTargetModel && VideoPromptService.MODEL_ID_MAP[resolvedTargetModel]) {
+          resolvedTargetModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
+        }
 
+        // Only detect if no explicit model was provided
+        if (!resolvedTargetModel) {
+          resolvedTargetModel = (this.videoPromptService.detectTargetModel(prompt) || 
+                                this.videoPromptService.detectTargetModel(optimizedPrompt)) ?? undefined; // Check both inputs
+        }
+        
         if (resolvedTargetModel) {
           this.log.info('Compiling prompt for target model', {
             operation,
@@ -444,10 +458,16 @@ export class PromptOptimizationService {
           });
 
           try {
+            // Extract core narrative from the formatted prompt
+            // The formatted prompt usually looks like:
+            // "Visual description paragraph...\n\n**TECHNICAL SPECS**\n..."
+            // We only want the description for the compiler.
+            const narrativePrompt = optimizedPrompt.split(/\*\*TECHNICAL SPECS\*\*/i)[0]?.trim() || optimizedPrompt;
+
             // 2. Compile using the Strategy Pipeline (Analyzer -> IR -> Synthesizer)
             // This applies CSAE, JSON schemas, physics tokens, etc.
             const compilationResult = await this.videoPromptService.optimizeForModel(
-              optimizedPrompt,
+              narrativePrompt, // Use clean narrative
               resolvedTargetModel
             );
 
@@ -579,7 +599,7 @@ export class PromptOptimizationService {
         prompt: currentPrompt,
         context,
         brainstormContext,
-        domainContent,
+        domainContent: domainContent as string | null,
         onMetadata: collectMetadata,
         ...(signal ? { signal } : {}),
       });
@@ -824,11 +844,13 @@ Output ONLY the draft prompt, no explanations.`
     prompt: string,
     mode: OptimizationMode,
     context: InferredContext | null,
-    brainstormContext: Record<string, unknown> | null
+    brainstormContext: Record<string, unknown> | null,
+    targetModel?: string
   ): string {
     const parts = [
-      'prompt-opt',
+      'prompt-opt-v3', // Bump version to clear generic caches and force compilation refresh
       mode,
+      targetModel || 'generic',
       prompt.substring(0, 100),
       context ? JSON.stringify(context) : '',
       brainstormContext ? JSON.stringify(brainstormContext) : ''

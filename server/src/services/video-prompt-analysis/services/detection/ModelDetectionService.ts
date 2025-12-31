@@ -292,6 +292,19 @@ export class ModelDetectionService {
       return poeMatch as ModelId;
     }
 
+    // Resolve legacy IDs to POE IDs if possible
+    const legacyToPoe: Record<string, ModelId> = {
+      'runway': 'runway-gen45',
+      'luma': 'luma-ray3',
+      'kling': 'kling-26',
+      'sora': 'sora-2',
+      'veo': 'veo-4'
+    };
+
+    if (topModels[0] && legacyToPoe[topModels[0]]) {
+      return legacyToPoe[topModels[0]]!;
+    }
+
     // Otherwise return the first match
     return (topModels[0] as ModelId) || null;
   }
