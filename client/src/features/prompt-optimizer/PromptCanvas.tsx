@@ -1,4 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect } from 'react';
+import { Pencil, X, Check } from 'lucide-react';
 
 // External libraries
 import { useToast } from '@components/Toast';
@@ -82,6 +83,7 @@ export function PromptCanvas({
 
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
 
   // Get model state from context
@@ -221,6 +223,9 @@ export function PromptCanvas({
   const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
   const [showModelMenu, setShowModelMenu] = React.useState<boolean>(false);
   const [showLegend, setShowLegend] = React.useState<boolean>(false);
+  const [isEditing, setIsEditing] = React.useState<boolean>(false);
+  const [originalInputPrompt, setOriginalInputPrompt] = React.useState<string>('');
+  const [originalSelectedModel, setOriginalSelectedModel] = React.useState<string | undefined>(undefined);
 
   // Text selection hook
   const {
@@ -338,6 +343,57 @@ export function PromptCanvas({
     void onReoptimize(inputPrompt);
   }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
 
+  const handleEditClick = useCallback((): void => {
+    setOriginalInputPrompt(inputPrompt);
+    setOriginalSelectedModel(selectedModel);
+    setIsEditing(true);
+    // Focus the textarea after state update
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  }, [inputPrompt, selectedModel]);
+
+  const handleModelChange = useCallback((modelId: string): void => {
+    // Only enter edit mode if model actually changed
+    const modelChanged = modelId !== selectedModel;
+    setSelectedModel(modelId);
+    // Automatically enter edit mode when model changes
+    if (modelChanged && !isEditing) {
+      setOriginalInputPrompt(inputPrompt);
+      setOriginalSelectedModel(selectedModel);
+      setIsEditing(true);
+      // Focus the textarea after state update
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    }
+  }, [inputPrompt, isEditing, selectedModel, setSelectedModel]);
+
+  const handleCancel = useCallback((): void => {
+    // Restore original prompt and model
+    onInputPromptChange(originalInputPrompt);
+    if (originalSelectedModel !== undefined) {
+      setSelectedModel(originalSelectedModel);
+    }
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [originalInputPrompt, originalSelectedModel, onInputPromptChange, setSelectedModel]);
+
+  const handleUpdate = useCallback((): void => {
+    if (isProcessing || isRefining) {
+      return;
+    }
+    // Changes are already saved via onInputPromptChange as user types
+    // Run reoptimize with the current input prompt
+    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    void onReoptimize(inputPrompt);
+    // Exit edit mode
+    setIsEditing(false);
+    setOriginalInputPrompt('');
+    setOriginalSelectedModel(undefined);
+  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
+
   const handleInputPromptKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
       if (isProcessing || isRefining) {
@@ -345,10 +401,14 @@ export function PromptCanvas({
       }
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        handleReoptimize();
+        if (isEditing) {
+          handleUpdate();
+        } else {
+          handleReoptimize();
+        }
       }
     },
-    [handleReoptimize, isProcessing, isRefining]
+    [handleReoptimize, handleUpdate, isEditing, isProcessing, isRefining]
   );
 
   const hasInputPrompt = Boolean(inputPrompt.trim());
@@ -409,12 +469,49 @@ export function PromptCanvas({
                 <span className="text-label-12 text-geist-accents-6 uppercase tracking-wide">
                   Original prompt
                 </span>
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={handleEditClick}
+                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+                    aria-label="Edit prompt"
+                    title="Edit prompt"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-geist-accents-5" />
+                    <span>Edit</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-geist-2">
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+                      aria-label="Cancel editing"
+                      title="Cancel editing"
+                    >
+                      <X className="h-3.5 w-3.5 text-geist-accents-5" />
+                      <span>Cancel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUpdate}
+                      disabled={isReoptimizeDisabled}
+                      className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Update prompt"
+                      title="Update and re-optimize (Cmd/Ctrl+Enter)"
+                    >
+                      <Check className="h-3.5 w-3.5 text-white" />
+                      <span>Update</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="relative bg-geist-background border border-geist-accents-2 rounded-geist-lg transition-all duration-200 focus-within:border-geist-accents-4 focus-within:shadow-geist-small">
                 <label htmlFor="original-prompt-input" className="sr-only">
                   Original prompt
                 </label>
                 <textarea
+                  ref={textareaRef}
                   id="original-prompt-input"
                   value={inputPrompt}
                   onChange={handleInputPromptChange}
@@ -434,20 +531,8 @@ export function PromptCanvas({
                 <div className="absolute bottom-4 left-4 flex items-center gap-geist-2">
                   <ModelSelectorDropdown
                     selectedModel={selectedModel}
-                    onModelChange={setSelectedModel}
+                    onModelChange={handleModelChange}
                   />
-                </div>
-                <div className="absolute bottom-4 right-4 flex items-center gap-geist-2">
-                  <button
-                    type="button"
-                    onClick={handleReoptimize}
-                    disabled={isReoptimizeDisabled}
-                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    aria-label="Re-optimize prompt"
-                    title="Re-optimize (Cmd/Ctrl+Enter)"
-                  >
-                    Re-optimize
-                  </button>
                 </div>
               </div>
             </div>
