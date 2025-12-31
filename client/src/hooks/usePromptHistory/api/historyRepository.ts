@@ -111,6 +111,7 @@ export async function saveEntry(
       output: params.output,
       score: params.score,
       mode: params.mode,
+      ...(params.targetModel ? { targetModel: params.targetModel } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
     });

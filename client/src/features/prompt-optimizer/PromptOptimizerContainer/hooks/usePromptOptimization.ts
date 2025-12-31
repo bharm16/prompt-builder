@@ -21,7 +21,8 @@ interface PromptHistory {
     output: string,
     score: number | null,
     mode: string,
-    brainstormContext: unknown | null
+    targetModel?: string | null,
+    brainstormContext?: unknown | null
   ) => Promise<{ uuid: string; id?: string } | null>;
   [key: string]: unknown;
 }
@@ -110,6 +111,7 @@ export function usePromptOptimization({
           result.optimized,
           result.score,
           selectedMode,
+          selectedMode === 'video' ? selectedModel ?? null : null,
           serializedContext
         );
 

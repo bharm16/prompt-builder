@@ -71,6 +71,7 @@ export interface PromptHistoryEntry {
   output: string;
   score?: number | null;
   mode?: string;
+  targetModel?: string | null;
   brainstormContext?: unknown | null;
   highlightCache?: unknown | null;
   versions?: unknown[];

@@ -107,11 +107,18 @@ export const usePromptHistory = (user: User | null) => {
       output: string,
       score: number | null,
       selectedMode: string,
+      targetModel: string | null = null,
       brainstormContext: unknown = null,
       highlightCache: unknown = null
     ): Promise<SaveResult | null> => {
+      const normalizedTargetModel =
+        typeof targetModel === 'string' && targetModel.trim()
+          ? targetModel.trim()
+          : null;
+
       log.debug('Saving to history', {
         mode: selectedMode,
+        targetModel: normalizedTargetModel,
         hasUser: !!user,
         inputLength: input.length,
       });
@@ -122,6 +129,7 @@ export const usePromptHistory = (user: User | null) => {
           output,
           score,
           mode: selectedMode,
+          ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           brainstormContext,
           highlightCache,
         });
@@ -134,6 +142,7 @@ export const usePromptHistory = (user: User | null) => {
           output,
           score,
           mode: selectedMode,
+          ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
           brainstormContext: brainstormContext ?? null,
           highlightCache: highlightCache ?? null,
         };

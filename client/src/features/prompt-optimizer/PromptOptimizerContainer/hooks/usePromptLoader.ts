@@ -11,6 +11,7 @@ interface PromptData {
   uuid: string;
   input?: string;
   output?: string;
+  targetModel?: string | null;
   highlightCache?: {
     signature?: string;
     updatedAt?: string;
@@ -47,6 +48,7 @@ interface UsePromptLoaderParams {
   setCurrentPromptDocId: (id: string | null) => void;
   setCurrentPromptUuid: (uuid: string) => void;
   setShowResults: (show: boolean) => void;
+  setSelectedModel: (model: string) => void;
   setPromptContext: (context: PromptContext | null) => void;
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
@@ -70,6 +72,7 @@ export function usePromptLoader({
   setCurrentPromptDocId,
   setCurrentPromptUuid,
   setShowResults,
+  setSelectedModel,
   setPromptContext,
   skipLoadFromUrlRef,
 }: UsePromptLoaderParams): void {
@@ -97,6 +100,7 @@ export function usePromptLoader({
           setCurrentPromptUuid(promptData.uuid);
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);
+          setSelectedModel(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
 
           // Restore highlight cache
           const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
@@ -162,6 +166,7 @@ export function usePromptLoader({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedModel,
     setPromptContext,
     skipLoadFromUrlRef,
     location,

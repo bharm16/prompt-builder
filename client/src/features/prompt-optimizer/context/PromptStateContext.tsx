@@ -167,6 +167,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
       promptOptimizer.setPreviewAspectRatio(null);
     }
     setSelectedMode(entry.mode || 'video');
+    setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
     setShowResults(true);
 
     const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
@@ -208,7 +209,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
         debug.endTimer('loadFromHistory', 'History entry loaded');
       });
     });
-  }, [promptOptimizer, setDisplayedPromptSilently, applyInitialHighlightSnapshot, resetEditStacks, navigate]);
+  }, [promptOptimizer, setDisplayedPromptSilently, applyInitialHighlightSnapshot, resetEditStacks, navigate, setSelectedModel]);
 
   // Context value
   const value: PromptStateContextValue = {

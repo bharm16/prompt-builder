@@ -20,7 +20,8 @@ interface PromptHistory {
     output: string,
     score: number | null,
     mode: string,
-    context: unknown
+    targetModel?: string | null,
+    context?: unknown
   ) => Promise<{ uuid: string; id?: string | null } | null>;
   [key: string]: unknown;
 }
@@ -29,6 +30,7 @@ interface UseConceptBrainstormParams {
   promptOptimizer: PromptOptimizer;
   promptHistory: PromptHistory;
   selectedMode: string;
+  selectedModel?: string;
   setConceptElements: (elements: Record<string, unknown>) => void;
   setPromptContext: (context: PromptContext | null) => void;
   setShowBrainstorm: (show: boolean) => void;
@@ -55,6 +57,7 @@ export function useConceptBrainstorm({
   promptOptimizer,
   promptHistory,
   selectedMode,
+  selectedModel,
   setConceptElements,
   setPromptContext,
   setShowBrainstorm,
@@ -132,6 +135,7 @@ export function useConceptBrainstorm({
               result.optimized,
               result.score,
               selectedMode,
+              selectedMode === 'video' ? selectedModel ?? null : null,
               serializedContext
             );
 
@@ -165,6 +169,7 @@ export function useConceptBrainstorm({
       promptOptimizer,
       promptHistory,
       selectedMode,
+      selectedModel,
       setConceptElements,
       setPromptContext,
       setShowBrainstorm,

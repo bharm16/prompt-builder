@@ -66,6 +66,7 @@ export interface PromptHistory {
     output: string,
     score: number | null,
     selectedMode: string,
+    targetModel?: string | null,
     brainstormContext?: unknown,
     highlightCache?: unknown
   ) => Promise<{ uuid: string; id: string } | null>;

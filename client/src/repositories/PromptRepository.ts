@@ -41,6 +41,7 @@ export interface PromptData {
   output: string;
   score?: number | null;
   mode?: string;
+  targetModel?: string | null;
   brainstormContext?: unknown | null;
   [key: string]: unknown;
 }
@@ -379,6 +380,7 @@ export class LocalStoragePromptRepository {
         highlightCache: promptData.highlightCache ?? null,
         versions: promptData.versions ?? [],
         ...(typeof promptData.mode === 'string' ? { mode: promptData.mode } : {}),
+        ...(typeof promptData.targetModel === 'string' ? { targetModel: promptData.targetModel } : {}),
       };
 
       const history = this._getHistory();
