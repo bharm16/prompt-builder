@@ -47,6 +47,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     // State
     selectedMode,
     selectedModel,
+    setSelectedModel,
     showResults,
     showSettings,
     setShowSettings,
@@ -129,6 +130,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedModel,
     setPromptContext,
     skipLoadFromUrlRef,
   });

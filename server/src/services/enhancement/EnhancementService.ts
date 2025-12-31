@@ -216,7 +216,7 @@ export class EnhancementService {
           cacheCheckTime: metrics.cacheCheck,
           totalTime: metrics.total,
           promptMode: metrics.promptMode,
-          suggestionCount: cached.suggestions?.length || 0,
+          suggestionCount: this._countSuggestions(cached.suggestions),
         });
         return cached;
       }
@@ -245,7 +245,7 @@ export class EnhancementService {
         highlightWordCount,
         isPlaceholder,
       };
-      const systemPrompt = isPlaceholder
+      const promptResult = isPlaceholder
         ? this.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
         : this.promptBuilder.buildRewritePrompt(promptBuilderInput);
       metrics.promptBuild = Date.now() - promptBuildStart;
@@ -256,8 +256,8 @@ export class EnhancementService {
         precision: 'medium',
       });
 
-      const generationResult = await this.suggestionGeneration.generateSuggestions({
-        systemPrompt,
+      const generationResult = await this.suggestionGeneration.generateSuggestionsV2({
+        promptResult,
         schema: schema as OutputSchema,
         isVideoPrompt,
         isPlaceholder,
@@ -330,7 +330,7 @@ export class EnhancementService {
       this.log.info(`${operation} completed`, {
         operation,
         duration: metrics.total,
-        suggestionCount: result.suggestions?.length || 0,
+        suggestionCount: this._countSuggestions(result.suggestions),
         fromCache: metrics.cache,
         isVideoPrompt,
         isPlaceholder,
@@ -496,6 +496,18 @@ export class EnhancementService {
     if (params.suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
     
     return this.suggestionProcessor.buildResult(buildResultParams);
+  }
+
+  private _countSuggestions(suggestions: EnhancementResult['suggestions'] | undefined): number {
+    if (!Array.isArray(suggestions)) return 0;
+    const first = suggestions[0] as { suggestions?: unknown } | undefined;
+    if (first && Array.isArray(first.suggestions)) {
+      return suggestions.reduce((sum, group) => {
+        const groupSuggestions = (group as { suggestions?: unknown }).suggestions;
+        return sum + (Array.isArray(groupSuggestions) ? groupSuggestions.length : 0);
+      }, 0);
+    }
+    return suggestions.length;
   }
 
 

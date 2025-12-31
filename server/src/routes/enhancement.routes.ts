@@ -16,6 +16,18 @@ interface EnhancementServices {
   metricsService?: any;
 }
 
+const countSuggestions = (suggestions: unknown): number => {
+  if (!Array.isArray(suggestions)) return 0;
+  const first = suggestions[0] as { suggestions?: unknown } | undefined;
+  if (first && Array.isArray(first.suggestions)) {
+    return suggestions.reduce((sum, group) => {
+      const groupSuggestions = (group as { suggestions?: unknown }).suggestions;
+      return sum + (Array.isArray(groupSuggestions) ? groupSuggestions.length : 0);
+    }, 0);
+  }
+  return suggestions.length;
+};
+
 /**
  * Create enhancement routes
  * Handles enhancement suggestions, custom suggestions, scene detection, and NLP testing
@@ -82,10 +94,12 @@ export function createEnhancementRoutes(services: EnhancementServices): Router {
           editHistory,
         });
 
+        const suggestionCount = countSuggestions(result.suggestions);
+
         if (req.perfMonitor) {
           req.perfMonitor.end('service_call');
           req.perfMonitor.addMetadata('cacheHit', result.fromCache || false);
-          req.perfMonitor.addMetadata('suggestionCount', result.suggestions?.length || 0);
+          req.perfMonitor.addMetadata('suggestionCount', suggestionCount);
           req.perfMonitor.addMetadata('category', highlightedCategory || 'unknown');
         }
 
@@ -93,7 +107,7 @@ export function createEnhancementRoutes(services: EnhancementServices): Router {
           operation,
           requestId,
           duration: Date.now() - startTime,
-          suggestionCount: result.suggestions?.length || 0,
+          suggestionCount,
           fromCache: result.fromCache || false,
           category: highlightedCategory,
         });

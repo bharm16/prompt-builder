@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { detectProvider, type ProviderType } from '@utils/provider/ProviderDetector';
 import type {
   Suggestion,
   AIService,
@@ -58,6 +59,8 @@ export class ContrastiveDiversityEnforcer {
       return null; // Signal to use standard generation
     }
 
+    const routing = this._getEnhancementRouting();
+
     logger.info('Using contrastive decoding for enhanced diversity', {
       isVideoPrompt: context.isVideoPrompt,
       highlightedText: context.highlightedText?.substring(0, 50),
@@ -73,6 +76,8 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[0]!,
         negativeConstraint: null,
         batchNumber: 1,
+        provider: routing.provider,
+        model: routing.model,
       });
       allSuggestions.push(...batch1);
       
@@ -83,6 +88,8 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[1]!,
         negativeConstraint: this._buildNegativeConstraint(batch1),
         batchNumber: 2,
+        provider: routing.provider,
+        model: routing.model,
       });
       allSuggestions.push(...batch2);
       
@@ -93,6 +100,8 @@ export class ContrastiveDiversityEnforcer {
         count: this.config.batchSizes[2]!,
         negativeConstraint: this._buildNegativeConstraint([...batch1, ...batch2]),
         batchNumber: 3,
+        provider: routing.provider,
+        model: routing.model,
       });
       allSuggestions.push(...batch3);
 
@@ -165,6 +174,8 @@ export class ContrastiveDiversityEnforcer {
     count: number;
     negativeConstraint: string | null;
     batchNumber: number;
+    provider: ProviderType;
+    model?: string;
   }): Promise<Suggestion[]> {
     const {
       systemPrompt,
@@ -173,6 +184,8 @@ export class ContrastiveDiversityEnforcer {
       count,
       negativeConstraint,
       batchNumber,
+      provider,
+      model,
     } = params;
 
     // Build augmented prompt with negative constraint
@@ -197,8 +210,8 @@ export class ContrastiveDiversityEnforcer {
           maxRetries: 2,
           temperature,
           operation: 'enhance_suggestions',
-          provider: 'groq',
-          model: 'llama-3.1-8b-instant',
+          provider,
+          model,
         }
       ) as Suggestion[];
 
@@ -222,6 +235,14 @@ export class ContrastiveDiversityEnforcer {
       logger.error(`Failed to generate batch ${batchNumber}`, error as Error);
       throw error;
     }
+  }
+
+  private _getEnhancementRouting(): { provider: ProviderType; model?: string } {
+    const config = this.ai.getOperationConfig('enhance_suggestions');
+    return {
+      provider: detectProvider({ client: config.client, model: config.model }),
+      model: config.model,
+    };
   }
 
   /**

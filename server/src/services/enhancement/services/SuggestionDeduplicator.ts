@@ -87,6 +87,15 @@ export class SuggestionDiversityEnforcer {
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     });
 
+    const uniqueCategories = Object.keys(categoryCounts);
+    if (uniqueCategories.length <= 1) {
+      logger.debug('Single-category suggestions, skipping categorical rebalancing', {
+        category: uniqueCategories[0] || 'Other',
+        suggestions: suggestions.length,
+      });
+      return suggestions;
+    }
+
     // Check if any category is over-represented (more than 40% of suggestions)
     const totalSuggestions = suggestions.length;
     const maxPerCategory = Math.ceil(totalSuggestions * 0.4);
@@ -120,7 +129,6 @@ export class SuggestionDiversityEnforcer {
     });
 
     // Ensure we have enough diversity in categories
-    const uniqueCategories = Object.keys(categoryCounts);
     if (uniqueCategories.length < 3 && totalSuggestions >= 6) {
       logger.warn('Not enough category diversity', {
         categories: uniqueCategories.length,

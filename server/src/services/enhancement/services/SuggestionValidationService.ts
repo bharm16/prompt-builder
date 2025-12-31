@@ -100,9 +100,12 @@ export class SuggestionValidationService {
         return;
       }
 
-      const lowerText = text.toLowerCase();
-      if (disallowedPrefixes.some((prefix) => lowerText.startsWith(prefix))) {
-        return;
+      // Strip conversational prefixes instead of rejecting
+      const foundPrefix = disallowedPrefixes.find((prefix) => lowerText.startsWith(prefix));
+      if (foundPrefix) {
+        text = text.substring(foundPrefix.length).trim();
+        // Re-check validity after stripping
+        if (!text) return;
       }
 
       if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {

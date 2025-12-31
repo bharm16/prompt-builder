@@ -24,6 +24,8 @@ export interface PromptBuildResult {
   useStrictSchema?: boolean;
   /** Provider hint for downstream processing */
   provider: 'openai' | 'groq';
+  /** Optional reasoning effort for Qwen models */
+  reasoningEffort?: 'none' | 'default';
 }
 
 /**

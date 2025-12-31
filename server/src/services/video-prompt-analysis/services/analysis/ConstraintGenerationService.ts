@@ -104,9 +104,8 @@ export class ConstraintGenerationService {
     // Check category-specific constraints
     const isSubject = categorySource.includes('subject') || categorySource.includes('character');
     const isLighting = categorySource.includes('lighting');
-    const isCamera = categorySource.includes('camera') || 
-                     categorySource.includes('framing') || 
-                     categorySource.includes('shot');
+    const isShot = categorySource.includes('shot');
+    const isCamera = categorySource.includes('camera') || categorySource.includes('framing');
     const isLocation = categorySource.includes('location') || 
                        categorySource.includes('environment') || 
                        categorySource.includes('setting');
@@ -122,6 +121,10 @@ export class ConstraintGenerationService {
 
     if (isLighting) {
       return CONSTRAINT_MODES.lighting(highlightWordCount, slotDescriptor);
+    }
+
+    if (isShot) {
+      return CONSTRAINT_MODES.micro(highlightWordCount, slotDescriptor);
     }
 
     if (isCamera) {
