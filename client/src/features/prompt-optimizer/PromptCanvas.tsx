@@ -431,16 +431,18 @@ export function PromptCanvas({
                   }}
                   aria-label="Original prompt input"
                 />
-                <div className="absolute bottom-4 right-4 flex items-center gap-geist-2">
+                <div className="absolute bottom-4 left-4 flex items-center gap-geist-2">
                   <ModelSelectorDropdown
                     selectedModel={selectedModel}
                     onModelChange={setSelectedModel}
                   />
+                </div>
+                <div className="absolute bottom-4 right-4 flex items-center gap-geist-2">
                   <button
                     type="button"
                     onClick={handleReoptimize}
                     disabled={isReoptimizeDisabled}
-                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Re-optimize prompt"
                     title="Re-optimize (Cmd/Ctrl+Enter)"
                   >

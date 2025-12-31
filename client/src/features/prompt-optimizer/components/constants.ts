@@ -19,11 +19,11 @@ export const AI_MODEL_URLS: Record<AIModelId, string> = {
 } as const;
 
 export const AI_MODEL_LABELS: Record<AIModelId, string> = {
-  'runway-gen45': 'Open Runway',
-  'luma-ray3': 'Open Luma',
-  'sora-2': 'Open Sora',
-  'veo-4': 'Open Veo',
-  'kling-26': 'Open Kling',
-  'wan-2.2': 'Open Wan 2.2',
+  'runway-gen45': 'Runway',
+  'luma-ray3': 'Luma',
+  'sora-2': 'Sora',
+  'veo-4': 'Veo',
+  'kling-26': 'Kling',
+  'wan-2.2': 'Wan 2.2',
 } as const;
 
