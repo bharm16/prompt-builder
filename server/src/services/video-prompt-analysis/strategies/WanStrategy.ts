@@ -1,13 +1,11 @@
 /**
- * WanStrategy - Prompt optimization for Wan 2.2 (Alibaba)
+ * WanStrategy - Prompt optimization for Wan 2.2 (Replicate)
  *
- * Implements optimization for Wan's architecture.
- * Supports dual-text (Chinese/English) prompting for maximum adherence.
- *
- * Key features:
- * - Bilingual (English + Chinese) prompt generation for key visual elements
- * - Optimized for 1080p 30fps native generation
- * - Native support for variable aspect ratios (21:9, 16:9, 9:16)
+ * Implements optimization for Wan's architecture hosted on Replicate.
+ * Follows best practices:
+ * - Structured narrative: Subject -> Environment -> Camera -> Lighting
+ * - Aspect ratio mapping to resolution strings
+ * - Replicate-specific API payload generation
  *
  * @module WanStrategy
  */
@@ -25,14 +23,30 @@ import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './t
  */
 const WAN_TRIGGERS = [
   'ultra-high definition',
-  '1080p 30fps',
   'masterpiece',
-  'highly detailed',
   'cinematic motion',
+  'volumetric lighting',
+  '4k',
 ] as const;
 
 /**
- * WanStrategy optimizes prompts for Alibaba's Wan 2.2 series
+ * Default negative prompt to avoid common artifacts
+ */
+const DEFAULT_NEGATIVE_PROMPT = 'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
+
+/**
+ * Replicate supported aspect ratio mapping
+ */
+const ASPECT_RATIO_MAP: Record<string, string> = {
+  '16:9': '1280*720',
+  '9:16': '720*1280',
+  '1:1': '1024*1024',
+  '4:3': '1024*768',
+  '3:4': '768*1024',
+};
+
+/**
+ * WanStrategy optimizes prompts for Wan 2.2 series on Replicate
  */
 export class WanStrategy extends BaseStrategy {
   readonly modelId = 'wan-2.2';
@@ -45,16 +59,15 @@ export class WanStrategy extends BaseStrategy {
     // Check for aspect ratio constraints if provided
     if (context?.constraints?.formRequirement) {
       const aspectRatio = context.constraints.formRequirement;
-      const validAspectRatios = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'];
-      if (!validAspectRatios.includes(aspectRatio)) {
-        this.addWarning(`Aspect ratio "${aspectRatio}" may not be supported by Wan; recommended ratios are 16:9, 9:16, 21:9`);
+      if (!ASPECT_RATIO_MAP[aspectRatio]) {
+        this.addWarning(`Aspect ratio "${aspectRatio}" is not directly supported; supported ratios are ${Object.keys(ASPECT_RATIO_MAP).join(', ')}`);
       }
     }
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
     if (wordCount > 300) {
-      this.addWarning('Prompt exceeds 300 words; Wan may truncate or ignore excess content');
+      this.addWarning('Prompt exceeds 300 words; Wan performs best with 80-120 words');
     }
   }
 
@@ -72,17 +85,88 @@ export class WanStrategy extends BaseStrategy {
 
   /**
    * Final adjustments after LLM rewrite
-   * Wan benefits from bilingual prompts (English/Chinese)
+   * Reconstructs prompt to enforce: Subject -> Environment -> Camera -> Lighting
    */
-  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, _context?: PromptContext): TransformResult {
+  protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
-    const prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
+    
+    // Construct structured prompt from IR components
+    const segments: string[] = [];
 
-    if (prompt.includes('(') && prompt.includes(')')) {
-      changes.push('Bilingual (EN/ZH) structure detected for enhanced adherence');
+    // 1. Subject & Action
+    const subjectParts: string[] = [];
+    ir.subjects.forEach(sub => {
+      let text = sub.text;
+      if (sub.attributes && sub.attributes.length > 0) {
+        text = `${sub.attributes.join(' ')} ${text}`;
+      }
+      subjectParts.push(text);
+    });
+    
+    // Add main action if present
+    if (ir.actions && ir.actions.length > 0) {
+        subjectParts.push(ir.actions.join(', '));
+    }
+    
+    if (subjectParts.length > 0) {
+      segments.push(subjectParts.join(' '));
     }
 
-    return { prompt, changes };
+    // 2. Environment/Scene
+    const envParts: string[] = [];
+    if (ir.environment.setting) envParts.push(ir.environment.setting);
+    if (ir.environment.weather) envParts.push(ir.environment.weather);
+    
+    if (envParts.length > 0) {
+      segments.push(envParts.join(', '));
+    }
+
+    // 3. Camera Movement
+    const cameraParts: string[] = [];
+    if (ir.camera.shotType) cameraParts.push(ir.camera.shotType);
+    if (ir.camera.angle) cameraParts.push(ir.camera.angle);
+    if (ir.camera.movements && ir.camera.movements.length > 0) {
+      cameraParts.push(ir.camera.movements.join(', '));
+    }
+
+    if (cameraParts.length > 0) {
+      segments.push(cameraParts.join(', '));
+    }
+
+    // 4. Lighting & Style
+    const styleParts: string[] = [];
+    if (ir.environment.lighting && ir.environment.lighting.length > 0) {
+      styleParts.push(ir.environment.lighting.join(', '));
+    }
+    if (ir.meta.style && ir.meta.style.length > 0) {
+      styleParts.push(ir.meta.style.join(', '));
+    }
+
+    if (styleParts.length > 0) {
+      segments.push(styleParts.join(', '));
+    }
+
+    // Combine segments
+    let structuredPrompt = segments.join('. ');
+    
+    // Fallback if IR extraction yielded an empty or very short string (unlikely but possible)
+    if (structuredPrompt.length < 10 && typeof llmPrompt === 'string') {
+      structuredPrompt = llmPrompt;
+      changes.push('Used LLM rewrite directly (IR extraction insufficient)');
+    } else {
+      changes.push('Enforced structured narrative: Subject -> Environment -> Camera -> Lighting');
+    }
+
+    // Cleanup punctuation
+    structuredPrompt = this.cleanWhitespace(structuredPrompt)
+      .replace(/\.\./g, '.')
+      .replace(/\s\./g, '.');
+
+    return { 
+      prompt: structuredPrompt, 
+      changes,
+      negativePrompt: DEFAULT_NEGATIVE_PROMPT
+    };
   }
 
   /**
@@ -113,6 +197,28 @@ export class WanStrategy extends BaseStrategy {
       prompt,
       changes,
       triggersInjected,
+      negativePrompt: result.negativePrompt || DEFAULT_NEGATIVE_PROMPT
+    };
+  }
+
+  /**
+   * Generates the API payload for Replicate
+   * 
+   * @param prompt - The optimized prompt string
+   * @param context - The context containing constraints like aspect ratio
+   * @returns The payload object for the Replicate API
+   */
+  public getApiPayload(prompt: string, context?: PromptContext): Record<string, any> {
+    const aspectRatio = context?.constraints?.formRequirement || '16:9';
+    const size = ASPECT_RATIO_MAP[aspectRatio] || '1280*720'; // Default to 16:9 (720p)
+
+    return {
+      prompt,
+      negative_prompt: DEFAULT_NEGATIVE_PROMPT,
+      size,
+      num_frames: 81,
+      frames_per_second: 16,
+      prompt_extend: true
     };
   }
 }
