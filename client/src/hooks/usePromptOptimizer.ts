@@ -78,7 +78,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
         const data = await promptOptimizationApiV2.optimizeLegacy({
           prompt,
           mode: selectedMode,
-          targetModel, // New
+          ...(targetModel ? { targetModel } : {}), // New
           context,
           brainstormContext,
           ...(signal ? { signal } : {}),
@@ -144,7 +144,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           const result = await promptOptimizationApiV2.optimizeWithFallback({
             prompt: promptToOptimize,
             mode: selectedMode,
-            targetModel: selectedModel, // New
+            ...(selectedModel ? { targetModel: selectedModel } : {}), // New
             context,
             brainstormContext,
             signal: abortController.signal,
@@ -430,6 +430,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       setPreviewAspectRatio,
       setDraftSpans,
       setRefinedSpans,
+      selectedModel,
     ]
   );
 

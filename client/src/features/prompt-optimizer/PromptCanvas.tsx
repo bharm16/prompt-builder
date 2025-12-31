@@ -36,6 +36,8 @@ import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import SuggestionsPanel from '@components/SuggestionsPanel';
 import { VisualPreview, VideoPreview } from '@/features/preview';
+import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
+import { usePromptState } from './context/PromptStateContext';
 
 // Styles
 import './PromptCanvas.css';
@@ -81,6 +83,9 @@ export function PromptCanvas({
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+
+  // Get model state from context
+  const { selectedModel, setSelectedModel } = usePromptState();
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -421,21 +426,27 @@ export function PromptCanvas({
                     border: 'none',
                     boxShadow: 'none',
                     outline: 'none',
-                    paddingRight: '7.5rem',
+                    paddingRight: '14rem',
                     paddingBottom: '3.25rem',
                   }}
                   aria-label="Original prompt input"
                 />
-                <button
-                  type="button"
-                  onClick={handleReoptimize}
-                  disabled={isReoptimizeDisabled}
-                  className="absolute bottom-4 right-4 inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label="Re-optimize prompt"
-                  title="Re-optimize (Cmd/Ctrl+Enter)"
-                >
-                  Re-optimize
-                </button>
+                <div className="absolute bottom-4 right-4 flex items-center gap-geist-2">
+                  <ModelSelectorDropdown
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleReoptimize}
+                    disabled={isReoptimizeDisabled}
+                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Re-optimize prompt"
+                    title="Re-optimize (Cmd/Ctrl+Enter)"
+                  >
+                    Re-optimize
+                  </button>
+                </div>
               </div>
             </div>
             <PromptEditor

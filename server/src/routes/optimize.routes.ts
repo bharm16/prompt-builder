@@ -27,7 +27,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       const userId = extractUserId(req);
       const operation = 'optimize';
       
-      const { prompt, mode, context, brainstormContext } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext } = req.body;
 
       logger.info('Optimize request received', {
         operation,
@@ -35,6 +35,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         userId,
         promptLength: prompt?.length || 0,
         mode,
+        targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
       });
@@ -44,6 +45,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         const optimizedPrompt = await promptOptimizationService.optimize({
           prompt,
           mode,
+          targetModel, // New
           context,
           brainstormContext,
           onMetadata: (next: Record<string, unknown>) => {
@@ -82,7 +84,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
     '/optimize-stream',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
-      const { prompt, mode, context, brainstormContext } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext } = req.body;
       
       // Create a wrapper abort controller that ignores early client disconnects
       // This prevents curl from aborting the OpenAI calls before they start
@@ -146,6 +148,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         userId,
         promptLength: prompt?.length || 0,
         mode,
+        targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
       });
@@ -157,6 +160,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         const result = await promptOptimizationService.optimizeTwoStage({
           prompt,
           mode,
+          targetModel, // New
           context,
           brainstormContext,
           signal,

@@ -76,7 +76,7 @@ export class PromptOptimizationApi {
       return (await this.client.post('/optimize', {
         prompt,
         mode,
-        targetModel, // New
+        ...(targetModel ? { targetModel } : {}), // New
         context,
         brainstormContext,
       }, requestOptions)) as OptimizeResult;
@@ -102,6 +102,7 @@ export class PromptOptimizationApi {
   async optimizeWithStreaming({
     prompt,
     mode,
+    targetModel, // New
     context = null,
     brainstormContext = null,
     signal,
@@ -132,7 +133,7 @@ export class PromptOptimizationApi {
         body: {
           prompt,
           mode,
-          targetModel: options.targetModel, // New
+          ...(targetModel ? { targetModel } : {}), // New
           context,
           brainstormContext,
         },
@@ -371,13 +372,14 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, context, brainstormContext } = options;
+    const { prompt, mode, targetModel, context, brainstormContext } = options;
 
     try {
       // Fallback to single-stage API
       const result = await this.optimizeLegacy({
         prompt,
         mode,
+        ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
         ...(signal ? { signal } : {}),
