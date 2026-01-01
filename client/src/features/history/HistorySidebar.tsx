@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  LogIn,
-  PanelLeft,
-  PanelRight,
+  ArrowRight as LogIn,
+  ChevronLeft as PanelLeft,
+  ChevronRight as PanelRight,
   Plus,
-  History,
+  Clock as History,
   User as UserIcon,
-} from 'lucide-react';
+} from '@geist-ui/icons';
 import { getAuthRepository } from '@repositories/index';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
@@ -98,7 +98,7 @@ export function HistorySidebar({
   return (
     <aside
       id="history-sidebar"
-      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background transition-all duration-300"
+      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background shadow-geist-medium transition-all duration-300"
       style={{
         width: 'var(--sidebar-width)',
       }}
@@ -108,24 +108,24 @@ export function HistorySidebar({
         // Collapsed state - icon-only sidebar
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with expand button */}
-          <header className="flex-shrink-0 px-geist-2 py-geist-3">
+          <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-3">
             <Button
               onClick={() => setShowHistory(true)}
               svgOnly
               variant="ghost"
-              prefix={<PanelRight className="h-5 w-5 text-geist-accents-6" />}
+              prefix={<PanelRight size={20} className="text-geist-accents-6" />}
               className="w-full"
               aria-label="Expand sidebar"
             />
           </header>
 
           {/* New Prompt button - icon only */}
-          <div className="flex-shrink-0 px-geist-2 py-geist-2">
+          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
             <Button
               onClick={onCreateNew}
               svgOnly
               variant="ghost"
-              prefix={<Plus className="h-5 w-5 text-orange-500" />}
+              prefix={<Plus size={20} className="text-orange-500" />}
               className="w-full hover:bg-orange-50"
               aria-label="Create new prompt"
               title="New Prompt"
@@ -133,13 +133,13 @@ export function HistorySidebar({
           </div>
 
           {/* History icon - shows recent count */}
-          <div className="flex-shrink-0 px-geist-2 py-geist-2">
-            <div className="relative">
+          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
+            <div className="relative w-full">
               <Button
                 onClick={() => setShowHistory(true)}
                 svgOnly
                 variant="ghost"
-                prefix={<History className="h-5 w-5 text-geist-accents-6" />}
+                prefix={<History size={20} className="text-geist-accents-6" />}
                 className="w-full"
                 aria-label="Show history"
                 title="History"
@@ -156,19 +156,19 @@ export function HistorySidebar({
           <div className="flex-1" />
 
           {/* Auth Section - icon only */}
-          <footer className="flex-shrink-0 border-t border-geist-accents-1 p-geist-2">
+          <footer className="flex-shrink-0 flex items-center justify-center border-t border-geist-accents-1 p-geist-2">
             {!user ? (
               <Button
                 onClick={handleSignIn}
                 svgOnly
                 variant="ghost"
-                prefix={<LogIn className="h-5 w-5 text-geist-accents-6" />}
+                prefix={<LogIn size={20} className="text-geist-accents-6" />}
                 className="w-full"
                 aria-label="Sign in"
                 title="Sign in"
               />
             ) : (
-              <div className="relative">
+              <div className="relative w-full">
                 <button
                   onClick={() => setShowHistory(true)}
                   className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist-lg transition-colors flex items-center justify-center"
@@ -182,7 +182,7 @@ export function HistorySidebar({
                       className="h-8 w-8 rounded-full"
                     />
                   ) : (
-                    <UserIcon className="h-5 w-5 text-geist-accents-6" />
+                    <UserIcon size={20} className="text-geist-accents-6" />
                   )}
                 </button>
               </div>
@@ -194,15 +194,15 @@ export function HistorySidebar({
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with toggle + title */}
           <header className="flex-shrink-0 px-geist-4 py-geist-3">
-            <div className="flex items-center gap-geist-3">
+            <div className="flex items-center justify-between gap-geist-3">
+              <h1 className="text-heading-20 text-geist-foreground">Prompt Builder</h1>
               <Button
                 onClick={() => setShowHistory(false)}
                 svgOnly
                 variant="ghost"
-                prefix={<PanelLeft className="h-5 w-5 text-geist-accents-6" />}
+                prefix={<PanelLeft size={20} className="text-geist-accents-6" />}
                 aria-label="Collapse sidebar"
               />
-              <h1 className="text-heading-20 text-geist-foreground">Prompt Builder</h1>
             </div>
           </header>
 

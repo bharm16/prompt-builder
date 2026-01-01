@@ -32,8 +32,7 @@ export const PromptResultsSection = ({
     handleCreateNew,
   } = usePromptState();
 
-  // Show processing spinner during initial load, but allow draft interaction
-  if (!showResults || (promptOptimizer.isProcessing && !promptOptimizer.isDraftReady)) {
+  if (!showResults) {
     return null;
   }
 

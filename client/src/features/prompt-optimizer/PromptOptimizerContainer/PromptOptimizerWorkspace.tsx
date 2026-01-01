@@ -160,6 +160,75 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setCanRedo,
   });
 
+  const saveOutputTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedOutputRef = React.useRef<string | null>(null);
+  const promptMetaRef = React.useRef<{ uuid: string | null; docId: string | null }>({
+    uuid: currentPromptUuid,
+    docId: currentPromptDocId,
+  });
+
+  React.useEffect(() => {
+    promptMetaRef.current = { uuid: currentPromptUuid, docId: currentPromptDocId };
+    lastSavedOutputRef.current = null;
+    if (saveOutputTimeoutRef.current) {
+      clearTimeout(saveOutputTimeoutRef.current);
+      saveOutputTimeoutRef.current = null;
+    }
+  }, [currentPromptUuid, currentPromptDocId]);
+
+  React.useEffect(() => {
+    return () => {
+      if (saveOutputTimeoutRef.current) {
+        clearTimeout(saveOutputTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleDisplayedPromptChangeWithAutosave = React.useCallback(
+    (newText: string): void => {
+      handleDisplayedPromptChange(newText);
+
+      if (!currentPromptUuid) return;
+      if (isApplyingHistoryRef.current) return;
+      if (lastSavedOutputRef.current === null) {
+        lastSavedOutputRef.current = promptOptimizer.displayedPrompt ?? '';
+      }
+      if (lastSavedOutputRef.current === newText) return;
+
+      if (saveOutputTimeoutRef.current) {
+        clearTimeout(saveOutputTimeoutRef.current);
+      }
+
+      const scheduledUuid = currentPromptUuid;
+      const scheduledDocId = currentPromptDocId;
+
+      saveOutputTimeoutRef.current = setTimeout(() => {
+        const currentPromptMeta = promptMetaRef.current;
+        if (!scheduledUuid) return;
+        if (isApplyingHistoryRef.current) return;
+        if (
+          currentPromptMeta.uuid !== scheduledUuid ||
+          currentPromptMeta.docId !== scheduledDocId
+        ) {
+          return;
+        }
+        if (lastSavedOutputRef.current === newText) return;
+
+        promptHistory.updateEntryOutput(scheduledUuid, scheduledDocId, newText);
+        lastSavedOutputRef.current = newText;
+        saveOutputTimeoutRef.current = null;
+      }, 1000);
+    },
+    [
+      handleDisplayedPromptChange,
+      currentPromptUuid,
+      currentPromptDocId,
+      isApplyingHistoryRef,
+      promptOptimizer.displayedPrompt,
+      promptHistory,
+    ]
+  );
+
   // Prompt optimization
   const { handleOptimize } = usePromptOptimization({
     promptOptimizer,
@@ -287,7 +356,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       {showResults ? (
         <PromptResultsLayout
           user={user}
-          onDisplayedPromptChange={handleDisplayedPromptChange}
+          onDisplayedPromptChange={handleDisplayedPromptChangeWithAutosave}
           onReoptimize={handleOptimize}
           onFetchSuggestions={fetchEnhancementSuggestions}
           onSuggestionClick={handleSuggestionClick}

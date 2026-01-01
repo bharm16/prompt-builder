@@ -226,6 +226,9 @@ export function PromptCanvas({
   const [isEditing, setIsEditing] = React.useState<boolean>(false);
   const [originalInputPrompt, setOriginalInputPrompt] = React.useState<string>('');
   const [originalSelectedModel, setOriginalSelectedModel] = React.useState<string | undefined>(undefined);
+  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isOutputLoading = Boolean(isProcessing && !isDraftReady);
+  const isInputLocked = !isEditing || isOptimizing;
 
   // Text selection hook
   const {
@@ -344,6 +347,9 @@ export function PromptCanvas({
   }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
 
   const handleEditClick = useCallback((): void => {
+    if (isOptimizing) {
+      return;
+    }
     setOriginalInputPrompt(inputPrompt);
     setOriginalSelectedModel(selectedModel);
     setIsEditing(true);
@@ -351,9 +357,12 @@ export function PromptCanvas({
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 0);
-  }, [inputPrompt, selectedModel]);
+  }, [inputPrompt, isOptimizing, selectedModel]);
 
   const handleModelChange = useCallback((modelId: string): void => {
+    if (isOptimizing) {
+      return;
+    }
     // Only enter edit mode if model actually changed
     const modelChanged = modelId !== selectedModel;
     setSelectedModel(modelId);
@@ -367,7 +376,7 @@ export function PromptCanvas({
         textareaRef.current?.focus();
       }, 0);
     }
-  }, [inputPrompt, isEditing, selectedModel, setSelectedModel]);
+  }, [inputPrompt, isEditing, isOptimizing, selectedModel, setSelectedModel]);
 
   const handleCancel = useCallback((): void => {
     // Restore original prompt and model
@@ -473,7 +482,8 @@ export function PromptCanvas({
                   <button
                     type="button"
                     onClick={handleEditClick}
-                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+                    disabled={isOptimizing}
+                    className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Edit prompt"
                     title="Edit prompt"
                   >
@@ -485,7 +495,8 @@ export function PromptCanvas({
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+                      disabled={isOptimizing}
+                      className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label="Cancel editing"
                       title="Cancel editing"
                     >
@@ -518,6 +529,7 @@ export function PromptCanvas({
                   onKeyDown={handleInputPromptKeyDown}
                   placeholder="Edit your original prompt..."
                   rows={3}
+                  readOnly={isInputLocked}
                   className="w-full resize-none bg-transparent text-[15px] text-geist-foreground placeholder-geist-accents-4 outline-none leading-relaxed px-geist-5 py-geist-4 rounded-geist-lg font-sans"
                   style={{
                     border: 'none',
@@ -527,23 +539,62 @@ export function PromptCanvas({
                     paddingBottom: '3.25rem',
                   }}
                   aria-label="Original prompt input"
+                  aria-readonly={isInputLocked}
+                  aria-busy={isOptimizing}
                 />
                 <div className="absolute bottom-4 left-4 flex items-center gap-geist-2">
                   <ModelSelectorDropdown
                     selectedModel={selectedModel}
                     onModelChange={handleModelChange}
+                    disabled={isOptimizing}
                   />
                 </div>
               </div>
             </div>
-            <PromptEditor
-              ref={editorRef as React.RefObject<HTMLDivElement>}
-              onTextSelection={handleTextSelection}
-              onHighlightClick={handleHighlightClick}
-              onHighlightMouseDown={handleHighlightMouseDown}
-              onCopyEvent={handleCopyEvent}
-              onInput={handleInput}
-            />
+            <div className="relative" aria-busy={isOutputLoading}>
+              <PromptEditor
+                ref={editorRef as React.RefObject<HTMLDivElement>}
+                onTextSelection={handleTextSelection}
+                onHighlightClick={handleHighlightClick}
+                onHighlightMouseDown={handleHighlightMouseDown}
+                onCopyEvent={handleCopyEvent}
+                onInput={handleInput}
+              />
+              {isOutputLoading && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center backdrop-blur-sm"
+                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
+                  role="status"
+                  aria-live="polite"
+                  aria-label="Optimizing prompt"
+                >
+                  <div className="flex items-center gap-geist-2 text-label-14 text-geist-accents-6">
+                    <svg
+                      className="animate-spin h-5 w-5 text-geist-accents-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span>Optimizing...</span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Action buttons floating below prompt content, aligned right */}
             <PromptActions

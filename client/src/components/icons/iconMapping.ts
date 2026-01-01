@@ -40,6 +40,8 @@ export const iconMapping: Record<string, keyof typeof GeistIcons> = {
   'ArrowLeft': 'ArrowLeft',
   'ArrowUp': 'ArrowUp',
   'ArrowDown': 'ArrowDown',
+  'PanelLeft': 'ChevronLeft',
+  'PanelRight': 'ChevronRight',
   
   // UI icons
   'Check': 'Check',
@@ -95,10 +97,12 @@ export const iconMapping: Record<string, keyof typeof GeistIcons> = {
   'Heart': 'Heart',
   'Bookmark': 'Bookmark',
   'Clock': 'Clock',
+  'History': 'Clock',
   'Bell': 'Bell',
   'Mail': 'Mail',
   'Lock': 'Lock',
   'Unlock': 'Unlock',
+  'LogIn': 'ArrowRight',
   'Eye': 'Eye',
   'EyeOff': 'EyeOff',
   'ExternalLink': 'ExternalLink',

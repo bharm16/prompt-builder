@@ -8,7 +8,8 @@ import { AI_MODEL_IDS, AI_MODEL_LABELS } from './constants';
 export const ModelSelectorDropdown = memo<{
   selectedModel: string | undefined;
   onModelChange: (modelId: string) => void;
-}>(({ selectedModel, onModelChange }): React.ReactElement => {
+  disabled?: boolean;
+}>(({ selectedModel, onModelChange, disabled = false }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -30,6 +31,12 @@ export const ModelSelectorDropdown = memo<{
     return undefined;
   }, [isOpen]);
 
+  useEffect(() => {
+    if (disabled && isOpen) {
+      setIsOpen(false);
+    }
+  }, [disabled, isOpen]);
+
   const handleModelSelect = (modelId: string): void => {
     onModelChange(modelId);
     setIsOpen(false);
@@ -38,11 +45,18 @@ export const ModelSelectorDropdown = memo<{
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors"
+        type="button"
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen(!isOpen);
+          }
+        }}
+        disabled={disabled}
+        className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current model: ${currentLabel}`}
+        aria-disabled={disabled}
       >
         <Video className="h-3.5 w-3.5 text-geist-accents-5" />
         <span>{currentLabel}</span>
@@ -112,4 +126,3 @@ export const ModelSelectorDropdown = memo<{
 });
 
 ModelSelectorDropdown.displayName = 'ModelSelectorDropdown';
-

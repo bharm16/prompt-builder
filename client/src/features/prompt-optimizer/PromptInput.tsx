@@ -160,13 +160,13 @@ export const PromptInput = ({
       {/* Hero Section */}
       <div className="mb-12">
         <h1 className="text-heading-72 text-geist-foreground">
-          Turn your rough ideas into perfect prompts
+          From concept to draft
         </h1>
       </div>
 
       {/* Main Input Section - Clean Design */}
       <div className="relative mb-6 w-full">
-        <div className="bg-geist-background border border-geist-accents-2 rounded-geist-lg transition-all duration-200 focus-within:border-geist-accents-4 focus-within:shadow-geist-small">
+        <div className="bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-small transition-all duration-200 focus-within:border-geist-accents-4 focus-within:shadow-geist-medium">
             <label htmlFor="prompt-input" className="sr-only">
               Enter your prompt
             </label>
