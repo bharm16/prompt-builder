@@ -6,6 +6,7 @@
 
 export { VisualPreview } from './components/VisualPreview';
 export { VideoPreview } from './components/VideoPreview';
+export { TabbedPreview } from './components/TabbedPreview';
 export { useImagePreview } from './hooks/useImagePreview';
 export { useVideoPreview } from './hooks/useVideoPreview';
 export { generatePreview, generateVideoPreview } from './api/previewApi';

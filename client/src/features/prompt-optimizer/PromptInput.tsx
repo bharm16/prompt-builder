@@ -158,10 +158,13 @@ export const PromptInput = ({
   return (
     <div className="mb-12 w-full max-w-4xl text-center animate-fade-in">
       {/* Hero Section */}
-      <div className="mb-12">
-        <h1 className="text-heading-72 text-geist-foreground">
+      <div className="mb-8">
+        <h1 className="text-heading-40 sm:text-heading-72 text-geist-foreground">
           From concept to draft
         </h1>
+        <p className="mt-geist-2 text-copy-16 text-geist-accents-6 max-w-2xl mx-auto">
+          Structure video prompts with labeled elements, click-to-refine suggestions, and fast previews.
+        </p>
       </div>
 
       {/* Main Input Section - Clean Design */}

@@ -5,7 +5,7 @@
  * Following VideoConceptBuilder pattern: components/ProgressHeader.tsx
  */
 
-import { Sparkles, X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import type { PanelIcon } from './types';
 
 interface PanelHeaderProps {
@@ -38,21 +38,8 @@ export function PanelHeader({
   isPlaceholder = false,
 }: PanelHeaderProps): React.ReactElement {
   return (
-    <header className="flex-shrink-0 px-geist-3 py-geist-3 bg-geist-background border-b border-geist-accents-2">
-      <div className="flex items-center justify-between gap-geist-2">
-        {panelTitle && (
-          <div className="flex items-center gap-geist-2 min-w-0 flex-1">
-            <div className="p-geist-1 bg-geist-accents-1 rounded-geist border border-geist-accents-2">
-              <Sparkles className="h-3 w-3 text-geist-accents-6" aria-hidden="true" />
-            </div>
-            <h3 id="suggestions-title" className="text-label-12 text-geist-foreground">
-              {panelTitle}
-            </h3>
-          </div>
-        )}
-        {!panelTitle && (
-          <div className="flex-1" />
-        )}
+    <header className="flex-shrink-0 px-geist-3 py-geist-3 bg-geist-background border-b border-transparent">
+      <div className="flex items-center justify-end gap-geist-2">
         <div className="flex items-center gap-geist-1">
           {onRefresh && (
             <button
@@ -78,18 +65,15 @@ export function PanelHeader({
       </div>
 
       {hasActiveSuggestions && contextValue && (
-        <div className="mt-geist-3 flex flex-col gap-geist-2">
-          <div className="flex items-center gap-geist-2">
-            <span className="text-label-12 text-geist-accents-5 uppercase tracking-wider">
-              {contextLabel}
-            </span>
-            {showContextBadge && (
+        <div className="mt-geist-2 flex flex-col gap-geist-2">
+          {showContextBadge && (
+            <div className="flex items-center gap-geist-2">
               <span className="inline-flex items-center gap-geist-1 px-geist-2 py-geist-1 text-label-12 rounded-geist bg-geist-accents-1 text-geist-accents-7 border border-geist-accents-2">
                 {ContextBadgeIcon ? <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" /> : null}
                 {contextBadgeText}
               </span>
-            )}
-          </div>
+            </div>
+          )}
           <div className="flex items-start gap-geist-2">
             {ContextIcon ? (
               <div className="p-geist-1 bg-geist-accents-1 rounded-geist border border-geist-accents-2 flex-shrink-0">
@@ -107,9 +91,6 @@ export function PanelHeader({
                   {contextSecondaryValue}
                 </p>
               )}
-              <p className="mt-geist-1 text-label-12 text-geist-accents-5 break-words">
-                Alternatives for this phrase
-              </p>
             </div>
           </div>
         </div>

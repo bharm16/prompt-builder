@@ -95,20 +95,32 @@ export function HistorySidebar({
 
   const isCollapsed = !showHistory;
 
+  // Shared transition style for smooth expand/collapse
+  const transitionStyle: React.CSSProperties = {
+    transitionProperty: 'width, transform, opacity, background-color, color, border-color',
+    transitionDuration: '0.25s',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+
   return (
     <aside
       id="history-sidebar"
-      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background shadow-geist-medium transition-all duration-300"
+      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background shadow-geist-medium"
       style={{
         width: 'var(--sidebar-width)',
+        transitionProperty: 'width, transform, opacity, background-color, color, border-color',
+        transitionDuration: '0.25s',
+        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        contain: 'layout',
+        willChange: 'width',
       }}
       aria-label="Prompt history"
     >
       {isCollapsed ? (
         // Collapsed state - icon-only sidebar
-        <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+        <div className="flex h-screen max-h-screen flex-col overflow-hidden" style={transitionStyle}>
           {/* Header with expand button */}
-          <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-3">
+          <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-3" style={transitionStyle}>
             <Button
               onClick={() => setShowHistory(true)}
               svgOnly
@@ -120,7 +132,7 @@ export function HistorySidebar({
           </header>
 
           {/* New Prompt button - icon only */}
-          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
+          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2" style={transitionStyle}>
             <Button
               onClick={onCreateNew}
               svgOnly
@@ -129,12 +141,13 @@ export function HistorySidebar({
               className="w-full hover:bg-orange-50"
               aria-label="Create new prompt"
               title="New Prompt"
+              style={transitionStyle}
             />
           </div>
 
           {/* History icon - shows recent count */}
-          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
-            <div className="relative w-full">
+          <div className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2" style={transitionStyle}>
+            <div className="relative w-full" style={transitionStyle}>
               <Button
                 onClick={() => setShowHistory(true)}
                 svgOnly
@@ -143,9 +156,10 @@ export function HistorySidebar({
                 className="w-full"
                 aria-label="Show history"
                 title="History"
+                style={transitionStyle}
               />
               {filteredHistory.length > 0 && (
-                <span className="absolute -top-1 -right-1 h-geist-4 w-geist-4 bg-orange-500 text-white text-label-12 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 h-geist-4 w-geist-4 bg-orange-500 text-white text-label-12 rounded-full flex items-center justify-center" style={transitionStyle}>
                   {filteredHistory.length > 9 ? '9+' : filteredHistory.length}
                 </span>
               )}
@@ -156,7 +170,7 @@ export function HistorySidebar({
           <div className="flex-1" />
 
           {/* Auth Section - icon only */}
-          <footer className="flex-shrink-0 flex items-center justify-center border-t border-geist-accents-1 p-geist-2">
+          <footer className="flex-shrink-0 flex items-center justify-center border-t border-geist-accents-1 p-geist-2" style={transitionStyle}>
             {!user ? (
               <Button
                 onClick={handleSignIn}
@@ -166,23 +180,26 @@ export function HistorySidebar({
                 className="w-full"
                 aria-label="Sign in"
                 title="Sign in"
+                style={transitionStyle}
               />
             ) : (
-              <div className="relative w-full">
+              <div className="relative w-full" style={transitionStyle}>
                 <button
                   onClick={() => setShowHistory(true)}
-                  className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist-lg transition-colors flex items-center justify-center"
+                  className="w-full p-geist-2 hover:bg-geist-accents-1 rounded-geist-lg flex items-center justify-center"
                   aria-label="User menu"
                   title={typeof user.displayName === 'string' ? user.displayName : 'User'}
+                  style={transitionStyle}
                 >
                   {typeof user.photoURL === 'string' && user.photoURL ? (
                     <img
                       src={user.photoURL}
                       alt=""
                       className="h-8 w-8 rounded-full"
+                      style={transitionStyle}
                     />
                   ) : (
-                    <UserIcon size={20} className="text-geist-accents-6" />
+                    <UserIcon size={20} className="text-geist-accents-6" style={transitionStyle} />
                   )}
                 </button>
               </div>
@@ -191,45 +208,60 @@ export function HistorySidebar({
         </div>
       ) : (
         // Expanded state - full sidebar
-        <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+        <div className="flex h-screen max-h-screen flex-col overflow-hidden" style={transitionStyle}>
           {/* Header with toggle + title */}
-          <header className="flex-shrink-0 px-geist-4 py-geist-3">
+          <header className="flex-shrink-0 px-geist-4 py-geist-3" style={transitionStyle}>
             <div className="flex items-center justify-between gap-geist-3">
-              <h1 className="text-heading-20 text-geist-foreground">Prompt Builder</h1>
+              <h1 className="flex-1 text-center text-heading-20 text-geist-foreground" style={transitionStyle}>Vidra</h1>
               <Button
                 onClick={() => setShowHistory(false)}
                 svgOnly
                 variant="ghost"
                 prefix={<PanelLeft size={20} className="text-geist-accents-6" />}
                 aria-label="Collapse sidebar"
+                style={transitionStyle}
               />
             </div>
           </header>
 
           {/* New Prompt button */}
-          <div className="flex-shrink-0 px-geist-4 py-geist-3">
+          <div 
+            className="flex-shrink-0 px-geist-4 py-geist-3" 
+            style={{
+              ...transitionStyle,
+              contain: 'layout',
+              willChange: 'width, padding-left, padding-right',
+            }}
+          >
             <Button
               onClick={onCreateNew}
               size="small"
               variant="primary"
               className="bg-orange-500 hover:bg-orange-600 text-white"
               aria-label="Create new prompt"
+              style={{
+                ...transitionStyle,
+                contain: 'layout',
+                willChange: 'width, max-width',
+                minWidth: 'fit-content',
+                whiteSpace: 'nowrap',
+              }}
             >
               New Prompt
             </Button>
           </div>
 
-          {/* Sign-in message */}
-          {!user && (
-            <div className="flex-shrink-0 px-geist-4 pb-geist-2">
-              <p className="text-label-12 text-geist-accents-5">
-                Sign in to sync across devices
-              </p>
-            </div>
-          )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pt-5 pb-2">
-            <h2 className="px-geist-2 mb-geist-2 text-label-12 text-geist-foreground tracking-wide">
+          <div 
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pt-5 pb-2" 
+            style={{
+              ...transitionStyle,
+              transitionProperty: 'width, max-width, min-width, padding-left, padding-right, transform, opacity, background-color, color, border-color',
+              contain: 'layout',
+              willChange: 'width',
+            }}
+          >
+            <h2 className="px-geist-2 mb-geist-2 text-label-12 text-geist-foreground tracking-wide" style={transitionStyle}>
               Recent
             </h2>
             {isLoadingHistory ? (
@@ -249,8 +281,22 @@ export function HistorySidebar({
               <HistoryEmptyState onCreateNew={onCreateNew} />
             ) : (
               <>
-                <nav aria-label="Recent prompts list">
-                  <ul className="space-y-geist-1">
+                <nav 
+                  aria-label="Recent prompts list" 
+                  style={{
+                    ...transitionStyle,
+                    contain: 'layout',
+                    willChange: 'width',
+                  }}
+                >
+                  <ul 
+                    className="space-y-geist-1" 
+                    style={{
+                      ...transitionStyle,
+                      contain: 'layout',
+                      willChange: 'width',
+                    }}
+                  >
                     {displayedHistory.map((entry) => (
                       <HistoryItem
                         key={entry.id || entry.uuid || Math.random()}
@@ -268,6 +314,7 @@ export function HistorySidebar({
                     variant="ghost"
                     size="small"
                     className="w-full text-left text-geist-accents-5 hover:text-geist-accents-7"
+                    style={transitionStyle}
                   >
                     {showAllHistory ? 'See less' : 'See more...'}
                   </Button>
@@ -277,7 +324,7 @@ export function HistorySidebar({
           </div>
 
           {/* Auth Section */}
-          <footer className="flex-shrink-0 border-t border-geist-accents-1 p-geist-3">
+          <footer className="flex-shrink-0 border-t border-geist-accents-1 p-geist-3" style={transitionStyle}>
             <AuthMenu
               user={user}
               onSignIn={handleSignIn}

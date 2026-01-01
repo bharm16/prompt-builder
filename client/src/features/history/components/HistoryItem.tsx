@@ -73,21 +73,58 @@ export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDel
     );
   }
 
+  const transitionStyle: React.CSSProperties = {
+    transitionProperty: 'width, max-width, min-width, padding-left, padding-right',
+    transitionDuration: '0.25s',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+
   return (
-    <li>
-      <div className="group relative w-full rounded-geist-lg transition-colors hover:bg-geist-accents-1">
+    <li style={transitionStyle}>
+      <div 
+        className="group relative w-full rounded-geist-lg transition-colors hover:bg-geist-accents-1"
+        style={{
+          ...transitionStyle,
+          contain: 'layout',
+          willChange: 'width',
+        }}
+      >
         <button
           onClick={handleLoad}
           className="w-full p-geist-3 text-left"
           aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
+          style={{
+            ...transitionStyle,
+            contain: 'layout',
+            willChange: 'width',
+          }}
         >
-          <div className="flex items-start gap-geist-3">
+          <div className="flex items-start gap-geist-3" style={{ contain: 'layout' }}>
             <ModeIcon
               className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-geist-accents-4"
               aria-hidden="true"
             />
-            <div className="min-w-0 flex-1">
-              <p className="text-label-12 text-geist-foreground line-clamp-1 leading-relaxed">
+            <div 
+              className="min-w-0 flex-1 overflow-hidden" 
+              style={{
+                ...transitionStyle,
+                contain: 'layout style',
+                willChange: 'width, max-width',
+              }}
+            >
+              <p 
+                className="text-label-12 text-geist-foreground leading-relaxed"
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  display: 'block',
+                  width: '100%',
+                  transitionProperty: 'width, max-width',
+                  transitionDuration: '0.25s',
+                  transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
                 {entry.input}
               </p>
               <div className="mt-geist-2 flex items-center gap-geist-2 text-label-12 text-geist-accents-5">

@@ -32,7 +32,7 @@
        FLEXIBLE LAYOUT DIMENSIONS
        All layout sizes use clamp() for responsiveness
        ============================================ */
-    --layout-sidebar-width-expanded: 18vw;
+    --layout-sidebar-width-expanded: 240px;
     --layout-sidebar-width-collapsed: 5vw;
     --layout-bento-grid-width: 19vw;
     --layout-suggestions-panel-width: 22vw;

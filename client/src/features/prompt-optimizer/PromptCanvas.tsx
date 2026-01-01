@@ -1,5 +1,6 @@
 import React, { useRef, useMemo, useCallback, useEffect } from 'react';
 import { Pencil, X, Check } from 'lucide-react';
+import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
 import { useToast } from '@components/Toast';
@@ -36,7 +37,7 @@ import { PromptEditor } from './components/PromptEditor';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import SuggestionsPanel from '@components/SuggestionsPanel';
-import { VisualPreview, VideoPreview } from '@/features/preview';
+import { TabbedPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
 
@@ -464,12 +465,23 @@ export function PromptCanvas({
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0">
+        <div 
+          className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0"
+          style={{
+            transitionProperty: 'width, flex-basis, flex, min-width, max-width',
+            transitionDuration: '0.25s',
+            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            willChange: 'width',
+          }}
+        >
           <div
             className="mx-auto pt-geist-12 pb-geist-12 prompt-canvas-content-wrapper"
             style={{
               maxWidth: 'var(--layout-content-max-width)',
               width: '100%',
+              transitionProperty: 'max-width, width, padding-left, padding-right',
+              transitionDuration: '0.25s',
+              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             {/* PromptEditor continues working even if highlighting fails */}
@@ -551,7 +563,16 @@ export function PromptCanvas({
                 </div>
               </div>
             </div>
-            <div className="relative" aria-busy={isOutputLoading}>
+            <div 
+              className="relative" 
+              aria-busy={isOutputLoading}
+              style={{
+                contain: 'layout style',
+                transitionProperty: 'width',
+                transitionDuration: '0.25s',
+                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
               <PromptEditor
                 ref={editorRef as React.RefObject<HTMLDivElement>}
                 onTextSelection={handleTextSelection}
@@ -562,60 +583,41 @@ export function PromptCanvas({
               />
               {isOutputLoading && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center backdrop-blur-sm"
+                  className="absolute inset-0 flex items-center justify-start backdrop-blur-sm"
                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}
                   role="status"
                   aria-live="polite"
                   aria-label="Optimizing prompt"
                 >
-                  <div className="flex items-center gap-geist-2 text-label-14 text-geist-accents-6">
-                    <svg
-                      className="animate-spin h-5 w-5 text-geist-accents-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    <span>Optimizing...</span>
+                  <div className="pl-geist-5 pt-geist-4">
+                    <LoadingDots size={3} color="rgb(163, 163, 163)" />
                   </div>
                 </div>
               )}
             </div>
 
             {/* Action buttons floating below prompt content, aligned right */}
-            <PromptActions
-              onCopy={handleCopy}
-              onExport={handleExport}
-              onCreateNew={onCreateNew}
-              onShare={handleShare}
-              copied={copied}
-              shared={shared}
-              showExportMenu={showExportMenu}
-              onToggleExportMenu={setShowExportMenu}
-              showLegend={showLegend}
-              onToggleLegend={setShowLegend}
-              onUndo={onUndo}
-              onRedo={onRedo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              promptText={normalizedDisplayedPrompt ?? ''}
-              showModelMenu={showModelMenu}
-              onToggleModelMenu={setShowModelMenu}
-            />
+            {normalizedDisplayedPrompt && (
+              <PromptActions
+                onCopy={handleCopy}
+                onExport={handleExport}
+                onCreateNew={onCreateNew}
+                onShare={handleShare}
+                copied={copied}
+                shared={shared}
+                showExportMenu={showExportMenu}
+                onToggleExportMenu={setShowExportMenu}
+                showLegend={showLegend}
+                onToggleLegend={setShowLegend}
+                onUndo={onUndo}
+                onRedo={onRedo}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                promptText={normalizedDisplayedPrompt ?? ''}
+                showModelMenu={showModelMenu}
+                onToggleModelMenu={setShowModelMenu}
+              />
+            )}
           </div>
         </div>
 
@@ -629,20 +631,15 @@ export function PromptCanvas({
           }}
         >
           {/* Image Generation Section */}
-          <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0 space-y-6">
-            <VisualPreview
-              prompt={previewSource}
-              previewPrompt={previewPrompt}
+          <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 border-b border-geist-accents-2 min-h-0">
+            <TabbedPreview
+              visualPrompt={previewSource}
+              visualPreviewPrompt={previewPrompt}
+              videoPrompt={normalizedDisplayedPrompt ?? ''}
               aspectRatio={previewAspectRatio}
               isVisible={true}
+              selectedMode={selectedMode}
             />
-            {selectedMode === 'video' && (
-              <VideoPreview
-                prompt={normalizedDisplayedPrompt ?? ''}
-                aspectRatio={previewAspectRatio}
-                isVisible={true}
-              />
-            )}
           </div>
 
           {/* AI Suggestions Section */}
