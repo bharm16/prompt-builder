@@ -243,31 +243,11 @@
   display: flex !important;
   flex-direction: row !important;
   gap: 0 !important;
-  transition-property: width;
-  transition-duration: 0.25s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Smooth transitions for all columns when sidebar expands/collapses */
-.prompt-canvas-grid > div {
-  transition-property: width, flex-basis, min-width, max-width;
-  transition-duration: 0.25s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Middle column - use flex-basis transition for smoother animation */
+/* Middle column - allow flexible growth */
 .prompt-canvas-grid > div:nth-child(2) {
   flex: 1 1 0%;
-  transition-property: flex-basis, width, min-width, max-width;
-  transition-duration: 0.25s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth transition for the inner content wrapper */
-.prompt-canvas-content-wrapper {
-  transition-property: max-width, width, padding-left, padding-right;
-  transition-duration: 0.25s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Responsive content padding - 0.75vw on both sides */

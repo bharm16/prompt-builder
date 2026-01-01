@@ -465,23 +465,12 @@ export function PromptCanvas({
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div 
-          className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0"
-          style={{
-            transitionProperty: 'width, flex-basis, flex, min-width, max-width',
-            transitionDuration: '0.25s',
-            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-            willChange: 'width',
-          }}
-        >
+        <div className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0">
           <div
             className="mx-auto pt-geist-12 pb-geist-12 prompt-canvas-content-wrapper"
             style={{
               maxWidth: 'var(--layout-content-max-width)',
               width: '100%',
-              transitionProperty: 'max-width, width, padding-left, padding-right',
-              transitionDuration: '0.25s',
-              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             {/* PromptEditor continues working even if highlighting fails */}
@@ -568,9 +557,6 @@ export function PromptCanvas({
               aria-busy={isOutputLoading}
               style={{
                 contain: 'layout style',
-                transitionProperty: 'width',
-                transitionDuration: '0.25s',
-                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               <PromptEditor
