@@ -119,6 +119,46 @@ AI video models (Sora, Runway, Veo3) are sensitive to prompt quality. The differ
 
 ---
 
+## Supported Ecosystem
+
+PromptCanvas is designed to be the "upstream" tool for the entire AI video ecosystem. It optimizes prompts for:
+
+*   **OpenAI Sora** (Physics simulation & continuity)
+*   **Google Veo 3** (Cinematic lighting & atmosphere)
+*   **Runway Gen-3** (Stylized visuals & VFX)
+*   **Kling AI** (Character performance)
+*   **Luma Dream Machine** (Morphing & transitions)
+
+---
+
+## Strategic Value
+
+### For Creative Agencies
+*   **Standardize Quality:** Ensure every prompt sent to production meets a baseline of cinematographic detail.
+*   **Asset Management:** Save, search, and share successful prompt patterns across the team.
+*   **Client Alignment:** Use the visual preview to align with clients on style/mood before generating expensive video assets.
+
+### For Marketing Teams
+*   **Speed to Market:** Reduce the "prompt engineering" learning curve for social media managers and content creators.
+*   **Consistency:** Maintain brand aesthetics by reusing specific Style and Lighting tokens.
+
+---
+
+## Current Status
+
+**Production Ready Features:**
+*   ✅ Advanced Text Optimization Engine (Two-Stage Pipeline)
+*   ✅ Video Preview Generation (Wan 2.2)
+*   ✅ Image Preview Generation (Flux Schnell)
+*   ✅ Concept Builder & Improvement Wizards
+*   ✅ Scene Change & Conflict Detection
+*   ✅ Enterprise-grade History & Auto-save
+*   ✅ Multi-Format Export (JSON/MD/TXT)
+
+**[→ View Full Documentation](OVERVIEW.md)**
+
+---
+
 ## Tech Stack
 
 | | |
