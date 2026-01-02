@@ -4,26 +4,22 @@
  * Coordinates prompt optimization workflow by delegating to:
  * - usePromptOptimizerState: State management
  * - performanceMetrics: Performance measurement
- * - promptOptimizationApiV2: API calls
+ * - usePromptOptimizerApi: API calls
+ * - promptOptimizationFlow: Two-stage/single-stage orchestration
  *
  * Single Responsibility: Orchestrate the prompt optimization workflow
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '../components/Toast';
-import { promptOptimizationApiV2 } from '../services';
 import { logger } from '../services/LoggingService';
-import { usePromptOptimizerState, type SpansData } from './usePromptOptimizerState';
-import {
-  markOptimizationStart,
-  markDraftReady,
-  markRefinementComplete,
-  markSpansReceived,
-  measureOptimizeToDraft,
-  measureDraftToRefined,
-  measureOptimizeToRefinedTotal,
-} from './utils/performanceMetrics';
 import type { Toast } from './types';
+import type { PromptOptimizerActions } from './utils/promptOptimizationFlow';
+
+import { usePromptOptimizerApi } from './usePromptOptimizerApi';
+import { usePromptOptimizerState } from './usePromptOptimizerState';
+import { markOptimizationStart } from './utils/performanceMetrics';
+import { runSingleStageOptimization, runTwoStageOptimization } from './utils/promptOptimizationFlow';
 
 const log = logger.child('usePromptOptimizer');
 
@@ -56,49 +52,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       abortControllerRef.current?.abort();
     };
   }, []);
-
-  const analyzeAndOptimize = useCallback(
-    async (
-      prompt: string,
-      context: unknown | null = null,
-      brainstormContext: unknown | null = null,
-      signal?: AbortSignal,
-      targetModel?: string // New
-    ) => {
-      log.debug('analyzeAndOptimize called', {
-        promptLength: prompt.length,
-        mode: selectedMode,
-        targetModel,
-        hasContext: !!context,
-        hasBrainstormContext: !!brainstormContext,
-      });
-      logger.startTimer('analyzeAndOptimize');
-      
-      try {
-        const data = await promptOptimizationApiV2.optimizeLegacy({
-          prompt,
-          mode: selectedMode,
-          ...(targetModel ? { targetModel } : {}), // New
-          context,
-          brainstormContext,
-          ...(signal ? { signal } : {}),
-        });
-        
-        const duration = logger.endTimer('analyzeAndOptimize');
-        log.info('analyzeAndOptimize completed', {
-          duration,
-          outputLength: data.optimizedPrompt?.length || 0,
-        });
-        
-        return data;
-      } catch (error) {
-        logger.endTimer('analyzeAndOptimize');
-        log.error('analyzeAndOptimize failed', error as Error);
-        throw error;
-      }
-    },
-    [selectedMode]
-  );
+  const { analyzeAndOptimize, optimizeWithFallback, calculateQualityScore } =
+    usePromptOptimizerApi(selectedMode, log);
 
   const optimize = useCallback(
     async (
@@ -134,258 +89,52 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       try {
         markOptimizationStart();
 
-        // Use two-stage optimization if enabled
+        const actions: PromptOptimizerActions = {
+          setDraftPrompt,
+          setOptimizedPrompt,
+          setDisplayedPrompt,
+          setIsDraftReady,
+          setIsRefining,
+          setIsProcessing,
+          setDraftSpans,
+          setRefinedSpans,
+          setQualityScore,
+          setPreviewPrompt,
+          setPreviewAspectRatio,
+        };
+
         if (useTwoStage) {
-          log.debug('Starting two-stage optimization', {
-            operation: 'optimize',
-            stage: 'two-stage',
-          });
-
-          const result = await promptOptimizationApiV2.optimizeWithFallback({
-            prompt: promptToOptimize,
-            mode: selectedMode,
-            ...(selectedModel ? { targetModel: selectedModel } : {}), // New
-            context,
-            brainstormContext,
-            signal: abortController.signal,
-            onDraft: (draft: string) => {
-              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
-                return;
-              }
-              const draftDuration = logger.endTimer('optimize');
-              logger.startTimer('optimize'); // Restart for refinement phase
-              
-              markDraftReady();
-              measureOptimizeToDraft();
-
-              log.debug('Draft callback triggered', {
-                operation: 'optimize',
-                stage: 'draft',
-                draftLength: draft.length,
-                duration: draftDuration,
-              });
-
-              // Draft is ready - show it immediately
-              setDraftPrompt(draft);
-              setOptimizedPrompt(draft);
-              setDisplayedPrompt(draft);
-              setIsDraftReady(true);
-              setIsRefining(true);
-              setIsProcessing(false);
-
-              // Calculate draft score
-              const draftScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, draft);
-              setQualityScore(draftScore);
-
-              log.info('Draft ready', {
-                operation: 'optimize',
-                stage: 'draft',
-                duration: draftDuration,
-                score: draftScore,
-                outputLength: draft.length,
-              });
-
-              toast.info('Draft ready! Refining in background...');
-            },
-            onSpans: (spans: unknown[], source: string, meta?: unknown) => {
-              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
-                return;
-              }
-              markSpansReceived(source);
-
-              log.debug('Spans callback triggered', {
-                operation: 'optimize',
-                stage: source,
-                spanCount: Array.isArray(spans) ? spans.length : 0,
-                hasMeta: !!meta,
-              });
-
-              const normalizedSpans: SpansData['spans'] = Array.isArray(spans)
-                ? spans.filter((span): span is SpansData['spans'][number] => {
-                    if (!span || typeof span !== 'object') {
-                      return false;
-                    }
-                    const candidate = span as {
-                      start?: unknown;
-                      end?: unknown;
-                      category?: unknown;
-                      confidence?: unknown;
-                    };
-                    return (
-                      typeof candidate.start === 'number' &&
-                      typeof candidate.end === 'number' &&
-                      typeof candidate.category === 'string' &&
-                      typeof candidate.confidence === 'number'
-                    );
-                  })
-                : [];
-
-              // Store spans based on source (draft or refined)
-              const spansData: SpansData = {
-                spans: normalizedSpans,
-                meta: (meta as Record<string, unknown>) || null,
-                source,
-                timestamp: Date.now(),
-              };
-
-              if (source === 'draft') {
-                setDraftSpans(spansData);
-                log.debug('Draft spans stored', {
-                  operation: 'optimize',
-                  spanCount: Array.isArray(spans) ? spans.length : 0,
-                  source,
-                });
-              } else if (source === 'refined') {
-                setRefinedSpans(spansData);
-                log.debug('Refined spans stored', {
-                  operation: 'optimize',
-                  spanCount: Array.isArray(spans) ? spans.length : 0,
-                  source,
-                });
-              }
-            },
-            onRefined: (refined: string, metadata?: Record<string, unknown>) => {
-              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
-                return;
-              }
-              const refinementDuration = logger.endTimer('optimize');
-              
-              markRefinementComplete();
-              measureDraftToRefined();
-              measureOptimizeToRefinedTotal();
-
-              log.debug('Refinement callback triggered', {
-                operation: 'optimize',
-                stage: 'refined',
-                refinedLength: refined.length,
-                duration: refinementDuration,
-              });
-
-              // Refinement complete - upgrade to refined version
-              const refinedScore = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, refined);
-
-              setOptimizedPrompt(refined);
-              // IMPORTANT: Don't update displayedPrompt yet if we're waiting for refined spans
-              if (!state.refinedSpans) {
-                setDisplayedPrompt(refined);
-              }
-              if (metadata?.previewPrompt && typeof metadata.previewPrompt === 'string') {
-                setPreviewPrompt(metadata.previewPrompt);
-              }
-              if (typeof metadata?.aspectRatio === 'string' && metadata.aspectRatio.trim()) {
-                setPreviewAspectRatio(metadata.aspectRatio.trim());
-              }
-
-              setQualityScore(refinedScore);
-              setIsRefining(false);
-
-              log.info('Refinement complete', {
-                operation: 'optimize',
-                stage: 'refined',
-                duration: refinementDuration,
-                score: refinedScore,
-                outputLength: refined.length,
-              });
-
-              if (refinedScore >= 80) {
-                toast.success(`Excellent prompt! Quality score: ${refinedScore}%`);
-              } else if (refinedScore >= 60) {
-                toast.success(`Refined! Quality score: ${refinedScore}%`);
-              } else {
-                toast.info(`Refined! Score: ${refinedScore}%`);
-              }
-            },
-            onError: (error: Error) => {
-              if (abortController.signal.aborted || requestId !== requestIdRef.current) {
-                return;
-              }
-              log.error('Optimization stream error', error, {
-                operation: 'optimize',
-                mode: selectedMode,
-              });
-              setIsRefining(false);
-              setIsProcessing(false);
-            },
-          });
-
-          const totalDuration = logger.endTimer('optimize');
-
-          // Check if two-stage fell back to single-stage
-          if (result.usedFallback) {
-            log.info('Two-stage optimization fell back to single-stage', {
-              operation: 'optimize',
-              usedFallback: true,
-            });
-            toast.warning('Fast optimization unavailable. Using standard optimization (this may take longer).');
-          }
-
-          log.info('Two-stage optimization completed', {
-            operation: 'optimize',
-            duration: totalDuration,
-            usedFallback: result.usedFallback,
-            outputLength: result.refined?.length || 0,
-          });
-
-          if (abortController.signal.aborted || requestId !== requestIdRef.current) {
-            return null;
-          }
-
-          if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
-            setPreviewPrompt(result.metadata.previewPrompt);
-          }
-          if (typeof result.metadata?.aspectRatio === 'string' && result.metadata.aspectRatio.trim()) {
-            setPreviewAspectRatio(result.metadata.aspectRatio.trim());
-          }
-
-          return {
-            optimized: result.refined,
-            score: promptOptimizationApiV2.calculateQualityScore(promptToOptimize, result.refined),
-          };
-        } else {
-          log.debug('Starting single-stage optimization', {
-            operation: 'optimize',
-            stage: 'single-stage',
-          });
-
-          // Fallback to legacy single-stage optimization
-          const response = await analyzeAndOptimize(
+          return runTwoStageOptimization({
             promptToOptimize,
+            selectedMode,
+            selectedModel,
             context,
             brainstormContext,
-            abortController.signal,
-            selectedModel // New
-          );
-          const optimized = response.optimizedPrompt;
-          const score = promptOptimizationApiV2.calculateQualityScore(promptToOptimize, optimized);
-
-          setOptimizedPrompt(optimized);
-          setQualityScore(score);
-          if (response.metadata?.previewPrompt && typeof response.metadata.previewPrompt === 'string') {
-            setPreviewPrompt(response.metadata.previewPrompt);
-          }
-          if (typeof response.metadata?.aspectRatio === 'string' && response.metadata.aspectRatio.trim()) {
-            setPreviewAspectRatio(response.metadata.aspectRatio.trim());
-          }
-
-          // Show quality score toast
-          if (score >= 80) {
-            toast.success(`Excellent prompt! Quality score: ${score}%`);
-          } else if (score >= 60) {
-            toast.info(`Good prompt! Quality score: ${score}%`);
-          } else {
-            toast.warning(`Prompt could be improved. Score: ${score}%`);
-          }
-
-          const duration = logger.endTimer('optimize');
-          log.info('optimize completed (single-stage)', {
-            operation: 'optimize',
-            duration,
-            score,
-            outputLength: optimized?.length || 0,
+            abortController,
+            requestId,
+            requestIdRef,
+            refinedSpans: state.refinedSpans,
+            actions,
+            toast,
+            log,
+            optimizeWithFallback,
+            calculateQualityScore,
           });
-
-          return { optimized, score };
         }
+
+        return runSingleStageOptimization({
+          promptToOptimize,
+          selectedMode,
+          selectedModel,
+          context,
+          brainstormContext,
+          abortController,
+          actions,
+          toast,
+          log,
+          analyzeAndOptimize,
+          calculateQualityScore,
+        });
       } catch (error) {
         if ((error as Error)?.name === 'AbortError') {
           log.debug('Optimization aborted', {
@@ -415,6 +164,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       state.improvementContext,
       state.refinedSpans,
       analyzeAndOptimize,
+      optimizeWithFallback,
+      calculateQualityScore,
       toast,
       useTwoStage,
       selectedMode,

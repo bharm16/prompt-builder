@@ -25,10 +25,16 @@ import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textForma
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
 import { useParseResult } from './PromptCanvas/hooks/useParseResult';
+import { usePromptCanvasState } from './PromptCanvas/hooks/usePromptCanvasState';
+import { usePromptStatus } from './PromptCanvas/hooks/usePromptStatus';
+import { useSpanSelectionEffects } from './PromptCanvas/hooks/useSpanSelectionEffects';
+import { useSuggestionFeedback } from './PromptCanvas/hooks/useSuggestionFeedback';
+import { useSuggestionSelection } from './PromptCanvas/hooks/useSuggestionSelection';
 import { useTextSelection } from './PromptCanvas/hooks/useTextSelection';
 import { useEditorContent } from './PromptCanvas/hooks/useEditorContent';
 import { useKeyboardShortcuts } from './PromptCanvas/hooks/useKeyboardShortcuts';
 import { convertExportFormat } from './PromptCanvas/utils/exportFormatConversion';
+import { formatCategoryLabel, formatTimestamp } from './PromptCanvas/utils/promptCanvasFormatters';
 import { findHighlightNode } from './utils/highlightInteractionHelpers';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 
@@ -98,29 +104,30 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
-  // UI state (simple boolean flags - declared early to avoid hook order issues)
-  const [showExportMenu, setShowExportMenu] = React.useState<boolean>(false);
-  const [showModelMenu, setShowModelMenu] = React.useState<boolean>(false);
-  const [showLegend, setShowLegend] = React.useState<boolean>(false);
-  const [rightPaneMode, setRightPaneMode] = React.useState<'refine' | 'preview'>('refine');
-
-  const [visualLastGeneratedAt, setVisualLastGeneratedAt] = React.useState<number | null>(null);
-  const [videoLastGeneratedAt, setVideoLastGeneratedAt] = React.useState<number | null>(null);
-  const [visualGenerateRequestId, setVisualGenerateRequestId] = React.useState<number>(0);
-  const [videoGenerateRequestId, setVideoGenerateRequestId] = React.useState<number>(0);
-  const [isEditing, setIsEditing] = React.useState<boolean>(false);
-  const [originalInputPrompt, setOriginalInputPrompt] = React.useState<string>('');
-  const [originalSelectedModel, setOriginalSelectedModel] = React.useState<string | undefined>(undefined);
-  const [selectedSpanId, setSelectedSpanId] = React.useState<string | null>(null);
-  const [lastAppliedSpanId, setLastAppliedSpanId] = React.useState<string | null>(null);
-  const [hasInteracted, setHasInteracted] = React.useState<boolean>(false);
-  const [hoveredSpanId, setHoveredSpanId] = React.useState<string | null>(null);
-  const [showHighlights, setShowHighlights] = React.useState<boolean>(true);
-  const [lastSwapTime, setLastSwapTime] = React.useState<number | null>(null);
-  const [promptState, setPromptState] = React.useState<'generated' | 'edited' | 'synced'>('generated');
-  const [generatedTimestamp, setGeneratedTimestamp] = React.useState<number | null>(null);
-  const [justReplaced, setJustReplaced] = React.useState<{ from: string; to: string } | null>(null);
-  const justReplacedTimeoutRef = React.useRef<number | null>(null);
+  const { state, setState, incrementVisualRequestId, incrementVideoRequestId } =
+    usePromptCanvasState();
+  const {
+    showExportMenu,
+    showModelMenu,
+    showLegend,
+    rightPaneMode,
+    visualLastGeneratedAt,
+    videoLastGeneratedAt,
+    visualGenerateRequestId,
+    videoGenerateRequestId,
+    isEditing,
+    originalInputPrompt,
+    originalSelectedModel,
+    selectedSpanId,
+    lastAppliedSpanId,
+    hasInteracted,
+    hoveredSpanId,
+    showHighlights,
+    lastSwapTime,
+    promptState,
+    generatedTimestamp,
+    justReplaced,
+  } = state;
 
   // Normalize to NFC so span offsets and rendered text stay aligned.
   const normalizedDisplayedPrompt = useMemo(
@@ -135,15 +142,54 @@ export function PromptCanvas({
   // Extract suggestions panel visibility state
   const isSuggestionsOpen = Boolean(suggestionsData && suggestionsData.show !== false);
 
-  const formatCategoryLabel = useCallback((raw?: string | null): string => {
-    if (!raw) return '';
-    // "subject" -> "Subject", "shotType" -> "Shot Type"
-    return raw
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/_/g, ' ')
-      .trim()
-      .replace(/^./, (c) => c.toUpperCase());
-  }, []);
+  const setShowExportMenu = useCallback(
+    (value: boolean) => setState({ showExportMenu: value }),
+    [setState]
+  );
+  const setShowModelMenu = useCallback(
+    (value: boolean) => setState({ showModelMenu: value }),
+    [setState]
+  );
+  const setShowLegend = useCallback(
+    (value: boolean) => setState({ showLegend: value }),
+    [setState]
+  );
+  const setRightPaneMode = useCallback(
+    (value: 'refine' | 'preview') => setState({ rightPaneMode: value }),
+    [setState]
+  );
+  const setSelectedSpanId = useCallback(
+    (value: string | null) => setState({ selectedSpanId: value }),
+    [setState]
+  );
+  const setHoveredSpanId = useCallback(
+    (value: string | null) => setState({ hoveredSpanId: value }),
+    [setState]
+  );
+  const setShowHighlights = useCallback(
+    (value: boolean) => setState({ showHighlights: value }),
+    [setState]
+  );
+  const setIsEditing = useCallback(
+    (value: boolean) => setState({ isEditing: value }),
+    [setState]
+  );
+  const setOriginalInputPrompt = useCallback(
+    (value: string) => setState({ originalInputPrompt: value }),
+    [setState]
+  );
+  const setOriginalSelectedModel = useCallback(
+    (value: string | undefined) => setState({ originalSelectedModel: value }),
+    [setState]
+  );
+  const setVisualLastGeneratedAt = useCallback(
+    (value: number | null) => setState({ visualLastGeneratedAt: value }),
+    [setState]
+  );
+  const setVideoLastGeneratedAt = useCallback(
+    (value: number | null) => setState({ videoLastGeneratedAt: value }),
+    [setState]
+  );
 
   // Span data conversion hook
   const { memoizedInitialHighlights } = useSpanDataConversion({
@@ -285,58 +331,31 @@ export function PromptCanvas({
       const node = findHighlightNode(target, editorRef.current);
       if (node) {
         const spanId = node.dataset?.spanId || null;
-        // Only update if spanId actually changed to avoid unnecessary re-renders
-        setHoveredSpanId((prev) => prev !== spanId ? spanId : prev);
-      } else {
-        // Only clear if we're not over any highlight
-        setHoveredSpanId((prev) => prev !== null ? null : prev);
+        if (hoveredSpanId !== spanId) {
+          setHoveredSpanId(spanId);
+        }
+      } else if (hoveredSpanId !== null) {
+        setHoveredSpanId(null);
       }
     } catch (error) {
       // Silently handle errors in hover detection
       console.debug('[PromptCanvas] Error in hover detection:', error);
     }
-  }, [enableMLHighlighting]);
+  }, [enableMLHighlighting, hoveredSpanId, setHoveredSpanId]);
 
   const handleHighlightMouseLeave = useCallback((): void => {
     setHoveredSpanId(null);
-  }, []);
+  }, [setHoveredSpanId]);
 
-  // Track prompt state changes
-  useEffect(() => {
-    if (!normalizedDisplayedPrompt) {
-      setPromptState('generated');
-      setGeneratedTimestamp(null);
-      return;
-    }
-
-    // Check if prompt matches input (synced) or has been edited
-    if (normalizedDisplayedPrompt === inputPrompt) {
-      setPromptState('synced');
-    } else {
-      // Check if this is a fresh generation or an edit
-      // If we just finished processing, it's "generated just now"
-      if (isDraftReady && !isRefining && !isProcessing) {
-        setPromptState('generated');
-        // Set timestamp when first generated (only if not already set)
-        setGeneratedTimestamp((prev) => prev || Date.now());
-      } else {
-        setPromptState('edited');
-      }
-    }
-  }, [normalizedDisplayedPrompt, inputPrompt, isDraftReady, isRefining, isProcessing]);
-
-  // Track swaps for undo hint
-  useEffect(() => {
-    if (selectedSpanId && prevPromptRef.current !== null && 
-        prevPromptRef.current !== normalizedDisplayedPrompt) {
-      setLastSwapTime(Date.now());
-      // Clear hint after 3 seconds
-      setTimeout(() => setLastSwapTime(null), 3000);
-    }
-  }, [selectedSpanId, normalizedDisplayedPrompt]);
-
-  // Track previous prompt for swap detection
-  const prevPromptRef = React.useRef<string | null>(null);
+  usePromptStatus({
+    displayedPrompt: normalizedDisplayedPrompt,
+    inputPrompt,
+    isDraftReady,
+    isRefining,
+    isProcessing,
+    generatedTimestamp,
+    setState,
+  });
 
   // Editor content hook
   useEditorContent({
@@ -345,58 +364,20 @@ export function PromptCanvas({
     formattedHTML,
   });
 
-  // Manage selected span CSS classes
-  useEffect(() => {
-    if (!editorRef.current || !enableMLHighlighting) return;
+  useSpanSelectionEffects({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    enableMLHighlighting,
+    selectedSpanId,
+    displayedPrompt: normalizedDisplayedPrompt,
+    setState,
+  });
 
-    const editor = editorRef.current;
-    const allHighlights = editor.querySelectorAll('.value-word');
-    
-    // Detect swap by comparing prompt text
-    const promptChanged = prevPromptRef.current !== null && 
-                         prevPromptRef.current !== normalizedDisplayedPrompt &&
-                         selectedSpanId !== null;
-    
-    allHighlights.forEach((highlight) => {
-      const element = highlight as HTMLElement;
-      const spanId = element.dataset?.spanId;
-      
-      if (selectedSpanId && spanId === selectedSpanId) {
-        element.classList.add('value-word--selected');
-        element.classList.remove('value-word--dimmed');
-        
-        // Add swap feedback animation if prompt changed
-        if (promptChanged) {
-          element.classList.add('value-word--swapped');
-          setTimeout(() => {
-            element.classList.remove('value-word--swapped');
-          }, 300);
-        }
-      } else if (selectedSpanId) {
-        element.classList.add('value-word--dimmed');
-        element.classList.remove('value-word--selected');
-      } else {
-        element.classList.remove('value-word--selected', 'value-word--dimmed', 'value-word--swapped');
-      }
-    });
-
-    // Update previous prompt ref
-    prevPromptRef.current = normalizedDisplayedPrompt;
-  }, [selectedSpanId, enableMLHighlighting, normalizedDisplayedPrompt]);
-
-  // Track interaction for instruction visibility
-  useEffect(() => {
-    if (selectedSpanId && !hasInteracted) {
-      setHasInteracted(true);
-    }
-  }, [selectedSpanId, hasInteracted]);
-
-  // Clear selection when suggestions panel closes
-  useEffect(() => {
-    if (!isSuggestionsOpen && selectedSpanId) {
-      setSelectedSpanId(null);
-    }
-  }, [isSuggestionsOpen, selectedSpanId]);
+  useSuggestionSelection({
+    selectedSpanId,
+    hasInteracted,
+    isSuggestionsOpen,
+    setState,
+  });
 
   // Keyboard shortcuts hook
   useKeyboardShortcuts({
@@ -443,7 +424,7 @@ export function PromptCanvas({
         toast.error('Export failed');
       }
     },
-    [inputPrompt, normalizedDisplayedPrompt, qualityScore, selectedMode, toast, debug]
+    [inputPrompt, normalizedDisplayedPrompt, qualityScore, selectedMode, toast, debug, setShowExportMenu]
   );
 
   const handleCopyEvent = useCallback(
@@ -504,7 +485,7 @@ export function PromptCanvas({
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 0);
-  }, [inputPrompt, isOptimizing, selectedModel]);
+  }, [inputPrompt, isOptimizing, selectedModel, setOriginalInputPrompt, setOriginalSelectedModel, setIsEditing]);
 
   const handleModelChange = useCallback((modelId: string): void => {
     if (isOptimizing) {
@@ -523,7 +504,16 @@ export function PromptCanvas({
         textareaRef.current?.focus();
       }, 0);
     }
-  }, [inputPrompt, isEditing, isOptimizing, selectedModel, setSelectedModel]);
+  }, [
+    inputPrompt,
+    isEditing,
+    isOptimizing,
+    selectedModel,
+    setSelectedModel,
+    setOriginalInputPrompt,
+    setOriginalSelectedModel,
+    setIsEditing,
+  ]);
 
   const handleCancel = useCallback((): void => {
     // Restore original prompt and model
@@ -534,7 +524,15 @@ export function PromptCanvas({
     setIsEditing(false);
     setOriginalInputPrompt('');
     setOriginalSelectedModel(undefined);
-  }, [originalInputPrompt, originalSelectedModel, onInputPromptChange, setSelectedModel]);
+  }, [
+    originalInputPrompt,
+    originalSelectedModel,
+    onInputPromptChange,
+    setSelectedModel,
+    setIsEditing,
+    setOriginalInputPrompt,
+    setOriginalSelectedModel,
+  ]);
 
   const handleUpdate = useCallback((): void => {
     if (isProcessing || isRefining) {
@@ -548,7 +546,16 @@ export function PromptCanvas({
     setIsEditing(false);
     setOriginalInputPrompt('');
     setOriginalSelectedModel(undefined);
-  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
+  }, [
+    inputPrompt,
+    isProcessing,
+    isRefining,
+    onReoptimize,
+    debug,
+    setIsEditing,
+    setOriginalInputPrompt,
+    setOriginalSelectedModel,
+  ]);
 
   const handleInputPromptKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -570,45 +577,12 @@ export function PromptCanvas({
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
 
-  const clearJustReplacedTimeout = useCallback((): void => {
-    if (justReplacedTimeoutRef.current) {
-      window.clearTimeout(justReplacedTimeoutRef.current);
-      justReplacedTimeoutRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearJustReplacedTimeout();
-    };
-  }, [clearJustReplacedTimeout]);
-
-  const handleSuggestionClickWithFeedback = useCallback(
-    (suggestion: unknown): void => {
-      const suggestionText =
-        typeof suggestion === 'string'
-          ? suggestion
-          : (suggestion as { text?: string } | null)?.text || '';
-      const from = suggestionsData?.selectedText || '';
-
-      if (from && suggestionText) {
-        setJustReplaced({ from, to: suggestionText });
-        clearJustReplacedTimeout();
-        justReplacedTimeoutRef.current = window.setTimeout(() => {
-          setJustReplaced(null);
-          justReplacedTimeoutRef.current = null;
-        }, 3000);
-      }
-
-      // Track the last intentful change so Preview can route users back to the most likely culprit.
-      if (selectedSpanId) {
-        setLastAppliedSpanId(selectedSpanId);
-      }
-
-      onSuggestionClick?.(suggestion as never);
-    },
-    [onSuggestionClick, suggestionsData?.selectedText, clearJustReplacedTimeout, selectedSpanId]
-  );
+  const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
+    suggestionsData,
+    selectedSpanId,
+    onSuggestionClick,
+    setState,
+  });
 
   const showVideoPreview = selectedMode === 'video';
 
@@ -618,14 +592,14 @@ export function PromptCanvas({
     ({ generatedAt }: { prompt: string; generatedAt: number }) => {
       setVisualLastGeneratedAt(generatedAt);
     },
-    []
+    [setVisualLastGeneratedAt]
   );
 
   const handleVideoPreviewGenerated = useCallback(
     ({ generatedAt }: { prompt: string; generatedAt: number }) => {
       setVideoLastGeneratedAt(generatedAt);
     },
-    []
+    [setVideoLastGeneratedAt]
   );
 
   const focusSpan = useCallback(
@@ -686,40 +660,25 @@ export function PromptCanvas({
         allLabeledSpans: parseResult.spans,
       });
     },
-    [onFetchSuggestions, normalizedDisplayedPrompt, parseResult.spans, editorRef]
+    [onFetchSuggestions, normalizedDisplayedPrompt, parseResult.spans, editorRef, setSelectedSpanId]
   );
 
   const handleKeepRefiningFromPreview = useCallback((): void => {
     setRightPaneMode('refine');
-  }, []);
+  }, [setRightPaneMode]);
 
   const handleSomethingOffFromPreview = useCallback((): void => {
     setRightPaneMode('refine');
     focusSpan(lastAppliedSpanId ?? selectedSpanId);
-  }, [focusSpan, lastAppliedSpanId, selectedSpanId]);
+  }, [focusSpan, lastAppliedSpanId, selectedSpanId, setRightPaneMode]);
 
   const handleGenerateVisualPreview = useCallback((): void => {
-    setVisualGenerateRequestId((prev) => prev + 1);
-  }, []);
+    incrementVisualRequestId();
+  }, [incrementVisualRequestId]);
 
   const handleGenerateVideoPreview = useCallback((): void => {
-    setVideoGenerateRequestId((prev) => prev + 1);
-  }, []);
-
-  // Format timestamp helper - declared early to avoid hoisting issues
-  const formatTimestamp = useCallback((timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  }, []);
+    incrementVideoRequestId();
+  }, [incrementVideoRequestId]);
 
   // Render the component
   return (
@@ -1169,15 +1128,15 @@ export function PromptCanvas({
                       <div className="text-label-12 text-geist-foreground truncate">
                         ✓ Replaced “{justReplaced.from}” → “{justReplaced.to}”
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUndo?.();
-                          setJustReplaced(null);
-                        }}
-                        className="text-label-12 font-medium text-geist-accents-6 hover:text-geist-foreground"
-                        aria-label="Undo replacement"
-                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUndo?.();
+                            setState({ justReplaced: null });
+                          }}
+                          className="text-label-12 font-medium text-geist-accents-6 hover:text-geist-foreground"
+                          aria-label="Undo replacement"
+                        >
                         Undo
                       </button>
                     </div>

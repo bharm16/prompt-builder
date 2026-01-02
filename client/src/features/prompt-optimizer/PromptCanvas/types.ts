@@ -123,17 +123,31 @@ export interface SuggestionsData {
 
 export interface PromptCanvasState {
   showExportMenu: boolean;
+  showModelMenu: boolean;
   showLegend: boolean;
-  hasUserEdited: boolean;
-  parseResult: ParseResult;
+  rightPaneMode: 'refine' | 'preview';
+  showHighlights: boolean;
+  visualLastGeneratedAt: number | null;
+  videoLastGeneratedAt: number | null;
+  visualGenerateRequestId: number;
+  videoGenerateRequestId: number;
+  isEditing: boolean;
+  originalInputPrompt: string;
+  originalSelectedModel?: string;
+  selectedSpanId: string | null;
+  lastAppliedSpanId: string | null;
+  hasInteracted: boolean;
+  hoveredSpanId: string | null;
+  lastSwapTime: number | null;
+  promptState: 'generated' | 'edited' | 'synced';
+  generatedTimestamp: number | null;
+  justReplaced: { from: string; to: string } | null;
 }
 
 export type PromptCanvasAction =
-  | { type: 'SET_SHOW_EXPORT_MENU'; value: boolean }
-  | { type: 'SET_SHOW_LEGEND'; value: boolean }
-  | { type: 'SET_HAS_USER_EDITED'; value: boolean }
-  | { type: 'SET_PARSE_RESULT'; value: ParseResult }
-  | { type: 'RESET_PARSE_RESULT'; displayedPrompt: string };
+  | { type: 'MERGE_STATE'; payload: Partial<PromptCanvasState> }
+  | { type: 'INCREMENT_VISUAL_REQUEST_ID' }
+  | { type: 'INCREMENT_VIDEO_REQUEST_ID' };
 
 export interface ValidSpan {
   start: number;
