@@ -69,18 +69,19 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 
   return (
     <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
-      <div className="relative -mx-0.5" ref={copyMenuRef}>
+      {/* Primary action - Copy */}
+      <div className="relative" ref={copyMenuRef}>
         <Button
           onClick={handleCopyClick}
-          svgOnly={!copied}
+          svgOnly={false}
           variant="ghost"
-          prefix={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          className={copied ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
+          prefix={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          className={copied ? 'text-green-600 bg-green-50' : 'prompt-actions__primary'}
           aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
           aria-expanded={showModelMenu}
           title="Copy"
         >
-          {copied && <span className="text-label-12">Copied!</span>}
+          <span className="text-button-14 font-medium">{copied ? 'Copied!' : 'Copy'}</span>
         </Button>
         {showModelMenu && (
           <ModelMenu

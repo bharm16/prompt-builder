@@ -99,6 +99,16 @@
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+  cursor: pointer;
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.15s ease;
+  /* Reduce base saturation for better text readability */
+  opacity: 0.85;
+}
+
+/* Restore full opacity on hover/selection */
+.value-word:hover,
+.value-word--selected {
+  opacity: 1 !important;
 }
 
 /* Confidence level indicators */
@@ -122,61 +132,132 @@
   transform: translateY(-0.5px);
   cursor: pointer !important;
   opacity: 1 !important;
+  z-index: 1;
 }
 
 .value-word:active {
   transform: translateY(0px);
 }
 
-/* Category-specific hover enhancements */
+/* Selected span state - active and prominent */
+.value-word--selected {
+  opacity: 1 !important;
+  filter: brightness(1.05);
+  border-bottom-width: 3px !important;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dimmed spans when another is selected */
+.value-word--dimmed {
+  opacity: 0.4 !important;
+  filter: grayscale(0.3);
+}
+
+.value-word--dimmed:hover {
+  opacity: 0.6 !important;
+}
+
+/* Category-specific hover enhancements - reduced saturation for readability */
 .value-word-wardrobe:hover {
-  background-color: rgba(255,214,0,.35) !important;
-  border-bottom-color: rgba(255,214,0,.8) !important;
+  background-color: rgba(255,214,0,.2) !important;
+  border-bottom-color: rgba(255,214,0,.6) !important;
 }
 
 .value-word-appearance:hover {
-  background-color: rgba(255,105,180,.35) !important;
-  border-bottom-color: rgba(255,105,180,.8) !important;
+  background-color: rgba(255,105,180,.2) !important;
+  border-bottom-color: rgba(255,105,180,.6) !important;
 }
 
 .value-word-lighting:hover {
-  background-color: rgba(249, 115, 22, 0.2) !important;
-  border-bottom-color: rgba(249, 115, 22, 0.6) !important;
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  border-bottom-color: rgba(249, 115, 22, 0.5) !important;
 }
 
 .value-word-timeofday:hover {
-  background-color: rgba(135,206,235,.35) !important;
-  border-bottom-color: rgba(135,206,235,.8) !important;
+  background-color: rgba(135,206,235,.2) !important;
+  border-bottom-color: rgba(135,206,235,.6) !important;
 }
 
 .value-word-cameramove:hover {
-  background-color: rgba(139, 92, 246, 0.2) !important;
-  border-bottom-color: rgba(139, 92, 246, 0.6) !important;
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  border-bottom-color: rgba(139, 92, 246, 0.5) !important;
 }
 
 .value-word-framing:hover {
-  background-color: rgba(186,85,211,.35) !important;
-  border-bottom-color: rgba(186,85,211,.8) !important;
+  background-color: rgba(186,85,211,.2) !important;
+  border-bottom-color: rgba(186,85,211,.6) !important;
 }
 
 .value-word-environment:hover {
-  background-color: rgba(6, 182, 212, 0.2) !important;
-  border-bottom-color: rgba(6, 182, 212, 0.6) !important;
+  background-color: rgba(6, 182, 212, 0.15) !important;
+  border-bottom-color: rgba(6, 182, 212, 0.5) !important;
 }
 
 .value-word-color:hover {
-  background-color: rgba(244, 63, 94, 0.2) !important;
-  border-bottom-color: rgba(244, 63, 94, 0.6) !important;
+  background-color: rgba(244, 63, 94, 0.15) !important;
+  border-bottom-color: rgba(244, 63, 94, 0.5) !important;
 }
 
 .value-word-technical:hover {
-  background-color: rgba(99, 102, 241, 0.2) !important;
-  border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  border-bottom-color: rgba(99, 102, 241, 0.5) !important;
 }
 
 .value-word-descriptive:hover {
-  background-color: rgba(250, 204, 21, 0.25) !important;
-  border-bottom-color: rgba(250, 204, 21, 0.6) !important;
+  background-color: rgba(250, 204, 21, 0.18) !important;
+  border-bottom-color: rgba(250, 204, 21, 0.5) !important;
+}
+
+/* Swap feedback animation */
+@keyframes swapFeedback {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.value-word--swapped {
+  animation: swapFeedback 0.3s ease-out;
+}
+
+/* Updated indicator */
+.value-word--updated::after {
+  content: '✓';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--geist-foreground);
+  color: white;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  animation: fadeInOut 1.5s ease-out;
+  z-index: 10;
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  20%, 80% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Tooltip on hover - shows category */
@@ -254,4 +335,419 @@
 .prompt-canvas-content-wrapper {
   padding-left: 0.75vw !important;
   padding-right: 0.75vw !important;
+}
+
+/* ============================================
+   PROMPT BAND SYSTEM (1 + 6: Cards + Background Bands)
+   ============================================ */
+
+/* Full-width background bands */
+.prompt-band {
+  width: 100%;
+  padding-top: var(--spacing-xl);
+  padding-bottom: var(--spacing-xl);
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.prompt-band__content {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Original prompt band - subtle gray */
+.prompt-band--original {
+  background-color: #F6F7F9;
+}
+
+.prompt-band--original[data-optimizing="true"] {
+  opacity: 0.7;
+}
+
+/* Optimized prompt band - white/tinted */
+.prompt-band--optimized {
+  background-color: #FFFFFF;
+}
+
+.prompt-band--optimized[data-loading="true"] {
+  background-color: #F9FBFF;
+}
+
+/* ============================================
+   PROMPT CARDS (1: Two Cards)
+   ============================================ */
+
+.prompt-card {
+  background: var(--geist-background);
+  border: 1px solid var(--geist-accents-2);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prompt-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--geist-accents-2);
+}
+
+.prompt-card__label {
+  font-family: var(--font-geist-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--geist-accents-6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prompt-card__action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--geist-accents-7);
+  background: transparent;
+  border: none;
+  border-radius: var(--geist-radius);
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.prompt-card__action-button:hover:not(:disabled) {
+  background-color: var(--geist-accents-1);
+}
+
+.prompt-card__action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.prompt-card__body {
+  padding: var(--spacing-lg);
+}
+
+.prompt-card__body--editor {
+  padding: var(--spacing-lg);
+  min-height: 120px;
+}
+
+.prompt-card__footer {
+  margin-top: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.prompt-card__instruction {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--geist-accents-1);
+  border-radius: var(--geist-radius);
+  border-left: 3px solid var(--geist-accents-4);
+}
+
+.prompt-card__instruction {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--geist-accents-1);
+  border-radius: var(--geist-radius);
+  border-left: 3px solid var(--geist-accents-4);
+}
+
+.prompt-card__instruction-text {
+  font-family: var(--font-geist-sans);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--geist-accents-6);
+  font-style: italic;
+}
+
+.prompt-card__state-badge {
+  font-family: var(--font-geist-sans);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prompt-card__state-badge--generated {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: rgb(22, 163, 74);
+}
+
+.prompt-card__state-badge--edited {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(37, 99, 235);
+}
+
+.prompt-card__state-badge--out-of-sync {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(220, 38, 38);
+}
+
+.prompt-card__undo-hint {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: var(--geist-radius);
+  border-left: 3px solid rgba(59, 130, 246, 0.3);
+  animation: fadeInSlide 0.3s ease-out;
+}
+
+.prompt-card__undo-hint-text {
+  font-family: var(--font-geist-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--geist-accents-6);
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Primary action button styling */
+.prompt-actions__primary {
+  background-color: var(--geist-foreground) !important;
+  color: white !important;
+  padding: var(--spacing-xs) var(--spacing-md) !important;
+  border-radius: var(--geist-radius) !important;
+}
+
+.prompt-actions__primary:hover {
+  background-color: var(--geist-accents-8) !important;
+}
+
+/* Selected span item in left panel */
+.span-item--selected {
+  border-width: 2px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+/* Hover preview effect for right panel */
+.suggestions-panel--hover-preview {
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Original card styling - muted, monospace */
+.prompt-card--original {
+  position: relative;
+}
+
+.prompt-card--original .prompt-card__body {
+  background-color: var(--geist-accents-1);
+}
+
+/* Optimized card styling - active, high contrast */
+.prompt-card--optimized {
+  border-color: var(--geist-accents-3);
+}
+
+.prompt-card--optimized:focus-within {
+  border-color: var(--geist-accents-4);
+  box-shadow: 0 0 0 1px var(--geist-accents-2);
+}
+
+/* ============================================
+   PROMPT INPUT STYLING (4: Syntax & Interaction Contrast)
+   ============================================ */
+
+.prompt-input {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  font-family: var(--font-geist-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--geist-foreground);
+}
+
+/* Original input - monospace, muted */
+.prompt-input--original {
+  font-family: var(--font-geist-mono);
+  color: var(--geist-accents-6);
+  background-color: transparent;
+}
+
+.prompt-input--original::placeholder {
+  color: var(--geist-accents-4);
+}
+
+.prompt-input--original:read-only {
+  cursor: default;
+  color: var(--geist-accents-6);
+}
+
+/* ============================================
+   PROMPT EDITOR WRAPPER (4: Rich, Active Styling)
+   ============================================ */
+
+.prompt-editor-wrapper {
+  position: relative;
+  min-height: 120px;
+}
+
+/* Optimized editor - high contrast, active appearance */
+.prompt-editor {
+  outline: none;
+  cursor: text;
+  font-family: var(--font-geist-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--geist-foreground);
+  width: 100%;
+  min-height: 120px;
+  caret-color: rgb(0, 0, 0);
+}
+
+.prompt-editor:focus {
+  outline: none;
+}
+
+.prompt-editor-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: var(--spacing-lg);
+  background-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: var(--geist-radius-lg);
+}
+
+/* ============================================
+   TRANSFORMATION INDICATOR (3: Directionality)
+   ============================================ */
+
+.prompt-transformation-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0;
+  background-color: var(--geist-background);
+  position: relative;
+}
+
+.prompt-transformation-indicator__line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--geist-accents-2);
+  max-width: 200px;
+}
+
+.prompt-transformation-indicator__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-md);
+}
+
+.prompt-transformation-indicator__arrow {
+  color: var(--geist-accents-5);
+  animation: prompt-transformation-arrow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.prompt-transformation-indicator__label {
+  font-family: var(--font-geist-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--geist-accents-6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   ANIMATIONS (7: Used Correctly)
+   ============================================ */
+
+/* Arrow animation - only on generation (runs once when element appears) */
+.prompt-transformation-indicator {
+  animation: prompt-transformation-indicator-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes prompt-transformation-indicator-appear {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes prompt-transformation-arrow {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optimized card fade-in on generation - only when transitioning from loading */
+.prompt-band--optimized[data-has-content="true"]:not([data-loading="true"]) {
+  animation: prompt-optimized-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes prompt-optimized-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Original card dim on optimization - smooth transition */
+.prompt-band--original[data-optimizing="true"] {
+  animation: prompt-original-dim 0.3s ease;
+}
+
+@keyframes prompt-original-dim {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+/* Reset animation when optimization completes */
+.prompt-band--original:not([data-optimizing="true"]) {
+  animation: prompt-original-restore 0.3s ease;
+}
+
+@keyframes prompt-original-restore {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
 }

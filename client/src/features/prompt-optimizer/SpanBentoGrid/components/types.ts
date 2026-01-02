@@ -29,6 +29,7 @@ export interface BentoBoxProps {
   spans: Span[];
   config: CategoryConfig;
   onSpanClick: (span: Span) => void;
+  selectedSpanId?: string | null;
 }
 
 export interface SpanItemProps {
@@ -36,5 +37,6 @@ export interface SpanItemProps {
   onClick?: (span: Span) => void;
   backgroundColor?: string;
   borderColor?: string;
+  isSelected?: boolean;
 }
 

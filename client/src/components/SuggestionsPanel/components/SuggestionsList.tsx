@@ -34,6 +34,7 @@ interface SuggestionsListProps {
   onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
   isPlaceholder?: boolean;
   showCopyAction?: boolean;
+  variant?: 'default' | 'tokenEditor';
 }
 
 export function SuggestionsList({
@@ -41,6 +42,7 @@ export function SuggestionsList({
   onSuggestionClick = () => {},
   isPlaceholder = false,
   showCopyAction = true,
+  variant = 'default',
 }: SuggestionsListProps): React.ReactElement | null {
   const toast = useToast();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -56,6 +58,60 @@ export function SuggestionsList({
       onSuggestionClick(payload);
     }
   };
+
+  if (variant === 'tokenEditor') {
+    return (
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-geist-4 pb-geist-3 pt-geist-2 space-y-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3 hover:[&::-webkit-scrollbar-thumb:hover]:bg-geist-accents-4"
+        role="list"
+        aria-label="Suggestion options"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.scrollbarColor =
+            'var(--geist-accents-3) var(--geist-accents-1)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.scrollbarColor =
+            'transparent transparent';
+        }}
+      >
+        {suggestions.map((suggestion, index) => {
+          const suggestionObj = normalizeSuggestion(suggestion);
+          if (!suggestionObj) return null;
+          const suggestionText = suggestionObj.text || '';
+          const key = generateSuggestionKey(suggestionObj, index);
+
+          return (
+            <div
+              key={key}
+              role="listitem"
+              className="flex items-center justify-between gap-geist-3 py-2"
+            >
+              <button
+                type="button"
+                onClick={() => handleSuggestionSelect(suggestionObj)}
+                className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 rounded-geist"
+                aria-label={`Apply suggestion: ${suggestionText}`}
+              >
+                <span className="text-copy-13 text-geist-foreground truncate">
+                  • {suggestionText}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSuggestionSelect(suggestionObj)}
+                className="flex-shrink-0 inline-flex items-center justify-center px-geist-2.5 py-1 text-label-12 font-medium bg-geist-foreground text-geist-background rounded-geist hover:bg-geist-accents-8 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5"
+                aria-label={`Apply ${suggestionText}`}
+              >
+                Apply
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   /**
    * Copy text to clipboard with error handling.

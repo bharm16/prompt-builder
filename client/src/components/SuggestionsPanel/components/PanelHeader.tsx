@@ -74,23 +74,35 @@ export function PanelHeader({
               </span>
             </div>
           )}
-          <div className="flex items-start gap-geist-2">
-            {ContextIcon ? (
-              <div className="p-geist-1 bg-geist-accents-1 rounded-geist border border-geist-accents-2 flex-shrink-0">
-                <ContextIcon className="h-3 w-3 text-geist-accents-6" aria-hidden="true" />
+          <div className="flex flex-col gap-geist-2">
+            <div className="flex items-start gap-geist-2">
+              {ContextIcon ? (
+                <div className="p-geist-1 bg-geist-accents-1 rounded-geist border border-geist-accents-2 flex-shrink-0">
+                  <ContextIcon className="h-3 w-3 text-geist-accents-6" aria-hidden="true" />
+                </div>
+              ) : null}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-geist-1">
+                  <div className="flex items-center gap-geist-2">
+                    <span className="text-label-12 font-medium text-geist-accents-6 uppercase tracking-wide">
+                      Editing:
+                    </span>
+                    <span className="text-label-12 text-geist-foreground break-words font-medium">
+                      "{contextValue}"
+                    </span>
+                  </div>
+                  {contextSecondaryValue && (
+                    <div className="flex items-center gap-geist-2">
+                      <span className="text-label-12 font-medium text-geist-accents-6 uppercase tracking-wide">
+                        Category:
+                      </span>
+                      <span className="text-label-12 text-geist-foreground break-words capitalize">
+                        {contextSecondaryValue}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : null}
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-geist-2 px-geist-2 py-geist-1 bg-geist-accents-1 border border-geist-accents-2 rounded-geist">
-                <p className="text-label-12 text-geist-foreground break-words">
-                  {contextValue}
-                </p>
-              </div>
-              {contextSecondaryValue && (
-                <p className="mt-geist-1 text-label-12 text-geist-accents-5 break-words">
-                  {contextSecondaryValue}
-                </p>
-              )}
             </div>
           </div>
         </div>

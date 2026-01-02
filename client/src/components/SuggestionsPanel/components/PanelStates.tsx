@@ -141,17 +141,36 @@ interface InactiveStateProps {
 
 export function InactiveState({ inactiveState }: InactiveStateProps): React.ReactElement {
   const InactiveIcon = inactiveState.icon;
+  const example = inactiveState.example;
 
   return (
-    <div className="flex flex-1 items-center justify-center px-geist-3 py-geist-6">
-      <div className="text-center max-w-[200px]">
-        <div className="relative inline-flex mb-geist-3">
-          <div className="relative p-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist">
-            <InactiveIcon className="h-6 w-6 text-geist-accents-5" aria-hidden="true" />
+    <div className="flex flex-1 items-start justify-start px-geist-4 py-geist-4">
+      <div className="w-full max-w-[360px]">
+        <div className="flex items-start gap-geist-3">
+          <div className="relative p-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist flex-shrink-0">
+            <InactiveIcon className="h-5 w-5 text-geist-accents-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-sm font-medium text-geist-foreground">
+              {inactiveState.title}
+            </h4>
+            <p className="mt-1 text-label-12 text-geist-accents-5">
+              {inactiveState.description}
+            </p>
           </div>
         </div>
-        <h4 className="text-label-12 text-geist-foreground mb-geist-1">{inactiveState.title}</h4>
-        <p className="text-label-12 text-geist-accents-5">{inactiveState.description}</p>
+
+        {example?.from && Array.isArray(example.to) && example.to.length > 0 && (
+          <div className="mt-geist-4">
+            <div className="text-[11px] font-medium text-geist-accents-5 uppercase tracking-wide mb-geist-2">
+              Example
+            </div>
+            <div className="px-geist-3 py-geist-2 bg-geist-accents-1 border border-geist-accents-2 rounded-geist text-label-12 text-geist-foreground font-mono">
+              {example.from} → {example.to.join(' | ')}
+            </div>
+          </div>
+        )}
+
         {Array.isArray(inactiveState.tips) && inactiveState.tips.length > 0 && (
           <div className="mt-geist-3 space-y-geist-1 text-left">
             {inactiveState.tips.map((tip, index) => {

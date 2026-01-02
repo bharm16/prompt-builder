@@ -10,6 +10,7 @@ export interface SpanBentoGridProps {
   spans: Span[];
   onSpanClick?: (span: Span) => void;
   editorRef: RefObject<HTMLElement>;
+  selectedSpanId?: string | null;
 }
 
 /**
@@ -33,6 +34,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   spans,
   onSpanClick,
   editorRef,
+  selectedSpanId,
 }) => {
   const { groups } = useSpanGrouping(spans);
   const orderedCategories = CATEGORY_ORDER as Array<keyof typeof CATEGORY_CONFIG>;
@@ -48,16 +50,6 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   
   return (
     <>
-      {/* GEIST HEADER: White background, border bottom, padding 4 (16pt) */}
-      <div className="flex-shrink-0 px-geist-4 py-geist-3 bg-geist-background border-b border-geist-accents-2 flex items-center justify-between">
-        <h3 className="text-label-12 font-semibold uppercase tracking-wider text-geist-accents-5">
-          Analysis
-        </h3>
-        <span className="text-label-12 text-geist-accents-4 font-mono">
-          {spans.length} SPANS
-        </span>
-      </div>
-
       {/* SCROLL AREA: Custom scrollbar styling via Tailwind utilities */}
       <div 
         className="flex-1 overflow-y-auto p-4 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-base-200 hover:[&::-webkit-scrollbar-thumb]:bg-base-300"
@@ -80,6 +72,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
               spans={groups[category] || []}
               config={config}
               onSpanClick={handleSpanClick}
+              selectedSpanId={selectedSpanId}
             />
           );
         })}

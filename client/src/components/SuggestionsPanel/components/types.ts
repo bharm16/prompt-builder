@@ -23,9 +23,15 @@ export interface TipItem {
   icon?: PanelIcon;
 }
 
+export interface InactiveExampleConfig {
+  from: string;
+  to: string[];
+}
+
 export interface InactiveStateConfig {
   icon: PanelIcon;
   title: string;
   description: string;
   tips?: TipItem[];
+  example?: InactiveExampleConfig;
 }

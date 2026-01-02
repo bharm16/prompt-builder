@@ -10,12 +10,13 @@ export interface HistoryItemProps {
   modes: Mode[];
   onLoad: (entry: PromptHistoryEntry) => void;
   onDelete: (id: string) => void;
+  isSelected?: boolean;
 }
 
 /**
  * Memoized history item component with delete functionality
  */
-export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDelete }) => {
+export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDelete, isSelected = false }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<boolean>(false);
   const modeInfo = modes.find((m) => m.id === entry.mode);
   const ModeIcon: LucideIcon = modeInfo?.icon || FileText;
@@ -75,7 +76,13 @@ export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDel
 
   return (
     <li>
-      <div className="group relative w-full rounded-geist-lg transition-colors hover:bg-geist-accents-1">
+      <div 
+        className={`group relative w-full rounded-geist-lg transition-colors ${
+          isSelected 
+            ? 'bg-geist-background shadow-geist-medium' 
+            : 'hover:bg-geist-accents-1'
+        }`}
+      >
         <button
           onClick={handleLoad}
           className="w-full p-geist-3 text-left"
@@ -123,7 +130,8 @@ export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDel
 }, (prevProps, nextProps) => {
   return prevProps.entry.id === nextProps.entry.id &&
     prevProps.entry.input === nextProps.entry.input &&
-    prevProps.entry.score === nextProps.entry.score;
+    prevProps.entry.score === nextProps.entry.score &&
+    prevProps.isSelected === nextProps.isSelected;
 });
 
 HistoryItem.displayName = 'HistoryItem';

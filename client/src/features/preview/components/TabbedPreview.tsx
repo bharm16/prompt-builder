@@ -11,27 +11,39 @@ import { VideoPreview } from './VideoPreview';
 
 interface TabbedPreviewProps {
   visualPrompt: string;
-  visualPreviewPrompt?: string | null;
   videoPrompt: string;
   aspectRatio?: string | null;
   isVisible: boolean;
   selectedMode?: string;
+  onActiveTabChange?: ((tab: 'visual' | 'video') => void) | undefined;
+  onVisualPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onVideoPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onKeepRefining?: (() => void) | undefined;
+  onRefinePrompt?: (() => void) | undefined;
 }
 
 type TabType = 'visual' | 'video';
 
 export const TabbedPreview: React.FC<TabbedPreviewProps> = ({
   visualPrompt,
-  visualPreviewPrompt,
   videoPrompt,
   aspectRatio,
   isVisible,
   selectedMode = 'video',
+  onActiveTabChange,
+  onVisualPreviewGenerated,
+  onVideoPreviewGenerated,
+  onKeepRefining,
+  onRefinePrompt,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('visual');
 
   // Only show video tab if in video mode
   const showVideoTab = selectedMode === 'video';
+
+  React.useEffect(() => {
+    onActiveTabChange?.(activeTab);
+  }, [activeTab, onActiveTabChange]);
 
   if (!isVisible) {
     return null;
@@ -78,15 +90,20 @@ export const TabbedPreview: React.FC<TabbedPreviewProps> = ({
         {activeTab === 'visual' ? (
           <VisualPreview
             prompt={visualPrompt}
-            previewPrompt={visualPreviewPrompt}
             aspectRatio={aspectRatio}
             isVisible={true}
+            onPreviewGenerated={onVisualPreviewGenerated}
+            onKeepRefining={onKeepRefining}
+            onRefinePrompt={onRefinePrompt}
           />
         ) : showVideoTab ? (
           <VideoPreview
             prompt={videoPrompt}
             aspectRatio={aspectRatio}
             isVisible={true}
+            onPreviewGenerated={onVideoPreviewGenerated}
+            onKeepRefining={onKeepRefining}
+            onRefinePrompt={onRefinePrompt}
           />
         ) : null}
       </div>

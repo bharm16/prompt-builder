@@ -11,9 +11,11 @@ import { useImagePreview } from '../hooks/useImagePreview';
 
 interface VisualPreviewProps {
   prompt: string;
-  previewPrompt?: string | null;
   aspectRatio?: string | null;
   isVisible: boolean;
+  onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onKeepRefining?: (() => void) | undefined;
+  onRefinePrompt?: (() => void) | undefined;
 }
 
 const SUPPORTED_ASPECT_RATIOS = new Set([
@@ -81,9 +83,11 @@ const normalizeAspectRatio = (value?: string | null): string | null => {
 
 export const VisualPreview: React.FC<VisualPreviewProps> = ({
   prompt,
-  previewPrompt = null,
   aspectRatio = null,
   isVisible,
+  onPreviewGenerated,
+  onKeepRefining,
+  onRefinePrompt,
 }) => {
   const normalizedAspectRatio = React.useMemo(
     () => normalizeAspectRatio(aspectRatio),
@@ -94,13 +98,10 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     isVisible,
     ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
   });
+  const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
+  const lastReportedUrlRef = React.useRef<string | null>(null);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
   const copyTimeoutRef = React.useRef<number | null>(null);
-
-  const previewPromptText =
-    typeof previewPrompt === 'string' ? previewPrompt.trim() : '';
-  const hasPreviewPrompt = previewPromptText.length > 0;
 
   React.useEffect(() => {
     return () => {
@@ -111,8 +112,21 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   }, []);
 
   React.useEffect(() => {
-    setCopied(false);
-  }, [previewPromptText]);
+    if (!imageUrl) return;
+    if (lastReportedUrlRef.current === imageUrl) return;
+    lastReportedUrlRef.current = imageUrl;
+    if (onPreviewGenerated) {
+      onPreviewGenerated({
+        prompt: lastRequestedPrompt || prompt,
+        generatedAt: Date.now(),
+      });
+    }
+  }, [imageUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
+
+  const handleGenerate = React.useCallback(() => {
+    setLastRequestedPrompt(prompt);
+    regenerate();
+  }, [prompt, regenerate]);
 
   const handleExportKeyframe = React.useCallback(async () => {
     if (!imageUrl || isExporting) {
@@ -141,64 +155,19 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     }
   }, [imageUrl, isExporting]);
 
-  const handleCopyPreviewPrompt = React.useCallback(async () => {
-    if (!hasPreviewPrompt) {
-      return;
-    }
-
-    const copyText = previewPromptText;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(copyText);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = copyText;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        document.execCommand('copy');
-        textarea.remove();
-      }
-
-      setCopied(true);
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-      }
-      copyTimeoutRef.current = window.setTimeout(() => {
-        setCopied(false);
-      }, 1500);
-    } catch {
-      setCopied(false);
-    }
-  }, [hasPreviewPrompt, previewPromptText]);
-
   if (!isVisible) return null;
 
   const displayAspectRatio = normalizedAspectRatio ?? '16:9';
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">
-          Visual Preview (Flux Schnell)
-        </h3>
-        <button
-          onClick={regenerate}
-          disabled={loading}
-          className="p-1.5 text-geist-accents-5 hover:text-geist-foreground rounded-md hover:bg-geist-accents-2 transition-colors disabled:opacity-50"
-          title="Regenerate Preview"
-          aria-label="Regenerate Preview"
-        >
-          <div className="relative w-3.5 h-3.5">
-            {loading ? (
-              <div className="absolute inset-0 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Icon name="ArrowRight" size={14} className="rotate-180" />
-            )}
-          </div>
-        </button>
+      <div className="flex items-center px-1">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">
+            Visual Preview
+          </h3>
+          <span className="text-xs text-geist-accents-5">Flux Schnell</span>
+        </div>
       </div>
       <div
         className="relative group w-full bg-geist-accents-1 rounded-lg overflow-hidden border border-geist-accents-2 shadow-sm"
@@ -231,21 +200,20 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
             <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90 disabled:opacity-60"
+                onClick={handleGenerate}
+                aria-label="Regenerate composition preview"
+                disabled={loading || !prompt}
+              >
+                {loading ? 'Generating...' : 'Regenerate'}
+              </button>
+              <button
+                className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90 disabled:opacity-60"
                 onClick={handleExportKeyframe}
                 aria-label="Export keyframe"
                 disabled={isExporting}
               >
                 {isExporting ? 'Exporting...' : 'Export Keyframe'}
               </button>
-              {hasPreviewPrompt && (
-                <button
-                  className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
-                  onClick={handleCopyPreviewPrompt}
-                  aria-label="Copy preview prompt"
-                >
-                  {copied ? 'Copied' : 'Copy Preview'}
-                </button>
-              )}
               <button
                 className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
                 onClick={() => window.open(imageUrl, '_blank')}
@@ -256,15 +224,81 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
             </div>
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-geist-accents-4">
-            <span className="text-sm">Click regenerate to generate preview</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-geist-accents-1 p-4 text-center">
+            <div className="max-w-xs text-xs text-geist-accents-5 leading-relaxed">
+              <div className="font-medium text-geist-foreground mb-2">Use preview to sanity-check:</div>
+              <div>• Shot framing &amp; composition</div>
+              <div>• Subject placement</div>
+              <div>• Lighting direction</div>
+              <div className="mb-3">• Overall mood</div>
+              <div className="text-geist-accents-6">
+                Generate a preview whenever you want to validate changes.
+              </div>
+            </div>
+
+            <button
+              onClick={handleGenerate}
+              disabled={loading || !prompt}
+              className="mt-4 inline-flex items-center justify-center gap-1.5 bg-geist-foreground text-geist-background rounded-geist font-medium hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              style={{
+                padding: 'clamp(0.375rem, 1.2vw, 0.5rem) clamp(0.75rem, 2.5vw, 1rem)',
+                fontSize: 'clamp(0.625rem, 1.1vw, 0.75rem)',
+                gap: 'clamp(0.25rem, 0.6vw, 0.5rem)',
+                maxWidth: 'min(90%, 260px)',
+                width: 'auto',
+              }}
+              aria-label="Generate Composition Preview"
+            >
+              {loading ? (
+                <div
+                  className="border-2 border-geist-background/30 border-t-geist-background rounded-full animate-spin flex-shrink-0"
+                  style={{
+                    width: 'clamp(0.75rem, 1.2vw, 1rem)',
+                    height: 'clamp(0.75rem, 1.2vw, 1rem)',
+                  }}
+                />
+              ) : (
+                <Icon
+                  name="Image"
+                  size={14}
+                  style={{
+                    width: 'clamp(0.875rem, 1.2vw, 1rem)',
+                    height: 'clamp(0.875rem, 1.2vw, 1rem)',
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <span className="whitespace-nowrap">
+                {loading ? 'Generating...' : 'Generate Composition Preview'}
+              </span>
+            </button>
+            <div className="mt-2 text-xs text-geist-accents-5">
+              Low-fidelity · Validates framing, lighting, and mood
+            </div>
           </div>
         )}
       </div>
-      <div className="text-xs text-geist-accents-4 px-1 leading-relaxed">
-        Previews are low-fidelity drafts using Flux Schnell. They validate
-        composition and camera angles, not final render quality.
-      </div>
+
+      {imageUrl && (
+        <div className="px-1">
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onKeepRefining}
+              className="text-xs text-geist-foreground hover:underline text-left"
+            >
+              ✓ Looks right → Keep refining
+            </button>
+            <button
+              type="button"
+              onClick={onRefinePrompt}
+              className="text-xs text-geist-foreground hover:underline text-left"
+            >
+              ✕ Something’s off → Refine prompt
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

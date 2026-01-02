@@ -30,6 +30,8 @@ export interface HistorySidebarProps {
   onCreateNew: () => void;
   onDelete: (id: string) => void;
   modes: Mode[];
+  currentPromptUuid?: string | null;
+  currentPromptDocId?: string | null;
 }
 
 const INITIAL_HISTORY_LIMIT = 5;
@@ -49,7 +51,9 @@ export function HistorySidebar({
   onCreateNew,
   onLoadFromHistory,
   onDelete,
-  modes
+  modes,
+  currentPromptUuid,
+  currentPromptDocId,
 }: HistorySidebarProps): React.ReactElement {
   const debug = useDebugLogger('HistorySidebar', {
     historyCount: history.length,
@@ -249,15 +253,22 @@ export function HistorySidebar({
               <>
                 <nav aria-label="Recent prompts list">
                   <ul className="space-y-geist-1">
-                    {displayedHistory.map((entry) => (
-                      <HistoryItem
-                        key={entry.id || entry.uuid || Math.random()}
-                        entry={entry}
-                        modes={modes}
-                        onLoad={onLoadFromHistory}
-                        onDelete={onDelete}
-                      />
-                    ))}
+                    {displayedHistory.map((entry) => {
+                      const isSelected = Boolean(
+                        (currentPromptUuid && entry.uuid === currentPromptUuid) ||
+                        (currentPromptDocId && entry.id === currentPromptDocId)
+                      );
+                      return (
+                        <HistoryItem
+                          key={entry.id || entry.uuid || Math.random()}
+                          entry={entry}
+                          modes={modes}
+                          onLoad={onLoadFromHistory}
+                          onDelete={onDelete}
+                          isSelected={isSelected}
+                        />
+                      );
+                    })}
                   </ul>
                 </nav>
                 {filteredHistory.length > INITIAL_HISTORY_LIMIT && (

@@ -27,6 +27,7 @@ export const BentoBox = memo<BentoBoxProps>(({
   spans, 
   config, 
   onSpanClick,
+  selectedSpanId,
 }) => {
   // Expand by default only if category has meaningful content (3+ spans)
   // Empty or low-count categories start collapsed to reduce clutter
@@ -103,6 +104,7 @@ export const BentoBox = memo<BentoBoxProps>(({
                 onClick={onSpanClick}
                 backgroundColor={config.backgroundColor}
                 borderColor={config.borderColor}
+                isSelected={selectedSpanId === span.id}
               />
             ))}
           </div>

@@ -20,6 +20,8 @@ export interface UseTextSelectionOptions {
   displayedPrompt: string | null;
   parseResult: ParseResult;
   onFetchSuggestions: ((payload: SuggestionPayload) => void) | undefined;
+  onSpanSelect?: ((spanId: string | null) => void) | undefined;
+  onIntentRefine?: (() => void) | undefined;
 }
 
 export interface UseTextSelectionReturn {
@@ -35,6 +37,8 @@ export function useTextSelection({
   displayedPrompt,
   parseResult,
   onFetchSuggestions,
+  onSpanSelect,
+  onIntentRefine,
 }: UseTextSelectionOptions): UseTextSelectionReturn {
   const spanContextSpans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
 
@@ -83,6 +87,11 @@ export function useTextSelection({
         return;
       }
 
+      // Strong intent signal: user clicked a highlighted token → refinement wins.
+      if (onIntentRefine) {
+        onIntentRefine();
+      }
+
       // Prevent default text selection behavior
       if (e && e.preventDefault) {
         e.preventDefault();
@@ -94,6 +103,12 @@ export function useTextSelection({
         displayText: parseResult.displayText,
       });
       const wordText = node.textContent?.trim() ?? '';
+      const spanId = metadata?.spanId || node.dataset?.spanId || null;
+
+      // Update selected span state
+      if (onSpanSelect && spanId) {
+        onSpanSelect(spanId);
+      }
 
       if (wordText && onFetchSuggestions) {
         // Create range and get offsets
@@ -123,7 +138,7 @@ export function useTextSelection({
         });
       }
     },
-    [selectedMode, editorRef, displayedPrompt, parseResult, onFetchSuggestions, spanContextSpans]
+    [selectedMode, editorRef, displayedPrompt, parseResult, onFetchSuggestions, spanContextSpans, onIntentRefine]
   );
 
   const handleHighlightClick = useCallback(
@@ -144,6 +159,16 @@ export function useTextSelection({
     (span: SpanClickPayload): void => {
       if (!onFetchSuggestions || selectedMode !== 'video') {
         return;
+      }
+
+      // Strong intent signal: user clicked a labeled token → refinement wins.
+      if (onIntentRefine) {
+        onIntentRefine();
+      }
+
+      // Update selected span state
+      if (onSpanSelect && span.id) {
+        onSpanSelect(span.id);
       }
 
       // Create synthetic event matching highlight click behavior
@@ -173,7 +198,7 @@ export function useTextSelection({
         allLabeledSpans: spanContextSpans,
       });
     },
-    [onFetchSuggestions, selectedMode, displayedPrompt, spanContextSpans]
+    [onFetchSuggestions, selectedMode, displayedPrompt, spanContextSpans, onSpanSelect, onIntentRefine]
   );
 
   return {

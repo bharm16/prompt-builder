@@ -192,6 +192,24 @@ export function useSuggestionFetch({
         const suggestionsAsObjects: SuggestionItem[] = cached.suggestions.map((s) =>
           typeof s === 'string' ? { text: s } : s
         );
+
+        const mergeSuggestions = (
+          existing: SuggestionItem[],
+          incoming: SuggestionItem[]
+        ): SuggestionItem[] => {
+          const seen = new Set<string>();
+          const out: SuggestionItem[] = [];
+          const add = (s: SuggestionItem): void => {
+            const key = (s?.text || '').trim().toLowerCase();
+            if (!key) return;
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push(s);
+          };
+          existing.forEach(add);
+          incoming.forEach(add);
+          return out;
+        };
         
         setSuggestionsData((prev) => {
           const baseData: SuggestionsData = {
@@ -212,7 +230,7 @@ export function useSuggestionFetch({
                 if (!p) return p;
                 return {
                   ...p,
-                  suggestions: newSuggestions,
+                  suggestions: mergeSuggestions(p.suggestions || [], newSuggestions),
                   isPlaceholder: false,
                   isError: false,
                   errorMessage: null,
@@ -238,6 +256,24 @@ export function useSuggestionFetch({
           async (signal) => {
             // Show loading state when request actually fires (after debounce)
             // This prevents flickering during rapid selections
+            const mergeSuggestions = (
+              existing: SuggestionItem[],
+              incoming: SuggestionItem[]
+            ): SuggestionItem[] => {
+              const seen = new Set<string>();
+              const out: SuggestionItem[] = [];
+              const add = (s: SuggestionItem): void => {
+                const key = (s?.text || '').trim().toLowerCase();
+                if (!key) return;
+                if (seen.has(key)) return;
+                seen.add(key);
+                out.push(s);
+              };
+              existing.forEach(add);
+              incoming.forEach(add);
+              return out;
+            };
+
             setSuggestionsData(() => {
               const loadingData: SuggestionsData = {
                 show: true,
@@ -258,7 +294,7 @@ export function useSuggestionFetch({
                     if (!p) return p;
                     return {
                       ...p,
-                      suggestions: newSuggestions,
+                      suggestions: mergeSuggestions(p.suggestions || [], newSuggestions),
                       isPlaceholder: false,
                       isError: false,
                       errorMessage: null,

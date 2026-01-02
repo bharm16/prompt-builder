@@ -18,6 +18,8 @@ export const PromptSidebar = ({ user }: PromptSidebarProps): React.ReactElement 
     promptHistory,
     loadFromHistory,
     handleCreateNew,
+    currentPromptUuid,
+    currentPromptDocId,
   } = usePromptState();
 
   // Hide when brainstorm modal is open
@@ -39,6 +41,8 @@ export const PromptSidebar = ({ user }: PromptSidebarProps): React.ReactElement 
       onCreateNew={handleCreateNew}
       onDelete={promptHistory.deleteFromHistory}
       modes={modes}
+      currentPromptUuid={currentPromptUuid}
+      currentPromptDocId={currentPromptDocId}
     />
   );
 };

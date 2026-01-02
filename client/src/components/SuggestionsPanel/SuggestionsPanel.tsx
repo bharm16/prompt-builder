@@ -83,6 +83,7 @@ interface SuggestionsPanelProps {
     showCopyAction?: boolean;
     initialCategory?: string | null;
     currentPrompt?: string;
+    variant?: 'default' | 'tokenEditor';
   };
 }
 
@@ -150,6 +151,7 @@ export function SuggestionsPanel({
     showCopyAction = suggestionsData.showCopyAction !== false,
     initialCategory = suggestionsData.initialCategory,
     currentPrompt = suggestionsData.currentPrompt || fullPrompt || '',
+    variant = suggestionsData.variant || 'default',
   } = suggestionsData;
 
   // ===========================
@@ -186,6 +188,20 @@ export function SuggestionsPanel({
     }
   }, [show, suggestions.length, selectedText, debug]);
 
+  // Pulse animation when panel opens with selection
+  useEffect(() => {
+    if (show && selectedText) {
+      // Trigger pulse animation
+      const panelElement = document.querySelector('[role="complementary"]');
+      if (panelElement) {
+        panelElement.classList.add('suggestions-panel--pulse');
+        setTimeout(() => {
+          panelElement.classList.remove('suggestions-panel--pulse');
+        }, 300);
+      }
+    }
+  }, [show, selectedText]);
+
   // ===========================
   // COMPUTED VALUES
   // ===========================
@@ -194,9 +210,88 @@ export function SuggestionsPanel({
   // ===========================
   // RENDER
   // ===========================
+  // Check if we should show hover preview (from props)
+  const hoverPreview = (suggestionsData as Record<string, unknown>)?.hoverPreview as boolean | undefined;
+
+  if (variant === 'tokenEditor') {
+    return (
+      <aside
+        className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
+        role="complementary"
+        aria-label="Refine suggestions"
+      >
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="px-geist-4 pt-geist-3 pb-geist-2">
+            <div className="text-[11px] font-medium text-geist-accents-5 uppercase tracking-wide">
+              Suggestions
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {!hasActiveSuggestions ? (
+              <div className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5">
+                Select a token to load alternatives.
+              </div>
+            ) : isLoading ? (
+              <div
+                className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5"
+                role="status"
+                aria-live="polite"
+              >
+                Loading alternatives…
+              </div>
+            ) : isError ? (
+              <div className="px-geist-4 pb-geist-4 space-y-2">
+                <div className="text-label-12 text-geist-accents-5">
+                  {typeof errorMessage === 'string' && errorMessage.trim()
+                    ? errorMessage
+                    : 'Failed to load alternatives.'}
+                </div>
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="inline-flex items-center justify-center px-geist-3 py-geist-1.5 text-label-12 rounded-geist border border-geist-accents-2 bg-geist-background text-geist-foreground hover:bg-geist-accents-1 transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            ) : currentSuggestions.length > 0 ? (
+              <SuggestionsList
+                suggestions={currentSuggestions}
+                onSuggestionClick={onSuggestionClick}
+                isPlaceholder={isPlaceholder}
+                showCopyAction={false}
+                variant="tokenEditor"
+              />
+            ) : (
+              <div className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5">
+                No alternatives yet.
+              </div>
+            )}
+          </div>
+
+          {hasActiveSuggestions && enableCustomRequest && (
+            <CustomRequestForm
+              customRequest={customRequest}
+              onCustomRequestChange={setCustomRequest}
+              onSubmit={handleCustomRequest}
+              isLoading={isCustomLoading}
+              placeholder={customRequestPlaceholder}
+              helperText={customRequestHelperText}
+              ctaLabel={customRequestCtaLabel}
+              variant="tokenEditor"
+            />
+          )}
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside
-      className={panelClassName}
+      className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
       role="complementary"
       {...(panelTitle ? { 'aria-labelledby': 'suggestions-title' } : {})}
     >
@@ -295,6 +390,19 @@ export function SuggestionsPanel({
           100% {
             transform: translateX(100%);
           }
+        }
+
+        @keyframes panelPulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+          }
+          50% {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+          }
+        }
+
+        .suggestions-panel--pulse {
+          animation: panelPulse 0.3s ease-out;
         }
       `}</style>
     </aside>
