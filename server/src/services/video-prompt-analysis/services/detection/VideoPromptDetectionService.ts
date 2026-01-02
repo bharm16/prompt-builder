@@ -26,6 +26,13 @@ export class VideoPromptDetectionService {
 
     const normalized = normalizeText(fullPrompt);
 
+    if (this._hasJsonPrompt(normalized)) {
+      this.log.debug('Video prompt detected via JSON structure', {
+        operation,
+      });
+      return true;
+    }
+
     // Check legacy markers
     if (this._hasLegacyMarkers(normalized)) {
       return true;
@@ -95,5 +102,26 @@ export class VideoPromptDetectionService {
 
     return false;
   }
-}
 
+  /**
+   * Check for JSON prompt structures (e.g., Veo-style or structured prompt output)
+   */
+  private _hasJsonPrompt(normalizedText: string): boolean {
+    const hasSubject = normalizedText.includes('"subject"');
+    const hasCamera = normalizedText.includes('"camera"') || normalizedText.includes('"shot"');
+    const hasEnvironment =
+      normalizedText.includes('"environment"') ||
+      normalizedText.includes('"setting"') ||
+      normalizedText.includes('"location"');
+    const hasLighting = normalizedText.includes('"lighting"');
+    const hasAction = normalizedText.includes('"action"');
+    const hasStyle =
+      normalizedText.includes('"style_preset"') || normalizedText.includes('"style"');
+
+    return (
+      hasSubject &&
+      (hasCamera || hasAction) &&
+      (hasEnvironment || hasLighting || hasStyle)
+    );
+  }
+}

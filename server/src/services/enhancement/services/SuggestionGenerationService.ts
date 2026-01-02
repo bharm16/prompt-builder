@@ -79,7 +79,8 @@ export class SuggestionGenerationService {
             const { provider, capabilities } = detectAndGetCapabilities({
               operation: 'enhance_suggestions',
             });
-            const resolvedProvider = provider === 'openai' ? 'openai' : 'groq';
+            const resolvedProvider =
+              provider === 'openai' || provider === 'qwen' ? provider : 'groq';
             return {
               systemPrompt: promptResult,
               provider: resolvedProvider,

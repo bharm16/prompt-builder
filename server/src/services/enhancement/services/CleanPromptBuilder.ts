@@ -171,14 +171,16 @@ export class CleanPromptBuilder {
       mode,
     });
 
+    const { provider } = detectAndGetCapabilities({ operation: 'enhance_suggestions' });
+
     // Select prompt based on design
     let result: string;
     if (design === 'orthogonal') {
-      result = this._buildTechnicalPrompt(ctx);
+      result = this._buildTechnicalPrompt(ctx, provider);
     } else if (design === 'narrative') {
-      result = this._buildActionPrompt(ctx);
+      result = this._buildActionPrompt(ctx, provider);
     } else {
-      result = this._buildVisualPrompt(ctx);
+      result = this._buildVisualPrompt(ctx, provider);
     }
     
     const duration = Math.round(performance.now() - startTime);
@@ -200,7 +202,7 @@ export class CleanPromptBuilder {
    * Provider-aware: Security prefix only added for non-OpenAI providers
    * OpenAI uses developerMessage for security (passed separately)
    */
-  private _buildTechnicalPrompt(ctx: SharedPromptContext): string {
+  private _buildTechnicalPrompt(ctx: SharedPromptContext, provider: string): string {
     // Get provider-aware security prefix
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
@@ -218,6 +220,8 @@ export class CleanPromptBuilder {
       hasSchema: true,
     });
 
+    const exampleBlock = this._buildExampleBlock(TECHNICAL_EXAMPLES, ctx.slotLabel, provider);
+
     return [
       securityPrefix,
       'Generate up to 12 alternative TECHNICAL phrases for video prompts.',
@@ -229,12 +233,12 @@ export class CleanPromptBuilder {
       '2. Use cinematography terms (angles, lenses, movements, lighting)',
       '3. Each option should create a different visual effect',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      'DIVERSITY: Vary angle, lens, movement, or lighting (not just synonyms).',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
       `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]`,
-      '',
-      'Example item: {"text":"low-angle tracking shot","category":"camera","explanation":"emphasizes subject power"}',
+      exampleBlock,
       formatInstruction,
     ].filter(Boolean).join('\n');
   }
@@ -244,7 +248,7 @@ export class CleanPromptBuilder {
    * 
    * Provider-aware: Uses XML wrapper for user data
    */
-  private _buildVisualPrompt(ctx: SharedPromptContext): string {
+  private _buildVisualPrompt(ctx: SharedPromptContext, provider: string): string {
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
     const userDataSection = wrapUserData({
@@ -258,6 +262,8 @@ export class CleanPromptBuilder {
       isArray: true,
       hasSchema: true,
     });
+
+    const exampleBlock = this._buildExampleBlock(VISUAL_EXAMPLES, ctx.slotLabel, provider);
 
     return [
       securityPrefix,
@@ -270,10 +276,12 @@ export class CleanPromptBuilder {
       '2. Add visual details: textures, materials, lighting, colors',
       '3. Each option should look different but stay contextually appropriate',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      'DIVERSITY: Change material, finish, silhouette, era, lighting, or motion (not just color synonyms).',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
       `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`,
+      exampleBlock,
       '',
       `IMPORTANT: If replacing "${ctx.highlightedText}", suggestions should still be about "${ctx.highlightedText}" with different visual details.`,
       formatInstruction,
@@ -283,7 +291,7 @@ export class CleanPromptBuilder {
   /**
    * Design 3: Action/Verb slots
    */
-  private _buildActionPrompt(ctx: SharedPromptContext): string {
+  private _buildActionPrompt(ctx: SharedPromptContext, provider: string): string {
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
     const userDataSection = wrapUserData({
@@ -298,6 +306,8 @@ export class CleanPromptBuilder {
       hasSchema: true,
     });
 
+    const exampleBlock = this._buildExampleBlock(NARRATIVE_EXAMPLES, ctx.slotLabel, provider);
+
     return [
       securityPrefix,
       'Generate up to 12 alternative ACTION phrases for video prompts.',
@@ -309,12 +319,39 @@ export class CleanPromptBuilder {
       '2. One continuous action only (no sequences like "walks then runs")',
       '3. Actions must be camera-visible physical behavior',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      'DIVERSITY: Vary the physical behavior or staging, not just intensity.',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
       `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]`,
+      exampleBlock,
       formatInstruction,
     ].filter(Boolean).join('\n');
+  }
+
+  private _buildExampleBlock(
+    examples: Array<{ text: string; explanation: string }>,
+    slotLabel: string,
+    provider: string
+  ): string {
+    if (!this._shouldIncludeExamples(provider)) return '';
+    const escapeValue = (value: string): string =>
+      value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const sample = examples.slice(0, 2);
+    const lines = [
+      'EXAMPLE OUTPUT (format only; do not copy content):',
+      '[',
+      ...sample.map((example, index) => {
+        const suffix = index < sample.length - 1 ? ',' : '';
+        return `  {"text":"${escapeValue(example.text)}","category":"${slotLabel}","explanation":"${escapeValue(example.explanation)}"}${suffix}`;
+      }),
+      ']',
+    ];
+    return lines.join('\n');
+  }
+
+  private _shouldIncludeExamples(provider: string): boolean {
+    return provider === 'groq' || provider === 'qwen';
   }
 
   /**

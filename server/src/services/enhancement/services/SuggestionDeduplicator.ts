@@ -22,7 +22,12 @@ export class SuggestionDiversityEnforcer {
 
     // Special handling for categorized suggestions
     if (suggestions[0]?.category) {
-      return this.ensureCategoricalDiversity(suggestions);
+      const uniqueCategories = new Set(
+        suggestions.map((suggestion) => suggestion.category || 'Other')
+      );
+      if (uniqueCategories.size > 1) {
+        return this.ensureCategoricalDiversity(suggestions);
+      }
     }
 
     // Calculate similarity matrix
@@ -206,6 +211,9 @@ Provide a JSON object with the new suggestion:
       const responseText = (response as { text?: string; content?: Array<{ text?: string }> }).text || 
         ((response as { content?: Array<{ text?: string }> }).content?.[0]?.text || '');
       const alternative = JSON.parse(responseText) as Suggestion;
+      if (original.category && !alternative.category) {
+        alternative.category = original.category;
+      }
       return alternative;
     } catch (error) {
       logger.warn('Failed to generate diverse alternative', { error });

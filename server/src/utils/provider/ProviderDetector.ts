@@ -8,6 +8,8 @@
  * business logic with provider detection code.
  */
 
+import { ModelConfig } from '@config/modelConfig';
+
 export type ProviderType = 'openai' | 'groq' | 'qwen' | 'anthropic' | 'gemini' | 'unknown';
 
 export interface ProviderCapabilities {
@@ -185,6 +187,11 @@ export function detectProvider(options: {
     const providerEnv = process.env[`${operationUpper}_PROVIDER`];
     if (providerEnv) {
       return detectProvider({ client: providerEnv });
+    }
+
+    const config = ModelConfig[operation];
+    if (config) {
+      return detectProvider({ client: config.client, model: config.model });
     }
   }
 

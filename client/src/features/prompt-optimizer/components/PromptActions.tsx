@@ -2,6 +2,7 @@ import { memo, useRef, useEffect } from 'react';
 import {
   Copy,
   Download,
+  ExternalLink,
   FileText,
   Check,
   Share2,
@@ -10,7 +11,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@components/Button';
 import type { FloatingToolbarProps } from '../types';
+import { usePromptState } from '../context/PromptStateContext';
 import { ModelMenu } from './ModelMenu';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
 
 /**
  * Prompt Actions Component
@@ -38,6 +41,8 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const copyMenuRef = useRef<HTMLDivElement>(null);
+  const { selectedModel } = usePromptState();
+  const selectedModelId = AI_MODEL_IDS.find((modelId) => modelId === selectedModel) ?? null;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
@@ -67,6 +72,26 @@ export const PromptActions = memo<FloatingToolbarProps>(({
     }
   };
 
+  const handleOpenInSelectedModel = (): void => {
+    if (!selectedModelId) {
+      onToggleExportMenu(false);
+      onToggleModelMenu(true);
+      return;
+    }
+
+    onCopy();
+    window.open(AI_MODEL_URLS[selectedModelId], '_blank', 'noopener,noreferrer');
+    onToggleModelMenu(false);
+    onToggleExportMenu(false);
+  };
+
+  const openButtonLabel = selectedModelId
+    ? `Open in ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Open in model';
+  const openButtonTitle = selectedModelId
+    ? `Open in ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Select a model to open';
+
   return (
     <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
       {/* Primary action - Copy */}
@@ -91,6 +116,18 @@ export const PromptActions = memo<FloatingToolbarProps>(({
           />
         )}
       </div>
+
+      <Button
+        onClick={handleOpenInSelectedModel}
+        svgOnly={false}
+        variant="ghost"
+        prefix={<ExternalLink className="h-3.5 w-3.5" />}
+        className="prompt-actions__primary"
+        aria-label={openButtonLabel}
+        title={openButtonTitle}
+      >
+        <span className="text-button-14 font-medium">{openButtonLabel}</span>
+      </Button>
 
       <Button
         onClick={onShare}
@@ -163,4 +200,3 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 });
 
 PromptActions.displayName = 'PromptActions';
-

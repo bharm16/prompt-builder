@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { validateAgainstVideoTemplate, detectSubcategory } from '../config/CategoryConstraints.js';
+import { getAllExampleTexts } from '../config/EnhancementExamples';
 import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
 
 /**
@@ -12,6 +13,7 @@ import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService 
  */
 export class SuggestionValidationService {
   private readonly log = logger.child({ service: 'SuggestionValidationService' });
+  private readonly exampleTexts = getAllExampleTexts();
 
   constructor(private readonly videoService: VideoService) {}
 
@@ -91,6 +93,10 @@ export class SuggestionValidationService {
 
       if (normalizedHighlight && lowerText === normalizedHighlight) {
         return; // identical to highlight, no improvement
+      }
+
+      if (this.exampleTexts.has(lowerText)) {
+        return;
       }
 
       if (/\r|\n/.test(text)) {

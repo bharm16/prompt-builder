@@ -251,10 +251,7 @@ export class EnhancementService {
       metrics.promptBuild = Date.now() - promptBuildStart;
 
       const schema = getEnhancementSchema(isPlaceholder);
-      const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
-        diversity: 'high',
-        precision: 'medium',
-      });
+      const temperature = this._getEnhancementTemperature();
 
       const generationResult = await this.suggestionGeneration.generateSuggestionsV2({
         promptResult,
@@ -410,10 +407,7 @@ export class EnhancementService {
 
     // Generate suggestions
     const schema = getCustomSuggestionSchema();
-    const temperature = TemperatureOptimizer.getOptimalTemperature('enhancement', {
-      diversity: 'high',
-      precision: 'medium',
-    });
+    const temperature = this._getEnhancementTemperature();
 
     const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
       this.ai,
@@ -510,6 +504,16 @@ export class EnhancementService {
     return suggestions.length;
   }
 
+  private _getEnhancementTemperature(): number {
+    const config = this.ai.getOperationConfig('enhance_suggestions');
+    if (typeof config?.temperature === 'number') {
+      return config.temperature;
+    }
+    return TemperatureOptimizer.getOptimalTemperature('enhancement', {
+      diversity: 'high',
+      precision: 'medium',
+    });
+  }
 
 
 }
