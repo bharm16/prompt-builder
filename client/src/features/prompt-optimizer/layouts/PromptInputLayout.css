@@ -22,20 +22,23 @@
 }
 
 .prompt-input-layout__content {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: clamp(3rem, 8vh, 6rem) 1rem 2rem;
+  padding: 1rem;
+  transform: translateY(-8%);
+  min-height: 0;
 }
 
 @media (min-width: 640px) {
   .prompt-input-layout__content {
-    padding: clamp(3rem, 8vh, 6rem) 1.5rem 2rem;
+    padding: 1.5rem;
   }
 }
 
 .prompt-input-layout__footer {
+  flex-shrink: 0;
   padding: 1.5rem 0 2rem;
   text-align: center;
 }

@@ -87,6 +87,7 @@ export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDel
           onClick={handleLoad}
           className="w-full p-geist-3 text-left"
           aria-label={`Load prompt: ${entry.input.substring(0, 50)}...`}
+          title={typeof entry.input === 'string' ? entry.input : undefined}
         >
           <div className="flex items-start gap-geist-3">
             <ModeIcon
@@ -99,14 +100,18 @@ export const HistoryItem = memo<HistoryItemProps>(({ entry, modes, onLoad, onDel
                 style={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'block',
+                  /* Two-line clamp without relying on tailwind line-clamp plugin */
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  whiteSpace: 'normal',
                   width: '100%',
                 }}
+                title={typeof entry.input === 'string' ? entry.input : undefined}
               >
                 {entry.input}
               </p>
-              <div className="mt-geist-2 flex items-center gap-geist-2 text-label-12 text-geist-accents-5">
+              <div className="mt-geist-1 flex items-center gap-geist-2 text-label-12 text-geist-accents-5">
                 <time dateTime={entry.timestamp || ''}>
                   {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
                 </time>

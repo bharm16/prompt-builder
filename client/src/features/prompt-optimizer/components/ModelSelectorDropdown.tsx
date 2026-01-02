@@ -52,7 +52,7 @@ export const ModelSelectorDropdown = memo<{
           }
         }}
         disabled={disabled}
-        className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-2 text-button-14 text-geist-accents-7 rounded-geist hover:bg-geist-accents-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current model: ${currentLabel}`}

@@ -12,10 +12,8 @@ import type { PromptInputSectionProps, LoadingSkeletonProps } from '../types';
 export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: PromptInputSectionProps): React.ReactElement => {
   const {
     selectedMode,
-    setSelectedMode,
     selectedModel,
     setSelectedModel,
-    modes,
     currentAIIndex,
     promptOptimizer,
   } = usePromptState();
@@ -28,14 +26,11 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
     <PromptInput
       inputPrompt={promptOptimizer.inputPrompt}
       onInputChange={promptOptimizer.setInputPrompt}
-      selectedMode={selectedMode}
-      onModeChange={setSelectedMode}
       selectedModel={selectedModel}
       onModelChange={setSelectedModel}
       onOptimize={onOptimize}
       {...(onShowBrainstorm ? { onShowBrainstorm } : {})}
       isProcessing={promptOptimizer.isProcessing}
-      modes={modes}
       {...(aiNames ? { aiNames } : {})}
       currentAIIndex={currentAIIndex}
     />

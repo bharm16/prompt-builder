@@ -15,28 +15,16 @@ export interface PromptMode {
 }
 
 /**
- * Props for ModeDropdown component
- */
-export interface ModeDropdownProps {
-  modes: PromptMode[];
-  selectedMode: string;
-  onModeChange: (modeId: string) => void;
-}
-
-/**
  * Props for PromptInput component
  */
 export interface PromptInputProps {
   inputPrompt: string;
   onInputChange: (value: string) => void;
-  selectedMode: string;
-  onModeChange: (modeId: string) => void;
   selectedModel?: string; // New: selected video model
   onModelChange?: (modelId: string) => void; // New: handler for model change
   onOptimize: () => void;
   onShowBrainstorm?: () => void;
   isProcessing: boolean;
-  modes: PromptMode[];
   aiNames?: readonly string[];
   currentAIIndex?: number;
 }

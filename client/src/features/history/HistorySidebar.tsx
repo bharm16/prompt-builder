@@ -252,7 +252,7 @@ export function HistorySidebar({
             ) : (
               <>
                 <nav aria-label="Recent prompts list">
-                  <ul className="space-y-geist-1">
+                  <ul className="space-y-geist-2">
                     {displayedHistory.map((entry) => {
                       const isSelected = Boolean(
                         (currentPromptUuid && entry.uuid === currentPromptUuid) ||
