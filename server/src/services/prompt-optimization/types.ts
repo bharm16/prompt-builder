@@ -66,6 +66,7 @@ export interface OptimizationRequest {
   targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
+  skipCache?: boolean;
   shotPlan?: ShotPlan | null;
   shotPlanAttempted?: boolean;
   domainContent?: string | null;
@@ -81,6 +82,7 @@ export interface TwoStageOptimizationRequest {
   targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
+  skipCache?: boolean;
   onDraft?: ((draft: string, spans: any) => void) | null;
   signal?: AbortSignal;
 }

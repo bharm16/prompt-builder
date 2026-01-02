@@ -27,7 +27,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       const userId = extractUserId(req);
       const operation = 'optimize';
       
-      const { prompt, mode, targetModel, context, brainstormContext } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext, skipCache } = req.body;
 
       logger.info('Optimize request received', {
         operation,
@@ -38,6 +38,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        skipCache: !!skipCache,
       });
 
       try {
@@ -48,6 +49,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           targetModel, // New
           context,
           brainstormContext,
+          skipCache,
           onMetadata: (next: Record<string, unknown>) => {
             metadata = { ...(metadata || {}), ...next };
           },
@@ -84,7 +86,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
     '/optimize-stream',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
-      const { prompt, mode, targetModel, context, brainstormContext } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext, skipCache } = req.body;
       
       // Create a wrapper abort controller that ignores early client disconnects
       // This prevents curl from aborting the OpenAI calls before they start
@@ -151,6 +153,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        skipCache: !!skipCache,
       });
 
       try {
@@ -163,6 +166,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           targetModel, // New
           context,
           brainstormContext,
+          skipCache,
           signal,
           onDraft: (
             draft: string,

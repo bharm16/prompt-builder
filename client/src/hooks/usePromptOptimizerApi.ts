@@ -23,6 +23,7 @@ export function usePromptOptimizerApi(
       targetModel,
       context = null,
       brainstormContext = null,
+      skipCache,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
       log.debug('analyzeAndOptimize called', {
@@ -31,6 +32,7 @@ export function usePromptOptimizerApi(
         targetModel,
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        skipCache: !!skipCache,
       });
       logger.startTimer('analyzeAndOptimize');
 
@@ -41,6 +43,7 @@ export function usePromptOptimizerApi(
           ...(targetModel ? { targetModel } : {}),
           context,
           brainstormContext,
+          ...(skipCache ? { skipCache } : {}),
           ...(signal ? { signal } : {}),
         });
 

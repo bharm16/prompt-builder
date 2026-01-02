@@ -37,6 +37,7 @@ type OptimizeWithFallback = (options: {
   targetModel?: string;
   context?: unknown | null;
   brainstormContext?: unknown | null;
+  skipCache?: boolean;
   signal: AbortSignal;
   onDraft?: (draft: string) => void;
   onSpans?: (spans: unknown[], source: string, meta?: unknown) => void;
@@ -53,6 +54,7 @@ type AnalyzeAndOptimize = (options: {
   targetModel?: string;
   context?: unknown | null;
   brainstormContext?: unknown | null;
+  skipCache?: boolean;
   signal?: AbortSignal;
 }) => Promise<{ optimizedPrompt: string; metadata?: Record<string, unknown> }>;
 
@@ -87,6 +89,7 @@ export interface TwoStageOptimizationOptions {
   context: unknown | null;
   brainstormContext: unknown | null;
   abortController: AbortController;
+  skipCache?: boolean;
   requestId: number;
   requestIdRef: MutableRefObject<number>;
   refinedSpans: SpansData | null;
@@ -104,6 +107,7 @@ export async function runTwoStageOptimization({
   context,
   brainstormContext,
   abortController,
+  skipCache,
   requestId,
   requestIdRef,
   refinedSpans,
@@ -124,6 +128,7 @@ export async function runTwoStageOptimization({
     ...(selectedModel ? { targetModel: selectedModel } : {}),
     context,
     brainstormContext,
+    ...(skipCache ? { skipCache } : {}),
     signal: abortController.signal,
     onDraft: (draft: string) => {
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
@@ -305,6 +310,7 @@ export interface SingleStageOptimizationOptions {
   context: unknown | null;
   brainstormContext: unknown | null;
   abortController: AbortController;
+  skipCache?: boolean;
   actions: PromptOptimizerActions;
   toast: Toast;
   log: ReturnType<typeof logger.child>;
@@ -319,6 +325,7 @@ export async function runSingleStageOptimization({
   context,
   brainstormContext,
   abortController,
+  skipCache,
   actions,
   toast,
   log,
@@ -336,6 +343,7 @@ export async function runSingleStageOptimization({
     brainstormContext,
     signal: abortController.signal,
     ...(selectedModel ? { targetModel: selectedModel } : {}),
+    ...(skipCache ? { skipCache } : {}),
   });
 
   const optimized = response.optimizedPrompt;

@@ -44,6 +44,10 @@ export interface CategoryLegendProps {
  */
 export type ExportFormat = 'text' | 'markdown' | 'json';
 
+export interface OptimizationOptions {
+  skipCache?: boolean;
+}
+
 /**
  * Props for FloatingToolbar component
  */
@@ -115,7 +119,7 @@ export interface PromptModalsProps {
  */
 export interface PromptResultsSectionProps {
   onDisplayedPromptChange: (text: string) => void;
-  onReoptimize: (promptToOptimize?: string) => Promise<void>;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onHighlightsPersist: (highlights: {

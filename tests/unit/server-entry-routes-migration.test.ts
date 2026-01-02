@@ -95,8 +95,8 @@ describe('startServer', () => {
     const server = await startServer(app, container as never);
 
     expect(server.listening).toBe(true);
-    expect(server.keepAliveTimeout).toBe(65000);
-    expect(server.headersTimeout).toBe(66000);
+    expect(server.keepAliveTimeout).toBe(125000);
+    expect(server.headersTimeout).toBe(126000);
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
@@ -132,7 +132,7 @@ describe('health.routes', () => {
     const ready = await request(app).get('/health/ready');
     expect(ready.status).toBe(200);
     expect(ready.body.status).toBe('ready');
-    expect(ready.body.checks.cache).toBe(true);
+    expect(ready.body.checks.cache.healthy).toBe(true);
     expect(ready.body.checks.openAI.healthy).toBe(true);
   });
 
@@ -198,12 +198,51 @@ describe('api.routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.optimizedPrompt).toBe('optimized prompt');
-    expect(promptOptimizationService.optimize).toHaveBeenCalledWith({
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'Hello world',
       mode: 'video',
+      targetModel: undefined,
       context: undefined,
       brainstormContext: undefined,
-    });
+      skipCache: false,
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
+  });
+
+  it('passes skipCache through optimize requests', async () => {
+    const promptOptimizationService = {
+      optimize: vi.fn(async () => 'optimized prompt'),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      createAPIRoutes({
+        promptOptimizationService,
+        enhancementService: {},
+        sceneDetectionService: {},
+        videoConceptService: {},
+        metricsService: null,
+      })
+    );
+
+    const response = await request(app)
+      .post('/optimize')
+      .send({ prompt: 'Hello world', skipCache: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.optimizedPrompt).toBe('optimized prompt');
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Hello world',
+      mode: 'video',
+      targetModel: undefined,
+      context: undefined,
+      brainstormContext: undefined,
+      skipCache: true,
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
   });
 });
 

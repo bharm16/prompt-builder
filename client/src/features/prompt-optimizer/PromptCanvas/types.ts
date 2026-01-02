@@ -3,6 +3,7 @@
  */
 
 import type { Mode } from '../context/types';
+import type { OptimizationOptions } from '../types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CanonicalText } from '@utils/canonicalText';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
@@ -159,7 +160,7 @@ export interface ValidSpan {
 export interface PromptCanvasProps {
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
-  onReoptimize: (promptToOptimize?: string) => Promise<void>;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   displayedPrompt: string | null;
   optimizedPrompt: string;
   previewPrompt?: string | null;

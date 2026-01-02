@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { Toast } from '@hooks/types';
+import type { OptimizationOptions } from '../../types';
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -12,7 +13,7 @@ interface UseImprovementFlowParams {
   promptOptimizer: PromptOptimizer;
   toast: Toast;
   setShowImprover: (show: boolean) => void;
-  handleOptimize: (prompt: string, context: unknown) => void;
+  handleOptimize: (prompt: string, context: unknown, options?: OptimizationOptions) => void;
 }
 
 /**
@@ -60,4 +61,3 @@ export function useImprovementFlow({
     handleImprovementComplete,
   };
 }
-

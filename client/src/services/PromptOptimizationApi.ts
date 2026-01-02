@@ -16,6 +16,7 @@ interface OptimizeOptions {
   targetModel?: string; // New
   context?: unknown | null;
   brainstormContext?: unknown | null;
+  skipCache?: boolean;
   signal?: AbortSignal;
 }
 
@@ -69,6 +70,7 @@ export class PromptOptimizationApi {
     targetModel, // New
     context = null,
     brainstormContext = null,
+    skipCache,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
@@ -79,6 +81,7 @@ export class PromptOptimizationApi {
         ...(targetModel ? { targetModel } : {}), // New
         context,
         brainstormContext,
+        ...(skipCache ? { skipCache } : {}),
       }, requestOptions)) as OptimizeResult;
     } catch (error) {
       if (this._shouldUseOfflineFallback(error)) {
@@ -105,6 +108,7 @@ export class PromptOptimizationApi {
     targetModel, // New
     context = null,
     brainstormContext = null,
+    skipCache,
     signal,
     onDraft = null,
     onSpans = null,
@@ -136,6 +140,7 @@ export class PromptOptimizationApi {
           ...(targetModel ? { targetModel } : {}), // New
           context,
           brainstormContext,
+          ...(skipCache ? { skipCache } : {}),
         },
         ...(signal ? { signal } : {}),
         onMessage: (event, data) => {
@@ -372,7 +377,7 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext } = options;
+    const { prompt, mode, targetModel, context, brainstormContext, skipCache } = options;
 
     try {
       // Fallback to single-stage API
@@ -382,6 +387,7 @@ export class PromptOptimizationApi {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        ...(skipCache ? { skipCache } : {}),
         ...(signal ? { signal } : {}),
       });
 

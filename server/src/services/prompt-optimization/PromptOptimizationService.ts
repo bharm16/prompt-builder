@@ -89,6 +89,7 @@ export class PromptOptimizationService {
     targetModel,
     context = null,
     brainstormContext = null,
+    skipCache = false,
     onDraft = null,
     signal,
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
@@ -118,6 +119,7 @@ export class PromptOptimizationService {
       promptLength: prompt.length,
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
+      skipCache,
     });
 
     ensureNotAborted();
@@ -147,6 +149,7 @@ export class PromptOptimizationService {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        skipCache,
         onMetadata: (metadata) => {
           fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
         },
@@ -214,6 +217,7 @@ export class PromptOptimizationService {
           ...(brainstormContext || {}),
           originalUserPrompt: prompt,
         },
+        skipCache,
         shotPlan,
         shotPlanAttempted: true,
         onMetadata: (metadata) => {
@@ -273,6 +277,7 @@ export class PromptOptimizationService {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        skipCache,
         shotPlan,
         shotPlanAttempted: true,
         onMetadata: (metadata) => {
@@ -303,6 +308,7 @@ export class PromptOptimizationService {
     mode,
     context = null,
     brainstormContext = null,
+    skipCache = false,
     shotPlan = null,
     shotPlanAttempted = false,
     useConstitutionalAI = false,
@@ -346,6 +352,7 @@ export class PromptOptimizationService {
       shotPlanAttempted,
       useConstitutionalAI,
       useIterativeRefinement,
+      skipCache,
     });
 
     ensureNotAborted();
@@ -367,20 +374,27 @@ export class PromptOptimizationService {
     // Check cache
     const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext, targetModel);
     const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
-    const cached = await cacheService.get<string>(cacheKey);
-    if (cached) {
-      if (onMetadata) {
-        const cachedMetadata = await cacheService.get<Record<string, unknown>>(cacheMetadataKey);
-        if (cachedMetadata) {
-          onMetadata(cachedMetadata);
+    if (!skipCache) {
+      const cached = await cacheService.get<string>(cacheKey);
+      if (cached) {
+        if (onMetadata) {
+          const cachedMetadata = await cacheService.get<Record<string, unknown>>(cacheMetadataKey);
+          if (cachedMetadata) {
+            onMetadata(cachedMetadata);
+          }
         }
+        this.log.debug('Returning cached optimization result', {
+          operation,
+          mode: finalMode,
+          duration: Math.round(performance.now() - startTime),
+        });
+        return cached;
       }
-      this.log.debug('Returning cached optimization result', {
+    } else {
+      this.log.debug('Skipping optimization cache', {
         operation,
         mode: finalMode,
-        duration: Math.round(performance.now() - startTime),
       });
-      return cached;
     }
 
     try {

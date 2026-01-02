@@ -5,6 +5,7 @@ import SuggestionsPanel from '@components/SuggestionsPanel';
 import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
+import type { OptimizationOptions } from '../types';
 import './PromptResultsLayout.css';
 
 /**
@@ -20,7 +21,7 @@ import './PromptResultsLayout.css';
 interface PromptResultsLayoutProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
-  onReoptimize: (promptToOptimize?: string) => Promise<void>;
+  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onHighlightsPersist: (result: {

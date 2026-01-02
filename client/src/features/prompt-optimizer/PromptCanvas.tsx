@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect } from 'react';
-import { Pencil, X, Check, ChevronLeft, Image as ImageIcon, Play as PlayIcon } from 'lucide-react';
+import { Pencil, X, Check, ChevronLeft, RefreshCw, Image as ImageIcon, Play as PlayIcon } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -474,6 +474,14 @@ export function PromptCanvas({
     void onReoptimize(inputPrompt);
   }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
 
+  const handleRedoOptimize = useCallback((): void => {
+    if (isProcessing || isRefining) {
+      return;
+    }
+    debug.logAction('reoptimize', { promptLength: inputPrompt.length, skipCache: true });
+    void onReoptimize(inputPrompt, { skipCache: true });
+  }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
+
   const handleEditClick = useCallback((): void => {
     if (isOptimizing) {
       return;
@@ -879,17 +887,32 @@ export function PromptCanvas({
                       </span>
                     )}
                   </div>
-                  {enableMLHighlighting && (
-                    <button
-                      type="button"
-                      onClick={() => setShowHighlights(!showHighlights)}
-                      className="prompt-card__action-button"
-                      aria-label={showHighlights ? 'Hide highlights' : 'Show highlights'}
-                      title={showHighlights ? 'Hide highlights' : 'Show highlights'}
-                    >
-                      <span className="text-label-12">{showHighlights ? 'Hide' : 'Show'} highlights</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-geist-2">
+                    {!isEditing && (
+                      <button
+                        type="button"
+                        onClick={handleRedoOptimize}
+                        disabled={isReoptimizeDisabled}
+                        className="prompt-card__action-button"
+                        aria-label="Redo optimization"
+                        title="Redo optimization"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 text-geist-accents-5" />
+                        <span>Redo</span>
+                      </button>
+                    )}
+                    {enableMLHighlighting && (
+                      <button
+                        type="button"
+                        onClick={() => setShowHighlights(!showHighlights)}
+                        className="prompt-card__action-button"
+                        aria-label={showHighlights ? 'Hide highlights' : 'Show highlights'}
+                        title={showHighlights ? 'Hide highlights' : 'Show highlights'}
+                      >
+                        <span className="text-label-12">{showHighlights ? 'Hide' : 'Show'} highlights</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="prompt-card__body prompt-card__body--editor">
                   {normalizedDisplayedPrompt && !hasInteracted && (

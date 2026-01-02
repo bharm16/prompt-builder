@@ -32,6 +32,7 @@ export const promptSchema = z.object({
   })
     .optional()
     .nullable(),
+  skipCache: z.boolean().optional().default(false),
 });
 
 export type PromptRequest = z.infer<typeof promptSchema>;

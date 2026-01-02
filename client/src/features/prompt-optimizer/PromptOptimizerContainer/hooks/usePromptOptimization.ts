@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { OptimizationOptions } from '../../types';
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -10,7 +11,8 @@ interface PromptOptimizer {
     prompt: string,
     context: unknown | null,
     brainstormContext: unknown | null,
-    targetModel?: string // New: optional target model
+    targetModel?: string,
+    options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
@@ -48,7 +50,11 @@ export interface UsePromptOptimizationParams {
 }
 
 export interface UsePromptOptimizationReturn {
-  handleOptimize: (promptToOptimize?: string, context?: unknown) => Promise<void>;
+  handleOptimize: (
+    promptToOptimize?: string,
+    context?: unknown,
+    options?: OptimizationOptions
+  ) => Promise<void>;
 }
 
 /**
@@ -75,7 +81,11 @@ export function usePromptOptimization({
    * Handle prompt optimization
    */
   const handleOptimize = useCallback(
-    async (promptToOptimize?: string, context?: unknown): Promise<void> => {
+    async (
+      promptToOptimize?: string,
+      context?: unknown,
+      options?: OptimizationOptions
+    ): Promise<void> => {
       const prompt = promptToOptimize || promptOptimizer.inputPrompt;
       const ctx = context || promptOptimizer.improvementContext;
 
@@ -98,10 +108,11 @@ export function usePromptOptimization({
 
       // Optimize the prompt
       const result = await promptOptimizer.optimize(
-        prompt, 
-        ctx, 
-        brainstormContextData, 
-        selectedMode === 'video' ? selectedModel : undefined // Pass target model only in video mode
+        prompt,
+        ctx,
+        brainstormContextData,
+        selectedMode === 'video' ? selectedModel : undefined,
+        options
       );
       
       if (result) {

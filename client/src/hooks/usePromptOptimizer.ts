@@ -23,6 +23,10 @@ import { runSingleStageOptimization, runTwoStageOptimization } from './utils/pro
 
 const log = logger.child('usePromptOptimizer');
 
+interface OptimizationOptions {
+  skipCache?: boolean;
+}
+
 export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
   const toast = useToast() as Toast;
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -59,7 +63,9 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
     async (
       promptToOptimize: string = state.inputPrompt,
       context: unknown | null = state.improvementContext,
-      brainstormContext: unknown | null = null
+      brainstormContext: unknown | null = null,
+      targetModel?: string,
+      options?: OptimizationOptions
     ) => {
       if (!promptToOptimize.trim()) {
         toast.warning('Please enter a prompt');
@@ -80,6 +86,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
         useTwoStage,
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        skipCache: options?.skipCache ?? false,
       });
       logger.startTimer('optimize');
 
@@ -103,19 +110,25 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           setPreviewAspectRatio,
         };
 
-        const normalizedSelectedModel =
-          typeof selectedModel === 'string' && selectedModel.trim()
-            ? selectedModel
+        const overrideModel =
+          typeof targetModel === 'string' && targetModel.trim()
+            ? targetModel
             : undefined;
+        const normalizedSelectedModel =
+          overrideModel ??
+          (typeof selectedModel === 'string' && selectedModel.trim()
+            ? selectedModel
+            : undefined);
 
         if (useTwoStage) {
-          return runTwoStageOptimization({
+          return await runTwoStageOptimization({
             promptToOptimize,
             selectedMode,
             ...(normalizedSelectedModel ? { selectedModel: normalizedSelectedModel } : {}),
             context,
             brainstormContext,
             abortController,
+            skipCache: options?.skipCache,
             requestId,
             requestIdRef,
             refinedSpans: state.refinedSpans,
@@ -127,13 +140,14 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           });
         }
 
-        return runSingleStageOptimization({
+        return await runSingleStageOptimization({
           promptToOptimize,
           selectedMode,
           ...(normalizedSelectedModel ? { selectedModel: normalizedSelectedModel } : {}),
           context,
           brainstormContext,
           abortController,
+          skipCache: options?.skipCache,
           actions,
           toast,
           log,

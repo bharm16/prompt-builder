@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
+import type { OptimizationOptions } from '../types';
 
 export type { PromptHistoryEntry };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
@@ -49,7 +50,9 @@ export interface PromptOptimizer {
   optimize: (
     prompt?: string,
     context?: unknown | null,
-    brainstormContext?: unknown | null
+    brainstormContext?: unknown | null,
+    targetModel?: string,
+    options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
   [key: string]: unknown;
