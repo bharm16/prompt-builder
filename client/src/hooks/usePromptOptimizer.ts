@@ -103,11 +103,16 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           setPreviewAspectRatio,
         };
 
+        const normalizedSelectedModel =
+          typeof selectedModel === 'string' && selectedModel.trim()
+            ? selectedModel
+            : undefined;
+
         if (useTwoStage) {
           return runTwoStageOptimization({
             promptToOptimize,
             selectedMode,
-            selectedModel,
+            ...(normalizedSelectedModel ? { selectedModel: normalizedSelectedModel } : {}),
             context,
             brainstormContext,
             abortController,
@@ -125,7 +130,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
         return runSingleStageOptimization({
           promptToOptimize,
           selectedMode,
-          selectedModel,
+          ...(normalizedSelectedModel ? { selectedModel: normalizedSelectedModel } : {}),
           context,
           brainstormContext,
           abortController,

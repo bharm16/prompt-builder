@@ -388,10 +388,15 @@ class TestBaseStrategy extends BaseStrategy {
     return { text, changes, strippedTokens };
   }
 
-  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
+  protected doTransform(
+    llmPrompt: string | Record<string, unknown>,
+    ir: VideoPromptIR,
+    _context?: PromptContext
+  ): TransformResult {
+    const basePrompt = typeof llmPrompt === 'string' ? llmPrompt : ir.raw;
     // Simple transformation: wrap in CSAE structure using IR raw
     return {
-      prompt: `[Camera] [Subject] ${ir.raw} [Environment]`,
+      prompt: `[Camera] [Subject] ${basePrompt} [Environment]`,
       changes: ['Applied CSAE structure'],
     };
   }
@@ -404,13 +409,15 @@ class TestBaseStrategy extends BaseStrategy {
     const prompt = typeof result.prompt === 'string'
       ? `${result.prompt}, single continuous shot`
       : result.prompt;
-
-    return {
+    const augmentResult: AugmentResult = {
       prompt,
-      negativePrompt: result.negativePrompt,
       changes: ['Added continuous shot trigger'],
       triggersInjected: ['single continuous shot'],
     };
+    if (typeof result.negativePrompt === 'string') {
+      augmentResult.negativePrompt = result.negativePrompt;
+    }
+    return augmentResult;
   }
 }
 
@@ -429,9 +436,14 @@ class TestKlingStrategy extends BaseStrategy {
     return { text: input, changes: [], strippedTokens: [] };
   }
 
-  protected doTransform(ir: VideoPromptIR, _context?: PromptContext): TransformResult {
+  protected doTransform(
+    llmPrompt: string | Record<string, unknown>,
+    ir: VideoPromptIR,
+    _context?: PromptContext
+  ): TransformResult {
+    const basePrompt = typeof llmPrompt === 'string' ? llmPrompt : ir.raw;
     return {
-      prompt: ir.raw,
+      prompt: basePrompt,
       changes: ['Identity transform'],
     };
   }
@@ -440,12 +452,15 @@ class TestKlingStrategy extends BaseStrategy {
     result: PromptOptimizationResult,
     _context?: PromptContext
   ): AugmentResult {
-    return {
+    const augmentResult: AugmentResult = {
       prompt: result.prompt,
-      negativePrompt: result.negativePrompt,
       changes: [],
       triggersInjected: [],
     };
+    if (typeof result.negativePrompt === 'string') {
+      augmentResult.negativePrompt = result.negativePrompt;
+    }
+    return augmentResult;
   }
 }
 

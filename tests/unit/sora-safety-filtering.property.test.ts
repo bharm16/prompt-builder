@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 
 import { SoraStrategy } from '@services/video-prompt-analysis/strategies/SoraStrategy';
+import { safetySanitizer } from '@services/video-prompt-analysis/utils/SafetySanitizer';
 
 describe('SoraStrategy Property Tests', () => {
   const strategy = new SoraStrategy();
@@ -176,26 +177,26 @@ describe('SoraStrategy Property Tests', () => {
       );
     });
 
-    it('isPublicFigure correctly identifies public figures', () => {
+    it('safety sanitizer flags public figure names', () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...publicFigureNames),
           (celebrity) => {
-            expect(strategy.isPublicFigure(celebrity)).toBe(true);
+            expect(safetySanitizer.containsBlockedTerms(celebrity)).toBe(true);
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('containsPublicFigure detects public figures in text', () => {
+    it('safety sanitizer detects public figures in text', () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...publicFigureNames),
           fc.string({ minLength: 0, maxLength: 30 }),
           (celebrity, suffix) => {
             const input = `A scene with ${celebrity} ${suffix}`;
-            expect(strategy.containsPublicFigure(input)).toBe(true);
+            expect(safetySanitizer.containsBlockedTerms(input)).toBe(true);
           }
         ),
         { numRuns: 100 }

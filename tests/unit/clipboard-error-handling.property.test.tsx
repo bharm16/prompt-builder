@@ -107,7 +107,12 @@ describe('Clipboard Error Handling Property Tests', () => {
       expect(copyButtons.length).toBeGreaterThan(0);
 
       // Click should not throw
-      fireEvent.click(copyButtons[0]);
+      const firstCopyButton = copyButtons[0];
+      expect(firstCopyButton).toBeDefined();
+      if (!firstCopyButton) {
+        return;
+      }
+      fireEvent.click(firstCopyButton);
 
       // Wait for async clipboard operation to complete
       await waitFor(() => {

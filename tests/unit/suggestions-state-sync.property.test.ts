@@ -76,6 +76,10 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             // Change to a different category
             const targetCategory = categories[1];
+            expect(targetCategory).toBeDefined();
+            if (!targetCategory) {
+              return;
+            }
             act(() => {
               result.current.dispatch({
                 type: result.current.actions.SET_ACTIVE_CATEGORY,
@@ -117,6 +121,10 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             // Change to the last category
             const targetCategory = categories[categories.length - 1];
+            expect(targetCategory).toBeDefined();
+            if (!targetCategory) {
+              return;
+            }
             act(() => {
               result.current.dispatch({
                 type: result.current.actions.SET_ACTIVE_CATEGORY,

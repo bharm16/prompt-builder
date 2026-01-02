@@ -44,7 +44,7 @@ type OptimizeWithFallback = (options: {
   onError?: (error: Error) => void;
 }) => Promise<{
   refined: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
   usedFallback?: boolean;
 }>;
 

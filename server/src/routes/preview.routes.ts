@@ -69,8 +69,8 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       try {
         const result = await videoGenerationService.generateVideo(prompt, {
-          aspectRatio,
-          model: model as any,
+          ...(aspectRatio ? { aspectRatio } : {}),
+          ...(model ? { model: model as any } : {}),
         });
 
         logger.info(`${operation} completed`, {

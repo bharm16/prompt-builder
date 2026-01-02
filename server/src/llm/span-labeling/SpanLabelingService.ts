@@ -325,7 +325,7 @@ export async function* labelSpansStream(
   // Create client with explicit model for auto-detection
   const llmClient = createLlmClient({ 
       operation: 'span_labeling',
-      model: modelName
+      ...(modelName ? { model: modelName } : {}),
   });
 
   // Fallback if streaming not supported
@@ -336,7 +336,13 @@ export async function* labelSpansStream(
     });
     const result = await labelSpans(params, aiService);
     for (const span of result.spans) {
-      yield span;
+      if (typeof span.start === 'number' && typeof span.end === 'number') {
+        yield {
+          ...span,
+          start: span.start,
+          end: span.end,
+        };
+      }
     }
     return;
   }
@@ -362,25 +368,35 @@ export async function* labelSpansStream(
 
   // Stream
   for await (const rawSpan of llmClient.streamSpans(streamParams)) {
-      // Basic validation/normalization
-      const span: SpanLike = {
-          text: String(rawSpan.text || ''),
-          role: String(rawSpan.role || rawSpan.category || ''),
-          confidence: typeof rawSpan.confidence === 'number' ? rawSpan.confidence : 0.5,
-          start: typeof rawSpan.start === 'number' ? rawSpan.start : undefined,
-          end: typeof rawSpan.end === 'number' ? rawSpan.end : undefined,
-      };
+      const textValue = String(rawSpan.text || '');
+      const roleValue = String(rawSpan.role || rawSpan.category || '');
+      const confidenceValue = typeof rawSpan.confidence === 'number' ? rawSpan.confidence : 0.5;
+      let start = typeof rawSpan.start === 'number' ? rawSpan.start : undefined;
+      let end = typeof rawSpan.end === 'number' ? rawSpan.end : undefined;
+      let resolvedText = textValue;
 
       // Calculate indices if missing
-      if (typeof span.start !== 'number' || typeof span.end !== 'number') {
-        const match = cache.findBestMatch(params.text, span.text);
+      if (typeof start !== 'number' || typeof end !== 'number') {
+        const match = cache.findBestMatch(params.text, textValue);
         if (match) {
-          span.start = match.start;
-          span.end = match.end;
+          start = match.start;
+          end = match.end;
           // Use exact text from source to ensure alignment
-          span.text = params.text.slice(match.start, match.end); 
+          resolvedText = params.text.slice(match.start, match.end);
         }
       }
+
+      if (typeof start !== 'number' || typeof end !== 'number') {
+        continue;
+      }
+
+      const span: SpanLike = {
+          text: resolvedText,
+          role: roleValue,
+          confidence: confidenceValue,
+          start,
+          end,
+      };
       
       yield span;
   }

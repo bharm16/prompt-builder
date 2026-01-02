@@ -295,8 +295,11 @@ export class VideoPromptService {
     let detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
 
     // Resolve short ID to full strategy ID
-    if (detectedModelId && VideoPromptService.MODEL_ID_MAP[detectedModelId]) {
-      detectedModelId = VideoPromptService.MODEL_ID_MAP[detectedModelId];
+    if (detectedModelId) {
+      const mappedModelId = VideoPromptService.MODEL_ID_MAP[detectedModelId];
+      if (mappedModelId) {
+        detectedModelId = mappedModelId;
+      }
     }
 
     this.log.info('Starting prompt optimization', {
@@ -594,4 +597,3 @@ export class VideoPromptService {
     };
   }
 }
-

@@ -62,7 +62,7 @@ const normalizeAspectRatio = (value?: string | null): string | null => {
   }
 
   const match = normalized.match(/(\d+(?:\.\d+)?[:x]\d+(?:\.\d+)?)/i);
-  if (match) {
+  if (match?.[1]) {
     const extracted = match[1].replace(/x/i, ':');
     if (SUPPORTED_ASPECT_RATIOS.has(extracted)) {
       return extracted;

@@ -263,11 +263,14 @@ export class GroqQwenAdapter {
           });
           // Prepend to system message to satisfy Groq's requirement
           const systemIdx = messages.findIndex(m => m.role === 'system');
-          if (systemIdx !== -1) {
-            messages[systemIdx].content = `Respond with valid JSON.\n\n${messages[systemIdx].content}`;
-          } else {
+          const systemMessage = systemIdx >= 0 ? messages[systemIdx] : undefined;
+          if (systemMessage) {
+            systemMessage.content = `Respond with valid JSON.\n\n${systemMessage.content}`;
+          } else if (messages[0]) {
             // No system message, add instruction to first message
             messages[0].content = `Respond with valid JSON.\n\n${messages[0].content}`;
+          } else {
+            messages.push({ role: 'system', content: 'Respond with valid JSON.' });
           }
         }
         

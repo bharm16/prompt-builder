@@ -11,6 +11,7 @@
 
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
+import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
 import { POISONOUS_PATTERNS } from '../constants';
 import { getEnhancementSchema } from '../config/schemas';
 import type {
@@ -41,7 +42,7 @@ export interface SuggestionGenerationParams {
 }
 
 export interface SuggestionGenerationParamsV2 {
-  promptResult: PromptBuildResult;
+  promptResult: PromptBuildResult | string;
   schema: OutputSchema;
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
@@ -72,19 +73,41 @@ export class SuggestionGenerationService {
     params: SuggestionGenerationParamsV2
   ): Promise<SuggestionGenerationResult> {
     const { promptResult, schema, isVideoPrompt, isPlaceholder, highlightedText, temperature, metrics } = params;
+    const resolvedPromptResult: PromptBuildResult =
+      typeof promptResult === 'string'
+        ? (() => {
+            const { provider, capabilities } = detectAndGetCapabilities({
+              operation: 'enhance_suggestions',
+            });
+            const resolvedProvider = provider === 'openai' ? 'openai' : 'groq';
+            return {
+              systemPrompt: promptResult,
+              provider: resolvedProvider,
+              ...(resolvedProvider === 'openai' && capabilities.strictJsonSchema
+                ? { useStrictSchema: true }
+                : {}),
+            };
+          })()
+        : promptResult;
 
     return this.generateSuggestions({
-      systemPrompt: promptResult.systemPrompt,
+      systemPrompt: resolvedPromptResult.systemPrompt,
       schema,
       isVideoPrompt,
       isPlaceholder,
       highlightedText,
       temperature,
       metrics,
-      provider: promptResult.provider,
-      ...(promptResult.developerMessage ? { developerMessage: promptResult.developerMessage } : {}),
-      ...(promptResult.useStrictSchema ? { useStrictSchema: promptResult.useStrictSchema } : {}),
-      ...(promptResult.reasoningEffort ? { reasoningEffort: promptResult.reasoningEffort } : {}),
+      provider: resolvedPromptResult.provider,
+      ...(resolvedPromptResult.developerMessage
+        ? { developerMessage: resolvedPromptResult.developerMessage }
+        : {}),
+      ...(resolvedPromptResult.useStrictSchema
+        ? { useStrictSchema: resolvedPromptResult.useStrictSchema }
+        : {}),
+      ...(resolvedPromptResult.reasoningEffort
+        ? { reasoningEffort: resolvedPromptResult.reasoningEffort }
+        : {}),
     });
   }
 

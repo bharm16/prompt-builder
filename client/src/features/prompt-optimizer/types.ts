@@ -75,6 +75,8 @@ export interface PromptEditorProps {
   onTextSelection: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onCopyEvent: (e: React.ClipboardEvent<HTMLDivElement>) => void;
   onInput: (e: React.FormEvent<HTMLDivElement>) => void;
 }

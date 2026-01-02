@@ -1,6 +1,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VideoPromptLLMRewriter } from './VideoPromptLLMRewriter';
+import type { VideoPromptIR } from '../../types';
 
 // Mock GeminiAdapter
 const mockGenerateText = vi.fn();
@@ -17,6 +18,16 @@ vi.mock('../../../../clients/adapters/GeminiAdapter', () => {
 
 describe('VideoPromptLLMRewriter', () => {
   let rewriter: VideoPromptLLMRewriter;
+  const baseIr: VideoPromptIR = {
+    subjects: [{ text: 'test subject', attributes: [] }],
+    actions: ['test action'],
+    camera: { movements: [] },
+    environment: { setting: 'test setting', lighting: [] },
+    audio: {},
+    meta: { mood: [], style: [] },
+    technical: {},
+    raw: 'test input',
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,7 +36,7 @@ describe('VideoPromptLLMRewriter', () => {
 
   it('should call generateText for runway-gen45', async () => {
     mockGenerateText.mockResolvedValue('Optimized prompt');
-    const result = await rewriter.rewrite('test input', 'runway-gen45');
+    const result = await rewriter.rewrite(baseIr, 'runway-gen45');
     
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.stringContaining('INSTRUCTIONS for Runway Gen-4.5'),
@@ -38,7 +49,7 @@ describe('VideoPromptLLMRewriter', () => {
     const mockJson = { mode: 'generate', subject: { description: 'test', action: 'test' } };
     mockGenerateStructuredOutput.mockResolvedValue(mockJson);
     
-    const result = await rewriter.rewrite('test input', 'veo-4');
+    const result = await rewriter.rewrite(baseIr, 'veo-4');
     
     expect(mockGenerateStructuredOutput).toHaveBeenCalledWith(
       expect.stringContaining('INSTRUCTIONS for Google Veo 4'),

@@ -268,7 +268,9 @@ describe('TypeScript Configuration - Property Tests', () => {
         let match;
 
         while ((match = deepImportPattern.exec(content)) !== null) {
-          matches.push(match[1]);
+          if (match[1]) {
+            matches.push(match[1]);
+          }
         }
 
         if (matches.length > 0) {
@@ -303,7 +305,9 @@ describe('TypeScript Configuration - Property Tests', () => {
         let match;
 
         while ((match = deepImportPattern.exec(content)) !== null) {
-          matches.push(match[1]);
+          if (match[1]) {
+            matches.push(match[1]);
+          }
         }
 
         if (matches.length > 0) {
@@ -343,7 +347,9 @@ describe('TypeScript Configuration - Property Tests', () => {
         let match;
 
         while ((match = deepImportPattern.exec(content)) !== null) {
-          matches.push(match[1]);
+          if (match[1]) {
+            matches.push(match[1]);
+          }
         }
 
         if (matches.length > 0) {
@@ -378,7 +384,9 @@ describe('TypeScript Configuration - Property Tests', () => {
         let match;
 
         while ((match = deepImportPattern.exec(content)) !== null) {
-          matches.push(match[1]);
+          if (match[1]) {
+            matches.push(match[1]);
+          }
         }
 
         if (matches.length > 0) {

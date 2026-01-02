@@ -133,7 +133,7 @@ export interface PromptCanvasState {
   videoGenerateRequestId: number;
   isEditing: boolean;
   originalInputPrompt: string;
-  originalSelectedModel?: string;
+  originalSelectedModel: string | undefined;
   selectedSpanId: string | null;
   lastAppliedSpanId: string | null;
   hasInteracted: boolean;

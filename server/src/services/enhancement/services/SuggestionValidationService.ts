@@ -83,12 +83,13 @@ export class SuggestionValidationService {
 
       let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
       text = text.replace(/\s+/g, ' ').trim();
+      const lowerText = text.toLowerCase();
 
       if (!text) {
         return;
       }
 
-      if (normalizedHighlight && text.toLowerCase() === normalizedHighlight) {
+      if (normalizedHighlight && lowerText === normalizedHighlight) {
         return; // identical to highlight, no improvement
       }
 

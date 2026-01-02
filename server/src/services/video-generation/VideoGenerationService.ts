@@ -83,7 +83,7 @@ export class VideoGenerationService {
 
       // Use replicate.run() instead of predictions.create() + polling
       // casting modelId to any because the type definition might be strict about exact strings
-      const output = await this.replicate.run(modelId as any, { input });
+      const output = (await this.replicate.run(modelId as any, { input })) as unknown;
 
       this.log.info('replicate.run finished', { 
         outputType: typeof output, 
@@ -121,7 +121,7 @@ export class VideoGenerationService {
       }
 
       // Fallback: If we can't extract a URL, log error and throw
-      this.log.error('Could not extract video URL from output', { output });
+      this.log.error('Could not extract video URL from output', undefined, { output });
       throw new Error('Invalid output format from Replicate: Could not extract video URL');
 
     } catch (error) {

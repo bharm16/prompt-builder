@@ -171,7 +171,7 @@ function extractLightingPatterns(
 
   // Strategy 1: Find adjective(s) + lighting noun patterns
   // e.g., "soft shadows", "warm ambient glow", "harsh dramatic light"
-  doc.match('#Adjective+ #Noun').forEach((match: ReturnType<typeof nlp>) => {
+  doc.match('#Adjective+ #Noun').forEach((match) => {
     const matchText = match.text().trim();
     const words = matchText.split(/\s+/);
 
@@ -201,7 +201,7 @@ function extractLightingPatterns(
 
   // Strategy 2: Find standalone lighting nouns with preceding adjectives
   // This catches cases where Compromise might not tag perfectly
-  doc.match('#Noun').forEach((match: ReturnType<typeof nlp>) => {
+  doc.match('#Noun').forEach((match) => {
     const nounText = match.text().trim().toLowerCase();
 
     if (!isLightingNoun(nounText)) return;

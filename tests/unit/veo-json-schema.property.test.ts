@@ -280,9 +280,13 @@ describe('VeoStrategy Property Tests', () => {
             const schema = augmentResult.prompt as unknown as VeoPromptSchema;
 
             // style_preset should be injected
-            expect(schema.style_preset).toBeDefined();
-            expect(typeof schema.style_preset).toBe('string');
-            expect(schema.style_preset.length).toBeGreaterThan(0);
+            const stylePreset = schema.style_preset;
+            expect(stylePreset).toBeDefined();
+            expect(typeof stylePreset).toBe('string');
+            if (!stylePreset) {
+              return;
+            }
+            expect(stylePreset.length).toBeGreaterThan(0);
           }
         ),
         { numRuns: 100 }

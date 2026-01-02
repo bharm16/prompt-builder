@@ -68,6 +68,7 @@ export class ContrastiveDiversityEnforcer {
 
     try {
       const allSuggestions: Suggestion[] = [];
+      const modelOverrides = routing.model ? { model: routing.model } : {};
       
       // Batch 1: Standard temperature, no constraints
       const batch1 = await this._generateBatch({
@@ -77,7 +78,7 @@ export class ContrastiveDiversityEnforcer {
         negativeConstraint: null,
         batchNumber: 1,
         provider: routing.provider,
-        model: routing.model,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch1);
       
@@ -89,7 +90,7 @@ export class ContrastiveDiversityEnforcer {
         negativeConstraint: this._buildNegativeConstraint(batch1),
         batchNumber: 2,
         provider: routing.provider,
-        model: routing.model,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch2);
       
@@ -101,7 +102,7 @@ export class ContrastiveDiversityEnforcer {
         negativeConstraint: this._buildNegativeConstraint([...batch1, ...batch2]),
         batchNumber: 3,
         provider: routing.provider,
-        model: routing.model,
+        ...modelOverrides,
       });
       allSuggestions.push(...batch3);
 
@@ -211,7 +212,7 @@ export class ContrastiveDiversityEnforcer {
           temperature,
           operation: 'enhance_suggestions',
           provider,
-          model,
+          ...(model ? { model } : {}),
         }
       ) as Suggestion[];
 

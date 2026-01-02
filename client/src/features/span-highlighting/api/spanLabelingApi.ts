@@ -30,6 +30,8 @@ interface LabelSpansResponse {
     end: number;
     category: string;
     confidence: number;
+    text?: string;
+    role?: string;
   }>;
   meta: Record<string, unknown> | null;
 }

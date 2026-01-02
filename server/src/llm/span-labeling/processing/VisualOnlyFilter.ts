@@ -81,23 +81,23 @@ function isMetaSpanText(spanText: string): boolean {
     const firstToken = tokens[0];
     const lastToken = tokens[tokens.length - 1];
     
-    if (META_MARKERS.has(firstToken) && TAXONOMY_LABELS.has(lastToken)) {
+    if (firstToken && lastToken && META_MARKERS.has(firstToken) && TAXONOMY_LABELS.has(lastToken)) {
       return true;
     }
     
     // Also check "The [TaxonomyLabel]"
-    if ((firstToken === 'the' || firstToken === 'a') && TAXONOMY_LABELS.has(lastToken)) {
+    if (firstToken && lastToken && (firstToken === 'the' || firstToken === 'a') && TAXONOMY_LABELS.has(lastToken)) {
       return true;
     }
   }
 
   // Check 3: Is it just a Meta Marker?
   // e.g. "Variation 1", "Alternative"
-  if (tokens.length === 1 && META_MARKERS.has(tokens[0])) {
+  if (tokens.length === 1 && tokens[0] && META_MARKERS.has(tokens[0])) {
     return true;
   }
   
-  if (tokens.length === 2 && META_MARKERS.has(tokens[0]) && /\d+/.test(tokens[1])) {
+  if (tokens.length === 2 && tokens[0] && tokens[1] && META_MARKERS.has(tokens[0]) && /\d+/.test(tokens[1])) {
     return true; // "Variation 1"
   }
 

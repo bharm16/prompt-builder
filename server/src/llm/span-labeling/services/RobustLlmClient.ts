@@ -693,8 +693,8 @@ If validation feedback is provided, correct the issues without altering span tex
       spans: repairValue.spans || [],
       meta: repairValue.meta ?? { version: 'v1', notes: '' },
       text,
-      policy: validationPolicy,
-      options: validationOptions,
+      policy,
+      options,
       attempt: 2,
       cache,
       isAdversarial:

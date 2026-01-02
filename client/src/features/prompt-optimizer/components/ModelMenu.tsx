@@ -35,15 +35,17 @@ export const ModelMenu = memo<ModelMenuProps>(({ promptText, onCopy, onClose }):
 
   const getColorClass = (modelId: AIModelId): string => {
     switch (modelId) {
-      case 'runway':
+      case 'runway-gen45':
         return 'text-purple-600';
-      case 'sora':
+      case 'luma-ray3':
+        return 'text-teal-600';
+      case 'sora-2':
         return 'text-green-600';
-      case 'veo':
+      case 'veo-4':
         return 'text-blue-600';
-      case 'kling':
+      case 'kling-26':
         return 'text-orange-600';
-      case 'wan':
+      case 'wan-2.2':
         return 'text-red-500';
       default:
         return 'text-geist-accents-7';
@@ -71,4 +73,3 @@ export const ModelMenu = memo<ModelMenuProps>(({ promptText, onCopy, onClose }):
 });
 
 ModelMenu.displayName = 'ModelMenu';
-

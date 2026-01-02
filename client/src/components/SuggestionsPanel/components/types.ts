@@ -25,7 +25,7 @@ export interface TipItem {
 
 export interface InactiveExampleConfig {
   from: string;
-  to: string[];
+  to: readonly string[];
 }
 
 export interface InactiveStateConfig {

@@ -114,6 +114,7 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
         res.write(JSON.stringify(transformed) + '\n');
       }
       res.end();
+      return;
     } catch (error) {
       logger.error(`${operation} failed`, error as Error, {
         operation,
@@ -122,10 +123,11 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       });
       // Try to write error to stream if possible
       if (!res.headersSent) {
-          res.status(502).json({ error: 'Streaming failed' });
+          return res.status(502).json({ error: 'Streaming failed' });
       } else {
           res.write(JSON.stringify({ error: 'Streaming failed' }) + '\n');
           res.end();
+          return;
       }
     }
   });

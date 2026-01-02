@@ -431,7 +431,11 @@ describe('fetchEnhancementSuggestions', () => {
       );
 
       const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1]?.body as string);
+      expect(callArgs).toBeDefined();
+      if (!callArgs?.[1]?.body) {
+        throw new Error('Missing request body in fetch call');
+      }
+      const body = JSON.parse(callArgs[1].body as string);
 
       expect(body).toMatchObject({
         highlightedText: 'test text',

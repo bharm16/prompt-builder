@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import type { PromptCanvasState, SuggestionsData } from '../types';
+import type { PromptCanvasState, SuggestionsData, SuggestionItem } from '../types';
 
 export interface UseSuggestionFeedbackOptions {
   suggestionsData: SuggestionsData | null;
   selectedSpanId: string | null;
-  onSuggestionClick?: (suggestion: unknown) => void;
+  onSuggestionClick?: (suggestion: SuggestionItem | string) => void;
   setState: (payload: Partial<PromptCanvasState>) => void;
 }
 
 export interface UseSuggestionFeedbackReturn {
-  handleSuggestionClickWithFeedback: (suggestion: unknown) => void;
+  handleSuggestionClickWithFeedback: (suggestion: SuggestionItem | string) => void;
 }
 
 export function useSuggestionFeedback({
@@ -31,7 +31,7 @@ export function useSuggestionFeedback({
   useEffect(() => () => clearJustReplacedTimeout(), [clearJustReplacedTimeout]);
 
   const handleSuggestionClickWithFeedback = useCallback(
-    (suggestion: unknown): void => {
+    (suggestion: SuggestionItem | string): void => {
       const suggestionText =
         typeof suggestion === 'string'
           ? suggestion

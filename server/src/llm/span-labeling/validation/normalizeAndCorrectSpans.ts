@@ -179,7 +179,10 @@ export function normalizeAndCorrectSpans(
        
        // If all claimed, fallback to best one (will be deduped later if exact duplicate)
        if (!corrected) {
-           corrected = exactMatches[0];
+           const fallbackMatch = exactMatches[0];
+           if (fallbackMatch) {
+             corrected = fallbackMatch;
+           }
        }
     }
 
@@ -294,7 +297,6 @@ export function normalizeAndCorrectSpans(
     notes: [...validationNotes, ...autoFixNotes],
   };
 }
-
 
 
 

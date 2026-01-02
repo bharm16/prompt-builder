@@ -71,7 +71,13 @@ async function initialize(): Promise<void> {
       const startTime = performance.now();
 
       // Load a small, fast embedding model
-      embeddingModel = await pipeline(
+      const createEmbeddingPipeline = pipeline as unknown as (
+        task: 'feature-extraction',
+        model: string,
+        options: { dtype: 'fp32' }
+      ) => Promise<FeatureExtractionPipeline>;
+
+      embeddingModel = await createEmbeddingPipeline(
         'feature-extraction',
         'Xenova/all-MiniLM-L6-v2',
         { dtype: 'fp32' }

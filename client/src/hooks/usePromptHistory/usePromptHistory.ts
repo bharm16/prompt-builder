@@ -165,9 +165,7 @@ export const usePromptHistory = (user: User | null) => {
   const updateEntryHighlight = useCallback(
     (uuid: string, highlightCache: unknown) => {
       // Update repository (fire and forget)
-      if (!user) {
-        updateHighlights(user?.uid, uuid, highlightCache);
-      }
+      updateHighlights(user?.uid, uuid, highlightCache);
 
       // Update local state
       updateEntry(uuid, { highlightCache: highlightCache ?? null });

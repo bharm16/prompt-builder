@@ -252,7 +252,7 @@ export function generateFallbackQuestions(initialPrompt: string): Question[] {
     title: ASPECT_TITLES[promptType],
     description: ASPECT_DESCRIPTIONS[promptType](topic),
     field: 'specificAspects',
-    examples: generateAspectExamples(prompt),
+    examples: Array.from(generateAspectExamples(prompt)),
   };
 
   const backgroundQuestion: Question = {
@@ -260,7 +260,7 @@ export function generateFallbackQuestions(initialPrompt: string): Question[] {
     title: BACKGROUND_TITLES[promptType],
     description: BACKGROUND_DESCRIPTIONS[promptType],
     field: 'backgroundLevel',
-    examples: generateBackgroundExamples(topic),
+    examples: Array.from(generateBackgroundExamples(topic)),
   };
 
   const useQuestion: Question = {
@@ -268,7 +268,7 @@ export function generateFallbackQuestions(initialPrompt: string): Question[] {
     title: USE_TITLES[promptType],
     description: USE_DESCRIPTIONS[promptType],
     field: 'intendedUse',
-    examples: generateUseExamples(prompt),
+    examples: Array.from(generateUseExamples(prompt)),
   };
 
   return [aspectQuestion, backgroundQuestion, useQuestion];

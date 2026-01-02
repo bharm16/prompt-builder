@@ -469,7 +469,7 @@ function extractVerbPhrases(doc: ReturnType<typeof nlp>, text: string, config: C
 
   // Pattern 1: Adverb + Verb + Object (e.g., "skillfully dribbling a basketball")
   if (config.includeAdverbs && config.includeObjects) {
-    doc.match('#Adverb? #Verb+ #Determiner? #Adjective* #Noun+').forEach((match: ReturnType<typeof nlp>) => {
+    doc.match('#Adverb? #Verb+ #Determiner? #Adjective* #Noun+').forEach((match) => {
       const matchText = match.text().trim();
       const words = matchText.split(/\s+/);
       if (words.length <= config.maxPhraseWords && words.length >= 2) {
@@ -486,7 +486,7 @@ function extractVerbPhrases(doc: ReturnType<typeof nlp>, text: string, config: C
   }
 
   // Pattern 2: Verb + Preposition + Noun (e.g., "looking through a window")
-  doc.match('#Verb+ #Preposition #Determiner? #Adjective* #Noun+').forEach((match: ReturnType<typeof nlp>) => {
+  doc.match('#Verb+ #Preposition #Determiner? #Adjective* #Noun+').forEach((match) => {
     const matchText = match.text().trim();
     const words = matchText.split(/\s+/);
     if (words.length <= config.maxPhraseWords && words.length >= 2) {
@@ -503,7 +503,7 @@ function extractVerbPhrases(doc: ReturnType<typeof nlp>, text: string, config: C
 
   // Pattern 3: Simple verb + object (e.g., "catching a ball")
   if (config.includeObjects) {
-    doc.match('#Verb+ #Determiner? #Adjective* #Noun').forEach((match: ReturnType<typeof nlp>) => {
+    doc.match('#Verb+ #Determiner? #Adjective* #Noun').forEach((match) => {
       const matchText = match.text().trim();
       const words = matchText.split(/\s+/);
       if (words.length <= config.maxPhraseWords && words.length >= 2) {
@@ -521,7 +521,7 @@ function extractVerbPhrases(doc: ReturnType<typeof nlp>, text: string, config: C
 
   // Pattern 4: Adverb + Verb (e.g., "running energetically")
   if (config.includeAdverbs) {
-    doc.match('#Adverb #Verb+').forEach((match: ReturnType<typeof nlp>) => {
+    doc.match('#Adverb #Verb+').forEach((match) => {
       const matchText = match.text().trim();
       const pos = findPhrasePosition(text, matchText);
       if (pos) {
@@ -534,7 +534,7 @@ function extractVerbPhrases(doc: ReturnType<typeof nlp>, text: string, config: C
     });
 
     // Also match Verb + Adverb (e.g., "runs quickly")
-    doc.match('#Verb+ #Adverb').forEach((match: ReturnType<typeof nlp>) => {
+    doc.match('#Verb+ #Adverb').forEach((match) => {
       const matchText = match.text().trim();
       const pos = findPhrasePosition(text, matchText);
       if (pos) {
@@ -558,7 +558,7 @@ function extractGerunds(doc: ReturnType<typeof nlp>, text: string, config: Compr
   const seenPositions = new Set<string>();
 
   // Match gerunds (present participles used as main verbs)
-  doc.match('#Gerund').forEach((match: ReturnType<typeof nlp>) => {
+  doc.match('#Gerund').forEach((match) => {
     const matchText = match.text().trim();
 
     // Skip very short or excluded verbs
@@ -578,7 +578,7 @@ function extractGerunds(doc: ReturnType<typeof nlp>, text: string, config: Compr
 
   // Also check for -ing words that Compromise tagged as nouns but are likely actions
   // This handles cases like "woman dribbling a basketball" where "dribbling" is tagged as Noun
-  doc.match('#Noun').forEach((match: ReturnType<typeof nlp>) => {
+  doc.match('#Noun').forEach((match) => {
     const matchText = match.text().trim().toLowerCase();
 
     // Check if it's a known action gerund (ends in -ing and is in our list)

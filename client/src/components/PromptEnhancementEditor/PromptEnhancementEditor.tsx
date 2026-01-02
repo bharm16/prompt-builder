@@ -17,8 +17,8 @@ export default function PromptEnhancementEditor({
   const { contentRef, handleMouseUp } = useEnhancementEditor({
     promptContent,
     onPromptUpdate,
-    originalUserPrompt,
-    onShowSuggestionsChange,
+    ...(originalUserPrompt !== undefined ? { originalUserPrompt } : {}),
+    ...(onShowSuggestionsChange ? { onShowSuggestionsChange } : {}),
   });
 
   return (

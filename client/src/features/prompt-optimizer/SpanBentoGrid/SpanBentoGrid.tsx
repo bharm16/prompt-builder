@@ -34,7 +34,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   spans,
   onSpanClick,
   editorRef,
-  selectedSpanId,
+  selectedSpanId = null,
 }) => {
   const { groups } = useSpanGrouping(spans);
   const orderedCategories = CATEGORY_ORDER as Array<keyof typeof CATEGORY_CONFIG>;
