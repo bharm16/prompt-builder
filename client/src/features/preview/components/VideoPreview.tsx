@@ -69,7 +69,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   }, [prompt, regenerate]);
 
   return (
-    <div className="flex flex-col h-full space-y-4">
+    <div className="flex flex-col space-y-4">
       <div className="flex items-center px-1">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">

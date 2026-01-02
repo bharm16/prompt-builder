@@ -39,7 +39,7 @@ import { PromptEditor } from './components/PromptEditor';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import SuggestionsPanel from '@components/SuggestionsPanel';
-import { TabbedPreview } from '@/features/preview';
+import { VisualPreview, VideoPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
 
@@ -103,7 +103,6 @@ export function PromptCanvas({
   const [showModelMenu, setShowModelMenu] = React.useState<boolean>(false);
   const [showLegend, setShowLegend] = React.useState<boolean>(false);
   const [rightPaneMode, setRightPaneMode] = React.useState<'refine' | 'preview'>('refine');
-  const [activePreviewTab, setActivePreviewTab] = React.useState<'visual' | 'video'>('visual');
   const [showPreviewStatusHelp, setShowPreviewStatusHelp] = React.useState<boolean>(false);
 
   const [visualLastGeneratedAt, setVisualLastGeneratedAt] = React.useState<number | null>(null);
@@ -624,20 +623,36 @@ export function PromptCanvas({
     return `${days}d ago`;
   }, []);
 
-  const currentPreviewPrompt = activePreviewTab === 'visual' ? previewSource : normalizedDisplayedPrompt ?? '';
-  const lastGeneratedPrompt = activePreviewTab === 'visual' ? visualLastGeneratedPrompt : videoLastGeneratedPrompt;
-  const lastGeneratedAt = activePreviewTab === 'visual' ? visualLastGeneratedAt : videoLastGeneratedAt;
+  const showVideoPreview = selectedMode === 'video';
 
-  const previewHasGeneration = Boolean(lastGeneratedAt && lastGeneratedPrompt);
-  const previewIsFresh =
-    previewHasGeneration && currentPreviewPrompt.trim().length > 0
-      ? lastGeneratedPrompt === currentPreviewPrompt
+  const visualPreviewHasGeneration = Boolean(visualLastGeneratedAt && visualLastGeneratedPrompt);
+  const visualPreviewIsFresh =
+    visualPreviewHasGeneration && previewSource.trim().length > 0
+      ? visualLastGeneratedPrompt === previewSource
       : false;
-  const previewStatusText = !previewHasGeneration
-    ? 'No preview yet'
-    : previewIsFresh
-      ? `Previewing latest prompt · Updated ${formatRelativeUpdate(lastGeneratedAt as number)}`
-      : `Edits since last preview · Updated ${formatRelativeUpdate(lastGeneratedAt as number)}`;
+  const visualPreviewStatusText = !visualPreviewHasGeneration
+    ? 'No visual preview yet'
+    : visualPreviewIsFresh
+      ? `Visual up to date · Updated ${formatRelativeUpdate(visualLastGeneratedAt as number)}`
+      : `Visual edited since preview · Updated ${formatRelativeUpdate(visualLastGeneratedAt as number)}`;
+
+  const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
+  const videoPreviewHasGeneration = Boolean(videoLastGeneratedAt && videoLastGeneratedPrompt);
+  const videoPreviewIsFresh =
+    videoPreviewHasGeneration && videoPreviewPrompt.trim().length > 0
+      ? videoLastGeneratedPrompt === videoPreviewPrompt
+      : false;
+  const videoPreviewStatusText = !videoPreviewHasGeneration
+    ? 'No video preview yet'
+    : videoPreviewIsFresh
+      ? `Video up to date · Updated ${formatRelativeUpdate(videoLastGeneratedAt as number)}`
+      : `Video edited since preview · Updated ${formatRelativeUpdate(videoLastGeneratedAt as number)}`;
+
+  const previewHasGeneration = visualPreviewHasGeneration || (showVideoPreview && videoPreviewHasGeneration);
+  const previewIsFresh = visualPreviewIsFresh && (!showVideoPreview || videoPreviewIsFresh);
+  const previewStatusText = showVideoPreview
+    ? `${visualPreviewStatusText} · ${videoPreviewStatusText}`
+    : visualPreviewStatusText;
 
   const handleVisualPreviewGenerated = useCallback(
     ({ prompt: generatedPrompt, generatedAt }: { prompt: string; generatedAt: number }) => {
@@ -1157,21 +1172,28 @@ export function PromptCanvas({
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {rightPaneMode === 'preview' ? (
               <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 min-h-0">
-                <TabbedPreview
-                  visualPrompt={previewSource}
-                  videoPrompt={normalizedDisplayedPrompt ?? ''}
-                  aspectRatio={previewAspectRatio}
-                  isVisible={true}
-                  selectedMode={selectedMode}
-                  onActiveTabChange={(tab) => {
-                    setActivePreviewTab(tab);
-                    setShowPreviewStatusHelp(false);
-                  }}
-                  onVisualPreviewGenerated={handleVisualPreviewGenerated}
-                  onVideoPreviewGenerated={handleVideoPreviewGenerated}
-                  onKeepRefining={handleKeepRefiningFromPreview}
-                  onRefinePrompt={handleSomethingOffFromPreview}
-                />
+                <div className="flex flex-col gap-8">
+                  <VisualPreview
+                    prompt={previewSource}
+                    aspectRatio={previewAspectRatio}
+                    isVisible={true}
+                    onPreviewGenerated={handleVisualPreviewGenerated}
+                    onKeepRefining={handleKeepRefiningFromPreview}
+                    onRefinePrompt={handleSomethingOffFromPreview}
+                  />
+                  {showVideoPreview && (
+                    <div className="pt-6 border-t border-geist-accents-2">
+                      <VideoPreview
+                        prompt={normalizedDisplayedPrompt ?? ''}
+                        aspectRatio={previewAspectRatio}
+                        isVisible={true}
+                        onPreviewGenerated={handleVideoPreviewGenerated}
+                        onKeepRefining={handleKeepRefiningFromPreview}
+                        onRefinePrompt={handleSomethingOffFromPreview}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
