@@ -20,8 +20,9 @@ export function getHighlightClassName(category: string | null | undefined): stri
  * Default highlight styles
  */
 export const HIGHLIGHT_STYLES = {
-  padding: '1px 3px',
-  borderRadius: '3px',
+  // Pill-shaped highlights
+  padding: '1px 6px',
+  borderRadius: '9999px',
   borderBottomWidth: '2px',
   borderBottomStyle: 'solid',
 } as const;

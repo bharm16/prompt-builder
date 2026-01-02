@@ -103,6 +103,14 @@
   transition: opacity 0.2s ease, filter 0.2s ease, transform 0.15s ease;
   /* Reduce base saturation for better text readability */
   opacity: 0.85;
+
+  /* Ensure "pill" highlights render cleanly even when a span wraps across lines */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+
+  /* Force pill shape even if older inline styles exist */
+  border-radius: 9999px !important;
+  padding: 1px 6px !important;
 }
 
 /* Restore full opacity on hover/selection */
