@@ -13,6 +13,8 @@ interface VisualPreviewProps {
   prompt: string;
   aspectRatio?: string | null;
   isVisible: boolean;
+  generateRequestId?: number;
+  lastGeneratedAt?: number | null;
   onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
@@ -85,6 +87,8 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   prompt,
   aspectRatio = null,
   isVisible,
+  generateRequestId,
+  lastGeneratedAt = null,
   onPreviewGenerated,
   onKeepRefining,
   onRefinePrompt,
@@ -102,6 +106,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const [isExporting, setIsExporting] = React.useState(false);
   const copyTimeoutRef = React.useRef<number | null>(null);
+  const prevGenerateRequestIdRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     return () => {
@@ -127,6 +132,16 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     setLastRequestedPrompt(prompt);
     regenerate();
   }, [prompt, regenerate]);
+
+  React.useEffect(() => {
+    if (!isVisible) return;
+    if (generateRequestId == null) return;
+    if (prevGenerateRequestIdRef.current === generateRequestId) return;
+    prevGenerateRequestIdRef.current = generateRequestId;
+    if (generateRequestId > 0) {
+      handleGenerate();
+    }
+  }, [generateRequestId, handleGenerate, isVisible]);
 
   const handleExportKeyframe = React.useCallback(async () => {
     if (!imageUrl || isExporting) {
@@ -158,15 +173,78 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   if (!isVisible) return null;
 
   const displayAspectRatio = normalizedAspectRatio ?? '16:9';
+  const status = loading ? 'Generating' : error ? 'Failed' : imageUrl ? 'Ready' : 'Idle';
+  const statusDotClass = loading
+    ? 'bg-neutral-300'
+    : error
+      ? 'bg-error-600'
+      : imageUrl
+        ? 'bg-success-600'
+        : 'bg-neutral-300';
+
+  const formatRelativeUpdate = (timestamp: number): string => {
+    const diffMs = Math.max(0, Date.now() - timestamp);
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   return (
     <div className="flex flex-col space-y-4">
-      <div className="flex items-center px-1">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-1 gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">
             Visual Preview
           </h3>
-          <span className="text-xs text-geist-accents-5">Flux Schnell</span>
+          <span className="inline-flex items-center px-2 py-0.5 text-xs text-geist-accents-6 bg-geist-accents-1 border border-geist-accents-2 rounded-full">
+            Flux Schnell
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="inline-flex items-center gap-2 text-xs text-geist-accents-5">
+            <span className={`h-2 w-2 rounded-full ${statusDotClass}`} aria-hidden="true" />
+            <span>{status}</span>
+          </span>
+          {lastGeneratedAt ? (
+            <span className="text-xs text-geist-accents-6">Last {formatRelativeUpdate(lastGeneratedAt)}</span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between px-1 gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={loading || !prompt}
+            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={imageUrl ? 'Regenerate composition preview' : 'Generate composition preview'}
+          >
+            {imageUrl ? (loading ? 'Generating...' : 'Regenerate') : loading ? 'Generating...' : 'Generate'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportKeyframe}
+            disabled={!imageUrl || isExporting}
+            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Download keyframe"
+          >
+            {isExporting ? 'Downloading...' : 'Download'}
+          </button>
+          <button
+            type="button"
+            onClick={() => (imageUrl ? window.open(imageUrl, '_blank', 'noopener,noreferrer') : null)}
+            disabled={!imageUrl}
+            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Open full size image"
+          >
+            Open
+          </button>
         </div>
       </div>
       <div
@@ -190,94 +268,42 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
             <span className="text-xs opacity-80 mt-1">Try regenerating</span>
           </div>
         ) : imageUrl ? (
-          <>
-            <img
-              src={imageUrl}
-              alt="Prompt Preview"
-              className="w-full h-full object-cover transition-opacity duration-500"
-            />
-            {/* Overlay actions */}
-            <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90 disabled:opacity-60"
-                onClick={handleGenerate}
-                aria-label="Regenerate composition preview"
-                disabled={loading || !prompt}
-              >
-                {loading ? 'Generating...' : 'Regenerate'}
-              </button>
-              <button
-                className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90 disabled:opacity-60"
-                onClick={handleExportKeyframe}
-                aria-label="Export keyframe"
-                disabled={isExporting}
-              >
-                {isExporting ? 'Exporting...' : 'Export Keyframe'}
-              </button>
-              <button
-                className="bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-md border border-white/10 hover:bg-black/90"
-                onClick={() => window.open(imageUrl, '_blank')}
-                aria-label="Open full size image"
-              >
-                Full Size
-              </button>
-            </div>
-          </>
+          <img
+            src={imageUrl}
+            alt="Prompt Preview"
+            className="w-full h-full object-cover transition-opacity duration-500"
+          />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-geist-accents-1 p-4 text-center">
-            <div className="max-w-xs text-xs text-geist-accents-5 leading-relaxed">
-              <div className="font-medium text-geist-foreground mb-2">Use preview to sanity-check:</div>
-              <div>• Shot framing &amp; composition</div>
-              <div>• Subject placement</div>
-              <div>• Lighting direction</div>
-              <div className="mb-3">• Overall mood</div>
-              <div className="text-geist-accents-6">
-                Generate a preview whenever you want to validate changes.
-              </div>
+            <Icon name="Image" size={22} className="text-geist-accents-5 mb-2" />
+            <div className="text-sm font-medium text-geist-foreground">No composition preview yet</div>
+            <div className="mt-1 text-xs text-geist-accents-6 max-w-xs">
+              Generate to validate framing, placement, lighting, and overall mood.
             </div>
-
             <button
+              type="button"
               onClick={handleGenerate}
               disabled={loading || !prompt}
-              className="mt-4 inline-flex items-center justify-center gap-1.5 bg-geist-foreground text-geist-background rounded-geist font-medium hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              style={{
-                padding: 'clamp(0.375rem, 1.2vw, 0.5rem) clamp(0.75rem, 2.5vw, 1rem)',
-                fontSize: 'clamp(0.625rem, 1.1vw, 0.75rem)',
-                gap: 'clamp(0.25rem, 0.6vw, 0.5rem)',
-                maxWidth: 'min(90%, 260px)',
-                width: 'auto',
-              }}
-              aria-label="Generate Composition Preview"
+              className="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist bg-geist-foreground text-geist-background hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              aria-label="Generate composition preview"
             >
-              {loading ? (
-                <div
-                  className="border-2 border-geist-background/30 border-t-geist-background rounded-full animate-spin flex-shrink-0"
-                  style={{
-                    width: 'clamp(0.75rem, 1.2vw, 1rem)',
-                    height: 'clamp(0.75rem, 1.2vw, 1rem)',
-                  }}
-                />
-              ) : (
-                <Icon
-                  name="Image"
-                  size={14}
-                  style={{
-                    width: 'clamp(0.875rem, 1.2vw, 1rem)',
-                    height: 'clamp(0.875rem, 1.2vw, 1rem)',
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <span className="whitespace-nowrap">
-                {loading ? 'Generating...' : 'Generate Composition Preview'}
-              </span>
+              {loading ? 'Generating...' : 'Generate'}
             </button>
-            <div className="mt-2 text-xs text-geist-accents-5">
-              Low-fidelity · Validates framing, lighting, and mood
-            </div>
           </div>
         )}
       </div>
+
+      <details className="px-1 text-xs text-geist-accents-6">
+        <summary className="cursor-pointer select-none text-geist-accents-5 hover:text-geist-foreground">
+          What this checks
+        </summary>
+        <ul className="mt-2 space-y-1 list-disc list-inside">
+          <li>Shot framing &amp; composition</li>
+          <li>Subject placement</li>
+          <li>Lighting direction</li>
+          <li>Overall mood</li>
+        </ul>
+      </details>
 
       {imageUrl && (
         <div className="px-1">

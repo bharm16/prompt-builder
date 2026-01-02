@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect } from 'react';
-import { Pencil, X, Check, ChevronLeft } from 'lucide-react';
+import { Pencil, X, Check, ChevronLeft, Image as ImageIcon, Play as PlayIcon } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -103,12 +103,11 @@ export function PromptCanvas({
   const [showModelMenu, setShowModelMenu] = React.useState<boolean>(false);
   const [showLegend, setShowLegend] = React.useState<boolean>(false);
   const [rightPaneMode, setRightPaneMode] = React.useState<'refine' | 'preview'>('refine');
-  const [showPreviewStatusHelp, setShowPreviewStatusHelp] = React.useState<boolean>(false);
 
   const [visualLastGeneratedAt, setVisualLastGeneratedAt] = React.useState<number | null>(null);
-  const [visualLastGeneratedPrompt, setVisualLastGeneratedPrompt] = React.useState<string>('');
   const [videoLastGeneratedAt, setVideoLastGeneratedAt] = React.useState<number | null>(null);
-  const [videoLastGeneratedPrompt, setVideoLastGeneratedPrompt] = React.useState<string>('');
+  const [visualGenerateRequestId, setVisualGenerateRequestId] = React.useState<number>(0);
+  const [videoGenerateRequestId, setVideoGenerateRequestId] = React.useState<number>(0);
   const [isEditing, setIsEditing] = React.useState<boolean>(false);
   const [originalInputPrompt, setOriginalInputPrompt] = React.useState<string>('');
   const [originalSelectedModel, setOriginalSelectedModel] = React.useState<string | undefined>(undefined);
@@ -611,60 +610,19 @@ export function PromptCanvas({
     [onSuggestionClick, suggestionsData?.selectedText, clearJustReplacedTimeout, selectedSpanId]
   );
 
-  const formatRelativeUpdate = useCallback((timestamp: number): string => {
-    const diffMs = Math.max(0, Date.now() - timestamp);
-    const seconds = Math.floor(diffMs / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  }, []);
-
   const showVideoPreview = selectedMode === 'video';
 
-  const visualPreviewHasGeneration = Boolean(visualLastGeneratedAt && visualLastGeneratedPrompt);
-  const visualPreviewIsFresh =
-    visualPreviewHasGeneration && previewSource.trim().length > 0
-      ? visualLastGeneratedPrompt === previewSource
-      : false;
-  const visualPreviewStatusText = !visualPreviewHasGeneration
-    ? 'No visual preview yet'
-    : visualPreviewIsFresh
-      ? `Visual up to date · Updated ${formatRelativeUpdate(visualLastGeneratedAt as number)}`
-      : `Visual edited since preview · Updated ${formatRelativeUpdate(visualLastGeneratedAt as number)}`;
-
   const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
-  const videoPreviewHasGeneration = Boolean(videoLastGeneratedAt && videoLastGeneratedPrompt);
-  const videoPreviewIsFresh =
-    videoPreviewHasGeneration && videoPreviewPrompt.trim().length > 0
-      ? videoLastGeneratedPrompt === videoPreviewPrompt
-      : false;
-  const videoPreviewStatusText = !videoPreviewHasGeneration
-    ? 'No video preview yet'
-    : videoPreviewIsFresh
-      ? `Video up to date · Updated ${formatRelativeUpdate(videoLastGeneratedAt as number)}`
-      : `Video edited since preview · Updated ${formatRelativeUpdate(videoLastGeneratedAt as number)}`;
-
-  const previewHasGeneration = visualPreviewHasGeneration || (showVideoPreview && videoPreviewHasGeneration);
-  const previewIsFresh = visualPreviewIsFresh && (!showVideoPreview || videoPreviewIsFresh);
-  const previewStatusText = showVideoPreview
-    ? `${visualPreviewStatusText} · ${videoPreviewStatusText}`
-    : visualPreviewStatusText;
 
   const handleVisualPreviewGenerated = useCallback(
-    ({ prompt: generatedPrompt, generatedAt }: { prompt: string; generatedAt: number }) => {
-      setVisualLastGeneratedPrompt(generatedPrompt);
+    ({ generatedAt }: { prompt: string; generatedAt: number }) => {
       setVisualLastGeneratedAt(generatedAt);
     },
     []
   );
 
   const handleVideoPreviewGenerated = useCallback(
-    ({ prompt: generatedPrompt, generatedAt }: { prompt: string; generatedAt: number }) => {
-      setVideoLastGeneratedPrompt(generatedPrompt);
+    ({ generatedAt }: { prompt: string; generatedAt: number }) => {
       setVideoLastGeneratedAt(generatedAt);
     },
     []
@@ -733,14 +691,20 @@ export function PromptCanvas({
 
   const handleKeepRefiningFromPreview = useCallback((): void => {
     setRightPaneMode('refine');
-    setShowPreviewStatusHelp(false);
   }, []);
 
   const handleSomethingOffFromPreview = useCallback((): void => {
     setRightPaneMode('refine');
-    setShowPreviewStatusHelp(false);
     focusSpan(lastAppliedSpanId ?? selectedSpanId);
   }, [focusSpan, lastAppliedSpanId, selectedSpanId]);
+
+  const handleGenerateVisualPreview = useCallback((): void => {
+    setVisualGenerateRequestId((prev) => prev + 1);
+  }, []);
+
+  const handleGenerateVideoPreview = useCallback((): void => {
+    setVideoGenerateRequestId((prev) => prev + 1);
+  }, []);
 
   // Format timestamp helper - declared early to avoid hoisting issues
   const formatTimestamp = useCallback((timestamp: number): string => {
@@ -1077,40 +1041,8 @@ export function PromptCanvas({
                     </p>
                   ) : null
                 ) : (
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowPreviewStatusHelp((prev) => !prev)}
-                        className="inline-flex items-center gap-2 text-label-12 text-geist-accents-5 hover:text-geist-foreground"
-                        aria-label="Preview status"
-                        aria-expanded={showPreviewStatusHelp}
-                      >
-                        <span
-                          className={`h-2 w-2 rounded-full ${
-                            !previewHasGeneration
-                              ? 'bg-neutral-300'
-                              : previewIsFresh
-                                ? 'bg-success-600'
-                                : 'bg-warning-600'
-                          }`}
-                          aria-hidden="true"
-                        />
-                        <span>{previewStatusText}</span>
-                      </button>
-                      {showPreviewStatusHelp && (
-                        <div className="absolute top-full left-0 mt-2 z-tooltip w-72 p-3 bg-neutral-900 text-white text-xs rounded-lg shadow-xl">
-                          <div className="space-y-2">
-                            <div className="font-semibold">What this means</div>
-                            <div className="space-y-1 opacity-90">
-                              <div>Green: this preview matches the current prompt.</div>
-                              <div>Yellow: you’ve edited since the last preview.</div>
-                              <div>Generate again anytime to validate changes.</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  <div className="mt-1 text-label-12 text-geist-accents-5">
+                    Generate previews below to validate changes.
                   </div>
                 )}
               </div>
@@ -1172,11 +1104,42 @@ export function PromptCanvas({
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {rightPaneMode === 'preview' ? (
               <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 min-h-0">
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-stretch gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateVisualPreview}
+                        disabled={!previewSource.trim()}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        aria-label="Generate composition preview"
+                      >
+                        <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                        <span>Generate composition</span>
+                      </button>
+                      {showVideoPreview && (
+                        <button
+                          type="button"
+                          onClick={handleGenerateVideoPreview}
+                          disabled={!videoPreviewPrompt.trim()}
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label="Generate motion preview"
+                        >
+                          <PlayIcon className="h-4 w-4" aria-hidden="true" />
+                          <span>Generate motion</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="px-1 text-xs text-geist-accents-6">
+                      Run either preview anytime — they’re independent.
+                    </div>
+                  </div>
                   <VisualPreview
                     prompt={previewSource}
                     aspectRatio={previewAspectRatio}
                     isVisible={true}
+                    generateRequestId={visualGenerateRequestId}
+                    lastGeneratedAt={visualLastGeneratedAt}
                     onPreviewGenerated={handleVisualPreviewGenerated}
                     onKeepRefining={handleKeepRefiningFromPreview}
                     onRefinePrompt={handleSomethingOffFromPreview}
@@ -1184,9 +1147,11 @@ export function PromptCanvas({
                   {showVideoPreview && (
                     <div className="pt-6 border-t border-geist-accents-2">
                       <VideoPreview
-                        prompt={normalizedDisplayedPrompt ?? ''}
+                        prompt={videoPreviewPrompt}
                         aspectRatio={previewAspectRatio}
                         isVisible={true}
+                        generateRequestId={videoGenerateRequestId}
+                        lastGeneratedAt={videoLastGeneratedAt}
                         onPreviewGenerated={handleVideoPreviewGenerated}
                         onKeepRefining={handleKeepRefiningFromPreview}
                         onRefinePrompt={handleSomethingOffFromPreview}
