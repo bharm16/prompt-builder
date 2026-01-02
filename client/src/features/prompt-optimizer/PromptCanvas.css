@@ -590,7 +590,8 @@
 
 /* Original input - monospace, muted */
 .prompt-input--original {
-  font-family: var(--font-geist-mono);
+  /* Match the rest of the app's typography */
+  font-family: var(--font-geist-sans);
   color: var(--geist-accents-6);
   background-color: transparent;
 }
