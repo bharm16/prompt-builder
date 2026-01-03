@@ -1,7 +1,7 @@
 /**
  * Video Preview Component
  *
- * Displays video previews generated from prompts using Replicate-hosted video models.
+ * Displays video previews generated from prompts using supported video models.
  * Provides loading states, error handling, and regeneration controls.
  */
 
@@ -9,13 +9,14 @@ import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useVideoPreview } from '../hooks/useVideoPreview';
 
-const VIDEO_PREVIEW_MODEL_IDS = ['PRO', 'SORA_2', 'KLING_V2_1', 'VEO_3'] as const;
+const VIDEO_PREVIEW_MODEL_IDS = ['PRO', 'SORA_2', 'LUMA_RAY3', 'KLING_V2_1', 'VEO_3'] as const;
 
 type VideoPreviewModelId = typeof VIDEO_PREVIEW_MODEL_IDS[number];
 
 const VIDEO_PREVIEW_MODEL_LABELS: Record<VideoPreviewModelId, string> = {
   PRO: 'Wan 2.2',
   SORA_2: 'Sora 2',
+  LUMA_RAY3: 'Luma',
   KLING_V2_1: 'Kling v2.1',
   VEO_3: 'Veo 3',
 };
@@ -26,8 +27,14 @@ const isVideoPreviewModel = (value?: string): value is VideoPreviewModelId =>
 const VIDEO_PREVIEW_MODEL_ALIASES: Record<string, VideoPreviewModelId> = {
   'wan-video/wan-2.2-t2v-fast': 'PRO',
   'openai/sora-2': 'SORA_2',
+  'sora-2': 'SORA_2',
+  'sora-2-pro': 'SORA_2',
+  'luma-ray3': 'LUMA_RAY3',
+  luma: 'LUMA_RAY3',
   'kwaivgi/kling-v2.1': 'KLING_V2_1',
+  'kling-v2-1-master': 'KLING_V2_1',
   'google/veo-3': 'VEO_3',
+  'veo-3.1-generate-preview': 'VEO_3',
 };
 
 const resolveVideoPreviewModel = (value?: string): VideoPreviewModelId => {
@@ -78,9 +85,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   const [selectedModel, setSelectedModel] = React.useState<VideoPreviewModelId>(() =>
     resolveVideoPreviewModel(model)
   );
-  const [startImage, setStartImage] = React.useState('');
   const [inputReference, setInputReference] = React.useState('');
-  const [validationError, setValidationError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!model) {
@@ -92,32 +97,23 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
   }, [model, selectedModel]);
 
-  const requiresStartImage = selectedModel === 'KLING_V2_1';
   const allowsInputReference = selectedModel === 'SORA_2';
-  const trimmedStartImage = startImage.trim();
   const trimmedInputReference = inputReference.trim();
-  const canGenerate = !requiresStartImage || trimmedStartImage.length > 0;
+  const hasPrompt = prompt.trim().length > 0;
 
   const { videoUrl, loading, error, regenerate } = useVideoPreview({
     prompt,
     isVisible,
     aspectRatio: normalizedAspectRatio,
     model: selectedModel,
-    startImage: requiresStartImage ? trimmedStartImage || undefined : undefined,
     inputReference: allowsInputReference ? trimmedInputReference || undefined : undefined,
   });
-  const displayError = validationError ?? error;
+  const displayError = error;
 
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
   const [isDownloading, setIsDownloading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (validationError && canGenerate) {
-      setValidationError(null);
-    }
-  }, [validationError, canGenerate]);
 
   React.useEffect(() => {
     if (!videoUrl) return;
@@ -132,14 +128,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   }, [videoUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
 
   const handleGenerate = React.useCallback(() => {
-    if (!canGenerate) {
-      setValidationError('Kling v2.1 requires a start image URL.');
-      return;
-    }
-    setValidationError(null);
     setLastRequestedPrompt(prompt);
     regenerate();
-  }, [canGenerate, prompt, regenerate]);
+  }, [prompt, regenerate]);
 
   React.useEffect(() => {
     if (!isVisible) return;
@@ -239,28 +230,6 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         })}
       </div>
 
-      {requiresStartImage && (
-        <div className="flex flex-col gap-1.5 px-1">
-          <label
-            htmlFor="video-preview-start-image"
-            className="text-xs font-medium text-geist-accents-6"
-          >
-            Start image URL (required)
-          </label>
-          <input
-            id="video-preview-start-image"
-            type="url"
-            value={startImage}
-            onChange={(event) => setStartImage(event.target.value)}
-            placeholder="https://example.com/start-image.png"
-            className="w-full rounded-geist border border-geist-accents-2 bg-geist-background px-3 py-2 text-xs text-geist-foreground placeholder:text-geist-accents-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
-          />
-          <span className="text-[11px] text-geist-accents-6">
-            Kling v2.1 is image-to-video only.
-          </span>
-        </div>
-      )}
-
       {allowsInputReference && (
         <div className="flex flex-col gap-1.5 px-1">
           <label
@@ -285,7 +254,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={loading || !prompt || !canGenerate}
+            disabled={loading || !hasPrompt}
             className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={videoUrl ? 'Regenerate motion preview' : 'Generate motion preview'}
           >
@@ -362,7 +331,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={loading || !prompt || !canGenerate}
+              disabled={loading || !hasPrompt}
               className="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist bg-geist-foreground text-geist-background hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               aria-label="Generate motion preview"
             >

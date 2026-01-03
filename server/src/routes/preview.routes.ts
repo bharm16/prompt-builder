@@ -36,7 +36,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         return res.status(503).json({
           success: false,
           error: 'Video generation service is not available',
-          message: 'REPLICATE_API_TOKEN is not configured',
+          message: 'No video generation provider is configured',
         });
       }
 
@@ -120,6 +120,39 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
           message: errorMessage,
         });
       }
+    })
+  );
+
+  // GET /api/preview/video/content/:contentId - Serve cached video bytes
+  router.get(
+    '/video/content/:contentId',
+    asyncHandler(async (req: Request, res: Response) => {
+      if (!videoGenerationService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video generation service is not available',
+        });
+      }
+
+      const { contentId } = req.params as { contentId?: string };
+      if (!contentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'contentId is required',
+        });
+      }
+
+      const entry = videoGenerationService.getVideoContent(contentId);
+      if (!entry) {
+        return res.status(404).json({
+          success: false,
+          error: 'Video content not found or expired',
+        });
+      }
+
+      res.setHeader('Content-Type', entry.contentType);
+      res.setHeader('Cache-Control', 'private, max-age=600');
+      return res.send(entry.buffer);
     })
   );
 

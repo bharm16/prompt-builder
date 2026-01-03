@@ -473,12 +473,18 @@ export const VIDEO_MODELS = {
   PRO: "wan-video/wan-2.2-t2v-fast", 
 
   /** 🌌 FLAGSHIP: OpenAI Sora 2 (text/image → video, audio-capable). */
-  SORA_2: "openai/sora-2",
+  SORA_2: "sora-2",
 
-  /** 🧩 IMAGE → VIDEO: Kling v2.1 (requires start_image). */
-  KLING_V2_1: "kwaivgi/kling-v2.1",
+  /** 🌌 FLAGSHIP (PRO): OpenAI Sora 2 Pro (higher quality, slower). */
+  SORA_2_PRO: "sora-2-pro",
 
-  /** 🔊 AUDIO: Google Veo 3 (text → video with audio). */
+  /** 🎥 TEXT → VIDEO: Kling v2.1 (official API). */
+  KLING_V2_1: "kling-v2-1-master",
+
+  /** 🌈 HDR / REASONING: Luma Ray-3 (Dream Machine). */
+  LUMA_RAY3: "luma-ray3",
+
+  /** 🔊 AUDIO: Google Veo 3.1 (official Gemini API, text → video with audio). */
   VEO_3: "google/veo-3",
   
   /** 🎨 ARTISTIC / SPECIALIZED: High style adherence. */
