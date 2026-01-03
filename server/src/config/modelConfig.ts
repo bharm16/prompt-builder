@@ -471,6 +471,15 @@ export const VIDEO_MODELS = {
   
   /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
   PRO: "wan-video/wan-2.2-t2v-fast", 
+
+  /** 🌌 FLAGSHIP: OpenAI Sora 2 (text/image → video, audio-capable). */
+  SORA_2: "openai/sora-2",
+
+  /** 🧩 IMAGE → VIDEO: Kling v2.1 (requires start_image). */
+  KLING_V2_1: "kwaivgi/kling-v2.1",
+
+  /** 🔊 AUDIO: Google Veo 3 (text → video with audio). */
+  VEO_3: "google/veo-3",
   
   /** 🎨 ARTISTIC / SPECIALIZED: High style adherence. */
   ARTISTIC: "genmo/mochi-1-final",

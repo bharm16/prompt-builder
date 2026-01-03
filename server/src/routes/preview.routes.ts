@@ -40,10 +40,12 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const { prompt, aspectRatio, model } = req.body as { 
+      const { prompt, aspectRatio, model, startImage, inputReference } = req.body as { 
         prompt?: unknown; 
         aspectRatio?: '16:9' | '9:16' | '21:9' | '1:1';
         model?: string;
+        startImage?: unknown;
+        inputReference?: unknown;
       };
       const userId = extractUserId(req);
 
@@ -51,6 +53,20 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         return res.status(400).json({
           success: false,
           error: 'Prompt must be a non-empty string',
+        });
+      }
+
+      if (startImage !== undefined && typeof startImage !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'startImage must be a string URL',
+        });
+      }
+
+      if (inputReference !== undefined && typeof inputReference !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'inputReference must be a string URL',
         });
       }
 
@@ -71,6 +87,8 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         const result = await videoGenerationService.generateVideo(prompt, {
           ...(aspectRatio ? { aspectRatio } : {}),
           ...(model ? { model: model as any } : {}),
+          ...(startImage ? { startImage } : {}),
+          ...(inputReference ? { inputReference } : {}),
         });
 
         logger.info(`${operation} completed`, {

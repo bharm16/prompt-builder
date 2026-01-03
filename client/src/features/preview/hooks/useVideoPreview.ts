@@ -12,6 +12,8 @@ interface UseVideoPreviewOptions {
   isVisible: boolean;
   aspectRatio?: string;
   model?: string;
+  startImage?: string;
+  inputReference?: string;
 }
 
 interface UseVideoPreviewReturn {
@@ -29,6 +31,8 @@ export function useVideoPreview({
   isVisible,
   aspectRatio,
   model,
+  startImage,
+  inputReference,
 }: UseVideoPreviewOptions): UseVideoPreviewReturn {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +73,10 @@ export function useVideoPreview({
       abortControllerRef.current = abortController;
 
       try {
-        const response = await generateVideoPreview(promptToGenerate, aspectRatio, model);
+        const response = await generateVideoPreview(promptToGenerate, aspectRatio, model, {
+          startImage,
+          inputReference,
+        });
 
         // Check if request was aborted
         if (abortController.signal.aborted) {
@@ -99,7 +106,7 @@ export function useVideoPreview({
         }
       }
     },
-    [aspectRatio, model, videoUrl]
+    [aspectRatio, model, videoUrl, startImage, inputReference]
   );
 
   /**
@@ -127,6 +134,19 @@ export function useVideoPreview({
       return;
     }
   }, [prompt, isVisible]);
+
+  useEffect(() => {
+    if (!model) {
+      return;
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setVideoUrl(null);
+    setError(null);
+    setLoading(false);
+    lastPromptRef.current = '';
+  }, [model]);
 
   /**
    * Cleanup on unmount

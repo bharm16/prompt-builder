@@ -1,13 +1,44 @@
 /**
  * Video Preview Component
  *
- * Displays video previews generated from prompts using Wan 2.x models.
+ * Displays video previews generated from prompts using Replicate-hosted video models.
  * Provides loading states, error handling, and regeneration controls.
  */
 
 import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useVideoPreview } from '../hooks/useVideoPreview';
+
+const VIDEO_PREVIEW_MODEL_IDS = ['PRO', 'SORA_2', 'KLING_V2_1', 'VEO_3'] as const;
+
+type VideoPreviewModelId = typeof VIDEO_PREVIEW_MODEL_IDS[number];
+
+const VIDEO_PREVIEW_MODEL_LABELS: Record<VideoPreviewModelId, string> = {
+  PRO: 'Wan 2.2',
+  SORA_2: 'Sora 2',
+  KLING_V2_1: 'Kling v2.1',
+  VEO_3: 'Veo 3',
+};
+
+const isVideoPreviewModel = (value?: string): value is VideoPreviewModelId =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(VIDEO_PREVIEW_MODEL_LABELS, value);
+
+const VIDEO_PREVIEW_MODEL_ALIASES: Record<string, VideoPreviewModelId> = {
+  'wan-video/wan-2.2-t2v-fast': 'PRO',
+  'openai/sora-2': 'SORA_2',
+  'kwaivgi/kling-v2.1': 'KLING_V2_1',
+  'google/veo-3': 'VEO_3',
+};
+
+const resolveVideoPreviewModel = (value?: string): VideoPreviewModelId => {
+  if (isVideoPreviewModel(value)) {
+    return value;
+  }
+  if (value && Object.prototype.hasOwnProperty.call(VIDEO_PREVIEW_MODEL_ALIASES, value)) {
+    return VIDEO_PREVIEW_MODEL_ALIASES[value];
+  }
+  return 'PRO';
+};
 
 interface VideoPreviewProps {
   prompt: string;
@@ -31,7 +62,7 @@ const normalizeAspectRatio = (value?: string | null): string => {
 export const VideoPreview: React.FC<VideoPreviewProps> = ({
   prompt,
   aspectRatio = null,
-  model = 'PRO',
+  model,
   isVisible,
   generateRequestId,
   lastGeneratedAt = null,
@@ -43,17 +74,50 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     () => normalizeAspectRatio(aspectRatio),
     [aspectRatio]
   );
-  
+
+  const [selectedModel, setSelectedModel] = React.useState<VideoPreviewModelId>(() =>
+    resolveVideoPreviewModel(model)
+  );
+  const [startImage, setStartImage] = React.useState('');
+  const [inputReference, setInputReference] = React.useState('');
+  const [validationError, setValidationError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!model) {
+      return;
+    }
+    const resolvedModel = resolveVideoPreviewModel(model);
+    if (resolvedModel !== selectedModel) {
+      setSelectedModel(resolvedModel);
+    }
+  }, [model, selectedModel]);
+
+  const requiresStartImage = selectedModel === 'KLING_V2_1';
+  const allowsInputReference = selectedModel === 'SORA_2';
+  const trimmedStartImage = startImage.trim();
+  const trimmedInputReference = inputReference.trim();
+  const canGenerate = !requiresStartImage || trimmedStartImage.length > 0;
+
   const { videoUrl, loading, error, regenerate } = useVideoPreview({
     prompt,
     isVisible,
     aspectRatio: normalizedAspectRatio,
-    model,
+    model: selectedModel,
+    startImage: requiresStartImage ? trimmedStartImage || undefined : undefined,
+    inputReference: allowsInputReference ? trimmedInputReference || undefined : undefined,
   });
+  const displayError = validationError ?? error;
+
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
   const [isDownloading, setIsDownloading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (validationError && canGenerate) {
+      setValidationError(null);
+    }
+  }, [validationError, canGenerate]);
 
   React.useEffect(() => {
     if (!videoUrl) return;
@@ -68,9 +132,14 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   }, [videoUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
 
   const handleGenerate = React.useCallback(() => {
+    if (!canGenerate) {
+      setValidationError('Kling v2.1 requires a start image URL.');
+      return;
+    }
+    setValidationError(null);
     setLastRequestedPrompt(prompt);
     regenerate();
-  }, [prompt, regenerate]);
+  }, [canGenerate, prompt, regenerate]);
 
   React.useEffect(() => {
     if (!isVisible) return;
@@ -108,10 +177,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   if (!isVisible) return null;
 
-  const status = loading ? 'Generating' : error ? 'Failed' : videoUrl ? 'Ready' : 'Idle';
+  const status = loading ? 'Generating' : displayError ? 'Failed' : videoUrl ? 'Ready' : 'Idle';
   const statusDotClass = loading
     ? 'bg-neutral-300'
-    : error
+    : displayError
       ? 'bg-error-600'
       : videoUrl
         ? 'bg-success-600'
@@ -136,9 +205,6 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
           <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">
             Video Preview
           </h3>
-          <span className="inline-flex items-center px-2 py-0.5 text-xs text-geist-accents-6 bg-geist-accents-1 border border-geist-accents-2 rounded-full">
-            Wan 2.2
-          </span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="inline-flex items-center gap-2 text-xs text-geist-accents-5">
@@ -151,12 +217,75 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-1" role="group" aria-label="Video preview model">
+        <span className="text-xs font-medium text-geist-accents-6">Model</span>
+        {VIDEO_PREVIEW_MODEL_IDS.map((modelId) => {
+          const isSelected = modelId === selectedModel;
+          return (
+            <button
+              key={modelId}
+              type="button"
+              onClick={() => setSelectedModel(modelId)}
+              aria-pressed={isSelected}
+              className={`inline-flex items-center justify-center px-2.5 py-1 text-xs font-medium rounded-geist border transition-colors ${
+                isSelected
+                  ? 'bg-geist-foreground text-geist-background border-geist-foreground'
+                  : 'bg-geist-background text-geist-accents-6 border-geist-accents-2 hover:bg-geist-accents-1'
+              }`}
+            >
+              {VIDEO_PREVIEW_MODEL_LABELS[modelId]}
+            </button>
+          );
+        })}
+      </div>
+
+      {requiresStartImage && (
+        <div className="flex flex-col gap-1.5 px-1">
+          <label
+            htmlFor="video-preview-start-image"
+            className="text-xs font-medium text-geist-accents-6"
+          >
+            Start image URL (required)
+          </label>
+          <input
+            id="video-preview-start-image"
+            type="url"
+            value={startImage}
+            onChange={(event) => setStartImage(event.target.value)}
+            placeholder="https://example.com/start-image.png"
+            className="w-full rounded-geist border border-geist-accents-2 bg-geist-background px-3 py-2 text-xs text-geist-foreground placeholder:text-geist-accents-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
+          />
+          <span className="text-[11px] text-geist-accents-6">
+            Kling v2.1 is image-to-video only.
+          </span>
+        </div>
+      )}
+
+      {allowsInputReference && (
+        <div className="flex flex-col gap-1.5 px-1">
+          <label
+            htmlFor="video-preview-input-reference"
+            className="text-xs font-medium text-geist-accents-6"
+          >
+            Reference image URL (optional)
+          </label>
+          <input
+            id="video-preview-input-reference"
+            type="url"
+            value={inputReference}
+            onChange={(event) => setInputReference(event.target.value)}
+            placeholder="https://example.com/reference-image.jpg"
+            className="w-full rounded-geist border border-geist-accents-2 bg-geist-background px-3 py-2 text-xs text-geist-foreground placeholder:text-geist-accents-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-1 gap-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={loading || !prompt}
+            disabled={loading || !prompt || !canGenerate}
             className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={videoUrl ? 'Regenerate motion preview' : 'Generate motion preview'}
           >
@@ -198,11 +327,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
           </div>
         )}
         
-        {error ? (
+        {displayError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-geist-error bg-geist-error/5 p-4 text-center">
             <Icon name="AlertTriangle" size={20} className="mb-2 opacity-80" />
             <span className="text-sm font-medium">Generation Failed</span>
-            <span className="text-xs opacity-80 mt-1">{error}</span>
+            <span className="text-xs opacity-80 mt-1">{displayError}</span>
           </div>
         ) : videoUrl ? (
           <>
@@ -233,7 +362,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={loading || !prompt}
+              disabled={loading || !prompt || !canGenerate}
               className="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist bg-geist-foreground text-geist-background hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               aria-label="Generate motion preview"
             >

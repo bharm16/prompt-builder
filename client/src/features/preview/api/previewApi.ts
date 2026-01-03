@@ -55,13 +55,19 @@ export interface GenerateVideoResponse {
   message?: string;
 }
 
+export interface GenerateVideoPreviewOptions {
+  startImage?: string;
+  inputReference?: string;
+}
+
 /**
  * Generate a preview video from a prompt
  */
 export async function generateVideoPreview(
   prompt: string,
   aspectRatio?: string,
-  model?: string
+  model?: string,
+  options?: GenerateVideoPreviewOptions
 ): Promise<GenerateVideoResponse> {
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     throw new Error('Prompt is required and must be a non-empty string');
@@ -71,8 +77,9 @@ export async function generateVideoPreview(
     prompt: prompt.trim(),
     ...(aspectRatio ? { aspectRatio } : {}),
     ...(model ? { model } : {}),
+    ...(options?.startImage ? { startImage: options.startImage } : {}),
+    ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
   }, {
     timeout: API_CONFIG.timeout.video
   }) as Promise<GenerateVideoResponse>;
 }
-
