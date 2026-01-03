@@ -48,6 +48,16 @@ export interface OptimizationOptions {
   skipCache?: boolean;
 }
 
+export interface LockedSpan {
+  id: string;
+  text: string;
+  leftCtx?: string;
+  rightCtx?: string;
+  category?: string;
+  source?: string;
+  confidence?: number;
+}
+
 /**
  * Props for FloatingToolbar component
  */

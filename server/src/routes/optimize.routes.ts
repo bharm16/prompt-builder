@@ -27,7 +27,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       const userId = extractUserId(req);
       const operation = 'optimize';
       
-      const { prompt, mode, targetModel, context, brainstormContext, skipCache } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = req.body;
 
       logger.info('Optimize request received', {
         operation,
@@ -39,6 +39,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
         skipCache: !!skipCache,
+        lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
       });
 
       try {
@@ -50,6 +51,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           context,
           brainstormContext,
           skipCache,
+          lockedSpans,
           onMetadata: (next: Record<string, unknown>) => {
             metadata = { ...(metadata || {}), ...next };
           },
@@ -86,7 +88,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
     '/optimize-stream',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
-      const { prompt, mode, targetModel, context, brainstormContext, skipCache } = req.body;
+      const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = req.body;
       
       // Create a wrapper abort controller that ignores early client disconnects
       // This prevents curl from aborting the OpenAI calls before they start
@@ -154,6 +156,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
         skipCache: !!skipCache,
+        lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
       });
 
       try {
@@ -167,6 +170,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           context,
           brainstormContext,
           skipCache,
+          lockedSpans,
           signal,
           onDraft: (
             draft: string,

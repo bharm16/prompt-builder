@@ -7,6 +7,7 @@
 
 import { ApiClient, ApiError } from './ApiClient';
 import { logger } from './LoggingService';
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
 
 const log = logger.child('PromptOptimizationApi');
 
@@ -17,6 +18,7 @@ interface OptimizeOptions {
   context?: unknown | null;
   brainstormContext?: unknown | null;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   signal?: AbortSignal;
 }
 
@@ -71,6 +73,7 @@ export class PromptOptimizationApi {
     context = null,
     brainstormContext = null,
     skipCache,
+    lockedSpans,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
@@ -82,6 +85,7 @@ export class PromptOptimizationApi {
         context,
         brainstormContext,
         ...(skipCache ? { skipCache } : {}),
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
       }, requestOptions)) as OptimizeResult;
     } catch (error) {
       if (this._shouldUseOfflineFallback(error)) {
@@ -109,6 +113,7 @@ export class PromptOptimizationApi {
     context = null,
     brainstormContext = null,
     skipCache,
+    lockedSpans,
     signal,
     onDraft = null,
     onSpans = null,
@@ -141,6 +146,7 @@ export class PromptOptimizationApi {
           context,
           brainstormContext,
           ...(skipCache ? { skipCache } : {}),
+          ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         },
         ...(signal ? { signal } : {}),
         onMessage: (event, data) => {
@@ -377,7 +383,7 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext, skipCache } = options;
+    const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = options;
 
     try {
       // Fallback to single-stage API
@@ -388,6 +394,7 @@ export class PromptOptimizationApi {
         context,
         brainstormContext,
         ...(skipCache ? { skipCache } : {}),
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(signal ? { signal } : {}),
       });
 

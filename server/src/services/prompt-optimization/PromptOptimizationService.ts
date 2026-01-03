@@ -4,6 +4,7 @@ import { cacheService } from '@services/cache/CacheService';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { ConstitutionalAI } from '@utils/ConstitutionalAI';
 import OptimizationConfig from '@config/OptimizationConfig';
+import crypto from 'crypto';
 
 // Import specialized services
 import { ContextInferenceService } from './services/ContextInferenceService';
@@ -90,6 +91,7 @@ export class PromptOptimizationService {
     context = null,
     brainstormContext = null,
     skipCache = false,
+    lockedSpans = [],
     onDraft = null,
     signal,
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
@@ -120,6 +122,7 @@ export class PromptOptimizationService {
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
       skipCache,
+      lockedSpanCount: lockedSpans.length,
     });
 
     ensureNotAborted();
@@ -150,6 +153,7 @@ export class PromptOptimizationService {
         context,
         brainstormContext,
         skipCache,
+        lockedSpans,
         onMetadata: (metadata) => {
           fallbackMetadata = { ...(fallbackMetadata || {}), ...metadata };
         },
@@ -218,6 +222,7 @@ export class PromptOptimizationService {
           originalUserPrompt: prompt,
         },
         skipCache,
+        lockedSpans,
         shotPlan,
         shotPlanAttempted: true,
         onMetadata: (metadata) => {
@@ -278,6 +283,7 @@ export class PromptOptimizationService {
         context,
         brainstormContext,
         skipCache,
+        lockedSpans,
         shotPlan,
         shotPlanAttempted: true,
         onMetadata: (metadata) => {
@@ -309,6 +315,7 @@ export class PromptOptimizationService {
     context = null,
     brainstormContext = null,
     skipCache = false,
+    lockedSpans = [],
     shotPlan = null,
     shotPlanAttempted = false,
     useConstitutionalAI = false,
@@ -353,6 +360,7 @@ export class PromptOptimizationService {
       useConstitutionalAI,
       useIterativeRefinement,
       skipCache,
+      lockedSpanCount: lockedSpans.length,
     });
 
     ensureNotAborted();
@@ -372,7 +380,7 @@ export class PromptOptimizationService {
     }
 
     // Check cache
-    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext, targetModel);
+    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext, targetModel, lockedSpans);
     const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
     if (!skipCache) {
       const cached = await cacheService.get<string>(cacheKey);
@@ -414,6 +422,7 @@ export class PromptOptimizationService {
           finalMode,
           context,
           brainstormContext,
+          lockedSpans,
           useConstitutionalAI,
           signal,
           handleMetadata
@@ -434,6 +443,7 @@ export class PromptOptimizationService {
           brainstormContext,
           domainContent: domainContent as string | null,
           shotPlan: interpretedShotPlan,
+          lockedSpans,
           onMetadata: handleMetadata,
           ...(signal ? { signal } : {}),
         });
@@ -564,6 +574,7 @@ export class PromptOptimizationService {
     mode: OptimizationMode,
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
+    lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
     useConstitutionalAI: boolean,
     signal?: AbortSignal,
     onMetadata?: (metadata: Record<string, unknown>) => void
@@ -614,6 +625,7 @@ export class PromptOptimizationService {
         context,
         brainstormContext,
         domainContent: domainContent as string | null,
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         onMetadata: collectMetadata,
         ...(signal ? { signal } : {}),
       });
@@ -859,8 +871,10 @@ Output ONLY the draft prompt, no explanations.`
     mode: OptimizationMode,
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
-    targetModel?: string
+    targetModel?: string,
+    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
   ): string {
+    const lockedSpanSignature = this.buildLockedSpanSignature(lockedSpans);
     const parts = [
       'prompt-opt-v3', // Bump version to clear generic caches and force compilation refresh
       mode,
@@ -869,7 +883,28 @@ Output ONLY the draft prompt, no explanations.`
       context ? JSON.stringify(context) : '',
       brainstormContext ? JSON.stringify(brainstormContext) : ''
     ];
+    if (lockedSpanSignature) {
+      parts.push(`locked:${lockedSpanSignature}`);
+    }
     return parts.join('::');
+  }
+
+  private buildLockedSpanSignature(
+    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
+  ): string {
+    if (!lockedSpans || lockedSpans.length === 0) {
+      return '';
+    }
+    const payload = lockedSpans.map((span) => ({
+      text: span.text,
+      leftCtx: span.leftCtx ?? null,
+      rightCtx: span.rightCtx ?? null,
+    }));
+    return crypto
+      .createHash('sha256')
+      .update(JSON.stringify(payload))
+      .digest('hex')
+      .substring(0, 16);
   }
 
   private buildMetadataCacheKey(baseKey: string): string {

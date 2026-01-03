@@ -33,6 +33,17 @@ export const promptSchema = z.object({
     .optional()
     .nullable(),
   skipCache: z.boolean().optional().default(false),
+  lockedSpans: z.array(z.object({
+    id: z.string().max(512).optional(),
+    text: z.string().min(1).max(2000),
+    leftCtx: z.string().max(2000).optional().nullable(),
+    rightCtx: z.string().max(2000).optional().nullable(),
+    category: z.string().max(256).optional().nullable(),
+    source: z.string().max(256).optional().nullable(),
+    confidence: z.number().optional().nullable(),
+  }))
+    .optional()
+    .default([]),
 });
 
 export type PromptRequest = z.infer<typeof promptSchema>;

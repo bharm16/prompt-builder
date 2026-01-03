@@ -24,6 +24,13 @@ export interface VideoTemplateContext {
   interpretedPlan?: Record<string, unknown> | null;
   /** Whether to include full instructions or just core guidance */
   includeInstructions?: boolean;
+  /** Spans that must be preserved in the optimized output */
+  lockedSpans?: Array<{
+    text: string;
+    leftCtx?: string | null;
+    rightCtx?: string | null;
+    category?: string | null;
+  }>;
 }
 
 /**

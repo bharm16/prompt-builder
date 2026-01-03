@@ -8,7 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
-import type { OptimizationOptions } from '../types';
+import type { LockedSpan, OptimizationOptions } from '../types';
 
 export type { PromptHistoryEntry };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
@@ -47,6 +47,7 @@ export interface PromptOptimizer {
   isRefining: boolean;
   draftSpans: SpansData | null;
   refinedSpans: SpansData | null;
+  lockedSpans: LockedSpan[];
   optimize: (
     prompt?: string,
     context?: unknown | null,
@@ -55,6 +56,10 @@ export interface PromptOptimizer {
     options?: OptimizationOptions
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
+  setLockedSpans: (spans: LockedSpan[]) => void;
+  addLockedSpan: (span: LockedSpan) => void;
+  removeLockedSpan: (spanId: string) => void;
+  clearLockedSpans: () => void;
   [key: string]: unknown;
 }
 

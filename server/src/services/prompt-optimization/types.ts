@@ -35,6 +35,16 @@ export interface QualityAssessment {
   weaknesses: string[];
 }
 
+export interface LockedSpan {
+  id?: string;
+  text: string;
+  leftCtx?: string | null;
+  rightCtx?: string | null;
+  category?: string | null;
+  source?: string | null;
+  confidence?: number | null;
+}
+
 /**
  * Shot plan from interpreter
  */
@@ -67,6 +77,7 @@ export interface OptimizationRequest {
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   shotPlan?: ShotPlan | null;
   shotPlanAttempted?: boolean;
   domainContent?: string | null;
@@ -83,6 +94,7 @@ export interface TwoStageOptimizationRequest {
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   onDraft?: ((draft: string, spans: any) => void) | null;
   signal?: AbortSignal;
 }

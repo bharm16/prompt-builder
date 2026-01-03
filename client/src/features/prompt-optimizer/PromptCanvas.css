@@ -119,6 +119,23 @@
   opacity: 1 !important;
 }
 
+.value-word--locked {
+  opacity: 1 !important;
+  /* Make locked spans unmistakable (persistent, not just on hover) */
+  border-bottom-style: dashed !important;
+  border-bottom-width: 2px !important;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.22),
+    inset 0 0 0 9999px rgba(15, 23, 42, 0.02);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.10) 0px,
+    rgba(15, 23, 42, 0.10) 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}
+
 /* Confidence level indicators */
 .high-confidence {
   opacity: 1;
@@ -612,6 +629,33 @@
 .prompt-editor-wrapper {
   position: relative;
   min-height: 120px;
+}
+
+.prompt-lock-button {
+  position: absolute;
+  z-index: 5;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, calc(-100% - 6px));
+  border-radius: 999px;
+  border: 1px solid var(--geist-accents-2);
+  background: var(--geist-background);
+  color: var(--geist-accents-6);
+  box-shadow: var(--shadow-small);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.prompt-lock-button:hover {
+  background: var(--geist-accents-1);
+  color: var(--geist-foreground);
+}
+
+.prompt-lock-button[data-locked="true"] {
+  border-color: rgba(15, 23, 42, 0.25);
+  color: var(--geist-foreground);
 }
 
 /* Optimized editor - high contrast, active appearance */

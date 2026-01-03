@@ -13,7 +13,9 @@
 import { logger } from '@infrastructure/Logger';
 import { detectProvider } from '@utils/provider/ProviderDetector';
 import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
+import { OpenAIVideoTemplateBuilderLocked } from './OpenAIVideoTemplateBuilderLocked';
 import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
+import { GroqVideoTemplateBuilderLocked } from './GroqVideoTemplateBuilderLocked';
 import type { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
 
 const log = logger.child({ service: 'VideoTemplateBuilderFactory' });
@@ -21,6 +23,8 @@ const log = logger.child({ service: 'VideoTemplateBuilderFactory' });
 // Singleton instances (initialized on first use)
 let openaiBuilder: OpenAIVideoTemplateBuilder | null = null;
 let groqBuilder: GroqVideoTemplateBuilder | null = null;
+let openaiLockedBuilder: OpenAIVideoTemplateBuilderLocked | null = null;
+let groqLockedBuilder: GroqVideoTemplateBuilderLocked | null = null;
 
 /**
  * Get template builder based on provider detection
@@ -45,6 +49,7 @@ export function getVideoTemplateBuilder(options: {
   operation?: string;
   model?: string;
   client?: string;
+  lockedSpans?: Array<{ text: string }>;
 }): BaseVideoTemplateBuilder {
   const operation = 'getVideoTemplateBuilder';
   
@@ -54,8 +59,24 @@ export function getVideoTemplateBuilder(options: {
   });
   
   const provider = detectProvider(options);
+  const hasLockedSpans = Array.isArray(options.lockedSpans) && options.lockedSpans.length > 0;
 
   if (provider === 'openai') {
+    if (hasLockedSpans) {
+      if (!openaiLockedBuilder) {
+        log.debug('Creating OpenAI locked video template builder instance', {
+          operation,
+          provider,
+        });
+        openaiLockedBuilder = new OpenAIVideoTemplateBuilderLocked();
+      }
+      log.debug('Returning OpenAI locked video template builder', {
+        operation,
+        provider,
+      });
+      return openaiLockedBuilder;
+    }
+
     if (!openaiBuilder) {
       log.debug('Creating OpenAI video template builder instance', {
         operation,
@@ -74,6 +95,21 @@ export function getVideoTemplateBuilder(options: {
 
   // Default to Groq for all other providers
   // (Anthropic, Gemini, and unknown providers use Groq template)
+  if (hasLockedSpans) {
+    if (!groqLockedBuilder) {
+      log.debug('Creating Groq locked video template builder instance', {
+        operation,
+        provider,
+      });
+      groqLockedBuilder = new GroqVideoTemplateBuilderLocked();
+    }
+    log.debug('Returning Groq locked video template builder', {
+      operation,
+      provider,
+    });
+    return groqLockedBuilder;
+  }
+
   if (!groqBuilder) {
     log.debug('Creating Groq video template builder instance', {
       operation,
@@ -115,3 +151,5 @@ export { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
 export type { VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder';
 export { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
 export { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
+export { OpenAIVideoTemplateBuilderLocked } from './OpenAIVideoTemplateBuilderLocked';
+export { GroqVideoTemplateBuilderLocked } from './GroqVideoTemplateBuilderLocked';

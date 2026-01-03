@@ -1,5 +1,5 @@
-import React, { useRef, useMemo, useCallback, useEffect } from 'react';
-import { Pencil, X, Check, ChevronLeft, RefreshCw, Image as ImageIcon, Play as PlayIcon } from 'lucide-react';
+import React, { useRef, useMemo, useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { Pencil, X, Check, ChevronLeft, RefreshCw, Image as ImageIcon, Play as PlayIcon, Lock, Unlock } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -37,6 +37,7 @@ import { convertExportFormat } from './PromptCanvas/utils/exportFormatConversion
 import { formatCategoryLabel, formatTimestamp } from './PromptCanvas/utils/promptCanvasFormatters';
 import { findHighlightNode } from './utils/highlightInteractionHelpers';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
+import { buildLockedSpan, findLockedSpanIndex, getSpanId, isSpanLocked } from './utils/lockedSpans';
 
 // Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
@@ -93,10 +94,16 @@ export function PromptCanvas({
   // Refs
   const editorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  const lockButtonRef = useRef<HTMLButtonElement>(null);
+  const hideLockButtonTimerRef = useRef<number | null>(null);
   const toast = useToast();
 
   // Get model state from context
-  const { selectedModel, setSelectedModel } = usePromptState();
+  const { selectedModel, setSelectedModel, promptOptimizer } = usePromptState();
+  const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
+
+  const [lockButtonPosition, setLockButtonPosition] = useState<{ top: number; left: number } | null>(null);
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -323,8 +330,26 @@ export function PromptCanvas({
   });
 
   // Handle hover preview - lightly prime right panel
+  const cancelHideLockButton = useCallback((): void => {
+    if (hideLockButtonTimerRef.current !== null) {
+      window.clearTimeout(hideLockButtonTimerRef.current);
+      hideLockButtonTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleHideLockButton = useCallback(
+    (delayMs = 2000): void => {
+      cancelHideLockButton();
+      hideLockButtonTimerRef.current = window.setTimeout(() => {
+        setHoveredSpanId(null);
+      }, delayMs);
+    },
+    [cancelHideLockButton, setHoveredSpanId]
+  );
+
   const handleHighlightMouseEnter = useCallback((e: React.MouseEvent): void => {
     if (!enableMLHighlighting || !editorRef.current) return;
+    cancelHideLockButton();
     try {
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -335,17 +360,40 @@ export function PromptCanvas({
           setHoveredSpanId(spanId);
         }
       } else if (hoveredSpanId !== null) {
-        setHoveredSpanId(null);
+        // Don't instantly clear when the cursor slips off the highlight.
+        // This prevents the lock button from disappearing while moving toward it.
+        scheduleHideLockButton();
       }
     } catch (error) {
       // Silently handle errors in hover detection
       console.debug('[PromptCanvas] Error in hover detection:', error);
     }
-  }, [enableMLHighlighting, hoveredSpanId, setHoveredSpanId]);
+  }, [enableMLHighlighting, hoveredSpanId, setHoveredSpanId, cancelHideLockButton, scheduleHideLockButton]);
 
-  const handleHighlightMouseLeave = useCallback((): void => {
-    setHoveredSpanId(null);
-  }, [setHoveredSpanId]);
+  const handleHighlightMouseLeave = useCallback((e: React.MouseEvent): void => {
+    const related = e.relatedTarget as Node | null;
+    if (related && lockButtonRef.current?.contains(related)) {
+      return;
+    }
+    scheduleHideLockButton();
+  }, [scheduleHideLockButton]);
+
+  const handleLockButtonMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>): void => {
+    const related = e.relatedTarget as Node | null;
+    if (related && editorRef.current?.contains(related)) {
+      return;
+    }
+    scheduleHideLockButton();
+  }, [scheduleHideLockButton]);
+
+  useEffect(() => {
+    return () => {
+      if (hideLockButtonTimerRef.current !== null) {
+        window.clearTimeout(hideLockButtonTimerRef.current);
+        hideLockButtonTimerRef.current = null;
+      }
+    };
+  }, []);
 
   usePromptStatus({
     displayedPrompt: normalizedDisplayedPrompt,
@@ -378,6 +426,85 @@ export function PromptCanvas({
     isSuggestionsOpen,
     setState,
   });
+
+  const hoveredSpan = useMemo(() => {
+    if (!hoveredSpanId) return null;
+    return (
+      parseResult.spans.find((candidate) => getSpanId(candidate) === hoveredSpanId) ?? null
+    );
+  }, [hoveredSpanId, parseResult.spans]);
+
+  const hoveredLockedIndex = useMemo(
+    () => findLockedSpanIndex(lockedSpans, hoveredSpan),
+    [lockedSpans, hoveredSpan]
+  );
+
+  const isHoveredLocked = hoveredLockedIndex >= 0;
+
+  const lockedSpanIds = useMemo(() => {
+    if (!lockedSpans.length || !parseResult.spans.length) {
+      return new Set<string>();
+    }
+    const ids = new Set<string>();
+    parseResult.spans.forEach((span) => {
+      if (isSpanLocked(lockedSpans, span)) {
+        ids.add(getSpanId(span));
+      }
+    });
+    return ids;
+  }, [lockedSpans, parseResult.spans]);
+
+  useEffect(() => {
+    if (!editorRef.current || !enableMLHighlighting || !showHighlights) {
+      return;
+    }
+    const editor = editorRef.current;
+    const allHighlights = editor.querySelectorAll('.value-word');
+    allHighlights.forEach((highlight) => {
+      const element = highlight as HTMLElement;
+      const spanId = element.dataset?.spanId;
+      if (spanId && lockedSpanIds.has(spanId)) {
+        element.classList.add('value-word--locked');
+      } else {
+        element.classList.remove('value-word--locked');
+      }
+    });
+  }, [lockedSpanIds, enableMLHighlighting, showHighlights, editorRef, highlightFingerprint]);
+
+  useLayoutEffect(() => {
+    if (
+      !hoveredSpanId ||
+      !editorRef.current ||
+      !editorWrapperRef.current ||
+      !enableMLHighlighting ||
+      !showHighlights
+    ) {
+      setLockButtonPosition(null);
+      return;
+    }
+
+    const spanElement = editorRef.current.querySelector(
+      `[data-span-id="${hoveredSpanId}"]`
+    ) as HTMLElement | null;
+
+    if (!spanElement) {
+      setLockButtonPosition(null);
+      return;
+    }
+
+    const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+    const spanRect = spanElement.getBoundingClientRect();
+    const buttonSize = 24;
+    const padding = 4;
+    const top = spanRect.top - wrapperRect.top;
+    const centerX = spanRect.left - wrapperRect.left + spanRect.width / 2;
+    const left = Math.min(
+      Math.max(buttonSize / 2 + padding, centerX),
+      wrapperRect.width - buttonSize / 2 - padding
+    );
+
+    setLockButtonPosition({ top, left });
+  }, [hoveredSpanId, enableMLHighlighting, showHighlights, highlightFingerprint, normalizedDisplayedPrompt]);
 
   // Keyboard shortcuts hook
   useKeyboardShortcuts({
@@ -481,6 +608,23 @@ export function PromptCanvas({
     debug.logAction('reoptimize', { promptLength: inputPrompt.length, skipCache: true });
     void onReoptimize(inputPrompt, { skipCache: true });
   }, [inputPrompt, isProcessing, isRefining, onReoptimize, debug]);
+
+  const handleToggleLock = useCallback((): void => {
+    if (!hoveredSpan) {
+      return;
+    }
+    if (hoveredLockedIndex >= 0) {
+      const lockedSpan = lockedSpans[hoveredLockedIndex];
+      if (lockedSpan) {
+        removeLockedSpan(lockedSpan.id);
+      }
+      return;
+    }
+    const nextLockedSpan = buildLockedSpan(hoveredSpan);
+    if (nextLockedSpan) {
+      addLockedSpan(nextLockedSpan);
+    }
+  }, [hoveredSpan, hoveredLockedIndex, lockedSpans, addLockedSpan, removeLockedSpan]);
 
   const handleEditClick = useCallback((): void => {
     if (isOptimizing) {
@@ -932,6 +1076,7 @@ export function PromptCanvas({
                   <div 
                     className="prompt-editor-wrapper" 
                     aria-busy={isOutputLoading}
+                    ref={editorWrapperRef}
                   >
                     <PromptEditor
                       ref={editorRef as React.RefObject<HTMLDivElement>}
@@ -943,6 +1088,31 @@ export function PromptCanvas({
                       onCopyEvent={handleCopyEvent}
                       onInput={handleInput}
                     />
+                    {enableMLHighlighting && hoveredSpanId && lockButtonPosition && !isOutputLoading && (
+                      <button
+                        ref={lockButtonRef}
+                        type="button"
+                        onClick={handleToggleLock}
+                        onMouseEnter={cancelHideLockButton}
+                        onMouseLeave={handleLockButtonMouseLeave}
+                        onMouseDown={(e) => e.preventDefault()}
+                        className="prompt-lock-button"
+                        style={{
+                          top: `${lockButtonPosition.top}px`,
+                          left: `${lockButtonPosition.left}px`,
+                        }}
+                        data-locked={isHoveredLocked ? 'true' : 'false'}
+                        aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                        title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                        aria-pressed={isHoveredLocked}
+                      >
+                        {isHoveredLocked ? (
+                          <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                        ) : (
+                          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
                     {isOutputLoading && (
                       <div
                         className="prompt-editor-loading"

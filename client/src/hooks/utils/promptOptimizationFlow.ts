@@ -11,6 +11,7 @@ import {
 } from './performanceMetrics';
 import type { SpansData } from '../usePromptOptimizerState';
 import type { Toast } from '../types';
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
 
 export interface PromptOptimizerActions {
   setDraftPrompt: (prompt: string) => void;
@@ -38,6 +39,7 @@ type OptimizeWithFallback = (options: {
   context?: unknown | null;
   brainstormContext?: unknown | null;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   signal: AbortSignal;
   onDraft?: (draft: string) => void;
   onSpans?: (spans: unknown[], source: string, meta?: unknown) => void;
@@ -55,6 +57,7 @@ type AnalyzeAndOptimize = (options: {
   context?: unknown | null;
   brainstormContext?: unknown | null;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   signal?: AbortSignal;
 }) => Promise<{ optimizedPrompt: string; metadata?: Record<string, unknown> }>;
 
@@ -93,6 +96,7 @@ export interface TwoStageOptimizationOptions {
   requestId: number;
   requestIdRef: MutableRefObject<number>;
   refinedSpans: SpansData | null;
+  lockedSpans?: LockedSpan[];
   actions: PromptOptimizerActions;
   toast: Toast;
   log: ReturnType<typeof logger.child>;
@@ -111,6 +115,7 @@ export async function runTwoStageOptimization({
   requestId,
   requestIdRef,
   refinedSpans,
+  lockedSpans,
   actions,
   toast,
   log,
@@ -129,6 +134,7 @@ export async function runTwoStageOptimization({
     context,
     brainstormContext,
     ...(skipCache ? { skipCache } : {}),
+    ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
     signal: abortController.signal,
     onDraft: (draft: string) => {
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
@@ -311,6 +317,7 @@ export interface SingleStageOptimizationOptions {
   brainstormContext: unknown | null;
   abortController: AbortController;
   skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
   actions: PromptOptimizerActions;
   toast: Toast;
   log: ReturnType<typeof logger.child>;
@@ -326,6 +333,7 @@ export async function runSingleStageOptimization({
   brainstormContext,
   abortController,
   skipCache,
+  lockedSpans,
   actions,
   toast,
   log,
@@ -344,6 +352,7 @@ export async function runSingleStageOptimization({
     signal: abortController.signal,
     ...(selectedModel ? { targetModel: selectedModel } : {}),
     ...(skipCache ? { skipCache } : {}),
+    ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
   });
 
   const optimized = response.optimizedPrompt;

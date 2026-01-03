@@ -24,6 +24,7 @@ export function usePromptOptimizerApi(
       context = null,
       brainstormContext = null,
       skipCache,
+      lockedSpans,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
       log.debug('analyzeAndOptimize called', {
@@ -33,6 +34,7 @@ export function usePromptOptimizerApi(
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
         skipCache: !!skipCache,
+        lockedSpanCount: lockedSpans?.length ?? 0,
       });
       logger.startTimer('analyzeAndOptimize');
 
@@ -44,6 +46,7 @@ export function usePromptOptimizerApi(
           context,
           brainstormContext,
           ...(skipCache ? { skipCache } : {}),
+          ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           ...(signal ? { signal } : {}),
         });
 

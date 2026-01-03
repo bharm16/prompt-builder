@@ -2,7 +2,7 @@ import { logger } from '@infrastructure/Logger';
 import OptimizationConfig from '@config/OptimizationConfig';
 import { ModelConfig } from '@config/modelConfig';
 // Import the examples along with the generator
-import { generateUniversalVideoPrompt, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate';
+import { generateUniversalVideoPrompt, generateUniversalVideoPromptWithLockedSpans, VIDEO_FEW_SHOT_EXAMPLES } from './videoPromptOptimizationTemplate';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { getVideoTemplateBuilder } from './video-templates/index';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
@@ -251,7 +251,13 @@ export class VideoStrategy implements OptimizationStrategy {
    * falls back to StructuredOutputEnforcer for unsupported providers
    * Uses Few-Shot Prompting to prevent structural arrows in output
    */
-  async optimize({ prompt, shotPlan = null, signal, onMetadata }: OptimizationRequest): Promise<string> {
+  async optimize({
+    prompt,
+    shotPlan = null,
+    lockedSpans = [],
+    signal,
+    onMetadata,
+  }: OptimizationRequest): Promise<string> {
     logger.info('Optimizing prompt with video strategy (Provider-Aware + Strict Schema + Few-Shot)');
     const config = this.getConfig();
     const optimizeConfig = ModelConfig.optimize_standard;
@@ -274,12 +280,14 @@ export class VideoStrategy implements OptimizationStrategy {
       const templateBuilder = getVideoTemplateBuilder({
         operation: 'optimize_standard',
         client: provider,
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
       });
 
       // Build provider-optimized template
       const template = templateBuilder.buildTemplate({
         userConcept: prompt,
         ...(shotPlan ? { interpretedPlan: shotPlan as unknown as Record<string, unknown> } : {}),
+        ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         includeInstructions: true,
       });
 
@@ -383,7 +391,14 @@ export class VideoStrategy implements OptimizationStrategy {
         error: (error as Error).message
       });
 
-      return this._fallbackOptimization(prompt, shotPlan as ShotPlan | null, config, signal, onMetadata);
+      return this._fallbackOptimization(
+        prompt,
+        shotPlan as ShotPlan | null,
+        lockedSpans,
+        config,
+        signal,
+        onMetadata
+      );
     }
   }
 
@@ -393,12 +408,16 @@ export class VideoStrategy implements OptimizationStrategy {
   private async _fallbackOptimization(
     prompt: string,
     shotPlan: ShotPlan | null,
+    lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>,
     config: { maxTokens: number; temperature: number; timeout: number },
     signal?: AbortSignal,
     onMetadata?: (metadata: Record<string, unknown>) => void
   ): Promise<string> {
     // Generate full system prompt (legacy format)
-    const systemPrompt = generateUniversalVideoPrompt(prompt, shotPlan);
+    const systemPrompt =
+      lockedSpans && lockedSpans.length > 0
+        ? generateUniversalVideoPromptWithLockedSpans(prompt, shotPlan, lockedSpans)
+        : generateUniversalVideoPrompt(prompt, shotPlan);
 
     // Simpler schema for non-strict fallback
     const looseSchema = {

@@ -244,6 +244,54 @@ describe('api.routes', () => {
     const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
     expect(typeof optimizeArgs?.onMetadata).toBe('function');
   });
+
+  it('passes locked spans through optimize requests', async () => {
+    const promptOptimizationService = {
+      optimize: vi.fn(async () => 'optimized prompt'),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      createAPIRoutes({
+        promptOptimizationService,
+        enhancementService: {},
+        sceneDetectionService: {},
+        videoConceptService: {},
+        metricsService: null,
+      })
+    );
+
+    const response = await request(app)
+      .post('/optimize')
+      .send({
+        prompt: 'Hello world',
+        lockedSpans: [
+          {
+            id: 'span_1',
+            text: 'neon alley',
+            leftCtx: 'rain-soaked ',
+            rightCtx: ' at night',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.optimizedPrompt).toBe('optimized prompt');
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Hello world',
+      lockedSpans: [
+        {
+          id: 'span_1',
+          text: 'neon alley',
+          leftCtx: 'rain-soaked ',
+          rightCtx: ' at night',
+        },
+      ],
+    }));
+    const optimizeArgs = promptOptimizationService.optimize.mock.calls[0]?.[0];
+    expect(typeof optimizeArgs?.onMetadata).toBe('function');
+  });
 });
 
 describe('suggestions.routes', () => {
