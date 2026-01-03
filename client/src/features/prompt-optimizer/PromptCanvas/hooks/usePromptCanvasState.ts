@@ -11,7 +11,6 @@ import type { PromptCanvasAction, PromptCanvasState } from '../types';
 
 const initialState: PromptCanvasState = {
   showExportMenu: false,
-  showModelMenu: false,
   showLegend: false,
   rightPaneMode: 'refine',
   showHighlights: true,

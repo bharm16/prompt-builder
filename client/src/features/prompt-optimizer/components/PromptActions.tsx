@@ -12,7 +12,6 @@ import {
 import { Button } from '@components/Button';
 import type { FloatingToolbarProps } from '../types';
 import { usePromptState } from '../context/PromptStateContext';
-import { ModelMenu } from './ModelMenu';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
 
 /**
@@ -35,12 +34,8 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   onRedo,
   canUndo,
   canRedo,
-  promptText = '',
-  showModelMenu,
-  onToggleModelMenu,
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const copyMenuRef = useRef<HTMLDivElement>(null);
   const { selectedModel } = usePromptState();
   const selectedModelId = AI_MODEL_IDS.find((modelId) => modelId === selectedModel) ?? null;
 
@@ -49,84 +44,58 @@ export const PromptActions = memo<FloatingToolbarProps>(({
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
         onToggleExportMenu(false);
       }
-      if (copyMenuRef.current && !copyMenuRef.current.contains(event.target as Node)) {
-        onToggleModelMenu(false);
-      }
     };
 
-    if (showExportMenu || showModelMenu) {
+    if (showExportMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
     return undefined;
-  }, [showExportMenu, showModelMenu, onToggleExportMenu, onToggleModelMenu]);
+  }, [showExportMenu, onToggleExportMenu]);
 
-  const handleCopyClick = (): void => {
-    if (showModelMenu) {
-      // If menu is open, just copy directly
-      onCopy();
-      onToggleModelMenu(false);
-    } else {
-      // Toggle menu
-      onToggleModelMenu(true);
-    }
-  };
-
-  const handleOpenInSelectedModel = (): void => {
+  const handleGenerateWithSelectedModel = (): void => {
     if (!selectedModelId) {
-      onToggleExportMenu(false);
-      onToggleModelMenu(true);
       return;
     }
 
     onCopy();
     window.open(AI_MODEL_URLS[selectedModelId], '_blank', 'noopener,noreferrer');
-    onToggleModelMenu(false);
     onToggleExportMenu(false);
   };
 
-  const openButtonLabel = selectedModelId
-    ? `Open in ${AI_MODEL_LABELS[selectedModelId]}`
-    : 'Open in model';
-  const openButtonTitle = selectedModelId
-    ? `Open in ${AI_MODEL_LABELS[selectedModelId]}`
-    : 'Select a model to open';
+  const generateButtonLabel = selectedModelId
+    ? `Generate with ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Generate with model';
+  const generateButtonTitle = selectedModelId
+    ? `Generate with ${AI_MODEL_LABELS[selectedModelId]}`
+    : 'Select a model to generate';
 
   return (
-    <div className="flex items-center justify-end gap-geist-0 mt-geist-4 -mb-geist-2">
+    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-geist-0 mt-geist-4 -mb-geist-2">
       {/* Primary action - Copy */}
-      <div className="relative" ref={copyMenuRef}>
-        <Button
-          onClick={handleCopyClick}
-          svgOnly={false}
-          variant="ghost"
-          prefix={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          className={copied ? 'text-green-600 bg-green-50' : 'prompt-actions__primary'}
-          aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
-          aria-expanded={showModelMenu}
-          title="Copy"
-        >
-          <span className="text-button-14 font-medium">{copied ? 'Copied!' : 'Copy'}</span>
-        </Button>
-        {showModelMenu && (
-          <ModelMenu
-            promptText={promptText}
-            onCopy={onCopy}
-            onClose={() => onToggleModelMenu(false)}
-          />
-        )}
-      </div>
+      <Button
+        onClick={onCopy}
+        svgOnly={false}
+        variant="ghost"
+        prefix={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        className={copied ? 'text-green-600 bg-green-50' : 'prompt-actions__primary'}
+        aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
+        title="Copy"
+      >
+        <span className="text-button-14 font-medium">{copied ? 'Copied!' : 'Copy'}</span>
+      </Button>
 
       <Button
-        onClick={handleOpenInSelectedModel}
+        onClick={handleGenerateWithSelectedModel}
         svgOnly={false}
         variant="ghost"
         prefix={<ExternalLink className="h-3.5 w-3.5" />}
         className="prompt-actions__primary"
-        aria-label={openButtonLabel}
-        title={openButtonTitle}
+        aria-label={generateButtonLabel}
+        title={generateButtonTitle}
+        disabled={!selectedModelId}
       >
-        <span className="text-button-14 font-medium">{openButtonLabel}</span>
+        <span className="text-button-14 font-medium">{generateButtonLabel}</span>
       </Button>
 
       <Button

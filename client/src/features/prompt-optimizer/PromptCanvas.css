@@ -344,16 +344,120 @@
   position: relative;
 }
 
-/* Flexbox layout for bento grid, editor, and image generation */
+/* Grid layout for outline rail, editor column, and right rail */
 .prompt-canvas-grid {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 0 !important;
+  display: grid !important;
+  grid-template-columns:
+    var(--prompt-outline-width, var(--layout-bento-rail-width))
+    minmax(0, 8fr)
+    minmax(0, 4fr);
+  gap: 16px;
+  /* Keep overall breathing room, but anchor the right rail flush to the page edge */
+  padding: 16px 0 16px 16px;
+  height: 100%;
+  width: 100%;
+  align-items: start;
+  box-sizing: border-box;
 }
 
-/* Middle column - allow flexible growth */
-.prompt-canvas-grid > div:nth-child(2) {
-  flex: 1 1 0%;
+/* ============================================
+   OUTLINE RAIL (Collapsed Bento Grid)
+   ============================================ */
+.prompt-outline-rail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px;
+}
+
+.prompt-outline-rail__button {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--geist-accents-2);
+  background: var(--geist-background);
+  color: var(--geist-accents-6);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.prompt-outline-rail__button:hover {
+  background: var(--geist-accents-1);
+  color: var(--geist-foreground);
+  border-color: var(--geist-accents-3);
+  transform: translateY(-1px);
+}
+
+.prompt-outline-rail__button:active {
+  transform: translateY(0px);
+}
+
+.prompt-outline-rail__label {
+  font-family: var(--font-geist-sans);
+  font-size: 0.6875rem; /* ~11px */
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  user-select: none;
+}
+
+/* Editor column: scrolls independently to keep the right rail visually stable */
+.prompt-canvas-editor {
+  height: 100%;
+  overflow-y: auto;
+  /* Option A: distinct surface + explicit spacing so Input/Output don't blend together */
+  gap: 18px;
+  padding: 16px 16px 24px;
+  background: var(--geist-accents-1);
+  border-radius: 14px;
+  /*
+   * The global `--layout-content-max-width` is `50vw`, which leaves a huge dead zone
+   * between the content and the right rail on wide screens.
+   * Override it locally so cards can use the column width.
+   */
+  --layout-content-max-width: clamp(720px, 70vw, 1100px);
+}
+
+/* Right rail: sticky + height-bounded */
+.prompt-canvas-right-rail {
+  position: sticky;
+  top: 16px;
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  align-self: start;
+  justify-self: end;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 1024px) {
+  .prompt-canvas-grid {
+    grid-template-columns:
+      var(--prompt-outline-width, var(--layout-bento-rail-width))
+      minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .prompt-canvas-right-rail {
+    position: static;
+    height: auto;
+    max-height: none;
+    grid-column: 1 / -1;
+  }
 }
 
 /* Responsive content padding - 0.75vw on both sides */
@@ -369,19 +473,25 @@
 /* Full-width background bands */
 .prompt-band {
   width: 100%;
-  padding-top: var(--spacing-xl);
-  padding-bottom: var(--spacing-xl);
+  /* Option A: spacing comes from the editor column's gap, not "floating" band padding */
+  padding-top: 0;
+  padding-bottom: 0;
   transition: background-color 0.3s ease, opacity 0.3s ease;
+  /* Ensure centering */
+  display: flex;
+  justify-content: center;
 }
 
 .prompt-band__content {
+  /* No margin-left/right auto needed if parent is flex centered, 
+     but keep it just in case of non-flex contexts or specific overrides */
   margin-left: auto;
   margin-right: auto;
 }
 
 /* Original prompt band - subtle gray */
 .prompt-band--original {
-  background-color: #F6F7F9;
+  background-color: transparent;
 }
 
 .prompt-band--original[data-optimizing="true"] {
@@ -390,11 +500,11 @@
 
 /* Optimized prompt band - white/tinted */
 .prompt-band--optimized {
-  background-color: #FFFFFF;
+  background-color: transparent;
 }
 
 .prompt-band--optimized[data-loading="true"] {
-  background-color: #F9FBFF;
+  background-color: transparent;
 }
 
 /* ============================================
@@ -412,8 +522,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  /* Section padding: 24 (horizontal), 16 (vertical) */
+  padding: 16px 24px;
   border-bottom: 1px solid var(--geist-accents-2);
 }
 
@@ -451,12 +563,13 @@
 }
 
 .prompt-card__body {
-  padding: var(--spacing-lg);
+  /* Section padding: 24 */
+  padding: 24px;
 }
 
 .prompt-card__body--editor {
-  padding: var(--spacing-lg);
-  min-height: 120px;
+  padding: 24px;
+  min-height: 240px;
 }
 
 .prompt-card__footer {
@@ -603,6 +716,10 @@
   font-size: 15px;
   line-height: 1.6;
   color: var(--geist-foreground);
+  /* Stable workspace feel */
+  min-height: 140px;
+  max-height: 240px;
+  overflow: auto;
 }
 
 /* Original input - monospace, muted */
@@ -628,7 +745,8 @@
 
 .prompt-editor-wrapper {
   position: relative;
-  min-height: 120px;
+  /* Give the output editor a real workspace height that grows */
+  min-height: 240px;
 }
 
 .prompt-lock-button {
@@ -667,12 +785,32 @@
   line-height: 1.6;
   color: var(--geist-foreground);
   width: 100%;
-  min-height: 120px;
+  min-height: 240px;
+  height: auto; /* Allow growth */
   caret-color: rgb(0, 0, 0);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .prompt-editor:focus {
   outline: none;
+}
+
+/* Constrain output line-length inside the card (card stays full width) */
+.prompt-card--optimized .prompt-card__instruction,
+.prompt-card--optimized .prompt-card__undo-hint,
+.prompt-card--optimized .prompt-editor-wrapper,
+.prompt-card--optimized .prompt-editor {
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Keep input readable too (same card type, centered column) */
+.prompt-card--original .prompt-input {
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .prompt-editor-loading {
@@ -688,78 +826,9 @@
   border-radius: var(--geist-radius-lg);
 }
 
-/* ============================================
-   TRANSFORMATION INDICATOR (3: Directionality)
-   ============================================ */
-
-.prompt-transformation-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) 0;
-  background-color: var(--geist-background);
-  position: relative;
-}
-
-.prompt-transformation-indicator__line {
-  flex: 1;
-  height: 1px;
-  background-color: var(--geist-accents-2);
-  max-width: 200px;
-}
-
-.prompt-transformation-indicator__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: 0 var(--spacing-md);
-}
-
-.prompt-transformation-indicator__arrow {
-  color: var(--geist-accents-5);
-  animation: prompt-transformation-arrow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.prompt-transformation-indicator__label {
-  font-family: var(--font-geist-sans);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  font-weight: 500;
-  color: var(--geist-accents-6);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* ============================================
-   ANIMATIONS (7: Used Correctly)
-   ============================================ */
-
-/* Arrow animation - only on generation (runs once when element appears) */
-.prompt-transformation-indicator {
-  animation: prompt-transformation-indicator-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes prompt-transformation-indicator-appear {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-@keyframes prompt-transformation-arrow {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* (Option A) The old floating transformation indicator was removed from the UI.
+ * Keeping the layout structural: Input card + Output card with a clear gap.
+ */
 
 /* Optimized card fade-in on generation - only when transitioning from loading */
 .prompt-band--optimized[data-has-content="true"]:not([data-loading="true"]) {

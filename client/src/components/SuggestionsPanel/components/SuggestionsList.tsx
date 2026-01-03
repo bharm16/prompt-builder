@@ -62,18 +62,9 @@ export function SuggestionsList({
   if (variant === 'tokenEditor') {
     return (
       <div
-        className="flex-1 min-h-0 overflow-y-auto px-geist-4 pb-geist-3 pt-geist-2 space-y-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3 hover:[&::-webkit-scrollbar-thumb:hover]:bg-geist-accents-4"
+        className="flex-1 min-h-0 overflow-y-auto px-geist-4 pb-geist-3 pt-geist-2 space-y-1 scrollbar-hide"
         role="list"
         aria-label="Suggestion options"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.scrollbarColor =
-            'var(--geist-accents-3) var(--geist-accents-1)';
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.scrollbarColor =
-            'transparent transparent';
-        }}
       >
         {suggestions.map((suggestion, index) => {
           const suggestionObj = normalizeSuggestion(suggestion);
@@ -159,16 +150,9 @@ export function SuggestionsList({
 
   return (
     <div
-      className="flex-1 min-h-0 space-y-geist-2 overflow-y-auto px-geist-3 py-geist-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3 hover:[&::-webkit-scrollbar-thumb:hover]:bg-geist-accents-4"
+      className="flex-1 min-h-0 space-y-geist-2 overflow-y-auto px-geist-3 py-geist-3 scrollbar-hide"
       role="list"
       aria-label="Suggestion options"
-      style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.scrollbarColor = 'var(--geist-accents-3) var(--geist-accents-1)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
-      }}
     >
       {suggestions.map((suggestion, index) => {
         const suggestionObj = normalizeSuggestion(suggestion);

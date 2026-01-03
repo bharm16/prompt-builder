@@ -76,9 +76,6 @@ export interface FloatingToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  promptText?: string;
-  showModelMenu: boolean;
-  onToggleModelMenu: (show: boolean) => void;
   hoveredSpanId?: string | null;
 }
 

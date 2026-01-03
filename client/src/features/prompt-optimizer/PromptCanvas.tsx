@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { Pencil, X, Check, ChevronLeft, RefreshCw, Image as ImageIcon, Play as PlayIcon, Lock, Unlock } from 'lucide-react';
+import { Pencil, X, Check, ChevronLeft, RefreshCw, Image as ImageIcon, Play as PlayIcon, Lock, Unlock, LayoutGrid } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -111,11 +111,20 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
+  // Left outline rail (collapsed by default on desktop)
+  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+
+  // On small screens, avoid a skinny rail and show the outline content by default.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 768px)');
+    if (mql.matches) setIsOutlineOpen(true);
+  }, []);
+
   const { state, setState, incrementVisualRequestId, incrementVideoRequestId } =
     usePromptCanvasState();
   const {
     showExportMenu,
-    showModelMenu,
     showLegend,
     rightPaneMode,
     visualLastGeneratedAt,
@@ -151,10 +160,6 @@ export function PromptCanvas({
 
   const setShowExportMenu = useCallback(
     (value: boolean) => setState({ showExportMenu: value }),
-    [setState]
-  );
-  const setShowModelMenu = useCallback(
-    (value: boolean) => setState({ showModelMenu: value }),
     [setState]
   );
   const setShowLegend = useCallback(
@@ -834,7 +839,7 @@ export function PromptCanvas({
 
   // Render the component
   return (
-    <div className="relative flex flex-col bg-geist-background min-h-full flex-1">
+    <div className="relative flex flex-col bg-geist-accents-1 min-h-full flex-1">
       {/* Category Legend */}
       <CategoryLegend
         show={showLegend}
@@ -844,39 +849,91 @@ export function PromptCanvas({
       />
 
       {/* Main Content Container */}
-      <div className="flex-1 flex overflow-hidden prompt-canvas-grid">
-        {/* Left Sidebar - Span Bento Grid */}
+      <div
+        className="flex-1 overflow-hidden prompt-canvas-grid"
+        style={
+          {
+            // Controls the outline rail width without fighting the grid layout.
+            '--prompt-outline-width': isOutlineOpen
+              ? 'var(--layout-bento-grid-width)'
+              : 'var(--layout-bento-rail-width)',
+          } as React.CSSProperties
+        }
+      >
+        {/* Left Sidebar - Outline Rail / Span Bento Grid */}
         <div
-          className={`flex flex-col h-full overflow-hidden bg-geist-accents-1 border-l border-geist-accents-2 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
+          className={`prompt-canvas-outline flex flex-col h-full overflow-hidden bg-geist-accents-1 border-r border-geist-accents-2 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
             selectedSpanId ? 'opacity-60' : 'opacity-100'
           }`}
-          style={{
-            width: 'var(--layout-bento-grid-width)',
-            minWidth: 'var(--layout-bento-grid-width)',
-            flexShrink: 0,
-          }}
+          data-outline-open={isOutlineOpen ? 'true' : 'false'}
         >
-          <HighlightingErrorBoundary>
-            <SpanBentoGrid
-              spans={parseResult.spans.map((span) => {
-                const { confidence, category, ...rest } = span;
-                return {
-                  ...rest,
-                  id: span.id ?? `span_${span.start}_${span.end}`,
-                  quote: span.quote ?? span.text ?? '',
-                  ...(typeof confidence === 'number' ? { confidence } : {}),
-                  ...(category !== undefined ? { category } : {}),
-                };
-              })}
-              onSpanClick={handleSpanClickFromBento}
-              editorRef={editorRef as React.RefObject<HTMLElement>}
-              selectedSpanId={selectedSpanId}
-            />
-          </HighlightingErrorBoundary>
+          {/* Collapsed rail */}
+          {!isOutlineOpen && (
+            <div className="prompt-outline-rail">
+              <button
+                type="button"
+                onClick={() => setIsOutlineOpen(true)}
+                className="prompt-outline-rail__button"
+                aria-label="Open outline"
+                title="Open outline"
+              >
+                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                <span className="prompt-outline-rail__label">Outline</span>
+              </button>
+            </div>
+          )}
+
+          {/* Expanded outline panel */}
+          {isOutlineOpen && (
+            <>
+              <div className="flex items-center justify-between gap-2 px-geist-3 py-geist-2 border-b border-geist-accents-2 bg-geist-accents-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsOutlineOpen(false)}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors"
+                    aria-label="Collapse outline"
+                    title="Collapse outline"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-geist-accents-6" aria-hidden="true" />
+                  </button>
+                  <div className="text-label-12 font-medium text-geist-accents-6 truncate">
+                    Outline
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-0">
+                <HighlightingErrorBoundary>
+                  <SpanBentoGrid
+                    spans={parseResult.spans.map((span) => {
+                      const { confidence, category, ...rest } = span;
+                      return {
+                        ...rest,
+                        id: span.id ?? `span_${span.start}_${span.end}`,
+                        quote: span.quote ?? span.text ?? '',
+                        ...(typeof confidence === 'number' ? { confidence } : {}),
+                        ...(category !== undefined ? { category } : {}),
+                      };
+                    })}
+                    onSpanClick={(span) => {
+                      handleSpanClickFromBento(span);
+                      // Optional: keep the user in writing flow after choosing an item.
+                      if (typeof window !== 'undefined' && !window.matchMedia('(max-width: 768px)').matches) {
+                        setIsOutlineOpen(false);
+                      }
+                    }}
+                    editorRef={editorRef as React.RefObject<HTMLElement>}
+                    selectedSpanId={selectedSpanId}
+                  />
+                </HighlightingErrorBoundary>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div className="flex flex-col flex-1 overflow-y-auto scrollbar-auto-hide min-w-0">
+        <div className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0">
           {/* Original Prompt Band */}
           <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
             <div
@@ -964,33 +1021,6 @@ export function PromptCanvas({
             </div>
           </div>
 
-          {/* Directionality Indicator */}
-          {normalizedDisplayedPrompt && (
-            <div className="prompt-transformation-indicator">
-              <div className="prompt-transformation-indicator__line" />
-              <div className="prompt-transformation-indicator__content">
-                <svg
-                  className="prompt-transformation-indicator__arrow"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M10 4L10 16M10 16L4 10M10 16L16 10"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="prompt-transformation-indicator__label">Optimized output</span>
-              </div>
-              <div className="prompt-transformation-indicator__line" />
-            </div>
-          )}
-
           {/* Optimized Prompt Band */}
           <div 
             className="prompt-band prompt-band--optimized"
@@ -1008,7 +1038,7 @@ export function PromptCanvas({
                 <div className="prompt-card__header">
                   <div className="flex items-center gap-geist-2 flex-1">
                     <span className="prompt-card__label">
-                      Output
+                      Optimized Output
                     </span>
                     {promptState === 'generated' && generatedTimestamp && (
                       <span className="prompt-card__state-badge prompt-card__state-badge--generated">
@@ -1031,7 +1061,7 @@ export function PromptCanvas({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-geist-2">
+                  <div className="flex items-center gap-geist-2 flex-nowrap overflow-x-auto">
                     {!isEditing && (
                       <button
                         type="button"
@@ -1144,63 +1174,74 @@ export function PromptCanvas({
                   onRedo={onRedo}
                   canUndo={canUndo}
                   canRedo={canRedo}
-                  promptText={normalizedDisplayedPrompt ?? ''}
-                  showModelMenu={showModelMenu}
-                  onToggleModelMenu={setShowModelMenu}
                 />
               )}
             </div>
           </div>
+
+          {/* NEW: Video Generation Band (Moved to bottom of Main Column) */}
+          {normalizedDisplayedPrompt && showVideoPreview && (
+            <div className="prompt-band prompt-band--video mt-4">
+              <div
+                className="prompt-band__content prompt-canvas-content-wrapper"
+                style={{
+                  maxWidth: 'var(--layout-content-max-width)',
+                  width: '100%',
+                }}
+              >
+                <div className="prompt-card prompt-card--video border-geist-accents-2 bg-geist-background">
+                  <div className="prompt-card__header">
+                    <span className="prompt-card__label">Video Generation</span>
+                  </div>
+                  <div className="prompt-card__body">
+                    <div className="flex flex-col gap-4">
+                      <div className="text-sm text-geist-accents-5">
+                        Generate a video preview from your optimized prompt.
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleGenerateVideoPreview}
+                          disabled={!videoPreviewPrompt.trim()}
+                          className="inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label="Generate motion preview"
+                        >
+                          <PlayIcon className="h-4 w-4" aria-hidden="true" />
+                          <span>Generate Motion</span>
+                        </button>
+                      </div>
+                      <div className="pt-4 border-t border-geist-accents-2">
+                        <VideoPreview
+                          prompt={videoPreviewPrompt}
+                          aspectRatio={previewAspectRatio}
+                          isVisible={true}
+                          generateRequestId={videoGenerateRequestId}
+                          lastGeneratedAt={videoLastGeneratedAt}
+                          onPreviewGenerated={handleVideoPreviewGenerated}
+                          onKeepRefining={handleKeepRefiningFromPreview}
+                          onRefinePrompt={handleSomethingOffFromPreview}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Image Generation Panel */}
+        {/* Right Rail - Drafting & Refinement */}
         <div
-          className="flex flex-col h-full overflow-hidden bg-geist-background border-l border-geist-accents-2"
-          style={{
-            width: 'var(--layout-image-gen-width)',
-            minWidth: 'var(--layout-image-gen-width)',
-            flexShrink: 0,
-          }}
+          className="prompt-canvas-right-rail flex flex-col overflow-hidden bg-geist-background border border-geist-accents-2"
         >
-          {/* Sticky right-pane header + mode controls */}
+          {/* Header - Simplified, no tabs */}
           <div className="sticky top-0 z-20 bg-geist-background border-b border-geist-accents-2">
-            <div className="px-geist-4 py-geist-3 flex items-start justify-between gap-geist-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-geist-2">
-                  {rightPaneMode === 'preview' && (
-                    <button
-                      type="button"
-                      onClick={() => setRightPaneMode('refine')}
-                      className="inline-flex items-center gap-1.5 px-geist-2 py-geist-1 text-label-12 font-medium text-geist-accents-6 hover:text-geist-foreground hover:bg-geist-accents-1 rounded-geist transition-colors"
-                      aria-label="Back to refinement"
-                      title="Back to refinement"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Back</span>
-                    </button>
-                  )}
-                  <h2 className="text-sm font-semibold text-geist-foreground truncate">
-                    {rightPaneMode === 'preview' ? 'Preview' : 'Refine Prompt'}
-                  </h2>
-                </div>
-                {rightPaneMode === 'refine' ? (
-                  suggestionsData?.selectedText ? (
-                    <p className="mt-1 text-label-12 text-geist-accents-5 truncate">
-                      Editing “{suggestionsData.selectedText}”
-                      {formatCategoryLabel(suggestionsData.metadata?.category) ? (
-                        <> · {formatCategoryLabel(suggestionsData.metadata?.category)}</>
-                      ) : null}
-                    </p>
-                  ) : null
-                ) : (
-                  <div className="mt-1 text-label-12 text-geist-accents-5">
-                    Generate previews below to validate changes.
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-geist-2 flex-shrink-0">
-                {rightPaneMode === 'refine' && suggestionsData?.selectedText && suggestionsData?.onClose && (
+            <div className="px-geist-4 py-geist-3 flex items-center justify-between gap-geist-3">
+              <h2 className="text-sm font-semibold text-geist-foreground truncate">
+                Preview & Refine
+              </h2>
+              {/* Optional: Clear selection button if needed */}
+               {suggestionsData?.selectedText && suggestionsData?.onClose && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1208,84 +1249,33 @@ export function PromptCanvas({
                       setSelectedSpanId(null);
                       setHoveredSpanId(null);
                     }}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors"
+                    className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-geist-accents-2 transition-colors"
                     aria-label="Clear selection"
-                    title="Clear selection"
                   >
-                    <X className="h-4 w-4 text-geist-accents-6" aria-hidden="true" />
+                    <X className="h-3 w-3 text-geist-accents-6" aria-hidden="true" />
                   </button>
                 )}
-
-                <div
-                  className="flex items-center bg-geist-accents-1 border border-geist-accents-2 rounded-geist overflow-hidden"
-                  role="tablist"
-                  aria-label="Right pane mode"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setRightPaneMode('refine')}
-                    className={`px-geist-3 py-geist-1.5 text-label-12 font-medium transition-colors ${
-                      rightPaneMode === 'refine'
-                        ? 'bg-geist-foreground text-geist-background'
-                        : 'text-geist-accents-6 hover:text-geist-foreground'
-                    }`}
-                    role="tab"
-                    aria-selected={rightPaneMode === 'refine'}
-                  >
-                    Refine
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRightPaneMode('preview')}
-                    className={`px-geist-3 py-geist-1.5 text-label-12 font-medium transition-colors ${
-                      rightPaneMode === 'preview'
-                        ? 'bg-geist-foreground text-geist-background'
-                        : 'text-geist-accents-6 hover:text-geist-foreground'
-                    }`}
-                    role="tab"
-                    aria-selected={rightPaneMode === 'preview'}
-                  >
-                    Preview
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Right-pane body (single responsibility at a time) */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {rightPaneMode === 'preview' ? (
-              <div className="flex flex-col flex-1 overflow-y-auto p-geist-4 min-h-0">
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-stretch gap-2">
-                      <button
-                        type="button"
-                        onClick={handleGenerateVisualPreview}
-                        disabled={!previewSource.trim()}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Generate composition preview"
-                      >
-                        <ImageIcon className="h-4 w-4" aria-hidden="true" />
-                        <span>Generate composition</span>
-                      </button>
-                      {showVideoPreview && (
-                        <button
-                          type="button"
-                          onClick={handleGenerateVideoPreview}
-                          disabled={!videoPreviewPrompt.trim()}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          aria-label="Generate motion preview"
-                        >
-                          <PlayIcon className="h-4 w-4" aria-hidden="true" />
-                          <span>Generate motion</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="px-1 text-xs text-geist-accents-6">
-                      Run either preview anytime — they’re independent.
-                    </div>
+          {/* Right-pane body - Stacked Layout */}
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+            
+            {/* 1. Image Preview (Always visible at top for iterative loop) */}
+            <div className="p-geist-4 border-b border-geist-accents-2">
+               <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">Visual Draft</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerateVisualPreview}
+                      disabled={!previewSource.trim()}
+                      className="text-xs font-medium text-geist-foreground hover:text-geist-accents-5 transition-colors disabled:opacity-50"
+                    >
+                      Refresh
+                    </button>
                   </div>
+                  
                   <VisualPreview
                     prompt={previewSource}
                     aspectRatio={previewAspectRatio}
@@ -1296,30 +1286,17 @@ export function PromptCanvas({
                     onKeepRefining={handleKeepRefiningFromPreview}
                     onRefinePrompt={handleSomethingOffFromPreview}
                   />
-                  {showVideoPreview && (
-                    <div className="pt-6 border-t border-geist-accents-2">
-                      <VideoPreview
-                        prompt={videoPreviewPrompt}
-                        aspectRatio={previewAspectRatio}
-                        isVisible={true}
-                        generateRequestId={videoGenerateRequestId}
-                        lastGeneratedAt={videoLastGeneratedAt}
-                        onPreviewGenerated={handleVideoPreviewGenerated}
-                        onKeepRefining={handleKeepRefiningFromPreview}
-                        onRefinePrompt={handleSomethingOffFromPreview}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                {/* Inline replacement feedback (auto-dismiss) */}
-                {justReplaced && (
-                  <div className="px-geist-4 pt-geist-3">
+               </div>
+            </div>
+
+            {/* 2. Suggestions Panel (Takes remaining space) */}
+            <div className="flex-1 flex flex-col min-h-0">
+               {/* Inline replacement feedback */}
+               {justReplaced && (
+                  <div className="px-geist-4 pt-geist-3 pb-2">
                     <div className="flex items-center justify-between gap-geist-3 bg-geist-accents-1 border border-geist-accents-2 rounded-geist px-geist-3 py-geist-2">
                       <div className="text-label-12 text-geist-foreground truncate">
-                        ✓ Replaced “{justReplaced.from}” → “{justReplaced.to}”
+                        ✓ Replaced “{justReplaced.from}”
                       </div>
                         <button
                           type="button"
@@ -1328,7 +1305,6 @@ export function PromptCanvas({
                             setState({ justReplaced: null });
                           }}
                           className="text-label-12 font-medium text-geist-accents-6 hover:text-geist-foreground"
-                          aria-label="Undo replacement"
                         >
                         Undo
                       </button>
@@ -1336,7 +1312,7 @@ export function PromptCanvas({
                   </div>
                 )}
 
-                <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-geist-2">
+                <div className="flex-1 overflow-hidden relative">
                   <SuggestionsPanel
                     suggestionsData={
                       suggestionsData
@@ -1347,12 +1323,12 @@ export function PromptCanvas({
                               ? { currentPrompt: normalizedDisplayedPrompt }
                               : {}),
                             variant: 'tokenEditor',
-                            panelClassName: 'h-full flex flex-col',
+                            panelClassName: 'h-full flex flex-col', // Ensure it fits the container
                             contextValue: suggestionsData.selectedText || '',
                             showCategoryTabs: false,
                             showCopyAction: false,
-                            customRequestPlaceholder: 'e.g. more cinematic, more intense, younger, older',
-                            customRequestCtaLabel: 'Generate more',
+                            customRequestPlaceholder: 'e.g. more cinematic, more intense...',
+                            customRequestCtaLabel: 'Generate',
                             hoverPreview: hoveredSpanId !== null && !selectedSpanId,
                           } as Record<string, unknown>)
                         : ({
@@ -1364,15 +1340,12 @@ export function PromptCanvas({
                             panelClassName: 'h-full flex flex-col',
                             showCategoryTabs: false,
                             showCopyAction: false,
-                            customRequestPlaceholder: 'e.g. more cinematic, more intense, younger, older',
-                            customRequestCtaLabel: 'Generate more',
                             hoverPreview: hoveredSpanId !== null && !selectedSpanId,
                           } as Record<string, unknown>)
                     }
                   />
                 </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

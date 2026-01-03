@@ -124,7 +124,6 @@ export interface SuggestionsData {
 
 export interface PromptCanvasState {
   showExportMenu: boolean;
-  showModelMenu: boolean;
   showLegend: boolean;
   rightPaneMode: 'refine' | 'preview';
   showHighlights: boolean;

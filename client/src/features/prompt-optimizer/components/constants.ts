@@ -2,7 +2,7 @@
  * Video Model Constants
  * 
  * Defines video model identifiers, URLs, and display labels
- * for the model selection menu in PromptActions component.
+ * for model selection and prompt handoff actions.
  */
 
 export const AI_MODEL_IDS = ['runway-gen45', 'luma-ray3', 'sora-2', 'veo-4', 'kling-26', 'wan-2.2'] as const;
@@ -26,4 +26,3 @@ export const AI_MODEL_LABELS: Record<AIModelId, string> = {
   'kling-26': 'Kling',
   'wan-2.2': 'Wan 2.2',
 } as const;
-

@@ -35,6 +35,7 @@
     --layout-sidebar-width-expanded: 240px;
     --layout-sidebar-width-collapsed: 5vw;
     --layout-bento-grid-width: 19vw;
+    --layout-bento-rail-width: 44px;
     --layout-suggestions-panel-width: 22vw;
     --layout-content-max-width: 50vw;
     --layout-legend-width: 20vw;
@@ -133,38 +134,25 @@
     @apply bg-accent-100 text-accent-900;
   }
 
-  /* Custom scrollbar styling - hidden by default, shown on hover/scroll */
-  ::-webkit-scrollbar {
-    @apply w-2 h-2;
+  /* Scrollbars: completely hidden (user request).
+     Keeps scrolling functional but removes visible scrollbars. */
+  * {
+    -ms-overflow-style: none !important; /* IE/old Edge */
+    scrollbar-width: none !important; /* Firefox */
   }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+  *::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
   }
 
-  ::-webkit-scrollbar-thumb {
-    @apply bg-transparent rounded-full;
-    transition: background-color 0.2s ease;
+  *::-webkit-scrollbar-track {
+    background: transparent !important;
   }
 
-  /* Show scrollbar on hover */
-  *:hover::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300;
-  }
-
-  *:hover::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
-  }
-
-  /* Show scrollbar when scrolling */
-  *:active::-webkit-scrollbar-thumb,
-  *:focus::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300;
-  }
-
-  *:active::-webkit-scrollbar-track,
-  *:focus::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
+  *::-webkit-scrollbar-thumb {
+    background: transparent !important;
   }
 }
 

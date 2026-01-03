@@ -88,15 +88,7 @@ export const BentoBox = memo<BentoBoxProps>(({
       <div className="card-body flex-1 flex flex-col min-h-0 overflow-hidden pt-1 pb-2 px-2">
         {/* CONTENT: Spans list - always scrollable */}
         {hasSpans ? (
-          <div className="flex flex-col gap-1.5 overflow-y-auto flex-1 w-full [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-track]:bg-geist-accents-1 hover:[&::-webkit-scrollbar-thumb]:bg-geist-accents-3"
-            style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.scrollbarColor = 'var(--geist-accents-3) var(--geist-accents-1)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.scrollbarColor = 'transparent transparent';
-            }}
-          >
+          <div className="flex flex-col gap-1.5 overflow-y-auto flex-1 w-full scrollbar-hide">
             {spans.map(span => (
               <SpanItem 
                 key={span.id} 
