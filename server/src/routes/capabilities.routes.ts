@@ -1,7 +1,7 @@
 import express, { type Router } from 'express';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { logger } from '@infrastructure/Logger';
-import { getCapabilities, listModels, listProviders } from '@services/capabilities';
+import { getCapabilities, listModels, listProviders, resolveProviderForModel } from '@services/capabilities';
 
 export function createCapabilitiesRoutes(): Router {
   const router = express.Router();
@@ -10,6 +10,14 @@ export function createCapabilitiesRoutes(): Router {
     '/providers',
     asyncHandler(async (_req, res) => {
       res.json({ providers: listProviders() });
+    })
+  );
+
+  router.get(
+    '/registry',
+    asyncHandler(async (_req, res) => {
+      const { CAPABILITIES_REGISTRY } = await import('@services/capabilities');
+      res.json(CAPABILITIES_REGISTRY);
     })
   );
 
@@ -28,7 +36,7 @@ export function createCapabilitiesRoutes(): Router {
   router.get(
     '/capabilities',
     asyncHandler(async (req, res) => {
-      const provider =
+      const requestedProvider =
         typeof req.query.provider === 'string' && req.query.provider.trim()
           ? req.query.provider.trim()
           : 'generic';
@@ -37,10 +45,28 @@ export function createCapabilitiesRoutes(): Router {
           ? req.query.model.trim()
           : 'auto';
 
-      const schema = getCapabilities(provider, model);
+      let schema = getCapabilities(requestedProvider, model);
+      let resolvedProvider: string | null = null;
+
+      if (!schema && requestedProvider === 'generic' && model !== 'auto') {
+        resolvedProvider = resolveProviderForModel(model);
+        if (resolvedProvider) {
+          schema = getCapabilities(resolvedProvider, model);
+        }
+      }
+
       if (!schema) {
-        logger.warn('Capabilities schema not found', { provider, model });
-        res.status(404).json({ error: 'Capabilities not found', provider, model });
+        logger.warn('Capabilities schema not found', {
+          provider: requestedProvider,
+          model,
+          resolvedProvider,
+        });
+        res.status(404).json({
+          error: 'Capabilities not found',
+          provider: requestedProvider,
+          model,
+          resolvedProvider,
+        });
         return;
       }
 

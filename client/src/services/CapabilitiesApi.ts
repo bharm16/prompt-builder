@@ -30,6 +30,13 @@ export class CapabilitiesApi {
     const encodedProvider = encodeURIComponent(provider);
     return (await this.client.get(`/models?provider=${encodedProvider}`)) as ModelsResponse;
   }
+
+  async getRegistry(): Promise<Record<string, Record<string, CapabilitiesSchema>>> {
+    return (await this.client.get('/registry')) as Record<
+      string,
+      Record<string, CapabilitiesSchema>
+    >;
+  }
 }
 
 export const capabilitiesApi = new CapabilitiesApi(apiClient);

@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { ChevronDown, Check, Video } from 'lucide-react';
-import { AI_MODEL_IDS, AI_MODEL_LABELS } from './constants';
+import { capabilitiesApi } from '@/services';
+import { AI_MODEL_LABELS } from './constants';
+
+interface ModelOption {
+  id: string;
+  label: string;
+  provider: string;
+}
 
 /**
  * Model selector dropdown for selecting specific video models
@@ -11,10 +18,55 @@ export const ModelSelectorDropdown = memo<{
   disabled?: boolean;
 }>(({ selectedModel, onModelChange, disabled = false }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available models on mount
+  useEffect(() => {
+    let active = true;
+    const fetchModels = async () => {
+      setIsLoading(true);
+      try {
+        const registry = await capabilitiesApi.getRegistry();
+        
+        if (!active) return;
+
+        const flatList: ModelOption[] = [];
+        
+        for (const [provider, models] of Object.entries(registry)) {
+          if (provider === 'generic') continue;
+          
+          for (const [modelId, schema] of Object.entries(models)) {
+            // Use curated label if available, otherwise format provider/model
+            const legacyLabel = AI_MODEL_LABELS[modelId as keyof typeof AI_MODEL_LABELS];
+            const formatName = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+            const dynamicLabel = legacyLabel || `${formatName(provider)} ${modelId}`;
+            
+            flatList.push({
+              id: modelId,
+              label: dynamicLabel,
+              provider,
+            });
+          }
+        }
+
+        setAvailableModels(flatList.sort((a, b) => a.label.localeCompare(b.label)));
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+    return () => { active = false; };
+  }, []);
   
-  // Default to first model if none selected, or display "Auto-detect" if undefined
-  const currentLabel = selectedModel ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] : 'Auto-detect Model';
+  // Find label for current selection
+  const selectedOption = availableModels.find(m => m.id === selectedModel);
+  const currentLabel = selectedOption?.label ?? 
+    (selectedModel ? (AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel) : 'Auto-detect Model');
 
   // Handle clicks outside dropdown
   useEffect(() => {
@@ -51,7 +103,7 @@ export const ModelSelectorDropdown = memo<{
             setIsOpen(!isOpen);
           }
         }}
-        disabled={disabled}
+        disabled={disabled || isLoading}
         className="inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -59,7 +111,7 @@ export const ModelSelectorDropdown = memo<{
         aria-disabled={disabled}
       >
         <Video className="h-3.5 w-3.5 text-geist-accents-5" />
-        <span>{currentLabel}</span>
+        <span>{isLoading ? 'Loading...' : currentLabel}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-geist-accents-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           aria-hidden="true"
@@ -68,7 +120,7 @@ export const ModelSelectorDropdown = memo<{
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-geist-1 min-w-[200px] z-[9999] bg-geist-background rounded-geist border border-geist-accents-2 shadow-geist-medium animate-slide-down"
+          className="absolute top-full left-0 mt-geist-1 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-geist-background rounded-geist border border-geist-accents-2 shadow-geist-medium animate-slide-down"
           role="listbox"
           aria-label="Available video models"
         >
@@ -93,14 +145,13 @@ export const ModelSelectorDropdown = memo<{
           </button>
 
           {/* Model Options */}
-          {AI_MODEL_IDS.map((modelId) => {
-            const label = AI_MODEL_LABELS[modelId];
-            const isSelected = modelId === selectedModel;
+          {availableModels.map((option) => {
+            const isSelected = option.id === selectedModel;
 
             return (
               <button
-                key={modelId}
-                onClick={() => handleModelSelect(modelId)}
+                key={option.id}
+                onClick={() => handleModelSelect(option.id)}
                 className={`
                   w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-left text-label-14
                   transition-colors duration-150
@@ -110,9 +161,14 @@ export const ModelSelectorDropdown = memo<{
                 role="option"
                 aria-selected={isSelected}
               >
-                <span className={`flex-1 ${isSelected ? 'font-semibold text-geist-foreground' : 'text-geist-accents-7'}`}>
-                  {label}
-                </span>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className={`truncate ${isSelected ? 'font-semibold text-geist-foreground' : 'text-geist-accents-7'}`}>
+                    {option.label}
+                  </span>
+                  <span className="text-[10px] text-geist-accents-4 uppercase tracking-wider">
+                    {option.provider}
+                  </span>
+                </div>
                 {isSelected && (
                   <Check className="h-4 w-4 text-geist-foreground" aria-hidden="true" />
                 )}

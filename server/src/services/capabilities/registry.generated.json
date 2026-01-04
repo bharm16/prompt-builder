@@ -93,7 +93,7 @@
       "model": "sora-2",
       "version": "2026-01-03",
       "source": "openai.api",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -242,7 +242,7 @@
       "model": "sora-2-pro",
       "version": "2026-01-03",
       "source": "openai.api",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -391,7 +391,7 @@
       "model": "sora-2-2025-10-06",
       "version": "2026-01-03",
       "source": "openai.docs",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -540,7 +540,7 @@
       "model": "sora-2-pro-2025-10-06",
       "version": "2026-01-03",
       "source": "openai.docs",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -689,7 +689,7 @@
       "model": "sora-2-2025-12-08",
       "version": "2026-01-03",
       "source": "openai.docs",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1063,7 +1063,7 @@
       "model": "luma-ray-1-6",
       "version": "2026-01-03",
       "source": "luma.api",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1185,7 +1185,7 @@
       "model": "luma-ray-2",
       "version": "2026-01-03",
       "source": "luma.api",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1307,7 +1307,7 @@
       "model": "luma-ray-flash-2",
       "version": "2026-01-03",
       "source": "luma.api",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1570,7 +1570,7 @@
       "model": "veo-2.0-generate-001",
       "version": "2026-01-03",
       "source": "google.models",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1715,7 +1715,7 @@
       "model": "veo-3.0-generate-001",
       "version": "2026-01-03",
       "source": "google.models",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -1860,7 +1860,7 @@
       "model": "veo-3.0-fast-generate-001",
       "version": "2026-01-03",
       "source": "google.models",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -2005,7 +2005,7 @@
       "model": "veo-3.1-generate-preview",
       "version": "2026-01-03",
       "source": "google.models",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",
@@ -2152,7 +2152,7 @@
       "model": "kling-26",
       "version": "2026-01-03",
       "source": "fal.openapi:fal-ai/kling-video/v2.1/pro/image-to-video",
-      "generated_at": "2026-01-04T01:59:22.558Z",
+      "generated_at": "2026-01-04T02:03:47.301Z",
       "fields": {
         "aspect_ratio": {
           "type": "enum",

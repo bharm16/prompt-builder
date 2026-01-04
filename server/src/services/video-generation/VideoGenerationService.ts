@@ -170,10 +170,10 @@ export class VideoGenerationService {
     }
 
     if (!options.lumaApiKey) {
-      this.log.warn('LUMA_API_KEY not provided, Luma video generation will be disabled');
+      this.log.warn('LUMA_API_KEY or LUMAAI_API_KEY not provided, Luma video generation will be disabled');
       this.luma = null;
     } else {
-      this.luma = new LumaAI({ apiKey: options.lumaApiKey });
+      this.luma = new LumaAI({ authToken: options.lumaApiKey });
     }
 
     if (!options.klingApiKey) {
@@ -405,7 +405,7 @@ export class VideoGenerationService {
 
   private async generateLumaVideo(prompt: string): Promise<string> {
     if (!this.luma) {
-      throw new Error('Luma video generation requires LUMA_API_KEY.');
+      throw new Error('Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.');
     }
 
     const generation = await this.luma.generations.create({ prompt });

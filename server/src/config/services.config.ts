@@ -447,14 +447,14 @@ export async function configureServices(): Promise<DIContainer> {
     () => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       const openAIKey = process.env.OPENAI_API_KEY;
-      const lumaApiKey = process.env.LUMA_API_KEY;
+      const lumaApiKey = process.env.LUMA_API_KEY || process.env.LUMAAI_API_KEY;
       const klingApiKey = process.env.KLING_API_KEY;
       const klingBaseUrl = process.env.KLING_API_BASE_URL;
       const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
       const geminiBaseUrl = process.env.GEMINI_BASE_URL;
       if (!apiToken && !openAIKey && !lumaApiKey && !klingApiKey && !geminiApiKey) {
         logger.warn(
-          'No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)'
+          'No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY or LUMAAI_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)'
         );
         return null;
       }
