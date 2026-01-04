@@ -125,7 +125,26 @@ Ensure these are properly configured in your `.env` file:
 
 Run `npm run verify-keys` first to ensure your API configuration is correct.
 
-## 4. Raw Prompt Collection (`collect-raw-prompts.ts`)
+## 4. Capability Registry Sync (`sync-capabilities.ts`)
+
+Pulls model metadata from OpenAI, Luma, Fal, and Google (docs/API where available),
+then writes `server/src/services/capabilities/registry.generated.json` for the backend
+to load at runtime.
+
+```bash
+npm run sync:capabilities
+```
+
+**Notes:**
+- Uses `.env` in the repo root for API keys (OPENAI_API_KEY, LUMA_API_KEY/LUMAAI_API_KEY, FAL_KEY, GEMINI_API_KEY/GOOGLE_API_KEY).
+- OpenAI metadata pulls from the documented OpenAPI spec (aligned with https://platform.openai.com/docs/guides/video-generation); override with `OPENAI_OPENAPI_URL` if needed.
+- Luma metadata defaults to the public docs OpenAPI (no key required). Override with `LUMA_DOCS_URL` if needed.
+- Luma SDK fallback reads `video.ts` from the official `lumaai-node` repo; override with `LUMA_SDK_VIDEO_TS_URL` if needed.
+- Optional Luma models endpoint override: `LUMA_MODELS_ENDPOINT` (relative or absolute URL). Used only if docs sync fails, and requires a Luma API key.
+- Optional override: `npm run sync:capabilities -- --env-file=/path/to/.env`.
+- Falls back to manual defaults when provider metadata is unavailable.
+
+## 5. Raw Prompt Collection (`collect-raw-prompts.ts`)
 
 Exports the raw user prompts (“un-optimized” input) from Firestore plus an optional
 localStorage JSON export so you can audit or reprocess every input. The script

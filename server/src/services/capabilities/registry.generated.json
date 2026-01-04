@@ -1,0 +1,2395 @@
+{
+  "generic": {
+    "auto": {
+      "provider": "generic",
+      "model": "auto",
+      "version": "2026-01-03",
+      "source": "manual",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          }
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        }
+      }
+    }
+  },
+  "openai": {
+    "sora-2": {
+      "provider": "openai",
+      "model": "sora-2",
+      "version": "2026-01-03",
+      "source": "openai.api",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720x1280",
+            "1280x720",
+            "1024x1792",
+            "1792x1024"
+          ],
+          "default": "720x1280",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720x1280",
+                  "1024x1792"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "16:9"
+                },
+                "values": [
+                  "1280x720",
+                  "1792x1024"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 7,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "sora-2-pro": {
+      "provider": "openai",
+      "model": "sora-2-pro",
+      "version": "2026-01-03",
+      "source": "openai.api",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720x1280",
+            "1280x720",
+            "1024x1792",
+            "1792x1024"
+          ],
+          "default": "720x1280",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720x1280",
+                  "1024x1792"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "16:9"
+                },
+                "values": [
+                  "1280x720",
+                  "1792x1024"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 7,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "sora-2-2025-10-06": {
+      "provider": "openai",
+      "model": "sora-2-2025-10-06",
+      "version": "2026-01-03",
+      "source": "openai.docs",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720x1280",
+            "1280x720",
+            "1024x1792",
+            "1792x1024"
+          ],
+          "default": "720x1280",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720x1280",
+                  "1024x1792"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "16:9"
+                },
+                "values": [
+                  "1280x720",
+                  "1792x1024"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 7,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "sora-2-pro-2025-10-06": {
+      "provider": "openai",
+      "model": "sora-2-pro-2025-10-06",
+      "version": "2026-01-03",
+      "source": "openai.docs",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720x1280",
+            "1280x720",
+            "1024x1792",
+            "1792x1024"
+          ],
+          "default": "720x1280",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720x1280",
+                  "1024x1792"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "16:9"
+                },
+                "values": [
+                  "1280x720",
+                  "1792x1024"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 7,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "sora-2-2025-12-08": {
+      "provider": "openai",
+      "model": "sora-2-2025-12-08",
+      "version": "2026-01-03",
+      "source": "openai.docs",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720x1280",
+            "1280x720",
+            "1024x1792",
+            "1792x1024"
+          ],
+          "default": "720x1280",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720x1280",
+                  "1024x1792"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "16:9"
+                },
+                "values": [
+                  "1280x720",
+                  "1792x1024"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 7,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    }
+  },
+  "runway": {
+    "runway-gen45": {
+      "provider": "runway",
+      "model": "runway-gen45",
+      "version": "2026-01-03",
+      "source": "manual",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          }
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 6,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      }
+    }
+  },
+  "luma": {
+    "luma-ray3": {
+      "provider": "luma",
+      "model": "luma-ray3",
+      "version": "2026-01-03",
+      "source": "manual",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          }
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        }
+      }
+    },
+    "luma-ray-1-6": {
+      "provider": "luma",
+      "model": "luma-ray-1-6",
+      "version": "2026-01-03",
+      "source": "luma.api",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "21:9",
+            "9:21"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            5,
+            9
+          ],
+          "default": 5,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "540p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      },
+      "unknown_fields": [
+        "generation_type",
+        "loop",
+        "keyframes",
+        "model",
+        "concepts"
+      ]
+    },
+    "luma-ray-2": {
+      "provider": "luma",
+      "model": "luma-ray-2",
+      "version": "2026-01-03",
+      "source": "luma.api",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "21:9",
+            "9:21"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            5,
+            9
+          ],
+          "default": 5,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "540p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      },
+      "unknown_fields": [
+        "generation_type",
+        "loop",
+        "keyframes",
+        "model",
+        "concepts"
+      ]
+    },
+    "luma-ray-flash-2": {
+      "provider": "luma",
+      "model": "luma-ray-flash-2",
+      "version": "2026-01-03",
+      "source": "luma.api",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "21:9",
+            "9:21"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            5,
+            9
+          ],
+          "default": 5,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "540p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      },
+      "unknown_fields": [
+        "generation_type",
+        "loop",
+        "keyframes",
+        "model",
+        "concepts"
+      ]
+    }
+  },
+  "google": {
+    "veo-4": {
+      "provider": "google",
+      "model": "veo-4",
+      "version": "2026-01-03",
+      "source": "manual",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          }
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 8,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      }
+    },
+    "veo-2.0-generate-001": {
+      "provider": "google",
+      "model": "veo-2.0-generate-001",
+      "version": "2026-01-03",
+      "source": "google.models",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            6,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          },
+          "constraints": {}
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 8,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "veo-3.0-generate-001": {
+      "provider": "google",
+      "model": "veo-3.0-generate-001",
+      "version": "2026-01-03",
+      "source": "google.models",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            6,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          },
+          "constraints": {}
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 8,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "veo-3.0-fast-generate-001": {
+      "provider": "google",
+      "model": "veo-3.0-fast-generate-001",
+      "version": "2026-01-03",
+      "source": "google.models",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            6,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          },
+          "constraints": {}
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 8,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    },
+    "veo-3.1-generate-preview": {
+      "provider": "google",
+      "model": "veo-3.1-generate-preview",
+      "version": "2026-01-03",
+      "source": "google.models",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "9:16",
+            "16:9"
+          ],
+          "default": "9:16",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          },
+          "constraints": {}
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            6,
+            8
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p",
+            "1080p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          },
+          "constraints": {}
+        },
+        "audio": {
+          "type": "bool",
+          "default": false,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "type": "int",
+          "default": 8,
+          "constraints": {
+            "min": 1,
+            "max": 20,
+            "step": 1
+          },
+          "ui": {
+            "label": "Guidance",
+            "control": "input",
+            "group": "Advanced",
+            "order": 95
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": false
+      }
+    }
+  },
+  "kling": {
+    "kling-26": {
+      "provider": "kling",
+      "model": "kling-26",
+      "version": "2026-01-03",
+      "source": "fal.openapi:fal-ai/kling-video/v2.1/pro/image-to-video",
+      "generated_at": "2026-01-04T01:59:22.558Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            5,
+            10
+          ],
+          "default": 5,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          },
+          "constraints": {}
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "audio": {
+          "type": "bool",
+          "default": true,
+          "ui": {
+            "label": "Audio",
+            "control": "toggle",
+            "group": "Audio",
+            "order": 40
+          },
+          "constraints": {
+            "available_if": [
+              {
+                "field": "resolution",
+                "in": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        },
+        "guidance": {
+          "constraints": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      "features": {
+        "text_to_video": true,
+        "image_to_video": true
+      },
+      "unknown_fields": [
+        "negative_prompt",
+        "tail_image_url"
+      ]
+    }
+  },
+  "wan": {
+    "wan-2.2": {
+      "provider": "wan",
+      "model": "wan-2.2",
+      "version": "2026-01-03",
+      "source": "manual",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "fields": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": [
+            "16:9",
+            "9:16",
+            "1:1"
+          ],
+          "default": "16:9",
+          "ui": {
+            "label": "Aspect ratio",
+            "control": "segmented",
+            "group": "Format",
+            "order": 10
+          }
+        },
+        "duration_s": {
+          "type": "enum",
+          "values": [
+            4,
+            8,
+            12
+          ],
+          "default": 4,
+          "ui": {
+            "label": "Duration",
+            "control": "select",
+            "group": "Timing",
+            "order": 20
+          }
+        },
+        "resolution": {
+          "type": "enum",
+          "values": [
+            "720p"
+          ],
+          "default": "720p",
+          "ui": {
+            "label": "Resolution",
+            "control": "select",
+            "group": "Quality",
+            "order": 30
+          },
+          "constraints": {
+            "available_values_if": [
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "9:16"
+                },
+                "values": [
+                  "720p"
+                ]
+              },
+              {
+                "if": {
+                  "field": "aspect_ratio",
+                  "eq": "1:1"
+                },
+                "values": [
+                  "720p"
+                ]
+              }
+            ]
+          }
+        },
+        "fps": {
+          "type": "enum",
+          "values": [
+            24,
+            30
+          ],
+          "default": 24,
+          "ui": {
+            "label": "Frame rate",
+            "control": "select",
+            "group": "Timing",
+            "order": 25
+          }
+        },
+        "seed": {
+          "type": "int",
+          "default": 0,
+          "constraints": {
+            "min": 0,
+            "max": 2147483647,
+            "step": 1
+          },
+          "ui": {
+            "label": "Seed",
+            "control": "input",
+            "group": "Advanced",
+            "order": 90,
+            "description": "Use 0 for random seed."
+          }
+        }
+      }
+    }
+  }
+}

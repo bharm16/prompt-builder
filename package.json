@@ -110,6 +110,7 @@
     "start": "tsx scripts/dev/start.ts",
     "restart": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true && lsof -ti :5173 | xargs kill -9 2>/dev/null || true && npm start",
     "verify-keys": "tsx scripts/verify-api-keys.ts",
+    "sync:capabilities": "tsx --tsconfig server/tsconfig.json scripts/sync-capabilities.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
     "highlight-stats": "tsx scripts/get-highlight-stats.ts",
     "highlight-stats:watch": "tsx scripts/get-highlight-stats.ts --watch",

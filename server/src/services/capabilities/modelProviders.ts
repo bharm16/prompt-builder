@@ -1,3 +1,5 @@
+import { findProviderForModel } from './registry';
+
 const MODEL_ID_ALIASES: Record<string, string> = {
   runway: 'runway-gen45',
   luma: 'luma-ray3',
@@ -28,5 +30,5 @@ export const resolveProviderForModel = (modelId?: string | null): string | null 
   if (!resolved) {
     return null;
   }
-  return MODEL_PROVIDER_MAP[resolved] ?? null;
+  return MODEL_PROVIDER_MAP[resolved] ?? findProviderForModel(resolved);
 };

@@ -41,13 +41,21 @@ export interface CapabilityField {
   ui?: CapabilityFieldUI;
 }
 
+export interface ModelFeatures {
+  text_to_video: boolean;
+  image_to_video: boolean;
+  video_to_video?: boolean;
+}
+
 export interface CapabilitiesSchema {
   provider: string;
   model: string;
   version: string;
   source?: string;
   generated_at?: string;
+  features?: ModelFeatures;
   fields: Record<string, CapabilityField>;
+  unknown_fields?: string[];
 }
 
 export type CapabilityValues = Record<string, CapabilityValue>;
