@@ -14,6 +14,13 @@ interface CapabilitiesPanelProps {
   selectedModel?: string;
   generationParams: CapabilityValues;
   onChange: (params: CapabilityValues) => void;
+  // If provided, uses this schema/state instead of internal fetching
+  schema?: CapabilitiesSchema | null;
+  isLoading?: boolean;
+  error?: string | null;
+  targetLabel?: string;
+  // Fields to hide (e.g. if moved elsewhere in UI)
+  excludeFields?: string[];
 }
 
 interface FieldEntry {
@@ -118,24 +125,40 @@ export const CapabilitiesPanel = ({
   selectedModel,
   generationParams,
   onChange,
+  schema: propSchema,
+  isLoading: propIsLoading,
+  error: propError,
+  targetLabel,
+  excludeFields = [],
 }: CapabilitiesPanelProps): React.ReactElement | null => {
-  const [{ provider, model, label }, setTarget] = useState(() => resolveTarget(selectedModel));
-  const [schema, setSchema] = useState<CapabilitiesSchema | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [{ provider, model, label: internalLabel }, setTarget] = useState(() => resolveTarget(selectedModel));
+  const [internalSchema, setInternalSchema] = useState<CapabilitiesSchema | null>(null);
+  const [internalIsLoading, setInternalIsLoading] = useState(false);
+  const [internalError, setInternalError] = useState<string | null>(null);
+
+  // Use props if provided, otherwise internal state
+  const schema = propSchema !== undefined ? propSchema : internalSchema;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : internalIsLoading;
+  const error = propError !== undefined ? propError : internalError;
+  const label = targetLabel !== undefined ? targetLabel : internalLabel;
 
   useEffect(() => {
+    // Skip internal fetching if schema prop is provided
+    if (propSchema !== undefined) {
+      return;
+    }
+
     const target = resolveTarget(selectedModel);
     setTarget(target);
     let active = true;
-    setIsLoading(true);
-    setError(null);
+    setInternalIsLoading(true);
+    setInternalError(null);
 
     capabilitiesApi
       .getCapabilities(target.provider, target.model)
       .then((data) => {
         if (!active) return;
-        setSchema(data);
+        setInternalSchema(data);
         setTarget({
           provider: data.provider || target.provider,
           model: data.model || target.model,
@@ -144,18 +167,18 @@ export const CapabilitiesPanel = ({
       })
       .catch((err) => {
         if (!active) return;
-        setSchema(null);
-        setError(err instanceof Error ? err.message : 'Unable to load capabilities');
+        setInternalSchema(null);
+        setInternalError(err instanceof Error ? err.message : 'Unable to load capabilities');
       })
       .finally(() => {
         if (!active) return;
-        setIsLoading(false);
+        setInternalIsLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [selectedModel]);
+  }, [selectedModel, propSchema]);
 
   const normalizedValues = useMemo(() => {
     if (!schema) {
@@ -176,7 +199,12 @@ export const CapabilitiesPanel = ({
   const groupedFields = useMemo(() => {
     if (!schema) return [];
 
-    const entries: FieldEntry[] = Object.entries(schema.fields).map(([id, field]) => ({
+    // Filter out excluded fields
+    const visibleFields = Object.entries(schema.fields).filter(
+      ([id]) => !excludeFields.includes(id)
+    );
+
+    const entries: FieldEntry[] = visibleFields.map(([id, field]) => ({
       id,
       field,
       state: resolveFieldState(field, normalizedValues),
@@ -199,7 +227,7 @@ export const CapabilitiesPanel = ({
     });
 
     return groupEntries.sort((a, b) => a.order - b.order);
-  }, [schema, normalizedValues]);
+  }, [schema, normalizedValues, excludeFields]);
 
   const handleValueChange = (fieldId: string, value: CapabilityValue): void => {
     onChange({ ...normalizedValues, [fieldId]: value });
