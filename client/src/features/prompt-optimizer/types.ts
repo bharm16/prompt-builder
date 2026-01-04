@@ -108,10 +108,6 @@ export interface PromptInputSectionProps {
 /**
  * Props for LoadingSkeleton component
  */
-export interface LoadingSkeletonProps {
-  selectedMode: string;
-}
-
 /**
  * Props for PromptModals component
  */

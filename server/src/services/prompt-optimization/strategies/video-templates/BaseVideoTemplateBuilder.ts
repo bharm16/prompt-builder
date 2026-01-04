@@ -31,6 +31,8 @@ export interface VideoTemplateContext {
     rightCtx?: string | null;
     category?: string | null;
   }>;
+  /** Generation parameters selected by the user (aspect ratio, duration, etc.) */
+  generationParams?: Record<string, string | number | boolean>;
 }
 
 /**

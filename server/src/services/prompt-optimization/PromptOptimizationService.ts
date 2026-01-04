@@ -86,7 +86,7 @@ export class PromptOptimizationService {
    */
   async optimizeTwoStage({
     prompt,
-    mode,
+    mode: _mode,
     targetModel,
     context = null,
     brainstormContext = null,
@@ -105,16 +105,9 @@ export class PromptOptimizationService {
         throw abortError;
       }
     };
+    void _mode;
     
-    // Default to video mode (only mode supported)
-    let finalMode: OptimizationMode = mode || 'video';
-    if (finalMode !== 'video') {
-      this.log.warn('Non-video mode specified, defaulting to video', {
-        operation,
-        requestedMode: mode,
-      });
-      finalMode = 'video';
-    }
+    const finalMode: OptimizationMode = 'video';
 
     this.log.debug(`Starting ${operation}`, {
       operation,
@@ -171,7 +164,7 @@ export class PromptOptimizationService {
 
     try {
       // STAGE 1: Generate fast draft with ChatGPT (1-3s)
-      const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan);
+      const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan, generationParams);
       this.log.debug('Generating draft with ChatGPT', {
         operation,
         mode: finalMode,
@@ -316,7 +309,7 @@ export class PromptOptimizationService {
    */
   async optimize({
     prompt,
-    mode,
+    mode: _mode,
     context = null,
     brainstormContext = null,
     generationParams = null,
@@ -339,21 +332,9 @@ export class PromptOptimizationService {
         throw abortError;
       }
     };
+    void _mode;
     
-    // Default to video mode (only mode supported)
-    let finalMode: OptimizationMode = mode || 'video';
-    if (!finalMode) {
-      finalMode = 'video';
-      this.log.debug('Mode not specified, defaulting to video', {
-        operation,
-      });
-    } else if (finalMode !== 'video') {
-      this.log.warn('Non-video mode specified, defaulting to video', {
-        operation,
-        requestedMode: mode,
-      });
-      finalMode = 'video';
-    }
+    const finalMode: OptimizationMode = 'video';
 
     this.log.debug(`Starting ${operation}`, {
       operation,
@@ -784,7 +765,24 @@ export class PromptOptimizationService {
   /**
    * Get draft system prompt for ChatGPT generation
    */
-  private getDraftSystemPrompt(mode: OptimizationMode, shotPlan: ShotPlan | null = null): string {
+  private getDraftSystemPrompt(
+    mode: OptimizationMode,
+    shotPlan: ShotPlan | null = null,
+    generationParams: Record<string, any> | null = null
+  ): string {
+    let constraints = '';
+    if (generationParams) {
+      const overrides = [];
+      if (generationParams.aspect_ratio) overrides.push(`Aspect Ratio: ${generationParams.aspect_ratio}`);
+      if (generationParams.duration_s) overrides.push(`Duration: ${generationParams.duration_s}s`);
+      if (generationParams.fps) overrides.push(`Frame Rate: ${generationParams.fps}fps`);
+      if (typeof generationParams.audio === 'boolean') overrides.push(`Audio: ${generationParams.audio ? 'Enabled' : 'Muted'}`);
+      
+      if (overrides.length > 0) {
+        constraints = `\nRespect these user constraints: ${overrides.join(', ')}.`;
+      }
+    }
+
     const planSummary = shotPlan
       ? `Respect this interpreted shot plan (do not force missing fields):
 - shot_type: ${shotPlan.shot_type || 'unknown'}
@@ -797,8 +795,8 @@ export class PromptOptimizationService {
 - camera_angle: ${shotPlan.camera_angle || 'null'}
 - lighting: ${shotPlan.lighting || 'null'}
 - style: ${shotPlan.style || 'null'}
-Keep ONE action and 75-125 words.`
-      : 'Honor ONE action, camera-visible details, 75-125 words. Do not invent subjects or actions if absent.';
+Keep ONE action and 75-125 words.${constraints}`
+      : `Honor ONE action, camera-visible details, 75-125 words. Do not invent subjects or actions if absent.${constraints}`;
 
     const draftInstructions: Record<string, string> = {
       video: `You are a video prompt draft generator. Create a concise video prompt (75-125 words).
@@ -812,50 +810,10 @@ Focus on:
 
 ${planSummary}
 
-Output ONLY the draft prompt, no explanations or meta-commentary.`,
-
-      reasoning: `You are a reasoning prompt draft generator. Create a concise structured prompt (100-150 words).
-
-Include:
-- Core problem statement
-- Key analytical approach
-- Expected reasoning pattern
-
-Output ONLY the draft prompt, no explanations.`,
-
-      research: `You are a research prompt draft generator. Create a focused research prompt (100-150 words).
-
-Include:
-- Research question
-- Primary sources to consult
-- Key evaluation criteria
-
-Output ONLY the draft prompt, no explanations.`,
-
-      socratic: `You are a Socratic teaching draft generator. Create a concise learning prompt (100-150 words).
-
-Include:
-- Learning objective
-- Progressive question approach
-- Key concepts to explore
-
-Output ONLY the draft prompt, no explanations.`,
-
-      optimize: `You are a prompt optimization draft generator. Create an improved prompt (100-150 words).
-
-Make it:
-- Clear and specific
-- Action-oriented
-- Well-structured
-
-Output ONLY the draft prompt, no explanations.`
+Output ONLY the draft prompt, no explanations or meta-commentary.`
     };
 
-    const fallback =
-      draftInstructions.optimize ??
-      draftInstructions.video ??
-      'You are a prompt optimization draft generator. Create an improved prompt.';
-    return draftInstructions[mode] ?? fallback;
+    return draftInstructions[mode] ?? draftInstructions.video;
   }
 
   /**

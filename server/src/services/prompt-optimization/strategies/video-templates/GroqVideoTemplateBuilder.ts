@@ -35,7 +35,7 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
     const startTime = performance.now();
     const operation = 'buildTemplate';
     
-    const { userConcept, interpretedPlan, includeInstructions = true } = context;
+    const { userConcept, interpretedPlan, includeInstructions = true, generationParams } = context;
 
     this.log.debug('Building Groq video template', {
       operation,
@@ -46,7 +46,7 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
 
     try {
       // System prompt: All instructions embedded (8B model needs explicit guidance)
-      const systemPrompt = this.buildSystemPrompt(includeInstructions);
+      const systemPrompt = this.buildSystemPrompt(includeInstructions, generationParams);
 
       // User message: Data + format reminder (sandwich prompting)
       const userMessage = this.buildUserMessage(userConcept, interpretedPlan);
@@ -84,9 +84,24 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * All constraints embedded - no developer role available
    * Focuses on core concepts, avoids overwhelming detail
    */
-  private buildSystemPrompt(includeInstructions: boolean): string {
+  private buildSystemPrompt(includeInstructions: boolean, generationParams?: Record<string, string | number | boolean>): string {
     if (!includeInstructions) {
       return 'You are an expert video prompt optimizer.';
+    }
+
+    let userOverrides = '';
+    if (generationParams) {
+      const overrides = [];
+      if (generationParams.aspect_ratio) overrides.push(`- Aspect Ratio: ${generationParams.aspect_ratio}`);
+      if (generationParams.resolution) overrides.push(`- Resolution: ${generationParams.resolution}`);
+      if (generationParams.duration_s) overrides.push(`- Duration: ${generationParams.duration_s}s`);
+      if (generationParams.fps) overrides.push(`- Frame Rate: ${generationParams.fps}fps`);
+      if (typeof generationParams.audio === 'boolean') overrides.push(`- Audio: ${generationParams.audio ? 'Enabled' : 'Muted'}`);
+      
+      if (overrides.length > 0) {
+        userOverrides = `\n\n## USER OVERRIDES (Reflect these in output technical_specs)
+${overrides.join('\n')}`;
+      }
     }
 
     return `${SECURITY_REMINDER}
@@ -94,7 +109,7 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
 You are an expert video prompt optimizer. Transform user concepts into professional video prompts.
 
 ## CORE TASK
-Return a structured video prompt with technical specs for AI video generators.
+Return a structured video prompt with technical specs for AI video generators.${userOverrides}
 
 ## THINK STEP-BY-STEP (Chain-of-Thought)
 Before writing the prompt:

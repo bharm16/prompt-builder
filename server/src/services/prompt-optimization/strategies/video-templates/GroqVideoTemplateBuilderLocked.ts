@@ -15,12 +15,13 @@ export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private readonly baseBuilder = new GroqVideoTemplateBuilder();
 
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
-    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [] } = context;
+    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams } = context;
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
       interpretedPlan,
       includeInstructions,
+      generationParams,
     });
 
     const systemPrompt = `${baseTemplate.systemPrompt}\n\n${this.buildLockedSpanInstructions()}`.trim();

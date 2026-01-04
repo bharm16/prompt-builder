@@ -1,0 +1,52 @@
+import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import type { CapabilityValues } from '@shared/capabilities';
+
+export interface OptimizeOptions {
+  prompt: string;
+  mode: string;
+  targetModel?: string;
+  context?: unknown | null;
+  brainstormContext?: unknown | null;
+  generationParams?: CapabilityValues;
+  skipCache?: boolean;
+  lockedSpans?: LockedSpan[];
+  signal?: AbortSignal;
+}
+
+export interface OptimizeResult {
+  optimizedPrompt: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface OptimizeWithStreamingOptions extends OptimizeOptions {
+  onDraft?: ((draft: string) => void) | null;
+  onSpans?: ((spans: unknown[], source: string, meta?: unknown) => void) | null;
+  onRefined?: ((refined: string, metadata?: Record<string, unknown>) => void) | null;
+  onError?: ((error: Error) => void) | null;
+}
+
+export interface OptimizeWithStreamingResult {
+  draft: string;
+  refined: string;
+  spans: unknown[];
+  metadata: Record<string, unknown> | null;
+  usedFallback: boolean;
+}
+
+export interface StreamWithFetchOptions {
+  url: string;
+  method: string;
+  body: Record<string, unknown>;
+  onMessage: (event: string, data: Record<string, unknown>) => void;
+  onError: (error: Error) => void;
+  onComplete?: () => void;
+  signal?: AbortSignal;
+}
+
+export interface OfflineResult {
+  draft: string;
+  refined: string;
+  spans: unknown[];
+  metadata: Record<string, unknown>;
+  usedFallback: boolean;
+}

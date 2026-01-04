@@ -291,6 +291,7 @@ export class VideoStrategy implements OptimizationStrategy {
         ...(shotPlan ? { interpretedPlan: shotPlan as unknown as Record<string, unknown> } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         includeInstructions: true,
+        ...(generationParams ? { generationParams } : {}),
       });
 
       // Get provider-specific schema

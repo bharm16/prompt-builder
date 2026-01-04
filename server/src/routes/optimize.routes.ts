@@ -1,6 +1,7 @@
 import express, { type Router } from 'express';
 import { logger } from '@infrastructure/Logger';
 import { asyncHandler } from '@middleware/asyncHandler';
+import { normalizeOptimizationRequest } from '@middleware/normalizeOptimizationRequest';
 import { validateRequest } from '@middleware/validateRequest';
 import { extractUserId } from '@utils/requestHelpers';
 import { promptSchema } from '@utils/validation';
@@ -21,6 +22,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
   // POST /optimize - Optimize prompt (single-stage, backward compatible)
   router.post(
     '/optimize',
+    normalizeOptimizationRequest,
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
       const startTime = Date.now();
@@ -55,11 +57,12 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         }
         const validation = validateCapabilityValues(schema, generationParams);
         if (!validation.ok) {
-          res.status(400).json({
-            error: 'Invalid generation parameters',
-            details: validation.errors.join(', '),
+          logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
+            operation,
+            requestId,
+            userId,
+            errors: validation.errors,
           });
-          return;
         }
         normalizedGenerationParams = validation.values;
       }
@@ -123,8 +126,13 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
   // POST /optimize-stream - Two-stage optimization with streaming
   router.post(
     '/optimize-stream',
+    normalizeOptimizationRequest,
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
+      const requestId = req.id || 'unknown';
+      const userId = extractUserId(req);
+      const operation = 'optimize-stream';
+
       const {
         prompt,
         mode,
@@ -152,11 +160,12 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         }
         const validation = validateCapabilityValues(schema, generationParams);
         if (!validation.ok) {
-          res.status(400).json({
-            error: 'Invalid generation parameters',
-            details: validation.errors.join(', '),
+          logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
+            operation,
+            requestId,
+            userId,
+            errors: validation.errors,
           });
-          return;
         }
         normalizedGenerationParams = validation.values;
       }
@@ -213,9 +222,6 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       };
 
       const startTime = Date.now();
-      const requestId = req.id || 'unknown';
-      const userId = extractUserId(req);
-      const operation = 'optimize-stream';
 
       logger.info('Optimize-stream request received', {
         operation,

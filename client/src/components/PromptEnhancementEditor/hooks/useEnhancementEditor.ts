@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { detectAndApplySceneChange } from '../../../utils/sceneChange';
 import { useDebugLogger } from '../../../hooks/useDebugLogger';
 import { fetchEnhancementSuggestions } from '../api/enhancementApi';
+import { buildEnhancementSuggestionPayload } from '../utils/suggestionPayload';
 import { extractMetadataFromSelection, cleanSelectedText } from '../utils/selectionUtils';
 import type { HighlightMetadata, Suggestion, SuggestionsState } from '../types';
 
@@ -64,6 +65,10 @@ export function useEnhancementEditor({
         updatedPrompt,
         oldValue: selectedText,
         newValue: suggestionText,
+        confirmSceneChange: (message) =>
+          typeof window !== 'undefined' && typeof window.confirm === 'function'
+            ? window.confirm(message)
+            : true,
       });
 
       onPromptUpdate(finalPrompt);
@@ -87,18 +92,26 @@ export function useEnhancementEditor({
       setSuggestions([]);
       setIsPlaceholder(false);
 
-      const result = await fetchEnhancementSuggestions({
-        highlightedText,
-        fullPrompt: promptContent,
-        originalUserPrompt,
-        metadata,
-      });
+      try {
+        const payload = buildEnhancementSuggestionPayload(
+          highlightedText,
+          promptContent,
+          originalUserPrompt,
+          metadata
+        );
+        const result = await fetchEnhancementSuggestions(payload);
 
-      setSuggestions(result.suggestions);
-      setIsPlaceholder(result.isPlaceholder);
-      setIsLoading(false);
-
-      debug.endTimer('fetchSuggestions', `Fetched ${result.suggestions.length} suggestions`);
+        setSuggestions(result.suggestions);
+        setIsPlaceholder(result.isPlaceholder);
+        debug.endTimer('fetchSuggestions', `Fetched ${result.suggestions.length} suggestions`);
+      } catch (error) {
+        debug.logError('Failed to fetch enhancement suggestions', error as Error);
+        setSuggestions([{ text: 'Failed to load suggestions. Please try again.' }]);
+        setIsPlaceholder(false);
+        debug.endTimer('fetchSuggestions', 'Fetched 0 suggestions');
+      } finally {
+        setIsLoading(false);
+      }
     },
     [promptContent, originalUserPrompt, debug]
   );

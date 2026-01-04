@@ -9,7 +9,7 @@ import type { CapabilityValues } from '@shared/capabilities';
 /**
  * Optimization mode type
  */
-export type OptimizationMode = 'video' | 'reasoning' | 'research' | 'socratic' | 'optimize';
+export type OptimizationMode = 'video';
 
 /**
  * Context inferred from prompt

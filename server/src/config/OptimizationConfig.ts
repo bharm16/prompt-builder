@@ -11,9 +11,6 @@ interface OptimizationTimeouts {
   optimization: {
     default: number;
     video: number;
-    reasoning: number;
-    research: number;
-    socratic: number;
   };
 }
 
@@ -21,9 +18,6 @@ interface OptimizationTokens {
   draft: {
     default: number;
     video: number;
-    reasoning: number;
-    research: number;
-    socratic: number;
   };
   contextInference: number;
   modeDetection: number;
@@ -31,9 +25,6 @@ interface OptimizationTokens {
   optimization: {
     default: number;
     video: number;
-    reasoning: number;
-    research: number;
-    socratic: number;
   };
   domainContent: number;
 }
@@ -46,9 +37,6 @@ interface OptimizationTemperatures {
   optimization: {
     default: number;
     video: number;
-    reasoning: number;
-    research: number;
-    socratic: number;
   };
   domainContent: number;
 }
@@ -79,10 +67,6 @@ interface ModeDetectionConfig {
 
 interface TemplateVersions {
   default: string;
-  optimize: string;
-  reasoning: string;
-  research: string;
-  socratic: string;
   video: string;
 }
 
@@ -112,9 +96,6 @@ export const OptimizationConfig = {
     optimization: {
       default: 30000,
       video: 90000,         // Video prompts need more time
-      reasoning: 45000,
-      research: 45000,
-      socratic: 45000,
     },
   } as OptimizationTimeouts,
 
@@ -123,9 +104,6 @@ export const OptimizationConfig = {
     draft: {
       default: 200,
       video: 300,           // Video drafts can be longer
-      reasoning: 200,
-      research: 200,
-      socratic: 200,
     },
     contextInference: 500,
     modeDetection: 300,
@@ -133,9 +111,6 @@ export const OptimizationConfig = {
     optimization: {
       default: 2500,
       video: 4000,
-      reasoning: 3500,
-      research: 3000,
-      socratic: 3000,
     },
     domainContent: 1500,
   } as OptimizationTokens,
@@ -149,9 +124,6 @@ export const OptimizationConfig = {
     optimization: {
       default: 0.3,
       video: 0.7,           // Higher creativity for video
-      reasoning: 0.3,
-      research: 0.4,
-      socratic: 0.5,
     },
     domainContent: 0.4,
   } as OptimizationTemperatures,
@@ -180,16 +152,12 @@ export const OptimizationConfig = {
   // Mode detection thresholds
   modeDetection: {
     minConfidenceThreshold: 0.3,
-    defaultMode: 'optimize',
+    defaultMode: 'video',
   } as ModeDetectionConfig,
 
   // Template versions for tracking improvements
   templateVersions: {
     default: '2.0.0',
-    optimize: '3.0.0',
-    reasoning: '4.0.0',
-    research: '3.0.0',
-    socratic: '3.0.0',
     video: '1.0.0',
   } as TemplateVersions,
 

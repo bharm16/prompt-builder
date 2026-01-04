@@ -169,7 +169,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     if (promptOptimizer.setPreviewAspectRatio) {
       promptOptimizer.setPreviewAspectRatio(null);
     }
-    setSelectedMode(entry.mode || 'video');
+    setSelectedMode('video');
     setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
     setGenerationParams({});
     setShowResults(true);

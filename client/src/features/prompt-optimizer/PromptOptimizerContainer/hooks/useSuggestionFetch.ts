@@ -21,6 +21,7 @@ import type React from 'react';
 import { fetchEnhancementSuggestions as fetchSuggestionsAPI } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
 import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
 import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
+import { buildSuggestionContext } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
 import { SuggestionRequestManager } from '@features/prompt-optimizer/utils/SuggestionRequestManager';
 import { SuggestionCache, simpleHash } from '@features/prompt-optimizer/utils/SuggestionCache';
 import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
@@ -165,19 +166,27 @@ export function useSuggestionFetch({
       // Cancel any previous request (different text) - Requirement 1.1
       requestManagerRef.current.cancelCurrentRequest();
 
-      // Get selection position from metadata or find it
-      const startIndex = metadata?.span?.startIndex ?? 
-        normalizedPrompt.indexOf(trimmedHighlight);
-      const safeStartIndex = startIndex === -1 ? 0 : startIndex;
+      const suggestionContext = buildSuggestionContext(
+        normalizedPrompt,
+        trimmedHighlight,
+        metadata?.span?.startIndex ?? null,
+        1000
+      );
+
+      if (!suggestionContext.found) {
+        console.warn(
+          '[EnhancementApi] Could not locate highlight in prompt. Context may be inaccurate.'
+        );
+      }
 
       // Check cache BEFORE showing loading state - Requirement 6.3
       const contextBefore = normalizedPrompt.slice(
-        Math.max(0, safeStartIndex - 100), 
-        safeStartIndex
+        Math.max(0, suggestionContext.startIndex - 100), 
+        suggestionContext.startIndex
       );
       const contextAfter = normalizedPrompt.slice(
-        safeStartIndex + trimmedHighlight.length,
-        safeStartIndex + trimmedHighlight.length + 100
+        suggestionContext.startIndex + suggestionContext.matchLength,
+        suggestionContext.startIndex + suggestionContext.matchLength + 100
       );
       const cacheKey = SuggestionCache.generateKey(
         trimmedHighlight,
@@ -320,7 +329,9 @@ export function useSuggestionFetch({
             // Delegate to API layer with cancellation support - Requirement 1.4, 1.5
             return fetchSuggestionsAPI({
               highlightedText: trimmedHighlight,
-              normalizedPrompt,
+              contextBefore: suggestionContext.contextBefore,
+              contextAfter: suggestionContext.contextAfter,
+              fullPrompt: normalizedPrompt,
               inputPrompt: promptOptimizer.inputPrompt,
               brainstormContext: stablePromptContext ?? null,
               metadata: metadata ?? null,

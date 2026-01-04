@@ -15,12 +15,13 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private readonly baseBuilder = new OpenAIVideoTemplateBuilder();
 
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
-    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [] } = context;
+    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams } = context;
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
       interpretedPlan,
       includeInstructions,
+      generationParams,
     });
 
     const developerMessage = `${baseTemplate.developerMessage ?? ''}\n\n${this.buildLockedSpanInstructions()}`.trim();

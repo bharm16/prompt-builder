@@ -42,10 +42,6 @@ export class StrategyFactory {
       throw new Error('Video optimization strategy not configured');
     }
 
-    if (mode && mode !== 'video') {
-      logger.warn('Unknown optimization mode, using video', { mode });
-    }
-
     logger.debug('Strategy selected', { mode: mode || 'video', strategyName: strategy.name });
     return strategy;
   }

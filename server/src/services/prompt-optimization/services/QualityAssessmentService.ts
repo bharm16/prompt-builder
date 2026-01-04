@@ -160,17 +160,8 @@ Output only the JSON, nothing else:`;
   /**
    * Get mode-specific quality criteria
    */
-  private getModeSpecificCriteria(mode: OptimizationMode): string {
-    const criteria: Record<string, string> = {
-      reasoning: 'For reasoning prompts, also consider: Are deliverables specific? Are warnings domain-specific? Is context sufficient?',
-      research: 'For research prompts, also consider: Is research scope clear? Are source requirements specified? Are success metrics defined?',
-      socratic: 'For learning prompts, also consider: Is learning objective clear? Is difficulty appropriate? Are prerequisitesidentified?',
-      video: 'For video prompts, also consider: Are visual elements specific? Is cinematography style clear? Is duration/pacing specified?',
-      optimize: 'For general optimization, ensure the improved version addresses the core intent with better structure and clarity.'
-    };
-
-    const fallback = criteria.optimize ?? '';
-    return criteria[mode] ?? fallback;
+  private getModeSpecificCriteria(_mode: OptimizationMode): string {
+    return 'For video prompts, also consider: Are visual elements specific? Is cinematography style clear? Is duration/pacing specified?';
   }
 
   /**
