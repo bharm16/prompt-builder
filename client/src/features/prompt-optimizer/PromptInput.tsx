@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
+import { CapabilitiesPanel } from './components/CapabilitiesPanel';
 import type { PromptInputProps } from './types';
 
 /**
@@ -11,6 +12,8 @@ export const PromptInput = ({
   onInputChange,
   selectedModel, // New prop
   onModelChange, // New prop
+  generationParams,
+  onGenerationParamsChange,
   onOptimize,
   onShowBrainstorm,
   isProcessing,
@@ -90,7 +93,7 @@ export const PromptInput = ({
             />
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between px-geist-4 py-geist-2 bg-geist-background rounded-b-geist-lg">
+          <div className="flex items-center justify-between px-geist-4 py-geist-2 bg-geist-background">
             <div className="flex items-center gap-geist-2">
               {/* Video model selector */}
               {onModelChange && (
@@ -112,6 +115,14 @@ export const PromptInput = ({
             >
               <span>Optimize</span>
             </button>
+          </div>
+
+          <div className="border-t border-geist-accents-2 px-geist-4 py-geist-3 bg-geist-background rounded-b-geist-lg">
+            <CapabilitiesPanel
+              selectedModel={selectedModel}
+              generationParams={generationParams}
+              onChange={onGenerationParamsChange}
+            />
           </div>
         </div>
       </div>

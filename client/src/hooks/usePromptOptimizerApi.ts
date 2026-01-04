@@ -23,6 +23,7 @@ export function usePromptOptimizerApi(
       targetModel,
       context = null,
       brainstormContext = null,
+      generationParams,
       skipCache,
       lockedSpans,
       signal,
@@ -33,6 +34,7 @@ export function usePromptOptimizerApi(
         targetModel,
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
         skipCache: !!skipCache,
         lockedSpanCount: lockedSpans?.length ?? 0,
       });
@@ -45,6 +47,7 @@ export function usePromptOptimizerApi(
           ...(targetModel ? { targetModel } : {}),
           context,
           brainstormContext,
+          ...(generationParams ? { generationParams } : {}),
           ...(skipCache ? { skipCache } : {}),
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           ...(signal ? { signal } : {}),

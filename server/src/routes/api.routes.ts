@@ -13,6 +13,7 @@
 import express, { type Router } from 'express';
 import { createOptimizeRoutes } from './optimize.routes';
 import { createVideoRoutes } from './video.routes';
+import { createCapabilitiesRoutes } from './capabilities.routes';
 import { createEnhancementRoutes } from './enhancement.routes';
 
 interface ApiServices {
@@ -60,6 +61,9 @@ export function createAPIRoutes(services: ApiServices): Router {
       metricsService,
     })
   );
+
+  // Capabilities registry routes (schema-driven UI)
+  router.use('/', createCapabilitiesRoutes());
 
   return router;
 }

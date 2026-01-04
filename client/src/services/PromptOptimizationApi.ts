@@ -8,6 +8,7 @@
 import { ApiClient, ApiError } from './ApiClient';
 import { logger } from './LoggingService';
 import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import type { CapabilityValues } from '@shared/capabilities';
 
 const log = logger.child('PromptOptimizationApi');
 
@@ -17,6 +18,7 @@ interface OptimizeOptions {
   targetModel?: string; // New
   context?: unknown | null;
   brainstormContext?: unknown | null;
+  generationParams?: CapabilityValues;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   signal?: AbortSignal;
@@ -72,6 +74,7 @@ export class PromptOptimizationApi {
     targetModel, // New
     context = null,
     brainstormContext = null,
+    generationParams,
     skipCache,
     lockedSpans,
     signal,
@@ -84,6 +87,7 @@ export class PromptOptimizationApi {
         ...(targetModel ? { targetModel } : {}), // New
         context,
         brainstormContext,
+        ...(generationParams ? { generationParams } : {}),
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
       }, requestOptions)) as OptimizeResult;
@@ -112,6 +116,7 @@ export class PromptOptimizationApi {
     targetModel, // New
     context = null,
     brainstormContext = null,
+    generationParams,
     skipCache,
     lockedSpans,
     signal,
@@ -145,6 +150,7 @@ export class PromptOptimizationApi {
           ...(targetModel ? { targetModel } : {}), // New
           context,
           brainstormContext,
+          ...(generationParams ? { generationParams } : {}),
           ...(skipCache ? { skipCache } : {}),
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         },
@@ -383,7 +389,7 @@ export class PromptOptimizationApi {
       }
     }
 
-    const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = options;
+    const { prompt, mode, targetModel, context, brainstormContext, generationParams, skipCache, lockedSpans } = options;
 
     try {
       // Fallback to single-stage API
@@ -393,6 +399,7 @@ export class PromptOptimizationApi {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        ...(generationParams ? { generationParams } : {}),
         ...(skipCache ? { skipCache } : {}),
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         ...(signal ? { signal } : {}),

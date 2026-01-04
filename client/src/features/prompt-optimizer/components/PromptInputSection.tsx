@@ -14,6 +14,8 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
     selectedMode,
     selectedModel,
     setSelectedModel,
+    generationParams,
+    setGenerationParams,
     currentAIIndex,
     promptOptimizer,
   } = usePromptState();
@@ -29,6 +31,8 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
       selectedModel={selectedModel}
       onModelChange={setSelectedModel}
       onOptimize={onOptimize}
+      generationParams={generationParams}
+      onGenerationParamsChange={setGenerationParams}
       {...(onShowBrainstorm ? { onShowBrainstorm } : {})}
       isProcessing={promptOptimizer.isProcessing}
       {...(aiNames ? { aiNames } : {})}

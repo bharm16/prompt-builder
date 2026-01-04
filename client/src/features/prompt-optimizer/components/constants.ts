@@ -26,3 +26,12 @@ export const AI_MODEL_LABELS: Record<AIModelId, string> = {
   'kling-26': 'Kling',
   'wan-2.2': 'Wan 2.2',
 } as const;
+
+export const AI_MODEL_PROVIDERS: Record<AIModelId, string> = {
+  'runway-gen45': 'runway',
+  'luma-ray3': 'luma',
+  'sora-2': 'openai',
+  'veo-4': 'google',
+  'kling-26': 'kling',
+  'wan-2.2': 'wan',
+} as const;

@@ -7,6 +7,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import type { PromptHistoryEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { CapabilityValues } from '@shared/capabilities';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
 
@@ -101,6 +102,8 @@ export interface PromptStateContextValue {
   currentMode: Mode;
   selectedModel: string; // New: selected video model
   setSelectedModel: (model: string) => void; // New: setter for model
+  generationParams: CapabilityValues;
+  setGenerationParams: (params: CapabilityValues) => void;
 
   // UI State
   showHistory: boolean;

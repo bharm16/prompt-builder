@@ -4,6 +4,7 @@
  */
 import type { ExecuteParams } from '@services/ai-model/AIModelService';
 import type { AIResponse } from '@interfaces/IAIClient';
+import type { CapabilityValues } from '@shared/capabilities';
 
 /**
  * Optimization mode type
@@ -76,6 +77,7 @@ export interface OptimizationRequest {
   targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
+  generationParams?: CapabilityValues | null;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   shotPlan?: ShotPlan | null;
@@ -93,6 +95,7 @@ export interface TwoStageOptimizationRequest {
   targetModel?: string; // e.g., 'runway', 'luma', 'veo'
   context?: InferredContext | null;
   brainstormContext?: Record<string, unknown> | null;
+  generationParams?: CapabilityValues | null;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   onDraft?: ((draft: string, spans: any) => void) | null;

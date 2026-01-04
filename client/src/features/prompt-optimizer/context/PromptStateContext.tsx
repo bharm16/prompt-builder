@@ -12,6 +12,7 @@ import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { CapabilityValues } from '@shared/capabilities';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import type {
   PromptStateContextValue,
@@ -66,6 +67,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [showImprover, setShowImprover] = useState<boolean>(false);
   const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
+  const [generationParams, setGenerationParams] = useState<CapabilityValues>({});
 
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
@@ -134,6 +136,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setSuggestionsData(null);
     setConceptElements(null);
     setPromptContext(null);
+    setGenerationParams({});
     setCurrentPromptUuid(null);
     setCurrentPromptDocId(null);
     applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
@@ -168,6 +171,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     }
     setSelectedMode(entry.mode || 'video');
     setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
+    setGenerationParams({});
     setShowResults(true);
 
     const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
@@ -220,6 +224,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     currentMode,
     selectedModel, // New
     setSelectedModel, // New
+    generationParams,
+    setGenerationParams,
 
     // UI State
     showHistory,

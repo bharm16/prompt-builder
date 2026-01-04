@@ -3,6 +3,7 @@ export interface VideoPromptTechnicalSpecs {
   aspect_ratio?: string;
   frame_rate?: string;
   audio?: string;
+  resolution?: string;
   camera?: string;
   lighting?: string;
   style?: string;
@@ -27,4 +28,3 @@ export interface VideoPromptStructuredResponse extends VideoPromptSlots {
   variations?: Array<{ label: string; prompt: string }>;
   shot_plan?: Record<string, unknown> | null;
 }
-

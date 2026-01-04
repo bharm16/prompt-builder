@@ -3,6 +3,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
+import type { CapabilityValues } from '@shared/capabilities';
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -35,6 +36,7 @@ export interface UsePromptOptimizationParams {
   promptContext: PromptContext | null;
   selectedMode: string;
   selectedModel?: string; // New: optional selected model
+  generationParams: CapabilityValues;
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setDisplayedPromptSilently: (prompt: string) => void;
@@ -67,6 +69,7 @@ export function usePromptOptimization({
   promptContext,
   selectedMode,
   selectedModel, // Extract new param
+  generationParams,
   setCurrentPromptUuid,
   setCurrentPromptDocId,
   setDisplayedPromptSilently,
@@ -112,7 +115,10 @@ export function usePromptOptimization({
         ctx,
         brainstormContextData,
         selectedMode === 'video' ? selectedModel : undefined,
-        options
+        {
+          ...options,
+          ...(generationParams ? { generationParams } : {}),
+        }
       );
       
       if (result) {
@@ -152,6 +158,7 @@ export function usePromptOptimization({
       promptContext,
       selectedMode,
       selectedModel, // Added dependency
+      generationParams,
       setCurrentPromptUuid,
       setCurrentPromptDocId,
       setDisplayedPromptSilently,

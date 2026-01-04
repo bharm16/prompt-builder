@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { User } from '@hooks/types';
 import type { FormData } from '@/PromptImprovementForm';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { CapabilityValues } from '@shared/capabilities';
 import type { SuggestionItem, SuggestionPayload } from './PromptCanvas/types';
 
 /**
@@ -22,6 +23,8 @@ export interface PromptInputProps {
   onInputChange: (value: string) => void;
   selectedModel?: string; // New: selected video model
   onModelChange?: (modelId: string) => void; // New: handler for model change
+  generationParams: CapabilityValues;
+  onGenerationParamsChange: (params: CapabilityValues) => void;
   onOptimize: () => void;
   onShowBrainstorm?: () => void;
   isProcessing: boolean;
@@ -46,6 +49,7 @@ export type ExportFormat = 'text' | 'markdown' | 'json';
 
 export interface OptimizationOptions {
   skipCache?: boolean;
+  generationParams?: CapabilityValues;
 }
 
 export interface LockedSpan {

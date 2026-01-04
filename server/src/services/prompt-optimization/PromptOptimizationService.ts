@@ -90,6 +90,7 @@ export class PromptOptimizationService {
     targetModel,
     context = null,
     brainstormContext = null,
+    generationParams = null,
     skipCache = false,
     lockedSpans = [],
     onDraft = null,
@@ -121,6 +122,7 @@ export class PromptOptimizationService {
       promptLength: prompt.length,
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
+      hasGenerationParams: !!generationParams,
       skipCache,
       lockedSpanCount: lockedSpans.length,
     });
@@ -152,6 +154,7 @@ export class PromptOptimizationService {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        generationParams,
         skipCache,
         lockedSpans,
         onMetadata: (metadata) => {
@@ -221,6 +224,7 @@ export class PromptOptimizationService {
           ...(brainstormContext || {}),
           originalUserPrompt: prompt,
         },
+        generationParams,
         skipCache,
         lockedSpans,
         shotPlan,
@@ -282,6 +286,7 @@ export class PromptOptimizationService {
         ...(targetModel ? { targetModel } : {}),
         context,
         brainstormContext,
+        generationParams,
         skipCache,
         lockedSpans,
         shotPlan,
@@ -314,6 +319,7 @@ export class PromptOptimizationService {
     mode,
     context = null,
     brainstormContext = null,
+    generationParams = null,
     skipCache = false,
     lockedSpans = [],
     shotPlan = null,
@@ -355,6 +361,7 @@ export class PromptOptimizationService {
       promptLength: prompt.length,
       hasContext: !!context,
       hasBrainstormContext: !!brainstormContext,
+      hasGenerationParams: !!generationParams,
       hasShotPlan: !!shotPlan,
       shotPlanAttempted,
       useConstitutionalAI,
@@ -380,7 +387,15 @@ export class PromptOptimizationService {
     }
 
     // Check cache
-    const cacheKey = this.buildCacheKey(prompt, finalMode, context, brainstormContext, targetModel, lockedSpans);
+    const cacheKey = this.buildCacheKey(
+      prompt,
+      finalMode,
+      context,
+      brainstormContext,
+      targetModel,
+      generationParams,
+      lockedSpans
+    );
     const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
     if (!skipCache) {
       const cached = await cacheService.get<string>(cacheKey);
@@ -441,6 +456,7 @@ export class PromptOptimizationService {
           prompt,
           context,
           brainstormContext,
+          generationParams,
           domainContent: domainContent as string | null,
           shotPlan: interpretedShotPlan,
           lockedSpans,
@@ -872,16 +888,19 @@ Output ONLY the draft prompt, no explanations.`
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
+    generationParams?: Record<string, unknown> | null,
     lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
   ): string {
     const lockedSpanSignature = this.buildLockedSpanSignature(lockedSpans);
+    const generationSignature = this.buildGenerationParamsSignature(generationParams);
     const parts = [
       'prompt-opt-v3', // Bump version to clear generic caches and force compilation refresh
       mode,
       targetModel || 'generic',
       prompt.substring(0, 100),
       context ? JSON.stringify(context) : '',
-      brainstormContext ? JSON.stringify(brainstormContext) : ''
+      brainstormContext ? JSON.stringify(brainstormContext) : '',
+      generationSignature,
     ];
     if (lockedSpanSignature) {
       parts.push(`locked:${lockedSpanSignature}`);
@@ -909,6 +928,16 @@ Output ONLY the draft prompt, no explanations.`
 
   private buildMetadataCacheKey(baseKey: string): string {
     return `${baseKey}::meta`;
+  }
+
+  private buildGenerationParamsSignature(params?: Record<string, unknown> | null): string {
+    if (!params || typeof params !== 'object') {
+      return '';
+    }
+    const sortedEntries = Object.keys(params)
+      .sort()
+      .map((key) => [key, (params as Record<string, unknown>)[key]]);
+    return JSON.stringify(sortedEntries);
   }
 
   /**

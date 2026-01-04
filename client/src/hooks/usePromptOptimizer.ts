@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { logger } from '../services/LoggingService';
 import type { Toast } from './types';
+import type { CapabilityValues } from '@shared/capabilities';
 import type { PromptOptimizerActions } from './utils/promptOptimizationFlow';
 
 import { usePromptOptimizerApi } from './usePromptOptimizerApi';
@@ -25,6 +26,7 @@ const log = logger.child('usePromptOptimizer');
 
 interface OptimizationOptions {
   skipCache?: boolean;
+  generationParams?: CapabilityValues;
 }
 
 export const usePromptOptimizer = (selectedMode: string, selectedModel?: string, useTwoStage: boolean = true) => {
@@ -134,6 +136,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
             brainstormContext,
             abortController,
             skipCache: options?.skipCache,
+            generationParams: options?.generationParams,
             requestId,
             requestIdRef,
             refinedSpans: state.refinedSpans,
@@ -154,6 +157,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           brainstormContext,
           abortController,
           skipCache: options?.skipCache,
+          generationParams: options?.generationParams,
           lockedSpans: state.lockedSpans,
           actions,
           toast,

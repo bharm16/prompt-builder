@@ -3,13 +3,16 @@ import { PromptContext } from '@utils/PromptContext';
 import { PERFORMANCE_CONFIG } from '@config/performance.config';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import type { CapabilityValues } from '@shared/capabilities';
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
   optimize: (
     prompt: string,
     context: unknown | null,
-    brainstormContext: unknown
+    brainstormContext: unknown,
+    targetModel?: string,
+    options?: { generationParams?: CapabilityValues }
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
@@ -31,6 +34,7 @@ interface UseConceptBrainstormParams {
   promptHistory: PromptHistory;
   selectedMode: string;
   selectedModel?: string;
+  generationParams: CapabilityValues;
   setConceptElements: (elements: Record<string, unknown>) => void;
   setPromptContext: (context: PromptContext | null) => void;
   setShowBrainstorm: (show: boolean) => void;
@@ -58,6 +62,7 @@ export function useConceptBrainstorm({
   promptHistory,
   selectedMode,
   selectedModel,
+  generationParams,
   setConceptElements,
   setPromptContext,
   setShowBrainstorm,
@@ -126,7 +131,9 @@ export function useConceptBrainstorm({
           const result = await promptOptimizer.optimize(
             finalConcept,
             null,
-            brainstormContextData
+            brainstormContextData,
+            selectedMode === 'video' ? selectedModel : undefined,
+            generationParams ? { generationParams } : undefined
           );
 
           if (result) {
@@ -170,6 +177,7 @@ export function useConceptBrainstorm({
       promptHistory,
       selectedMode,
       selectedModel,
+      generationParams,
       setConceptElements,
       setPromptContext,
       setShowBrainstorm,

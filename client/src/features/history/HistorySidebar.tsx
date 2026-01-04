@@ -113,7 +113,7 @@ export function HistorySidebar({
         // Collapsed state - icon-only sidebar
         <div className="flex h-screen max-h-screen flex-col overflow-hidden">
           {/* Header with expand button */}
-          <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-3">
+          <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
             <Button
               onClick={() => setShowHistory(true)}
               svgOnly

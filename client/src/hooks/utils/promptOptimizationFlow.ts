@@ -12,6 +12,7 @@ import {
 import type { SpansData } from '../usePromptOptimizerState';
 import type { Toast } from '../types';
 import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import type { CapabilityValues } from '@shared/capabilities';
 
 export interface PromptOptimizerActions {
   setDraftPrompt: (prompt: string) => void;
@@ -91,6 +92,7 @@ export interface TwoStageOptimizationOptions {
   selectedModel?: string;
   context: unknown | null;
   brainstormContext: unknown | null;
+  generationParams?: CapabilityValues;
   abortController: AbortController;
   skipCache?: boolean;
   requestId: number;
@@ -110,6 +112,7 @@ export async function runTwoStageOptimization({
   selectedModel,
   context,
   brainstormContext,
+  generationParams,
   abortController,
   skipCache,
   requestId,
@@ -133,6 +136,7 @@ export async function runTwoStageOptimization({
     ...(selectedModel ? { targetModel: selectedModel } : {}),
     context,
     brainstormContext,
+    ...(generationParams ? { generationParams } : {}),
     ...(skipCache ? { skipCache } : {}),
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
     signal: abortController.signal,
@@ -315,6 +319,7 @@ export interface SingleStageOptimizationOptions {
   selectedModel?: string;
   context: unknown | null;
   brainstormContext: unknown | null;
+  generationParams?: CapabilityValues;
   abortController: AbortController;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
@@ -331,6 +336,7 @@ export async function runSingleStageOptimization({
   selectedModel,
   context,
   brainstormContext,
+  generationParams,
   abortController,
   skipCache,
   lockedSpans,
@@ -351,6 +357,7 @@ export async function runSingleStageOptimization({
     brainstormContext,
     signal: abortController.signal,
     ...(selectedModel ? { targetModel: selectedModel } : {}),
+    ...(generationParams ? { generationParams } : {}),
     ...(skipCache ? { skipCache } : {}),
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
   });

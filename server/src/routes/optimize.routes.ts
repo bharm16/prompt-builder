@@ -4,6 +4,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { validateRequest } from '@middleware/validateRequest';
 import { extractUserId } from '@utils/requestHelpers';
 import { promptSchema } from '@utils/validation';
+import { getCapabilities, resolveModelId, resolveProviderForModel, validateCapabilityValues } from '@services/capabilities';
 
 interface OptimizeServices {
   promptOptimizationService: any;
@@ -27,7 +28,41 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       const userId = extractUserId(req);
       const operation = 'optimize';
       
-      const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = req.body;
+      const {
+        prompt,
+        mode,
+        targetModel,
+        context,
+        brainstormContext,
+        generationParams,
+        skipCache,
+        lockedSpans,
+      } = req.body;
+
+      let normalizedGenerationParams = generationParams;
+      if (generationParams && typeof generationParams === 'object') {
+        const resolvedModel = resolveModelId(targetModel);
+        const provider = resolveProviderForModel(resolvedModel) || 'generic';
+        const model =
+          resolvedModel && getCapabilities(provider, resolvedModel) ? resolvedModel : 'auto';
+        const schema = getCapabilities(provider, model);
+        if (!schema) {
+          res.status(400).json({
+            error: 'Capabilities not found',
+            details: `No registry entry for ${provider}/${model}`,
+          });
+          return;
+        }
+        const validation = validateCapabilityValues(schema, generationParams);
+        if (!validation.ok) {
+          res.status(400).json({
+            error: 'Invalid generation parameters',
+            details: validation.errors.join(', '),
+          });
+          return;
+        }
+        normalizedGenerationParams = validation.values;
+      }
 
       logger.info('Optimize request received', {
         operation,
@@ -38,6 +73,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
         skipCache: !!skipCache,
         lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
       });
@@ -50,6 +86,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           targetModel, // New
           context,
           brainstormContext,
+          generationParams: normalizedGenerationParams,
           skipCache,
           lockedSpans,
           onMetadata: (next: Record<string, unknown>) => {
@@ -88,7 +125,41 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
     '/optimize-stream',
     validateRequest(promptSchema),
     asyncHandler(async (req, res) => {
-      const { prompt, mode, targetModel, context, brainstormContext, skipCache, lockedSpans } = req.body;
+      const {
+        prompt,
+        mode,
+        targetModel,
+        context,
+        brainstormContext,
+        generationParams,
+        skipCache,
+        lockedSpans,
+      } = req.body;
+
+      let normalizedGenerationParams = generationParams;
+      if (generationParams && typeof generationParams === 'object') {
+        const resolvedModel = resolveModelId(targetModel);
+        const provider = resolveProviderForModel(resolvedModel) || 'generic';
+        const model =
+          resolvedModel && getCapabilities(provider, resolvedModel) ? resolvedModel : 'auto';
+        const schema = getCapabilities(provider, model);
+        if (!schema) {
+          res.status(400).json({
+            error: 'Capabilities not found',
+            details: `No registry entry for ${provider}/${model}`,
+          });
+          return;
+        }
+        const validation = validateCapabilityValues(schema, generationParams);
+        if (!validation.ok) {
+          res.status(400).json({
+            error: 'Invalid generation parameters',
+            details: validation.errors.join(', '),
+          });
+          return;
+        }
+        normalizedGenerationParams = validation.values;
+      }
       
       // Create a wrapper abort controller that ignores early client disconnects
       // This prevents curl from aborting the OpenAI calls before they start
@@ -155,6 +226,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         targetModel, // New
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
+        generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
         skipCache: !!skipCache,
         lockedSpanCount: Array.isArray(lockedSpans) ? lockedSpans.length : 0,
       });
@@ -169,6 +241,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           targetModel, // New
           context,
           brainstormContext,
+          generationParams: normalizedGenerationParams,
           skipCache,
           lockedSpans,
           signal,

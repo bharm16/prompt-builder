@@ -7,6 +7,7 @@ import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { getVideoTemplateBuilder } from './video-templates/index';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
 import { detectProvider } from '@utils/provider/ProviderDetector';
+import type { CapabilityValues } from '@shared/capabilities';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
 import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
@@ -254,6 +255,7 @@ export class VideoStrategy implements OptimizationStrategy {
   async optimize({
     prompt,
     shotPlan = null,
+    generationParams = null,
     lockedSpans = [],
     signal,
     onMetadata,
@@ -337,7 +339,7 @@ export class VideoStrategy implements OptimizationStrategy {
             errors: lint.errors,
             provider,
           });
-          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
+          return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
         }
 
         logger.warn('Video prompt slot lint failed (repairing critical issues)', {
@@ -358,7 +360,7 @@ export class VideoStrategy implements OptimizationStrategy {
       });
         if (rerolled) {
           logger.info('Video prompt lint fixed via reroll', { provider });
-          return this._reassembleOutput(rerolled, onMetadata);
+          return this._reassembleOutput(rerolled, onMetadata, generationParams);
         }
 
       const repaired = await this._repairSlots({
@@ -372,7 +374,7 @@ export class VideoStrategy implements OptimizationStrategy {
         ...(signal ? { signal } : {}),
       });
 
-        return this._reassembleOutput(repaired, onMetadata);
+        return this._reassembleOutput(repaired, onMetadata, generationParams);
       }
 
       logger.info('Video optimization complete with native structured outputs', {
@@ -383,7 +385,7 @@ export class VideoStrategy implements OptimizationStrategy {
         usedDeveloperMessage: !!template.developerMessage,
       });
 
-      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
+      return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
 
     } catch (error) {
       // Strategy 2: Fallback to StructuredOutputEnforcer (Robustness)
@@ -451,7 +453,7 @@ export class VideoStrategy implements OptimizationStrategy {
     });
 
     // Fallback path: if lint fails, proceed with best-effort normalized slots (avoid a second model call here)
-    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata);
+    return this._reassembleOutput({ ...parsedResponse, ...normalizedSlots }, onMetadata, generationParams);
   }
 
   /**
@@ -459,14 +461,16 @@ export class VideoStrategy implements OptimizationStrategy {
    */
   private _reassembleOutput(
     parsed: VideoPromptStructuredResponse,
-    onMetadata?: (metadata: Record<string, unknown>) => void
+    onMetadata?: (metadata: Record<string, unknown>) => void,
+    generationParams?: CapabilityValues | null
   ): string {
-    const slots = normalizeSlots(parsed);
+    const resolved = this.applyGenerationParams(parsed, generationParams);
+    const slots = normalizeSlots(resolved);
     const promptParagraph = renderMainVideoPrompt(slots);
     const previewPrompt = renderPreviewPrompt(slots);
     const aspectRatio =
-      typeof parsed.technical_specs?.aspect_ratio === 'string'
-        ? parsed.technical_specs.aspect_ratio.trim()
+      typeof resolved.technical_specs?.aspect_ratio === 'string'
+        ? resolved.technical_specs.aspect_ratio.trim()
         : '';
 
     if (onMetadata) {
@@ -479,24 +483,27 @@ export class VideoStrategy implements OptimizationStrategy {
     let output = promptParagraph;
 
     // Add technical specs section with merged creative and output specs (aligned with research template)
-    if (parsed.technical_specs) {
+    if (resolved.technical_specs) {
       output += '\n\n**TECHNICAL SPECS**';
 
       // Output specs (generator-facing)
-      output += `\n- **Duration:** ${parsed.technical_specs.duration || '4-8s'}`;
-      output += `\n- **Aspect Ratio:** ${parsed.technical_specs.aspect_ratio || '16:9'}`;
-      output += `\n- **Frame Rate:** ${parsed.technical_specs.frame_rate || '24fps'}`;
-      output += `\n- **Audio:** ${parsed.technical_specs.audio || 'mute'}`;
+      output += `\n- **Duration:** ${resolved.technical_specs.duration || '4-8s'}`;
+      output += `\n- **Aspect Ratio:** ${resolved.technical_specs.aspect_ratio || '16:9'}`;
+      if (resolved.technical_specs.resolution) {
+        output += `\n- **Resolution:** ${resolved.technical_specs.resolution}`;
+      }
+      output += `\n- **Frame Rate:** ${resolved.technical_specs.frame_rate || '24fps'}`;
+      output += `\n- **Audio:** ${resolved.technical_specs.audio || 'mute'}`;
 
       // Creative specs (used in prompt generation)
-      if (parsed.technical_specs.camera) {
-        output += `\n- **Camera:** ${parsed.technical_specs.camera}`;
+      if (resolved.technical_specs.camera) {
+        output += `\n- **Camera:** ${resolved.technical_specs.camera}`;
       }
-      if (parsed.technical_specs.lighting) {
-        output += `\n- **Lighting:** ${parsed.technical_specs.lighting}`;
+      if (resolved.technical_specs.lighting) {
+        output += `\n- **Lighting:** ${resolved.technical_specs.lighting}`;
       }
-      if (parsed.technical_specs.style) {
-        output += `\n- **Style:** ${parsed.technical_specs.style}`;
+      if (resolved.technical_specs.style) {
+        output += `\n- **Style:** ${resolved.technical_specs.style}`;
       }
     }
 
@@ -515,6 +522,47 @@ export class VideoStrategy implements OptimizationStrategy {
     }
 
     return output;
+  }
+
+  private applyGenerationParams(
+    parsed: VideoPromptStructuredResponse,
+    generationParams?: CapabilityValues | null
+  ): VideoPromptStructuredResponse {
+    if (!generationParams) {
+      return parsed;
+    }
+
+    const technicalSpecs = { ...(parsed.technical_specs || {}) };
+
+    const aspectRatio = generationParams.aspect_ratio;
+    if (typeof aspectRatio === 'string' && aspectRatio.trim()) {
+      technicalSpecs.aspect_ratio = aspectRatio.trim();
+    }
+
+    const durationSeconds = generationParams.duration_s;
+    if (typeof durationSeconds === 'number' && Number.isFinite(durationSeconds)) {
+      technicalSpecs.duration = `${durationSeconds}s`;
+    }
+
+    const fps = generationParams.fps;
+    if (typeof fps === 'number' && Number.isFinite(fps)) {
+      technicalSpecs.frame_rate = `${fps}fps`;
+    }
+
+    const resolution = generationParams.resolution;
+    if (typeof resolution === 'string' && resolution.trim()) {
+      technicalSpecs.resolution = resolution.trim();
+    }
+
+    const audio = generationParams.audio;
+    if (typeof audio === 'boolean') {
+      technicalSpecs.audio = audio ? 'enabled' : 'mute';
+    }
+
+    return {
+      ...parsed,
+      technical_specs: technicalSpecs,
+    };
   }
 
   private async _repairSlots(options: {

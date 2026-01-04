@@ -32,6 +32,10 @@ export const promptSchema = z.object({
   })
     .optional()
     .nullable(),
+  generationParams: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional()
+    .nullable(),
   skipCache: z.boolean().optional().default(false),
   lockedSpans: z.array(z.object({
     id: z.string().max(512).optional(),
