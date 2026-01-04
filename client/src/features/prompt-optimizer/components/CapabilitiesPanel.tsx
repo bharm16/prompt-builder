@@ -22,13 +22,25 @@ interface FieldEntry {
   state: ReturnType<typeof resolveFieldState>;
 }
 
+const resolveLabel = (selectedModel?: string, resolvedModel?: string): string => {
+  if (!selectedModel) {
+    return 'Auto-detect';
+  }
+
+  const resolvedLabel = resolvedModel
+    ? AI_MODEL_LABELS[resolvedModel as AIModelId]
+    : undefined;
+
+  return resolvedLabel || AI_MODEL_LABELS[selectedModel as AIModelId] || selectedModel;
+};
+
 const resolveTarget = (selectedModel?: string): { provider: string; model: string; label: string } => {
   if (!selectedModel) {
-    return { provider: 'generic', model: 'auto', label: 'Auto-detect' };
+    return { provider: 'generic', model: 'auto', label: resolveLabel() };
   }
 
   const provider = AI_MODEL_PROVIDERS[selectedModel as AIModelId] ?? 'generic';
-  const label = AI_MODEL_LABELS[selectedModel as AIModelId] ?? selectedModel;
+  const label = resolveLabel(selectedModel);
   return { provider, model: selectedModel, label };
 };
 
@@ -124,6 +136,11 @@ export const CapabilitiesPanel = ({
       .then((data) => {
         if (!active) return;
         setSchema(data);
+        setTarget({
+          provider: data.provider || target.provider,
+          model: data.model || target.model,
+          label: resolveLabel(selectedModel, data.model),
+        });
       })
       .catch((err) => {
         if (!active) return;

@@ -2,7 +2,7 @@
 
 > **Interactive editing for AI video prompts. Every phrase is semantically labeled. Click any word to get context-aware alternatives.**
 
-It's Grammarly for Sora, Runway, Veo3, Kling, and Luma.
+It's Grammarly + Production Studio for Sora, Runway, Veo, Kling, and Luma.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
@@ -97,6 +97,7 @@ npm start
 |---------|--------------|
 | **Semantic Labeling** | 30+ categories tuned for video (subject, camera, lighting, action, style...) |
 | **Click-to-Enhance** | Click any highlight → get context-aware alternatives → one-click replace |
+| **Direct Video Generation** | Generate actual videos using OpenAI Sora 2, Google Veo 4, Runway Gen-45, Luma Ray 3, and Kling |
 | **Visual Preview** | Auto-generates preview images using Flux Schnell as you type (debounced) |
 | **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
 | **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
@@ -121,13 +122,14 @@ AI video models (Sora, Runway, Veo3) are sensitive to prompt quality. The differ
 
 ## Supported Ecosystem
 
-PromptCanvas is designed to be the "upstream" tool for the entire AI video ecosystem. It optimizes prompts for:
+PromptCanvas is designed to be the all-in-one studio for the AI video ecosystem. It optimizes prompts AND directly generates video with:
 
-*   **OpenAI Sora** (Physics simulation & continuity)
-*   **Google Veo 3** (Cinematic lighting & atmosphere)
-*   **Runway Gen-3** (Stylized visuals & VFX)
-*   **Kling AI** (Character performance)
-*   **Luma Dream Machine** (Morphing & transitions)
+*   **OpenAI Sora 2** (Physics simulation & continuity)
+*   **Google Veo 4** (Cinematic lighting & atmosphere)
+*   **Runway Gen-45** (Stylized visuals & VFX)
+*   **Kling 2.6** (Character performance)
+*   **Luma Ray 3** (Morphing & transitions)
+*   **Wan 2.2** (High-fidelity previews)
 
 ---
 
@@ -148,6 +150,7 @@ PromptCanvas is designed to be the "upstream" tool for the entire AI video ecosy
 
 **Production Ready Features:**
 *   ✅ Advanced Text Optimization Engine (Two-Stage Pipeline)
+*   ✅ Direct Video Generation (Sora 2, Veo 4, Luma Ray 3, Runway Gen-45)
 *   ✅ Video Preview Generation (Wan 2.2)
 *   ✅ Image Preview Generation (Flux Schnell)
 *   ✅ Concept Builder & Improvement Wizards
@@ -309,7 +312,9 @@ See `.env.example` for full list.
 - ✅ Two-stage optimization
 - ✅ Semantic span labeling (30+ categories)
 - ✅ Click-to-enhance suggestions
-- ✅ Visual preview generation (Flux Schnell)
+- ✅ Direct Video Generation (Sora 2, Veo 4, Luma Ray 3, Runway Gen-45)
+- ✅ Video Preview Generation (Wan 2.2)
+- ✅ Image Preview Generation (Flux Schnell)
 - ✅ Video Concept Builder
 - ✅ Multi-provider LLM support
 - ⏳ Payment integration
