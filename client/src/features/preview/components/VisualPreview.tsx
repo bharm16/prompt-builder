@@ -8,6 +8,7 @@
 import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useImagePreview } from '../hooks/useImagePreview';
+import { useRemoteDownload } from '../hooks/useRemoteDownload';
 
 interface VisualPreviewProps {
   prompt: string;
@@ -104,7 +105,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   });
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
-  const [isExporting, setIsExporting] = React.useState(false);
+  const { isDownloading: isExporting, download } = useRemoteDownload();
   const copyTimeoutRef = React.useRef<number | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
 
@@ -144,31 +145,11 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   }, [generateRequestId, handleGenerate, isVisible]);
 
   const handleExportKeyframe = React.useCallback(async () => {
-    if (!imageUrl || isExporting) {
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `keyframe-preview-${Date.now()}.webp`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (err) {
-      window.open(imageUrl, '_blank', 'noopener,noreferrer');
-    } finally {
-      setIsExporting(false);
-    }
-  }, [imageUrl, isExporting]);
+    await download({
+      url: imageUrl,
+      fileName: `keyframe-preview-${Date.now()}.webp`,
+    });
+  }, [download, imageUrl]);
 
   if (!isVisible) return null;
 

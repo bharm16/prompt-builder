@@ -5,7 +5,8 @@ import { normalizeOptimizationRequest } from '@middleware/normalizeOptimizationR
 import { validateRequest } from '@middleware/validateRequest';
 import { extractUserId } from '@utils/requestHelpers';
 import { promptSchema } from '@utils/validation';
-import { getCapabilities, resolveModelId, resolveProviderForModel, validateCapabilityValues } from '@services/capabilities';
+import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
+import { createSseChannel } from '@routes/optimize/sse';
 
 interface OptimizeServices {
   promptOptimizationService: any;
@@ -41,30 +42,16 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         lockedSpans,
       } = req.body;
 
-      let normalizedGenerationParams = generationParams;
-      if (generationParams && typeof generationParams === 'object') {
-        const resolvedModel = resolveModelId(targetModel);
-        const provider = resolveProviderForModel(resolvedModel) || 'generic';
-        const model =
-          resolvedModel && getCapabilities(provider, resolvedModel) ? resolvedModel : 'auto';
-        const schema = getCapabilities(provider, model);
-        if (!schema) {
-          res.status(400).json({
-            error: 'Capabilities not found',
-            details: `No registry entry for ${provider}/${model}`,
-          });
-          return;
-        }
-        const validation = validateCapabilityValues(schema, generationParams);
-        if (!validation.ok) {
-          logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
-            operation,
-            requestId,
-            userId,
-            errors: validation.errors,
-          });
-        }
-        normalizedGenerationParams = validation.values;
+      const { normalizedGenerationParams, error } = normalizeGenerationParams({
+        generationParams,
+        targetModel,
+        operation,
+        requestId,
+        userId,
+      });
+      if (error) {
+        res.status(error.status).json({ error: error.error, details: error.details });
+        return;
       }
 
       logger.info('Optimize request received', {
@@ -144,82 +131,19 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         lockedSpans,
       } = req.body;
 
-      let normalizedGenerationParams = generationParams;
-      if (generationParams && typeof generationParams === 'object') {
-        const resolvedModel = resolveModelId(targetModel);
-        const provider = resolveProviderForModel(resolvedModel) || 'generic';
-        const model =
-          resolvedModel && getCapabilities(provider, resolvedModel) ? resolvedModel : 'auto';
-        const schema = getCapabilities(provider, model);
-        if (!schema) {
-          res.status(400).json({
-            error: 'Capabilities not found',
-            details: `No registry entry for ${provider}/${model}`,
-          });
-          return;
-        }
-        const validation = validateCapabilityValues(schema, generationParams);
-        if (!validation.ok) {
-          logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
-            operation,
-            requestId,
-            userId,
-            errors: validation.errors,
-          });
-        }
-        normalizedGenerationParams = validation.values;
+      const { normalizedGenerationParams, error } = normalizeGenerationParams({
+        generationParams,
+        targetModel,
+        operation,
+        requestId,
+        userId,
+      });
+      if (error) {
+        res.status(error.status).json({ error: error.error, details: error.details });
+        return;
       }
-      
-      // Create a wrapper abort controller that ignores early client disconnects
-      // This prevents curl from aborting the OpenAI calls before they start
-      const internalAbortController = new AbortController();
-      let clientConnected = true;
-      let processingStarted = false;
-      
-      // Only abort internal operations if client disconnects AFTER processing starts
-      const onClientDisconnect = (): void => {
-        clientConnected = false;
-        // Only abort if we've actually started processing AND response is still writable
-        if (processingStarted && !res.writableEnded && res.writable) {
-          internalAbortController.abort();
-        }
-      };
-      
-      // Set up Server-Sent Events (SSE) headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
 
-      // Send initial keepalive comment immediately to keep connection alive
-      res.write(': connected\n\n');
-      if (typeof res.flushHeaders === 'function') {
-        res.flushHeaders();
-      }
-      
-      // Set up disconnect handlers AFTER keepalive is sent.
-      // Use response close since the request stream can close after body parsing.
-      res.on('close', onClientDisconnect);
-      req.on('aborted', onClientDisconnect);
-      
-      // Use internal signal that only aborts after processing starts
-      const signal = internalAbortController.signal;
-
-      const sendEvent = (eventType: string, data: unknown): void => {
-        if (signal.aborted || res.writableEnded || !clientConnected) {
-          return;
-        }
-        try {
-          res.write(`event: ${eventType}\n`);
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
-        } catch (error) {
-          // Ignore write errors if client disconnected
-          if (!clientConnected) {
-            return;
-          }
-          throw error;
-        }
-      };
+      const { signal, sendEvent, markProcessingStarted, close } = createSseChannel(req, res);
 
       const startTime = Date.now();
 
@@ -238,8 +162,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
       });
 
       try {
-        // Mark that processing has started
-        processingStarted = true;
+        markProcessingStarted();
         
         const result = await promptOptimizationService.optimizeTwoStage({
           prompt,
@@ -301,10 +224,10 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           usedFallback: result.usedFallback || false,
         });
 
-        res.end();
+        close();
       } catch (error: any) {
         if (signal.aborted || res.writableEnded) {
-          res.end();
+          close();
           return;
         }
         logger.error('Optimize-stream request failed', error, {
@@ -320,7 +243,7 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           status: 'failed',
         });
 
-        res.end();
+        close();
       }
     })
   );

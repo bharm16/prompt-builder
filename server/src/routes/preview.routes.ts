@@ -9,6 +9,7 @@ import express from 'express';
 import { logger } from '@infrastructure/Logger';
 import { extractUserId } from '@utils/requestHelpers';
 import { asyncHandler } from '@middleware/asyncHandler';
+import { parseVideoPreviewRequest, sendVideoContent } from '@routes/preview/videoRequest';
 import type { PreviewRoutesServices } from './types';
 
 /**
@@ -40,35 +41,16 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const { prompt, aspectRatio, model, startImage, inputReference } = req.body as { 
-        prompt?: unknown; 
-        aspectRatio?: '16:9' | '9:16' | '21:9' | '1:1';
-        model?: string;
-        startImage?: unknown;
-        inputReference?: unknown;
-      };
+      const parsed = parseVideoPreviewRequest(req.body);
+      if (!parsed.ok) {
+        return res.status(parsed.status).json({
+          success: false,
+          error: parsed.error,
+        });
+      }
+
+      const { prompt, aspectRatio, model, startImage, inputReference } = parsed.payload;
       const userId = extractUserId(req);
-
-      if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Prompt must be a non-empty string',
-        });
-      }
-
-      if (startImage !== undefined && typeof startImage !== 'string') {
-        return res.status(400).json({
-          success: false,
-          error: 'startImage must be a string URL',
-        });
-      }
-
-      if (inputReference !== undefined && typeof inputReference !== 'string') {
-        return res.status(400).json({
-          success: false,
-          error: 'inputReference must be a string URL',
-        });
-      }
 
       const startTime = performance.now();
       const operation = 'generateVideoPreview';
@@ -150,9 +132,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      res.setHeader('Content-Type', entry.contentType);
-      res.setHeader('Cache-Control', 'private, max-age=600');
-      return res.send(entry.buffer);
+      return sendVideoContent(res, entry);
     })
   );
 

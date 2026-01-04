@@ -1,6 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { capabilitiesApi } from '@/services';
-import { AI_MODEL_LABELS, AI_MODEL_PROVIDERS, type AIModelId } from './constants';
+import React, { useMemo } from 'react';
 import {
   getDefaultValue,
   resolveFieldState,
@@ -9,6 +7,8 @@ import {
   type CapabilityValue,
   type CapabilityValues,
 } from '@shared/capabilities';
+import { useCapabilities } from '../hooks/useCapabilities';
+import { useNormalizedCapabilityValues } from '../hooks/useNormalizedCapabilityValues';
 
 interface CapabilitiesPanelProps {
   selectedModel?: string;
@@ -28,85 +28,6 @@ interface FieldEntry {
   field: CapabilityField;
   state: ReturnType<typeof resolveFieldState>;
 }
-
-const resolveLabel = (selectedModel?: string, resolvedModel?: string): string => {
-  if (!selectedModel) {
-    return 'Auto-detect';
-  }
-
-  const resolvedLabel = resolvedModel
-    ? AI_MODEL_LABELS[resolvedModel as AIModelId]
-    : undefined;
-
-  return resolvedLabel || AI_MODEL_LABELS[selectedModel as AIModelId] || selectedModel;
-};
-
-const resolveTarget = (selectedModel?: string): { provider: string; model: string; label: string } => {
-  if (!selectedModel) {
-    return { provider: 'generic', model: 'auto', label: resolveLabel() };
-  }
-
-  const provider = AI_MODEL_PROVIDERS[selectedModel as AIModelId] ?? 'generic';
-  const label = resolveLabel(selectedModel);
-  return { provider, model: selectedModel, label };
-};
-
-const areValuesEqual = (left: CapabilityValues, right: CapabilityValues): boolean => {
-  const leftKeys = Object.keys(left);
-  const rightKeys = Object.keys(right);
-  if (leftKeys.length !== rightKeys.length) {
-    return false;
-  }
-  return leftKeys.every((key) => Object.is(left[key], right[key]));
-};
-
-const normalizeFieldValue = (
-  field: CapabilityField,
-  value: CapabilityValue | undefined
-): CapabilityValue | undefined => {
-  if (typeof value === 'undefined') {
-    return getDefaultValue(field);
-  }
-  if (field.type === 'bool') {
-    return typeof value === 'boolean' ? value : getDefaultValue(field);
-  }
-  if (field.type === 'int') {
-    return typeof value === 'number' && Number.isFinite(value) ? value : getDefaultValue(field);
-  }
-  if (field.type === 'string') {
-    return typeof value === 'string' ? value : getDefaultValue(field);
-  }
-  return value;
-};
-
-const sanitizeValues = (schema: CapabilitiesSchema, values: CapabilityValues): CapabilityValues => {
-  const next: CapabilityValues = {};
-
-  for (const [fieldId, field] of Object.entries(schema.fields)) {
-    const normalized = normalizeFieldValue(field, values[fieldId]);
-    if (typeof normalized !== 'undefined') {
-      next[fieldId] = normalized;
-    }
-  }
-
-  for (const [fieldId, field] of Object.entries(schema.fields)) {
-    const state = resolveFieldState(field, next);
-    if (!state.available || state.disabled) {
-      delete next[fieldId];
-      continue;
-    }
-
-    if (field.type === 'enum' && state.allowedValues && state.allowedValues.length > 0) {
-      const current = next[fieldId];
-      const isValid = state.allowedValues.some((value) => Object.is(value, current));
-      if (!isValid) {
-        next[fieldId] = state.allowedValues[0];
-      }
-    }
-  }
-
-  return next;
-};
 
 const getFieldLabel = (fieldId: string, field: CapabilityField): string =>
   field.ui?.label || fieldId.replace(/_/g, ' ');
@@ -131,70 +52,20 @@ export const CapabilitiesPanel = ({
   targetLabel,
   excludeFields = [],
 }: CapabilitiesPanelProps): React.ReactElement | null => {
-  const [{ provider, model, label: internalLabel }, setTarget] = useState(() => resolveTarget(selectedModel));
-  const [internalSchema, setInternalSchema] = useState<CapabilitiesSchema | null>(null);
-  const [internalIsLoading, setInternalIsLoading] = useState(false);
-  const [internalError, setInternalError] = useState<string | null>(null);
+  const capabilities = useCapabilities(selectedModel, { enabled: propSchema === undefined });
 
   // Use props if provided, otherwise internal state
-  const schema = propSchema !== undefined ? propSchema : internalSchema;
-  const isLoading = propIsLoading !== undefined ? propIsLoading : internalIsLoading;
-  const error = propError !== undefined ? propError : internalError;
-  const label = targetLabel !== undefined ? targetLabel : internalLabel;
+  const schema = propSchema !== undefined ? propSchema : capabilities.schema;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : capabilities.isLoading;
+  const error = propError !== undefined ? propError : capabilities.error;
+  const label = targetLabel !== undefined ? targetLabel : capabilities.target.label;
+  const { provider, model } = capabilities.target;
 
-  useEffect(() => {
-    // Skip internal fetching if schema prop is provided
-    if (propSchema !== undefined) {
-      return;
-    }
-
-    const target = resolveTarget(selectedModel);
-    setTarget(target);
-    let active = true;
-    setInternalIsLoading(true);
-    setInternalError(null);
-
-    capabilitiesApi
-      .getCapabilities(target.provider, target.model)
-      .then((data) => {
-        if (!active) return;
-        setInternalSchema(data);
-        setTarget({
-          provider: data.provider || target.provider,
-          model: data.model || target.model,
-          label: resolveLabel(selectedModel, data.model),
-        });
-      })
-      .catch((err) => {
-        if (!active) return;
-        setInternalSchema(null);
-        setInternalError(err instanceof Error ? err.message : 'Unable to load capabilities');
-      })
-      .finally(() => {
-        if (!active) return;
-        setInternalIsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedModel, propSchema]);
-
-  const normalizedValues = useMemo(() => {
-    if (!schema) {
-      return generationParams;
-    }
-    return sanitizeValues(schema, generationParams);
-  }, [schema, generationParams]);
-
-  useEffect(() => {
-    if (!schema) {
-      return;
-    }
-    if (!areValuesEqual(generationParams, normalizedValues)) {
-      onChange(normalizedValues);
-    }
-  }, [schema, generationParams, normalizedValues, onChange]);
+  const normalizedValues = useNormalizedCapabilityValues({
+    schema,
+    generationParams,
+    onChange,
+  });
 
   const groupedFields = useMemo(() => {
     if (!schema) return [];

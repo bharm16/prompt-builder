@@ -1,0 +1,74 @@
+import type { Router } from 'express';
+import { logger } from '@infrastructure/Logger';
+import { asyncHandler } from '@middleware/asyncHandler';
+import { validateRequest } from '@middleware/validateRequest';
+import { sceneChangeSchema } from '@utils/validation';
+
+interface SceneChangeDeps {
+  sceneDetectionService: {
+    detectSceneChange: (payload: Record<string, unknown>) => Promise<any>;
+  };
+}
+
+export function registerSceneChangeRoute(
+  router: Router,
+  { sceneDetectionService }: SceneChangeDeps
+): void {
+  router.post(
+    '/detect-scene-change',
+    validateRequest(sceneChangeSchema),
+    asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const operation = 'detect-scene-change';
+
+      const {
+        changedField,
+        newValue,
+        oldValue,
+        fullPrompt,
+        affectedFields,
+        sectionHeading,
+        sectionContext,
+      } = req.body;
+
+      logger.info('Scene change detection request received', {
+        operation,
+        requestId,
+        changedField,
+        hasNewValue: !!newValue,
+        hasOldValue: !!oldValue,
+        affectedFieldCount: affectedFields?.length || 0,
+      });
+
+      try {
+        const result = await sceneDetectionService.detectSceneChange({
+          changedField,
+          newValue,
+          oldValue,
+          fullPrompt,
+          affectedFields,
+          sectionHeading,
+          sectionContext,
+        });
+
+        logger.info('Scene change detection request completed', {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          isSceneChange: result?.isSceneChange || false,
+        });
+
+        res.json(result);
+      } catch (error: any) {
+        logger.error('Scene change detection request failed', error, {
+          operation,
+          requestId,
+          duration: Date.now() - startTime,
+          changedField,
+        });
+        throw error;
+      }
+    })
+  );
+}

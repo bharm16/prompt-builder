@@ -1,12 +1,13 @@
-import { API_CONFIG } from '../../../config/api.config';
+import {
+  postEnhancementSuggestions,
+  type EnhancementSuggestionsResponse as BaseEnhancementSuggestionsResponse,
+} from '@/api/enhancementSuggestionsApi';
 import { logger } from '../../../services/LoggingService';
 import type { Suggestion } from '../types';
 import type { EnhancementSuggestionPayload } from '../utils/suggestionPayload';
 
-export interface EnhancementSuggestionsResponse {
-  suggestions: Suggestion[];
-  isPlaceholder: boolean;
-}
+export type EnhancementSuggestionsResponse =
+  BaseEnhancementSuggestionsResponse<Suggestion>;
 
 /**
  * Fetches enhancement suggestions from the API.
@@ -15,20 +16,7 @@ export async function fetchEnhancementSuggestions(
   request: EnhancementSuggestionPayload
 ): Promise<EnhancementSuggestionsResponse> {
   try {
-    const response = await fetch('/api/get-enhancement-suggestions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_CONFIG.apiKey,
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch suggestions: ${response.status}`);
-    }
-
-    const data = (await response.json()) as { suggestions?: Suggestion[]; isPlaceholder?: boolean };
+    const data = await postEnhancementSuggestions<Suggestion>(request);
 
     return {
       suggestions: data.suggestions || [],

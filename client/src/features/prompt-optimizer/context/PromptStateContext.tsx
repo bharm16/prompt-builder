@@ -11,18 +11,17 @@ import { Video } from 'lucide-react';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
-import { createHighlightSignature } from '@/features/span-highlighting';
 import type {
   PromptStateContextValue,
   PromptStateProviderProps,
   HighlightSnapshot,
   Mode,
-  PromptHistoryEntry,
   StateSnapshot,
 } from './types';
 import type { SuggestionsData } from '../PromptCanvas/types';
+import { usePromptHistoryActions } from './usePromptHistoryActions';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
 
@@ -119,101 +118,25 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCanRedo(false);
   }, []);
 
-  const setDisplayedPromptSilently = useCallback((text: string): void => {
-    isApplyingHistoryRef.current = true;
-    promptOptimizer.setDisplayedPrompt(text);
-    setTimeout(() => {
-      isApplyingHistoryRef.current = false;
-    }, 0);
-  }, [promptOptimizer]);
-
-  // Create new prompt
-  const handleCreateNew = useCallback((): void => {
-    debug.logAction('createNew');
-    skipLoadFromUrlRef.current = true;
-    promptOptimizer.resetPrompt();
-    setShowResults(false);
-    setSuggestionsData(null);
-    setConceptElements(null);
-    setPromptContext(null);
-    setGenerationParams({});
-    setCurrentPromptUuid(null);
-    setCurrentPromptDocId(null);
-    applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
-    persistedSignatureRef.current = null;
-    resetEditStacks();
-    navigate('/', { replace: true });
-    debug.logAction('createNewComplete');
-  }, [promptOptimizer, navigate, applyInitialHighlightSnapshot, resetEditStacks]);
-
-  // Load from history
-  const loadFromHistory = useCallback((entry: PromptHistoryEntry): void => {
-    debug.logAction('loadFromHistory', { 
-      uuid: entry.uuid, 
-      mode: entry.mode,
-      hasContext: !!entry.brainstormContext,
-      hasHighlightCache: !!entry.highlightCache
-    });
-    debug.startTimer('loadFromHistory');
-
-    skipLoadFromUrlRef.current = true;
-    setCurrentPromptUuid(entry.uuid || null);
-    setCurrentPromptDocId(entry.id || null);
-
-    promptOptimizer.setInputPrompt(entry.input);
-    promptOptimizer.setOptimizedPrompt(entry.output);
-    setDisplayedPromptSilently(entry.output);
-    if (promptOptimizer.setPreviewPrompt) {
-      promptOptimizer.setPreviewPrompt(null);
-    }
-    if (promptOptimizer.setPreviewAspectRatio) {
-      promptOptimizer.setPreviewAspectRatio(null);
-    }
-    setSelectedMode('video');
-    setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
-    setGenerationParams({});
-    setShowResults(true);
-
-    const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
-      ? {
-          ...(entry.highlightCache as Record<string, unknown>),
-          signature: (entry.highlightCache as { signature?: string })?.signature ?? createHighlightSignature(entry.output ?? ''),
-        } as HighlightSnapshot
-      : null;
-
-    applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
-    resetEditStacks();
-
-    if (entry.brainstormContext) {
-      try {
-        const contextData =
-          typeof entry.brainstormContext === 'string'
-            ? JSON.parse(entry.brainstormContext)
-            : entry.brainstormContext;
-        const restoredContext = PromptContext.fromJSON(contextData);
-        setPromptContext(restoredContext);
-        debug.logAction('contextRestored');
-      } catch (contextError) {
-        debug.logError('Failed to restore prompt context from history entry', contextError as Error);
-        setPromptContext(null);
-      }
-    } else {
-      setPromptContext(null);
-    }
-
-    if (entry.uuid) {
-      navigate(`/prompt/${entry.uuid}`, { replace: true });
-    } else {
-      navigate('/', { replace: true });
-    }
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        skipLoadFromUrlRef.current = false;
-        debug.endTimer('loadFromHistory', 'History entry loaded');
-      });
-    });
-  }, [promptOptimizer, setDisplayedPromptSilently, applyInitialHighlightSnapshot, resetEditStacks, navigate, setSelectedModel]);
+  const { setDisplayedPromptSilently, handleCreateNew, loadFromHistory } = usePromptHistoryActions({
+    debug,
+    navigate,
+    promptOptimizer,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    setSuggestionsData,
+    setConceptElements,
+    setPromptContext,
+    setGenerationParams,
+    setSelectedMode,
+    setSelectedModel,
+    setShowResults,
+    setCurrentPromptUuid,
+    setCurrentPromptDocId,
+    persistedSignatureRef,
+    isApplyingHistoryRef,
+    skipLoadFromUrlRef,
+  });
 
   // Context value
   const value: PromptStateContextValue = {

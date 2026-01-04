@@ -1,16 +1,9 @@
+import type { EnhancementSuggestionsRequest } from '@/api/enhancementSuggestionsApi';
 import type { Highlight, PromptDebuggerState } from './types';
 
-export interface HighlightSuggestionPayload {
-  highlightedText: string;
-  contextBefore: string;
-  contextAfter: string;
-  fullPrompt: string;
+export type HighlightSuggestionPayload = EnhancementSuggestionsRequest & {
   originalUserPrompt: string;
-  brainstormContext?: unknown | null;
-  highlightedCategory?: string | null;
-  highlightedCategoryConfidence?: number | null;
-  highlightedPhrase?: string | null;
-}
+};
 
 export function buildHighlightSuggestionPayload(
   state: PromptDebuggerState,
@@ -30,10 +23,12 @@ export function buildHighlightSuggestionPayload(
     )
     .trim();
 
-  const brainstormContext =
+  const resolvedBrainstormContext =
     state.promptContext && typeof state.promptContext === 'object' && 'toJSON' in state.promptContext
       ? (state.promptContext.toJSON as () => unknown)()
       : state.promptContext;
+  const brainstormContext =
+    resolvedBrainstormContext === undefined ? null : resolvedBrainstormContext;
 
   return {
     highlightedText: highlight.text,
@@ -42,8 +37,8 @@ export function buildHighlightSuggestionPayload(
     fullPrompt,
     originalUserPrompt: state.inputPrompt,
     brainstormContext,
-    highlightedCategory: highlight.category,
-    highlightedCategoryConfidence: highlight.confidence,
+    highlightedCategory: highlight.category ?? null,
+    highlightedCategoryConfidence: highlight.confidence ?? null,
     highlightedPhrase: highlight.text,
   };
 }

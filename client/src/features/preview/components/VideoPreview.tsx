@@ -8,6 +8,7 @@
 import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useVideoPreview } from '../hooks/useVideoPreview';
+import { useRemoteDownload } from '../hooks/useRemoteDownload';
 
 const VIDEO_PREVIEW_MODEL_IDS = ['PRO', 'SORA_2', 'LUMA_RAY3', 'KLING_V2_1', 'VEO_3'] as const;
 
@@ -113,7 +114,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
-  const [isDownloading, setIsDownloading] = React.useState(false);
+  const { isDownloading, download } = useRemoteDownload();
 
   React.useEffect(() => {
     if (!videoUrl) return;
@@ -143,28 +144,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   }, [generateRequestId, handleGenerate, isVisible]);
 
   const handleDownload = React.useCallback(async () => {
-    if (!videoUrl || isDownloading) return;
-    setIsDownloading(true);
-    try {
-      const response = await fetch(videoUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch video: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `motion-preview-${Date.now()}.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (err) {
-      window.open(videoUrl, '_blank', 'noopener,noreferrer');
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [videoUrl, isDownloading]);
+    await download({
+      url: videoUrl,
+      fileName: `motion-preview-${Date.now()}.mp4`,
+    });
+  }, [download, videoUrl]);
 
   if (!isVisible) return null;
 

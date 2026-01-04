@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { ChevronDown, Check, Video } from 'lucide-react';
-import { capabilitiesApi } from '@/services';
 import { AI_MODEL_LABELS } from './constants';
-
-interface ModelOption {
-  id: string;
-  label: string;
-  provider: string;
-}
+import { useModelRegistry } from '../hooks/useModelRegistry';
 
 /**
  * Model selector dropdown for selecting specific video models
@@ -18,50 +12,8 @@ export const ModelSelectorDropdown = memo<{
   disabled?: boolean;
 }>(({ selectedModel, onModelChange, disabled = false }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
-  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Fetch available models on mount
-  useEffect(() => {
-    let active = true;
-    const fetchModels = async () => {
-      setIsLoading(true);
-      try {
-        const registry = await capabilitiesApi.getRegistry();
-        
-        if (!active) return;
-
-        const flatList: ModelOption[] = [];
-        
-        for (const [provider, models] of Object.entries(registry)) {
-          if (provider === 'generic') continue;
-          
-          for (const [modelId, schema] of Object.entries(models)) {
-            // Use curated label if available, otherwise format provider/model
-            const legacyLabel = AI_MODEL_LABELS[modelId as keyof typeof AI_MODEL_LABELS];
-            const formatName = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-            const dynamicLabel = legacyLabel || `${formatName(provider)} ${modelId}`;
-            
-            flatList.push({
-              id: modelId,
-              label: dynamicLabel,
-              provider,
-            });
-          }
-        }
-
-        setAvailableModels(flatList.sort((a, b) => a.label.localeCompare(b.label)));
-      } catch (error) {
-        console.error('Failed to load models:', error);
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    };
-
-    fetchModels();
-    return () => { active = false; };
-  }, []);
   
   // Find label for current selection
   const selectedOption = availableModels.find(m => m.id === selectedModel);

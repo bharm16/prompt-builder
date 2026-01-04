@@ -14,6 +14,10 @@ export interface UseCapabilitiesResult {
   };
 }
 
+interface UseCapabilitiesOptions {
+  enabled?: boolean;
+}
+
 const resolveLabel = (selectedModel?: string, resolvedModel?: string): string => {
   if (!selectedModel) {
     return 'Auto-detect';
@@ -36,7 +40,11 @@ const resolveTarget = (selectedModel?: string): { provider: string; model: strin
   return { provider, model: selectedModel, label };
 };
 
-export const useCapabilities = (selectedModel?: string): UseCapabilitiesResult => {
+export const useCapabilities = (
+  selectedModel?: string,
+  options: UseCapabilitiesOptions = {}
+): UseCapabilitiesResult => {
+  const { enabled = true } = options;
   const [target, setTarget] = useState(() => resolveTarget(selectedModel));
   const [schema, setSchema] = useState<CapabilitiesSchema | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +53,9 @@ export const useCapabilities = (selectedModel?: string): UseCapabilitiesResult =
   useEffect(() => {
     const newTarget = resolveTarget(selectedModel);
     setTarget(newTarget);
+    if (!enabled) {
+      return;
+    }
     let active = true;
     setIsLoading(true);
     setError(null);
@@ -73,8 +84,7 @@ export const useCapabilities = (selectedModel?: string): UseCapabilitiesResult =
     return () => {
       active = false;
     };
-  }, [selectedModel]);
+  }, [selectedModel, enabled]);
 
   return { schema, isLoading, error, target };
 };
-

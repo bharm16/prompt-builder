@@ -10,7 +10,10 @@
  * - Distinguishes timeout vs user cancellation in error handling
  */
 
-import { API_CONFIG } from '@config/api.config';
+import {
+  postEnhancementSuggestions,
+  type EnhancementSuggestionsResponse,
+} from '@/api/enhancementSuggestionsApi';
 import { CancellationError, combineSignals } from '../utils/signalUtils';
 
 /** Timeout for suggestion requests in milliseconds */
@@ -34,11 +37,6 @@ interface FetchEnhancementSuggestionsParams {
   editHistory?: unknown[];
   /** Optional AbortSignal for external cancellation (e.g., user selects new text) */
   signal?: AbortSignal;
-}
-
-interface EnhancementSuggestionsResponse {
-  suggestions: string[];
-  isPlaceholder: boolean;
 }
 
 /**
@@ -75,13 +73,8 @@ export async function fetchEnhancementSuggestions({
 
   try {
     // MAKE API CALL with cancellation support
-    const response = await fetch('/api/get-enhancement-suggestions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_CONFIG.apiKey,
-      },
-      body: JSON.stringify({
+    const data = await postEnhancementSuggestions(
+      {
         highlightedText, // The text we want to change
         contextBefore, // The text leading up to it (CRITICAL for LLM)
         contextAfter, // The text following it
@@ -101,17 +94,11 @@ export async function fetchEnhancementSuggestions({
         allLabeledSpans,
         nearbySpans,
         editHistory,
-      }),
-      signal,
-    });
+      },
+      { signal }
+    );
 
     clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch suggestions: ${response.status}`);
-    }
-
-    const data = (await response.json()) as EnhancementSuggestionsResponse;
 
     return {
       suggestions: data.suggestions || [],

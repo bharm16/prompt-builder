@@ -1,15 +1,7 @@
+import type { EnhancementSuggestionsRequest } from '@/api/enhancementSuggestionsApi';
 import type { HighlightMetadata } from '../types';
 
-export interface EnhancementSuggestionPayload {
-  highlightedText: string;
-  contextBefore: string;
-  contextAfter: string;
-  fullPrompt: string;
-  originalUserPrompt?: string | undefined;
-  highlightedCategory?: string | null;
-  highlightedCategoryConfidence?: number | null;
-  highlightedPhrase?: string | null;
-}
+export type EnhancementSuggestionPayload = EnhancementSuggestionsRequest;
 
 function extractContext(
   fullText: string,
@@ -55,9 +47,9 @@ export function buildEnhancementSuggestionPayload(
     contextBefore,
     contextAfter,
     fullPrompt,
-    originalUserPrompt,
     highlightedCategory: highlightCategory,
     highlightedCategoryConfidence: highlightCategoryConfidence,
     highlightedPhrase: metadata?.phrase || null,
+    ...(originalUserPrompt !== undefined ? { originalUserPrompt } : {}),
   };
 }
