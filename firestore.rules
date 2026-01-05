@@ -14,5 +14,14 @@ service cloud.firestore {
       // Allow users to update/delete their own prompts
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
+
+    // User accounts and credit balances
+    match /users/{userId} {
+      // Users can read their own profile and credit balance
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Prevent client-side writes to credit balance; only backend via Admin SDK should update
+      allow write: if false;
+    }
   }
 }

@@ -26,6 +26,7 @@ import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes } from '@routes/preview.routes';
+import { userCreditService } from '@services/credits/UserCreditService';
 
 /**
  * Register all application routes
@@ -93,6 +94,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   const previewRoutes = createPreviewRoutes({
     imageGenerationService: container.resolve('imageGenerationService'),
     videoGenerationService: container.resolve('videoGenerationService'),
+    userCreditService,
   });
   app.use('/api/preview', apiAuthMiddleware, previewRoutes);
 
@@ -142,4 +144,3 @@ export function configureRoutes(app: Application, container: DIContainer): void 
   registerRoutes(app, container);
   registerErrorHandlers(app);
 }
-
