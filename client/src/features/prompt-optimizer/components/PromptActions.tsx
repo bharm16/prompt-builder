@@ -72,7 +72,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
     : 'Select a model to generate';
 
   return (
-    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-2 mt-8">
+    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-2">
       {/* Primary action(s) - only when hovering editor or when there is an active selection */}
       {primaryVisible && (
         <>

@@ -51,16 +51,10 @@ export const PromptInputLayout = ({
             Privacy Policy
           </a>
         </footer>
-
-        {/* Bottom-of-viewport continuation cue (not a step indicator) */}
-        <div className="prompt-input-layout__continuation" aria-hidden="true">
-          ↓ Structure → Refine → Generate
-        </div>
       </main>
     </div>
   );
 };
-
 
 
 

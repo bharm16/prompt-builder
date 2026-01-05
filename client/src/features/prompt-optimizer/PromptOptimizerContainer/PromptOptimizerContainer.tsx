@@ -31,6 +31,7 @@ import {
   useEnhancementSuggestions,
 } from './hooks';
 import type { User } from '../context/types';
+import './PromptOptimizerContainer.css';
 
 /**
  * Inner component with access to PromptStateContext
@@ -295,7 +296,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
   return (
     <div
-      className="h-screen overflow-hidden gradient-neutral transition-colors duration-300"
+      className="prompt-optimizer-shell relative h-full min-h-0 overflow-hidden gradient-neutral transition-colors duration-300"
       style={{
         '--sidebar-width': showHistory 
           ? 'var(--layout-sidebar-width-expanded)' 
@@ -304,13 +305,13 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         gridTemplateColumns: `
           var(--sidebar-width) 
           minmax(0, 1fr)
-          var(--layout-suggestions-panel-width)
+          var(--po-suggestions-width)
         `,
         transition: 'grid-template-columns 120ms cubic-bezier(0.2, 0, 0, 1)',
       } as React.CSSProperties}
     >
-      {/* Skip to main content */}
-      <a href="#main-content" className="sr-only-focusable top-4 left-4">
+      {/* Skip to main content - positioned absolute so it doesn't affect grid layout */}
+      <a href="#main-content" className="sr-only-focusable absolute top-4 left-4 z-50">
         Skip to main content
       </a>
 
@@ -330,7 +331,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       {/* Main Content */}
       <main
         id="main-content"
-        className="relative flex flex-col overflow-y-auto transition-all duration-300"
+        className="relative flex min-h-0 flex-col overflow-y-auto transition-all duration-300"
         style={{
           minWidth: 0, // Allows flex shrinking
         }}
@@ -373,9 +374,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
       {/* Suggestions Panel - Right Column */}
       <aside 
-        className="overflow-y-auto border-l border-geist-accents-2 bg-geist-background"
+        className="prompt-optimizer-shell__suggestions overflow-y-auto border-l border-geist-accents-2 bg-geist-background"
         style={{
-          width: 'var(--layout-suggestions-panel-width)',
+          width: 'var(--po-suggestions-width)',
         }}
       >
         <SuggestionsPanel 

@@ -46,7 +46,7 @@ export const PromptInputSection = ({ aiNames, onOptimize, onShowBrainstorm }: Pr
  */
 const LoadingSkeleton = (): React.ReactElement => {
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-[980px]">
       <div
         className="relative overflow-hidden p-8 rounded-xl animate-pulse"
         style={{

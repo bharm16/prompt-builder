@@ -303,19 +303,63 @@
 }
 
 /* Grid layout for outline rail, editor column, and right rail */
+.prompt-canvas-root {
+  /* PromptCanvas-scoped layout vars (avoid global vw-based tokens) */
+  --pc-gap: 16px;
+  --pc-sidebar-collapsed: 56px;
+  --pc-sidebar-expanded: 240px;
+  /* Overlay drawer: hidden by default so the rail doesn't waste a whole column */
+  --pc-outline-collapsed: 0px;
+  --pc-outline-expanded: 280px;
+  --pc-right-rail: 400px;
+  --pc-editor-min: 640px;
+  --pc-editor-max: 1000px;
+  --pc-legend-width: 320px;
+  --pc-frame-pad-block-start: 24px;
+  --pc-frame-pad-inline: 28px;
+  --pc-frame-pad-block-end: 32px;
+  --pc-outline-top: calc(var(--pc-gap) + var(--pc-frame-pad-block-start));
+
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .prompt-canvas-grid {
   display: grid !important;
   grid-template-columns:
-    var(--prompt-outline-width, var(--layout-bento-rail-width))
-    minmax(0, 8fr)
-    minmax(0, 4fr);
-  gap: 16px;
-  /* Keep overall breathing room, but anchor the right rail flush to the page edge */
-  padding: 16px 0 16px 16px;
+    var(--sidebar-width)
+    minmax(var(--pc-editor-min), 1fr)
+    var(--pc-right-rail);
+  gap: var(--pc-gap);
+  padding: var(--pc-gap);
   height: 100%;
   width: 100%;
   align-items: start;
   box-sizing: border-box;
+  position: relative;
+}
+
+.prompt-canvas-history {
+  grid-column: 1;
+}
+
+.prompt-canvas-outline {
+  grid-column: 2;
+}
+
+.prompt-canvas-editor {
+  grid-column: 2;
+}
+
+.prompt-canvas-right-rail {
+  grid-column: 3;
+}
+
+.prompt-canvas-history {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ============================================
@@ -358,6 +402,37 @@
   transform: translateY(0px);
 }
 
+.prompt-outline-open-fab {
+  position: absolute;
+  left: calc(var(--pc-gap) + var(--sidebar-width) + var(--pc-gap));
+  top: var(--pc-outline-top);
+  z-index: 31;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--geist-accents-2);
+  background: var(--geist-background);
+  color: var(--geist-accents-6);
+  box-shadow: var(--shadow-small);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.prompt-outline-open-fab:hover {
+  background: var(--geist-accents-1);
+  color: var(--geist-foreground);
+  border-color: var(--geist-accents-3);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1023px) {
+  .prompt-outline-open-fab {
+    display: none;
+  }
+}
+
 .prompt-outline-rail__label {
   font-family: var(--font-geist-sans);
   font-size: 0.6875rem; /* ~11px */
@@ -374,38 +449,79 @@
 .prompt-canvas-editor {
   height: 100%;
   overflow-y: auto;
-  /* Option A: distinct surface + explicit spacing so Input/Output don't blend together */
-  gap: 18px;
-  padding: 16px 16px 24px;
+  gap: 0;
+  padding: 0;
   background: var(--geist-accents-1);
   border-radius: 14px;
-  /*
-   * The global `--layout-content-max-width` is `50vw`, which leaves a huge dead zone
-   * between the content and the right rail on wide screens.
-   * Override it locally so cards can use the column width.
-   */
-  --layout-content-max-width: clamp(720px, 70vw, 1100px);
+  border: 1px solid var(--geist-accents-2);
+}
+
+.prompt-canvas-editor-frame {
+  max-width: var(--pc-editor-max);
+  margin: 0 auto;
+  padding: var(--pc-frame-pad-block-start) var(--pc-frame-pad-inline) var(--pc-frame-pad-block-end);
+  width: 100%;
+  min-height: 0;
+}
+
+.prompt-canvas-editor-frame .prompt-canvas-content-wrapper {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Right rail: sticky + height-bounded */
 .prompt-canvas-right-rail {
-  position: sticky;
-  top: 16px;
-  height: calc(100% - 32px);
-  max-height: calc(100% - 32px);
+  display: grid !important;
+  grid-template-rows: 44px minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  position: static;
+  height: 100%;
+  max-height: none;
   align-self: start;
-  justify-self: end;
-  border-radius: 0;
-  background: transparent;
+  justify-self: stretch;
+  border-radius: 14px;
   box-shadow: none;
+  /* Align modules to the editor frame's top rhythm */
+  padding: var(--pc-frame-pad-block-start) var(--pc-gap) var(--pc-gap);
 }
 
-@media (max-width: 1024px) {
+.prompt-right-rail__header {
+  height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.prompt-right-rail__preview {
+  min-height: 240px;
+  max-height: 320px;
+  overflow: hidden;
+}
+
+.prompt-right-rail__suggestions {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 16px;
+}
+
+.prompt-right-rail__suggestions-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.prompt-right-rail__suggestions-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 1023px) {
   .prompt-canvas-grid {
-    grid-template-columns:
-      var(--prompt-outline-width, var(--layout-bento-rail-width))
-      minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
   }
 
   .prompt-canvas-right-rail {
@@ -414,12 +530,40 @@
     max-height: none;
     grid-column: 1 / -1;
   }
+
+  .prompt-canvas-history {
+    grid-column: 1 / -1;
+  }
+
+  .prompt-canvas-outline {
+    grid-column: 1 / -1;
+  }
+
+  .prompt-canvas-editor {
+    grid-column: 1 / -1;
+  }
 }
 
-/* Responsive content padding - 0.75vw on both sides */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .prompt-canvas-root {
+    --pc-right-rail: 380px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .prompt-canvas-root {
+    --pc-right-rail: 0px;
+    --pc-frame-pad-inline: 16px;
+    --pc-frame-pad-block-start: 20px;
+    --pc-frame-pad-block-end: 28px;
+  }
+}
+
+/* Ensure band content follows the editor frame rhythm (no vw-based gutters). */
 .prompt-canvas-content-wrapper {
-  padding-left: 0.75vw !important;
-  padding-right: 0.75vw !important;
+  width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* ============================================
@@ -443,11 +587,13 @@
      but keep it just in case of non-flex contexts or specific overrides */
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
 }
 
 /* Original prompt band - subtle gray */
 .prompt-band--original {
   background-color: transparent;
+  margin-bottom: 14px;
 }
 
 .prompt-band--original[data-optimizing="true"] {
@@ -457,6 +603,13 @@
 /* Optimized prompt band - white/tinted */
 .prompt-band--optimized {
   background-color: transparent;
+  margin-bottom: 16px;
+}
+
+.prompt-band--optimized .prompt-band__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .prompt-band--optimized[data-loading="true"] {
@@ -699,14 +852,17 @@
 
 .prompt-card--original .prompt-card__body {
   background-color: var(--geist-accents-1);
+  padding: 16px 24px;
 }
 
 /* Optimized card styling - active, high contrast */
 .prompt-card--optimized {
   position: relative;
-  max-width: 880px;
-  margin-top: 64px;
-  padding: 40px 48px;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0;
+  min-height: 260px;
+  padding: 32px 36px;
   border-radius: 16px;
   background: #fbfbfc;
   border: none;
@@ -714,6 +870,18 @@
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 12px 32px rgba(0, 0, 0, 0.06);
   transition: background-color 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+}
+
+/* Desktop: outline behaves as an overlay drawer (no permanent dead column). */
+@media (min-width: 1024px) {
+  .prompt-canvas-outline {
+    position: absolute;
+    left: calc(var(--pc-gap) + var(--sidebar-width) + var(--pc-gap));
+    top: var(--pc-outline-top);
+    bottom: var(--pc-gap);
+    width: var(--prompt-outline-width, var(--pc-outline-collapsed));
+    z-index: 30;
+  }
 }
 
 .prompt-card--optimized:focus-within {
@@ -756,6 +924,8 @@
   font-family: var(--font-geist-sans);
   color: var(--geist-accents-6);
   background-color: transparent;
+  min-height: 96px;
+  max-height: 200px;
 }
 
 .prompt-input--original::placeholder {
@@ -847,9 +1017,7 @@
 
 /* Keep input readable too (same card type, centered column) */
 .prompt-card--original .prompt-input {
-  max-width: 72ch;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 100%;
 }
 
 .prompt-editor-loading {

@@ -59,7 +59,13 @@ export const ModelSelectorDropdown = memo<{
         disabled={disabled || isLoading}
         className={
           variant === 'pillDark'
-            ? 'inline-flex items-center gap-2 h-8 px-3 text-[13px] font-medium rounded-[8px] bg-white/10 text-white hover:bg-white/14 border border-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--po-primary-rgb)/0.35)]'
+            ? [
+                'inline-flex items-center gap-2 h-8 px-[10px] text-[13px] font-medium rounded-[10px] transition-colors',
+                'disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none',
+                isOpen
+                  ? 'bg-[rgba(139,92,246,0.22)] border border-[rgba(139,92,246,0.28)] shadow-[0_0_0_3px_rgba(139,92,246,0.16)]'
+                  : 'bg-[rgba(255,255,255,0.06)] text-white/90 hover:bg-[rgba(255,255,255,0.10)] border border-[rgba(255,255,255,0.08)]',
+              ].join(' ')
             : variant === 'pill'
               ? 'inline-flex items-center gap-2 h-8 px-3 text-[13px] font-medium rounded-[8px] bg-[#F4F5F7] text-[#222] hover:bg-[#E8EAED] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10'
               : 'inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background'

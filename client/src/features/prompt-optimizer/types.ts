@@ -128,6 +128,7 @@ export interface PromptModalsProps {
  * Props for PromptResultsSection component
  */
 export interface PromptResultsSectionProps {
+  user: User | null;
   onDisplayedPromptChange: (text: string) => void;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;

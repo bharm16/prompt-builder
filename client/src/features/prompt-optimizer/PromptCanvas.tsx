@@ -40,6 +40,7 @@ import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 import { CategoryLegend } from './components/CategoryLegend';
 import { PromptActions } from './components/PromptActions';
 import { PromptEditor } from './components/PromptEditor';
+import { PromptSidebar } from './components/PromptSidebar';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import SuggestionsPanel from '@components/SuggestionsPanel';
@@ -54,6 +55,7 @@ import './PromptCanvas.css';
 
 // Main PromptCanvas Component
 export function PromptCanvas({
+  user = null,
   inputPrompt,
   onInputPromptChange,
   onReoptimize,
@@ -107,8 +109,8 @@ export function PromptCanvas({
   const [tokenPopover, setTokenPopover] = useState<{ left: number; top: number } | null>(null);
   const [isVideoTransitionActive, setIsVideoTransitionActive] = useState(false);
 
-  // Get model state from context
-  const { selectedModel, setSelectedModel, generationParams, setGenerationParams, promptOptimizer } =
+  // Get model + layout state from context
+  const { selectedModel, setSelectedModel, generationParams, setGenerationParams, promptOptimizer, showHistory } =
     usePromptState();
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
 
@@ -1069,7 +1071,15 @@ export function PromptCanvas({
 
   // Render the component
   return (
-    <div className="relative flex flex-col bg-geist-accents-1 min-h-full flex-1">
+    <div
+      className="prompt-canvas-root relative flex flex-col bg-geist-accents-1 min-h-0 flex-1"
+      style={
+        {
+          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
+          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
+        } as React.CSSProperties
+      }
+    >
       {/* Category Legend */}
       <CategoryLegend
         show={showLegend}
@@ -1085,11 +1095,16 @@ export function PromptCanvas({
           {
             // Controls the outline rail width without fighting the grid layout.
             '--prompt-outline-width': isOutlineOpen
-              ? 'var(--layout-bento-grid-width)'
-              : 'var(--layout-bento-rail-width)',
+              ? 'var(--pc-outline-expanded)'
+              : 'var(--pc-outline-collapsed)',
           } as React.CSSProperties
         }
       >
+        {/* History Sidebar */}
+        <div className="prompt-canvas-history">
+          <PromptSidebar user={user} />
+        </div>
+
         {/* Left Sidebar - Outline Rail / Span Bento Grid */}
         <div
           className={`prompt-canvas-outline flex flex-col h-full overflow-hidden bg-geist-accents-1 border-r border-geist-accents-2 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
@@ -1152,21 +1167,30 @@ export function PromptCanvas({
           )}
         </div>
 
+        {/* Outline toggle when collapsed (overlay drawer default) */}
+        {!isOutlineOpen && (
+          <button
+            type="button"
+            onClick={() => setIsOutlineOpen(true)}
+            className="prompt-outline-open-fab"
+            aria-label="Open outline"
+            title="Open outline"
+          >
+            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+
         {/* Main Editor Area - Optimized Prompt */}
         <div
           ref={editorColumnRef}
+          id="main-content"
           onScroll={handleEditorScroll}
           className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0"
         >
-          {/* Original Prompt Band */}
-          <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
-            <div
-              className="prompt-band__content prompt-canvas-content-wrapper"
-              style={{
-                maxWidth: 'var(--layout-content-max-width)',
-                width: '100%',
-              }}
-            >
+          <div className="prompt-canvas-editor-frame">
+            {/* Original Prompt Band */}
+            <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
+              <div className="prompt-band__content prompt-canvas-content-wrapper">
               <div className="prompt-card prompt-card--original">
                 <div className="prompt-card__header">
                   <span className="prompt-card__label">
@@ -1235,8 +1259,8 @@ export function PromptCanvas({
                   />
                 </div>
               </div>
+              </div>
             </div>
-          </div>
 
           {/* Optimized Prompt Band */}
           <div 
@@ -1244,13 +1268,7 @@ export function PromptCanvas({
             data-loading={isOutputLoading}
             data-has-content={!!normalizedDisplayedPrompt}
           >
-            <div
-              className="prompt-band__content prompt-canvas-content-wrapper"
-              style={{
-                maxWidth: '880px',
-                width: '100%',
-              }}
-            >
+            <div className="prompt-band__content prompt-canvas-content-wrapper">
               <div
                 className="prompt-card prompt-card--optimized"
                 data-settled={isVideoTransitionActive ? 'true' : 'false'}
@@ -1380,14 +1398,8 @@ export function PromptCanvas({
           </div>
 
           {showVideoPanel && (
-            <div className="prompt-band prompt-band--video mt-4">
-              <div
-                className="prompt-band__content prompt-canvas-content-wrapper"
-                style={{
-                  maxWidth: '880px',
-                  width: '100%',
-                }}
-              >
+            <div className="prompt-band prompt-band--video">
+              <div className="prompt-band__content prompt-canvas-content-wrapper">
                 <div
                   ref={videoPanelRef}
                   className="prompt-card prompt-card--video video-generation-panel"
@@ -1442,6 +1454,7 @@ export function PromptCanvas({
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Right Rail - Drafting & Refinement */}
@@ -1451,7 +1464,6 @@ export function PromptCanvas({
             {
               background: '#0E0F11',
               borderLeftColor: '#1C1F24',
-              padding: 24,
               // Local Geist token overrides so existing components render correctly in this dark panel.
               '--geist-background': '#0E0F11',
               '--geist-foreground': '#F5F6F7',
@@ -1466,13 +1478,13 @@ export function PromptCanvas({
             } as React.CSSProperties
           }
         >
-          {/* Panel Title */}
-          <div className="text-[12px] tracking-[0.08em] uppercase text-[#8B9098] mb-4">
+          {/* Header */}
+          <div className="prompt-right-rail__header text-[12px] tracking-[0.08em] uppercase text-[#8B9098]">
             Preview &amp; Refine
           </div>
 
           {/* Preview Frame */}
-          <div>
+          <div className="prompt-right-rail__preview">
             <VisualPreview
               prompt={previewSource}
               aspectRatio={effectiveAspectRatio}
@@ -1486,8 +1498,10 @@ export function PromptCanvas({
           </div>
 
           {/* Suggestions */}
-          <div className="mt-6 pt-4 border-t flex-1 min-h-0 flex flex-col" style={{ borderTopColor: '#1C1F24' }}>
-            <div className="text-[12px] text-[#7C818A] mb-2">Suggestions</div>
+          <div className="prompt-right-rail__suggestions border-t" style={{ borderTopColor: '#1C1F24' }}>
+            <div className="prompt-right-rail__suggestions-header text-[12px] text-[#7C818A]">
+              Suggestions
+            </div>
 
             {/* Inline replacement feedback */}
             {justReplaced && (
@@ -1513,7 +1527,7 @@ export function PromptCanvas({
               </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="prompt-right-rail__suggestions-list">
               <SuggestionsPanel suggestionsData={suggestionsPanelData} />
             </div>
           </div>

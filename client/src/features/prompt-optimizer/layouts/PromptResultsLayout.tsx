@@ -1,7 +1,5 @@
 import React from 'react';
-import { PromptSidebar } from '../components/PromptSidebar';
 import { PromptResultsSection } from '../components/PromptResultsSection';
-import SuggestionsPanel from '@components/SuggestionsPanel';
 import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
@@ -49,32 +47,20 @@ export const PromptResultsLayout = ({
   onUndo,
   onRedo,
   stablePromptContext,
-  suggestionsData,
-  displayedPrompt,
 }: PromptResultsLayoutProps): React.ReactElement => {
-  // Check if suggestions should be visible based on data presence
-  const isSuggestionsOpen = suggestionsData ? suggestionsData.show !== false : false;
-
   return (
     <div className="prompt-results-layout">
-      {/* History Sidebar */}
-      <PromptSidebar user={user} />
-
-      {/* Main Content - Canvas */}
-      <main className="prompt-results-layout__main" id="main-content">
-        <PromptResultsSection
-          onDisplayedPromptChange={onDisplayedPromptChange}
-          onReoptimize={onReoptimize}
-          onFetchSuggestions={onFetchSuggestions}
-          onSuggestionClick={onSuggestionClick}
-          onHighlightsPersist={onHighlightsPersist}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          stablePromptContext={stablePromptContext}
-        />
-      </main>
-
-      {/* Floating suggestions panel - Hidden, moved to Image Gen column */}
+      <PromptResultsSection
+        user={user}
+        onDisplayedPromptChange={onDisplayedPromptChange}
+        onReoptimize={onReoptimize}
+        onFetchSuggestions={onFetchSuggestions}
+        onSuggestionClick={onSuggestionClick}
+        onHighlightsPersist={onHighlightsPersist}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        stablePromptContext={stablePromptContext}
+      />
     </div>
   );
 };

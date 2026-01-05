@@ -9,21 +9,7 @@
   overflow: hidden;
   background: var(--geist-background);
   transition: background-color 0.3s ease;
-  display: grid;
-  /* CHANGE: Only 2 columns now. Sidebar | Main Content */
-  /* The Suggestions Panel no longer consumes grid space */
-  grid-template-columns:
-    var(--sidebar-width)
-    minmax(0, 1fr);
-  gap: 0;
-}
-
-.prompt-results-layout__main {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  overflow-y: hidden; /* Changed from auto to let inner components scroll */
-  min-width: 0;
+  display: block;
 }
 
 /* CHANGE: Convert to Absolute Overlay */
@@ -32,7 +18,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: var(--layout-suggestions-panel-width);
+  width: var(--pc-right-rail, var(--po-suggestions-width, 420px));
   background: var(--geist-background);
   border-left: 1px solid var(--geist-accents-2);
   z-index: 50; /* Ensure it floats above the editor */

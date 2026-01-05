@@ -42,17 +42,17 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
     };
   });
 
-  // Dynamic positioning based on suggestions panel visibility
-  const rightOffset = isSuggestionsOpen
-    ? 'calc(var(--layout-suggestions-panel-width) + var(--layout-gap-md) + var(--layout-gap-md))'
-    : 'var(--layout-gap-md)';
+  // Dynamic positioning based on right-rail visibility (PromptCanvas-scoped vars).
+  const gapVar = 'var(--pc-gap, 16px)';
+  const railVar = 'var(--pc-right-rail, 420px)';
+  const rightOffset = isSuggestionsOpen ? `calc(${gapVar} + ${railVar} + ${gapVar})` : gapVar;
 
   return (
     <div 
       className="absolute top-12 z-30 glass-card rounded-geist-lg"
       style={{
         right: rightOffset,
-        width: 'var(--layout-legend-width, clamp(16rem, 20vw, 20rem))',
+        width: 'var(--pc-legend-width, 320px)',
       }}
     >
       <div className="flex flex-col gap-geist-2 px-geist-3 py-geist-2 border-b border-white/20">

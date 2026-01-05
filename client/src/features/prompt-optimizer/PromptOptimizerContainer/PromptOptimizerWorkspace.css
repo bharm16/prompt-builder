@@ -12,7 +12,10 @@
   --po-ink: #0B0B0C;
   --po-base: #FAFAFA;
 
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0; /* Critical for nested flex layouts */
   overflow: hidden;
   background:
     radial-gradient(900px circle at 20% -10%, rgb(var(--po-primary-rgb) / 0.10), transparent 60%),
@@ -21,11 +24,17 @@
   transition: background-color 0.3s;
 }
 
+/* Ensure child layout fills the workspace */
+.prompt-optimizer-workspace > .prompt-input-layout,
+.prompt-optimizer-workspace > .prompt-results-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .prompt-optimizer-workspace ::selection {
   background: rgb(var(--po-primary-rgb) / 0.22);
   color: var(--po-ink);
 }
-
 
 
 

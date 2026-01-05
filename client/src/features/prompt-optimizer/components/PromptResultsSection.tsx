@@ -10,6 +10,7 @@ import type { PromptResultsSectionProps } from '../types';
  * Extracted from PromptOptimizerContainer for better separation of concerns
  */
 export const PromptResultsSection = ({
+  user,
   onDisplayedPromptChange,
   onReoptimize,
   onFetchSuggestions,
@@ -63,6 +64,7 @@ export const PromptResultsSection = ({
       )}
 
       <PromptCanvas
+        user={user}
         inputPrompt={promptOptimizer.inputPrompt}
         onInputPromptChange={promptOptimizer.setInputPrompt}
         onReoptimize={onReoptimize}

@@ -3,6 +3,7 @@
  */
 
 import type { Mode } from '../context/types';
+import type { User } from '../context/types';
 import type { OptimizationOptions } from '../types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CanonicalText } from '@utils/canonicalText';
@@ -163,6 +164,7 @@ export interface ValidSpan {
 }
 
 export interface PromptCanvasProps {
+  user?: User | null;
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
   onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;

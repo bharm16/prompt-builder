@@ -171,3 +171,4 @@ console.log(result.requestId);
 - [JavaScript Client](https://docs.fal.ai/clients/javascript)
 
 
+
