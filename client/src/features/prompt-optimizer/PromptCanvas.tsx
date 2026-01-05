@@ -46,6 +46,8 @@ import SuggestionsPanel from '@components/SuggestionsPanel';
 import { VisualPreview, VideoPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
+import { useCapabilities } from './hooks/useCapabilities';
+import { resolveFieldState, type CapabilityValues } from '@shared/capabilities';
 
 // Styles
 import './PromptCanvas.css';
@@ -96,8 +98,127 @@ export function PromptCanvas({
   const toast = useToast();
 
   // Get model state from context
-  const { selectedModel, setSelectedModel, promptOptimizer } = usePromptState();
+  const { selectedModel, setSelectedModel, generationParams, setGenerationParams, promptOptimizer } =
+    usePromptState();
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
+
+  // Load capabilities schema to access generation controls
+  const { schema } = useCapabilities(selectedModel);
+
+  const effectiveAspectRatio = useMemo(() => {
+    const fromParams = generationParams?.aspect_ratio;
+    if (typeof fromParams === 'string' && fromParams.trim()) {
+      return fromParams.trim();
+    }
+    return previewAspectRatio;
+  }, [generationParams, previewAspectRatio]);
+
+  // Helper to extract field info from capabilities schema
+  const getFieldInfo = useCallback(
+    (fieldName: string) => {
+      if (!schema?.fields?.[fieldName]) return null;
+
+      const field = schema.fields[fieldName];
+      const state = resolveFieldState(field, generationParams as CapabilityValues);
+
+      if (!state.available || state.disabled) return null;
+
+      const allowedValues = field.type === 'enum'
+        ? state.allowedValues ?? field.values ?? []
+        : [];
+
+      return { field, allowedValues };
+    },
+    [schema, generationParams]
+  );
+
+  const aspectRatioInfo = useMemo(() => getFieldInfo('aspect_ratio'), [getFieldInfo]);
+  const durationInfo = useMemo(() => getFieldInfo('duration_s'), [getFieldInfo]);
+  const resolutionInfo = useMemo(() => getFieldInfo('resolution'), [getFieldInfo]);
+  const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
+
+  const audioInfo = useMemo(() => {
+    if (!schema?.fields?.audio) return null;
+    const field = schema.fields.audio;
+    const state = resolveFieldState(field, generationParams as CapabilityValues);
+    if (!state.available || state.disabled) return null;
+    return { field };
+  }, [schema, generationParams]);
+
+  const handleParamChange = useCallback(
+    (key: string, value: unknown) => {
+      setGenerationParams({
+        ...(generationParams ?? {}),
+        [key]: value,
+      });
+    },
+    [generationParams, setGenerationParams]
+  );
+
+  const renderDropdown = useCallback(
+    (
+      info: ReturnType<typeof getFieldInfo>,
+      key: string,
+      label: string,
+      disabled: boolean
+    ) => {
+      if (!info) return null;
+
+      const formatDisplay = (val: unknown) => {
+        if (key === 'duration_s') return `${val}s`;
+        if (key === 'fps') return `${val} fps`;
+        return String(val);
+      };
+
+      return (
+        <div className="flex items-center">
+          <select
+            value={String((generationParams as any)?.[key] ?? info.field.default ?? '')}
+            onChange={(e) => {
+              const val = info.field.type === 'int' ? Number(e.target.value) : e.target.value;
+              handleParamChange(key, val);
+            }}
+            disabled={disabled}
+            className="h-8 pl-2 pr-6 text-sm bg-transparent border-none rounded-md text-geist-accents-5 hover:text-geist-foreground hover:bg-geist-accents-1 focus:ring-0 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%23666%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_4px_center] bg-no-repeat disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={label}
+          >
+            {info.allowedValues.map((value) => (
+              <option key={String(value)} value={String(value)}>
+                {formatDisplay(value)}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    },
+    [generationParams, getFieldInfo, handleParamChange]
+  );
+
+  const renderAudioToggle = useCallback(
+    (disabled: boolean) => {
+      if (!audioInfo) return null;
+      const isEnabled = Boolean((generationParams as any)?.audio ?? audioInfo.field.default ?? false);
+
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isEnabled}
+            onClick={() => handleParamChange('audio', !isEnabled)}
+            disabled={disabled}
+            className="group flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Toggle Audio"
+          >
+            <span className={`text-sm ${isEnabled ? 'text-geist-foreground' : 'text-geist-accents-5'}`}>
+              Audio
+            </span>
+          </button>
+        </div>
+      );
+    },
+    [audioInfo, generationParams, handleParamChange]
+  );
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -891,11 +1012,18 @@ export function PromptCanvas({
                     aria-busy={isOptimizing}
                   />
                   <div className="prompt-card__footer">
-                    <ModelSelectorDropdown
-                      selectedModel={selectedModel}
-                      onModelChange={handleModelChange}
-                      disabled={isOptimizing}
-                    />
+                    <div className="flex items-center gap-geist-2 flex-wrap">
+                      <ModelSelectorDropdown
+                        selectedModel={selectedModel}
+                        onModelChange={handleModelChange}
+                        disabled={isOptimizing}
+                      />
+                      {renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing)}
+                      {renderDropdown(resolutionInfo, 'resolution', 'Resolution', isOptimizing)}
+                      {renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
+                      {renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing)}
+                      {renderAudioToggle(isOptimizing)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1094,7 +1222,9 @@ export function PromptCanvas({
                       <div className="pt-4 border-t border-geist-accents-2">
                         <VideoPreview
                           prompt={videoPreviewPrompt}
-                          aspectRatio={previewAspectRatio}
+                          aspectRatio={effectiveAspectRatio}
+                          model={selectedModel || undefined}
+                          generationParams={generationParams}
                           isVisible={true}
                           generateRequestId={videoGenerateRequestId}
                           lastGeneratedAt={videoLastGeneratedAt}
@@ -1159,7 +1289,7 @@ export function PromptCanvas({
                   
                   <VisualPreview
                     prompt={previewSource}
-                    aspectRatio={previewAspectRatio}
+                    aspectRatio={effectiveAspectRatio}
                     isVisible={true}
                     generateRequestId={visualGenerateRequestId}
                     lastGeneratedAt={visualLastGeneratedAt}

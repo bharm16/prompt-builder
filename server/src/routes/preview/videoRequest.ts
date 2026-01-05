@@ -8,6 +8,7 @@ export interface VideoPreviewPayload {
   model?: string;
   startImage?: string;
   inputReference?: string;
+  generationParams?: unknown;
 }
 
 interface VideoPreviewParseSuccess {
@@ -24,12 +25,13 @@ interface VideoPreviewParseFailure {
 export type VideoPreviewParseResult = VideoPreviewParseSuccess | VideoPreviewParseFailure;
 
 export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult => {
-  const { prompt, aspectRatio, model, startImage, inputReference } = (body || {}) as {
+  const { prompt, aspectRatio, model, startImage, inputReference, generationParams } = (body || {}) as {
     prompt?: unknown;
     aspectRatio?: VideoAspectRatio;
     model?: string;
     startImage?: unknown;
     inputReference?: unknown;
+    generationParams?: unknown;
   };
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -52,6 +54,7 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
       model,
       ...(startImage ? { startImage } : {}),
       ...(inputReference ? { inputReference } : {}),
+      ...(generationParams !== undefined ? { generationParams } : {}),
     },
   };
 };

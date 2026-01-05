@@ -58,6 +58,7 @@ export interface GenerateVideoResponse {
 export interface GenerateVideoPreviewOptions {
   startImage?: string;
   inputReference?: string;
+  generationParams?: Record<string, unknown>;
 }
 
 /**
@@ -79,6 +80,7 @@ export async function generateVideoPreview(
     ...(model ? { model } : {}),
     ...(options?.startImage ? { startImage: options.startImage } : {}),
     ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
+    ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
   }, {
     timeout: API_CONFIG.timeout.video
   }) as Promise<GenerateVideoResponse>;

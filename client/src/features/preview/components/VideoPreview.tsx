@@ -10,16 +10,24 @@ import { Icon } from '@/components/icons/Icon';
 import { useVideoPreview } from '../hooks/useVideoPreview';
 import { useRemoteDownload } from '../hooks/useRemoteDownload';
 
-const VIDEO_PREVIEW_MODEL_IDS = ['PRO', 'SORA_2', 'LUMA_RAY3', 'KLING_V2_1', 'VEO_3'] as const;
+const VIDEO_PREVIEW_MODEL_IDS = [
+  'PRO',
+  'sora-2',
+  'sora-2-pro',
+  'luma-ray3',
+  'kling-v2-1-master',
+  'google/veo-3',
+] as const;
 
 type VideoPreviewModelId = typeof VIDEO_PREVIEW_MODEL_IDS[number];
 
 const VIDEO_PREVIEW_MODEL_LABELS: Record<VideoPreviewModelId, string> = {
   PRO: 'Wan 2.2',
-  SORA_2: 'Sora 2',
-  LUMA_RAY3: 'Luma',
-  KLING_V2_1: 'Kling v2.1',
-  VEO_3: 'Veo 3',
+  'sora-2': 'Sora 2',
+  'sora-2-pro': 'Sora 2 Pro',
+  'luma-ray3': 'Luma',
+  'kling-v2-1-master': 'Kling v2.1',
+  'google/veo-3': 'Veo 3',
 };
 
 const isVideoPreviewModel = (value?: string): value is VideoPreviewModelId =>
@@ -27,15 +35,16 @@ const isVideoPreviewModel = (value?: string): value is VideoPreviewModelId =>
 
 const VIDEO_PREVIEW_MODEL_ALIASES: Record<string, VideoPreviewModelId> = {
   'wan-video/wan-2.2-t2v-fast': 'PRO',
-  'openai/sora-2': 'SORA_2',
-  'sora-2': 'SORA_2',
-  'sora-2-pro': 'SORA_2',
-  'luma-ray3': 'LUMA_RAY3',
-  luma: 'LUMA_RAY3',
-  'kwaivgi/kling-v2.1': 'KLING_V2_1',
-  'kling-v2-1-master': 'KLING_V2_1',
-  'google/veo-3': 'VEO_3',
-  'veo-3.1-generate-preview': 'VEO_3',
+  'wan-2.2': 'PRO',
+  'openai/sora-2': 'sora-2',
+  'sora-2': 'sora-2',
+  'sora-2-pro': 'sora-2-pro',
+  'luma-ray3': 'luma-ray3',
+  luma: 'luma-ray3',
+  'kwaivgi/kling-v2.1': 'kling-v2-1-master',
+  'kling-v2-1-master': 'kling-v2-1-master',
+  'google/veo-3': 'google/veo-3',
+  'veo-3.1-generate-preview': 'google/veo-3',
 };
 
 const resolveVideoPreviewModel = (value?: string): VideoPreviewModelId => {
@@ -52,6 +61,7 @@ interface VideoPreviewProps {
   prompt: string;
   aspectRatio?: string | null;
   model?: string;
+  generationParams?: Record<string, unknown>;
   isVisible: boolean;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
@@ -71,6 +81,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   prompt,
   aspectRatio = null,
   model,
+  generationParams,
   isVisible,
   generateRequestId,
   lastGeneratedAt = null,
@@ -98,7 +109,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
   }, [model, selectedModel]);
 
-  const allowsInputReference = selectedModel === 'SORA_2';
+  const allowsInputReference = selectedModel === 'sora-2' || selectedModel === 'sora-2-pro';
   const trimmedInputReference = inputReference.trim();
   const hasPrompt = prompt.trim().length > 0;
 
@@ -108,6 +119,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     aspectRatio: normalizedAspectRatio,
     model: selectedModel,
     inputReference: allowsInputReference ? trimmedInputReference || undefined : undefined,
+    generationParams,
   });
   const displayError = error;
 

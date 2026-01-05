@@ -12,6 +12,7 @@ import { admin } from '@infrastructure/firebaseAdmin';
 import { asyncHandler } from '@middleware/asyncHandler';
 import { parseVideoPreviewRequest, sendVideoContent } from '@routes/preview/videoRequest';
 import { getVideoCost } from '@config/modelCosts';
+import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PreviewRoutesServices } from './types';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 
@@ -85,7 +86,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const { prompt, aspectRatio, model, startImage, inputReference } = parsed.payload;
+      const { prompt, aspectRatio, model, startImage, inputReference, generationParams } = parsed.payload;
       const userId = await getAuthenticatedUserId(req);
 
       if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
@@ -112,6 +113,54 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       const requestId = (req as Request & { id?: string }).id;
       const estimatedCost = getVideoCost(model);
 
+      const normalized = normalizeGenerationParams({
+        generationParams,
+        targetModel: model,
+        operation,
+        requestId: requestId || 'unknown',
+        userId: userId || undefined,
+      });
+
+      if (normalized.error) {
+        return res.status(normalized.error.status).json({
+          success: false,
+          error: normalized.error.error,
+          message: normalized.error.details,
+        });
+      }
+
+      const normalizedParams = normalized.normalizedGenerationParams as Record<string, unknown> | null;
+      const paramAspectRatio =
+        normalizedParams && typeof normalizedParams.aspect_ratio === 'string'
+          ? (normalizedParams.aspect_ratio as any)
+          : undefined;
+      const paramFps =
+        normalizedParams && typeof normalizedParams.fps === 'number' ? normalizedParams.fps : undefined;
+      const paramDurationS =
+        normalizedParams && typeof normalizedParams.duration_s === 'number'
+          ? normalizedParams.duration_s
+          : undefined;
+      const paramResolution =
+        normalizedParams && typeof normalizedParams.resolution === 'string'
+          ? normalizedParams.resolution
+          : undefined;
+
+      const seconds =
+        paramDurationS != null && ['4', '8', '12'].includes(String(paramDurationS))
+          ? (String(paramDurationS) as any)
+          : undefined;
+
+      const size =
+        typeof paramResolution === 'string' &&
+        (/\d+x\d+/i.test(paramResolution) || /p$/i.test(paramResolution))
+          ? paramResolution
+          : undefined;
+
+      const numFrames =
+        typeof paramDurationS === 'number' && typeof paramFps === 'number'
+          ? Math.max(1, Math.min(300, Math.round(paramDurationS * paramFps)))
+          : undefined;
+
       const hasCredits = await userCreditService.reserveCredits(userId, estimatedCost);
       if (!hasCredits) {
         return res.status(402).json({
@@ -133,10 +182,14 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       try {
         const result = await videoGenerationService.generateVideo(prompt, {
-          ...(aspectRatio ? { aspectRatio } : {}),
+          ...(paramAspectRatio || aspectRatio ? { aspectRatio: (paramAspectRatio || aspectRatio) as any } : {}),
           ...(model ? { model: model as any } : {}),
           ...(startImage ? { startImage } : {}),
           ...(inputReference ? { inputReference } : {}),
+          ...(typeof paramFps === 'number' ? { fps: paramFps } : {}),
+          ...(seconds ? { seconds } : {}),
+          ...(size ? { size } : {}),
+          ...(typeof numFrames === 'number' ? { numFrames } : {}),
         });
 
         logger.info(`${operation} completed`, {

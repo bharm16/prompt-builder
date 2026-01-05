@@ -24,7 +24,8 @@ export function buildReplicateInput(
   if (modelId.includes('wan')) {
     input.num_frames = options.numFrames || 81;
     input.go_fast = true;
-    input.resolution = '480p';
+    input.resolution =
+      typeof options.size === 'string' && /p$/i.test(options.size) ? options.size : '480p';
     input.frames_per_second = options.fps || 16;
     input.sample_shift = 12;
   }

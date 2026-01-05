@@ -5,7 +5,7 @@
  * Manages all prompt-related state in one place
  */
 
-import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Video } from 'lucide-react';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
@@ -24,6 +24,50 @@ import type { SuggestionsData } from '../PromptCanvas/types';
 import { usePromptHistoryActions } from './usePromptHistoryActions';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
+
+const STORAGE_KEYS = {
+  selectedModel: 'prompt-optimizer:selectedModel',
+  generationParams: 'prompt-optimizer:generationParams',
+} as const;
+
+function safeLoadSelectedModel(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(STORAGE_KEYS.selectedModel) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function safeLoadGenerationParams(): CapabilityValues {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.generationParams);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as CapabilityValues) : {};
+  } catch {
+    return {};
+  }
+}
+
+function safePersistSelectedModel(value: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.selectedModel, value ?? '');
+  } catch {
+    // ignore
+  }
+}
+
+function safePersistGenerationParams(value: CapabilityValues): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.generationParams, JSON.stringify(value ?? {}));
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Hook to use prompt state
@@ -58,7 +102,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   // UI State
   const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [selectedModel, setSelectedModel] = useState<string>(''); // New: selected video model
+  const [selectedModel, setSelectedModel] = useState<string>(() => safeLoadSelectedModel()); // New: selected video model (persisted)
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -66,7 +110,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [showImprover, setShowImprover] = useState<boolean>(false);
   const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
-  const [generationParams, setGenerationParams] = useState<CapabilityValues>({});
+  const [generationParams, setGenerationParams] = useState<CapabilityValues>(() => safeLoadGenerationParams());
 
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
@@ -211,6 +255,15 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     navigate,
     uuid,
   };
+
+  // Persist model + generation params so they survive navigation/reload.
+  useEffect(() => {
+    safePersistSelectedModel(selectedModel);
+  }, [selectedModel]);
+
+  useEffect(() => {
+    safePersistGenerationParams(generationParams);
+  }, [generationParams]);
 
   return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
 }

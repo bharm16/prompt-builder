@@ -14,6 +14,7 @@ interface UseVideoPreviewOptions {
   model?: string;
   startImage?: string;
   inputReference?: string;
+  generationParams?: Record<string, unknown>;
 }
 
 interface UseVideoPreviewReturn {
@@ -33,6 +34,7 @@ export function useVideoPreview({
   model,
   startImage,
   inputReference,
+  generationParams,
 }: UseVideoPreviewOptions): UseVideoPreviewReturn {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ export function useVideoPreview({
         const response = await generateVideoPreview(promptToGenerate, aspectRatio, model, {
           startImage,
           inputReference,
+          generationParams,
         });
 
         // Check if request was aborted
@@ -106,7 +109,7 @@ export function useVideoPreview({
         }
       }
     },
-    [aspectRatio, model, videoUrl, startImage, inputReference]
+    [aspectRatio, model, videoUrl, startImage, inputReference, generationParams]
   );
 
   /**
