@@ -13,6 +13,7 @@
 import express, { type Application } from 'express';
 import { configureMiddleware } from './config/middleware.config.ts';
 import { configureRoutes } from './config/routes.config.ts';
+import { createWebhookRoutes } from './routes/payment.routes.ts';
 import type { DIContainer } from '@infrastructure/DIContainer';
 
 /**
@@ -27,6 +28,9 @@ export function createApp(container: DIContainer): Application {
   // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
   // Ensures rate limiting, logging, and security middleware see real IPs
   app.set('trust proxy', 1);
+
+  // Payment webhooks must run before global JSON parsing
+  app.use('/api/payment', createWebhookRoutes());
 
   // Configure middleware stack
   // Order matters: security, compression, rate limiting, CORS, parsing, logging, metrics

@@ -26,6 +26,7 @@ import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import { createSuggestionsRoute } from '@routes/suggestions';
 import { createPreviewRoutes } from '@routes/preview.routes';
+import { createPaymentRoutes } from '@routes/payment.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
 
 /**
@@ -97,6 +98,13 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     userCreditService,
   });
   app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+
+  // ============================================================================
+  // Payment Routes (auth required)
+  // ============================================================================
+
+  const paymentRoutes = createPaymentRoutes();
+  app.use('/api/payment', apiAuthMiddleware, paymentRoutes);
 
   // ============================================================================
   // 404 Handler (must be registered AFTER all routes)
