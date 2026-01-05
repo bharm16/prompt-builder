@@ -155,10 +155,11 @@ export const FloatingToolbar = memo<FloatingToolbarProps>(({
         </button>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors"
+          className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1 text-button-12 text-geist-accents-7 border border-geist-accents-2 bg-transparent rounded-geist hover:bg-geist-accents-1 transition-colors"
           title="New prompt"
         >
           <Plus className="h-3.5 w-3.5" />
+          <span className="text-label-12">New</span>
         </button>
       </div>
     </div>

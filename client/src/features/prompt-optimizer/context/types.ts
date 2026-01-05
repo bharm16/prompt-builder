@@ -76,9 +76,18 @@ export interface PromptHistory {
     score: number | null,
     selectedMode: string,
     targetModel?: string | null,
+    generationParams?: Record<string, unknown> | null,
     brainstormContext?: unknown,
-    highlightCache?: unknown
+    highlightCache?: unknown,
+    existingUuid?: string | null
   ) => Promise<{ uuid: string; id: string } | null>;
+  createDraft: (params: {
+    mode: string;
+    targetModel: string | null;
+    generationParams: Record<string, unknown> | null;
+    uuid?: string;
+  }) => { uuid: string; id: string };
+  updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;

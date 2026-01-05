@@ -171,6 +171,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     selectedMode,
     selectedModel,
     generationParams,
+    currentPromptUuid,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     setDisplayedPromptSilently,
@@ -305,6 +306,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           minmax(0, 1fr)
           var(--layout-suggestions-panel-width)
         `,
+        transition: 'grid-template-columns 120ms cubic-bezier(0.2, 0, 0, 1)',
       } as React.CSSProperties}
     >
       {/* Skip to main content */}

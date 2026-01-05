@@ -18,6 +18,7 @@ export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEn
   return entries.map((entry) => ({
     ...entry,
     brainstormContext: entry.brainstormContext ?? null,
+    generationParams: entry.generationParams ?? null,
     highlightCache: entry.highlightCache ?? null,
     versions: entry.versions ?? [],
   }));
@@ -107,11 +108,13 @@ export async function saveEntry(
 
   try {
     const result = await repository.save(userId ?? '', {
+      ...(params.uuid ? { uuid: params.uuid } : {}),
       input: params.input,
       output: params.output,
       score: params.score,
       mode: params.mode,
       ...(params.targetModel ? { targetModel: params.targetModel } : {}),
+      ...(params.generationParams ? { generationParams: params.generationParams } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
     });

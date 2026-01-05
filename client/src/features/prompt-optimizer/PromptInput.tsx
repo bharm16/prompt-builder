@@ -47,6 +47,7 @@ export const PromptInput = ({
   const [hintIndex, setHintIndex] = React.useState<number>(0);
   const hintVisible = inputPrompt.length >= 20;
   const prevHintVisibleRef = React.useRef<boolean>(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const ghostRows = React.useMemo(
     () =>
       [
@@ -128,6 +129,14 @@ export const PromptInput = ({
     }, 6500);
     return () => window.clearInterval(id);
   }, [hintVisible, HINTS.length]);
+
+  React.useEffect(() => {
+    const handleFocusEditor = (): void => {
+      textareaRef.current?.focus();
+    };
+    window.addEventListener('po:focus-editor', handleFocusEditor);
+    return () => window.removeEventListener('po:focus-editor', handleFocusEditor);
+  }, []);
 
   const handleOptimizeClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
     e.preventDefault();
@@ -249,6 +258,7 @@ export const PromptInput = ({
                 </label>
                 <textarea
                   id="prompt-input"
+                  ref={textareaRef}
                   value={inputPrompt}
                   onChange={(e) => {
                     const next = e.target.value;

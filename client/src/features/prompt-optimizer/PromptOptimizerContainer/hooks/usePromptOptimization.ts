@@ -25,7 +25,10 @@ interface PromptHistory {
     score: number | null,
     mode: string,
     targetModel?: string | null,
-    brainstormContext?: unknown | null
+    generationParams?: Record<string, unknown> | null,
+    brainstormContext?: unknown | null,
+    highlightCache?: unknown,
+    existingUuid?: string | null
   ) => Promise<{ uuid: string; id?: string } | null>;
   [key: string]: unknown;
 }
@@ -37,6 +40,7 @@ export interface UsePromptOptimizationParams {
   selectedMode: string;
   selectedModel?: string; // New: optional selected model
   generationParams: CapabilityValues;
+  currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setDisplayedPromptSilently: (prompt: string) => void;
@@ -70,6 +74,7 @@ export function usePromptOptimization({
   selectedMode,
   selectedModel, // Extract new param
   generationParams,
+  currentPromptUuid,
   setCurrentPromptUuid,
   setCurrentPromptDocId,
   setDisplayedPromptSilently,
@@ -129,7 +134,10 @@ export function usePromptOptimization({
           result.score,
           selectedMode,
           selectedMode === 'video' ? selectedModel ?? null : null,
-          serializedContext
+          (generationParams as unknown as Record<string, unknown>) ?? null,
+          serializedContext,
+          null,
+          currentPromptUuid
         );
 
         if (saveResult?.uuid) {
@@ -159,6 +167,7 @@ export function usePromptOptimization({
       selectedMode,
       selectedModel, // Added dependency
       generationParams,
+      currentPromptUuid,
       setCurrentPromptUuid,
       setCurrentPromptDocId,
       setDisplayedPromptSilently,

@@ -33,7 +33,7 @@
        All layout sizes use clamp() for responsiveness
        ============================================ */
     --layout-sidebar-width-expanded: 240px;
-    --layout-sidebar-width-collapsed: 5vw;
+    --layout-sidebar-width-collapsed: 56px;
     --layout-bento-grid-width: 19vw;
     --layout-bento-rail-width: 44px;
     --layout-suggestions-panel-width: 22vw;
@@ -116,6 +116,18 @@
   body,
   #root {
     height: 100%;
+  }
+
+  @keyframes po-active-dot-pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   body {
@@ -1136,4 +1148,3 @@
     }
   }
 }
-

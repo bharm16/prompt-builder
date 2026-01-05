@@ -166,6 +166,10 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     debug,
     navigate,
     promptOptimizer,
+    promptHistory,
+    selectedMode,
+    selectedModel,
+    generationParams,
     applyInitialHighlightSnapshot,
     resetEditStacks,
     setSuggestionsData,
@@ -264,6 +268,28 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   useEffect(() => {
     safePersistGenerationParams(generationParams);
   }, [generationParams]);
+
+  // Keep draft prompt entry in sync with live input + controls.
+  useEffect(() => {
+    if (!currentPromptUuid) return;
+    const entry = promptHistory.history.find((e) => e.uuid === currentPromptUuid);
+    if (!entry) return;
+    const isDraft = !entry.output || !entry.output.trim();
+    if (!isDraft) return;
+
+    promptHistory.updateEntryLocal(currentPromptUuid, {
+      input: promptOptimizer.inputPrompt,
+      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
+      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+    });
+  }, [
+    currentPromptUuid,
+    promptHistory,
+    promptHistory.history,
+    promptOptimizer.inputPrompt,
+    selectedModel,
+    generationParams,
+  ]);
 
   return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
 }

@@ -24,7 +24,10 @@ interface PromptHistory {
     score: number | null,
     mode: string,
     targetModel?: string | null,
-    context?: unknown
+    generationParams?: Record<string, unknown> | null,
+    context?: unknown,
+    highlightCache?: unknown,
+    existingUuid?: string | null
   ) => Promise<{ uuid: string; id?: string | null } | null>;
   [key: string]: unknown;
 }
@@ -143,6 +146,7 @@ export function useConceptBrainstorm({
               result.score,
               selectedMode,
               selectedMode === 'video' ? selectedModel ?? null : null,
+              (generationParams as unknown as Record<string, unknown>) ?? null,
               serializedContext
             );
 

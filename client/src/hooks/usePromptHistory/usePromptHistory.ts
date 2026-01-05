@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '../../components/Toast';
 import { logger } from '../../services/LoggingService';
 import { useHistoryState } from './hooks';
@@ -108,8 +109,10 @@ export const usePromptHistory = (user: User | null) => {
       score: number | null,
       selectedMode: string,
       targetModel: string | null = null,
+      generationParams: Record<string, unknown> | null = null,
       brainstormContext: unknown = null,
-      highlightCache: unknown = null
+      highlightCache: unknown = null,
+      existingUuid: string | null = null
     ): Promise<SaveResult | null> => {
       const normalizedTargetModel =
         typeof targetModel === 'string' && targetModel.trim()
@@ -125,11 +128,13 @@ export const usePromptHistory = (user: User | null) => {
 
       try {
         const result = await saveEntry(user?.uid, {
+          ...(existingUuid ? { uuid: existingUuid } : {}),
           input,
           output,
           score,
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+          ...(generationParams ? { generationParams } : {}),
           brainstormContext,
           highlightCache,
         });
@@ -143,11 +148,16 @@ export const usePromptHistory = (user: User | null) => {
           score,
           mode: selectedMode,
           ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+          generationParams: generationParams ?? null,
           brainstormContext: brainstormContext ?? null,
           highlightCache: highlightCache ?? null,
         };
 
-        addEntry(newEntry);
+        if (existingUuid && state.history.some((e) => e.uuid === existingUuid)) {
+          updateEntry(existingUuid, newEntry);
+        } else {
+          addEntry(newEntry);
+        }
         return result;
       } catch (error) {
         log.error('Error saving to history', error as Error, {
@@ -158,7 +168,45 @@ export const usePromptHistory = (user: User | null) => {
         return null;
       }
     },
-    [user, toast, addEntry]
+    [user, toast, addEntry, updateEntry, state.history]
+  );
+
+  const createDraft = useCallback(
+    (params: {
+      mode: string;
+      targetModel: string | null;
+      generationParams: Record<string, unknown> | null;
+      uuid?: string;
+    }): SaveResult => {
+      const uuid = typeof params.uuid === 'string' && params.uuid.trim() ? params.uuid.trim() : uuidv4();
+      const id = `draft-${Date.now()}`;
+
+      const entry: PromptHistoryEntry = {
+        id,
+        uuid,
+        timestamp: new Date().toISOString(),
+        input: '',
+        output: '',
+        score: null,
+        mode: params.mode,
+        targetModel: params.targetModel ?? null,
+        generationParams: params.generationParams ?? null,
+        brainstormContext: null,
+        highlightCache: null,
+        versions: [],
+      };
+
+      addEntry(entry);
+      return { uuid, id };
+    },
+    [addEntry]
+  );
+
+  const updateEntryLocal = useCallback(
+    (uuid: string, updates: Partial<PromptHistoryEntry>) => {
+      updateEntry(uuid, updates);
+    },
+    [updateEntry]
   );
 
   // Update highlight cache
@@ -235,6 +283,8 @@ export const usePromptHistory = (user: User | null) => {
     searchQuery,
     setSearchQuery,
     saveToHistory,
+    createDraft,
+    updateEntryLocal,
     clearHistory,
     deleteFromHistory,
     loadHistoryFromFirestore,

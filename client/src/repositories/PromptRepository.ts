@@ -35,6 +35,8 @@ import type { PromptHistoryEntry } from '../hooks/types';
 const log = logger.child('PromptRepository');
 
 export interface PromptData {
+  uuid?: string;
+  generationParams?: Record<string, unknown> | null;
   highlightCache?: unknown | null;
   versions?: unknown[];
   input: string;
@@ -136,21 +138,23 @@ export class PromptRepository {
    */
   async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
     try {
-      const uuid = uuidv4();
+      const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
+      const resolvedUuid = providedUuid ? providedUuid : uuidv4();
+      const { uuid: _ignoredUuid, ...rest } = promptData;
       const payload: PromptData = {
         highlightCache: promptData.highlightCache ?? null,
         versions: Array.isArray(promptData.versions) ? promptData.versions : [],
-        ...promptData,
+        ...rest,
       };
 
       const docRef = await addDoc(collection(this.db, this.collectionName), {
         userId,
-        uuid,
+        uuid: resolvedUuid,
         ...payload,
         timestamp: serverTimestamp(),
       });
 
-      return { id: docRef.id, uuid };
+      return { id: docRef.id, uuid: resolvedUuid };
     } catch (error) {
       log.error('Error saving prompt', error as Error);
       throw new PromptRepositoryError('Failed to save prompt', error);
@@ -368,7 +372,8 @@ export class LocalStoragePromptRepository {
    */
   async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
     try {
-      const uuid = uuidv4();
+      const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
+      const uuid = providedUuid ? providedUuid : uuidv4();
       const entry: PromptHistoryEntry = {
         id: String(Date.now()),
         uuid,
@@ -376,6 +381,10 @@ export class LocalStoragePromptRepository {
         input: promptData.input,
         output: promptData.output,
         score: promptData.score ?? null,
+        generationParams:
+          promptData.generationParams && typeof promptData.generationParams === 'object'
+            ? (promptData.generationParams as Record<string, unknown>)
+            : null,
         brainstormContext: promptData.brainstormContext ?? null,
         highlightCache: promptData.highlightCache ?? null,
         versions: promptData.versions ?? [],

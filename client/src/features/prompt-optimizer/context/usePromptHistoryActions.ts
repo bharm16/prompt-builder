@@ -15,6 +15,17 @@ interface PromptHistoryActionsOptions {
   debug: DebugLogger;
   navigate: NavigateFunction;
   promptOptimizer: PromptOptimizer;
+  promptHistory: {
+    createDraft: (params: {
+      mode: string;
+      targetModel: string | null;
+      generationParams: Record<string, unknown> | null;
+      uuid?: string;
+    }) => { uuid: string; id: string };
+  };
+  selectedMode: string;
+  selectedModel: string;
+  generationParams: CapabilityValues;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
     options?: { bumpVersion?: boolean; markPersisted?: boolean }
@@ -44,6 +55,10 @@ export const usePromptHistoryActions = ({
   debug,
   navigate,
   promptOptimizer,
+  promptHistory,
+  selectedMode,
+  selectedModel,
+  generationParams,
   applyInitialHighlightSnapshot,
   resetEditStacks,
   setSuggestionsData,
@@ -78,23 +93,33 @@ export const usePromptHistoryActions = ({
     setSuggestionsData(null);
     setConceptElements(null);
     setPromptContext(null);
-    setGenerationParams({});
-    setCurrentPromptUuid(null);
-    setCurrentPromptDocId(null);
+    const draft = promptHistory.createDraft({
+      mode: selectedMode,
+      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
+      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+    });
+    setCurrentPromptUuid(draft.uuid);
+    setCurrentPromptDocId(draft.id);
     applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
     persistedSignatureRef.current = null;
     resetEditStacks();
-    navigate('/', { replace: true });
+    navigate(`/prompt/${draft.uuid}`, { replace: true });
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event('po:focus-editor'));
+    }, 0);
     debug.logAction('createNewComplete');
   }, [
     debug,
     skipLoadFromUrlRef,
     promptOptimizer,
+    promptHistory,
+    selectedMode,
+    selectedModel,
+    generationParams,
     setShowResults,
     setSuggestionsData,
     setConceptElements,
     setPromptContext,
-    setGenerationParams,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
     applyInitialHighlightSnapshot,
@@ -128,8 +153,12 @@ export const usePromptHistoryActions = ({
       }
       setSelectedMode('video');
       setSelectedModel(typeof entry.targetModel === 'string' ? entry.targetModel : '');
-      setGenerationParams({});
-      setShowResults(true);
+      setGenerationParams(
+        entry.generationParams && typeof entry.generationParams === 'object'
+          ? (entry.generationParams as CapabilityValues)
+          : {}
+      );
+      setShowResults(Boolean(entry.output && entry.output.trim()));
 
       const preloadedHighlight: HighlightSnapshot | null = entry.highlightCache
         ? ({
