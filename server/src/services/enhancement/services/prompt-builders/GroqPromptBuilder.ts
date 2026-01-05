@@ -139,6 +139,7 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
 
     const ctx = this._buildContext({
       highlightedText,
+      highlightedCategory,
       contextBefore,
       contextAfter,
       fullPrompt,
@@ -219,6 +220,8 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       '2. Use cinematography terms (angles, lenses, movements, lighting)',
       '3. Each option should create a different visual effect',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      ctx.guidance ? 'CATEGORY GUIDANCE:' : '',
+      ctx.guidance || '',
       '',
       'MISSING CONTEXT HANDLING:',
       'If context is insufficient, return fewer high-quality suggestions (minimum 3).',
@@ -267,10 +270,13 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       '4. Generate up to 12 variations.',
       '',
       'RULES:',
-      '1. Keep the SAME SUBJECT/TOPIC - just vary HOW it is described',
-      '2. Add visual details: textures, materials, lighting, colors',
-      '3. Each option should look different but stay contextually appropriate',
-      '4. Return ONLY the replacement phrase (2-50 words)',
+      '1. Fill the SAME ROLE in the scene - but with VISUALLY DISTINCT alternatives',
+      '2. Suggestions should produce noticeably DIFFERENT video frames',
+      '3. Avoid synonyms - "silky chestnut" vs "fluffy brown" renders nearly identical',
+      '4. Think: what OTHER thing could fill this role?',
+      '5. Return ONLY the replacement phrase (2-50 words)',
+      ctx.guidance ? 'CATEGORY GUIDANCE:' : '',
+      ctx.guidance || '',
       '',
       'MISSING CONTEXT HANDLING:',
       'If context is insufficient, return fewer high-quality suggestions (minimum 3).',
@@ -280,8 +286,6 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       '',
       'Output JSON object with suggestions array:',
       `{"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]}`,
-      '',
-      `IMPORTANT: If replacing "${ctx.highlightedText}", suggestions should still be about "${ctx.highlightedText}" with different visual details.`,
     ].filter(Boolean).join('\n');
   }
 
@@ -322,6 +326,8 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       '2. One continuous action only (no sequences like "walks then runs")',
       '3. Actions must be camera-visible physical behavior',
       '4. Return ONLY the replacement phrase (2-50 words)',
+      ctx.guidance ? 'CATEGORY GUIDANCE:' : '',
+      ctx.guidance || '',
       '',
       'MISSING CONTEXT HANDLING:',
       'If the subject or context is unclear, return fewer suggestions (minimum 3).',

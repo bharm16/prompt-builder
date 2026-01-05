@@ -145,6 +145,7 @@ Requirements:
 
     const ctx = this._buildContext({
       highlightedText,
+      highlightedCategory,
       contextBefore,
       contextAfter,
       fullPrompt,
@@ -212,6 +213,7 @@ Requirements:
 - Use cinematography terms (angles, lenses, movements, lighting)
 - Each option should create a different visual effect
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 
@@ -234,13 +236,14 @@ ${ctx.inlineContext}
 </surrounding_context>
 
 Requirements:
-- Keep the SAME SUBJECT/TOPIC - just vary HOW it is described
-- Add visual details: textures, materials, lighting, colors
-- Each option should look different but stay contextually appropriate
+- Fill the SAME ROLE in the scene - but with VISUALLY DISTINCT alternatives
+- Suggestions should produce noticeably DIFFERENT video frames
+- Avoid synonyms - "silky chestnut" vs "fluffy brown" renders nearly identical
+- Think: what OTHER thing could fill this role?
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}
-
-If replacing "${ctx.highlightedText}", suggestions should still be about that topic with different visual details.`;
+`;
   }
 
   /**
@@ -266,6 +269,7 @@ Requirements:
 - One continuous action only (no sequences like "walks then runs")
 - Actions must be camera-visible physical behavior
 - Return ONLY the replacement phrase (2-50 words)
+${ctx.guidance ? `- Category guidance: ${ctx.guidance}` : ''}
 ${ctx.constraintLine ? `- ${ctx.constraintLine}` : ''}`;
   }
 }

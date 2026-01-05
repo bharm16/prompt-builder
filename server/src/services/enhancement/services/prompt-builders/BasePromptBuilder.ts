@@ -9,6 +9,7 @@ import { logger } from '@infrastructure/Logger';
 import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService';
 import { getParentCategory } from '@shared/taxonomy';
 import { PROMPT_PREVIEW_LIMIT } from '@services/enhancement/constants';
+import { getCategoryGuidance } from '../categoryGuidance';
 import type {
   PromptBuildParams,
   BrainstormContext,
@@ -137,6 +138,7 @@ export abstract class BasePromptBuilder {
    */
   protected _buildContext({
     highlightedText,
+    highlightedCategory,
     contextBefore,
     contextAfter,
     fullPrompt,
@@ -150,6 +152,7 @@ export abstract class BasePromptBuilder {
     mode,
   }: {
     highlightedText: string;
+    highlightedCategory: string | null;
     contextBefore: string;
     contextAfter: string;
     fullPrompt: string;
@@ -201,6 +204,7 @@ export abstract class BasePromptBuilder {
 
     return {
       highlightedText,
+      highlightedCategory,
       inlineContext,
       prefix,
       suffix,
@@ -209,7 +213,7 @@ export abstract class BasePromptBuilder {
       modelLine: modelTarget ? `Target: ${modelTarget}` : '',
       sectionLine: promptSection ? `Section: ${promptSection}` : '',
       slotLabel: slot || 'subject',
-      guidance: '',
+      guidance: getCategoryGuidance(highlightedCategory),
       highlightWordCount,
       mode,
       replacementInstruction: '',

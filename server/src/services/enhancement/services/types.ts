@@ -164,6 +164,7 @@ export interface CustomPromptParams {
  */
 export interface SharedPromptContext {
   highlightedText: string;          // The text being replaced
+  highlightedCategory: string | null; // Full category (e.g. subject.appearance)
   slotLabel: string;                // Category/slot (subject, action, camera, etc.)
   inlineContext: string;            // Short context around highlight
   prefix: string;                   // Text before highlight (trimmed)

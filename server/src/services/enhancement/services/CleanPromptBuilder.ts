@@ -3,6 +3,7 @@ import { extractSemanticSpans } from '@llm/span-labeling/nlp/NlpSpanService';
 import { getParentCategory } from '@shared/taxonomy';
 import { VISUAL_EXAMPLES, TECHNICAL_EXAMPLES, NARRATIVE_EXAMPLES } from '../config/EnhancementExamples';
 import { PROMPT_PREVIEW_LIMIT } from '../constants';
+import { getCategoryGuidance } from './categoryGuidance';
 import { 
   getSecurityPrefix, 
   getFormatInstruction,
@@ -158,6 +159,7 @@ export class CleanPromptBuilder {
 
     const ctx = this._buildContext({
       highlightedText,
+      highlightedCategory,
       contextBefore,
       contextAfter,
       fullPrompt,
@@ -234,6 +236,7 @@ export class CleanPromptBuilder {
       '3. Each option should create a different visual effect',
       '4. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Vary angle, lens, movement, or lighting (not just synonyms).',
+      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
@@ -272,18 +275,18 @@ export class CleanPromptBuilder {
       userDataSection,
       '',
       'RULES:',
-      '1. Keep the SAME SUBJECT/TOPIC - just vary HOW it is described',
-      '2. Add visual details: textures, materials, lighting, colors',
-      '3. Each option should look different but stay contextually appropriate',
-      '4. Return ONLY the replacement phrase (2-50 words)',
-      'DIVERSITY: Change material, finish, silhouette, era, lighting, or motion (not just color synonyms).',
+      '1. Fill the SAME ROLE in the scene - but with VISUALLY DISTINCT alternatives',
+      '2. Suggestions should produce noticeably DIFFERENT video frames',
+      '3. Avoid synonyms - "silky chestnut" vs "fluffy brown" renders nearly identical',
+      '4. Think: what OTHER thing could fill this role?',
+      '5. Return ONLY the replacement phrase (2-50 words)',
+      'DIVERSITY: Prefer role-level changes that alter the visual outcome, not minor adjective swaps.',
+      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
       `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`,
       exampleBlock,
-      '',
-      `IMPORTANT: If replacing "${ctx.highlightedText}", suggestions should still be about "${ctx.highlightedText}" with different visual details.`,
       formatInstruction,
     ].filter(Boolean).join('\n');
   }
@@ -320,6 +323,7 @@ export class CleanPromptBuilder {
       '3. Actions must be camera-visible physical behavior',
       '4. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Vary the physical behavior or staging, not just intensity.',
+      ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
       '',
@@ -359,6 +363,7 @@ export class CleanPromptBuilder {
    */
   private _buildContext({
     highlightedText,
+    highlightedCategory,
     contextBefore,
     contextAfter,
     fullPrompt,
@@ -372,6 +377,7 @@ export class CleanPromptBuilder {
     mode,
   }: {
     highlightedText: string;
+    highlightedCategory: string | null;
     contextBefore: string;
     contextAfter: string;
     fullPrompt: string;
@@ -414,6 +420,7 @@ export class CleanPromptBuilder {
 
     return {
       highlightedText,
+      highlightedCategory,
       inlineContext,
       prefix,
       suffix,
@@ -422,7 +429,7 @@ export class CleanPromptBuilder {
       modelLine: modelTarget ? `Target: ${modelTarget}` : '',
       sectionLine: promptSection ? `Section: ${promptSection}` : '',
       slotLabel: slot || 'subject',
-      guidance: '',
+      guidance: getCategoryGuidance(highlightedCategory),
       highlightWordCount,
       mode,
       replacementInstruction: '',

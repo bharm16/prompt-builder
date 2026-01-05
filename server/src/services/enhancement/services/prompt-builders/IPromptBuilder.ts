@@ -64,6 +64,7 @@ export interface IPromptBuilder {
  */
 export interface SharedPromptContext {
   highlightedText: string;
+  highlightedCategory: string | null;
   inlineContext: string;
   prefix: string;
   suffix: string;
