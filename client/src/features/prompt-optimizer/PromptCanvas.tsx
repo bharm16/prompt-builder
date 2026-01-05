@@ -47,7 +47,7 @@ import { VisualPreview, VideoPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
-import { resolveFieldState, type CapabilityValues } from '@shared/capabilities';
+import { resolveFieldState, type CapabilityValue, type CapabilityValues } from '@shared/capabilities';
 
 // Styles
 import './PromptCanvas.css';
@@ -147,7 +147,7 @@ export function PromptCanvas({
   const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
 
   const handleParamChange = useCallback(
-    (key: string, value: unknown) => {
+    (key: string, value: CapabilityValue) => {
       setGenerationParams({
         ...(generationParams ?? {}),
         [key]: value,
@@ -1428,7 +1428,7 @@ export function PromptCanvas({
                     <VideoPreview
                       prompt={videoPreviewPrompt}
                       aspectRatio={effectiveAspectRatio}
-                      model={selectedModel || undefined}
+                      model={selectedModel}
                       generationParams={generationParams}
                       isVisible={true}
                       generateRequestId={videoGenerateRequestId}

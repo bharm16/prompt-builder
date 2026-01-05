@@ -12,8 +12,8 @@ import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlig
 
 interface UseLockedSpanInteractionsOptions {
   editorRef: RefObject<HTMLElement>;
-  editorWrapperRef: RefObject<HTMLDivElement>;
-  lockButtonRef: RefObject<HTMLButtonElement>;
+  editorWrapperRef: RefObject<HTMLDivElement | null>;
+  lockButtonRef: RefObject<HTMLButtonElement | null>;
   enableMLHighlighting: boolean;
   showHighlights: boolean;
   hoveredSpanId: string | null;
@@ -22,7 +22,7 @@ interface UseLockedSpanInteractionsOptions {
   lockedSpans: LockedSpan[];
   addLockedSpan: (span: LockedSpan) => void;
   removeLockedSpan: (spanId: string) => void;
-  highlightFingerprint: string;
+  highlightFingerprint: string | null;
   displayedPrompt: string | null;
 }
 
