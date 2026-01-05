@@ -1,31 +1,8 @@
 import { API_CONFIG } from '../config/api.config';
-import { z } from 'zod';
+import { RoleClassifyResponseSchema } from '../schemas/roleClassify';
+import type { ClientSpan, LabeledSpan } from '../types/roleClassify';
 
-export interface ClientSpan {
-  text: string;
-  start: number;
-  end: number;
-}
-
-export interface LabeledSpan {
-  text: string;
-  start: number;
-  end: number;
-  role: string;
-  confidence: number;
-}
-
-const LabeledSpanSchema = z.object({
-  text: z.string(),
-  start: z.number(),
-  end: z.number(),
-  role: z.string(),
-  confidence: z.number(),
-});
-
-const RoleClassifyResponseSchema = z.object({
-  spans: z.array(LabeledSpanSchema).default([]),
-});
+export { ClientSpan, LabeledSpan };
 
 export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 'v1'): Promise<LabeledSpan[]> {
   const res = await fetch('/api/role-classify', {

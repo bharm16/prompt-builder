@@ -14,7 +14,7 @@
  * Following VideoConceptBuilder pattern: VideoConceptBuilder.tsx
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Hooks
@@ -42,6 +42,9 @@ import {
 } from './config/panelConfig';
 import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig, PanelIcon } from './components/types';
 import type { SuggestionItem } from './hooks/types';
+
+// Styles
+import './SuggestionsPanel.css';
 
 const EMPTY_SUGGESTIONS: SuggestionItem[] = [];
 
@@ -87,7 +90,7 @@ interface SuggestionsPanelProps {
   };
 }
 
-export function SuggestionsPanel({
+const SuggestionsPanel = memo(function SuggestionsPanel({
   suggestionsData = {},
 }: SuggestionsPanelProps): React.ReactElement {
   // Debug logging
@@ -373,39 +376,11 @@ export function SuggestionsPanel({
       </div>
 
       {hasActiveSuggestions && footer}
-
-      <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shimmer {
-          100% {
-            transform: translateX(100%);
-          }
-        }
-
-        @keyframes panelPulse {
-          0%, 100% {
-            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-          }
-          50% {
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
-          }
-        }
-
-        .suggestions-panel--pulse {
-          animation: panelPulse 0.3s ease-out;
-        }
-      `}</style>
     </aside>
   );
-}
+});
+
+SuggestionsPanel.displayName = 'SuggestionsPanel';
+
+export { SuggestionsPanel };
 export default SuggestionsPanel;

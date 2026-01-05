@@ -158,6 +158,11 @@ export class SpanLabelingApi {
     const decoder = new TextDecoder();
     let buffer = '';
     const spans: LabelSpansResponse['spans'] = [];
+    let linesProcessed = 0;
+    let parseErrors = 0;
+    let lastProgressLogAt = Date.now();
+    const progressLogIntervalMs = 1000;
+    const maxParseErrorLogs = 3;
 
     try {
         while (true) {
@@ -170,7 +175,7 @@ export class SpanLabelingApi {
             
             for (const line of lines) {
                 if (!line.trim()) continue;
-                this.log.debug('Stream chunk received', { line });
+                linesProcessed++;
                 try {
                     const span = JSON.parse(line);
                     if (span.error) {
@@ -182,10 +187,21 @@ export class SpanLabelingApi {
                          spans.push(span);
                     }
                 } catch (e) {
-                    this.log.warn('JSON parse failed', {
-                        line,
-                        error: (e as Error).message
+                    parseErrors++;
+                    if (parseErrors <= maxParseErrorLogs) {
+                        this.log.warn('JSON parse failed', {
+                            linePreview: line.slice(0, 200),
+                            error: (e as Error).message
+                        });
+                    }
+                }
+
+                if (Date.now() - lastProgressLogAt >= progressLogIntervalMs) {
+                    this.log.debug('Stream progress', {
+                        linesProcessed,
+                        spanCount: spans.length
                     });
+                    lastProgressLogAt = Date.now();
                 }
             }
         }
@@ -193,7 +209,11 @@ export class SpanLabelingApi {
         reader.releaseLock();
     }
     
-    this.log.info('Stream completed', { spanCount: spans.length });
+    this.log.info('Stream completed', {
+        spanCount: spans.length,
+        linesProcessed,
+        parseErrors
+    });
     return { spans, meta: { streaming: true } };
   }
 }

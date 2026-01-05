@@ -4,7 +4,8 @@ import type { Router, Request, Response } from 'express';
 import { Router as ExpressRouter } from 'express';
 import { roleClassify } from '@llm/roleClassifier';
 import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { InputSpan, LabeledSpan } from '@llm/types';
+import type { LabeledSpan } from '@llm/types';
+import { RoleClassifyRequestSchema } from '../schemas/roleClassify.schema';
 
 /**
  * Create role classify route with dependency injection
@@ -24,47 +25,27 @@ export function createRoleClassifyRoute(aiService: AIModelService): Router {
     });
 
     try {
-      const { spans, templateVersion = 'v1' } = (req.body || {}) as { 
-        spans?: unknown[]; 
-        templateVersion?: string;
-      };
+      const parseResult = RoleClassifyRequestSchema.safeParse(req.body);
 
-      if (!Array.isArray(spans)) {
-        log.warn('Invalid request: spans[] required', {
+      if (!parseResult.success) {
+         log.warn('Invalid request', {
           operation,
           requestId,
-          hasSpans: !!spans,
+          error: parseResult.error,
         });
-        return res.status(400).json({ error: 'spans[] required' });
+        return res.status(400).json({ error: 'Invalid request format' });
       }
 
-      log.debug('Processing spans', {
-        operation,
-        requestId,
-        inputSpanCount: spans.length,
-        templateVersion,
-      });
-
-      const clean: InputSpan[] = spans
-        .filter(Boolean)
-        .map((span: unknown) => {
-          const s = span as { text?: unknown; start?: unknown; end?: unknown };
-          return {
-            text: String(s?.text ?? ''),
-            start: Number.isInteger(s?.start) ? (s.start as number) : -1,
-            end: Number.isInteger(s?.end) ? (s.end as number) : -1,
-          };
-        })
-        .filter((span: InputSpan) => span.text && span.start >= 0 && span.end > span.start);
+      const { spans: cleanSpans, templateVersion } = parseResult.data;
 
       log.debug('Spans cleaned and validated', {
         operation,
         requestId,
-        cleanSpanCount: clean.length,
-        filteredCount: spans.length - clean.length,
+        cleanSpanCount: cleanSpans.length,
+        templateVersion,
       });
 
-      const labeled: LabeledSpan[] = await roleClassify(clean, String(templateVersion), aiService);
+      const labeled: LabeledSpan[] = await roleClassify(cleanSpans, String(templateVersion), aiService);
       
       const duration = Math.round(performance.now() - startTime);
       
@@ -72,7 +53,6 @@ export function createRoleClassifyRoute(aiService: AIModelService): Router {
         operation,
         requestId,
         duration,
-        inputSpanCount: spans.length,
         outputSpanCount: labeled.length,
         templateVersion,
       });

@@ -45,6 +45,7 @@ export class VideoPromptService {
 
   /** Pipeline version for metadata tracking */
   private static readonly PIPELINE_VERSION = '1.0.0';
+  private static readonly MAX_CONCURRENT_MODEL_OPTIMIZATIONS = 3;
 
   // Mapping from short IDs to strategy IDs
   public static readonly MODEL_ID_MAP: Record<string, string> = {
@@ -482,15 +483,20 @@ export class VideoPromptService {
     const allStrategies = this.strategyRegistry.getAll();
     const modelIds = allStrategies.map(s => s.modelId);
 
+    const maxConcurrent = Math.min(
+      VideoPromptService.MAX_CONCURRENT_MODEL_OPTIMIZATIONS,
+      Math.max(1, allStrategies.length)
+    );
+
     this.log.info('Starting cross-model translation', {
       operation,
       promptLength: prompt.length,
       modelCount: modelIds.length,
       models: modelIds,
+      maxConcurrent,
     });
 
-    // Execute all strategies in parallel with failure isolation (Requirement 11.4)
-    const optimizationPromises = allStrategies.map(async (strategy) => {
+    const runStrategy = async (strategy: (typeof allStrategies)[number]) => {
       const modelStartTime = Date.now();
       try {
         const result = await this.optimizeForModel(prompt, strategy.modelId, context);
@@ -528,10 +534,25 @@ export class VideoPromptService {
 
         return { modelId: strategy.modelId, result: errorResult, success: false };
       }
-    });
+    };
 
-    // Wait for all optimizations to complete
-    const optimizationResults = await Promise.all(optimizationPromises);
+    const optimizationResults: Array<{
+      modelId: string;
+      result: PromptOptimizationResult;
+      success: boolean;
+    }> = [];
+
+    let nextIndex = 0;
+    const worker = async (): Promise<void> => {
+      while (true) {
+        const index = nextIndex++;
+        if (index >= allStrategies.length) break;
+        optimizationResults[index] = await runStrategy(allStrategies[index]);
+      }
+    };
+
+    const workers = Array.from({ length: maxConcurrent }, () => worker());
+    await Promise.all(workers);
 
     // Build results map
     let successCount = 0;

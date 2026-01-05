@@ -267,11 +267,37 @@ export function PromptCanvas({
     displayedPrompt: normalizedDisplayedPrompt,
   });
 
+  const bentoSpans = useMemo(
+    () =>
+      parseResult.spans.map((span) => {
+        const { confidence, category, ...rest } = span;
+        return {
+          ...rest,
+          id: span.id ?? `span_${span.start}_${span.end}`,
+          quote: span.quote ?? span.text ?? '',
+          ...(typeof confidence === 'number' ? { confidence } : {}),
+          ...(category !== undefined ? { category } : {}),
+        };
+      }),
+    [parseResult.spans]
+  );
+
   // Highlight rendering using extracted hook
   const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, {
     spans: parseResult.spans,
     displayText: parseResult.displayText,
   });
+
+  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
+  const { html: formattedHTML } = useMemo(
+    () => {
+      if (enableMLHighlighting) {
+        return { html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || '') };
+      }
+      return formatTextToHTML(normalizedDisplayedPrompt ?? '');
+    },
+    [normalizedDisplayedPrompt, enableMLHighlighting]
+  );
 
   useHighlightRendering({
     editorRef: editorRef as React.RefObject<HTMLElement>,
@@ -283,19 +309,6 @@ export function PromptCanvas({
     fingerprint: highlightFingerprint,
     text: normalizedDisplayedPrompt ?? '',
   });
-
-  // Memoize formatted HTML - DO NOT format if ML highlighting is enabled
-  const { html: formattedHTML } = useMemo(
-    () => {
-      if (enableMLHighlighting) {
-        return { html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || '') };
-      }
-      return formatTextToHTML(normalizedDisplayedPrompt ?? '');
-    },
-    enableMLHighlighting
-      ? [normalizedDisplayedPrompt, enableMLHighlighting]
-      : [normalizedDisplayedPrompt, enableMLHighlighting, promptContext]
-  );
 
   // Performance timer: Track when prompt appears on screen
   useEffect(() => {
@@ -581,6 +594,44 @@ export function PromptCanvas({
     setState,
   });
 
+  const hoverPreview = hoveredSpanId !== null && !selectedSpanId;
+  const suggestionsPanelData = useMemo(
+    () =>
+      suggestionsData
+        ? ({
+            ...suggestionsData,
+            onSuggestionClick: handleSuggestionClickWithFeedback,
+            ...(normalizedDisplayedPrompt
+              ? { currentPrompt: normalizedDisplayedPrompt }
+              : {}),
+            variant: 'tokenEditor',
+            panelClassName: 'h-full flex flex-col', // Ensure it fits the container
+            contextValue: suggestionsData.selectedText || '',
+            showCategoryTabs: false,
+            showCopyAction: false,
+            customRequestPlaceholder: 'e.g. more cinematic, more intense...',
+            customRequestCtaLabel: 'Generate',
+            hoverPreview,
+          } as Record<string, unknown>)
+        : ({
+            show: false,
+            ...(normalizedDisplayedPrompt
+              ? { currentPrompt: normalizedDisplayedPrompt }
+              : {}),
+            variant: 'tokenEditor',
+            panelClassName: 'h-full flex flex-col',
+            showCategoryTabs: false,
+            showCopyAction: false,
+            hoverPreview,
+          } as Record<string, unknown>),
+    [
+      suggestionsData,
+      handleSuggestionClickWithFeedback,
+      normalizedDisplayedPrompt,
+      hoverPreview,
+    ]
+  );
+
   const showVideoPreview = selectedMode === 'video';
 
   const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
@@ -745,16 +796,7 @@ export function PromptCanvas({
               <div className="flex-1 min-h-0">
                 <HighlightingErrorBoundary>
                   <SpanBentoGrid
-                    spans={parseResult.spans.map((span) => {
-                      const { confidence, category, ...rest } = span;
-                      return {
-                        ...rest,
-                        id: span.id ?? `span_${span.start}_${span.end}`,
-                        quote: span.quote ?? span.text ?? '',
-                        ...(typeof confidence === 'number' ? { confidence } : {}),
-                        ...(category !== undefined ? { category } : {}),
-                      };
-                    })}
+                    spans={bentoSpans}
                     onSpanClick={(span) => {
                       handleSpanClickFromBento(span);
                       // Optional: keep the user in writing flow after choosing an item.
@@ -1153,35 +1195,7 @@ export function PromptCanvas({
 
                 <div className="flex-1 overflow-hidden relative">
                   <SuggestionsPanel
-                    suggestionsData={
-                      suggestionsData
-                        ? ({
-                            ...suggestionsData,
-                            onSuggestionClick: handleSuggestionClickWithFeedback,
-                            ...(normalizedDisplayedPrompt
-                              ? { currentPrompt: normalizedDisplayedPrompt }
-                              : {}),
-                            variant: 'tokenEditor',
-                            panelClassName: 'h-full flex flex-col', // Ensure it fits the container
-                            contextValue: suggestionsData.selectedText || '',
-                            showCategoryTabs: false,
-                            showCopyAction: false,
-                            customRequestPlaceholder: 'e.g. more cinematic, more intense...',
-                            customRequestCtaLabel: 'Generate',
-                            hoverPreview: hoveredSpanId !== null && !selectedSpanId,
-                          } as Record<string, unknown>)
-                        : ({
-                            show: false,
-                            ...(normalizedDisplayedPrompt
-                              ? { currentPrompt: normalizedDisplayedPrompt }
-                              : {}),
-                            variant: 'tokenEditor',
-                            panelClassName: 'h-full flex flex-col',
-                            showCategoryTabs: false,
-                            showCopyAction: false,
-                            hoverPreview: hoveredSpanId !== null && !selectedSpanId,
-                          } as Record<string, unknown>)
-                    }
+                    suggestionsData={suggestionsPanelData}
                   />
                 </div>
             </div>

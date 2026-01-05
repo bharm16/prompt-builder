@@ -164,31 +164,74 @@ export function useSpanLabeling({
       // We accumulate spans in a local array and update state incrementally
       const accumSpans: LabeledSpan[] = [];
       const signature = hashString(payload.text ?? '');
+      const flushIntervalMs = 100;
+      const flushSpanBatchSize = 20;
+      const logEvery = 25;
+      let isActive = true;
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      let lastFlushAt = Date.now();
+      let lastFlushedCount = 0;
+      let receivedCount = 0;
+
+      const flush = (): void => {
+        if (!isActive || signal?.aborted) return;
+        lastFlushAt = Date.now();
+        lastFlushedCount = accumSpans.length;
+        setState(prev => {
+          if (prev.status === 'error') return prev;
+          return {
+            ...prev,
+            status: 'success',
+            spans: accumSpans.slice(),
+            signature,
+            meta: prev.meta || { streaming: true }
+          };
+        });
+      };
+
+      const scheduleFlush = (): void => {
+        if (flushTimer || !isActive) return;
+        const delay = Math.max(0, flushIntervalMs - (Date.now() - lastFlushAt));
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          flush();
+        }, delay);
+      };
+
+      const requestFlush = (): void => {
+        if (accumSpans.length - lastFlushedCount >= flushSpanBatchSize) {
+          if (flushTimer) {
+            clearTimeout(flushTimer);
+            flushTimer = null;
+          }
+          flush();
+          return;
+        }
+        scheduleFlush();
+      };
       
-      return SpanLabelingApi.labelSpansStream(
-          payload, 
-          (span) => {
-              log.debug('Span received', { text: span.text, category: span.category });
-              accumSpans.push(span);
-              // Optimistic update: Show spans as they arrive
-              // Use functional update to merge with potentially existing state if needed,
-              // but here we just replace spans for this specific request
-              setState(prev => {
-                  // Only update if we are still 'loading' or processing this request
-                  // (Validation happens in hook state management, but this gives immediate feedback)
-                  if (prev.status === 'error') return prev; 
-                  return {
-                      ...prev,
-                      status: 'success', // Show as success/partial immediately
-                      spans: [...accumSpans], // Copy to trigger render
-                      signature,
-                      // Keep existing meta or use placeholder until done
-                      meta: prev.meta || { streaming: true }
-                  };
-              });
-          },
-          signal
-      );
+      try {
+        return await SpanLabelingApi.labelSpansStream(
+            payload, 
+            (span) => {
+                receivedCount++;
+                if (receivedCount === 1 || receivedCount % logEvery === 0) {
+                  log.debug('Span stream progress', { spanCount: receivedCount });
+                }
+                accumSpans.push(span);
+                // Optimistic update: Show spans as they arrive
+                // Update in batches to reduce render churn
+                requestFlush();
+            },
+            signal
+        );
+      } finally {
+        isActive = false;
+        if (flushTimer) {
+          clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+      }
     },
     [log]
   );

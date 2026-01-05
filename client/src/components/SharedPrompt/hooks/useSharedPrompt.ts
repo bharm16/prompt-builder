@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getPromptRepository } from '../../../repositories';
 import { PromptContext } from '../../../utils/PromptContext';
-import { formatTextToHTML } from '../../../features/prompt-optimizer/utils/textFormatting';
+import { escapeHTMLForMLHighlighting } from '../../../features/prompt-optimizer/utils/textFormatting';
 import { logger } from '../../../services/LoggingService';
 import { useDebugLogger } from '../../../hooks/useDebugLogger';
 import { useToast } from '../../Toast';
@@ -99,11 +99,8 @@ export function useSharedPrompt({ uuid }: UseSharedPromptProps): UseSharedPrompt
       return { html: '' };
     }
 
-    const result = formatTextToHTML(prompt.output);
-    return typeof result === 'object' && result !== null && 'html' in result
-      ? (result as { html: string })
-      : { html: String(result) };
-  }, [prompt]);
+    return { html: escapeHTMLForMLHighlighting(prompt.output) };
+  }, [prompt?.output]);
 
   const handleCopy = async (): Promise<void> => {
     if (!prompt?.output) return;

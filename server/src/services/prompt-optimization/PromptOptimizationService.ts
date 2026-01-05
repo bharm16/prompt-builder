@@ -1,10 +1,8 @@
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
-import { cacheService } from '@services/cache/CacheService';
 import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
 import { ConstitutionalAI } from '@utils/ConstitutionalAI';
 import OptimizationConfig from '@config/OptimizationConfig';
-import crypto from 'crypto';
 
 // Import specialized services
 import { ContextInferenceService } from './services/ContextInferenceService';
@@ -12,6 +10,8 @@ import { ModeDetectionService } from './services/ModeDetectionService';
 import { QualityAssessmentService } from './services/QualityAssessmentService';
 import { StrategyFactory } from './services/StrategyFactory';
 import { ShotInterpreterService } from './services/ShotInterpreterService';
+import { DraftGenerationService } from './services/DraftGenerationService';
+import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { templateService } from './services/TemplateService';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
 import type {
@@ -33,6 +33,8 @@ import type {
  * - QualityAssessmentService: Assesses prompt quality
  * - StrategyFactory: Creates mode-specific optimization strategies
  * - TemplateService: Manages prompt templates
+ * - DraftGenerationService: Generates fast drafts for 2-stage optimization
+ * - OptimizationCacheService: Manages caching
  *
  * Key improvements over the original 3,539-line God Object:
  * - Each service is small, focused, and testable (< 200 lines each)
@@ -46,27 +48,27 @@ export class PromptOptimizationService {
   private readonly contextInference: ContextInferenceService;
   private readonly modeDetection: ModeDetectionService;
   private readonly qualityAssessment: QualityAssessmentService;
-    private readonly strategyFactory: StrategyFactory;
-    private readonly shotInterpreter: ShotInterpreterService;
-    private readonly videoPromptService: VideoPromptService | null;
-    private readonly cacheConfig: { ttl: number; namespace: string };
-    private readonly templateVersions: typeof OptimizationConfig.templateVersions;
-    private readonly log: ILogger;
-  
-    constructor(aiService: AIService, videoPromptService: VideoPromptService | null = null) {
-      this.ai = aiService;
-      this.videoPromptService = videoPromptService;
-      this.log = logger.child({ service: 'PromptOptimizationService' });
-  
-      // Initialize specialized services
-      this.contextInference = new ContextInferenceService(aiService);
-      this.modeDetection = new ModeDetectionService(aiService);
+  private readonly strategyFactory: StrategyFactory;
+  private readonly shotInterpreter: ShotInterpreterService;
+  private readonly draftService: DraftGenerationService;
+  private readonly optimizationCache: OptimizationCacheService;
+  private readonly videoPromptService: VideoPromptService | null;
+  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
+  private readonly log: ILogger;
+
+  constructor(aiService: AIService, videoPromptService: VideoPromptService | null = null) {
+    this.ai = aiService;
+    this.videoPromptService = videoPromptService;
+    this.log = logger.child({ service: 'PromptOptimizationService' });
+
+    // Initialize specialized services
+    this.contextInference = new ContextInferenceService(aiService);
+    this.modeDetection = new ModeDetectionService(aiService);
     this.qualityAssessment = new QualityAssessmentService(aiService);
     this.strategyFactory = new StrategyFactory(aiService, templateService);
     this.shotInterpreter = new ShotInterpreterService(aiService);
-
-    // Cache configuration
-    this.cacheConfig = cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
+    this.draftService = new DraftGenerationService(aiService);
+    this.optimizationCache = new OptimizationCacheService();
 
     // Template versions (moved to config)
     this.templateVersions = OptimizationConfig.templateVersions;
@@ -136,7 +138,7 @@ export class PromptOptimizationService {
     ensureNotAborted();
 
     // Check if draft operation supports streaming (ChatGPT available)
-    if (!this.ai.supportsStreaming?.('optimize_draft')) {
+    if (!this.draftService.supportsStreaming()) {
       this.log.warn('Draft streaming not available, falling back to single-stage optimization', {
         operation,
       });
@@ -164,26 +166,18 @@ export class PromptOptimizationService {
 
     try {
       // STAGE 1: Generate fast draft with ChatGPT (1-3s)
-      const draftSystemPrompt = this.getDraftSystemPrompt(finalMode, shotPlan, generationParams);
-      this.log.debug('Generating draft with ChatGPT', {
-        operation,
-        mode: finalMode,
-        hasShotPlan: !!shotPlan,
-      });
       const draftStartTime = performance.now();
-
+      
       ensureNotAborted();
 
-      const draftResponse = await this.ai.execute('optimize_draft', {
-        systemPrompt: draftSystemPrompt,
-        userMessage: prompt,
-        maxTokens: OptimizationConfig.tokens.draft[finalMode] || OptimizationConfig.tokens.draft.default,
-        temperature: OptimizationConfig.temperatures.draft,
-        timeout: OptimizationConfig.timeouts.draft,
-        ...(signal ? { signal } : {}),
-      });
+      const draft = await this.draftService.generateDraft(
+        prompt,
+        finalMode,
+        shotPlan,
+        generationParams,
+        signal
+      );
 
-      const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
       const draftDuration = Math.round(performance.now() - draftStartTime);
 
       this.log.info('Draft generated successfully', {
@@ -368,7 +362,7 @@ export class PromptOptimizationService {
     }
 
     // Check cache
-    const cacheKey = this.buildCacheKey(
+    const cacheKey = this.optimizationCache.buildCacheKey(
       prompt,
       finalMode,
       context,
@@ -377,12 +371,12 @@ export class PromptOptimizationService {
       generationParams,
       lockedSpans
     );
-    const cacheMetadataKey = this.buildMetadataCacheKey(cacheKey);
+
     if (!skipCache) {
-      const cached = await cacheService.get<string>(cacheKey);
+      const cached = await this.optimizationCache.getCachedResult(cacheKey);
       if (cached) {
         if (onMetadata) {
-          const cachedMetadata = await cacheService.get<Record<string, unknown>>(cacheMetadataKey);
+          const cachedMetadata = await this.optimizationCache.getCachedMetadata(cacheKey);
           if (cachedMetadata) {
             onMetadata(cachedMetadata);
           }
@@ -524,10 +518,7 @@ export class PromptOptimizationService {
       }
 
       // Cache the result
-      await cacheService.set(cacheKey, optimizedPrompt, this.cacheConfig);
-      if (optimizationMetadata) {
-        await cacheService.set(cacheMetadataKey, optimizationMetadata, this.cacheConfig);
-      }
+      await this.optimizationCache.cacheResult(cacheKey, optimizedPrompt, optimizationMetadata);
 
       // Log metrics
       this.logOptimizationMetrics(prompt, optimizedPrompt, finalMode);
@@ -763,60 +754,6 @@ export class PromptOptimizationService {
   }
 
   /**
-   * Get draft system prompt for ChatGPT generation
-   */
-  private getDraftSystemPrompt(
-    mode: OptimizationMode,
-    shotPlan: ShotPlan | null = null,
-    generationParams: Record<string, any> | null = null
-  ): string {
-    let constraints = '';
-    if (generationParams) {
-      const overrides = [];
-      if (generationParams.aspect_ratio) overrides.push(`Aspect Ratio: ${generationParams.aspect_ratio}`);
-      if (generationParams.duration_s) overrides.push(`Duration: ${generationParams.duration_s}s`);
-      if (generationParams.fps) overrides.push(`Frame Rate: ${generationParams.fps}fps`);
-      if (typeof generationParams.audio === 'boolean') overrides.push(`Audio: ${generationParams.audio ? 'Enabled' : 'Muted'}`);
-      
-      if (overrides.length > 0) {
-        constraints = `\nRespect these user constraints: ${overrides.join(', ')}.`;
-      }
-    }
-
-    const planSummary = shotPlan
-      ? `Respect this interpreted shot plan (do not force missing fields):
-- shot_type: ${shotPlan.shot_type || 'unknown'}
-- core_intent: ${shotPlan.core_intent || 'n/a'}
-- subject: ${shotPlan.subject || 'null'}
-- action: ${shotPlan.action || 'null'}
-- visual_focus: ${shotPlan.visual_focus || 'null'}
-- setting: ${shotPlan.setting || 'null'}
-- camera_move: ${shotPlan.camera_move || 'null'}
-- camera_angle: ${shotPlan.camera_angle || 'null'}
-- lighting: ${shotPlan.lighting || 'null'}
-- style: ${shotPlan.style || 'null'}
-Keep ONE action and 75-125 words.${constraints}`
-      : `Honor ONE action, camera-visible details, 75-125 words. Do not invent subjects or actions if absent.${constraints}`;
-
-    const draftInstructions: Record<string, string> = {
-      video: `You are a video prompt draft generator. Create a concise video prompt (75-125 words).
-
-Focus on:
-- Clear subject and primary action when present (otherwise lean on camera move + visual focus)
-- Preserve explicit user-provided intent (including temporal changes like seasons shifting)
-- Essential visual details (lighting, camera angle)
-- Specific cinematographic style
-- Avoid negative phrasing; describe what to show
-
-${planSummary}
-
-Output ONLY the draft prompt, no explanations or meta-commentary.`
-    };
-
-    return draftInstructions[mode] ?? draftInstructions.video;
-  }
-
-  /**
    * Automatically detect optimal mode for a prompt
    */
   async detectOptimalMode(prompt: string): Promise<OptimizationMode> {
@@ -835,67 +772,6 @@ Output ONLY the draft prompt, no explanations or meta-commentary.`
    */
   async assessPromptQuality(prompt: string, mode: OptimizationMode) {
     return this.qualityAssessment.assessQuality(prompt, mode);
-  }
-
-  /**
-   * Build cache key for optimization result
-   */
-  private buildCacheKey(
-    prompt: string,
-    mode: OptimizationMode,
-    context: InferredContext | null,
-    brainstormContext: Record<string, unknown> | null,
-    targetModel?: string,
-    generationParams?: Record<string, unknown> | null,
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
-  ): string {
-    const lockedSpanSignature = this.buildLockedSpanSignature(lockedSpans);
-    const generationSignature = this.buildGenerationParamsSignature(generationParams);
-    const parts = [
-      'prompt-opt-v3', // Bump version to clear generic caches and force compilation refresh
-      mode,
-      targetModel || 'generic',
-      prompt.substring(0, 100),
-      context ? JSON.stringify(context) : '',
-      brainstormContext ? JSON.stringify(brainstormContext) : '',
-      generationSignature,
-    ];
-    if (lockedSpanSignature) {
-      parts.push(`locked:${lockedSpanSignature}`);
-    }
-    return parts.join('::');
-  }
-
-  private buildLockedSpanSignature(
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
-  ): string {
-    if (!lockedSpans || lockedSpans.length === 0) {
-      return '';
-    }
-    const payload = lockedSpans.map((span) => ({
-      text: span.text,
-      leftCtx: span.leftCtx ?? null,
-      rightCtx: span.rightCtx ?? null,
-    }));
-    return crypto
-      .createHash('sha256')
-      .update(JSON.stringify(payload))
-      .digest('hex')
-      .substring(0, 16);
-  }
-
-  private buildMetadataCacheKey(baseKey: string): string {
-    return `${baseKey}::meta`;
-  }
-
-  private buildGenerationParamsSignature(params?: Record<string, unknown> | null): string {
-    if (!params || typeof params !== 'object') {
-      return '';
-    }
-    const sortedEntries = Object.keys(params)
-      .sort()
-      .map((key) => [key, (params as Record<string, unknown>)[key]]);
-    return JSON.stringify(sortedEntries);
   }
 
   /**

@@ -22,7 +22,8 @@ export class GeminiLlmClient extends RobustLlmClient {
     const { text, aiService } = params;
     const systemPrompt = GEMINI_STREAMING_SYSTEM_PROMPT;
     
-    const queue: string[] = [];
+    let queue: string[] = [];
+    let queueHead = 0;
     let resolveNext: (() => void) | null = null;
     let done = false;
     let error: Error | null = null;
@@ -65,8 +66,8 @@ export class GeminiLlmClient extends RobustLlmClient {
     let buffer = '';
 
     while (true) {
-      while (queue.length > 0) {
-        const chunk = queue.shift()!;
+      while (queueHead < queue.length) {
+        const chunk = queue[queueHead++];
         buffer += chunk;
         
         let newlineIndex;
@@ -118,6 +119,12 @@ export class GeminiLlmClient extends RobustLlmClient {
              }
           }
         }
+      }
+
+      if (queueHead > 4096 && queueHead * 2 > queue.length) {
+        // Periodic compaction to keep the queue from growing without O(n) shifts.
+        queue = queue.slice(queueHead);
+        queueHead = 0;
       }
 
       if (done) break;
