@@ -261,7 +261,7 @@ export const PromptInput = ({
                   placeholder=""
                   autoFocus={!hasTyped}
                   rows={3}
-                  className="prompt-input__textarea w-full resize-none bg-transparent border-none outline-none p-0 text-[18px] leading-[1.8] text-[#111] placeholder:text-[#9AA0A6]"
+                  className="prompt-input__textarea w-full resize-none bg-transparent border-none outline-none p-0 text-[18px] leading-[1.8] text-[#111] placeholder:text-[#9AA0A6] focus-visible:ring-0 focus-visible:ring-offset-0"
                   style={{
                     minHeight: '96px',
                   }}
