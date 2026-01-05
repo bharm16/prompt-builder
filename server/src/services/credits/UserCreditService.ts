@@ -62,6 +62,39 @@ export class UserCreditService {
     const snapshot = await this.collection.doc(userId).get();
     return snapshot.data()?.credits ?? 0;
   }
+
+  /**
+   * Adds credits to a user's balance in a transaction-safe way.
+   * Creates the user document if it does not exist.
+   */
+  async addCredits(userId: string, amount: number): Promise<void> {
+    const userRef = this.collection.doc(userId);
+
+    try {
+      await this.db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(userRef);
+
+        if (!snapshot.exists) {
+          transaction.set(userRef, {
+            credits: amount,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return;
+        }
+
+        transaction.update(userRef, {
+          credits: admin.firestore.FieldValue.increment(amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+
+      logger.info('Credits added successfully', { userId, amount });
+    } catch (error) {
+      logger.error('Failed to add credits', error as Error, { userId, amount });
+      throw new Error('Transaction failed');
+    }
+  }
 }
 
 export const userCreditService = new UserCreditService();
