@@ -102,7 +102,7 @@ export function HistorySidebar({
   return (
     <aside
       id="history-sidebar"
-      className="h-screen overflow-y-auto border-r border-geist-accents-2 bg-geist-background shadow-geist-medium"
+      className="h-full overflow-y-auto border-r border-geist-accents-2 bg-geist-background shadow-geist-medium"
       style={{
         width: 'var(--sidebar-width)',
         isolation: 'isolate',
@@ -111,7 +111,7 @@ export function HistorySidebar({
     >
       {isCollapsed ? (
         // Collapsed state - icon-only sidebar
-        <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+        <div className="flex h-full max-h-full flex-col overflow-hidden">
           {/* Header with expand button */}
           <header className="flex-shrink-0 flex items-center justify-center px-geist-2 py-geist-2">
             <Button
@@ -196,7 +196,7 @@ export function HistorySidebar({
         </div>
       ) : (
         // Expanded state - full sidebar
-        <div className="flex h-screen max-h-screen flex-col overflow-hidden">
+        <div className="flex h-full max-h-full flex-col overflow-hidden">
           {/* Header with toggle + title */}
           <header className="flex-shrink-0 px-geist-4 py-geist-3">
             <div className="flex items-center justify-between gap-geist-3">

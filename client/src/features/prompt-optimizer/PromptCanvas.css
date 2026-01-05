@@ -433,8 +433,8 @@
 .prompt-canvas-right-rail {
   position: sticky;
   top: 16px;
-  height: calc(100vh - 32px);
-  max-height: calc(100vh - 32px);
+  height: calc(100% - 32px);
+  max-height: calc(100% - 32px);
   align-self: start;
   justify-self: end;
   border-radius: 12px;

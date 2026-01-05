@@ -4,7 +4,7 @@
  */
 
 .prompt-input-layout {
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background: linear-gradient(180deg, var(--accents-1) 0%, var(--geist-background) 65%);
   transition: background-color 0.3s ease;

@@ -45,6 +45,9 @@
     /* Current sidebar state (set dynamically) */
     --sidebar-width: var(--layout-sidebar-width-collapsed);
 
+    /* Global top navbar height (marketing/company nav) */
+    --global-top-nav-height: 52px;
+
     /* ============================================
        GEIST DESIGN TOKENS (Official)
        Based on: vercel.com/geist
@@ -106,6 +109,13 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  /* Ensure app shell can use 100% height (for TopNavbar + content layout) */
+  html,
+  body,
+  #root {
+    height: 100%;
   }
 
   body {

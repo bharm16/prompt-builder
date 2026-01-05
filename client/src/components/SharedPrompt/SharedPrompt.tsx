@@ -27,7 +27,7 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-neutral flex items-center justify-center">
+      <div className="min-h-full h-full gradient-neutral flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-neutral-600 border-r-transparent"></div>
           <p className="mt-4 text-neutral-600">Loading prompt...</p>
@@ -38,7 +38,7 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (error || !prompt) {
     return (
-      <div className="min-h-screen gradient-neutral flex items-center justify-center">
+      <div className="min-h-full h-full gradient-neutral flex items-center justify-center">
         <div className="text-center max-w-md p-8">
           <h1 className="text-3xl font-bold text-neutral-800 mb-4">{error || 'Prompt Not Found'}</h1>
           <p className="text-neutral-600 mb-6">
@@ -57,9 +57,12 @@ const SharedPrompt = (): React.ReactElement => {
   }
 
   return (
-    <div className="min-h-screen gradient-neutral">
+    <div className="min-h-full h-full gradient-neutral overflow-y-auto">
       {/* Header */}
-      <div className="border-b border-neutral-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div
+        className="border-b border-neutral-200 bg-white/50 backdrop-blur-sm sticky z-10"
+        style={{ top: 'var(--global-top-nav-height)' }}
+      >
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-neutral-800">Shared Prompt</h1>
