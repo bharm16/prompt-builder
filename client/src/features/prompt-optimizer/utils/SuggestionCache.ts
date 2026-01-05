@@ -30,15 +30,18 @@ const DEFAULT_CONFIG: CacheConfig = {
 
 /**
  * Simple fast hash function for strings.
- * Collision-tolerant: collisions just cause cache misses, not bugs.
+ * Uses 32-bit FNV-1a for better distribution in cache keys.
  *
  * @param str - String to hash
- * @returns A simple hash string
+ * @returns A short hash string
  */
 export function simpleHash(str: string): string {
-  // Use length + first 50 chars as a simple hash
-  // This is fast and good enough for cache keys
-  return `${str.length}_${str.slice(0, 50)}`;
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${str.length.toString(36)}_${(hash >>> 0).toString(16)}`;
 }
 
 /**

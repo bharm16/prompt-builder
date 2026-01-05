@@ -1,5 +1,6 @@
-import * as admin from 'firebase-admin';
-import { readFileSync } from 'fs';
+import admin from 'firebase-admin';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
 import { logger } from './Logger';
 
 let initialized = false;
@@ -10,7 +11,10 @@ function initializeFirebaseAdmin(): admin.app.App {
   }
 
   try {
-    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const defaultServiceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
+    const serviceAccountPath =
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ??
+      (existsSync(defaultServiceAccountPath) ? defaultServiceAccountPath : undefined);
 
     if (serviceAccountPath) {
       const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));

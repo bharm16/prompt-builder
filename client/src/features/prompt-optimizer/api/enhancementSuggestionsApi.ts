@@ -6,7 +6,7 @@
  *
  * Features:
  * - Request cancellation via AbortSignal
- * - 3-second timeout for suggestions requests
+ * - Timeout for suggestions requests
  * - Distinguishes timeout vs user cancellation in error handling
  */
 
@@ -17,7 +17,7 @@ import {
 import { CancellationError, combineSignals } from '../utils/signalUtils';
 
 /** Timeout for suggestion requests in milliseconds */
-const SUGGESTION_TIMEOUT_MS = 3000;
+const SUGGESTION_TIMEOUT_MS = 8000;
 
 interface FetchEnhancementSuggestionsParams {
   highlightedText: string;
@@ -60,7 +60,7 @@ export async function fetchEnhancementSuggestions({
   editHistory = [],
   signal: externalSignal,
 }: FetchEnhancementSuggestionsParams): Promise<EnhancementSuggestionsResponse> {
-  // Create timeout controller for 3-second timeout
+  // Create timeout controller for suggestion request timeout
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => {
     timeoutController.abort(new Error('Request timeout'));
@@ -116,7 +116,7 @@ export async function fetchEnhancementSuggestions({
 
       if (isTimeout) {
         // Timeout should be treated as an error, not silent cancellation
-        throw new Error('Request timed out after 3 seconds');
+        throw new Error(`Request timed out after ${Math.round(SUGGESTION_TIMEOUT_MS / 1000)} seconds`);
       }
 
       // User cancellation (new selection) - throw CancellationError for silent handling

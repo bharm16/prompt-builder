@@ -68,7 +68,7 @@ interface EnhancementSuggestionsResponse {
 /** Configuration for request manager and cache */
 const REQUEST_CONFIG = {
   debounceMs: 150,
-  timeoutMs: 3000,
+  timeoutMs: 8000,
 };
 
 const CACHE_CONFIG = {
@@ -141,6 +141,7 @@ export function useSuggestionFetch({
       } = payload;
 
       const trimmedHighlight = (highlightedText || '').trim();
+      const normalizedHighlight = trimmedHighlight.normalize('NFC');
       const rawPrompt = payloadPrompt ?? promptOptimizer.displayedPrompt ?? '';
       const normalizedPrompt = rawPrompt.normalize('NFC');
       const metadata: SuggestionsData['metadata'] = rawMetadata
@@ -155,21 +156,17 @@ export function useSuggestionFetch({
         return;
       }
 
-      // DEDUPLICATION: Use highlighted text as dedup key
-      const dedupKey = trimmedHighlight;
-
-      // Check if same request is already in-flight (prevents duplicate requests)
-      if (requestManagerRef.current.isRequestInFlight(dedupKey)) {
-        return; // Skip duplicate - Requirement 2.1
-      }
-
-      // Cancel any previous request (different text) - Requirement 1.1
-      requestManagerRef.current.cancelCurrentRequest();
+      const preferIndexRaw =
+        metadata?.span?.start ?? metadata?.start ?? offsets?.start ?? null;
+      const preferIndex =
+        typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
+          ? preferIndexRaw
+          : null;
 
       const suggestionContext = buildSuggestionContext(
         normalizedPrompt,
-        trimmedHighlight,
-        metadata?.span?.startIndex ?? null,
+        normalizedHighlight,
+        preferIndex,
         1000
       );
 
@@ -189,11 +186,22 @@ export function useSuggestionFetch({
         suggestionContext.startIndex + suggestionContext.matchLength + 100
       );
       const cacheKey = SuggestionCache.generateKey(
-        trimmedHighlight,
+        normalizedHighlight,
         contextBefore,
         contextAfter,
         simpleHash(normalizedPrompt)
       );
+
+      // DEDUPLICATION: Use cache key to avoid duplicate in-flight requests
+      const dedupKey = cacheKey;
+
+      // Check if same request is already in-flight (prevents duplicate requests)
+      if (requestManagerRef.current.isRequestInFlight(dedupKey)) {
+        return; // Skip duplicate - Requirement 2.1
+      }
+
+      // Cancel any previous request (different text) - Requirement 1.1
+      requestManagerRef.current.cancelCurrentRequest();
 
       const cached = cacheRef.current.get(cacheKey);
       if (cached) {
@@ -328,7 +336,7 @@ export function useSuggestionFetch({
 
             // Delegate to API layer with cancellation support - Requirement 1.4, 1.5
             return fetchSuggestionsAPI({
-              highlightedText: trimmedHighlight,
+              highlightedText: normalizedHighlight,
               contextBefore: suggestionContext.contextBefore,
               contextAfter: suggestionContext.contextAfter,
               fullPrompt: normalizedPrompt,

@@ -103,10 +103,16 @@ export interface SuggestionsData {
   offsets?: { start?: number; end?: number } | null;
   metadata?: {
     category?: string;
+    spanId?: string;
+    start?: number;
+    end?: number;
     span?: {
+      id?: string;
+      start?: number;
+      end?: number;
       category?: string;
       confidence?: number;
-      startIndex?: number;
+      quote?: string;
       [key: string]: unknown;
     };
     confidence?: number;
