@@ -34,6 +34,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
   onRedo,
   canUndo,
   canRedo,
+  primaryVisible = true,
 }): React.ReactElement => {
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const { selectedModel } = usePromptState();
@@ -71,49 +72,54 @@ export const PromptActions = memo<FloatingToolbarProps>(({
     : 'Select a model to generate';
 
   return (
-    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-geist-0 mt-geist-4 -mb-geist-2">
-      {/* Primary action - Copy */}
-      <Button
-        onClick={onCopy}
-        svgOnly={false}
-        variant="ghost"
-        prefix={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-        className={copied ? 'text-green-600 bg-green-50' : 'prompt-actions__primary'}
-        aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
-        title="Copy"
-      >
-        <span className="text-button-14 font-medium">{copied ? 'Copied!' : 'Copy'}</span>
-      </Button>
+    <div className="flex flex-nowrap items-center justify-end overflow-x-auto max-w-full gap-2 mt-8">
+      {/* Primary action(s) - only when hovering editor or when there is an active selection */}
+      {primaryVisible && (
+        <>
+          <Button
+            onClick={onCopy}
+            svgOnly={false}
+            variant="ghost"
+            prefix={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            className={copied ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
+            aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
+            title="Copy"
+          >
+            <span className="text-[13px] font-medium">{copied ? 'Copied' : 'Copy'}</span>
+          </Button>
 
-      <Button
-        onClick={handleGenerateWithSelectedModel}
-        svgOnly={false}
-        variant="ghost"
-        prefix={<ExternalLink className="h-3.5 w-3.5" />}
-        className="prompt-actions__primary"
-        aria-label={generateButtonLabel}
-        title={generateButtonTitle}
-        disabled={!selectedModelId}
-      >
-        <span className="text-button-14 font-medium">{generateButtonLabel}</span>
-      </Button>
+          <Button
+            onClick={handleGenerateWithSelectedModel}
+            svgOnly={false}
+            variant="ghost"
+            prefix={<ExternalLink className="h-4 w-4" />}
+            className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
+            aria-label={generateButtonLabel}
+            title={generateButtonTitle}
+            disabled={!selectedModelId}
+          >
+            <span className="text-[13px] font-medium">{generateButtonLabel}</span>
+          </Button>
+        </>
+      )}
 
       <Button
         onClick={onShare}
         svgOnly
         variant="ghost"
         prefix={shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-        className={shared ? 'text-green-600 bg-green-50 -mx-0.5' : '-mx-0.5'}
+        className={shared ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
       />
 
-      <div className="relative -mx-0.5" ref={exportMenuRef}>
+      <div className="relative" ref={exportMenuRef}>
         <Button
           onClick={() => onToggleExportMenu(!showExportMenu)}
           svgOnly
           variant="ghost"
           prefix={<Download className="h-3 w-3" />}
+          className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
           aria-expanded={showExportMenu}
           title="Export"
         />
@@ -144,7 +150,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         )}
       </div>
 
-      <div className="w-px h-geist-4 bg-geist-accents-2 -mx-0.5" />
+      <div className="w-px h-5 bg-black/10 mx-1" />
 
       <Button
         onClick={onUndo}
@@ -152,7 +158,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         svgOnly
         variant="ghost"
         prefix={<RotateCcw className="h-3 w-3" />}
-        className="-mx-0.5"
+        className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
         title="Undo"
       />
       <Button
@@ -161,7 +167,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         svgOnly
         variant="ghost"
         prefix={<RotateCw className="h-3 w-3" />}
-        className="-mx-0.5"
+        className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
         title="Redo"
       />
     </div>

@@ -533,6 +533,21 @@
    UTILITIES LAYER - Custom utility classes
    ============================================ */
 @layer utilities {
+  /* Empty state caret pulse (opacity 1 → 0.4 every 1.2s) */
+  @keyframes emptyCaretPulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  .empty-state-caret-pulse {
+    animation: emptyCaretPulse 1.2s ease-in-out infinite;
+  }
+
   /* Text utilities */
   .text-balance {
     text-wrap: balance;

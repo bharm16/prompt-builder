@@ -20,10 +20,11 @@ export function getHighlightClassName(category: string | null | undefined): stri
  * Default highlight styles
  */
 export const HIGHLIGHT_STYLES = {
-  // Pill-shaped highlights
-  padding: '1px 6px',
-  borderRadius: '9999px',
-  borderBottomWidth: '2px',
+  // NOTE: Visual token styling is now owned by CSS (PromptCanvas.css),
+  // but we still provide per-category color variables via applyHighlightStyles.
+  padding: '0px',
+  borderRadius: '0px',
+  borderBottomWidth: '0px',
   borderBottomStyle: 'solid',
 } as const;
 
@@ -32,10 +33,8 @@ export const HIGHLIGHT_STYLES = {
  */
 export function applyHighlightStyles(element: HTMLElement, color: HighlightColor | undefined): void {
   if (!color) return;
-  
-  element.style.backgroundColor = color.bg;
-  element.style.borderBottom = `${HIGHLIGHT_STYLES.borderBottomWidth} ${HIGHLIGHT_STYLES.borderBottomStyle} ${color.border}`;
-  element.style.padding = HIGHLIGHT_STYLES.padding;
-  element.style.borderRadius = HIGHLIGHT_STYLES.borderRadius;
+  // Provide original category colors back (used by CSS).
+  element.style.setProperty('--highlight-bg', color.bg);
+  element.style.setProperty('--highlight-border', color.border);
 }
 

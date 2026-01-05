@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { Pencil, X, Check, ChevronLeft, RefreshCw, Play as PlayIcon, Lock, Unlock, LayoutGrid } from 'lucide-react';
+import { Pencil, X, Check, ChevronLeft, Lock, Unlock, LayoutGrid } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -94,8 +94,18 @@ export function PromptCanvas({
   const editorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
+  const editorColumnRef = useRef<HTMLDivElement>(null);
+  const videoPanelRef = useRef<HTMLDivElement>(null);
+  const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
+  const tokenPopoverRef = useRef<HTMLDivElement>(null);
+  const idleTimeoutRef = useRef<number | null>(null);
+  const hasTriggeredVideoTransitionRef = useRef(false);
   const toast = useToast();
+  const [isOutputFocused, setIsOutputFocused] = useState(false);
+  const [isOutputHovered, setIsOutputHovered] = useState(false);
+  const [tokenPopover, setTokenPopover] = useState<{ left: number; top: number } | null>(null);
+  const [isVideoTransitionActive, setIsVideoTransitionActive] = useState(false);
 
   // Get model state from context
   const { selectedModel, setSelectedModel, generationParams, setGenerationParams, promptOptimizer } =
@@ -134,16 +144,7 @@ export function PromptCanvas({
 
   const aspectRatioInfo = useMemo(() => getFieldInfo('aspect_ratio'), [getFieldInfo]);
   const durationInfo = useMemo(() => getFieldInfo('duration_s'), [getFieldInfo]);
-  const resolutionInfo = useMemo(() => getFieldInfo('resolution'), [getFieldInfo]);
   const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
-
-  const audioInfo = useMemo(() => {
-    if (!schema?.fields?.audio) return null;
-    const field = schema.fields.audio;
-    const state = resolveFieldState(field, generationParams as CapabilityValues);
-    if (!state.available || state.disabled) return null;
-    return { field };
-  }, [schema, generationParams]);
 
   const handleParamChange = useCallback(
     (key: string, value: unknown) => {
@@ -194,31 +195,6 @@ export function PromptCanvas({
     [generationParams, getFieldInfo, handleParamChange]
   );
 
-  const renderAudioToggle = useCallback(
-    (disabled: boolean) => {
-      if (!audioInfo) return null;
-      const isEnabled = Boolean((generationParams as any)?.audio ?? audioInfo.field.default ?? false);
-
-      return (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isEnabled}
-            onClick={() => handleParamChange('audio', !isEnabled)}
-            disabled={disabled}
-            className="group flex items-center gap-1.5 h-8 px-2 rounded-md hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Toggle Audio"
-          >
-            <span className={`text-sm ${isEnabled ? 'text-geist-foreground' : 'text-geist-accents-5'}`}>
-              Audio
-            </span>
-          </button>
-        </div>
-      );
-    },
-    [audioInfo, generationParams, handleParamChange]
-  );
 
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
@@ -272,6 +248,13 @@ export function PromptCanvas({
 
   // Extract suggestions panel visibility state
   const isSuggestionsOpen = Boolean(suggestionsData && suggestionsData.show !== false);
+  const showVideoPreview = selectedMode === 'video';
+  const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
+  const promptEcho = useMemo(
+    () => (videoPreviewPrompt ? videoPreviewPrompt.replace(/\s+/g, ' ').trim() : ''),
+    [videoPreviewPrompt]
+  );
+  const showVideoPanel = Boolean(showVideoPreview && isVideoTransitionActive && videoPreviewPrompt.trim());
 
   const setShowExportMenu = useCallback(
     (value: boolean) => setState({ showExportMenu: value }),
@@ -446,6 +429,102 @@ export function PromptCanvas({
   const isOutputLoading = Boolean(isProcessing && !isDraftReady);
   const isInputLocked = !isEditing || isOptimizing;
 
+  const hasSuggestionSelection =
+    Boolean(selectedSpanId) ||
+    Boolean(
+      typeof (suggestionsData as any)?.selectedText === 'string' &&
+        (suggestionsData as any).selectedText.trim()
+    );
+
+  const showPrimaryActions = isOutputHovered || isOutputFocused || hasSuggestionSelection;
+
+  const clearIdleTransitionTimer = useCallback((): void => {
+    if (idleTimeoutRef.current) {
+      window.clearTimeout(idleTimeoutRef.current);
+      idleTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showVideoPreview || !normalizedDisplayedPrompt?.trim() || isOutputLoading) {
+      hasTriggeredVideoTransitionRef.current = false;
+      setIsVideoTransitionActive(false);
+      clearIdleTransitionTimer();
+    }
+  }, [showVideoPreview, normalizedDisplayedPrompt, isOutputLoading, clearIdleTransitionTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearIdleTransitionTimer();
+    };
+  }, [clearIdleTransitionTimer]);
+
+  const escapeAttr = (value: string): string => {
+    if (typeof (globalThis as any)?.CSS?.escape === 'function') {
+      return (globalThis as any).CSS.escape(value);
+    }
+    return value.replace(/["\\]/g, '\\$&');
+  };
+
+  // Position contextual alternatives popover near the selected token
+  useEffect(() => {
+    if (!selectedSpanId || !editorRef.current || !editorWrapperRef.current) {
+      setTokenPopover(null);
+      return;
+    }
+
+    const el = editorRef.current.querySelector(
+      `span.value-word[data-span-id="${escapeAttr(selectedSpanId)}"]`
+    ) as HTMLElement | null;
+
+    if (!el) {
+      setTokenPopover(null);
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+
+    const panelWidth = 260;
+    const padding = 12;
+    const leftPreferred = rect.left - wrapperRect.left;
+    const top = rect.bottom - wrapperRect.top + 10;
+    const leftMax = Math.max(padding, wrapperRect.width - panelWidth - padding);
+    const left = Math.max(padding, Math.min(leftPreferred, leftMax));
+
+    setTokenPopover({ left, top });
+  }, [selectedSpanId]);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!tokenPopover) return;
+    const handleMouseDown = (event: MouseEvent): void => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (tokenPopoverRef.current?.contains(target)) return;
+      if (target.closest?.('span.value-word')) return;
+      setSelectedSpanId(null);
+      setTokenPopover(null);
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [tokenPopover, setSelectedSpanId]);
+
+  // Ambient motion: every ~6s, momentarily fade a random token
+  useEffect(() => {
+    if (!showHighlights) return;
+    const root = editorRef.current;
+    if (!root) return;
+    const interval = window.setInterval(() => {
+      const nodes = root.querySelectorAll('span.value-word[data-span-id]');
+      if (!nodes.length) return;
+      const node = nodes[Math.floor(Math.random() * nodes.length)] as HTMLElement;
+      node.classList.add('value-word--ambient');
+      window.setTimeout(() => node.classList.remove('value-word--ambient'), 200);
+    }, 6000);
+    return () => window.clearInterval(interval);
+  }, [showHighlights, normalizedDisplayedPrompt]);
+
   // Text selection hook
   const {
     handleTextSelection,
@@ -565,6 +644,33 @@ export function PromptCanvas({
     [normalizedDisplayedPrompt]
   );
 
+  const triggerVideoTransition = useCallback(
+    (reason: 'idle' | 'blur' | 'scroll'): void => {
+      if (hasTriggeredVideoTransitionRef.current) return;
+      if (!showVideoPreview) return;
+      if (!normalizedDisplayedPrompt?.trim()) return;
+      if (isOutputLoading) return;
+      clearIdleTransitionTimer();
+      hasTriggeredVideoTransitionRef.current = true;
+      setIsVideoTransitionActive(true);
+      debug.logAction('videoTransitionTriggered', { reason });
+    },
+    [showVideoPreview, normalizedDisplayedPrompt, isOutputLoading, clearIdleTransitionTimer, debug]
+  );
+
+  const scheduleIdleTransition = useCallback(
+    (text: string): void => {
+      if (!showVideoPreview || isOutputLoading) return;
+      if (hasTriggeredVideoTransitionRef.current) return;
+      if (!text.trim()) return;
+      clearIdleTransitionTimer();
+      idleTimeoutRef.current = window.setTimeout(() => {
+        triggerVideoTransition('idle');
+      }, 1200);
+    },
+    [showVideoPreview, isOutputLoading, clearIdleTransitionTimer, triggerVideoTransition]
+  );
+
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
       const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
@@ -576,9 +682,32 @@ export function PromptCanvas({
       if (onDisplayedPromptChange) {
         onDisplayedPromptChange(normalizedText);
       }
+      scheduleIdleTransition(normalizedText);
     },
-    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
+    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, scheduleIdleTransition]
   );
+
+  const handleOutputFocus = useCallback((): void => {
+    setIsOutputFocused(true);
+  }, []);
+
+  const handleOutputBlur = useCallback((): void => {
+    setIsOutputFocused(false);
+    triggerVideoTransition('blur');
+  }, [triggerVideoTransition]);
+
+  const handleEditorScroll = useCallback((): void => {
+    const container = editorColumnRef.current;
+    const lockline = outputLocklineRef.current;
+    if (!container || !lockline || !showVideoPreview) return;
+    if (container.scrollTop <= 0) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const locklineRect = lockline.getBoundingClientRect();
+    if (locklineRect.bottom <= containerRect.bottom) {
+      triggerVideoTransition('scroll');
+    }
+  }, [showVideoPreview, triggerVideoTransition]);
 
   const handleInputPromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
@@ -726,6 +855,7 @@ export function PromptCanvas({
               ? { currentPrompt: normalizedDisplayedPrompt }
               : {}),
             variant: 'tokenEditor',
+            tokenEditorHeader: false,
             panelClassName: 'h-full flex flex-col', // Ensure it fits the container
             contextValue: suggestionsData.selectedText || '',
             showCategoryTabs: false,
@@ -740,6 +870,7 @@ export function PromptCanvas({
               ? { currentPrompt: normalizedDisplayedPrompt }
               : {}),
             variant: 'tokenEditor',
+            tokenEditorHeader: false,
             panelClassName: 'h-full flex flex-col',
             showCategoryTabs: false,
             showCopyAction: false,
@@ -752,10 +883,6 @@ export function PromptCanvas({
       hoverPreview,
     ]
   );
-
-  const showVideoPreview = selectedMode === 'video';
-
-  const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
 
   const handleVisualPreviewGenerated = useCallback(
     ({ generatedAt }: { prompt: string; generatedAt: number }) => {
@@ -849,6 +976,97 @@ export function PromptCanvas({
     incrementVideoRequestId();
   }, [incrementVideoRequestId]);
 
+  const animateScroll = useCallback((element: HTMLElement, target: number): void => {
+    const start = element.scrollTop;
+    const delta = target - start;
+    if (delta === 0) return;
+
+    const duration = 300;
+    const startTime = performance.now();
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const step = (now: number): void => {
+      const progress = Math.min(1, (now - startTime) / duration);
+      element.scrollTop = start + delta * easeOut(progress);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  }, []);
+
+  const scrollVideoPanelIntoView = useCallback((): void => {
+    const container = editorColumnRef.current;
+    const panel = videoPanelRef.current;
+    if (!container || !panel) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+
+    const isAbove = panelRect.top < containerRect.top;
+    const isBelow = panelRect.bottom > containerRect.bottom;
+    if (!isAbove && !isBelow) return;
+
+    let delta = 0;
+    if (isBelow) {
+      delta = panelRect.bottom - containerRect.bottom;
+    } else if (isAbove) {
+      delta = panelRect.top - containerRect.top;
+    }
+
+    const target = Math.max(
+      0,
+      Math.min(container.scrollHeight - container.clientHeight, container.scrollTop + delta)
+    );
+    animateScroll(container, target);
+  }, [animateScroll]);
+
+  useEffect(() => {
+    if (!isVideoTransitionActive) return;
+    const timer = window.setTimeout(() => {
+      scrollVideoPanelIntoView();
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [isVideoTransitionActive, scrollVideoPanelIntoView]);
+
+  const videoControls = [
+    {
+      id: 'model',
+      label: 'Model',
+      node: (
+        <ModelSelectorDropdown
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
+          disabled={isOptimizing}
+        />
+      ),
+    },
+    aspectRatioInfo
+      ? {
+          id: 'aspect_ratio',
+          label: 'Aspect ratio',
+          node: renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing),
+        }
+      : null,
+    durationInfo
+      ? {
+          id: 'duration',
+          label: 'Duration',
+          node: renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing),
+        }
+      : null,
+    fpsInfo
+      ? {
+          id: 'fps',
+          label: 'FPS',
+          node: renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing),
+        }
+      : null,
+  ].filter(Boolean) as Array<{ id: string; label: string; node: React.ReactNode }>;
+
+  const ctaDelayMs = 120 + Math.max(0, videoControls.length - 1) * 40 + 180;
+
   // Render the component
   return (
     <div className="relative flex flex-col bg-geist-accents-1 min-h-full flex-1">
@@ -935,7 +1153,11 @@ export function PromptCanvas({
         </div>
 
         {/* Main Editor Area - Optimized Prompt */}
-        <div className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0">
+        <div
+          ref={editorColumnRef}
+          onScroll={handleEditorScroll}
+          className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0"
+        >
           {/* Original Prompt Band */}
           <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
             <div
@@ -1011,20 +1233,6 @@ export function PromptCanvas({
                     aria-readonly={isInputLocked}
                     aria-busy={isOptimizing}
                   />
-                  <div className="prompt-card__footer">
-                    <div className="flex items-center gap-geist-2 flex-wrap">
-                      <ModelSelectorDropdown
-                        selectedModel={selectedModel}
-                        onModelChange={handleModelChange}
-                        disabled={isOptimizing}
-                      />
-                      {renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing)}
-                      {renderDropdown(resolutionInfo, 'resolution', 'Resolution', isOptimizing)}
-                      {renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
-                      {renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing)}
-                      {renderAudioToggle(isOptimizing)}
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1039,84 +1247,28 @@ export function PromptCanvas({
             <div
               className="prompt-band__content prompt-canvas-content-wrapper"
               style={{
-                maxWidth: 'var(--layout-content-max-width)',
+                maxWidth: '880px',
                 width: '100%',
               }}
             >
-              <div className="prompt-card prompt-card--optimized">
-                <div className="prompt-card__header">
-                  <div className="flex items-center gap-geist-2 flex-1">
-                    <span className="prompt-card__label">
-                      Optimized Output
-                    </span>
-                    {promptState === 'generated' && generatedTimestamp && (
-                      <span className="prompt-card__state-badge prompt-card__state-badge--generated">
-                        Generated {formatTimestamp(generatedTimestamp)}
-                      </span>
-                    )}
-                    {promptState === 'generated' && !generatedTimestamp && (
-                      <span className="prompt-card__state-badge prompt-card__state-badge--generated">
-                        Generated just now
-                      </span>
-                    )}
-                    {promptState === 'edited' && (
-                      <span className="prompt-card__state-badge prompt-card__state-badge--edited">
-                        Edited
-                      </span>
-                    )}
-                    {promptState === 'synced' && normalizedDisplayedPrompt !== inputPrompt && (
-                      <span className="prompt-card__state-badge prompt-card__state-badge--out-of-sync">
-                        Out of sync with original
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-geist-2 flex-nowrap overflow-x-auto">
-                    {!isEditing && (
-                      <button
-                        type="button"
-                        onClick={handleRedoOptimize}
-                        disabled={isReoptimizeDisabled}
-                        className="prompt-card__action-button"
-                        aria-label="Redo optimization"
-                        title="Redo optimization"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5 text-geist-accents-5" />
-                        <span>Redo</span>
-                      </button>
-                    )}
-                    {enableMLHighlighting && (
-                      <button
-                        type="button"
-                        onClick={() => setShowHighlights(!showHighlights)}
-                        className="prompt-card__action-button"
-                        aria-label={showHighlights ? 'Hide highlights' : 'Show highlights'}
-                        title={showHighlights ? 'Hide highlights' : 'Show highlights'}
-                      >
-                        <span className="text-label-12">{showHighlights ? 'Hide' : 'Show'} highlights</span>
-                      </button>
-                    )}
+              <div
+                className="prompt-card prompt-card--optimized"
+                data-settled={isVideoTransitionActive ? 'true' : 'false'}
+              >
+                <div className="prompt-output-header">
+                  <div className="prompt-output-label">Optimized output</div>
+                  <div className="prompt-output-status" data-editing={isOutputFocused ? 'true' : 'false'}>
+                    {isOutputFocused ? 'Editing' : 'Live'}
                   </div>
                 </div>
-                <div className="prompt-card__body prompt-card__body--editor">
-                  {normalizedDisplayedPrompt && !hasInteracted && (
-                    <div className="prompt-card__instruction">
-                      <span className="prompt-card__instruction-text">
-                        Click highlighted text to see and swap suggestions
-                      </span>
-                    </div>
-                  )}
-                  {normalizedDisplayedPrompt && lastSwapTime && canUndo && (
-                    <div className="prompt-card__undo-hint">
-                      <span className="prompt-card__undo-hint-text">
-                        Swapped • Press Cmd+Z to undo
-                      </span>
-                    </div>
-                  )}
-                  <div 
-                    className="prompt-editor-wrapper" 
-                    aria-busy={isOutputLoading}
-                    ref={editorWrapperRef}
-                  >
+
+                <div
+                  className="prompt-editor-wrapper"
+                  aria-busy={isOutputLoading}
+                  ref={editorWrapperRef}
+                  onMouseEnter={() => setIsOutputHovered(true)}
+                  onMouseLeave={() => setIsOutputHovered(false)}
+                >
                     <PromptEditor
                       ref={editorRef as React.RefObject<HTMLDivElement>}
                       onTextSelection={handleTextSelection}
@@ -1126,7 +1278,46 @@ export function PromptCanvas({
                       onHighlightMouseLeave={handleHighlightMouseLeave}
                       onCopyEvent={handleCopyEvent}
                       onInput={handleInput}
+                      onFocus={handleOutputFocus}
+                      onBlur={handleOutputBlur}
                     />
+                    <div
+                      ref={outputLocklineRef}
+                      className="prompt-output-lockline"
+                      data-active={isVideoTransitionActive ? 'true' : 'false'}
+                      aria-hidden="true"
+                    />
+                    {/* Contextual alternatives panel (anchored to selected token) */}
+                    {tokenPopover &&
+                      suggestionsData &&
+                      Array.isArray((suggestionsData as any).suggestions) &&
+                      (suggestionsData as any).suggestions.length > 0 && (
+                        <div
+                          ref={tokenPopoverRef}
+                          className="token-alternatives-popover"
+                          style={{
+                            left: tokenPopover.left,
+                            top: tokenPopover.top,
+                          }}
+                          role="dialog"
+                          aria-label="Alternatives"
+                        >
+                          {((suggestionsData as any).suggestions as Array<any>).slice(0, 6).map((item, idx) => (
+                            <div
+                              key={item?.id ?? `${item?.text ?? 'suggestion'}_${idx}`}
+                              className="token-alternatives-item"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                handleSuggestionClickWithFeedback(item);
+                              }}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              {typeof item?.text === 'string' ? item.text : String(item)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     {enableMLHighlighting && hoveredSpanId && lockButtonPosition && !isOutputLoading && (
                       <button
                         ref={lockButtonRef}
@@ -1163,7 +1354,6 @@ export function PromptCanvas({
                       </div>
                     )}
                   </div>
-                </div>
               </div>
 
               {/* Action buttons floating below prompt content, aligned right */}
@@ -1183,57 +1373,70 @@ export function PromptCanvas({
                   onRedo={onRedo}
                   canUndo={canUndo}
                   canRedo={canRedo}
+                  primaryVisible={showPrimaryActions}
                 />
               )}
             </div>
           </div>
 
-          {/* NEW: Video Generation Band (Moved to bottom of Main Column) */}
-          {normalizedDisplayedPrompt && showVideoPreview && (
+          {showVideoPanel && (
             <div className="prompt-band prompt-band--video mt-4">
               <div
                 className="prompt-band__content prompt-canvas-content-wrapper"
                 style={{
-                  maxWidth: 'var(--layout-content-max-width)',
+                  maxWidth: '880px',
                   width: '100%',
                 }}
               >
-                <div className="prompt-card prompt-card--video border-geist-accents-2 bg-geist-background">
-                  <div className="prompt-card__header">
-                    <span className="prompt-card__label">Video Generation</span>
+                <div
+                  ref={videoPanelRef}
+                  className="prompt-card prompt-card--video video-generation-panel"
+                >
+                  <div className="video-generation-header">Generate video</div>
+                  <div className="video-generation-echo" title={promptEcho}>
+                    {promptEcho}
                   </div>
-                  <div className="prompt-card__body">
-                    <div className="flex flex-col gap-4">
-                      <div className="text-sm text-geist-accents-5">
-                        Generate a video preview from your optimized prompt.
+                  <div className="video-generation-controls">
+                    {videoControls.map((control, index) => (
+                      <div
+                        key={control.id}
+                        className="video-generation-control"
+                        style={{ '--delay': `${120 + index * 40}ms` } as React.CSSProperties}
+                      >
+                        <span className="video-generation-control__label">
+                          {control.label}
+                        </span>
+                        {control.node}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleGenerateVideoPreview}
-                          disabled={!videoPreviewPrompt.trim()}
-                          className="inline-flex items-center justify-center gap-2 px-geist-3 py-geist-2 text-button-14 font-medium text-geist-background bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          aria-label="Generate motion preview"
-                        >
-                          <PlayIcon className="h-4 w-4" aria-hidden="true" />
-                          <span>Generate Motion</span>
-                        </button>
-                      </div>
-                      <div className="pt-4 border-t border-geist-accents-2">
-                        <VideoPreview
-                          prompt={videoPreviewPrompt}
-                          aspectRatio={effectiveAspectRatio}
-                          model={selectedModel || undefined}
-                          generationParams={generationParams}
-                          isVisible={true}
-                          generateRequestId={videoGenerateRequestId}
-                          lastGeneratedAt={videoLastGeneratedAt}
-                          onPreviewGenerated={handleVideoPreviewGenerated}
-                          onKeepRefining={handleKeepRefiningFromPreview}
-                          onRefinePrompt={handleSomethingOffFromPreview}
-                        />
-                      </div>
-                    </div>
+                    ))}
+                  </div>
+                  <div
+                    className="video-generation-cta"
+                    style={{ '--delay': `${ctaDelayMs}ms` } as React.CSSProperties}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleGenerateVideoPreview}
+                      disabled={!videoPreviewPrompt.trim()}
+                      className="video-generation-button"
+                      aria-label="Generate video"
+                    >
+                      Generate video
+                    </button>
+                  </div>
+                  <div className="video-generation-preview">
+                    <VideoPreview
+                      prompt={videoPreviewPrompt}
+                      aspectRatio={effectiveAspectRatio}
+                      model={selectedModel || undefined}
+                      generationParams={generationParams}
+                      isVisible={true}
+                      generateRequestId={videoGenerateRequestId}
+                      lastGeneratedAt={videoLastGeneratedAt}
+                      onPreviewGenerated={handleVideoPreviewGenerated}
+                      onKeepRefining={handleKeepRefiningFromPreview}
+                      onRefinePrompt={handleSomethingOffFromPreview}
+                    />
                   </div>
                 </div>
               </div>
@@ -1243,91 +1446,75 @@ export function PromptCanvas({
 
         {/* Right Rail - Drafting & Refinement */}
         <div
-          className="prompt-canvas-right-rail flex flex-col overflow-hidden bg-geist-background border border-geist-accents-2"
+          className="prompt-canvas-right-rail flex flex-col overflow-hidden border-l"
+          style={
+            {
+              background: '#0E0F11',
+              borderLeftColor: '#1C1F24',
+              padding: 24,
+              // Local Geist token overrides so existing components render correctly in this dark panel.
+              '--geist-background': '#0E0F11',
+              '--geist-foreground': '#F5F6F7',
+              '--accents-1': '#111318',
+              '--accents-2': '#1C1F24',
+              '--accents-3': '#2A2F36',
+              '--accents-4': '#5C616A',
+              '--accents-5': '#7C818A',
+              '--accents-6': '#8B9098',
+              '--accents-7': '#C9CDD3',
+              '--accents-8': '#F5F6F7',
+            } as React.CSSProperties
+          }
         >
-          {/* Header - Simplified, no tabs */}
-          <div className="sticky top-0 z-20 bg-geist-background border-b border-geist-accents-2">
-            <div className="px-geist-4 py-geist-3 flex items-center justify-between gap-geist-3">
-              <h2 className="text-sm font-semibold text-geist-foreground truncate">
-                Preview & Refine
-              </h2>
-              {/* Optional: Clear selection button if needed */}
-               {suggestionsData?.selectedText && suggestionsData?.onClose && (
+          {/* Panel Title */}
+          <div className="text-[12px] tracking-[0.08em] uppercase text-[#8B9098] mb-4">
+            Preview &amp; Refine
+          </div>
+
+          {/* Preview Frame */}
+          <div>
+            <VisualPreview
+              prompt={previewSource}
+              aspectRatio={effectiveAspectRatio}
+              isVisible={true}
+              generateRequestId={visualGenerateRequestId}
+              lastGeneratedAt={visualLastGeneratedAt}
+              onPreviewGenerated={handleVisualPreviewGenerated}
+              onKeepRefining={handleKeepRefiningFromPreview}
+              onRefinePrompt={handleSomethingOffFromPreview}
+            />
+          </div>
+
+          {/* Suggestions */}
+          <div className="mt-6 pt-4 border-t flex-1 min-h-0 flex flex-col" style={{ borderTopColor: '#1C1F24' }}>
+            <div className="text-[12px] text-[#7C818A] mb-2">Suggestions</div>
+
+            {/* Inline replacement feedback */}
+            {justReplaced && (
+              <div className="mb-3">
+                <div
+                  className="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2"
+                  style={{ background: '#111318', border: '1px solid #1C1F24' }}
+                >
+                  <div className="text-[12px] text-[#C9CDD3] truncate">
+                    ✓ Replaced “{justReplaced.from}”
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
-                      suggestionsData.onClose?.();
-                      setSelectedSpanId(null);
-                      setHoveredSpanId(null);
+                      onUndo?.();
+                      setState({ justReplaced: null });
                     }}
-                    className="inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-geist-accents-2 transition-colors"
-                    aria-label="Clear selection"
+                    className="text-[12px] font-medium text-[#8B9098] hover:text-white"
                   >
-                    <X className="h-3 w-3 text-geist-accents-6" aria-hidden="true" />
+                    Undo
                   </button>
-                )}
-            </div>
-          </div>
-
-          {/* Right-pane body - Stacked Layout */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
-            
-            {/* 1. Image Preview (Always visible at top for iterative loop) */}
-            <div className="p-geist-4 border-b border-geist-accents-2">
-               <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">Visual Draft</span>
-                    <button
-                      type="button"
-                      onClick={handleGenerateVisualPreview}
-                      disabled={!previewSource.trim()}
-                      className="text-xs font-medium text-geist-foreground hover:text-geist-accents-5 transition-colors disabled:opacity-50"
-                    >
-                      Refresh
-                    </button>
-                  </div>
-                  
-                  <VisualPreview
-                    prompt={previewSource}
-                    aspectRatio={effectiveAspectRatio}
-                    isVisible={true}
-                    generateRequestId={visualGenerateRequestId}
-                    lastGeneratedAt={visualLastGeneratedAt}
-                    onPreviewGenerated={handleVisualPreviewGenerated}
-                    onKeepRefining={handleKeepRefiningFromPreview}
-                    onRefinePrompt={handleSomethingOffFromPreview}
-                  />
-               </div>
-            </div>
-
-            {/* 2. Suggestions Panel (Takes remaining space) */}
-            <div className="flex-1 flex flex-col min-h-0">
-               {/* Inline replacement feedback */}
-               {justReplaced && (
-                  <div className="px-geist-4 pt-geist-3 pb-2">
-                    <div className="flex items-center justify-between gap-geist-3 bg-geist-accents-1 border border-geist-accents-2 rounded-geist px-geist-3 py-geist-2">
-                      <div className="text-label-12 text-geist-foreground truncate">
-                        ✓ Replaced “{justReplaced.from}”
-                      </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onUndo?.();
-                            setState({ justReplaced: null });
-                          }}
-                          className="text-label-12 font-medium text-geist-accents-6 hover:text-geist-foreground"
-                        >
-                        Undo
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex-1 overflow-hidden relative">
-                  <SuggestionsPanel
-                    suggestionsData={suggestionsPanelData}
-                  />
                 </div>
+              </div>
+            )}
+
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <SuggestionsPanel suggestionsData={suggestionsPanelData} />
             </div>
           </div>
         </div>

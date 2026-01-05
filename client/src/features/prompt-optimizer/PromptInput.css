@@ -1,0 +1,94 @@
+.prompt-input__canvas {
+  position: relative;
+  padding: 32px;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--po-primary-rgb) / 0.06),
+    rgb(var(--po-primary-rgb) / 0.02)
+  );
+  border: 1px solid rgb(var(--po-primary-rgb) / 0.14);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.06);
+  transition:
+    background 150ms ease-out,
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.prompt-input__canvas--focused {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--po-primary-rgb) / 0.10),
+    rgb(var(--po-primary-rgb) / 0.04)
+  );
+  border-color: rgb(var(--po-primary-rgb) / 0.26);
+  box-shadow:
+    0 18px 46px rgb(0 0 0 / 0.10),
+    0 0 0 4px rgb(var(--po-primary-rgb) / 0.08);
+}
+
+.prompt-input__textarea {
+  caret-color: var(--po-primary);
+}
+
+.prompt-input__textarea::selection {
+  background: rgb(var(--po-primary-rgb) / 0.22);
+  color: var(--po-ink);
+}
+
+.prompt-input__empty-caret {
+  background: var(--po-primary);
+}
+
+.prompt-input__optimize-btn {
+  background: var(--po-primary);
+  box-shadow: 0 12px 22px rgb(var(--po-primary-rgb) / 0.22);
+}
+
+.prompt-input__optimize-btn:hover:not(:disabled) {
+  background: #5A4CE0;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgb(var(--po-primary-rgb) / 0.28);
+}
+
+.prompt-input__optimize-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 10px 18px rgb(var(--po-primary-rgb) / 0.22);
+}
+
+.prompt-input__controls {
+  background: #111;
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 0.10);
+  box-shadow: 0 12px 26px rgb(0 0 0 / 0.22);
+}
+
+.prompt-input__control-select {
+  background-color: rgb(255 255 255 / 0.08);
+  color: rgb(255 255 255 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.prompt-input__control-select:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / 0.12);
+  border-color: rgb(255 255 255 / 0.18);
+}
+
+.prompt-input__control-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(var(--po-primary-rgb) / 0.30);
+}
+
+.prompt-input__control-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.prompt-input__control-select option {
+  color: #111;
+}
+
+.prompt-input__control-toggle:hover {
+  background: rgb(255 255 255 / 0.08);
+}

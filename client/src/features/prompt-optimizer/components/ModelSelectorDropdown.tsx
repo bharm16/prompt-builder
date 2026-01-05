@@ -10,7 +10,8 @@ export const ModelSelectorDropdown = memo<{
   selectedModel: string | undefined;
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
-}>(({ selectedModel, onModelChange, disabled = false }): React.ReactElement => {
+  variant?: 'default' | 'pill' | 'pillDark';
+}>(({ selectedModel, onModelChange, disabled = false, variant = 'default' }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,23 +57,43 @@ export const ModelSelectorDropdown = memo<{
           }
         }}
         disabled={disabled || isLoading}
-        className="inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background"
+        className={
+          variant === 'pillDark'
+            ? 'inline-flex items-center gap-2 h-8 px-3 text-[13px] font-medium rounded-[8px] bg-white/10 text-white hover:bg-white/14 border border-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--po-primary-rgb)/0.35)]'
+            : variant === 'pill'
+              ? 'inline-flex items-center gap-2 h-8 px-3 text-[13px] font-medium rounded-[8px] bg-[#F4F5F7] text-[#222] hover:bg-[#E8EAED] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10'
+              : 'inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background'
+        }
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current model: ${currentLabel}`}
         aria-disabled={disabled}
       >
-        <Video className="h-3.5 w-3.5 text-geist-accents-5" />
-        <span>{isLoading ? 'Loading...' : currentLabel}</span>
+        <Video
+          className={`h-3.5 w-3.5 ${
+            variant === 'pillDark' ? 'text-white/80' : variant === 'pill' ? 'text-[#222]' : 'text-geist-accents-5'
+          }`}
+        />
+        <span className="truncate max-w-[220px]">{isLoading ? 'Loading...' : currentLabel}</span>
         <ChevronDown
-          className={`h-3.5 w-3.5 text-geist-accents-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 ${
+            variant === 'pillDark'
+              ? 'text-white/80'
+              : variant === 'pill'
+                ? 'text-[#222]'
+                : 'text-geist-accents-5'
+          } transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-geist-1 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-geist-background rounded-geist border border-geist-accents-2 shadow-geist-medium animate-slide-down"
+          className={
+            variant === 'pillDark'
+              ? 'absolute top-full left-0 mt-2 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-[#111] rounded-[10px] border border-white/10 shadow-2xl animate-slide-down'
+              : 'absolute top-full left-0 mt-2 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-white rounded-[10px] border border-neutral-200 shadow-lg animate-slide-down'
+          }
           role="listbox"
           aria-label="Available video models"
         >
@@ -80,19 +101,40 @@ export const ModelSelectorDropdown = memo<{
           <button
             onClick={() => handleModelSelect('')}
             className={`
-              w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-left text-label-14
+              w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
               transition-colors duration-150
-              ${!selectedModel ? 'bg-geist-accents-1' : 'hover:bg-geist-accents-1'}
-              border-b border-geist-accents-1
+              ${
+                variant === 'pillDark'
+                  ? !selectedModel
+                    ? 'bg-white/10'
+                    : 'hover:bg-white/8'
+                  : !selectedModel
+                    ? 'bg-neutral-100'
+                    : 'hover:bg-neutral-100'
+              }
+              ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'}
             `}
             role="option"
             aria-selected={!selectedModel}
           >
-            <span className={`flex-1 ${!selectedModel ? 'font-semibold text-geist-foreground' : 'text-geist-accents-7'}`}>
+            <span
+              className={`flex-1 ${
+                variant === 'pillDark'
+                  ? !selectedModel
+                    ? 'font-semibold text-white'
+                    : 'text-white/80'
+                  : !selectedModel
+                    ? 'font-semibold text-neutral-900'
+                    : 'text-neutral-700'
+              }`}
+            >
               Auto-detect
             </span>
             {!selectedModel && (
-              <Check className="h-4 w-4 text-geist-foreground" aria-hidden="true" />
+              <Check
+                className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
+                aria-hidden="true"
+              />
             )}
           </button>
 
@@ -105,24 +147,49 @@ export const ModelSelectorDropdown = memo<{
                 key={option.id}
                 onClick={() => handleModelSelect(option.id)}
                 className={`
-                  w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-left text-label-14
+                  w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
                   transition-colors duration-150
-                  ${isSelected ? 'bg-geist-accents-1' : 'hover:bg-geist-accents-1'}
-                  border-b border-geist-accents-1 last:border-b-0
+                  ${
+                    variant === 'pillDark'
+                      ? isSelected
+                        ? 'bg-white/10'
+                        : 'hover:bg-white/8'
+                      : isSelected
+                        ? 'bg-neutral-100'
+                        : 'hover:bg-neutral-100'
+                  }
+                  ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'} last:border-b-0
                 `}
                 role="option"
                 aria-selected={isSelected}
               >
                 <div className="flex flex-col flex-1 min-w-0">
-                  <span className={`truncate ${isSelected ? 'font-semibold text-geist-foreground' : 'text-geist-accents-7'}`}>
+                  <span
+                    className={`truncate ${
+                      variant === 'pillDark'
+                        ? isSelected
+                          ? 'font-semibold text-white'
+                          : 'text-white/80'
+                        : isSelected
+                          ? 'font-semibold text-neutral-900'
+                          : 'text-neutral-700'
+                    }`}
+                  >
                     {option.label}
                   </span>
-                  <span className="text-[10px] text-geist-accents-4 uppercase tracking-wider">
+                  <span
+                    className={`text-[10px] uppercase tracking-wider ${
+                      variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
+                    }`}
+                  >
                     {option.provider}
                   </span>
                 </div>
                 {isSelected && (
-                  <Check className="h-4 w-4 text-geist-foreground" aria-hidden="true" />
+                  <Check
+                    className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
+                    aria-hidden="true"
+                  />
                 )}
               </button>
             );

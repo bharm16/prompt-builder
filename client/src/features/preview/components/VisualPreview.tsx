@@ -8,7 +8,6 @@
 import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useImagePreview } from '../hooks/useImagePreview';
-import { useRemoteDownload } from '../hooks/useRemoteDownload';
 
 interface VisualPreviewProps {
   prompt: string;
@@ -89,10 +88,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   aspectRatio = null,
   isVisible,
   generateRequestId,
-  lastGeneratedAt = null,
   onPreviewGenerated,
-  onKeepRefining,
-  onRefinePrompt,
 }) => {
   const normalizedAspectRatio = React.useMemo(
     () => normalizeAspectRatio(aspectRatio),
@@ -105,7 +101,6 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   });
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
-  const { isDownloading: isExporting, download } = useRemoteDownload();
   const copyTimeoutRef = React.useRef<number | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
 
@@ -144,168 +139,74 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     }
   }, [generateRequestId, handleGenerate, isVisible]);
 
-  const handleExportKeyframe = React.useCallback(async () => {
-    await download({
-      url: imageUrl,
-      fileName: `keyframe-preview-${Date.now()}.webp`,
-    });
-  }, [download, imageUrl]);
-
   if (!isVisible) return null;
 
-  const displayAspectRatio = normalizedAspectRatio ?? '16:9';
-  const status = loading ? 'Generating' : error ? 'Failed' : imageUrl ? 'Ready' : 'Idle';
-  const statusDotClass = loading
-    ? 'bg-neutral-300'
-    : error
-      ? 'bg-error-600'
-      : imageUrl
-        ? 'bg-success-600'
-        : 'bg-neutral-300';
-
-  const formatRelativeUpdate = (timestamp: number): string => {
-    const diffMs = Math.max(0, Date.now() - timestamp);
-    const seconds = Math.floor(diffMs / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
+  // Per spec: the preview "monitor" frame is always 16:9
+  const displayAspectRatio = '16 / 9';
 
   return (
-    <div className="flex flex-col space-y-4">
-      <div className="flex items-center justify-between px-1 gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-xs font-medium text-geist-accents-5 uppercase tracking-wider">
-            Visual Preview
-          </h3>
-          <span className="inline-flex items-center px-2 py-0.5 text-xs text-geist-accents-6 bg-geist-accents-1 border border-geist-accents-2 rounded-full">
-            Flux Schnell
-          </span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="inline-flex items-center gap-2 text-xs text-geist-accents-5">
-            <span className={`h-2 w-2 rounded-full ${statusDotClass}`} aria-hidden="true" />
-            <span>{status}</span>
-          </span>
-          {lastGeneratedAt ? (
-            <span className="text-xs text-geist-accents-6">Last {formatRelativeUpdate(lastGeneratedAt)}</span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between px-1 gap-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={loading || !prompt}
-            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={imageUrl ? 'Regenerate composition preview' : 'Generate composition preview'}
-          >
-            {imageUrl ? (loading ? 'Generating...' : 'Regenerate') : loading ? 'Generating...' : 'Generate'}
-          </button>
-          <button
-            type="button"
-            onClick={handleExportKeyframe}
-            disabled={!imageUrl || isExporting}
-            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Download keyframe"
-          >
-            {isExporting ? 'Downloading...' : 'Download'}
-          </button>
-          <button
-            type="button"
-            onClick={() => (imageUrl ? window.open(imageUrl, '_blank', 'noopener,noreferrer') : null)}
-            disabled={!imageUrl}
-            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Open full size image"
-          >
-            Open
-          </button>
-        </div>
-      </div>
+    <div
+      className="w-full"
+      style={{
+        background: '#000',
+        borderRadius: 12,
+        padding: 12,
+        aspectRatio: displayAspectRatio,
+        position: 'relative',
+        boxShadow:
+          'inset 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.6)',
+      }}
+    >
       <div
-        className="relative group w-full bg-geist-accents-1 rounded-lg overflow-hidden border border-geist-accents-2 shadow-sm"
-        style={{ aspectRatio: displayAspectRatio.replace(':', ' / ') }}
+        className="w-full h-full"
+        style={{
+          border: '1px solid #1F2329',
+          borderRadius: 8,
+          overflow: 'hidden',
+          position: 'relative',
+        }}
       >
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-geist-background/50 backdrop-blur-sm z-10">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-5 h-5 border-2 border-geist-foreground/30 border-t-geist-foreground rounded-full animate-spin" />
-              <span className="text-xs text-geist-accents-5 font-medium">
-                Rendering...
-              </span>
+        {imageUrl ? (
+          <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-6 text-center">
+            <div style={{ maxWidth: 240, margin: 'auto' }}>
+              <div className="text-[14px] text-[#9AA0A6]">
+                Generate a preview to validate framing, lighting, and mood.
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading || !prompt}
+                className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Generate preview"
+              >
+                Generate
+              </button>
             </div>
           </div>
         )}
-        {error ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-geist-error bg-geist-error/5 p-4 text-center">
-            <Icon name="AlertTriangle" size={20} className="mb-2 opacity-80" />
-            <span className="text-sm font-medium">Generation Failed</span>
-            <span className="text-xs opacity-80 mt-1">Try regenerating</span>
+
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+            <div className="w-6 h-6 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
           </div>
-        ) : imageUrl ? (
-          <img
-            src={imageUrl}
-            alt="Prompt Preview"
-            className="w-full h-full object-cover transition-opacity duration-500"
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-geist-accents-1 p-4 text-center">
-            <Icon name="Image" size={22} className="text-geist-accents-5 mb-2" />
-            <div className="text-sm font-medium text-geist-foreground">No composition preview yet</div>
-            <div className="mt-1 text-xs text-geist-accents-6 max-w-xs">
-              Generate to validate framing, placement, lighting, and overall mood.
-            </div>
+        )}
+
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+            <Icon name="AlertTriangle" size={20} className="mb-2 text-[#9AA0A6]" />
+            <div className="text-[14px] text-[#9AA0A6]">Preview failed. Try again.</div>
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={loading || !prompt}
-              className="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-geist bg-geist-foreground text-geist-background hover:bg-geist-accents-8 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              aria-label="Generate composition preview"
+              className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform]"
             >
-              {loading ? 'Generating...' : 'Generate'}
+              Retry
             </button>
           </div>
         )}
       </div>
-
-      <details className="px-1 text-xs text-geist-accents-6">
-        <summary className="cursor-pointer select-none text-geist-accents-5 hover:text-geist-foreground">
-          What this checks
-        </summary>
-        <ul className="mt-2 space-y-1 list-disc list-inside">
-          <li>Shot framing &amp; composition</li>
-          <li>Subject placement</li>
-          <li>Lighting direction</li>
-          <li>Overall mood</li>
-        </ul>
-      </details>
-
-      {imageUrl && (
-        <div className="px-1">
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={onKeepRefining}
-              className="text-xs text-geist-foreground hover:underline text-left"
-            >
-              ✓ Looks right → Keep refining
-            </button>
-            <button
-              type="button"
-              onClick={onRefinePrompt}
-              className="text-xs text-geist-foreground hover:underline text-left"
-            >
-              ✕ Something’s off → Refine prompt
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

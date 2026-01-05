@@ -100,17 +100,19 @@
   -moz-user-select: text;
   -ms-user-select: text;
   cursor: pointer;
-  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.15s ease;
-  /* Reduce base saturation for better text readability */
-  opacity: 0.85;
+  transition: all 120ms ease-out;
+  opacity: 1;
 
-  /* Ensure "pill" highlights render cleanly even when a span wraps across lines */
+  /* Token object shape */
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 1px;
+  background: var(--highlight-bg, rgba(0, 0, 0, 0.04));
+  box-shadow: inset 0 -1px 0 var(--highlight-border, rgba(0, 0, 0, 0.08));
+
+  /* Prevent weird splits when wraps happen */
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-
-  /* Force pill shape even if older inline styles exist */
-  border-radius: 9999px !important;
-  padding: 1px 6px !important;
 }
 
 /* Restore full opacity on hover/selection */
@@ -152,9 +154,11 @@
 
 /* Enhanced hover effects for all categories */
 .value-word:hover {
-  filter: brightness(0.95);
-  border-bottom-width: 2px !important;
-  transform: translateY(-0.5px);
+  /* Slightly deepen without losing category color */
+  box-shadow:
+    inset 0 0 0 9999px rgba(0, 0, 0, 0.04),
+    inset 0 -1px 0 var(--highlight-border, rgba(0, 0, 0, 0.12));
+  transform: translateY(-1px);
   cursor: pointer !important;
   opacity: 1 !important;
   z-index: 1;
@@ -166,72 +170,26 @@
 
 /* Selected span state - active and prominent */
 .value-word--selected {
-  opacity: 1 !important;
-  filter: brightness(1.05);
-  border-bottom-width: 3px !important;
+  box-shadow:
+    inset 0 0 0 9999px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 0 var(--highlight-border, rgba(0, 0, 0, 0.16)),
+    0 4px 12px rgba(0, 0, 0, 0.12);
   z-index: 2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Dimmed spans when another is selected */
 .value-word--dimmed {
   opacity: 0.4 !important;
-  filter: grayscale(0.3);
+  filter: none;
 }
 
 .value-word--dimmed:hover {
   opacity: 0.6 !important;
 }
 
-/* Category-specific hover enhancements - reduced saturation for readability */
-.value-word-wardrobe:hover {
-  background-color: rgba(255,214,0,.2) !important;
-  border-bottom-color: rgba(255,214,0,.6) !important;
-}
-
-.value-word-appearance:hover {
-  background-color: rgba(255,105,180,.2) !important;
-  border-bottom-color: rgba(255,105,180,.6) !important;
-}
-
-.value-word-lighting:hover {
-  background-color: rgba(249, 115, 22, 0.15) !important;
-  border-bottom-color: rgba(249, 115, 22, 0.5) !important;
-}
-
-.value-word-timeofday:hover {
-  background-color: rgba(135,206,235,.2) !important;
-  border-bottom-color: rgba(135,206,235,.6) !important;
-}
-
-.value-word-cameramove:hover {
-  background-color: rgba(139, 92, 246, 0.15) !important;
-  border-bottom-color: rgba(139, 92, 246, 0.5) !important;
-}
-
-.value-word-framing:hover {
-  background-color: rgba(186,85,211,.2) !important;
-  border-bottom-color: rgba(186,85,211,.6) !important;
-}
-
-.value-word-environment:hover {
-  background-color: rgba(6, 182, 212, 0.15) !important;
-  border-bottom-color: rgba(6, 182, 212, 0.5) !important;
-}
-
-.value-word-color:hover {
-  background-color: rgba(244, 63, 94, 0.15) !important;
-  border-bottom-color: rgba(244, 63, 94, 0.5) !important;
-}
-
-.value-word-technical:hover {
-  background-color: rgba(99, 102, 241, 0.15) !important;
-  border-bottom-color: rgba(99, 102, 241, 0.5) !important;
-}
-
-.value-word-descriptive:hover {
-  background-color: rgba(250, 204, 21, 0.18) !important;
-  border-bottom-color: rgba(250, 204, 21, 0.5) !important;
+/* Ambient motion: momentary token fade (driven by JS) */
+.value-word--ambient {
+  opacity: 0.8 !important;
 }
 
 /* Swap feedback animation */
@@ -437,11 +395,9 @@
   max-height: calc(100% - 32px);
   align-self: start;
   justify-self: end;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 @media (max-width: 1024px) {
@@ -527,6 +483,60 @@
   /* Section padding: 24 (horizontal), 16 (vertical) */
   padding: 16px 24px;
   border-bottom: 1px solid var(--geist-accents-2);
+}
+
+.prompt-output-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.prompt-output-label {
+  font-family: Inter, var(--font-geist-sans);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8f98;
+}
+
+.prompt-output-status {
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef0f3;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  display: inline-flex;
+  align-items: center;
+}
+
+.prompt-output-status[data-editing='true'] {
+  background: #e6f0ff;
+  color: #245bdb;
+}
+
+.token-alternatives-popover {
+  position: absolute;
+  width: 260px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+}
+
+.token-alternatives-item {
+  font-size: 14px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #111;
+}
+
+.token-alternatives-item:hover {
+  background: #f1f3f4;
 }
 
 .prompt-card__label {
@@ -693,12 +703,30 @@
 
 /* Optimized card styling - active, high contrast */
 .prompt-card--optimized {
-  border-color: var(--geist-accents-3);
+  position: relative;
+  max-width: 880px;
+  margin-top: 64px;
+  padding: 40px 48px;
+  border-radius: 16px;
+  background: #fbfbfc;
+  border: none;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.06);
+  transition: background-color 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
 }
 
 .prompt-card--optimized:focus-within {
-  border-color: var(--geist-accents-4);
-  box-shadow: 0 0 0 1px var(--geist-accents-2);
+  outline: 2px solid rgba(0, 0, 0, 0.08);
+  outline-offset: -2px;
+}
+
+.prompt-card--optimized[data-settled='true'] {
+  background: #f7f8fa;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 16px rgba(0, 0, 0, 0.06);
+  opacity: 0.94;
 }
 
 /* ============================================
@@ -749,6 +777,25 @@
   min-height: 240px;
 }
 
+.prompt-output-lockline {
+  height: 1px;
+  width: 100%;
+  margin-top: 16px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.15),
+    transparent
+  );
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 400ms ease;
+}
+
+.prompt-output-lockline[data-active='true'] {
+  transform: scaleX(1);
+}
+
 .prompt-lock-button {
   position: absolute;
   z-index: 5;
@@ -780,14 +827,14 @@
 .prompt-editor {
   outline: none;
   cursor: text;
-  font-family: var(--font-geist-sans);
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--geist-foreground);
+  font-family: Inter, var(--font-geist-sans);
+  font-size: 16px;
+  line-height: 1.75;
+  color: #111;
   width: 100%;
-  min-height: 240px;
+  min-height: 180px;
   height: auto; /* Allow growth */
-  caret-color: rgb(0, 0, 0);
+  caret-color: #111;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -796,15 +843,7 @@
   outline: none;
 }
 
-/* Constrain output line-length inside the card (card stays full width) */
-.prompt-card--optimized .prompt-card__instruction,
-.prompt-card--optimized .prompt-card__undo-hint,
-.prompt-card--optimized .prompt-editor-wrapper,
-.prompt-card--optimized .prompt-editor {
-  max-width: 72ch;
-  margin-left: auto;
-  margin-right: auto;
-}
+/* Optimized output container already has a strict max-width (880px) */
 
 /* Keep input readable too (same card type, centered column) */
 .prompt-card--original .prompt-input {
@@ -872,4 +911,139 @@
   100% {
     opacity: 1;
   }
+}
+
+/* ============================================
+   VIDEO GENERATION TRANSITION
+   ============================================ */
+
+.prompt-card--video {
+  width: 100%;
+  padding: 40px 48px;
+  border-radius: 16px;
+  background: #f7f8fa;
+  border: none;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.video-generation-panel {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: video-generation-reveal 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes video-generation-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.video-generation-header {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7078;
+  font-weight: 500;
+}
+
+.video-generation-echo {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #9aa0a6;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-generation-controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-generation-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: video-controls-fade 160ms ease forwards;
+  animation-delay: var(--delay, 120ms);
+}
+
+.video-generation-control__label {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7078;
+}
+
+@keyframes video-controls-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.video-generation-cta {
+  margin-top: 20px;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: center;
+  animation: video-cta-reveal 160ms ease forwards;
+  animation-delay: var(--delay, 420ms);
+}
+
+@keyframes video-cta-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.video-generation-button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: #111;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: none;
+}
+
+.video-generation-button:hover {
+  background: #111;
+}
+
+.video-generation-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.video-generation-preview {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }

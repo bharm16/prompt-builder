@@ -13,6 +13,8 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
   onHighlightMouseLeave,
   onCopyEvent,
   onInput,
+  onFocus,
+  onBlur,
 }, ref): React.ReactElement => {
   // Use event delegation for hover detection
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
@@ -31,12 +33,12 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       onMouseLeave={onHighlightMouseLeave}
       onCopy={onCopyEvent}
       onInput={onInput}
+      onFocus={onFocus}
+      onBlur={onBlur}
       contentEditable
       suppressContentEditableWarning
       className="prompt-editor"
       style={{
-        fontFamily: 'var(--font-geist-sans)',
-        caretColor: 'rgb(0, 0, 0)',
         wordBreak: 'break-word',
         overflowWrap: 'break-word',
         minHeight: '1px',

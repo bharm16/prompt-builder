@@ -130,8 +130,8 @@ export function HistorySidebar({
               onClick={onCreateNew}
               svgOnly
               variant="ghost"
-              prefix={<Plus size={20} className="text-orange-500" />}
-              className="w-full hover:bg-orange-50"
+              prefix={<Plus size={20} className="text-[#FFB020]" />}
+              className="w-full hover:bg-[rgba(255,176,32,0.14)]"
               aria-label="Create new prompt"
               title="New Prompt"
             />
@@ -150,7 +150,7 @@ export function HistorySidebar({
                 title="History"
               />
               {filteredHistory.length > 0 && (
-                <span className="absolute -top-1 -right-1 h-geist-4 w-geist-4 bg-orange-500 text-white text-label-12 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 h-geist-4 w-geist-4 bg-[#FFB020] text-white text-label-12 rounded-full flex items-center justify-center">
                   {filteredHistory.length > 9 ? '9+' : filteredHistory.length}
                 </span>
               )}
@@ -217,7 +217,7 @@ export function HistorySidebar({
               onClick={onCreateNew}
               size="small"
               variant="primary"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
+              className="bg-[#FFB020] hover:bg-[#E39B1C] text-white"
               aria-label="Create new prompt"
             >
               New Prompt

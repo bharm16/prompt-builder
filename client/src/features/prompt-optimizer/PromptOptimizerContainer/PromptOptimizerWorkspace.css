@@ -4,12 +4,27 @@
  */
 
 .prompt-optimizer-workspace {
+  /* Prompt Optimizer visual thesis (scoped) */
+  --po-primary: #6D5EF3;
+  --po-primary-rgb: 109 94 243;
+  --po-accent: #FFB020;
+  --po-accent-rgb: 255 176 32;
+  --po-ink: #0B0B0C;
+  --po-base: #FAFAFA;
+
   height: 100%;
   overflow: hidden;
-  background: var(--geist-background);
+  background:
+    radial-gradient(900px circle at 20% -10%, rgb(var(--po-primary-rgb) / 0.10), transparent 60%),
+    radial-gradient(700px circle at 80% 0%, rgb(var(--po-accent-rgb) / 0.07), transparent 55%),
+    linear-gradient(180deg, var(--po-base) 0%, var(--geist-background) 65%);
   transition: background-color 0.3s;
 }
 
+.prompt-optimizer-workspace ::selection {
+  background: rgb(var(--po-primary-rgb) / 0.22);
+  color: var(--po-ink);
+}
 
 
 

@@ -217,6 +217,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
   const hoverPreview = (suggestionsData as Record<string, unknown>)?.hoverPreview as boolean | undefined;
 
   if (variant === 'tokenEditor') {
+    const showTokenEditorHeader = (suggestionsData as Record<string, unknown>)?.tokenEditorHeader !== false;
     return (
       <aside
         className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
@@ -224,11 +225,13 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
         aria-label="Refine suggestions"
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="px-geist-4 pt-geist-3 pb-geist-2">
-            <div className="text-[11px] font-medium text-geist-accents-5 uppercase tracking-wide">
-              Suggestions
+          {showTokenEditorHeader ? (
+            <div className="px-geist-4 pt-geist-3 pb-geist-2">
+              <div className="text-[12px] font-medium text-geist-accents-5 uppercase tracking-[0.08em]">
+                Suggestions
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="flex-1 min-h-0 overflow-hidden">
             {!hasActiveSuggestions ? (
