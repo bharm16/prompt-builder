@@ -40,31 +40,24 @@ export function CustomRequestForm({
     const tokenEditorCtaLabel = ctaLabel || 'Generate more';
 
     return (
-      <div className="flex-shrink-0 px-geist-3 py-geist-2 border-t border-geist-accents-2 bg-geist-background space-y-geist-2">
-        <label
-          htmlFor="custom-request"
-          className="text-label-12 font-medium text-geist-foreground"
-        >
-          Refine further (optional)
-        </label>
-
-        <form onSubmit={handleSubmit} className="space-y-geist-2">
+      <div className="suggestions-panel__custom-request">
+        <form onSubmit={handleSubmit} className="suggestions-panel__custom-form">
           <textarea
             id="custom-request"
             value={customRequest}
             onChange={(e) => onCustomRequestChange(e.target.value)}
             placeholder={tokenEditorPlaceholder}
-            className="w-full min-h-12 text-label-12 text-geist-foreground bg-geist-background border border-geist-accents-2 rounded-geist px-geist-2 py-geist-1 focus:outline-none focus:ring-2 focus:ring-geist-foreground/10 focus:border-geist-accents-4 resize-y"
+            className="suggestions-panel__custom-input w-full min-h-12 text-label-12 rounded-geist focus:outline-none focus:ring-2 focus:ring-white/10 resize-y"
             maxLength={MAX_REQUEST_LENGTH}
           />
 
           <button
             type="submit"
             disabled={isLoading || !customRequest.trim()}
-            className={`inline-flex items-center justify-center gap-geist-1 w-full px-geist-3 py-geist-1.5 text-label-12 rounded-geist border transition-colors duration-150 ${
+            className={`suggestions-panel__custom-button inline-flex items-center justify-center gap-geist-1 w-full h-8 px-geist-3 text-label-12 rounded-geist border transition-colors duration-150 ${
               isLoading || !customRequest.trim()
-                ? 'border-geist-accents-2 bg-geist-accents-1 text-geist-accents-5 cursor-not-allowed'
-                : 'border-geist-accents-2 bg-geist-background text-geist-foreground hover:bg-geist-accents-1'
+                ? 'is-disabled'
+                : ''
             }`}
             aria-busy={isLoading}
             aria-live="polite"

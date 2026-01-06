@@ -149,6 +149,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   const displayAspectRatio = '16 / 9';
 
   const containerPadding = variant === 'rail' ? 14 : 12;
+  const emptyStateOffset = variant === 'rail' ? -12 : 0;
   const containerShadow =
     variant === 'rail'
       ? 'inset 0 0 0 1px rgba(255,255,255,0.03)'
@@ -179,7 +180,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center p-6 text-center">
-            <div style={{ maxWidth: 220, margin: 'auto' }}>
+            <div style={{ maxWidth: 220, margin: 'auto', transform: `translateY(${emptyStateOffset}px)` }}>
               <div className="text-[14px] text-[#9AA0A6]">
                 Generate a preview to validate framing, lighting, and mood.
               </div>
@@ -188,7 +189,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
                   type="button"
                   onClick={handleGenerate}
                   disabled={loading || !prompt}
-                  className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-3 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Generate preview"
                 >
                   Generate

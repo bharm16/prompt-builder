@@ -246,6 +246,7 @@ export function PromptCanvas({
 
   const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
   const hasPreviewSource = Boolean(previewSource.trim());
+  const showPreviewMeta = Boolean(effectiveAspectRatio);
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -839,6 +840,7 @@ export function PromptCanvas({
 
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
+  const previewMetaDetail = 'ETA ~6s';
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -860,7 +862,7 @@ export function PromptCanvas({
             variant: 'tokenEditor',
             tokenEditorHeader: false,
             tokenEditorLayout: 'listOnly',
-            panelClassName: 'flex flex-col gap-2',
+            panelClassName: 'flex flex-col',
             contextValue: suggestionsData.selectedText || '',
             showCategoryTabs: false,
             showCopyAction: false,
@@ -876,7 +878,7 @@ export function PromptCanvas({
             variant: 'tokenEditor',
             tokenEditorHeader: false,
             tokenEditorLayout: 'listOnly',
-            panelClassName: 'flex flex-col gap-2',
+            panelClassName: 'flex flex-col',
             showCategoryTabs: false,
             showCopyAction: false,
             hoverPreview,
@@ -1341,20 +1343,35 @@ export function PromptCanvas({
                           role="dialog"
                           aria-label="Alternatives"
                         >
-                          {((suggestionsData as any).suggestions as Array<any>).slice(0, 6).map((item, idx) => (
-                            <div
-                              key={item?.id ?? `${item?.text ?? 'suggestion'}_${idx}`}
-                              className="token-alternatives-item"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => {
-                                handleSuggestionClickWithFeedback(item);
-                              }}
-                              role="button"
-                              tabIndex={0}
-                            >
-                              {typeof item?.text === 'string' ? item.text : String(item)}
-                            </div>
-                          ))}
+                          {((suggestionsData as any).suggestions as Array<any>).slice(0, 6).map((item, idx) => {
+                            const itemText =
+                              typeof item === 'string'
+                                ? item
+                                : typeof item?.text === 'string'
+                                  ? item.text
+                                  : typeof item?.label === 'string'
+                                    ? item.label
+                                    : '';
+
+                            if (!itemText) {
+                              return null;
+                            }
+
+                            return (
+                              <div
+                                key={item?.id ?? `${itemText}_${idx}`}
+                                className="token-alternatives-item"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  handleSuggestionClickWithFeedback(item);
+                                }}
+                                role="button"
+                                tabIndex={0}
+                              >
+                                {itemText}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     {enableMLHighlighting && hoveredSpanId && lockButtonPosition && !isOutputLoading && (
@@ -1524,18 +1541,29 @@ export function PromptCanvas({
               />
             </div>
 
-            <div className="prompt-right-rail__preview-cta">
-              <div className="prompt-right-rail__preview-meta">
-                {effectiveAspectRatio ? `AR ${effectiveAspectRatio}` : 'Auto framing'}
+            <div
+              className={`prompt-right-rail__preview-cta${
+                showPreviewMeta ? '' : ' prompt-right-rail__preview-cta--solo'
+              }`}
+            >
+              {showPreviewMeta && (
+                <div className="prompt-right-rail__preview-meta">
+                  {`AR ${effectiveAspectRatio}`}
+                </div>
+              )}
+              <div className="prompt-right-rail__preview-actions">
+                <button
+                  type="button"
+                  onClick={handleGenerateVisualPreview}
+                  disabled={!hasPreviewSource}
+                  className="prompt-right-rail__preview-button"
+                >
+                  Generate
+                </button>
+                <div className="prompt-right-rail__preview-meta-secondary">
+                  {previewMetaDetail}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={handleGenerateVisualPreview}
-                disabled={!hasPreviewSource}
-                className="prompt-right-rail__preview-button"
-              >
-                Generate
-              </button>
             </div>
           </div>
 

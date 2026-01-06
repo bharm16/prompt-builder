@@ -311,7 +311,7 @@
   /* Overlay drawer: hidden by default so the rail doesn't waste a whole column */
   --pc-outline-collapsed: 0px;
   --pc-outline-expanded: 280px;
-  --pc-right-rail: 400px;
+  --pc-right-rail: 380px;
   --pc-editor-min: 640px;
   --pc-editor-max: 940px;
   --pc-legend-width: 320px;
@@ -472,8 +472,8 @@
 /* Right rail: sticky + height-bounded */
 .prompt-canvas-right-rail {
   display: grid !important;
-  grid-template-rows: 44px minmax(240px, 320px) 1fr;
-  gap: 12px;
+  grid-template-rows: 36px minmax(240px, 320px) 1fr;
+  gap: 14px;
   position: static;
   height: 100%;
   max-height: none;
@@ -483,10 +483,14 @@
   box-shadow: none;
   padding: 14px;
   overflow: hidden;
+  color: rgba(255, 255, 255, 0.86);
+  --rail-muted: rgba(255, 255, 255, 0.56);
+  --rail-faint: rgba(255, 255, 255, 0.38);
+  --rail-divider: rgba(255, 255, 255, 0.08);
 }
 
 .prompt-right-rail__header {
-  height: 44px;
+  height: 36px;
   padding: 0 6px;
   display: flex;
   align-items: flex-end;
@@ -500,7 +504,7 @@
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #8B9098;
+  color: var(--rail-muted);
 }
 
 .prompt-right-rail__preview-module,
@@ -523,6 +527,8 @@
 .prompt-right-rail__suggestions-module {
   grid-template-rows: 28px auto 1fr;
   min-height: 0;
+  gap: 0;
+  margin-top: 2px;
 }
 
 .prompt-right-rail__preview-top,
@@ -535,7 +541,8 @@
 
 .prompt-right-rail__suggestions-top {
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--geist-accents-2);
+  border-bottom: none;
+  margin-bottom: 4px;
 }
 
 .prompt-right-rail__section-label {
@@ -545,7 +552,13 @@
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #7C818A;
+  color: var(--rail-muted);
+}
+
+.prompt-right-rail__suggestions-top .prompt-right-rail__section-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .prompt-right-rail__preview-frame {
@@ -563,10 +576,22 @@
   gap: 10px;
 }
 
+.prompt-right-rail__preview-cta--solo {
+  justify-content: flex-end;
+}
+
+.prompt-right-rail__preview-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  width: max-content;
+}
+
 .prompt-right-rail__preview-meta {
   font-size: 12px;
   line-height: 16px;
-  color: #7C818A;
+  color: var(--rail-muted);
 }
 
 .prompt-right-rail__preview-button {
@@ -581,6 +606,15 @@
   transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
+.prompt-right-rail__preview-meta-secondary {
+  margin-top: 6px;
+  width: 100%;
+  font-size: 11px;
+  line-height: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: right;
+}
+
 .prompt-right-rail__preview-button:hover:not(:disabled) {
   background: #FFFFFF;
 }
@@ -593,18 +627,32 @@
 .prompt-right-rail__suggestions-hint {
   font-size: 12px;
   line-height: 16px;
-  color: #7C818A;
+  color: rgba(255, 255, 255, 0.65);
   max-height: 32px;
   overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.prompt-canvas-right-rail .text-geist-foreground {
+  color: inherit;
+}
+
+.prompt-canvas-right-rail .text-geist-accents-5 {
+  color: var(--rail-muted);
+}
+
+.prompt-canvas-right-rail .text-geist-accents-6 {
+  color: var(--rail-faint);
 }
 
 .prompt-right-rail__suggestions-list {
   min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 0;
 }
 
 @media (max-width: 1023px) {
@@ -635,7 +683,7 @@
 
 @media (min-width: 1024px) and (max-width: 1279px) {
   .prompt-canvas-root {
-    --pc-right-rail: 400px;
+    --pc-right-rail: 380px;
   }
 }
 
@@ -762,10 +810,11 @@
 .token-alternatives-popover {
   position: absolute;
   width: 260px;
-  background: #ffffff;
+  background: #111318;
+  border: 1px solid #1c1f24;
   border-radius: 12px;
   padding: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   z-index: 30;
 }
 
@@ -774,11 +823,11 @@
   padding: 8px;
   border-radius: 6px;
   cursor: pointer;
-  color: #111;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .token-alternatives-item:hover {
-  background: #f1f3f4;
+  background: #1c1f24;
 }
 
 .prompt-card__label {

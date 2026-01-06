@@ -62,7 +62,7 @@ export function SuggestionsList({
   if (variant === 'tokenEditor') {
     return (
       <div
-        className="flex flex-col gap-2"
+        className="suggestions-panel__token-list"
         role="list"
         aria-label="Suggestion options"
       >
@@ -76,23 +76,21 @@ export function SuggestionsList({
             <div
               key={key}
               role="listitem"
-              className="flex items-center justify-between gap-geist-3 py-2"
+              className="suggestions-panel__token-row"
             >
               <button
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
-                className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 rounded-geist"
+                className="suggestions-panel__token-text focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 rounded-geist"
                 aria-label={`Apply suggestion: ${suggestionText}`}
               >
-                <span className="text-copy-13 text-geist-foreground truncate">
-                  • {suggestionText}
-                </span>
+                {suggestionText}
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
-                className="flex-shrink-0 inline-flex items-center justify-center px-geist-2.5 py-1 text-label-12 font-medium bg-geist-foreground text-geist-background rounded-geist hover:bg-geist-accents-8 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5"
+                className="suggestions-panel__token-apply flex-shrink-0 inline-flex items-center justify-center text-label-12 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5"
                 aria-label={`Apply ${suggestionText}`}
               >
                 Apply
