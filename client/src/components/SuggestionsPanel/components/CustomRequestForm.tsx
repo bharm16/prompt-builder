@@ -40,7 +40,7 @@ export function CustomRequestForm({
     const tokenEditorCtaLabel = ctaLabel || 'Generate more';
 
     return (
-      <div className="flex-shrink-0 px-geist-4 py-geist-3 border-t border-geist-accents-2 bg-geist-background space-y-geist-2">
+      <div className="flex-shrink-0 px-geist-3 py-geist-2 border-t border-geist-accents-2 bg-geist-background space-y-geist-2">
         <label
           htmlFor="custom-request"
           className="text-label-12 font-medium text-geist-foreground"
@@ -135,4 +135,3 @@ export function CustomRequestForm({
     </div>
   );
 }
-

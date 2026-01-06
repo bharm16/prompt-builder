@@ -87,6 +87,7 @@ interface SuggestionsPanelProps {
     initialCategory?: string | null;
     currentPrompt?: string;
     variant?: 'default' | 'tokenEditor';
+    tokenEditorLayout?: 'full' | 'listOnly';
   };
 }
 
@@ -218,6 +219,74 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
   if (variant === 'tokenEditor') {
     const showTokenEditorHeader = (suggestionsData as Record<string, unknown>)?.tokenEditorHeader !== false;
+    const tokenEditorLayout =
+      ((suggestionsData as Record<string, unknown>)?.tokenEditorLayout as
+        | 'full'
+        | 'listOnly'
+        | undefined) || 'full';
+
+    if (tokenEditorLayout === 'listOnly') {
+      return (
+        <aside
+          className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
+          role="complementary"
+          aria-label="Refine suggestions"
+        >
+          {hasActiveSuggestions && isLoading && (
+            <div className="text-label-12 text-geist-accents-5" role="status" aria-live="polite">
+              Loading alternatives…
+            </div>
+          )}
+
+          {hasActiveSuggestions && !isLoading && isError && (
+            <div className="space-y-2">
+              <div className="text-label-12 text-geist-accents-5">
+                {typeof errorMessage === 'string' && errorMessage.trim()
+                  ? errorMessage
+                  : 'Failed to load alternatives.'}
+              </div>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="inline-flex items-center justify-center px-geist-3 py-geist-1.5 text-label-12 rounded-geist border border-geist-accents-2 bg-geist-background text-geist-foreground hover:bg-geist-accents-1 transition-colors"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
+          {hasActiveSuggestions && !isLoading && !isError && currentSuggestions.length > 0 && (
+            <SuggestionsList
+              suggestions={currentSuggestions}
+              onSuggestionClick={onSuggestionClick}
+              isPlaceholder={isPlaceholder}
+              showCopyAction={false}
+              variant="tokenEditor"
+            />
+          )}
+
+          {hasActiveSuggestions && !isLoading && !isError && currentSuggestions.length === 0 && (
+            <div className="text-label-12 text-geist-accents-5">No alternatives yet.</div>
+          )}
+
+          {hasActiveSuggestions && enableCustomRequest && (
+            <CustomRequestForm
+              customRequest={customRequest}
+              onCustomRequestChange={setCustomRequest}
+              onSubmit={handleCustomRequest}
+              isLoading={isCustomLoading}
+              placeholder={customRequestPlaceholder}
+              helperText={customRequestHelperText}
+              ctaLabel={customRequestCtaLabel}
+              variant="tokenEditor"
+            />
+          )}
+        </aside>
+      );
+    }
+
     return (
       <aside
         className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}

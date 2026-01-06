@@ -245,6 +245,7 @@ export function PromptCanvas({
   );
 
   const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
+  const hasPreviewSource = Boolean(previewSource.trim());
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -858,7 +859,8 @@ export function PromptCanvas({
               : {}),
             variant: 'tokenEditor',
             tokenEditorHeader: false,
-            panelClassName: 'h-full flex flex-col', // Ensure it fits the container
+            tokenEditorLayout: 'listOnly',
+            panelClassName: 'flex flex-col gap-2',
             contextValue: suggestionsData.selectedText || '',
             showCategoryTabs: false,
             showCopyAction: false,
@@ -873,7 +875,8 @@ export function PromptCanvas({
               : {}),
             variant: 'tokenEditor',
             tokenEditorHeader: false,
-            panelClassName: 'h-full flex flex-col',
+            tokenEditorLayout: 'listOnly',
+            panelClassName: 'flex flex-col gap-2',
             showCategoryTabs: false,
             showCopyAction: false,
             hoverPreview,
@@ -885,6 +888,24 @@ export function PromptCanvas({
       hoverPreview,
     ]
   );
+
+  const suggestionsHelperText = useMemo(() => {
+    if (!suggestionsData || suggestionsData.show === false) {
+      return 'Select a token to load alternatives.';
+    }
+    if (suggestionsData.isLoading) {
+      return 'Loading alternatives...';
+    }
+    if (suggestionsData.isError) {
+      return typeof suggestionsData.errorMessage === 'string' && suggestionsData.errorMessage.trim()
+        ? suggestionsData.errorMessage.trim()
+        : 'Failed to load alternatives.';
+    }
+    if (suggestionsData.selectedText && suggestionsData.selectedText.trim()) {
+      return `Alternatives for "${suggestionsData.selectedText.trim()}".`;
+    }
+    return 'Suggestions ready.';
+  }, [suggestionsData]);
 
   const handleVisualPreviewGenerated = useCallback(
     ({ generatedAt }: { prompt: string; generatedAt: number }) => {
@@ -1459,11 +1480,10 @@ export function PromptCanvas({
 
         {/* Right Rail - Drafting & Refinement */}
         <div
-          className="prompt-canvas-right-rail flex flex-col overflow-hidden border-l"
+          className="prompt-canvas-right-rail flex flex-col overflow-hidden"
           style={
             {
               background: '#0E0F11',
-              borderLeftColor: '#1C1F24',
               // Local Geist token overrides so existing components render correctly in this dark panel.
               '--geist-background': '#0E0F11',
               '--geist-foreground': '#F5F6F7',
@@ -1479,55 +1499,81 @@ export function PromptCanvas({
           }
         >
           {/* Header */}
-          <div className="prompt-right-rail__header text-[12px] tracking-[0.08em] uppercase text-[#8B9098]">
-            Preview &amp; Refine
+          <div className="prompt-right-rail__header">
+            <div className="prompt-right-rail__eyebrow">Preview &amp; Refine</div>
           </div>
 
-          {/* Preview Frame */}
-          <div className="prompt-right-rail__preview">
-            <VisualPreview
-              prompt={previewSource}
-              aspectRatio={effectiveAspectRatio}
-              isVisible={true}
-              generateRequestId={visualGenerateRequestId}
-              lastGeneratedAt={visualLastGeneratedAt}
-              onPreviewGenerated={handleVisualPreviewGenerated}
-              onKeepRefining={handleKeepRefiningFromPreview}
-              onRefinePrompt={handleSomethingOffFromPreview}
-            />
-          </div>
-
-          {/* Suggestions */}
-          <div className="prompt-right-rail__suggestions border-t" style={{ borderTopColor: '#1C1F24' }}>
-            <div className="prompt-right-rail__suggestions-header text-[12px] text-[#7C818A]">
-              Suggestions
+          {/* Preview Module */}
+          <div className="prompt-right-rail__preview-module">
+            <div className="prompt-right-rail__preview-top">
+              <div className="prompt-right-rail__section-label">Preview</div>
             </div>
 
-            {/* Inline replacement feedback */}
-            {justReplaced && (
-              <div className="mb-3">
-                <div
-                  className="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2"
-                  style={{ background: '#111318', border: '1px solid #1C1F24' }}
-                >
-                  <div className="text-[12px] text-[#C9CDD3] truncate">
-                    ✓ Replaced “{justReplaced.from}”
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onUndo?.();
-                      setState({ justReplaced: null });
-                    }}
-                    className="text-[12px] font-medium text-[#8B9098] hover:text-white"
-                  >
-                    Undo
-                  </button>
-                </div>
+            <div className="prompt-right-rail__preview-frame">
+              <VisualPreview
+                prompt={previewSource}
+                aspectRatio={effectiveAspectRatio}
+                isVisible={true}
+                generateRequestId={visualGenerateRequestId}
+                lastGeneratedAt={visualLastGeneratedAt}
+                onPreviewGenerated={handleVisualPreviewGenerated}
+                onKeepRefining={handleKeepRefiningFromPreview}
+                onRefinePrompt={handleSomethingOffFromPreview}
+                showActions={false}
+                variant="rail"
+              />
+            </div>
+
+            <div className="prompt-right-rail__preview-cta">
+              <div className="prompt-right-rail__preview-meta">
+                {effectiveAspectRatio ? `AR ${effectiveAspectRatio}` : 'Auto framing'}
               </div>
-            )}
+              <button
+                type="button"
+                onClick={handleGenerateVisualPreview}
+                disabled={!hasPreviewSource}
+                className="prompt-right-rail__preview-button"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+
+          {/* Suggestions Module */}
+          <div className="prompt-right-rail__suggestions-module">
+            <div className="prompt-right-rail__suggestions-top">
+              <div className="prompt-right-rail__section-label">Suggestions</div>
+            </div>
+
+            <div className="prompt-right-rail__suggestions-hint">
+              {suggestionsHelperText}
+            </div>
 
             <div className="prompt-right-rail__suggestions-list">
+              {/* Inline replacement feedback */}
+              {justReplaced && (
+                <div>
+                  <div
+                    className="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2"
+                    style={{ background: '#111318', border: '1px solid #1C1F24' }}
+                  >
+                    <div className="text-[12px] text-[#C9CDD3] truncate">
+                      ✓ Replaced “{justReplaced.from}”
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUndo?.();
+                        setState({ justReplaced: null });
+                      }}
+                      className="text-[12px] font-medium text-[#8B9098] hover:text-white"
+                    >
+                      Undo
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <SuggestionsPanel suggestionsData={suggestionsPanelData} />
             </div>
           </div>

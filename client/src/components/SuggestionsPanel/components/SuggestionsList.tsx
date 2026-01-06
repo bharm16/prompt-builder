@@ -62,7 +62,7 @@ export function SuggestionsList({
   if (variant === 'tokenEditor') {
     return (
       <div
-        className="flex-1 min-h-0 overflow-y-auto px-geist-4 pb-geist-3 pt-geist-2 space-y-1 scrollbar-hide"
+        className="flex flex-col gap-2"
         role="list"
         aria-label="Suggestion options"
       >

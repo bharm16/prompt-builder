@@ -18,6 +18,8 @@ interface VisualPreviewProps {
   onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
+  showActions?: boolean;
+  variant?: 'default' | 'rail';
 }
 
 const SUPPORTED_ASPECT_RATIOS = new Set([
@@ -89,6 +91,8 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   isVisible,
   generateRequestId,
   onPreviewGenerated,
+  showActions = true,
+  variant = 'default',
 }) => {
   const normalizedAspectRatio = React.useMemo(
     () => normalizeAspectRatio(aspectRatio),
@@ -144,17 +148,22 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   // Per spec: the preview "monitor" frame is always 16:9
   const displayAspectRatio = '16 / 9';
 
+  const containerPadding = variant === 'rail' ? 14 : 12;
+  const containerShadow =
+    variant === 'rail'
+      ? 'inset 0 0 0 1px rgba(255,255,255,0.03)'
+      : 'inset 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.6)';
+
   return (
     <div
       className="w-full"
       style={{
         background: '#000',
         borderRadius: 12,
-        padding: 12,
+        padding: containerPadding,
         aspectRatio: displayAspectRatio,
         position: 'relative',
-        boxShadow:
-          'inset 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.6)',
+        boxShadow: containerShadow,
       }}
     >
       <div
@@ -170,19 +179,21 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center p-6 text-center">
-            <div style={{ maxWidth: 240, margin: 'auto' }}>
+            <div style={{ maxWidth: 220, margin: 'auto' }}>
               <div className="text-[14px] text-[#9AA0A6]">
                 Generate a preview to validate framing, lighting, and mood.
               </div>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading || !prompt}
-                className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Generate preview"
-              >
-                Generate
-              </button>
+              {showActions && (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={loading || !prompt}
+                  className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Generate preview"
+                >
+                  Generate
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -197,13 +208,15 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
             <Icon name="AlertTriangle" size={20} className="mb-2 text-[#9AA0A6]" />
             <div className="text-[14px] text-[#9AA0A6]">Preview failed. Try again.</div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform]"
-            >
-              Retry
-            </button>
+            {showActions && (
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="mt-4 inline-flex items-center justify-center h-9 px-4 rounded-[8px] bg-white text-black text-[14px] font-semibold hover:bg-[#F2F2F2] active:translate-y-[1px] transition-[background-color,transform]"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
       </div>
