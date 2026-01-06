@@ -1168,7 +1168,7 @@ export function PromptCanvas({
 
         {/* Left Sidebar - Outline Rail / Span Bento Grid */}
         <div
-          className={`prompt-canvas-outline flex flex-col h-full overflow-hidden bg-geist-accents-1 border-r border-geist-accents-2 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
+          className={`prompt-canvas-outline flex flex-col h-full overflow-hidden bg-geist-accents-1 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
             selectedSpanId ? 'opacity-60' : 'opacity-100'
           }`}
           data-outline-open={isOutlineOpen ? 'true' : 'false'}
