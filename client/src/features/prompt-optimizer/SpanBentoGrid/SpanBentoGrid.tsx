@@ -5,12 +5,12 @@ import { BentoBox } from './components/BentoBox';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from './config/bentoConfig';
 import { scrollToSpan } from './utils/spanFormatting';
 import type { Span } from './components/types';
+import { TAXONOMY } from '@shared/taxonomy';
 
 export interface SpanBentoGridProps {
   spans: Span[];
-  onSpanClick?: (span: Span) => void;
   editorRef: RefObject<HTMLElement>;
-  selectedSpanId?: string | null;
+  onSpanHoverChange?: (spanId: string | null) => void;
 }
 
 /**
@@ -32,9 +32,8 @@ export interface SpanBentoGridProps {
  */
 export const SpanBentoGrid = memo<SpanBentoGridProps>(({ 
   spans,
-  onSpanClick,
   editorRef,
-  selectedSpanId = null,
+  onSpanHoverChange,
 }) => {
   const { groups } = useSpanGrouping(spans);
   const orderedCategories = CATEGORY_ORDER as Array<keyof typeof CATEGORY_CONFIG>;
@@ -43,16 +42,13 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   const handleSpanClick = useCallback((span: Span): void => {
     // 1. Scroll to span in editor with pulse animation
     scrollToSpan(editorRef, span);
-    
-    // 2. Trigger suggestions panel
-    onSpanClick?.(span);
-  }, [editorRef, onSpanClick]);
+  }, [editorRef]);
   
   return (
     <>
       {/* SCROLL AREA: Custom scrollbar styling via Tailwind utilities */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide"
+        className="pc-outline-sections"
       >
         {orderedCategories.map((category) => {
           const config = CATEGORY_CONFIG[category];
@@ -65,7 +61,8 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
               spans={groups[category] || []}
               config={config}
               onSpanClick={handleSpanClick}
-              selectedSpanId={selectedSpanId}
+              onSpanHoverChange={onSpanHoverChange}
+              defaultExpanded={category === TAXONOMY.SHOT.id || category === TAXONOMY.SUBJECT.id}
             />
           );
         })}

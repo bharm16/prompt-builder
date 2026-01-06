@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { Pencil, X, Check, ChevronLeft, Lock, Unlock, LayoutGrid } from 'lucide-react';
+import { Pencil, X, Check, Lock, Unlock, LayoutGrid } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -101,6 +101,7 @@ export function PromptCanvas({
   const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
   const tokenPopoverRef = useRef<HTMLDivElement>(null);
+  const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const idleTimeoutRef = useRef<number | null>(null);
   const hasTriggeredVideoTransitionRef = useRef(false);
   const toast = useToast();
@@ -259,15 +260,11 @@ export function PromptCanvas({
 
   const enableMLHighlighting = selectedMode === 'video';
 
-  // Left outline rail (collapsed by default on desktop)
-  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
-
-  // On small screens, avoid a skinny rail and show the outline content by default.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia('(max-width: 768px)');
-    if (mql.matches) setIsOutlineOpen(true);
-  }, []);
+  // Span bento overlay (collapsed by default on desktop)
+  const [outlineOverlayState, setOutlineOverlayState] = useState<
+    'closed' | 'opening' | 'open' | 'closing'
+  >('closed');
+  const outlineOverlayActive = outlineOverlayState !== 'closed';
 
   const { state, setState, incrementVisualRequestId, incrementVideoRequestId } =
     usePromptCanvasState();
@@ -360,6 +357,48 @@ export function PromptCanvas({
     (value: number | null) => setState({ videoLastGeneratedAt: value }),
     [setState]
   );
+
+  const closeOutlineOverlay = useCallback((): void => {
+    setHoveredSpanId(null);
+    setOutlineOverlayState('closing');
+    window.setTimeout(() => {
+      setOutlineOverlayState('closed');
+    }, 160);
+  }, [setHoveredSpanId]);
+
+  const openOutlineOverlay = useCallback((): void => {
+    setOutlineOverlayState('opening');
+    requestAnimationFrame(() => setOutlineOverlayState('open'));
+  }, []);
+
+  // On small screens, avoid a skinny rail and show the outline content by default.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 768px)');
+    if (mql.matches) openOutlineOverlay();
+  }, [openOutlineOverlay]);
+
+  useEffect(() => {
+    if (!outlineOverlayActive) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        closeOutlineOverlay();
+      }
+    };
+    const handleMouseDown = (event: MouseEvent): void => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!outlineOverlayRef.current) return;
+      if (outlineOverlayRef.current.contains(target)) return;
+      closeOutlineOverlay();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [closeOutlineOverlay, outlineOverlayActive]);
 
   // Span data conversion hook
   const { memoizedInitialHighlights } = useSpanDataConversion({
@@ -526,6 +565,38 @@ export function PromptCanvas({
     return value.replace(/["\\]/g, '\\$&');
   };
 
+  const inspectedSpanElementRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root || !enableMLHighlighting || !showHighlights || !outlineOverlayActive) {
+      if (inspectedSpanElementRef.current) {
+        inspectedSpanElementRef.current.classList.remove('value-word--inspected');
+        inspectedSpanElementRef.current = null;
+      }
+      return;
+    }
+
+    if (inspectedSpanElementRef.current) {
+      inspectedSpanElementRef.current.classList.remove('value-word--inspected');
+      inspectedSpanElementRef.current = null;
+    }
+
+    if (!hoveredSpanId) {
+      return;
+    }
+
+    const el = root.querySelector(`[data-span-id="${escapeAttr(hoveredSpanId)}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.classList.add('value-word--inspected');
+    inspectedSpanElementRef.current = el;
+    return () => {
+      el.classList.remove('value-word--inspected');
+      if (inspectedSpanElementRef.current === el) {
+        inspectedSpanElementRef.current = null;
+      }
+    };
+  }, [enableMLHighlighting, hoveredSpanId, showHighlights, outlineOverlayActive]);
+
   // Position contextual alternatives popover near the selected token
   useEffect(() => {
     if (!selectedSpanId || !editorRef.current || !editorWrapperRef.current) {
@@ -590,7 +661,6 @@ export function PromptCanvas({
     handleTextSelection,
     handleHighlightClick,
     handleHighlightMouseDown,
-    handleSpanClickFromBento,
   } = useTextSelection({
     selectedMode,
     editorRef: editorRef as React.RefObject<HTMLElement>,
@@ -905,7 +975,7 @@ export function PromptCanvas({
     setState,
   });
 
-  const hoverPreview = hoveredSpanId !== null && !selectedSpanId;
+  const hoverPreview = !outlineOverlayActive && hoveredSpanId !== null && !selectedSpanId;
   const suggestionsPanelData = useMemo(
     () =>
       suggestionsData
@@ -1124,122 +1194,80 @@ export function PromptCanvas({
   }, [isVideoTransitionActive, scrollVideoPanelIntoView]);
 
   // Render the component
-  return (
-    <div
-      className="prompt-canvas-root relative flex flex-col bg-geist-accents-1 min-h-0 flex-1"
-      data-mode={selectedMode}
-      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
-      aria-busy={isPreviewGenerating ? 'true' : 'false'}
-      style={
-        {
-          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
-          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
-        } as React.CSSProperties
-      }
-    >
+	  return (
+	    <div
+	      className="prompt-canvas-root relative flex flex-col bg-geist-accents-1 min-h-0 flex-1"
+	      data-mode={selectedMode}
+	      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
+	      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
+	      aria-busy={isPreviewGenerating ? 'true' : 'false'}
+	      style={
+	        {
+	          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
+	          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
+	        } as React.CSSProperties
+	      }
+	    >
       {/* Category Legend */}
-      <CategoryLegend
-        show={showLegend}
-        onClose={() => setShowLegend(false)}
-        hasContext={promptContext?.hasContext() ?? false}
-        isSuggestionsOpen={isSuggestionsOpen}
-      />
+	      <CategoryLegend
+	        show={showLegend}
+	        onClose={() => setShowLegend(false)}
+	        hasContext={promptContext?.hasContext() ?? false}
+	        isSuggestionsOpen={isSuggestionsOpen}
+	      />
 
-      {/* Main Content Container */}
-      <div
-        className="flex-1 overflow-hidden prompt-canvas-grid"
-        style={
-          {
-            // Controls the outline rail width without fighting the grid layout.
-            '--prompt-outline-width': isOutlineOpen
-              ? 'var(--pc-outline-expanded)'
-              : 'var(--pc-outline-collapsed)',
-          } as React.CSSProperties
-        }
-      >
+	      {outlineOverlayActive && (
+	        <div
+	          ref={outlineOverlayRef}
+	          className="pc-outline-overlay"
+	          data-state={outlineOverlayState}
+	          role="dialog"
+	          aria-label="Prompt structure"
+	        >
+	          <div className="pc-outline-overlay__header">
+	            <div className="pc-outline-overlay__title">Prompt Structure</div>
+	            <div className="pc-outline-overlay__subtitle">
+	              Semantic breakdown used for generation
+	            </div>
+	          </div>
+	          <div className="pc-outline-overlay__sections">
+	            <HighlightingErrorBoundary>
+              <SpanBentoGrid
+                spans={bentoSpans}
+                editorRef={editorRef as React.RefObject<HTMLElement>}
+                onSpanHoverChange={setHoveredSpanId}
+              />
+	            </HighlightingErrorBoundary>
+	          </div>
+	          <div className="pc-outline-overlay__footer">
+	            <div className="pc-outline-overlay__hint">Hover a token to locate it in the prompt</div>
+	          </div>
+	        </div>
+	      )}
+
+	      {/* Main Content Container */}
+	      <div className="flex-1 overflow-hidden prompt-canvas-grid">
         {showVideoPreview && isVideoPreviewGenerating && (
           <div className="prompt-canvas-generation-overlay" aria-hidden="true" />
         )}
 
-        {/* History Sidebar */}
-        <div className="prompt-canvas-history">
-          <PromptSidebar user={user} />
-        </div>
+	        {/* History Sidebar */}
+	        <div className="prompt-canvas-history">
+	          <PromptSidebar user={user} />
+	        </div>
 
-        {/* Left Sidebar - Outline Rail / Span Bento Grid */}
-        <div
-          className={`prompt-canvas-outline flex flex-col h-full overflow-hidden bg-geist-accents-1 max-md:w-full max-md:h-auto transition-opacity duration-300 ${
-            selectedSpanId ? 'opacity-60' : 'opacity-100'
-          }`}
-          data-outline-open={isOutlineOpen ? 'true' : 'false'}
-        >
-          {/* Collapsed rail */}
-          {!isOutlineOpen && (
-            <div className="prompt-outline-rail">
-              <button
-                type="button"
-                onClick={() => setIsOutlineOpen(true)}
-                className="prompt-outline-rail__button"
-                aria-label="Open outline"
-                title="Open outline"
-              >
-                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-          )}
-
-          {/* Expanded outline panel */}
-          {isOutlineOpen && (
-            <>
-              <div className="flex items-center justify-between gap-2 px-geist-3 py-geist-2 border-b border-geist-accents-2 bg-geist-accents-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsOutlineOpen(false)}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-geist border border-geist-accents-2 bg-geist-background hover:bg-geist-accents-1 transition-colors"
-                    aria-label="Collapse outline"
-                    title="Collapse outline"
-                  >
-                    <ChevronLeft className="h-4 w-4 text-geist-accents-6" aria-hidden="true" />
-                  </button>
-                  <div className="text-label-12 font-medium text-geist-accents-6 truncate">
-                    Outline
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-0">
-                <HighlightingErrorBoundary>
-                  <SpanBentoGrid
-                    spans={bentoSpans}
-                    onSpanClick={(span) => {
-                      handleSpanClickFromBento(span);
-                      // Optional: keep the user in writing flow after choosing an item.
-                      if (typeof window !== 'undefined' && !window.matchMedia('(max-width: 768px)').matches) {
-                        setIsOutlineOpen(false);
-                      }
-                    }}
-                    editorRef={editorRef as React.RefObject<HTMLElement>}
-                    selectedSpanId={selectedSpanId}
-                  />
-                </HighlightingErrorBoundary>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Outline toggle when collapsed (overlay drawer default) */}
-        {!isOutlineOpen && (
-          <button
-            type="button"
-            onClick={() => setIsOutlineOpen(true)}
-            className="prompt-outline-open-fab"
-            aria-label="Open outline"
-            title="Open outline"
-          >
-            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
+	        {/* Outline toggle when collapsed (overlay drawer default) */}
+	        {!outlineOverlayActive && (
+	          <button
+	            type="button"
+	            onClick={openOutlineOverlay}
+	            className="prompt-outline-open-fab"
+	            aria-label="Open outline"
+	            title="Open outline"
+	          >
+	            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+	          </button>
+	        )}
 
         {/* Main Editor Area - Optimized Prompt */}
         <div
@@ -1412,7 +1440,11 @@ export function PromptCanvas({
                           })}
                         </div>
                       )}
-                    {enableMLHighlighting && hoveredSpanId && lockButtonPosition && !isOutputLoading && (
+                    {enableMLHighlighting &&
+                      !outlineOverlayActive &&
+                      hoveredSpanId &&
+                      lockButtonPosition &&
+                      !isOutputLoading && (
                       <button
                         ref={lockButtonRef}
                         type="button"
