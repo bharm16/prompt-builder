@@ -111,6 +111,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
   const [generationParams, setGenerationParams] = useState<CapabilityValues>(() => safeLoadGenerationParams());
+  const [outputSaveState, setOutputSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [outputLastSavedAt, setOutputLastSavedAt] = useState<number | null>(null);
 
   // Enhancement suggestions state
   const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
@@ -213,6 +215,10 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setShowBrainstorm,
     currentAIIndex,
     setCurrentAIIndex,
+    outputSaveState,
+    setOutputSaveState,
+    outputLastSavedAt,
+    setOutputLastSavedAt,
 
     // Prompt State
     suggestionsData,

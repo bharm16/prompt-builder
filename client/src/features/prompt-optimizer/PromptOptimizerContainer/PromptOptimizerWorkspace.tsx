@@ -90,6 +90,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     resetEditStacks,
     setDisplayedPromptSilently,
     handleCreateNew,
+    setOutputSaveState,
+    setOutputLastSavedAt,
 
     // Navigation
     navigate,
@@ -171,6 +173,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   React.useEffect(() => {
     promptMetaRef.current = { uuid: currentPromptUuid, docId: currentPromptDocId };
     lastSavedOutputRef.current = null;
+    setOutputSaveState('idle');
+    setOutputLastSavedAt(null);
     if (saveOutputTimeoutRef.current) {
       clearTimeout(saveOutputTimeoutRef.current);
       saveOutputTimeoutRef.current = null;
@@ -202,6 +206,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
       const scheduledUuid = currentPromptUuid;
       const scheduledDocId = currentPromptDocId;
+      setOutputSaveState('saving');
 
       saveOutputTimeoutRef.current = setTimeout(() => {
         const currentPromptMeta = promptMetaRef.current;
@@ -215,7 +220,14 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         }
         if (lastSavedOutputRef.current === newText) return;
 
-        promptHistory.updateEntryOutput(scheduledUuid, scheduledDocId, newText);
+        try {
+          // Fire-and-forget persistence. The underlying repository logs failures.
+          promptHistory.updateEntryOutput(scheduledUuid, scheduledDocId, newText);
+          setOutputSaveState('saved');
+          setOutputLastSavedAt(Date.now());
+        } catch {
+          setOutputSaveState('error');
+        }
         lastSavedOutputRef.current = newText;
         saveOutputTimeoutRef.current = null;
       }, 1000);
@@ -227,6 +239,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       isApplyingHistoryRef,
       promptOptimizer.displayedPrompt,
       promptHistory,
+      setOutputLastSavedAt,
+      setOutputSaveState,
     ]
   );
 

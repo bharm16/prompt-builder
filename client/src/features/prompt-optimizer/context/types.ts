@@ -130,6 +130,12 @@ export interface PromptStateContextValue {
   currentAIIndex: number;
   setCurrentAIIndex: (index: number) => void;
 
+  // Output persistence (autosave)
+  outputSaveState: 'idle' | 'saving' | 'saved' | 'error';
+  setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
+  outputLastSavedAt: number | null;
+  setOutputLastSavedAt: (timestampMs: number | null) => void;
+
   // Prompt State
   suggestionsData: SuggestionsData | null;
   setSuggestionsData: Dispatch<SetStateAction<SuggestionsData | null>>;
