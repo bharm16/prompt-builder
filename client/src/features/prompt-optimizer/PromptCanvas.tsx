@@ -108,6 +108,9 @@ export function PromptCanvas({
   const [isOutputHovered, setIsOutputHovered] = useState(false);
   const [tokenPopover, setTokenPopover] = useState<{ left: number; top: number } | null>(null);
   const [isVideoTransitionActive, setIsVideoTransitionActive] = useState(false);
+  const [videoInputReference, setVideoInputReference] = useState('');
+  const [isVisualPreviewGenerating, setIsVisualPreviewGenerating] = useState(false);
+  const [isVideoPreviewGenerating, setIsVideoPreviewGenerating] = useState(false);
 
   // Get model + layout state from context
   const { selectedModel, setSelectedModel, generationParams, setGenerationParams, promptOptimizer, showHistory } =
@@ -148,6 +151,14 @@ export function PromptCanvas({
   const durationInfo = useMemo(() => getFieldInfo('duration_s'), [getFieldInfo]);
   const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
 
+  const allowsVideoInputReference = useMemo(() => /sora/i.test(selectedModel ?? ''), [selectedModel]);
+
+  useEffect(() => {
+    if (!allowsVideoInputReference && videoInputReference) {
+      setVideoInputReference('');
+    }
+  }, [allowsVideoInputReference, videoInputReference]);
+
   const handleParamChange = useCallback(
     (key: string, value: CapabilityValue) => {
       setGenerationParams({
@@ -182,7 +193,7 @@ export function PromptCanvas({
               handleParamChange(key, val);
             }}
             disabled={disabled}
-            className="h-8 pl-2 pr-6 text-sm bg-transparent border-none rounded-md text-geist-accents-5 hover:text-geist-foreground hover:bg-geist-accents-1 focus:ring-0 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%23666%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_4px_center] bg-no-repeat disabled:opacity-50 disabled:cursor-not-allowed"
+            className="pc-video-advanced-select"
             aria-label={label}
           >
             {info.allowedValues.map((value) => (
@@ -195,6 +206,50 @@ export function PromptCanvas({
       );
     },
     [generationParams, getFieldInfo, handleParamChange]
+  );
+
+  const renderPills = useCallback(
+    (
+      info: ReturnType<typeof getFieldInfo>,
+      key: string,
+      label: string,
+      disabled: boolean
+    ): React.ReactNode => {
+      if (!info) return null;
+
+      const selected = (generationParams as any)?.[key] ?? info.field.default ?? '';
+      const allowed = info.allowedValues;
+      const formatDisplay = (val: unknown) => {
+        if (key === 'duration_s') return `${val}s`;
+        if (key === 'fps') return `${val} fps`;
+        return String(val);
+      };
+
+      if (allowed.length > 6) {
+        return renderDropdown(info, key, label, disabled);
+      }
+
+      return (
+        <div className="pc-video-pill-row" role="radiogroup" aria-label={label}>
+          {allowed.map((value) => {
+            const isSelected = String(value) === String(selected);
+            return (
+              <button
+                key={String(value)}
+                type="button"
+                onClick={() => handleParamChange(key, value as CapabilityValue)}
+                disabled={disabled}
+                aria-pressed={isSelected}
+                className={`pc-video-pill${isSelected ? ' pc-video-pill--active' : ''}`}
+              >
+                {formatDisplay(value)}
+              </button>
+            );
+          })}
+        </div>
+      );
+    },
+    [generationParams, handleParamChange, renderDropdown]
   );
 
 
@@ -247,6 +302,7 @@ export function PromptCanvas({
   const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
   const hasPreviewSource = Boolean(previewSource.trim());
   const showPreviewMeta = Boolean(effectiveAspectRatio);
+  const isPreviewGenerating = selectedMode === 'video' ? isVideoPreviewGenerating : isVisualPreviewGenerating;
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -1047,6 +1103,18 @@ export function PromptCanvas({
     animateScroll(container, target);
   }, [animateScroll]);
 
+  const handleJumpToPromptEditor = useCallback((): void => {
+    const container = editorColumnRef.current;
+    if (container) {
+      animateScroll(container, 0);
+    }
+    if (isEditing) {
+      setTimeout(() => textareaRef.current?.focus(), 0);
+      return;
+    }
+    handleEditClick();
+  }, [animateScroll, handleEditClick, isEditing]);
+
   useEffect(() => {
     if (!isVideoTransitionActive) return;
     const timer = window.setTimeout(() => {
@@ -1055,47 +1123,13 @@ export function PromptCanvas({
     return () => window.clearTimeout(timer);
   }, [isVideoTransitionActive, scrollVideoPanelIntoView]);
 
-  const videoControls = [
-    {
-      id: 'model',
-      label: 'Model',
-      node: (
-        <ModelSelectorDropdown
-          selectedModel={selectedModel}
-          onModelChange={handleModelChange}
-          disabled={isOptimizing}
-        />
-      ),
-    },
-    aspectRatioInfo
-      ? {
-          id: 'aspect_ratio',
-          label: 'Aspect ratio',
-          node: renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing),
-        }
-      : null,
-    durationInfo
-      ? {
-          id: 'duration',
-          label: 'Duration',
-          node: renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing),
-        }
-      : null,
-    fpsInfo
-      ? {
-          id: 'fps',
-          label: 'FPS',
-          node: renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing),
-        }
-      : null,
-  ].filter(Boolean) as Array<{ id: string; label: string; node: React.ReactNode }>;
-
-  const ctaDelayMs = 120 + Math.max(0, videoControls.length - 1) * 40 + 180;
-
   // Render the component
   return (
     <div
       className="prompt-canvas-root relative flex flex-col bg-geist-accents-1 min-h-0 flex-1"
+      data-mode={selectedMode}
+      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
+      aria-busy={isPreviewGenerating ? 'true' : 'false'}
       style={
         {
           // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
@@ -1123,6 +1157,10 @@ export function PromptCanvas({
           } as React.CSSProperties
         }
       >
+        {showVideoPreview && isVideoPreviewGenerating && (
+          <div className="prompt-canvas-generation-overlay" aria-hidden="true" />
+        )}
+
         {/* History Sidebar */}
         <div className="prompt-canvas-history">
           <PromptSidebar user={user} />
@@ -1442,51 +1480,110 @@ export function PromptCanvas({
                   ref={videoPanelRef}
                   className="prompt-card prompt-card--video video-generation-panel"
                 >
-                  <div className="video-generation-header">Generate video</div>
-                  <div className="video-generation-echo" title={promptEcho}>
-                    {promptEcho}
-                  </div>
-                  <div className="video-generation-controls">
-                    {videoControls.map((control, index) => (
-                      <div
-                        key={control.id}
-                        className="video-generation-control"
-                        style={{ '--delay': `${120 + index * 40}ms` } as React.CSSProperties}
-                      >
-                        <span className="video-generation-control__label">
-                          {control.label}
-                        </span>
-                        {control.node}
-                      </div>
-                    ))}
-                  </div>
-                  <div
-                    className="video-generation-cta"
-                    style={{ '--delay': `${ctaDelayMs}ms` } as React.CSSProperties}
-                  >
+                  <div className="pc-video-panel">
+                    <div className="pc-video-panel__eyebrow">Video Generation</div>
+                    <button
+                      type="button"
+                      onClick={handleJumpToPromptEditor}
+                      disabled={isVideoPreviewGenerating}
+                      className="pc-video-panel__prompt"
+                      title={promptEcho}
+                      aria-label="Jump to prompt editor"
+                    >
+                      {promptEcho || '—'}
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleGenerateVideoPreview}
-                      disabled={!videoPreviewPrompt.trim()}
-                      className="video-generation-button"
-                      aria-label="Generate video"
+                      disabled={!videoPreviewPrompt.trim() || isVideoPreviewGenerating}
+                      className="pc-video-panel__cta"
+                      aria-label="Generate preview"
                     >
-                      Generate video
+                      <span className="pc-video-panel__cta-label">Generate Preview</span>
+                      <span className="pc-video-panel__cta-sub">
+                        Validates framing, lighting, and motion
+                      </span>
                     </button>
-                  </div>
-                  <div className="video-generation-preview">
-                    <VideoPreview
-                      prompt={videoPreviewPrompt}
-                      aspectRatio={effectiveAspectRatio}
-                      model={selectedModel}
-                      generationParams={generationParams}
-                      isVisible={true}
-                      generateRequestId={videoGenerateRequestId}
-                      lastGeneratedAt={videoLastGeneratedAt}
-                      onPreviewGenerated={handleVideoPreviewGenerated}
-                      onKeepRefining={handleKeepRefiningFromPreview}
-                      onRefinePrompt={handleSomethingOffFromPreview}
-                    />
+
+                    <div className="pc-video-panel__stage-label">Preview Stage</div>
+                    <div className="pc-video-panel__stage">
+                      <VideoPreview
+                        prompt={videoPreviewPrompt}
+                        aspectRatio={effectiveAspectRatio}
+                        model={selectedModel}
+                        generationParams={generationParams}
+                        inputReference={allowsVideoInputReference ? videoInputReference : undefined}
+                        isVisible={true}
+                        generateRequestId={videoGenerateRequestId}
+                        lastGeneratedAt={videoLastGeneratedAt}
+                        onPreviewGenerated={handleVideoPreviewGenerated}
+                        onLoadingChange={setIsVideoPreviewGenerating}
+                        onKeepRefining={handleKeepRefiningFromPreview}
+                        onRefinePrompt={handleSomethingOffFromPreview}
+                      />
+                    </div>
+
+                    <details
+                      className="pc-video-panel__advanced"
+                      data-disabled={isVideoPreviewGenerating ? 'true' : 'false'}
+                    >
+                      <summary className="pc-video-panel__advanced-summary">
+                        Advanced Controls
+                      </summary>
+                      <div className="pc-video-panel__advanced-inner">
+                        <div className="pc-video-advanced-row">
+                          <div className="pc-video-advanced-label">Model</div>
+                          <ModelSelectorDropdown
+                            selectedModel={selectedModel}
+                            onModelChange={handleModelChange}
+                            disabled={isOptimizing || isVideoPreviewGenerating}
+                            variant="pillDark"
+                          />
+                        </div>
+
+                        {aspectRatioInfo && (
+                          <div className="pc-video-advanced-row">
+                            <div className="pc-video-advanced-label">Aspect</div>
+                            {renderPills(
+                              aspectRatioInfo,
+                              'aspect_ratio',
+                              'Aspect Ratio',
+                              isOptimizing
+                            )}
+                          </div>
+                        )}
+
+                        {durationInfo && (
+                          <div className="pc-video-advanced-row">
+                            <div className="pc-video-advanced-label">Duration</div>
+                            {renderPills(durationInfo, 'duration_s', 'Duration', isOptimizing)}
+                          </div>
+                        )}
+
+                        {fpsInfo && (
+                          <div className="pc-video-advanced-row">
+                            <div className="pc-video-advanced-label">FPS</div>
+                            {renderPills(fpsInfo, 'fps', 'Frame Rate', isOptimizing)}
+                          </div>
+                        )}
+
+                        {allowsVideoInputReference && (
+                          <div className="pc-video-advanced-row">
+                            <div className="pc-video-advanced-label">Reference</div>
+                            <input
+                              type="url"
+                              value={videoInputReference}
+                              onChange={(event) => setVideoInputReference(event.target.value)}
+                              placeholder="Reference image URL (optional)"
+                              className="pc-video-advanced-input"
+                              disabled={isOptimizing || isVideoPreviewGenerating}
+                              aria-label="Reference image URL (optional)"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </details>
                   </div>
                 </div>
               </div>
@@ -1534,6 +1631,7 @@ export function PromptCanvas({
                 generateRequestId={visualGenerateRequestId}
                 lastGeneratedAt={visualLastGeneratedAt}
                 onPreviewGenerated={handleVisualPreviewGenerated}
+                onLoadingChange={setIsVisualPreviewGenerating}
                 onKeepRefining={handleKeepRefiningFromPreview}
                 onRefinePrompt={handleSomethingOffFromPreview}
                 showActions={false}
@@ -1555,7 +1653,7 @@ export function PromptCanvas({
                 <button
                   type="button"
                   onClick={handleGenerateVisualPreview}
-                  disabled={!hasPreviewSource}
+                  disabled={!hasPreviewSource || isVisualPreviewGenerating}
                   className="prompt-right-rail__preview-button"
                 >
                   Generate

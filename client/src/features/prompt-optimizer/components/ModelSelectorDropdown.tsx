@@ -15,11 +15,39 @@ export const ModelSelectorDropdown = memo<{
   const [isOpen, setIsOpen] = useState(false);
   const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const resolveModelMeta = (modelId: string): { strength: string; badges: Array<string> } => {
+    const id = modelId.toLowerCase();
+    if (id.includes('sora')) {
+      return { strength: 'Cinematic motion and high fidelity', badges: ['Cinematic', 'Photoreal'] };
+    }
+    if (id.includes('veo')) {
+      return { strength: 'Strong lighting, realism, and camera', badges: ['Cinematic', 'Photoreal'] };
+    }
+    if (id.includes('kling')) {
+      return { strength: 'Stable subjects and dynamic movement', badges: ['Cinematic', 'Character'] };
+    }
+    if (id.includes('luma')) {
+      return { strength: 'Fast, clean previews with realism', badges: ['Fast', 'Photoreal'] };
+    }
+    if (id.includes('runway')) {
+      return { strength: 'Quick iterations with strong style', badges: ['Fast', 'Cinematic'] };
+    }
+    if (id.includes('wan')) {
+      return { strength: 'Speedy motion checks for iteration', badges: ['Fast', 'Balanced'] };
+    }
+    return { strength: 'Balanced preview defaults', badges: ['Balanced'] };
+  };
+
+  const badgeClass =
+    variant === 'pillDark'
+      ? 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/8 border border-white/10 text-white/70'
+      : 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 border border-neutral-200 text-neutral-600';
   
   // Find label for current selection
   const selectedOption = availableModels.find(m => m.id === selectedModel);
   const currentLabel = selectedOption?.label ?? 
-    (selectedModel ? (AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel) : 'Auto-detect Model');
+    (selectedModel ? (AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel) : 'Auto (Recommended)');
 
   // Handle clicks outside dropdown
   useEffect(() => {
@@ -123,19 +151,28 @@ export const ModelSelectorDropdown = memo<{
             role="option"
             aria-selected={!selectedModel}
           >
-            <span
-              className={`flex-1 ${
-                variant === 'pillDark'
-                  ? !selectedModel
-                    ? 'font-semibold text-white'
-                    : 'text-white/80'
-                  : !selectedModel
-                    ? 'font-semibold text-neutral-900'
-                    : 'text-neutral-700'
-              }`}
-            >
-              Auto-detect
-            </span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span
+                className={`truncate ${
+                  variant === 'pillDark'
+                    ? !selectedModel
+                      ? 'font-semibold text-white'
+                      : 'text-white/80'
+                    : !selectedModel
+                      ? 'font-semibold text-neutral-900'
+                      : 'text-neutral-700'
+                }`}
+              >
+                Auto (Recommended)
+              </span>
+              <span className={`text-[11px] ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
+                Picks the best model for the prompt
+              </span>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <span className={badgeClass}>Recommended</span>
+                <span className={badgeClass}>Balanced</span>
+              </div>
+            </div>
             {!selectedModel && (
               <Check
                 className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
@@ -147,6 +184,7 @@ export const ModelSelectorDropdown = memo<{
           {/* Model Options */}
           {availableModels.map((option) => {
             const isSelected = option.id === selectedModel;
+            const meta = resolveModelMeta(option.id);
 
             return (
               <button
@@ -190,6 +228,16 @@ export const ModelSelectorDropdown = memo<{
                   >
                     {option.provider}
                   </span>
+                  <span className={`text-[11px] mt-0.5 ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
+                    {meta.strength}
+                  </span>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {meta.badges.map((badge) => (
+                      <span key={badge} className={badgeClass}>
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 {isSelected && (
                   <Check

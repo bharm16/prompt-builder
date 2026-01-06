@@ -16,6 +16,7 @@ interface VisualPreviewProps {
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
   onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onLoadingChange?: ((loading: boolean) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
   showActions?: boolean;
@@ -91,6 +92,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   isVisible,
   generateRequestId,
   onPreviewGenerated,
+  onLoadingChange,
   showActions = true,
   variant = 'default',
 }) => {
@@ -127,6 +129,10 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
       });
     }
   }, [imageUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
+
+  React.useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
 
   const handleGenerate = React.useCallback(() => {
     setLastRequestedPrompt(prompt);
