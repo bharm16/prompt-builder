@@ -14,12 +14,11 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 
 function AppShell(): React.ReactElement {
   const location = useLocation();
-  const isPromptOptimizerRoute =
-    location.pathname === '/' || location.pathname.startsWith('/prompt/');
+  const isPromptCanvasRoute = location.pathname.startsWith('/prompt/');
 
   return (
     <div className="min-h-full h-full flex flex-col bg-geist-background">
-      {!isPromptOptimizerRoute && <TopNavbar />}
+      {!isPromptCanvasRoute && <TopNavbar />}
       <div className="flex-1 min-h-0">
         <Routes>
           {/* Marketing / company navigation */}

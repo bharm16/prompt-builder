@@ -40,7 +40,17 @@
   grid-template-columns: 1fr auto;
   align-items: start;
   gap: 12px;
-  padding: 6px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.suggestions-panel__token-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .suggestions-panel__token-text {
@@ -62,12 +72,14 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.65);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .suggestions-panel__token-apply:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.16);
   color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
 }
 
 .suggestions-panel__custom-request {

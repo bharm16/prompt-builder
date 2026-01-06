@@ -323,7 +323,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       />
 
       {/* Top Action Buttons */}
-      <PromptTopBar />
+      {showResults && <PromptTopBar />}
 
       {/* History Sidebar */}
       <PromptSidebar user={user} />

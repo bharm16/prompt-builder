@@ -370,7 +370,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       />
 
       {/* Top Action Buttons */}
-      <PromptTopBar />
+      {showResults && <PromptTopBar />}
 
       {/* Conditionally render the appropriate layout */}
       {showResults ? (

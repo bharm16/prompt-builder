@@ -102,13 +102,10 @@ export function PromptCanvas({
   const lockButtonRef = useRef<HTMLButtonElement>(null);
   const tokenPopoverRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
-  const idleTimeoutRef = useRef<number | null>(null);
-  const hasTriggeredVideoTransitionRef = useRef(false);
   const toast = useToast();
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [isOutputHovered, setIsOutputHovered] = useState(false);
   const [tokenPopover, setTokenPopover] = useState<{ left: number; top: number } | null>(null);
-  const [isVideoTransitionActive, setIsVideoTransitionActive] = useState(false);
   const [videoInputReference, setVideoInputReference] = useState('');
   const [isVisualPreviewGenerating, setIsVisualPreviewGenerating] = useState(false);
   const [isVideoPreviewGenerating, setIsVideoPreviewGenerating] = useState(false);
@@ -311,7 +308,7 @@ export function PromptCanvas({
     () => (videoPreviewPrompt ? videoPreviewPrompt.replace(/\s+/g, ' ').trim() : ''),
     [videoPreviewPrompt]
   );
-  const showVideoPanel = Boolean(showVideoPreview && isVideoTransitionActive && videoPreviewPrompt.trim());
+  const showVideoPanel = Boolean(showVideoPreview && videoPreviewPrompt.trim());
 
   const setShowExportMenu = useCallback(
     (value: boolean) => setState({ showExportMenu: value }),
@@ -537,27 +534,6 @@ export function PromptCanvas({
 
   const showPrimaryActions = isOutputHovered || isOutputFocused || hasSuggestionSelection;
 
-  const clearIdleTransitionTimer = useCallback((): void => {
-    if (idleTimeoutRef.current) {
-      window.clearTimeout(idleTimeoutRef.current);
-      idleTimeoutRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!showVideoPreview || !normalizedDisplayedPrompt?.trim() || isOutputLoading) {
-      hasTriggeredVideoTransitionRef.current = false;
-      setIsVideoTransitionActive(false);
-      clearIdleTransitionTimer();
-    }
-  }, [showVideoPreview, normalizedDisplayedPrompt, isOutputLoading, clearIdleTransitionTimer]);
-
-  useEffect(() => {
-    return () => {
-      clearIdleTransitionTimer();
-    };
-  }, [clearIdleTransitionTimer]);
-
   const escapeAttr = (value: string): string => {
     if (typeof (globalThis as any)?.CSS?.escape === 'function') {
       return (globalThis as any).CSS.escape(value);
@@ -774,33 +750,6 @@ export function PromptCanvas({
     [normalizedDisplayedPrompt]
   );
 
-  const triggerVideoTransition = useCallback(
-    (reason: 'idle' | 'blur' | 'scroll'): void => {
-      if (hasTriggeredVideoTransitionRef.current) return;
-      if (!showVideoPreview) return;
-      if (!normalizedDisplayedPrompt?.trim()) return;
-      if (isOutputLoading) return;
-      clearIdleTransitionTimer();
-      hasTriggeredVideoTransitionRef.current = true;
-      setIsVideoTransitionActive(true);
-      debug.logAction('videoTransitionTriggered', { reason });
-    },
-    [showVideoPreview, normalizedDisplayedPrompt, isOutputLoading, clearIdleTransitionTimer, debug]
-  );
-
-  const scheduleIdleTransition = useCallback(
-    (text: string): void => {
-      if (!showVideoPreview || isOutputLoading) return;
-      if (hasTriggeredVideoTransitionRef.current) return;
-      if (!text.trim()) return;
-      clearIdleTransitionTimer();
-      idleTimeoutRef.current = window.setTimeout(() => {
-        triggerVideoTransition('idle');
-      }, 1200);
-    },
-    [showVideoPreview, isOutputLoading, clearIdleTransitionTimer, triggerVideoTransition]
-  );
-
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>): void => {
       const newText = e.currentTarget.innerText || e.currentTarget.textContent || '';
@@ -812,9 +761,8 @@ export function PromptCanvas({
       if (onDisplayedPromptChange) {
         onDisplayedPromptChange(normalizedText);
       }
-      scheduleIdleTransition(normalizedText);
     },
-    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug, scheduleIdleTransition]
+    [onDisplayedPromptChange, normalizedDisplayedPrompt, debug]
   );
 
   const handleOutputFocus = useCallback((): void => {
@@ -823,21 +771,7 @@ export function PromptCanvas({
 
   const handleOutputBlur = useCallback((): void => {
     setIsOutputFocused(false);
-    triggerVideoTransition('blur');
-  }, [triggerVideoTransition]);
-
-  const handleEditorScroll = useCallback((): void => {
-    const container = editorColumnRef.current;
-    const lockline = outputLocklineRef.current;
-    if (!container || !lockline || !showVideoPreview) return;
-    if (container.scrollTop <= 0) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const locklineRect = lockline.getBoundingClientRect();
-    if (locklineRect.bottom <= containerRect.bottom) {
-      triggerVideoTransition('scroll');
-    }
-  }, [showVideoPreview, triggerVideoTransition]);
+  }, [setIsOutputFocused]);
 
   const handleInputPromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
@@ -1147,32 +1081,6 @@ export function PromptCanvas({
     requestAnimationFrame(step);
   }, []);
 
-  const scrollVideoPanelIntoView = useCallback((): void => {
-    const container = editorColumnRef.current;
-    const panel = videoPanelRef.current;
-    if (!container || !panel) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-
-    const isAbove = panelRect.top < containerRect.top;
-    const isBelow = panelRect.bottom > containerRect.bottom;
-    if (!isAbove && !isBelow) return;
-
-    let delta = 0;
-    if (isBelow) {
-      delta = panelRect.bottom - containerRect.bottom;
-    } else if (isAbove) {
-      delta = panelRect.top - containerRect.top;
-    }
-
-    const target = Math.max(
-      0,
-      Math.min(container.scrollHeight - container.clientHeight, container.scrollTop + delta)
-    );
-    animateScroll(container, target);
-  }, [animateScroll]);
-
   const handleJumpToPromptEditor = useCallback((): void => {
     const container = editorColumnRef.current;
     if (container) {
@@ -1185,18 +1093,10 @@ export function PromptCanvas({
     handleEditClick();
   }, [animateScroll, handleEditClick, isEditing]);
 
-  useEffect(() => {
-    if (!isVideoTransitionActive) return;
-    const timer = window.setTimeout(() => {
-      scrollVideoPanelIntoView();
-    }, 280);
-    return () => window.clearTimeout(timer);
-  }, [isVideoTransitionActive, scrollVideoPanelIntoView]);
-
   // Render the component
 	  return (
 	    <div
-	      className="prompt-canvas-root relative flex flex-col bg-geist-accents-1 min-h-0 flex-1"
+	      className="prompt-canvas-root relative flex flex-col min-h-0 flex-1"
 	      data-mode={selectedMode}
 	      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
 	      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
@@ -1273,7 +1173,6 @@ export function PromptCanvas({
         <div
           ref={editorColumnRef}
           id="main-content"
-          onScroll={handleEditorScroll}
           className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0"
         >
           <div className="prompt-canvas-editor-frame">
@@ -1360,7 +1259,7 @@ export function PromptCanvas({
             <div className="prompt-band__content prompt-canvas-content-wrapper">
               <div
                 className="prompt-card prompt-card--optimized"
-                data-settled={isVideoTransitionActive ? 'true' : 'false'}
+                data-settled={showVideoPanel ? 'true' : 'false'}
               >
                 <div className="prompt-output-header">
                   <div className="prompt-output-label">Optimized output</div>
@@ -1391,7 +1290,7 @@ export function PromptCanvas({
                     <div
                       ref={outputLocklineRef}
                       className="prompt-output-lockline"
-                      data-active={isVideoTransitionActive ? 'true' : 'false'}
+                      data-active={showVideoPanel ? 'true' : 'false'}
                       aria-hidden="true"
                     />
                     {/* Contextual alternatives panel (anchored to selected token) */}
@@ -1629,7 +1528,8 @@ export function PromptCanvas({
           className="prompt-canvas-right-rail flex flex-col overflow-hidden"
           style={
             {
-              background: '#0E0F11',
+              background:
+                'radial-gradient(120% 80% at 18% 0%, rgba(109, 94, 243, 0.22), transparent 58%), radial-gradient(120% 80% at 88% 0%, rgba(255, 176, 32, 0.14), transparent 62%), linear-gradient(180deg, #0E0F11 0%, #0B0C0E 100%)',
               // Local Geist token overrides so existing components render correctly in this dark panel.
               '--geist-background': '#0E0F11',
               '--geist-foreground': '#F5F6F7',

@@ -330,7 +330,7 @@
 /* Grid layout for outline rail, editor column, and right rail */
 .prompt-canvas-root {
   /* PromptCanvas-scoped layout vars (avoid global vw-based tokens) */
-  --pc-gap: 16px;
+  --pc-gap: 12px;
   --pc-sidebar-collapsed: 56px;
   --pc-sidebar-expanded: 240px;
   /* Overlay drawer: hidden by default so the rail doesn't waste a whole column */
@@ -338,16 +338,56 @@
   --pc-outline-expanded: 280px;
   --pc-right-rail: 380px;
   --pc-editor-min: 640px;
-  --pc-editor-max: 940px;
+  /* Allow a slightly wider work lane on large monitors (reduces "ocean" margins). */
+  --pc-editor-max: min(1120px, 100%);
   --pc-legend-width: 320px;
-  --pc-frame-pad-block-start: 14px;
-  --pc-frame-pad-inline: 28px;
-  --pc-frame-pad-block-end: 32px;
+  --pc-frame-pad-block-start: 10px;
+  --pc-frame-pad-inline: 20px;
+  --pc-frame-pad-block-end: 24px;
   --pc-outline-top: calc(var(--pc-gap) + var(--pc-frame-pad-block-start));
+
+  /* Material system (Framer/Raycast-ish) */
+  --pc-surface: rgba(255, 255, 255, 0.72);
+  --pc-surface-strong: rgba(255, 255, 255, 0.86);
+  --pc-border: rgba(15, 23, 42, 0.10);
+  --pc-border-strong: rgba(15, 23, 42, 0.14);
+  --pc-shadow-elev:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 18px 60px rgba(15, 23, 42, 0.10);
+  --pc-shadow-float:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 26px 80px rgba(15, 23, 42, 0.14);
 
   height: 100%;
   min-height: 0;
   overflow: hidden;
+
+  /* Kill the flat-white "prototype" feel */
+  background:
+    radial-gradient(900px circle at 20% -10%, rgb(var(--po-primary-rgb) / 0.10), transparent 60%),
+    radial-gradient(700px circle at 80% 0%, rgb(var(--po-accent-rgb) / 0.08), transparent 55%),
+    linear-gradient(180deg, #fbfbfc 0%, #f6f7f9 62%, #f4f6f8 100%);
+}
+
+.prompt-canvas-root::before {
+  /* Subtle texture + vignette (cheap, no heavy noise assets). */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(140% 90% at 50% 0%, rgba(0, 0, 0, 0.05), transparent 55%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.04), transparent 40%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.016) 0px,
+      rgba(0, 0, 0, 0.016) 1px,
+      transparent 1px,
+      transparent 18px
+    );
+  opacity: 0.55;
+  mix-blend-mode: multiply;
 }
 
 .prompt-canvas-grid {
@@ -363,6 +403,7 @@
   align-items: start;
   box-sizing: border-box;
   position: relative;
+  z-index: 1;
 }
 
 .prompt-canvas-generation-overlay {
@@ -722,9 +763,14 @@
   overflow-y: auto;
   gap: 0;
   padding: 0;
-  background: var(--geist-accents-1);
-  border-radius: 14px;
-  border: 1px solid var(--geist-accents-2);
+  background: rgba(255, 255, 255, 0.52);
+  border-radius: 18px;
+  border: 1px solid var(--pc-border);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    var(--pc-shadow-elev);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
 }
 
 .prompt-canvas-editor-frame {
@@ -751,7 +797,10 @@
   align-self: start;
   justify-self: stretch;
   border-radius: 16px;
-  box-shadow: none;
+  box-shadow:
+    0 20px 70px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 14px;
   overflow: hidden;
   color: rgba(255, 255, 255, 0.86);
@@ -785,8 +834,10 @@
   display: grid;
   gap: 10px;
   overflow: hidden;
-  background: var(--geist-accents-1);
-  border: 1px solid var(--geist-accents-2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
 .prompt-right-rail__preview-module {
@@ -1042,7 +1093,7 @@
 /* Original prompt band - subtle gray */
 .prompt-band--original {
   background-color: transparent;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .prompt-band--original[data-optimizing="true"] {
@@ -1052,7 +1103,7 @@
 /* Optimized prompt band - white/tinted */
 .prompt-band--optimized {
   background-color: transparent;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .prompt-band--optimized .prompt-band__content {
@@ -1070,10 +1121,33 @@
    ============================================ */
 
 .prompt-card {
-  background: var(--geist-background);
-  border: 1px solid var(--geist-accents-2);
-  border-radius: 10px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.70) inset,
+    0 10px 30px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 160ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 160ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.prompt-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--pc-border-strong);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 18px 48px rgba(15, 23, 42, 0.10);
+}
+
+.prompt-card:focus-within {
+  border-color: rgba(109, 94, 243, 0.35);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 0 0 3px rgba(109, 94, 243, 0.12),
+    0 18px 48px rgba(15, 23, 42, 0.10);
 }
 
 .prompt-card__header {
@@ -1084,14 +1158,16 @@
   gap: var(--spacing-md);
   /* Section padding: 24 (horizontal), 16 (vertical) */
   padding: 16px 24px;
-  border-bottom: 1px solid var(--geist-accents-2);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.30));
 }
 
 .prompt-output-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .prompt-output-label {
@@ -1156,18 +1232,20 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  height: 28px;
+  padding: 0 10px;
   font-size: 0.875rem;
-  color: var(--geist-accents-7);
-  background: transparent;
-  border: none;
-  border-radius: var(--geist-radius);
+  color: rgba(17, 17, 17, 0.72);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 999px;
   cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .prompt-card__action-button:hover:not(:disabled) {
-  background-color: var(--geist-accents-1);
+  background-color: rgba(255, 255, 255, 0.82);
+  transform: translateY(-1px);
 }
 
 .prompt-card__action-button:disabled {
@@ -1177,12 +1255,12 @@
 
 .prompt-card__body {
   /* Section padding: 24 */
-  padding: 24px;
+  padding: 20px;
 }
 
 .prompt-card__body--editor {
-  padding: 24px;
-  min-height: 240px;
+  padding: 20px;
+  min-height: 180px;
 }
 
 .prompt-card__footer {
@@ -1301,7 +1379,7 @@
 }
 
 .prompt-card--original .prompt-card__body {
-  background-color: var(--geist-accents-1);
+  background-color: transparent;
   padding: 16px 24px;
 }
 
@@ -1311,14 +1389,17 @@
   width: 100%;
   max-width: 100%;
   margin-top: 0;
-  min-height: 260px;
-  padding: 32px 36px;
+  min-height: 220px;
+  padding: 20px 22px;
   border-radius: 16px;
-  background: #fbfbfc;
-  border: none;
+  background:
+    radial-gradient(120% 80% at 22% 0%, rgba(109, 94, 243, 0.08), transparent 55%),
+    radial-gradient(120% 80% at 88% 0%, rgba(255, 176, 32, 0.06), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 249, 251, 0.88) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.10);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 12px 32px rgba(0, 0, 0, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    var(--pc-shadow-float);
   transition: background-color 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
 }
 
@@ -1394,7 +1475,7 @@
 .prompt-editor-wrapper {
   position: relative;
   /* Give the output editor a real workspace height that grows */
-  min-height: 240px;
+  min-height: 180px;
 }
 
 .prompt-output-lockline {
