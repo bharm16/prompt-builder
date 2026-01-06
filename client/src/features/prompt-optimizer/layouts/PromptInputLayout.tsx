@@ -1,6 +1,7 @@
 import React from 'react';
 import { PromptInputSection } from '../components/PromptInputSection';
 import { PromptSidebar } from '../components/PromptSidebar';
+import { usePromptState } from '../context/PromptStateContext';
 import type { User } from '../context/types';
 import './PromptInputLayout.css';
 
@@ -27,8 +28,15 @@ export const PromptInputLayout = ({
   onOptimize,
   onShowBrainstorm,
 }: PromptInputLayoutProps): React.ReactElement => {
+  const { showHistory } = usePromptState();
+  
   return (
-    <div className="prompt-input-layout">
+    <div 
+      className="prompt-input-layout"
+      style={{
+        '--pil-sidebar-width': showHistory ? '240px' : '56px',
+      } as React.CSSProperties}
+    >
       {/* History Sidebar */}
       <PromptSidebar user={user} />
 

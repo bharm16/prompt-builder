@@ -1,5 +1,9 @@
 .prompt-input {
-  width: 100%;
+  position: relative !important;
+  z-index: 100 !important;
+  width: 100% !important;
+  min-height: auto !important;
+  max-height: none !important;
 
   --pi-space-72: 72px;
   --pi-space-64: 64px;
@@ -24,11 +28,13 @@
 }
 
 .prompt-input__container {
+  position: relative !important;
+  z-index: 9998 !important;
   width: 100%;
   max-width: 980px;
   padding: clamp(var(--pi-pad-top-min), 6vh, var(--pi-pad-top-max)) var(--pi-space-48)
     clamp(var(--pi-pad-bottom-min), 4.5vh, var(--pi-pad-bottom-max));
-  margin: 0 auto; /* Center the container */
+  margin: 0 auto;
 }
 
 @media (max-width: 768px) {
@@ -38,6 +44,8 @@
 }
 
 .prompt-input__stack {
+  position: relative !important;
+  z-index: 9999 !important;
   display: flex;
   flex-direction: column;
   gap: clamp(var(--pi-stack-gap-min), 1.8vh, var(--pi-stack-gap-max));
