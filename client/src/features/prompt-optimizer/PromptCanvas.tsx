@@ -11,10 +11,9 @@ import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '
 
 // Relative imports - types first
 import type { HighlightSnapshot, PromptCanvasProps, SuggestionItem } from './PromptCanvas/types';
-import type { PromptVersionEntry } from '@hooks/types';
 
 // Relative imports - implementations
-import { useSpanLabeling, sanitizeText, createHighlightSignature } from '@/features/span-highlighting';
+import { useSpanLabeling, sanitizeText } from '@/features/span-highlighting';
 import { useClipboard } from './hooks/useClipboard';
 import { useShareLink } from './hooks/useShareLink';
 import { useHighlightRendering } from '@/features/span-highlighting';
@@ -34,7 +33,7 @@ import { useEditorContent } from './PromptCanvas/hooks/useEditorContent';
 import { useKeyboardShortcuts } from './PromptCanvas/hooks/useKeyboardShortcuts';
 import { usePromptExport } from './PromptCanvas/hooks/usePromptExport';
 import { useLockedSpanInteractions } from './PromptCanvas/hooks/useLockedSpanInteractions';
-import { formatTimestamp } from './PromptCanvas/utils/promptCanvasFormatters';
+import { usePromptVersioning } from './PromptCanvas/hooks/usePromptVersioning';
 import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 
 // Relative imports - components
@@ -49,7 +48,7 @@ import { VisualPreview, VideoPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
-import { resolveFieldState, type CapabilityValue, type CapabilityValues } from '@shared/capabilities';
+import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
 
 // Styles
 import './PromptCanvas.css';
@@ -158,7 +157,7 @@ export function PromptCanvas({
       if (!schema?.fields?.[fieldName]) return null;
 
       const field = schema.fields[fieldName];
-      const state = resolveFieldState(field, generationParams as CapabilityValues);
+      const state = resolveFieldState(field, generationParams);
 
       if (!state.available || state.disabled) return null;
 
@@ -211,7 +210,7 @@ export function PromptCanvas({
       return (
         <div className="flex items-center">
           <select
-            value={String((generationParams as any)?.[key] ?? info.field.default ?? '')}
+            value={String(generationParams?.[key] ?? info.field.default ?? '')}
             onChange={(e) => {
               const val = info.field.type === 'int' ? Number(e.target.value) : e.target.value;
               handleParamChange(key, val);
@@ -241,7 +240,7 @@ export function PromptCanvas({
     ): React.ReactNode => {
       if (!info) return null;
 
-      const selected = (generationParams as any)?.[key] ?? info.field.default ?? '';
+      const selected = generationParams?.[key] ?? info.field.default ?? '';
       const allowed = info.allowedValues;
       const formatDisplay = (val: unknown) => {
         if (key === 'duration_s') return `${val}s`;
@@ -337,186 +336,18 @@ export function PromptCanvas({
   );
   const showVideoPanel = Boolean(showVideoPreview && videoPreviewPrompt.trim());
 
-  const currentPromptEntry = useMemo(() => {
-    if (!promptHistory?.history?.length) return null;
-    return (
-      promptHistory.history.find((entry) => entry.uuid === currentPromptUuid) ||
-      promptHistory.history.find((entry) => entry.id === currentPromptDocId) ||
-      null
-    );
-  }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
-
-  const currentVersions = useMemo<PromptVersionEntry[]>(
-    () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
-    [currentPromptEntry]
-  );
-
-  const persistVersions = useCallback(
-    (versions: PromptVersionEntry[]): void => {
-      if (!currentPromptUuid) return;
-      promptHistory.updateEntryVersions(currentPromptUuid, currentPromptDocId, versions);
-    },
-    [promptHistory, currentPromptUuid, currentPromptDocId]
-  );
-
-  const toIsoString = (value: number | string): string => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return new Date(value).toISOString();
-    }
-    if (typeof value === 'string' && value.trim()) {
-      const parsed = Date.parse(value);
-      if (!Number.isNaN(parsed)) {
-        return new Date(parsed).toISOString();
-      }
-      return value;
-    }
-    return new Date().toISOString();
-  };
-
-  const createVersionEntry = useCallback(
-    ({
-      signature,
-      prompt,
-      highlights,
-      preview,
-      video,
-    }: {
-      signature: string;
-      prompt: string;
-      highlights?: PromptVersionEntry['highlights'];
-      preview?: PromptVersionEntry['preview'];
-      video?: PromptVersionEntry['video'];
-    }): PromptVersionEntry => {
-      const versionNumber = currentVersions.length + 1;
-      const editCount = versionEditCountRef.current;
-      const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
-      return {
-        versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        label: `v${versionNumber}`,
-        signature,
-        prompt,
-        timestamp: new Date().toISOString(),
-        highlights: highlights ?? null,
-        ...(editCount > 0 ? { editCount } : {}),
-        ...(edits.length ? { edits } : {}),
-        preview: preview ?? null,
-        video: video ?? null,
-      };
-    },
-    [currentVersions.length, versionEditCountRef, versionEditsRef]
-  );
-
-  const upsertVersionOutput = useCallback(
-    (params: {
-      action: 'preview' | 'video';
-      prompt: string;
-      generatedAt: number | string;
-      imageUrl?: string | null;
-      videoUrl?: string | null;
-      aspectRatio?: string | null;
-    }): void => {
-      if (!currentPromptUuid) return;
-      if (!currentPromptEntry) return;
-      const promptText = params.prompt.trim();
-      if (!promptText) return;
-
-      const signature = createHighlightSignature(promptText);
-      const lastVersion = currentVersions[currentVersions.length - 1] ?? null;
-      const hasEditsSinceLastVersion = !lastVersion || lastVersion.signature !== signature;
-
-      const previewPayload = params.action === 'preview'
-        ? {
-            generatedAt: toIsoString(params.generatedAt),
-            imageUrl: params.imageUrl ?? null,
-            aspectRatio: params.aspectRatio ?? effectiveAspectRatio ?? null,
-          }
-        : undefined;
-
-      const videoPayload = params.action === 'video'
-        ? {
-            generatedAt: toIsoString(params.generatedAt),
-            videoUrl: params.videoUrl ?? null,
-            model: selectedModel?.trim() ? selectedModel.trim() : null,
-            generationParams: generationParams ?? null,
-          }
-        : undefined;
-
-      if (hasEditsSinceLastVersion) {
-        const newVersion = createVersionEntry({
-          signature,
-          prompt: promptText,
-          highlights: latestHighlightRef.current ?? null,
-          preview: previewPayload ?? null,
-          video: videoPayload ?? null,
-        });
-        persistVersions([...currentVersions, newVersion]);
-        resetVersionEdits();
-        return;
-      }
-
-      if (!lastVersion) return;
-      const updatedLast: PromptVersionEntry = {
-        ...lastVersion,
-        ...(previewPayload ? { preview: previewPayload } : {}),
-        ...(videoPayload ? { video: videoPayload } : {}),
-      };
-      const updatedVersions = [...currentVersions.slice(0, -1), updatedLast];
-      persistVersions(updatedVersions);
-    },
-    [
-      currentPromptUuid,
-      currentPromptEntry,
-      currentVersions,
-      createVersionEntry,
-      effectiveAspectRatio,
-      generationParams,
-      latestHighlightRef,
-      persistVersions,
-      resetVersionEdits,
-      selectedModel,
-    ]
-  );
-
-  const syncVersionHighlights = useCallback(
-    (snapshot: HighlightSnapshot, promptText: string): void => {
-      if (!currentPromptUuid) return;
-      if (!currentPromptEntry) return;
-      if (!snapshot?.signature) return;
-
-      const versions = currentVersions;
-      if (versions.length === 0) {
-        const fallbackPrompt = promptText.trim();
-        if (!fallbackPrompt) return;
-        const initialVersion = createVersionEntry({
-          signature: snapshot.signature,
-          prompt: fallbackPrompt,
-          highlights: snapshot,
-        });
-        persistVersions([initialVersion]);
-        resetVersionEdits();
-        return;
-      }
-
-      const lastVersion = versions[versions.length - 1];
-      if (lastVersion.signature !== snapshot.signature) {
-        return;
-      }
-
-      const updatedLast: PromptVersionEntry = {
-        ...lastVersion,
-        highlights: snapshot,
-      };
-      persistVersions([...versions.slice(0, -1), updatedLast]);
-    },
-    [
-      createVersionEntry,
-      currentPromptEntry,
-      currentPromptUuid,
-      currentVersions,
-      persistVersions,
-      resetVersionEdits,
-    ]
-  );
+  const { upsertVersionOutput, syncVersionHighlights } = usePromptVersioning({
+    promptHistory,
+    currentPromptUuid,
+    currentPromptDocId,
+    latestHighlightRef,
+    versionEditCountRef,
+    versionEditsRef,
+    resetVersionEdits,
+    effectiveAspectRatio,
+    generationParams,
+    selectedModel,
+  });
 
   const setShowExportMenu = useCallback(
     (value: boolean) => setState({ showExportMenu: value }),
@@ -765,18 +596,13 @@ export function PromptCanvas({
   const isOutputLoading = Boolean(isProcessing && !isDraftReady);
   const isInputLocked = !isEditing || isOptimizing;
 
-  const hasSuggestionSelection =
-    Boolean(selectedSpanId) ||
-    Boolean(
-      typeof (suggestionsData as any)?.selectedText === 'string' &&
-        (suggestionsData as any).selectedText.trim()
-    );
+  const hasSuggestionSelection = Boolean(selectedSpanId) || Boolean(suggestionsData?.selectedText.trim());
 
   const showPrimaryActions = isOutputHovered || isOutputFocused || hasSuggestionSelection;
 
   const escapeAttr = (value: string): string => {
-    if (typeof (globalThis as any)?.CSS?.escape === 'function') {
-      return (globalThis as any).CSS.escape(value);
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+      return CSS.escape(value);
     }
     return value.replace(/["\\]/g, '\\$&');
   };

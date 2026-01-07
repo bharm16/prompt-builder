@@ -8,7 +8,8 @@
 import { auth, db } from '../config/firebase';
 import { setSentryUser, addSentryBreadcrumb } from '../config/sentry';
 import { AuthRepository } from './AuthRepository';
-import { PromptRepository, LocalStoragePromptRepository } from './PromptRepository';
+import { PromptRepository } from './PromptRepository';
+import { LocalStoragePromptRepository } from './LocalStoragePromptRepository';
 import type { SentryIntegration } from './AuthRepository';
 
 // Sentry integration adapter
@@ -70,4 +71,3 @@ export function resetRepositories(): void {
   promptRepository = null;
   localPromptRepository = null;
 }
-

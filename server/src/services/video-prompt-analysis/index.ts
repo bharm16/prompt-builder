@@ -71,15 +71,7 @@ export type {
   VeoPromptSchema,
 } from './strategies';
 
-// Export config for testing/debugging
-export * from './config/detectionMarkers';
-export * from './config/categoryMapping';
-export * from './config/constraintModes';
-export * from './config/fallbackStrategy';
-export * from './config/categoryGuidance';
-
 // Export types
 export type * from './types';
 export type * from './services/detection/ModelDetectionService';
 export type * from './services/detection/SectionDetectionService';
-

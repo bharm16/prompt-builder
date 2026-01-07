@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
-import { useCapabilities } from './hooks/useCapabilities';
-import { resolveFieldState } from '@shared/capabilities';
+import type { CapabilityValue } from '@shared/capabilities';
 import type { PromptInputProps } from './types';
+import { useCoverageMeters } from './PromptInput/hooks/useCoverageMeters';
+import { useWorkflowChipSeen } from './PromptInput/hooks/useWorkflowChipSeen';
+import { usePromptInputCapabilities, type PromptInputFieldInfo } from './PromptInput/hooks/usePromptInputCapabilities';
 import './PromptInput.css';
 
 /**
@@ -31,8 +33,11 @@ export const PromptInput = ({
     isProcessing,
   });
 
-  // Load capabilities schema to access aspect ratio options
-  const { schema } = useCapabilities(selectedModel);
+  const { aspectRatioInfo, durationInfo, resolutionInfo, fpsInfo, audioInfo } =
+    usePromptInputCapabilities({ selectedModel, generationParams });
+  const coverageMeters = useCoverageMeters(inputPrompt);
+  const { hasSeenWorkflowChip, markWorkflowChipSeen } = useWorkflowChipSeen();
+
   const [isFocused, setIsFocused] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const examplesPopoverRef = React.useRef<HTMLDivElement>(null);
@@ -41,193 +46,12 @@ export const PromptInput = ({
   const [isExamplesOpen, setIsExamplesOpen] = React.useState(false);
   const [ctaFlash, setCtaFlash] = React.useState(false);
   const [modifierKeyLabel, setModifierKeyLabel] = React.useState<'⌘' | 'Ctrl'>('⌘');
-  const [hasSeenWorkflowChip, setHasSeenWorkflowChip] = React.useState(false);
   const [loadingStepIndex, setLoadingStepIndex] = React.useState(0);
 
   const hasContent = inputPrompt.length > 0;
   const isCtaDisabled = !inputPrompt.trim() || isProcessing;
 
-  const COVERAGE_CATEGORIES = React.useMemo(
-    () =>
-      [
-        {
-          key: 'subject',
-          label: 'Subject',
-          color: 'rgba(139,92,246,0.45)',
-          words: [
-            'person',
-            'woman',
-            'man',
-            'child',
-            'face',
-            'hands',
-            'robot',
-            'creature',
-            'car',
-            'city',
-            'forest',
-            'mountain',
-            'ocean',
-            'room',
-            'street',
-            'table',
-            'product',
-            'logo',
-          ],
-        },
-        {
-          key: 'camera',
-          label: 'Camera',
-          color: 'rgba(139,92,246,0.35)',
-          words: [
-            'wide',
-            'close',
-            'close-up',
-            'macro',
-            'dolly',
-            'tracking',
-            'handheld',
-            'crane',
-            'gimbal',
-            'pan',
-            'tilt',
-            'zoom',
-            'orbit',
-            'lens',
-            '35mm',
-            '50mm',
-            'anamorphic',
-            'shallow depth',
-            'deep focus',
-          ],
-        },
-        {
-          key: 'lighting',
-          label: 'Lighting',
-          color: 'rgba(139,92,246,0.30)',
-          words: [
-            'soft',
-            'hard',
-            'backlit',
-            'rim light',
-            'key light',
-            'fill',
-            'neon',
-            'golden hour',
-            'sunset',
-            'studio',
-            'moody',
-            'high contrast',
-            'low key',
-            'volumetric',
-            'fog',
-            'glow',
-          ],
-        },
-        {
-          key: 'motion',
-          label: 'Motion',
-          color: 'rgba(139,92,246,0.26)',
-          words: [
-            'slow motion',
-            'timelapse',
-            'speed ramp',
-            'walking',
-            'running',
-            'spinning',
-            'floating',
-            'drifting',
-            'wind',
-            'waves',
-            'swirling',
-            'shake',
-            'vibration',
-            'push in',
-            'pull back',
-          ],
-        },
-        {
-          key: 'style',
-          label: 'Style',
-          color: 'rgba(139,92,246,0.24)',
-          words: [
-            'cinematic',
-            'film',
-            'documentary',
-            'noir',
-            'anime',
-            '3d',
-            'photoreal',
-            'surreal',
-            'vintage',
-            'minimal',
-            'brutalist',
-            'cyberpunk',
-            'watercolor',
-            'illustration',
-            'grain',
-          ],
-        },
-      ] as const,
-    []
-  );
-
-  const computeCoverage = React.useCallback(
-    (words: readonly string[]): number => {
-      const text = inputPrompt.toLowerCase();
-      if (!text.trim()) return 0;
-
-      let matches = 0;
-      for (const word of words) {
-        const w = word.toLowerCase();
-        if (w.includes(' ') || /[^a-z0-9]/i.test(w)) {
-          if (text.includes(w)) matches += 1;
-          continue;
-        }
-        if (new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'i').test(text)) {
-          matches += 1;
-        }
-      }
-
-      if (matches <= 0) return 0;
-      const base = 0.35;
-      const extra = Math.min(0.45, matches * 0.10);
-      return Math.min(0.8, base + extra);
-    },
-    [inputPrompt]
-  );
-
-  // Helper to extract field info
-  const getFieldInfo = (fieldName: string) => {
-    if (!schema?.fields?.[fieldName]) return null;
-
-    const field = schema.fields[fieldName];
-    const state = resolveFieldState(field, generationParams);
-    
-    if (!state.available || state.disabled) return null;
-
-    const allowedValues = field.type === 'enum' 
-      ? state.allowedValues ?? field.values ?? [] 
-      : [];
-
-    return { field, allowedValues };
-  };
-
-  const aspectRatioInfo = useMemo(() => getFieldInfo('aspect_ratio'), [schema, generationParams]);
-  const durationInfo = useMemo(() => getFieldInfo('duration_s'), [schema, generationParams]);
-  const resolutionInfo = useMemo(() => getFieldInfo('resolution'), [schema, generationParams]);
-  const fpsInfo = useMemo(() => getFieldInfo('fps'), [schema, generationParams]);
-  
-  // Audio toggle info
-  const audioInfo = useMemo(() => {
-    if (!schema?.fields?.audio) return null;
-    const field = schema.fields.audio;
-    const state = resolveFieldState(field, generationParams);
-    if (!state.available || state.disabled) return null;
-    return { field };
-  }, [schema, generationParams]);
-
-  const handleParamChange = (key: string, value: any) => {
+  const handleParamChange = (key: string, value: CapabilityValue): void => {
     onGenerationParamsChange({
       ...generationParams,
       [key]: value,
@@ -261,16 +85,6 @@ export const PromptInput = ({
     };
     window.addEventListener('po:focus-editor', handleFocusEditor);
     return () => window.removeEventListener('po:focus-editor', handleFocusEditor);
-  }, []);
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const value = window.localStorage.getItem('po:workflowChipSeen');
-      setHasSeenWorkflowChip(value === '1');
-    } catch {
-      setHasSeenWorkflowChip(false);
-    }
   }, []);
 
   React.useEffect(() => {
@@ -315,21 +129,16 @@ export const PromptInput = ({
         promptLength: inputPrompt.length,
         selectedModel // Log selected model
       });
-      try {
-        window.localStorage.setItem('po:workflowChipSeen', '1');
-        setHasSeenWorkflowChip(true);
-      } catch {
-        // Ignore storage errors
-      }
+      markWorkflowChipSeen();
       onOptimize();
     }
   };
 
-  const renderDropdown = (info: ReturnType<typeof getFieldInfo>, key: string, label: string) => {
+  const renderDropdown = (info: PromptInputFieldInfo | null, key: string, label: string) => {
     if (!info) return null;
     
     // For duration, append 's' to the value for display if it's a number
-    const formatDisplay = (val: any) => {
+    const formatDisplay = (val: CapabilityValue): string => {
       if (key === 'duration_s') return `${val}s`;
       if (key === 'fps') return `${val} fps`;
       return String(val);
@@ -340,8 +149,9 @@ export const PromptInput = ({
         <select
           value={String(generationParams[key] || info.field.default || '')}
           onChange={(e) => {
-            const val = info.field.type === 'int' ? Number(e.target.value) : e.target.value;
-            handleParamChange(key, val);
+            const nextValue: CapabilityValue =
+              info.field.type === 'int' ? Number(e.target.value) : e.target.value;
+            handleParamChange(key, nextValue);
           }}
           className="prompt-input__control-pill prompt-input__control-select h-8 px-[10px] pr-[30px] text-[13px] font-medium rounded-[10px] cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%23FFF%22%20stroke-opacity%3D%220.78%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
           aria-label={label}
@@ -567,23 +377,20 @@ export const PromptInput = ({
 
           {/* Structure promise (coverage meters) */}
           <section className="prompt-input__coverage" aria-label="Structure coverage">
-            {COVERAGE_CATEGORIES.map((category) => {
-              const fill = computeCoverage(category.words);
-              return (
-                <div key={category.key} className="prompt-input__coverage-row">
-                  <div className="prompt-input__coverage-label">{category.label}</div>
-                  <div className="prompt-input__coverage-track" aria-hidden="true">
-                    <div
-                      className="prompt-input__coverage-fill"
-                      style={{
-                        width: `${Math.round(fill * 100)}%`,
-                        background: category.color,
-                      }}
-                    />
-                  </div>
+            {coverageMeters.map((category) => (
+              <div key={category.key} className="prompt-input__coverage-row">
+                <div className="prompt-input__coverage-label">{category.label}</div>
+                <div className="prompt-input__coverage-track" aria-hidden="true">
+                  <div
+                    className="prompt-input__coverage-fill"
+                    style={{
+                      width: `${Math.round(category.fill * 100)}%`,
+                      background: category.color,
+                    }}
+                  />
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </section>
         </div>
       </div>

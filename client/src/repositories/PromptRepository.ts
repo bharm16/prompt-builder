@@ -1,12 +1,7 @@
 /**
- * PromptRepository - Data Access Layer for Prompts
+ * PromptRepository - Firestore data access layer for prompts
  *
- * Abstracts all prompt-related data operations (Firestore, localStorage, etc.)
- * This allows us to:
- * - Swap data providers without changing business logic
- * - Mock easily for testing
- * - Centralize data access logic
- * - Follow the Repository pattern
+ * Centralizes Firestore prompt operations to keep data access isolated.
  */
 
 import {
@@ -19,7 +14,6 @@ import {
   getDocs,
   serverTimestamp,
   doc,
-  getDoc,
   updateDoc,
   arrayUnion,
   deleteDoc,
@@ -31,35 +25,10 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
 import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
+import type { PromptData, SavedPromptResult, UpdateHighlightsOptions } from './promptRepositoryTypes';
+import { PromptRepositoryError } from './promptRepositoryTypes';
 
 const log = logger.child('PromptRepository');
-
-export interface PromptData {
-  uuid?: string;
-  generationParams?: Record<string, unknown> | null;
-  highlightCache?: unknown | null;
-  versions?: PromptVersionEntry[];
-  input: string;
-  output: string;
-  score?: number | null;
-  mode?: string;
-  targetModel?: string | null;
-  brainstormContext?: unknown | null;
-  [key: string]: unknown;
-}
-
-export interface SavedPromptResult {
-  id: string;
-  uuid: string;
-}
-
-export interface UpdateHighlightsOptions {
-  highlightCache?: unknown | null;
-  versionEntry?: {
-    timestamp?: string;
-    [key: string]: unknown;
-  };
-}
 
 interface FirestoreError extends Error {
   code?: string;
@@ -367,244 +336,5 @@ export class PromptRepository {
       highlightCache,
       versions,
     } as PromptHistoryEntry;
-  }
-}
-
-/**
- * Custom error class for repository errors
- */
-export class PromptRepositoryError extends Error {
-  originalError: unknown;
-
-  constructor(message: string, originalError: unknown) {
-    super(message);
-    this.name = 'PromptRepositoryError';
-    this.originalError = originalError;
-  }
-}
-
-/**
- * Local storage implementation of prompt repository
- * Used for non-authenticated users
- */
-export class LocalStoragePromptRepository {
-  private storageKey: string;
-
-  constructor(storageKey: string = 'promptHistory') {
-    this.storageKey = storageKey;
-  }
-
-  /**
-   * Save a prompt to localStorage
-   */
-  async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
-    try {
-      const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
-      const uuid = providedUuid ? providedUuid : uuidv4();
-      const entry: PromptHistoryEntry = {
-        id: String(Date.now()),
-        uuid,
-        timestamp: new Date().toISOString(),
-        input: promptData.input,
-        output: promptData.output,
-        score: promptData.score ?? null,
-        generationParams:
-          promptData.generationParams && typeof promptData.generationParams === 'object'
-            ? (promptData.generationParams as Record<string, unknown>)
-            : null,
-        brainstormContext: promptData.brainstormContext ?? null,
-        highlightCache: promptData.highlightCache ?? null,
-        versions: promptData.versions ?? [],
-        ...(typeof promptData.mode === 'string' ? { mode: promptData.mode } : {}),
-        ...(typeof promptData.targetModel === 'string' ? { targetModel: promptData.targetModel } : {}),
-      };
-
-      const history = this._getHistory();
-      const updatedHistory = [entry, ...history].slice(0, 100);
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updatedHistory));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items
-          const trimmedHistory = [entry, ...history].slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmedHistory));
-        } else {
-          throw storageError;
-        }
-      }
-
-      return { uuid, id: entry.id ?? uuid };
-    } catch (error) {
-      log.error('Error saving to localStorage', error as Error);
-      throw new PromptRepositoryError('Failed to save to local storage', error);
-    }
-  }
-
-  /**
-   * Get all prompts from localStorage
-   */
-  async getUserPrompts(userId: string, limitCount: number = 10): Promise<PromptHistoryEntry[]> {
-    try {
-      const history = this._getHistory();
-      return history.slice(0, limitCount);
-    } catch (error) {
-      log.error('Error loading from localStorage', error as Error);
-      return [];
-    }
-  }
-
-  /**
-   * Get prompt by UUID from localStorage
-   */
-  async getByUuid(uuid: string): Promise<PromptHistoryEntry | null> {
-    try {
-      const history = this._getHistory();
-      return history.find(entry => entry.uuid === uuid) || null;
-    } catch (error) {
-      log.error('Error fetching from localStorage', error as Error);
-      return null;
-    }
-  }
-
-  /**
-   * Update highlights in localStorage
-   */
-  async updateHighlights(uuid: string, { highlightCache }: { highlightCache?: unknown | null }): Promise<void> {
-    try {
-      const history = this._getHistory();
-      const updated = history.map(entry =>
-        entry.uuid === uuid
-          ? { ...entry, highlightCache: highlightCache ?? null }
-          : entry
-      );
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items, keeping the updated one
-          const trimmed = updated.slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          log.warn('Storage limit reached, keeping only 50 most recent items');
-        } else {
-          throw storageError;
-        }
-      }
-    } catch (error) {
-      log.warn('Unable to persist highlights to localStorage', {
-        error: (error as Error).message,
-      });
-    }
-  }
-
-  /**
-   * Replace versions array in localStorage
-   */
-  async updateVersions(uuid: string, versions: PromptVersionEntry[]): Promise<void> {
-    try {
-      if (!uuid) return;
-
-      const history = this._getHistory();
-      const updated = history.map(entry =>
-        entry.uuid === uuid
-          ? { ...entry, versions: Array.isArray(versions) ? versions : [] }
-          : entry
-      );
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          const trimmed = updated.slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          log.warn('Storage limit reached, keeping only 50 most recent items');
-        } else {
-          throw storageError;
-        }
-      }
-    } catch (error) {
-      log.warn('Unable to persist versions to localStorage', {
-        error: (error as Error).message,
-      });
-    }
-  }
-
-  /**
-   * Update output text in localStorage
-   */
-  async updateOutput(uuid: string, output: string): Promise<void> {
-    try {
-      if (!uuid || !output) return;
-
-      const history = this._getHistory();
-      const updated = history.map(entry =>
-        entry.uuid === uuid
-          ? { ...entry, output }
-          : entry
-      );
-
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-      } catch (storageError) {
-        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
-          // Try to save with fewer items, keeping the updated one
-          const trimmed = updated.slice(0, 50);
-          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
-          log.warn('Storage limit reached, keeping only 50 most recent items');
-        } else {
-          throw storageError;
-        }
-      }
-    } catch (error) {
-      log.warn('Unable to persist output update to localStorage', {
-        error: (error as Error).message,
-      });
-    }
-  }
-
-  /**
-   * Clear all prompts
-   */
-  async clear(): Promise<void> {
-    localStorage.removeItem(this.storageKey);
-  }
-
-  /**
-   * Delete a prompt by its ID from localStorage
-   */
-  async deleteById(id: string | number): Promise<void> {
-    try {
-      const history = this._getHistory();
-      const filtered = history.filter(entry => entry.id !== String(id));
-      
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(filtered));
-      } catch (storageError) {
-        log.error('Error deleting from localStorage', storageError as Error);
-        throw storageError;
-      }
-    } catch (error) {
-      log.error('Error deleting prompt from localStorage', error as Error);
-      throw new PromptRepositoryError('Failed to delete from local storage', error);
-    }
-  }
-
-  /**
-   * Get history from localStorage
-   * @private
-   */
-  private _getHistory(): PromptHistoryEntry[] {
-    try {
-      const savedHistory = localStorage.getItem(this.storageKey);
-      if (!savedHistory) return [];
-
-      const parsed = JSON.parse(savedHistory) as unknown;
-      return Array.isArray(parsed) ? parsed as PromptHistoryEntry[] : [];
-    } catch (error) {
-      log.error('Error parsing localStorage history', error as Error);
-      localStorage.removeItem(this.storageKey);
-      return [];
-    }
   }
 }

@@ -5,7 +5,7 @@
  * Manages all prompt-related state in one place
  */
 
-import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Video } from 'lucide-react';
 import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
@@ -23,52 +23,11 @@ import type {
 } from './types';
 import type { SuggestionsData } from '../PromptCanvas/types';
 import { usePromptHistoryActions } from './usePromptHistoryActions';
+import { loadGenerationParams, loadSelectedModel } from './promptStateStorage';
+import { useDraftHistorySync } from './hooks/useDraftHistorySync';
+import { usePromptStatePersistence } from './hooks/usePromptStatePersistence';
 
 const PromptStateContext = createContext<PromptStateContextValue | null>(null);
-
-const STORAGE_KEYS = {
-  selectedModel: 'prompt-optimizer:selectedModel',
-  generationParams: 'prompt-optimizer:generationParams',
-} as const;
-
-function safeLoadSelectedModel(): string {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage.getItem(STORAGE_KEYS.selectedModel) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function safeLoadGenerationParams(): CapabilityValues {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEYS.generationParams);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? (parsed as CapabilityValues) : {};
-  } catch {
-    return {};
-  }
-}
-
-function safePersistSelectedModel(value: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEYS.selectedModel, value ?? '');
-  } catch {
-    // ignore
-  }
-}
-
-function safePersistGenerationParams(value: CapabilityValues): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEYS.generationParams, JSON.stringify(value ?? {}));
-  } catch {
-    // ignore
-  }
-}
 
 /**
  * Hook to use prompt state
@@ -103,7 +62,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
 
   // UI State
   const [selectedMode, setSelectedMode] = useState<string>('video');
-  const [selectedModel, setSelectedModel] = useState<string>(() => safeLoadSelectedModel()); // New: selected video model (persisted)
+  const [selectedModel, setSelectedModel] = useState<string>(() => loadSelectedModel()); // New: selected video model (persisted)
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -111,7 +70,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [showImprover, setShowImprover] = useState<boolean>(false);
   const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
-  const [generationParams, setGenerationParams] = useState<CapabilityValues>(() => safeLoadGenerationParams());
+  const [generationParams, setGenerationParams] = useState<CapabilityValues>(() => loadGenerationParams());
   const [outputSaveState, setOutputSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [outputLastSavedAt, setOutputLastSavedAt] = useState<number | null>(null);
 
@@ -303,36 +262,14 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     uuid,
   };
 
-  // Persist model + generation params so they survive navigation/reload.
-  useEffect(() => {
-    safePersistSelectedModel(selectedModel);
-  }, [selectedModel]);
-
-  useEffect(() => {
-    safePersistGenerationParams(generationParams);
-  }, [generationParams]);
-
-  // Keep draft prompt entry in sync with live input + controls.
-  useEffect(() => {
-    if (!currentPromptUuid) return;
-    const entry = promptHistory.history.find((e) => e.uuid === currentPromptUuid);
-    if (!entry) return;
-    const isDraft = !entry.output || !entry.output.trim();
-    if (!isDraft) return;
-
-    promptHistory.updateEntryLocal(currentPromptUuid, {
-      input: promptOptimizer.inputPrompt,
-      targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
-    });
-  }, [
+  usePromptStatePersistence({ selectedModel, generationParams });
+  useDraftHistorySync({
     currentPromptUuid,
     promptHistory,
-    promptHistory.history,
-    promptOptimizer.inputPrompt,
+    promptOptimizer,
     selectedModel,
     generationParams,
-  ]);
+  });
 
   return <PromptStateContext.Provider value={value}>{children}</PromptStateContext.Provider>;
 }

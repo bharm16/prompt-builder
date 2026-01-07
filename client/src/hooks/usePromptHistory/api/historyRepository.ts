@@ -5,7 +5,7 @@
  * Handles Firestore and localStorage fallback logic.
  */
 
-import { getPromptRepositoryForUser } from '../../../repositories';
+import { getLocalPromptRepository, getPromptRepositoryForUser } from '../../../repositories';
 import { logger } from '../../../services/LoggingService';
 import type { PromptHistoryEntry, PromptVersionEntry, SaveEntryParams, SaveResult } from '../types';
 
@@ -70,25 +70,8 @@ export async function loadFromLocalStorage(): Promise<PromptHistoryEntry[]> {
  * Save history to localStorage (for syncing Firestore data)
  */
 export function syncToLocalStorage(entries: PromptHistoryEntry[]): { success: boolean; trimmed: boolean } {
-  try {
-    localStorage.setItem('promptHistory', JSON.stringify(entries));
-    return { success: true, trimmed: false };
-  } catch (e) {
-    if (e instanceof Error && e.name === 'QuotaExceededError') {
-      // Try with trimmed data
-      const trimmed = entries.slice(0, 50);
-      try {
-        localStorage.setItem('promptHistory', JSON.stringify(trimmed));
-        return { success: true, trimmed: true };
-      } catch {
-        return { success: false, trimmed: false };
-      }
-    }
-    log.warn('Could not save to localStorage', {
-      error: e instanceof Error ? e.message : String(e),
-    });
-    return { success: false, trimmed: false };
-  }
+  const repository = getLocalPromptRepository();
+  return repository.syncEntries(entries);
 }
 
 /**
