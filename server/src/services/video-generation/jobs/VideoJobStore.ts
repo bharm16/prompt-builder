@@ -44,6 +44,40 @@ export class VideoJobStore {
     return this.parseJob(snapshot.id, snapshot.data());
   }
 
+  async findJobByAssetId(assetId: string): Promise<VideoJobRecord | null> {
+    const snapshot = await this.collection
+      .where('result.assetId', '==', assetId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const doc = snapshot.docs[0];
+    return this.parseJob(doc.id, doc.data());
+  }
+
+  async failNextQueuedStaleJob(cutoffMs: number, reason: string): Promise<VideoJobRecord | null> {
+    const query = this.collection
+      .where('status', '==', 'queued')
+      .where('createdAtMs', '<=', cutoffMs)
+      .orderBy('createdAtMs', 'asc')
+      .limit(1);
+
+    return await this.failFromQuery(query, reason);
+  }
+
+  async failNextProcessingStaleJob(cutoffMs: number, reason: string): Promise<VideoJobRecord | null> {
+    const query = this.collection
+      .where('status', '==', 'processing')
+      .where('leaseExpiresAtMs', '<=', cutoffMs)
+      .orderBy('leaseExpiresAtMs', 'asc')
+      .limit(1);
+
+    return await this.failFromQuery(query, reason);
+  }
+
   async claimNextJob(workerId: string, leaseMs: number): Promise<VideoJobRecord | null> {
     const queuedQuery = this.collection
       .where('status', '==', 'queued')
@@ -65,28 +99,66 @@ export class VideoJobStore {
     return await this.claimFromQuery(expiredQuery, workerId, leaseMs);
   }
 
-  async markCompleted(jobId: string, result: VideoJobRecord['result']): Promise<void> {
+  async markCompleted(jobId: string, result: VideoJobRecord['result']): Promise<boolean> {
     const now = Date.now();
-    await this.collection.doc(jobId).update({
-      status: 'completed',
-      result,
-      completedAtMs: now,
-      updatedAtMs: now,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      workerId: admin.firestore.FieldValue.delete(),
-      leaseExpiresAtMs: admin.firestore.FieldValue.delete(),
+
+    return await this.db.runTransaction(async (transaction) => {
+      const docRef = this.collection.doc(jobId);
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        return false;
+      }
+
+      const data = snapshot.data();
+      if (!data || data.status !== 'processing') {
+        return false;
+      }
+
+      transaction.update(docRef, {
+        status: 'completed',
+        result,
+        completedAtMs: now,
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        workerId: admin.firestore.FieldValue.delete(),
+        leaseExpiresAtMs: admin.firestore.FieldValue.delete(),
+      });
+
+      return true;
+    }).catch((error: Error) => {
+      logger.error('Failed to mark video job completed', error, { jobId });
+      return false;
     });
   }
 
-  async markFailed(jobId: string, message: string): Promise<void> {
+  async markFailed(jobId: string, message: string): Promise<boolean> {
     const now = Date.now();
-    await this.collection.doc(jobId).update({
-      status: 'failed',
-      error: { message },
-      updatedAtMs: now,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      workerId: admin.firestore.FieldValue.delete(),
-      leaseExpiresAtMs: admin.firestore.FieldValue.delete(),
+
+    return await this.db.runTransaction(async (transaction) => {
+      const docRef = this.collection.doc(jobId);
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        return false;
+      }
+
+      const data = snapshot.data();
+      if (!data || data.status === 'failed' || data.status === 'completed') {
+        return false;
+      }
+
+      transaction.update(docRef, {
+        status: 'failed',
+        error: { message },
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        workerId: admin.firestore.FieldValue.delete(),
+        leaseExpiresAtMs: admin.firestore.FieldValue.delete(),
+      });
+
+      return true;
+    }).catch((error: Error) => {
+      logger.error('Failed to mark video job failed', error, { jobId });
+      return false;
     });
   }
 
@@ -134,5 +206,40 @@ export class VideoJobStore {
   private parseJob(id: string, data: DocumentData | undefined): VideoJobRecord {
     const parsed = VideoJobRecordSchema.parse(data || {});
     return { id, ...parsed };
+  }
+
+  private async failFromQuery(query: Query, reason: string): Promise<VideoJobRecord | null> {
+    return await this.db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(query);
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      const data = doc.data();
+      if (!data) {
+        return null;
+      }
+
+      const now = Date.now();
+      transaction.update(doc.ref, {
+        status: 'failed',
+        error: { message: reason },
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        workerId: admin.firestore.FieldValue.delete(),
+        leaseExpiresAtMs: admin.firestore.FieldValue.delete(),
+      });
+
+      return this.parseJob(doc.id, {
+        ...data,
+        status: 'failed',
+        error: { message: reason },
+        updatedAtMs: now,
+      });
+    }).catch((error: Error) => {
+      logger.error('Failed to mark stale video job failed', error, { reason });
+      return null;
+    });
   }
 }

@@ -5,16 +5,8 @@
  * Each method returns a Promise that resolves with the API response data.
  */
 
-import { API_CONFIG } from '@config/api.config';
 import { logger } from '@/services/LoggingService';
-
-/**
- * Default headers for span labeling API requests
- */
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-API-Key': API_CONFIG.apiKey,
-};
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 interface LabelSpansPayload {
   text: string;
@@ -70,9 +62,13 @@ export class SpanLabelingApi {
     payload: LabelSpansPayload,
     signal: AbortSignal | null = null
   ): Promise<LabelSpansResponse> {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const res = await fetch('/llm/label-spans', {
       method: 'POST',
-      headers: DEFAULT_HEADERS,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       body: buildBody(payload),
       ...(signal && { signal }),
     });
@@ -119,9 +115,13 @@ export class SpanLabelingApi {
       maxSpans: payload.maxSpans
     });
 
+    const authHeaders = await buildFirebaseAuthHeaders();
     const res = await fetch('/llm/label-spans/stream', {
       method: 'POST',
-      headers: DEFAULT_HEADERS,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
       body: buildBody(payload),
       ...(signal && { signal }),
     });

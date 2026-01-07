@@ -1,6 +1,5 @@
 export function validateEnv(): void {
   const baseRequired = [
-    'OPENAI_API_KEY',
     'VITE_FIREBASE_API_KEY',
     'VITE_FIREBASE_PROJECT_ID',
   ];
@@ -30,7 +29,7 @@ export function validateEnv(): void {
       Boolean(process.env.ALLOWED_API_KEYS && process.env.ALLOWED_API_KEYS.trim()) ||
       Boolean(process.env.API_KEY && process.env.API_KEY.trim());
     if (!hasApiKeys) {
-      throw new Error('Missing required production env var: ALLOWED_API_KEYS or API_KEY');
+      console.warn('⚠️  No API keys configured; relying on Firebase auth or public access');
     }
 
     const hasVideoBucket =
@@ -58,12 +57,22 @@ export function validateEnv(): void {
     }
   }
 
-  // Validate OpenAI API key format (light check only)
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey && !openaiKey.startsWith('sk-')) {
-    console.warn(
-      '⚠️  OPENAI_API_KEY may not be in the expected format'
-    );
+  const hasLlmProvider =
+    Boolean(process.env.OPENAI_API_KEY) ||
+    Boolean(process.env.GROQ_API_KEY) ||
+    Boolean(process.env.GEMINI_API_KEY) ||
+    Boolean(process.env.GOOGLE_API_KEY);
+
+  if (!hasLlmProvider) {
+    console.warn('⚠️  No LLM provider API keys configured; AI features will be disabled');
+  } else {
+    // Validate OpenAI API key format (light check only)
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey && !openaiKey.startsWith('sk-')) {
+      console.warn(
+        '⚠️  OPENAI_API_KEY may not be in the expected format'
+      );
+    }
   }
 
   console.log('✅ Environment variables validated successfully');

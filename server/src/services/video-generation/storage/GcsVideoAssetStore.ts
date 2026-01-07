@@ -2,6 +2,7 @@ import { pipeline } from 'node:stream/promises';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bucket, File } from '@google-cloud/storage';
 import { admin } from '@infrastructure/firebaseAdmin';
+import { logger } from '@infrastructure/Logger';
 import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
 
 interface GcsVideoAssetStoreOptions {
@@ -16,6 +17,7 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
+  private readonly log = logger.child({ service: 'GcsVideoAssetStore' });
 
   constructor(options: GcsVideoAssetStoreOptions) {
     this.bucket = admin.storage().bucket(options.bucketName);
@@ -97,6 +99,41 @@ export class GcsVideoAssetStore implements VideoAssetStore {
       return null;
     }
     return await this.getSignedUrl(file);
+  }
+
+  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+    if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
+      return 0;
+    }
+
+    const prefix = `${this.basePath}/`;
+    const [files] = await this.bucket.getFiles({ prefix });
+    let deleted = 0;
+
+    for (const file of files) {
+      if (maxItems && deleted >= maxItems) {
+        break;
+      }
+
+      try {
+        const [metadata] = await file.getMetadata();
+        const createdAt = metadata.timeCreated ? Date.parse(metadata.timeCreated) : NaN;
+        if (!Number.isFinite(createdAt) || createdAt > olderThanMs) {
+          continue;
+        }
+
+        await file.delete();
+        deleted += 1;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log.warn('Failed to delete expired video asset', {
+          fileName: file.name,
+          error: errorMessage,
+        });
+      }
+    }
+
+    return deleted;
   }
 
   private objectPath(assetId: string): string {

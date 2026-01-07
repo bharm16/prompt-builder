@@ -4,7 +4,7 @@ import { metricsAuthMiddleware } from '@middleware/metricsAuth';
 import { logger } from '@infrastructure/Logger';
 
 interface HealthDependencies {
-  claudeClient: { getStats: () => { state: string } };
+  claudeClient?: { getStats: () => { state: string } } | null;
   groqClient?: { getStats: () => { state: string } } | null;
   geminiClient?: { getStats: () => { state: string } } | null;
   cacheService: {
@@ -57,15 +57,20 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       // Avoid external network calls on readiness to prevent abuse/DoS
       // Use internal indicators only (cache health and circuit breaker state)
       const cacheHealth = cacheService.isHealthy();
-      const claudeStats = claudeClient.getStats();
+      const claudeStats = claudeClient?.getStats();
       const groqStats = groqClient?.getStats();
       const geminiStats = geminiClient?.getStats();
 
       const checks = {
         cache: { healthy: cacheHealth },
-        openAI: {
+        openAI: claudeStats ? {
           healthy: claudeStats.state === 'CLOSED',
           circuitBreakerState: claudeStats.state,
+          enabled: true,
+        } : {
+          healthy: true,
+          enabled: false,
+          message: 'OpenAI API not configured',
         },
         groq: groqStats ? {
           healthy: groqStats.state === 'CLOSED',
@@ -150,7 +155,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     });
     
     const cacheStats = cacheService.getCacheStats();
-    const claudeStats = claudeClient.getStats();
+    const claudeStats = claudeClient?.getStats();
     const groqStats = groqClient ? groqClient.getStats() : null;
     const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
@@ -165,7 +170,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       uptime: process.uptime(),
       cache: cacheStats,
       apis: {
-        openAI: claudeStats,
+        openAI: claudeStats || { message: 'OpenAI API not configured' },
         groq: groqStats || { message: 'Groq API not configured' },
         gemini: geminiStats || { message: 'Gemini API not configured' },
       },

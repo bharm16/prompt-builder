@@ -9,7 +9,7 @@ interface ApiConfig {
   timeout?: {
     default?: number;
   };
-  apiKey: string;
+  apiKey?: string;
 }
 
 export class HttpClientConfig {

@@ -1,15 +1,16 @@
-import { API_CONFIG } from '../config/api.config';
 import { RoleClassifyResponseSchema } from '../schemas/roleClassify';
 import type { ClientSpan, LabeledSpan } from '../types/roleClassify';
+import { buildFirebaseAuthHeaders } from '../services/http/firebaseAuth';
 
 export { ClientSpan, LabeledSpan };
 
 export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 'v1'): Promise<LabeledSpan[]> {
+  const authHeaders = await buildFirebaseAuthHeaders();
   const res = await fetch('/api/role-classify', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify({ spans, templateVersion }),
   });
@@ -22,4 +23,3 @@ export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 
   const validated = RoleClassifyResponseSchema.parse(data);
   return validated.spans;
 }
-

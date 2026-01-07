@@ -1,5 +1,5 @@
-import { API_CONFIG } from '@config/api.config';
 import type { SceneChangeRequest, SceneChangeResponse } from './types';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 export async function detectSceneChange(
   request: SceneChangeRequest,
@@ -12,11 +12,12 @@ export async function detectSceneChange(
     throw new Error('Fetch is not available in this environment.');
   }
 
+  const authHeaders = await buildFirebaseAuthHeaders();
   const response = await fetchFn('/api/detect-scene-change', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify(request),
   });

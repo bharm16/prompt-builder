@@ -1,7 +1,7 @@
 import type { StreamWithFetchOptions } from './types';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 interface StreamWithFetchDeps {
-  apiKey: string;
   log: {
     warn: (message: string, meta?: Record<string, unknown>) => void;
     error: (message: string, error?: Error) => void;
@@ -18,14 +18,15 @@ export async function streamWithFetch(
     onComplete,
     signal,
   }: StreamWithFetchOptions,
-  { apiKey, log }: StreamWithFetchDeps
+  { log }: StreamWithFetchDeps
 ): Promise<void> {
   try {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const requestInit: RequestInit = {
       method: method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
+        ...authHeaders,
       },
       body: JSON.stringify(body),
     };

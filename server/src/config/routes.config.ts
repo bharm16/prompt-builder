@@ -53,6 +53,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
 
   const publicPreviewRoutes = createPublicPreviewRoutes({
     videoGenerationService: container.resolve('videoGenerationService'),
+    videoContentAccessService: container.resolve('videoContentAccessService'),
   });
   app.use('/api/preview', publicPreviewRoutes);
 
@@ -105,6 +106,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     imageGenerationService: container.resolve('imageGenerationService'),
     videoGenerationService: container.resolve('videoGenerationService'),
     videoJobStore: container.resolve('videoJobStore'),
+    videoContentAccessService: container.resolve('videoContentAccessService'),
     userCreditService,
   });
   app.use('/api/preview', apiAuthMiddleware, previewRoutes);

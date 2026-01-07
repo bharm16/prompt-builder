@@ -1,3 +1,4 @@
+import { admin } from '@infrastructure/firebaseAdmin';
 import { logger } from '@infrastructure/Logger';
 
 /**
@@ -32,26 +33,11 @@ function extractBearerToken(headerValue) {
   return token.length > 0 ? token : null;
 }
 
-export function apiAuthMiddleware(req, res, next) {
+export async function apiAuthMiddleware(req, res, next) {
   const headerApiKey = normalizeHeaderValue(req.headers['x-api-key']);
-  const authApiKey = headerApiKey ? null : extractBearerToken(req.headers.authorization);
+  const authBearer = extractBearerToken(req.headers.authorization);
   const queryApiKey = typeof req.query?.apiKey === 'string' ? req.query.apiKey : null;
-  const apiKey = headerApiKey || authApiKey || queryApiKey;
-
-  if (!apiKey) {
-    logger.warn('API request without API key', {
-      ip: req.ip,
-      path: req.path,
-      method: req.method,
-      requestId: req.id,
-    });
-
-    return res.status(401).json({
-      error: 'API key required',
-      message: 'Provide an API key via Authorization: Bearer <key> or X-API-Key header',
-      requestId: req.id,
-    });
-  }
+  const apiKeyCandidate = headerApiKey || queryApiKey || authBearer;
 
   // Get allowed API keys from environment
   const envKeys = process.env.ALLOWED_API_KEYS?.split(',')
@@ -70,40 +56,68 @@ export function apiAuthMiddleware(req, res, next) {
           ? [DEV_FALLBACK_KEY]
           : [];
 
-  if (allowedKeys.length === 0) {
-    logger.error('API key environment variables not configured', {
-      requestId: req.id,
-    });
-
-    return res.status(500).json({
-      error: 'Server configuration error',
-      message: 'API authentication not properly configured',
-    });
-  }
-
-  // Validate API key
-  if (!allowedKeys.includes(apiKey)) {
-    logger.warn('Invalid API key attempt', {
+  if (apiKeyCandidate && allowedKeys.includes(apiKeyCandidate)) {
+    logger.info('API request authenticated via API key', {
       ip: req.ip,
       path: req.path,
       method: req.method,
       requestId: req.id,
     });
 
-    return res.status(403).json({
-      error: 'Invalid API key',
-      message: 'The provided API key is not authorized',
+    req.apiKey = apiKeyCandidate;
+    return next();
+  }
+
+  const firebaseTokenHeader = normalizeHeaderValue(req.headers['x-firebase-token']);
+  const firebaseToken = firebaseTokenHeader || authBearer;
+
+  if (firebaseToken) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(firebaseToken);
+      req.user = { uid: decoded.uid };
+      logger.info('API request authenticated via Firebase token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+        requestId: req.id,
+        userId: decoded.uid,
+      });
+      return next();
+    } catch (error) {
+      logger.warn('Invalid Firebase token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+        requestId: req.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (!apiKeyCandidate && !firebaseToken) {
+    logger.warn('API request without authentication', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method,
+      requestId: req.id,
+    });
+
+    return res.status(401).json({
+      error: 'Authentication required',
+      message: 'Provide a Firebase token or API key to access this endpoint',
+      requestId: req.id,
     });
   }
 
-  // Authentication successful
-  logger.info('API request authenticated', {
+  logger.warn('Authentication failed', {
     ip: req.ip,
     path: req.path,
     method: req.method,
     requestId: req.id,
   });
 
-  req.apiKey = apiKey;
-  next();
+  return res.status(403).json({
+    error: 'Unauthorized',
+    message: 'The provided credentials are not authorized',
+  });
 }

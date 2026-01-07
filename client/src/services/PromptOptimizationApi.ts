@@ -212,7 +212,7 @@ export class PromptOptimizationApi {
           reject(error);
         },
       },
-      { apiKey: this.getApiKey(), log: streamLog }
+      { log: streamLog }
     );
     });
   }
@@ -310,13 +310,6 @@ export class PromptOptimizationApi {
    */
   calculateQualityScore(inputPrompt: string, outputPrompt: string): number {
     return scorePromptQuality(inputPrompt, outputPrompt);
-  }
-
-  private getApiKey(): string {
-    const config = this.client as unknown as {
-      config?: { defaultHeaders?: Record<string, string> };
-    };
-    return config.config?.defaultHeaders?.['X-API-Key'] || '';
   }
 }
 

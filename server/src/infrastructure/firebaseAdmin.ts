@@ -1,6 +1,5 @@
 import admin from 'firebase-admin';
-import { existsSync, readFileSync } from 'fs';
-import path from 'path';
+import { readFileSync } from 'fs';
 import { logger } from './Logger';
 
 let initialized = false;
@@ -11,13 +10,16 @@ function initializeFirebaseAdmin(): admin.app.App {
   }
 
   try {
-    const defaultServiceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
-    const serviceAccountPath =
-      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ??
-      (existsSync(defaultServiceAccountPath) ? defaultServiceAccountPath : undefined);
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const serviceAccount =
+      serviceAccountJson
+        ? JSON.parse(serviceAccountJson)
+        : serviceAccountPath
+          ? JSON.parse(readFileSync(serviceAccountPath, 'utf8'))
+          : null;
 
-    if (serviceAccountPath) {
-      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -32,7 +34,7 @@ function initializeFirebaseAdmin(): admin.app.App {
     initialized = true;
     logger.info('Firebase Admin initialized', {
       projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-      hasServiceAccount: Boolean(serviceAccountPath),
+      hasServiceAccount: Boolean(serviceAccount),
     });
 
     return admin.app();

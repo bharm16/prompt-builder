@@ -1,4 +1,4 @@
-import { API_CONFIG } from '@/config/api.config';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 export interface EnhancementSuggestionsRequest {
   highlightedText: string;
@@ -34,11 +34,12 @@ export async function requestEnhancementSuggestions(
     throw new Error('Fetch is not available in this environment.');
   }
 
+  const authHeaders = await buildFirebaseAuthHeaders();
   const response = await fetchFn('/api/get-enhancement-suggestions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify(payload),
     ...(options.signal ? { signal: options.signal } : {}),

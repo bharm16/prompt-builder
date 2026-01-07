@@ -1,8 +1,9 @@
 import { createReadStream, createWriteStream, existsSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '@infrastructure/Logger';
 import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
 
 interface LocalVideoAssetStoreOptions {
@@ -19,6 +20,7 @@ interface LocalVideoMetadata {
 export class LocalVideoAssetStore implements VideoAssetStore {
   private readonly directory: string;
   private readonly publicPath: string;
+  private readonly log = logger.child({ service: 'LocalVideoAssetStore' });
 
   constructor(options: LocalVideoAssetStoreOptions) {
     this.directory = options.directory;
@@ -96,6 +98,49 @@ export class LocalVideoAssetStore implements VideoAssetStore {
       return null;
     }
     return this.buildPublicUrl(assetId);
+  }
+
+  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+    if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
+      return 0;
+    }
+
+    if (!existsSync(this.directory)) {
+      return 0;
+    }
+
+    const entries = await readdir(this.directory);
+    const metadataFiles = entries.filter((entry) => entry.endsWith('.json'));
+    let deleted = 0;
+
+    for (const metaFile of metadataFiles) {
+      if (maxItems && deleted >= maxItems) {
+        break;
+      }
+
+      const assetId = metaFile.replace(/\.json$/i, '');
+      const metadata = await this.readMetadata(assetId);
+      if (!metadata || metadata.createdAt > olderThanMs) {
+        continue;
+      }
+
+      const dataPath = path.join(this.directory, assetId);
+      const metaPath = this.metadataPath(assetId);
+
+      try {
+        await unlink(dataPath).catch(() => undefined);
+        await unlink(metaPath).catch(() => undefined);
+        deleted += 1;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log.warn('Failed to delete expired video asset', {
+          assetId,
+          error: errorMessage,
+        });
+      }
+    }
+
+    return deleted;
   }
 
   private buildPublicUrl(assetId: string): string {

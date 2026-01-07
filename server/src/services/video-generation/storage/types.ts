@@ -17,5 +17,5 @@ export interface VideoAssetStore {
   storeFromStream(stream: NodeJS.ReadableStream, contentType: string): Promise<StoredVideoAsset>;
   getStream(assetId: string): Promise<VideoAssetStream | null>;
   getPublicUrl(assetId: string): Promise<string | null>;
+  cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number>;
 }
-

@@ -88,7 +88,16 @@ export class VideoJobWorker {
         job.request.prompt,
         job.request.options
       );
-      await this.jobStore.markCompleted(job.id, result);
+      const marked = await this.jobStore.markCompleted(job.id, result);
+      if (!marked) {
+        this.log.warn('Video job completion skipped (status changed)', {
+          jobId: job.id,
+          userId: job.userId,
+          assetId: result.assetId,
+        });
+        return;
+      }
+
       this.log.info('Video job completed', {
         jobId: job.id,
         userId: job.userId,
@@ -103,8 +112,15 @@ export class VideoJobWorker {
         errorMessage,
       });
 
-      await this.userCreditService.refundCredits(job.userId, job.creditsReserved);
-      await this.jobStore.markFailed(job.id, errorMessage);
+      const marked = await this.jobStore.markFailed(job.id, errorMessage);
+      if (marked) {
+        await this.userCreditService.refundCredits(job.userId, job.creditsReserved);
+      } else {
+        this.log.warn('Video job failure skipped (status changed)', {
+          jobId: job.id,
+          userId: job.userId,
+        });
+      }
     }
   }
 }

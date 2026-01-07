@@ -98,14 +98,19 @@ export class AIModelService {
       throw new Error('AIModelService requires clients object');
     }
 
+    const availableClients = Object.keys(clients).filter(key => clients[key] !== null);
+    if (availableClients.length === 0) {
+      throw new Error('AIModelService requires at least one configured client');
+    }
+
     if (!clients.openai) {
-      throw new Error('AIModelService requires at least openai client');
+      logger.warn('OpenAI client not configured; operations targeting OpenAI will require fallbacks');
     }
 
     this.clients = clients;
     
     logger.info('AIModelService initialized', {
-      availableClients: Object.keys(clients).filter(key => clients[key] !== null),
+      availableClients,
     });
   }
 

@@ -11,13 +11,13 @@
  * - Distinguishes timeout vs user cancellation in error handling
  */
 
-import { API_CONFIG } from '@config/api.config';
 import { API_ENDPOINTS } from '../config/panelConfig';
 import {
   CustomSuggestionsResponseSchema,
   type CustomSuggestionsResponse,
 } from './schemas';
 import { CancellationError, combineSignals } from '@features/prompt-optimizer/utils/signalUtils';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 /** Timeout for custom suggestion requests in milliseconds */
 const CUSTOM_SUGGESTION_TIMEOUT_MS = 3000;
@@ -62,11 +62,12 @@ export async function fetchCustomSuggestions({
     : timeoutController.signal;
 
   try {
+    const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetchFn(API_ENDPOINTS.CUSTOM_SUGGESTIONS, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': API_CONFIG.apiKey,
+        ...authHeaders,
       },
       body: JSON.stringify({
         highlightedText,
@@ -118,4 +119,3 @@ export async function fetchCustomSuggestions({
 export const customSuggestionsApi = {
   fetchCustomSuggestions,
 };
-

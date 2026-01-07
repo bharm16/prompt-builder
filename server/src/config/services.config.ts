@@ -36,9 +36,14 @@ import { ImageGenerationService } from '@services/image-generation/ImageGenerati
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import { VideoToImagePromptTransformer } from '@services/image-generation/VideoToImagePromptTransformer';
 import { createVideoAssetStore } from '@services/video-generation/storage';
+import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
+import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
 import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
+import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
 import { userCreditService } from '@services/credits/UserCreditService';
+import type { VideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
+import type { VideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -108,6 +113,14 @@ export async function configureServices(): Promise<DIContainer> {
   container.registerValue('userCreditService', userCreditService);
   container.register('videoAssetStore', () => createVideoAssetStore(), [], { singleton: true });
   container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
+  container.register('videoContentAccessService', () => createVideoContentAccessService(), [], { singleton: true });
+  container.register(
+    'videoAssetRetentionService',
+    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) =>
+      createVideoAssetRetentionService(videoAssetStore),
+    ['videoAssetStore'],
+    { singleton: true }
+  );
 
   // ============================================================================
   // Configuration Values
@@ -150,26 +163,33 @@ export async function configureServices(): Promise<DIContainer> {
   // API Clients
   // ============================================================================
 
-  // OpenAI client (CRITICAL - required)
+  // OpenAI client (optional)
   // Using generic LLMClient configured for OpenAI
   container.register(
     'claudeClient',
-    (config: ServiceConfig) => new LLMClient({
-      adapter: new OpenAICompatibleAdapter({
-        apiKey: config.openai.apiKey || '',
-        baseURL: 'https://api.openai.com/v1',
-        defaultModel: config.openai.model,
-        defaultTimeout: config.openai.timeout,
+    (config: ServiceConfig) => {
+      if (!config.openai.apiKey) {
+        logger.warn('OPENAI_API_KEY not provided, OpenAI adapter disabled');
+        return null;
+      }
+
+      return new LLMClient({
+        adapter: new OpenAICompatibleAdapter({
+          apiKey: config.openai.apiKey,
+          baseURL: 'https://api.openai.com/v1',
+          defaultModel: config.openai.model,
+          defaultTimeout: config.openai.timeout,
+          providerName: 'openai',
+        }),
         providerName: 'openai',
-      }),
-      providerName: 'openai',
-      defaultTimeout: config.openai.timeout,
-      circuitBreakerConfig: {
-        errorThresholdPercentage: 50,
-        resetTimeout: 30000,
-      },
-      concurrencyLimiter: openAILimiter, // Limit concurrent requests
-    }),
+        defaultTimeout: config.openai.timeout,
+        circuitBreakerConfig: {
+          errorThresholdPercentage: 50,
+          resetTimeout: 30000,
+        },
+        concurrencyLimiter: openAILimiter, // Limit concurrent requests
+      });
+    },
     ['config']
   );
 
@@ -503,6 +523,14 @@ export async function configureServices(): Promise<DIContainer> {
     ['videoJobStore', 'videoGenerationService', 'userCreditService']
   );
 
+  container.register(
+    'videoJobSweeper',
+    (videoJobStore: VideoJobStore, creditService: typeof userCreditService) =>
+      createVideoJobSweeper(videoJobStore, creditService),
+    ['videoJobStore', 'userCreditService'],
+    { singleton: true }
+  );
+
   return container;
 }
 
@@ -521,27 +549,37 @@ interface HealthCheckResult {
 export async function initializeServices(container: DIContainer): Promise<DIContainer> {
   logger.info('Initializing services...');
 
-  // Resolve OpenAI client and validate (CRITICAL)
-  const claudeClient = container.resolve<LLMClient>('claudeClient');
-  logger.info('Validating OpenAI API key...');
+  // Resolve OpenAI client and validate (optional)
+  const claudeClient = container.resolve<LLMClient | null>('claudeClient');
 
-  const openAIHealth = await claudeClient.healthCheck() as HealthCheckResult;
+  if (claudeClient) {
+    logger.info('Validating OpenAI API key...');
 
-  if (!openAIHealth.healthy) {
-    logger.error(
-      '❌ OpenAI API key validation failed',
-      undefined,
-      { error: openAIHealth.error }
-    );
-    console.error('\n❌ FATAL: OpenAI API key validation failed');
-    console.error('The application cannot function without a valid OpenAI API key');
-    console.error('Please check your OPENAI_API_KEY in .env file\n');
-    throw new Error(`OpenAI API validation failed: ${openAIHealth.error || 'Unknown error'}`);
+    try {
+      const openAIHealth = await claudeClient.healthCheck() as HealthCheckResult;
+
+      if (!openAIHealth.healthy) {
+        logger.warn(
+          '⚠️  OpenAI API key validation failed - OpenAI adapter disabled',
+          { error: openAIHealth.error }
+        );
+        container.registerValue('claudeClient', null);
+      } else {
+        logger.info('✅ OpenAI API key validated successfully', {
+          responseTime: openAIHealth.responseTime,
+        });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        '⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled',
+        { error: errorMessage }
+      );
+      container.registerValue('claudeClient', null);
+    }
+  } else {
+    logger.warn('OpenAI client not configured; relying on other providers');
   }
-
-  logger.info('✅ OpenAI API key validated successfully', {
-    responseTime: openAIHealth.responseTime,
-  });
 
   // Resolve and validate Groq client (OPTIONAL)
   const groqClient = container.resolve<LLMClient | null>('groqClient');
@@ -697,6 +735,19 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
   const workerDisabled = process.env.VIDEO_JOB_WORKER_DISABLED === 'true';
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+
+  const videoAssetRetentionService =
+    container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
+  if (videoAssetRetentionService && !isTestEnv) {
+    videoAssetRetentionService.start();
+    logger.info('✅ Video asset retention service started');
+  }
+
+  const videoJobSweeper = container.resolve<VideoJobSweeper | null>('videoJobSweeper');
+  if (videoJobSweeper && !isTestEnv) {
+    videoJobSweeper.start();
+    logger.info('✅ Video job sweeper started');
+  }
 
   if (videoJobWorker && !workerDisabled && !isTestEnv) {
     videoJobWorker.start();

@@ -1,13 +1,14 @@
-import { API_CONFIG } from '@config/api.config';
+import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
 
 import { QuestionsResponseSchema, type Question } from './schemas';
 
 export async function fetchGeneratedQuestions(prompt: string): Promise<Question[]> {
+  const authHeaders = await buildFirebaseAuthHeaders();
   const response = await fetch('/api/generate-questions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_CONFIG.apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify({ prompt }),
   });

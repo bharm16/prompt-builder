@@ -17,40 +17,46 @@ import type { PreviewRoutesServices } from './types';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import { extractFirebaseToken } from '@utils/auth';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
+import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
 
-function registerVideoContentRoute(
-  router: Router,
-  videoGenerationService: PreviewRoutesServices['videoGenerationService']
-): void {
-  router.get(
-    '/video/content/:contentId',
-    asyncHandler(async (req: Request, res: Response) => {
-      if (!videoGenerationService) {
-        return res.status(503).json({
-          success: false,
-          error: 'Video generation service is not available',
-        });
-      }
+const LOCAL_CONTENT_PREFIX = '/api/preview/video/content';
 
-      const { contentId } = req.params as { contentId?: string };
-      if (!contentId) {
-        return res.status(400).json({
-          success: false,
-          error: 'contentId is required',
-        });
-      }
+function extractVideoContentToken(req: Request): string | null {
+  const token = req.query?.token;
+  if (typeof token === 'string' && token.trim().length > 0) {
+    return token.trim();
+  }
+  return null;
+}
 
-      const entry = await videoGenerationService.getVideoContent(contentId);
-      if (!entry) {
-        return res.status(404).json({
-          success: false,
-          error: 'Video content not found or expired',
-        });
-      }
+function isLocalContentUrl(rawUrl: string): boolean {
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    try {
+      const parsed = new URL(rawUrl);
+      return parsed.pathname.startsWith(LOCAL_CONTENT_PREFIX);
+    } catch {
+      return false;
+    }
+  }
 
-      return sendVideoContent(res, entry);
-    })
-  );
+  return rawUrl.startsWith(LOCAL_CONTENT_PREFIX);
+}
+
+function buildVideoContentUrl(
+  accessService: VideoContentAccessService | null | undefined,
+  rawUrl: string | null | undefined,
+  assetId: string,
+  userId?: string | null
+): string | undefined {
+  if (!rawUrl) {
+    return undefined;
+  }
+
+  if (!accessService) {
+    return isLocalContentUrl(rawUrl) ? undefined : rawUrl;
+  }
+
+  return accessService.buildAccessUrl(rawUrl, assetId, userId || undefined);
 }
 
 /**
@@ -63,6 +69,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
     imageGenerationService,
     videoGenerationService,
     videoJobStore,
+    videoContentAccessService,
     userCreditService = defaultUserCreditService,
   } = services;
 
@@ -330,7 +337,16 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       if (job.status === 'completed' && job.result) {
         const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
-        response.videoUrl = freshUrl || job.result.videoUrl;
+        const rawUrl = freshUrl || job.result.videoUrl;
+        const secureUrl = buildVideoContentUrl(
+          videoContentAccessService,
+          rawUrl,
+          job.result.assetId,
+          userId
+        );
+        if (secureUrl) {
+          response.videoUrl = secureUrl;
+        }
         response.assetId = job.result.assetId;
         response.contentType = job.result.contentType;
       }
@@ -344,15 +360,144 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   );
 
   // GET /api/preview/video/content/:contentId - Serve cached video bytes
-  registerVideoContentRoute(router, videoGenerationService);
+  router.get(
+    '/video/content/:contentId',
+    asyncHandler(async (req: Request, res: Response) => {
+      if (!videoGenerationService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video generation service is not available',
+        });
+      }
+
+      const { contentId } = req.params as { contentId?: string };
+      if (!contentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'contentId is required',
+        });
+      }
+
+      const token = extractVideoContentToken(req);
+      if (token && !videoContentAccessService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video access tokens are not configured',
+        });
+      }
+
+      const tokenPayload = token && videoContentAccessService
+        ? videoContentAccessService.verifyToken(token, contentId)
+        : null;
+
+      if (!tokenPayload) {
+        if (!videoJobStore) {
+          return res.status(503).json({
+            success: false,
+            error: 'Video job store is not available',
+          });
+        }
+
+        const userId = await getAuthenticatedUserId(req);
+        if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required',
+            message: 'You must be logged in to access this video content.',
+          });
+        }
+
+        const job = await videoJobStore.findJobByAssetId(contentId);
+        if (!job) {
+          return res.status(404).json({
+            success: false,
+            error: 'Video content not found or expired',
+          });
+        }
+
+        if (job.userId !== userId) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied',
+            message: 'This video does not belong to the authenticated user.',
+          });
+        }
+      }
+
+      const entry = await videoGenerationService.getVideoContent(contentId);
+      if (!entry) {
+        return res.status(404).json({
+          success: false,
+          error: 'Video content not found or expired',
+        });
+      }
+
+      return sendVideoContent(res, entry);
+    })
+  );
 
   return router;
 }
 
 export function createPublicPreviewRoutes(
-  services: Pick<PreviewRoutesServices, 'videoGenerationService'>
+  services: Pick<PreviewRoutesServices, 'videoGenerationService' | 'videoContentAccessService'>
 ): Router {
   const router = express.Router();
-  registerVideoContentRoute(router, services.videoGenerationService);
+
+  router.get(
+    '/video/content/:contentId',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { videoGenerationService, videoContentAccessService } = services;
+
+      if (!videoGenerationService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video generation service is not available',
+        });
+      }
+
+      if (!videoContentAccessService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video access tokens are not configured',
+        });
+      }
+
+      const { contentId } = req.params as { contentId?: string };
+      if (!contentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'contentId is required',
+        });
+      }
+
+      const token = extractVideoContentToken(req);
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          error: 'Access token required',
+        });
+      }
+
+      const tokenPayload = videoContentAccessService.verifyToken(token, contentId);
+      if (!tokenPayload) {
+        return res.status(403).json({
+          success: false,
+          error: 'Invalid or expired access token',
+        });
+      }
+
+      const entry = await videoGenerationService.getVideoContent(contentId);
+      if (!entry) {
+        return res.status(404).json({
+          success: false,
+          error: 'Video content not found or expired',
+        });
+      }
+
+      return sendVideoContent(res, entry);
+    })
+  );
+
   return router;
 }

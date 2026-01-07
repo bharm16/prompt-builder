@@ -11,9 +11,6 @@ export const API_CONFIG = {
   // Base URLs
   baseURL: import.meta.env.VITE_API_URL || '/api',
 
-  // API Keys
-  apiKey: import.meta.env.VITE_API_KEY || 'dev-key-12345',
-
   // Timeouts (in milliseconds)
   timeout: {
     default: 30000,  // 30 seconds
@@ -84,4 +81,3 @@ export function getAPIConfig(service: ServiceName): ServiceConfig {
 
   return configs[service] || configs.default;
 }
-
