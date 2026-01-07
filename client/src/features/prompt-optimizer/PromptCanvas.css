@@ -336,10 +336,11 @@
   /* Overlay drawer: hidden by default so the rail doesn't waste a whole column */
   --pc-outline-collapsed: 0px;
   --pc-outline-expanded: 280px;
+  --pc-gutter: 280px;
   --pc-right-rail: 380px;
   --pc-editor-min: 640px;
   /* Allow a slightly wider work lane on large monitors (reduces "ocean" margins). */
-  --pc-editor-max: min(1120px, 100%);
+  --pc-editor-max: min(920px, 100%);
   --pc-legend-width: 320px;
   --pc-frame-pad-block-start: 10px;
   --pc-frame-pad-inline: 20px;
@@ -425,6 +426,18 @@
 
 .prompt-canvas-editor {
   grid-column: 2;
+}
+
+.prompt-canvas-gutter {
+  display: none;
+  grid-column: 2;
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--pc-border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
 }
 
 .prompt-canvas-right-rail {
@@ -1041,6 +1054,32 @@
 
   .prompt-canvas-editor {
     grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1280px) {
+  .prompt-canvas-grid {
+    grid-template-columns:
+      var(--sidebar-width)
+      var(--pc-gutter)
+      minmax(var(--pc-editor-min), 1fr)
+      var(--pc-right-rail);
+  }
+
+  .prompt-canvas-gutter {
+    display: block;
+  }
+
+  .prompt-canvas-outline {
+    grid-column: 3;
+  }
+
+  .prompt-canvas-editor {
+    grid-column: 3;
+  }
+
+  .prompt-canvas-right-rail {
+    grid-column: 4;
   }
 }
 

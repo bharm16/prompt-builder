@@ -1156,6 +1156,9 @@ export function PromptCanvas({
 	          <PromptSidebar user={user} />
 	        </div>
 
+        {/* Context gutter (xl+ only) */}
+        <div className="prompt-canvas-gutter" aria-hidden="true" />
+
 	        {/* Outline toggle when collapsed (overlay drawer default) */}
 	        {!outlineOverlayActive && (
 	          <button
