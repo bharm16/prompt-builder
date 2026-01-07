@@ -61,6 +61,7 @@ export function useSpanSelectionEffects({
       if (selectedSpanId && spanId === selectedSpanId) {
         element.classList.add('value-word--selected');
         element.classList.remove('value-word--dimmed');
+        element.dataset.open = 'true';
 
         if (promptChanged) {
           element.classList.add('value-word--swapped');
@@ -71,12 +72,14 @@ export function useSpanSelectionEffects({
       } else if (selectedSpanId) {
         element.classList.add('value-word--dimmed');
         element.classList.remove('value-word--selected');
+        delete element.dataset.open;
       } else {
         element.classList.remove(
           'value-word--selected',
           'value-word--dimmed',
           'value-word--swapped'
         );
+        delete element.dataset.open;
       }
     });
 

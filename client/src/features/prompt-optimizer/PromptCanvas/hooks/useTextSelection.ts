@@ -19,6 +19,7 @@ export interface UseTextSelectionOptions {
   editorRef: RefObject<HTMLElement>;
   displayedPrompt: string | null;
   parseResult: ParseResult;
+  selectedSpanId?: string | null;
   onFetchSuggestions: ((payload: SuggestionPayload) => void) | undefined;
   onSpanSelect?: ((spanId: string | null) => void) | undefined;
   onIntentRefine?: (() => void) | undefined;
@@ -36,6 +37,7 @@ export function useTextSelection({
   editorRef,
   displayedPrompt,
   parseResult,
+  selectedSpanId,
   onFetchSuggestions,
   onSpanSelect,
   onIntentRefine,
@@ -107,6 +109,10 @@ export function useTextSelection({
 
       // Update selected span state
       if (onSpanSelect && spanId) {
+        if (selectedSpanId && selectedSpanId === spanId) {
+          onSpanSelect(null);
+          return;
+        }
         onSpanSelect(spanId);
       }
 
@@ -138,7 +144,17 @@ export function useTextSelection({
         });
       }
     },
-    [selectedMode, editorRef, displayedPrompt, parseResult, onFetchSuggestions, spanContextSpans, onIntentRefine]
+    [
+      selectedMode,
+      editorRef,
+      displayedPrompt,
+      parseResult,
+      selectedSpanId,
+      onFetchSuggestions,
+      spanContextSpans,
+      onSpanSelect,
+      onIntentRefine,
+    ]
   );
 
   const handleHighlightClick = useCallback(
@@ -150,9 +166,17 @@ export function useTextSelection({
 
   const handleHighlightMouseDown = useCallback(
     (e: React.MouseEvent): void => {
-      triggerSuggestionsFromTarget(e.target, e);
+      if (selectedMode !== 'video' || !editorRef.current) {
+        return;
+      }
+      const node = findHighlightNode(e.target as HTMLElement | null, editorRef.current);
+      if (!node) {
+        return;
+      }
+      // Prevent native selection from interfering with click-based popover.
+      e.preventDefault();
     },
-    [triggerSuggestionsFromTarget]
+    [selectedMode, editorRef]
   );
 
   const handleSpanClickFromBento = useCallback(
@@ -168,6 +192,10 @@ export function useTextSelection({
 
       // Update selected span state
       if (onSpanSelect && span.id) {
+        if (selectedSpanId && selectedSpanId === span.id) {
+          onSpanSelect(null);
+          return;
+        }
         onSpanSelect(span.id);
       }
 
@@ -198,7 +226,15 @@ export function useTextSelection({
         allLabeledSpans: spanContextSpans,
       });
     },
-    [onFetchSuggestions, selectedMode, displayedPrompt, spanContextSpans, onSpanSelect, onIntentRefine]
+    [
+      onFetchSuggestions,
+      selectedMode,
+      displayedPrompt,
+      selectedSpanId,
+      spanContextSpans,
+      onSpanSelect,
+      onIntentRefine,
+    ]
   );
 
   return {

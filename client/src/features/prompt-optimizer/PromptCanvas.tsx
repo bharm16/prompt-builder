@@ -10,7 +10,7 @@ import { useDebugLogger } from '@hooks/useDebugLogger';
 import { PERFORMANCE_CONFIG, DEFAULT_LABELING_POLICY, TEMPLATE_VERSIONS } from '@config/performance.config';
 
 // Relative imports - types first
-import type { HighlightSnapshot, PromptCanvasProps } from './PromptCanvas/types';
+import type { HighlightSnapshot, PromptCanvasProps, SuggestionItem } from './PromptCanvas/types';
 import type { PromptVersionEntry } from '@hooks/types';
 
 // Relative imports - implementations
@@ -45,7 +45,6 @@ import { PromptSidebar } from './components/PromptSidebar';
 import { VersionsPanel } from './components/VersionsPanel';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
-import SuggestionsPanel from '@components/SuggestionsPanel';
 import { VisualPreview, VideoPreview } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
@@ -54,6 +53,8 @@ import { resolveFieldState, type CapabilityValue, type CapabilityValues } from '
 
 // Styles
 import './PromptCanvas.css';
+
+const RAIL_VIDEO_PREVIEW_MODEL = 'wan-2.2';
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -103,14 +104,24 @@ export function PromptCanvas({
   const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
   const tokenPopoverRef = useRef<HTMLDivElement>(null);
+  const suggestionsListRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [isOutputHovered, setIsOutputHovered] = useState(false);
-  const [tokenPopover, setTokenPopover] = useState<{ left: number; top: number } | null>(null);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const [tokenPopover, setTokenPopover] = useState<{
+    left: number;
+    top: number;
+    placement: 'top' | 'bottom';
+    arrowLeft: number;
+  } | null>(null);
   const [videoInputReference, setVideoInputReference] = useState('');
   const [isVisualPreviewGenerating, setIsVisualPreviewGenerating] = useState(false);
   const [isVideoPreviewGenerating, setIsVideoPreviewGenerating] = useState(false);
+  const [isRailVideoPreviewGenerating, setIsRailVideoPreviewGenerating] = useState(false);
+  const [railVideoGenerateRequestId, setRailVideoGenerateRequestId] = useState(0);
+  const [railVideoLastGeneratedAt, setRailVideoLastGeneratedAt] = useState<number | null>(null);
 
   // Get model + layout state from context
   const {
@@ -131,7 +142,7 @@ export function PromptCanvas({
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
 
   // Load capabilities schema to access generation controls
-  const { schema } = useCapabilities(selectedModel);
+  const { schema, target } = useCapabilities(selectedModel);
 
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
@@ -299,7 +310,6 @@ export function PromptCanvas({
     lastSwapTime,
     promptState,
     generatedTimestamp,
-    justReplaced,
   } = state;
 
   // Normalize to NFC so span offsets and rendered text stay aligned.
@@ -311,12 +321,14 @@ export function PromptCanvas({
   const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
   const hasPreviewSource = Boolean(previewSource.trim());
   const showPreviewMeta = Boolean(effectiveAspectRatio);
-  const isPreviewGenerating = selectedMode === 'video' ? isVideoPreviewGenerating : isVisualPreviewGenerating;
+  const isAnyVideoPreviewGenerating = isVideoPreviewGenerating || isRailVideoPreviewGenerating;
+  const isPreviewGenerating =
+    selectedMode === 'video' ? isAnyVideoPreviewGenerating : isVisualPreviewGenerating;
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
-  // Extract suggestions panel visibility state
-  const isSuggestionsOpen = Boolean(suggestionsData && suggestionsData.show !== false);
+  // Extract suggestions visibility state for contextual UI
+  const isSuggestionsOpen = Boolean(selectedSpanId || (suggestionsData && suggestionsData.show !== false));
   const showVideoPreview = selectedMode === 'video';
   const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
   const promptEcho = useMemo(
@@ -521,6 +533,20 @@ export function PromptCanvas({
   const setSelectedSpanId = useCallback(
     (value: string | null) => setState({ selectedSpanId: value }),
     [setState]
+  );
+  const handleSpanSelect = useCallback(
+    (spanId: string | null): void => {
+      if (!spanId) {
+        setSelectedSpanId(null);
+        return;
+      }
+      if (selectedSpanId && spanId === selectedSpanId) {
+        setSelectedSpanId(null);
+        return;
+      }
+      setSelectedSpanId(spanId);
+    },
+    [selectedSpanId, setSelectedSpanId]
   );
   const setHoveredSpanId = useCallback(
     (value: string | null) => setState({ hoveredSpanId: value }),
@@ -787,8 +813,8 @@ export function PromptCanvas({
     };
   }, [enableMLHighlighting, hoveredSpanId, showHighlights, outlineOverlayActive]);
 
-  // Position contextual alternatives popover near the selected token
-  useEffect(() => {
+  const updateTokenPopover = useCallback((): void => {
+    if (typeof window === 'undefined') return;
     if (!selectedSpanId || !editorRef.current || !editorWrapperRef.current) {
       setTokenPopover(null);
       return;
@@ -805,16 +831,60 @@ export function PromptCanvas({
 
     const rect = el.getBoundingClientRect();
     const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+    const viewportMargin = 12;
+    const maxPanelWidth = Math.max(240, window.innerWidth - viewportMargin * 2);
+    const panelWidth = Math.min(420, maxPanelWidth);
+    const panelHeight = 280;
+    const shouldShowBelow = window.innerHeight - rect.bottom >= 180;
+    const placement: 'top' | 'bottom' = shouldShowBelow ? 'bottom' : 'top';
 
-    const panelWidth = 260;
-    const padding = 12;
-    const leftPreferred = rect.left - wrapperRect.left;
-    const top = rect.bottom - wrapperRect.top + 10;
-    const leftMax = Math.max(padding, wrapperRect.width - panelWidth - padding);
-    const left = Math.max(padding, Math.min(leftPreferred, leftMax));
+    const leftPreferred = rect.left;
+    const leftClamped = Math.max(
+      viewportMargin,
+      Math.min(leftPreferred, window.innerWidth - panelWidth - viewportMargin)
+    );
+    const topPreferred = shouldShowBelow ? rect.bottom + 10 : rect.top - panelHeight - 10;
+    const topClamped = Math.max(
+      viewportMargin,
+      Math.min(topPreferred, window.innerHeight - panelHeight - viewportMargin)
+    );
+    const arrowLeft = Math.max(
+      12,
+      Math.min(panelWidth - 12, rect.left + rect.width / 2 - leftClamped)
+    );
 
-    setTokenPopover({ left, top });
+    setTokenPopover({
+      left: leftClamped - wrapperRect.left,
+      top: topClamped - wrapperRect.top,
+      placement,
+      arrowLeft,
+    });
   }, [selectedSpanId]);
+
+  const closeInlinePopover = useCallback((): void => {
+    setSelectedSpanId(null);
+    setTokenPopover(null);
+    setActiveSuggestionIndex(0);
+    suggestionsData?.onClose?.();
+  }, [setSelectedSpanId, suggestionsData]);
+
+  useEffect(() => {
+    updateTokenPopover();
+  }, [updateTokenPopover, normalizedDisplayedPrompt]);
+
+  useEffect(() => {
+    if (!selectedSpanId) return;
+    const handleResize = (): void => updateTokenPopover();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [selectedSpanId, updateTokenPopover]);
+
+  useEffect(() => {
+    if (!selectedSpanId) return;
+    const handleScroll = (): void => updateTokenPopover();
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [selectedSpanId, updateTokenPopover]);
 
   // Close popover on outside click
   useEffect(() => {
@@ -824,12 +894,11 @@ export function PromptCanvas({
       if (!target) return;
       if (tokenPopoverRef.current?.contains(target)) return;
       if (target.closest?.('span.value-word')) return;
-      setSelectedSpanId(null);
-      setTokenPopover(null);
+      closeInlinePopover();
     };
     document.addEventListener('mousedown', handleMouseDown);
     return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, [tokenPopover, setSelectedSpanId]);
+  }, [tokenPopover, closeInlinePopover]);
 
   // Ambient motion: every ~6s, momentarily fade a random token
   useEffect(() => {
@@ -856,8 +925,9 @@ export function PromptCanvas({
     editorRef: editorRef as React.RefObject<HTMLElement>,
     displayedPrompt: normalizedDisplayedPrompt,
     parseResult,
+    selectedSpanId,
     onFetchSuggestions,
-    onSpanSelect: setSelectedSpanId,
+    onSpanSelect: handleSpanSelect,
     onIntentRefine: () => setRightPaneMode('refine'),
   });
 
@@ -913,7 +983,6 @@ export function PromptCanvas({
   useSuggestionSelection({
     selectedSpanId,
     hasInteracted,
-    isSuggestionsOpen,
     setState,
   });
 
@@ -1115,6 +1184,7 @@ export function PromptCanvas({
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
   const previewMetaDetail = 'ETA ~6s';
+  const hasVideoPreviewSource = Boolean(videoPreviewPrompt.trim());
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -1123,65 +1193,161 @@ export function PromptCanvas({
     setState,
   });
 
-  const hoverPreview = !outlineOverlayActive && hoveredSpanId !== null && !selectedSpanId;
-  const suggestionsPanelData = useMemo(
-    () =>
-      suggestionsData
-        ? ({
-            ...suggestionsData,
-            onSuggestionClick: handleSuggestionClickWithFeedback,
-            ...(normalizedDisplayedPrompt
-              ? { currentPrompt: normalizedDisplayedPrompt }
-              : {}),
-            variant: 'tokenEditor',
-            tokenEditorHeader: false,
-            tokenEditorLayout: 'listOnly',
-            panelClassName: 'flex flex-col',
-            contextValue: suggestionsData.selectedText || '',
-            showCategoryTabs: false,
-            showCopyAction: false,
-            customRequestPlaceholder: 'e.g. more cinematic, more intense...',
-            customRequestCtaLabel: 'Generate',
-            hoverPreview,
-          } as Record<string, unknown>)
-        : ({
-            show: false,
-            ...(normalizedDisplayedPrompt
-              ? { currentPrompt: normalizedDisplayedPrompt }
-              : {}),
-            variant: 'tokenEditor',
-            tokenEditorHeader: false,
-            tokenEditorLayout: 'listOnly',
-            panelClassName: 'flex flex-col',
-            showCategoryTabs: false,
-            showCopyAction: false,
-            hoverPreview,
-          } as Record<string, unknown>),
-    [
-      suggestionsData,
-      handleSuggestionClickWithFeedback,
-      normalizedDisplayedPrompt,
-      hoverPreview,
-    ]
-  );
+  const selectedSpan = useMemo(() => {
+    if (!selectedSpanId || !Array.isArray(parseResult?.spans)) {
+      return null;
+    }
+    return (
+      parseResult.spans.find((span) => {
+        const candidateId =
+          typeof span?.id === 'string' && span.id.length > 0
+            ? span.id
+            : `span_${span.start}_${span.end}`;
+        return candidateId === selectedSpanId;
+      }) ?? null
+    );
+  }, [parseResult?.spans, selectedSpanId]);
 
-  const suggestionsHelperText = useMemo(() => {
-    if (!suggestionsData || suggestionsData.show === false) {
-      return 'Select a token to load alternatives.';
+  const selectedSpanText = useMemo(() => {
+    if (!selectedSpan) return '';
+    const displayQuote =
+      typeof selectedSpan.displayQuote === 'string' && selectedSpan.displayQuote.trim()
+        ? selectedSpan.displayQuote
+        : '';
+    const quote =
+      typeof selectedSpan.quote === 'string' && selectedSpan.quote.trim()
+        ? selectedSpan.quote
+        : '';
+    const text =
+      typeof selectedSpan.text === 'string' && selectedSpan.text.trim()
+        ? selectedSpan.text
+        : '';
+    return (displayQuote || quote || text).trim();
+  }, [selectedSpan]);
+
+  const inlineSuggestions = useMemo(() => {
+    const rawSuggestions = suggestionsData?.suggestions ?? [];
+    return rawSuggestions
+      .map((item, index) => {
+        const text =
+          typeof item === 'string'
+            ? item
+            : typeof item?.text === 'string'
+              ? item.text
+              : typeof (item as { label?: string } | null)?.label === 'string'
+                ? (item as { label?: string }).label
+                : '';
+
+        if (!text.trim()) {
+          return null;
+        }
+
+        const meta =
+          typeof item === 'object' && item
+            ? typeof item.compatibility === 'number'
+              ? `${Math.round(item.compatibility * 100)}% match`
+              : typeof item.category === 'string'
+                ? item.category
+                : typeof item.explanation === 'string'
+                  ? item.explanation
+                  : null
+            : null;
+
+        return {
+          key: (item as { id?: string } | null)?.id ?? `${text}_${index}`,
+          text,
+          meta,
+          item,
+        };
+      })
+      .filter((item): item is { key: string; text: string; meta: string | null; item: SuggestionItem | string } =>
+        Boolean(item)
+      );
+  }, [suggestionsData?.suggestions]);
+
+  const suggestionCount = inlineSuggestions.length;
+  const selectionMatches = useMemo(() => {
+    if (!selectedSpanText || !suggestionsData?.selectedText) {
+      return true;
     }
-    if (suggestionsData.isLoading) {
-      return 'Loading alternatives...';
+    return suggestionsData.selectedText.trim() === selectedSpanText.trim();
+  }, [selectedSpanText, suggestionsData?.selectedText]);
+
+  const isInlineLoading = Boolean(
+    tokenPopover && (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
+  );
+  const isInlineError = Boolean(suggestionsData?.isError);
+  const inlineErrorMessage =
+    typeof suggestionsData?.errorMessage === 'string' && suggestionsData.errorMessage.trim()
+      ? suggestionsData.errorMessage.trim()
+      : 'Failed to load suggestions.';
+  const isInlineEmpty = Boolean(
+    tokenPopover && !isInlineLoading && !isInlineError && suggestionCount === 0
+  );
+  const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
+
+  useEffect(() => {
+    if (!tokenPopover) return;
+    setActiveSuggestionIndex(0);
+  }, [tokenPopover, suggestionCount]);
+
+  useEffect(() => {
+    if (!tokenPopover || !suggestionsListRef.current) return;
+    const list = suggestionsListRef.current;
+    const activeItem = list.querySelector(
+      `[data-index="${activeSuggestionIndex}"]`
+    ) as HTMLElement | null;
+    if (activeItem) {
+      activeItem.scrollIntoView({ block: 'nearest' });
     }
-    if (suggestionsData.isError) {
-      return typeof suggestionsData.errorMessage === 'string' && suggestionsData.errorMessage.trim()
-        ? suggestionsData.errorMessage.trim()
-        : 'Failed to load alternatives.';
-    }
-    if (suggestionsData.selectedText && suggestionsData.selectedText.trim()) {
-      return `Alternatives for "${suggestionsData.selectedText.trim()}".`;
-    }
-    return 'Suggestions ready.';
-  }, [suggestionsData]);
+  }, [tokenPopover, activeSuggestionIndex]);
+
+  const handleApplyActiveSuggestion = useCallback((): void => {
+    const active = inlineSuggestions[activeSuggestionIndex];
+    if (!active) return;
+    handleSuggestionClickWithFeedback(active.item);
+  }, [activeSuggestionIndex, inlineSuggestions, handleSuggestionClickWithFeedback]);
+
+  useEffect(() => {
+    if (!tokenPopover) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeInlinePopover();
+        return;
+      }
+
+      if (!suggestionCount) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCount);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestionIndex((prev) =>
+          prev - 1 < 0 ? suggestionCount - 1 : prev - 1
+        );
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleApplyActiveSuggestion();
+        closeInlinePopover();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [
+    tokenPopover,
+    suggestionCount,
+    closeInlinePopover,
+    handleApplyActiveSuggestion,
+  ]);
 
   const handleVisualPreviewGenerated = useCallback(
     ({
@@ -1229,6 +1395,29 @@ export function PromptCanvas({
       });
     },
     [setVideoLastGeneratedAt, upsertVersionOutput]
+  );
+
+  const handleRailVideoPreviewGenerated = useCallback(
+    ({
+      prompt,
+      generatedAt,
+      videoUrl,
+      aspectRatio,
+    }: {
+      prompt: string;
+      generatedAt: number;
+      videoUrl?: string | null;
+      aspectRatio?: string | null;
+    }) => {
+      setRailVideoLastGeneratedAt(generatedAt);
+      handleVideoPreviewGenerated({
+        prompt,
+        generatedAt,
+        videoUrl,
+        aspectRatio,
+      });
+    },
+    [handleVideoPreviewGenerated]
   );
 
   const focusSpan = useCallback(
@@ -1308,6 +1497,10 @@ export function PromptCanvas({
   const handleGenerateVideoPreview = useCallback((): void => {
     incrementVideoRequestId();
   }, [incrementVideoRequestId]);
+
+  const handleGenerateRailVideoPreview = useCallback((): void => {
+    setRailVideoGenerateRequestId((current) => current + 1);
+  }, []);
 
   const animateScroll = useCallback((element: HTMLElement, target: number): void => {
     const start = element.scrollTop;
@@ -1395,7 +1588,7 @@ export function PromptCanvas({
 
 	      {/* Main Content Container */}
 	      <div className="flex-1 overflow-hidden prompt-canvas-grid">
-        {showVideoPreview && isVideoPreviewGenerating && (
+        {showVideoPreview && isAnyVideoPreviewGenerating && (
           <div className="prompt-canvas-generation-overlay" aria-hidden="true" />
         )}
 
@@ -1546,52 +1739,123 @@ export function PromptCanvas({
                       data-active={showVideoPanel ? 'true' : 'false'}
                       aria-hidden="true"
                     />
-                    {/* Contextual alternatives panel (anchored to selected token) */}
-                    {tokenPopover &&
-                      suggestionsData &&
-                      Array.isArray((suggestionsData as any).suggestions) &&
-                      (suggestionsData as any).suggestions.length > 0 && (
+                    {/* Inline suggestions popover (anchored to selected span) */}
+                    {tokenPopover && (
+                      <>
+                        <div className="inline-suggest-backdrop" aria-hidden="true" />
                         <div
                           ref={tokenPopoverRef}
-                          className="token-alternatives-popover"
-                          style={{
-                            left: tokenPopover.left,
-                            top: tokenPopover.top,
-                          }}
+                          className="inline-suggest-popover"
+                          data-open="true"
+                          data-placement={tokenPopover.placement}
+                          style={
+                            {
+                              left: tokenPopover.left,
+                              top: tokenPopover.top,
+                              '--arrow-x': `${tokenPopover.arrowLeft}px`,
+                            } as React.CSSProperties
+                          }
                           role="dialog"
-                          aria-label="Alternatives"
+                          aria-label="Suggestions"
                         >
-                          {((suggestionsData as any).suggestions as Array<any>).slice(0, 6).map((item, idx) => {
-                            const itemText =
-                              typeof item === 'string'
-                                ? item
-                                : typeof item?.text === 'string'
-                                  ? item.text
-                                  : typeof item?.label === 'string'
-                                    ? item.label
-                                    : '';
+                          <div className="inline-suggest-arrow" aria-hidden="true" />
 
-                            if (!itemText) {
-                              return null;
-                            }
+                          <div className="inline-suggest-header">
+                            <div className="inline-suggest-title">
+                              Suggestions
+                              <span className="inline-suggest-pill">{suggestionCount}</span>
+                            </div>
+                            <div className="inline-suggest-keys" aria-hidden="true">
+                              <span className="kbd">Up</span>
+                              <span className="kbd">Down</span>
+                              <span className="kbd">Enter</span>
+                              <span className="kbd">Esc</span>
+                            </div>
+                          </div>
 
-                            return (
-                              <div
-                                key={item?.id ?? `${itemText}_${idx}`}
-                                className="token-alternatives-item"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
-                                  handleSuggestionClickWithFeedback(item);
-                                }}
-                                role="button"
-                                tabIndex={0}
+                          <div className="inline-suggest-divider" />
+
+                          {isInlineError && (
+                            <div className="inline-suggest-error" role="alert">
+                              {inlineErrorMessage}
+                            </div>
+                          )}
+
+                          {isInlineLoading && (
+                            <div className="inline-suggest-list">
+                              <div className="skeleton-row" />
+                              <div className="skeleton-row" />
+                              <div className="skeleton-row" />
+                            </div>
+                          )}
+
+                          {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
+                            <div className="inline-suggest-list" ref={suggestionsListRef}>
+                              {inlineSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={suggestion.key}
+                                  data-index={index}
+                                  data-selected={
+                                    activeSuggestionIndex === index ? 'true' : 'false'
+                                  }
+                                  className="inline-suggest-item"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onMouseEnter={() => setActiveSuggestionIndex(index)}
+                                  onClick={() => {
+                                    handleSuggestionClickWithFeedback(suggestion.item);
+                                    closeInlinePopover();
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <div className="inline-suggest-text">{suggestion.text}</div>
+                                  {index === 0 ? (
+                                    <span className="inline-suggest-badge" data-accent="true">
+                                      Best match
+                                    </span>
+                                  ) : suggestion.meta ? (
+                                    <div className="inline-suggest-meta">{suggestion.meta}</div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {isInlineEmpty && (
+                            <div className="inline-suggest-empty">No suggestions yet.</div>
+                          )}
+
+                          <div className="inline-suggest-footer">
+                            <div className="inline-suggest-footnote">
+                              {selectionLabel
+                                ? `Replace "${selectionLabel}"`
+                                : 'Replace selection'}
+                            </div>
+                            <div className="inline-suggest-actions">
+                              <button
+                                type="button"
+                                className="inline-suggest-cta"
+                                onClick={closeInlinePopover}
                               >
-                                {itemText}
-                              </div>
-                            );
-                          })}
+                                Close
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-suggest-cta"
+                                data-primary="true"
+                                onClick={() => {
+                                  handleApplyActiveSuggestion();
+                                  closeInlinePopover();
+                                }}
+                                disabled={!suggestionCount}
+                              >
+                                Apply
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      </>
+                    )}
                     {enableMLHighlighting &&
                       !outlineOverlayActive &&
                       hoveredSpanId &&
@@ -1850,44 +2114,56 @@ export function PromptCanvas({
             </div>
           </div>
 
-          {/* Suggestions Module */}
-          <div className="prompt-right-rail__suggestions-module">
-            <div className="prompt-right-rail__suggestions-top">
-              <div className="prompt-right-rail__section-label">Suggestions</div>
-            </div>
+          {showVideoPreview && (
+            <div className="prompt-right-rail__preview-module">
+              <div className="prompt-right-rail__preview-top">
+                <div className="prompt-right-rail__section-label">Video Preview</div>
+              </div>
 
-            <div className="prompt-right-rail__suggestions-hint">
-              {suggestionsHelperText}
-            </div>
+              <div className="prompt-right-rail__preview-frame">
+                <VideoPreview
+                  prompt={videoPreviewPrompt}
+                  aspectRatio={effectiveAspectRatio}
+                  model={RAIL_VIDEO_PREVIEW_MODEL}
+                  generationParams={generationParams}
+                  inputReference={allowsVideoInputReference ? videoInputReference : undefined}
+                  isVisible={showVideoPreview}
+                  generateRequestId={railVideoGenerateRequestId}
+                  lastGeneratedAt={railVideoLastGeneratedAt}
+                  onPreviewGenerated={handleRailVideoPreviewGenerated}
+                  onLoadingChange={setIsRailVideoPreviewGenerating}
+                  onKeepRefining={handleKeepRefiningFromPreview}
+                  onRefinePrompt={handleSomethingOffFromPreview}
+                />
+              </div>
 
-            <div className="prompt-right-rail__suggestions-list">
-              {/* Inline replacement feedback */}
-              {justReplaced && (
-                <div>
-                  <div
-                    className="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2"
-                    style={{ background: '#111318', border: '1px solid #1C1F24' }}
+              <div
+                className={`prompt-right-rail__preview-cta${
+                  showPreviewMeta ? '' : ' prompt-right-rail__preview-cta--solo'
+                }`}
+              >
+                {showPreviewMeta && (
+                  <div className="prompt-right-rail__preview-meta">
+                    {`AR ${effectiveAspectRatio}`}
+                  </div>
+                )}
+                <div className="prompt-right-rail__preview-actions">
+                  <button
+                    type="button"
+                    onClick={handleGenerateRailVideoPreview}
+                    disabled={!hasVideoPreviewSource || isRailVideoPreviewGenerating}
+                    className="prompt-right-rail__preview-button"
                   >
-                    <div className="text-[12px] text-[#C9CDD3] truncate">
-                      ✓ Replaced “{justReplaced.from}”
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onUndo?.();
-                        setState({ justReplaced: null });
-                      }}
-                      className="text-[12px] font-medium text-[#8B9098] hover:text-white"
-                    >
-                      Undo
-                    </button>
+                    Generate
+                  </button>
+                  <div className="prompt-right-rail__preview-meta-secondary">
+                    {previewMetaDetail}
                   </div>
                 </div>
-              )}
-
-              <SuggestionsPanel suggestionsData={suggestionsPanelData} />
+              </div>
             </div>
-          </div>
+          )}
+
         </div>
       </div>
     </div>

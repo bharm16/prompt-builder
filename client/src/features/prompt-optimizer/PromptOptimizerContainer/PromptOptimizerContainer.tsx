@@ -15,7 +15,6 @@ import { PromptResultsSection } from '../components/PromptResultsSection';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
-import SuggestionsPanel from '@components/SuggestionsPanel';
 import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
@@ -310,7 +309,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         gridTemplateColumns: `
           var(--sidebar-width) 
           minmax(0, 1fr)
-          var(--po-suggestions-width)
         `,
         transition: 'grid-template-columns 120ms cubic-bezier(0.2, 0, 0, 1)',
       } as React.CSSProperties}
@@ -376,22 +374,6 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           </footer>
         )}
       </main>
-
-      {/* Suggestions Panel - Right Column */}
-      <aside 
-        className="prompt-optimizer-shell__suggestions overflow-y-auto border-l border-geist-accents-2 bg-geist-background"
-        style={{
-          width: 'var(--po-suggestions-width)',
-        }}
-      >
-        <SuggestionsPanel 
-          suggestionsData={
-            suggestionsData 
-              ? { ...suggestionsData, onSuggestionClick: handleSuggestionClick, currentPrompt: promptOptimizer.displayedPrompt } 
-              : { show: false, currentPrompt: promptOptimizer.displayedPrompt }
-          } 
-        />
-      </aside>
 
       {/* Debug Button - Hidden */}
       {false && (import.meta.env.DEV ||
