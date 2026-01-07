@@ -1,4 +1,5 @@
 import { VIDEO_MODELS } from '@config/modelConfig';
+import type { VideoAssetStore } from './storage';
 
 export interface ReplicateOptions {
   apiToken?: string;
@@ -8,6 +9,10 @@ export interface ReplicateOptions {
   klingBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
+}
+
+export interface VideoGenerationServiceOptions extends ReplicateOptions {
+  assetStore?: VideoAssetStore;
 }
 
 export type VideoModelKey = keyof typeof VIDEO_MODELS;
@@ -30,8 +35,8 @@ export interface VideoGenerationOptions {
   size?: string;
 }
 
-export interface StoredVideoContent {
-  buffer: Buffer;
+export interface VideoGenerationResult {
+  assetId: string;
+  videoUrl: string;
   contentType: string;
-  createdAt: number;
 }

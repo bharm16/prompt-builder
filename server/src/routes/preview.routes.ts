@@ -15,6 +15,8 @@ import { getVideoCost } from '@config/modelCosts';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import type { PreviewRoutesServices } from './types';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
+import { extractFirebaseToken } from '@utils/auth';
+import type { VideoGenerationOptions } from '@services/video-generation/types';
 
 /**
  * Create preview routes
@@ -25,14 +27,12 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   const {
     imageGenerationService,
     videoGenerationService,
+    videoJobStore,
     userCreditService = defaultUserCreditService,
   } = services;
 
   async function getAuthenticatedUserId(req: Request): Promise<string | null> {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring('Bearer '.length).trim()
-      : undefined;
+    const token = extractFirebaseToken(req);
 
     if (!token) {
       logger.warn('Missing authentication token for video generation', {
@@ -70,11 +70,11 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
     '/video/generate',
     asyncHandler(async (req: Request, res: Response) => {
       // Check if service is available
-      if (!videoGenerationService) {
+      if (!videoGenerationService || !videoJobStore) {
         return res.status(503).json({
           success: false,
           error: 'Video generation service is not available',
-          message: 'No video generation provider is configured',
+          message: 'Video generation queue is not configured',
         });
       }
 
@@ -108,7 +108,6 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const startTime = performance.now();
       const operation = 'generateVideoPreview';
       const requestId = (req as Request & { id?: string }).id;
       const estimatedCost = getVideoCost(model);
@@ -132,7 +131,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       const normalizedParams = normalized.normalizedGenerationParams as Record<string, unknown> | null;
       const paramAspectRatio =
         normalizedParams && typeof normalizedParams.aspect_ratio === 'string'
-          ? (normalizedParams.aspect_ratio as any)
+          ? (normalizedParams.aspect_ratio as VideoGenerationOptions['aspectRatio'])
           : undefined;
       const paramFps =
         normalizedParams && typeof normalizedParams.fps === 'number' ? normalizedParams.fps : undefined;
@@ -147,7 +146,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       const seconds =
         paramDurationS != null && ['4', '8', '12'].includes(String(paramDurationS))
-          ? (String(paramDurationS) as any)
+          ? (String(paramDurationS) as VideoGenerationOptions['seconds'])
           : undefined;
 
       const size =
@@ -170,7 +169,20 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      logger.debug(`Starting ${operation}`, {
+      const options: VideoGenerationOptions = {
+        ...(paramAspectRatio || aspectRatio
+          ? { aspectRatio: (paramAspectRatio || aspectRatio) as VideoGenerationOptions['aspectRatio'] }
+          : {}),
+        ...(model ? { model: model as VideoGenerationOptions['model'] } : {}),
+        ...(startImage ? { startImage } : {}),
+        ...(inputReference ? { inputReference } : {}),
+        ...(typeof paramFps === 'number' ? { fps: paramFps } : {}),
+        ...(seconds ? { seconds } : {}),
+        ...(size ? { size } : {}),
+        ...(typeof numFrames === 'number' ? { numFrames } : {}),
+      };
+
+      logger.debug(`Queueing ${operation}`, {
         operation,
         requestId,
         userId,
@@ -181,28 +193,28 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       });
 
       try {
-        const result = await videoGenerationService.generateVideo(prompt, {
-          ...(paramAspectRatio || aspectRatio ? { aspectRatio: (paramAspectRatio || aspectRatio) as any } : {}),
-          ...(model ? { model: model as any } : {}),
-          ...(startImage ? { startImage } : {}),
-          ...(inputReference ? { inputReference } : {}),
-          ...(typeof paramFps === 'number' ? { fps: paramFps } : {}),
-          ...(seconds ? { seconds } : {}),
-          ...(size ? { size } : {}),
-          ...(typeof numFrames === 'number' ? { numFrames } : {}),
+        const job = await videoJobStore.createJob({
+          userId,
+          request: {
+            prompt,
+            options,
+          },
+          creditsReserved: estimatedCost,
         });
 
-        logger.info(`${operation} completed`, {
+        logger.info(`${operation} queued`, {
           operation,
           requestId,
           userId,
-          duration: Math.round(performance.now() - startTime),
+          jobId: job.id,
           cost: estimatedCost,
         });
 
-        return res.json({
+        return res.status(202).json({
           success: true,
-          videoUrl: result,
+          jobId: job.id,
+          status: job.status,
+          creditsReserved: estimatedCost,
           creditsDeducted: estimatedCost,
         });
       } catch (error) {
@@ -210,12 +222,12 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
         const errorMessage = error instanceof Error ? error.message : String(error);
         const statusCode = (error as { statusCode?: number }).statusCode || 500;
+        const errorInstance = error instanceof Error ? error : new Error(errorMessage);
 
-        logger.error(`${operation} failed`, error as Error, {
+        logger.error(`${operation} failed`, errorInstance, {
           operation,
           requestId,
           userId,
-          duration: Math.round(performance.now() - startTime),
           refundAmount: estimatedCost,
           statusCode,
         });
@@ -226,6 +238,73 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
           message: errorMessage,
         });
       }
+    })
+  );
+
+  // GET /api/preview/video/jobs/:jobId - Check job status
+  router.get(
+    '/video/jobs/:jobId',
+    asyncHandler(async (req: Request, res: Response) => {
+      if (!videoGenerationService || !videoJobStore) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video generation service is not available',
+        });
+      }
+
+      const userId = await getAuthenticatedUserId(req);
+      if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+          message: 'You must be logged in to view video jobs.',
+        });
+      }
+
+      const { jobId } = req.params as { jobId?: string };
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          error: 'jobId is required',
+        });
+      }
+
+      const job = await videoJobStore.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({
+          success: false,
+          error: 'Video job not found',
+        });
+      }
+
+      if (job.userId !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied',
+          message: 'This job does not belong to the authenticated user.',
+        });
+      }
+
+      const response: Record<string, unknown> = {
+        success: true,
+        jobId: job.id,
+        status: job.status,
+        creditsReserved: job.creditsReserved,
+        creditsDeducted: job.creditsReserved,
+      };
+
+      if (job.status === 'completed' && job.result) {
+        const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
+        response.videoUrl = freshUrl || job.result.videoUrl;
+        response.assetId = job.result.assetId;
+        response.contentType = job.result.contentType;
+      }
+
+      if (job.status === 'failed') {
+        response.error = job.error?.message || 'Video generation failed';
+      }
+
+      return res.json(response);
     })
   );
 
@@ -248,7 +327,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const entry = videoGenerationService.getVideoContent(contentId);
+      const entry = await videoGenerationService.getVideoContent(contentId);
       if (!entry) {
         return res.status(404).json({
           success: false,

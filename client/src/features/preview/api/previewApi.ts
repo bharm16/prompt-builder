@@ -51,6 +51,25 @@ export async function generatePreview(
 export interface GenerateVideoResponse {
   success: boolean;
   videoUrl?: string;
+  jobId?: string;
+  status?: VideoJobStatus;
+  creditsReserved?: number;
+  creditsDeducted?: number;
+  error?: string;
+  message?: string;
+}
+
+export type VideoJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+export interface VideoJobStatusResponse {
+  success: boolean;
+  jobId: string;
+  status: VideoJobStatus;
+  videoUrl?: string;
+  assetId?: string;
+  contentType?: string;
+  creditsReserved?: number;
+  creditsDeducted?: number;
   error?: string;
   message?: string;
 }
@@ -84,4 +103,12 @@ export async function generateVideoPreview(
   }, {
     timeout: API_CONFIG.timeout.video
   }) as Promise<GenerateVideoResponse>;
+}
+
+export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStatusResponse> {
+  if (!jobId || typeof jobId !== 'string') {
+    throw new Error('jobId is required');
+  }
+
+  return apiClient.get(`/preview/video/jobs/${jobId}`) as Promise<VideoJobStatusResponse>;
 }

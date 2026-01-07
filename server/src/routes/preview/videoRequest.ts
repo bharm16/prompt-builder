@@ -61,9 +61,13 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
 
 export const sendVideoContent = (
   res: Response,
-  entry: { contentType: string; buffer: Buffer }
+  entry: { contentType: string; stream: NodeJS.ReadableStream; contentLength?: number }
 ): Response => {
   res.setHeader('Content-Type', entry.contentType);
+  if (entry.contentLength) {
+    res.setHeader('Content-Length', String(entry.contentLength));
+  }
   res.setHeader('Cache-Control', 'private, max-age=600');
-  return res.send(entry.buffer);
+  entry.stream.pipe(res);
+  return res;
 };

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { generateVideoPreview } from '../api/previewApi';
+import { generateVideoPreview, getVideoPreviewStatus } from '../api/previewApi';
 
 interface UseVideoPreviewOptions {
   prompt: string;
@@ -23,6 +23,9 @@ interface UseVideoPreviewReturn {
   error: string | null;
   regenerate: () => void;
 }
+
+const POLL_INTERVAL_MS = 2000;
+const MAX_WAIT_MS = 6 * 60 * 1000;
 
 /**
  * Hook for managing video preview state
@@ -89,9 +92,20 @@ export function useVideoPreview({
         if (response.success && response.videoUrl) {
           setVideoUrl(response.videoUrl);
           setError(null);
-        } else {
-          throw new Error(response.error || response.message || 'Failed to generate video preview');
+          return;
         }
+
+        if (response.success && response.jobId) {
+          const resultUrl = await waitForVideoJob(response.jobId, abortController.signal);
+          if (!resultUrl || abortController.signal.aborted) {
+            return;
+          }
+          setVideoUrl(resultUrl);
+          setError(null);
+          return;
+        }
+
+        throw new Error(response.error || response.message || 'Failed to generate video preview');
       } catch (err) {
         // Don't set error if request was aborted
         if (abortController.signal.aborted) {
@@ -168,4 +182,48 @@ export function useVideoPreview({
     error,
     regenerate,
   };
+}
+
+async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<string | null> {
+  const startTime = Date.now();
+
+  while (true) {
+    if (signal.aborted) {
+      return null;
+    }
+
+    const status = await getVideoPreviewStatus(jobId);
+
+    if (signal.aborted) {
+      return null;
+    }
+
+    if (!status.success) {
+      throw new Error(status.error || status.message || 'Failed to fetch video job status');
+    }
+
+    if (status.status === 'completed' && status.videoUrl) {
+      return status.videoUrl;
+    }
+
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Video generation failed');
+    }
+
+    if (Date.now() - startTime > MAX_WAIT_MS) {
+      throw new Error('Timed out waiting for video preview');
+    }
+
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, POLL_INTERVAL_MS);
+      signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true }
+      );
+    });
+  }
 }

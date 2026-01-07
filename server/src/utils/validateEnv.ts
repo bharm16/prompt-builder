@@ -15,7 +15,6 @@ export function validateEnv(): void {
   // Additional hard requirements in production
   if (process.env.NODE_ENV === 'production') {
     const prodRequired = [
-      'ALLOWED_API_KEYS',
       'ALLOWED_ORIGINS',
       'METRICS_TOKEN',
       'FRONTEND_URL',
@@ -24,6 +23,22 @@ export function validateEnv(): void {
     if (missingProd.length > 0) {
       throw new Error(
         `Missing required production env vars: ${missingProd.join(', ')}`
+      );
+    }
+
+    const hasApiKeys =
+      Boolean(process.env.ALLOWED_API_KEYS && process.env.ALLOWED_API_KEYS.trim()) ||
+      Boolean(process.env.API_KEY && process.env.API_KEY.trim());
+    if (!hasApiKeys) {
+      throw new Error('Missing required production env var: ALLOWED_API_KEYS or API_KEY');
+    }
+
+    const hasVideoBucket =
+      Boolean(process.env.VIDEO_STORAGE_BUCKET && process.env.VIDEO_STORAGE_BUCKET.trim()) ||
+      Boolean(process.env.VITE_FIREBASE_STORAGE_BUCKET && process.env.VITE_FIREBASE_STORAGE_BUCKET.trim());
+    if (!hasVideoBucket) {
+      throw new Error(
+        'Missing required production env var: VIDEO_STORAGE_BUCKET or VITE_FIREBASE_STORAGE_BUCKET'
       );
     }
 
@@ -53,4 +68,3 @@ export function validateEnv(): void {
 
   console.log('✅ Environment variables validated successfully');
 }
-

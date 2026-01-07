@@ -398,7 +398,7 @@ export function applyCorsMiddleware(app: Application): void {
       },
       credentials: true,
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Firebase-Token'],
       exposedHeaders: ['X-Request-Id'],
       maxAge: 86400, // 24 hours
       preflightContinue: false,

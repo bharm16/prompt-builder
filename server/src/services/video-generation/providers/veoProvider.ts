@@ -1,6 +1,8 @@
+import type { ReadableStream } from 'node:stream/web';
 import { z } from 'zod';
-import { VideoContentStore } from '../contentStore';
 import { sleep } from '../utils/sleep';
+import type { VideoAssetStore, StoredVideoAsset } from '../storage';
+import { toNodeReadableStream } from '../storage/utils';
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -119,10 +121,10 @@ function extractVeoVideoUri(response: unknown): string | null {
   return null;
 }
 
-async function downloadVeoVideo(
+async function downloadVeoVideoStream(
   apiKey: string,
   videoUri: string
-): Promise<{ buffer: Buffer; contentType: string }> {
+): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string }> {
   const response = await fetch(videoUri, {
     method: 'GET',
     headers: {
@@ -136,18 +138,21 @@ async function downloadVeoVideo(
     throw new Error(`Veo download failed (${response.status}): ${text.slice(0, 400)}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
   const contentType = response.headers.get('content-type') || 'video/mp4';
-  return { buffer: Buffer.from(arrayBuffer), contentType };
+  const body = response.body as ReadableStream<Uint8Array> | null;
+  if (!body) {
+    throw new Error('Veo download failed: empty response body.');
+  }
+  return { stream: body, contentType };
 }
 
 export async function generateVeoVideo(
   apiKey: string,
   baseUrl: string,
   prompt: string,
-  contentStore: VideoContentStore,
+  assetStore: VideoAssetStore,
   log: LogSink
-): Promise<string> {
+): Promise<StoredVideoAsset> {
   const operationName = await startVeoGeneration(baseUrl, apiKey, prompt);
   log.info('Veo generation started', { operationName, model: VEO_MODEL_ID });
 
@@ -158,8 +163,6 @@ export async function generateVeoVideo(
     throw new Error('Veo generation completed without a downloadable video URI.');
   }
 
-  const { buffer, contentType } = await downloadVeoVideo(apiKey, videoUri);
-  const contentId = contentStore.store(buffer, contentType);
-
-  return contentStore.buildContentUrl(contentId);
+  const { stream, contentType } = await downloadVeoVideoStream(apiKey, videoUri);
+  return await assetStore.storeFromStream(toNodeReadableStream(stream), contentType);
 }

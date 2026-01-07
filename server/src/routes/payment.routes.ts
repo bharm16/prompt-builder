@@ -4,6 +4,7 @@ import { logger } from '@infrastructure/Logger';
 import { admin } from '@infrastructure/firebaseAdmin';
 import { PaymentService } from '@services/payment/PaymentService';
 import { userCreditService } from '@services/credits/UserCreditService';
+import { extractFirebaseToken } from '@utils/auth';
 
 const paymentService = new PaymentService();
 
@@ -14,11 +15,7 @@ async function resolveUserId(req: Request): Promise<string | null> {
     return reqWithAuth.user.uid;
   }
 
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ')
-    ? authHeader.substring('Bearer '.length).trim()
-    : undefined;
-
+  const token = extractFirebaseToken(req);
   if (token) {
     try {
       const decoded = await admin.auth().verifyIdToken(token);

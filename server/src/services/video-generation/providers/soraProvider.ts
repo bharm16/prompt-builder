@@ -1,7 +1,9 @@
 import type OpenAI from 'openai';
+import type { ReadableStream } from 'node:stream/web';
 import type { VideoGenerationOptions, SoraModelId } from '../types';
-import { VideoContentStore } from '../contentStore';
 import { sleep } from '../utils/sleep';
+import type { VideoAssetStore, StoredVideoAsset } from '../storage';
+import { toNodeReadableStream } from '../storage/utils';
 
 type LogSink = {
   debug: (message: string, meta?: Record<string, unknown>) => void;
@@ -42,9 +44,9 @@ export async function generateSoraVideo(
   prompt: string,
   modelId: SoraModelId,
   options: VideoGenerationOptions,
-  contentStore: VideoContentStore,
+  assetStore: VideoAssetStore,
   log: LogSink
-): Promise<string> {
+): Promise<StoredVideoAsset> {
   if (options.inputReference) {
     log.debug('Sora inputReference provided; OpenAI Sora API call is text-only for now.');
   }
@@ -70,9 +72,7 @@ export async function generateSoraVideo(
   }
 
   const response = await openai.videos.downloadContent(video.id);
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const contentId = contentStore.store(buffer, 'video/mp4');
-
-  return contentStore.buildContentUrl(contentId);
+  const contentType = response.headers.get('content-type') || 'video/mp4';
+  const stream = toNodeReadableStream(response.body as ReadableStream<Uint8Array> | null);
+  return await assetStore.storeFromStream(stream, contentType);
 }

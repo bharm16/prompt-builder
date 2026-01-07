@@ -13,6 +13,7 @@ Complete API documentation for the Prompt Optimizer platform.
 - [Span Labeling Endpoints](#span-labeling-endpoints)
 - [Enhancement Endpoints](#enhancement-endpoints)
 - [Video Concept Endpoints](#video-concept-endpoints)
+- [Preview Endpoints](#preview-endpoints)
 - [Health & Metrics Endpoints](#health--metrics-endpoints)
 - [Webhooks](#webhooks)
 - [SDK Examples](#sdk-examples)
@@ -48,10 +49,24 @@ Production:   https://api.promptbuilder.com/api
 
 ### API Key Authentication
 
-Include your API key in the request header:
+Include your API key in the request header (preferred):
 
 ```http
 Authorization: Bearer YOUR_API_KEY
+```
+
+Legacy header support (still accepted):
+
+```http
+X-API-Key: YOUR_API_KEY
+```
+
+### User Authentication (Firebase)
+
+Endpoints that charge credits (video previews, billing) also require a Firebase ID token:
+
+```http
+X-Firebase-Token: FIREBASE_ID_TOKEN
 ```
 
 ### Generating API Keys
@@ -64,8 +79,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Add the generated key to your `.env` file:
 
 ```env
-API_KEY=your_generated_api_key_here
+ALLOWED_API_KEYS=your_generated_api_key_here
 ```
+
+For single-key setups, `API_KEY` is also accepted, but `ALLOWED_API_KEYS` is preferred for rotation.
 
 ### Example Request
 
@@ -761,6 +778,92 @@ curl -X POST http://localhost:3001/api/video/suggestions \
   "metadata": {
     "processingTime": 1045
   }
+}
+```
+
+---
+
+## Preview Endpoints
+
+### POST /api/preview/generate
+
+Generate an image preview from a prompt.
+
+**Request Body:**
+```json
+{
+  "prompt": "string (required)",
+  "aspectRatio": "string (optional)"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "imageUrl": "https://...",
+    "metadata": {
+      "aspectRatio": "16:9",
+      "model": "flux-schnell",
+      "duration": 1200,
+      "generatedAt": "2025-11-25T12:00:00.000Z"
+    }
+  }
+}
+```
+
+### POST /api/preview/video/generate
+
+Queue a video preview job. Requires API key **and** Firebase ID token (`X-Firebase-Token`).
+
+**Request Body:**
+```json
+{
+  "prompt": "string (required)",
+  "aspectRatio": "string (optional)",
+  "model": "string (optional)",
+  "startImage": "string (optional)",
+  "inputReference": "string (optional)",
+  "generationParams": "object (optional)"
+}
+```
+
+**Response:** `202 Accepted`
+```json
+{
+  "success": true,
+  "jobId": "job_123",
+  "status": "queued",
+  "creditsReserved": 5
+}
+```
+
+### GET /api/preview/video/jobs/:jobId
+
+Check status for a queued video preview job. Returns a fresh URL when complete.
+Signed URLs may expire; call this endpoint again to refresh access.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "jobId": "job_123",
+  "status": "completed",
+  "videoUrl": "https://...",
+  "assetId": "asset_abc",
+  "contentType": "video/mp4",
+  "creditsReserved": 5
+}
+```
+
+If the job failed:
+```json
+{
+  "success": true,
+  "jobId": "job_123",
+  "status": "failed",
+  "error": "Video generation failed"
 }
 ```
 

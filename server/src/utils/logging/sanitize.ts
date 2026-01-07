@@ -18,6 +18,7 @@ const SENSITIVE_HEADERS = [
   'set-cookie',
   'x-auth-token',
   'x-access-token',
+  'x-firebase-token',
   'api-key',
   'apikey',
 ];

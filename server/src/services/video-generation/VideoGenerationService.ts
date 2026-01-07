@@ -2,7 +2,6 @@ import Replicate from 'replicate';
 import OpenAI from 'openai';
 import { LumaAI } from 'lumaai';
 import { logger } from '@infrastructure/Logger';
-import { VideoContentStore } from './contentStore';
 import {
   isKlingModel,
   isLumaModel,
@@ -15,7 +14,9 @@ import { generateSoraVideo } from './providers/soraProvider';
 import { generateLumaVideo } from './providers/lumaProvider';
 import { generateKlingVideo, DEFAULT_KLING_BASE_URL } from './providers/klingProvider';
 import { generateVeoVideo, DEFAULT_VEO_BASE_URL } from './providers/veoProvider';
-import type { ReplicateOptions, StoredVideoContent, VideoGenerationOptions } from './types';
+import { createVideoAssetStore, type StoredVideoAsset, type VideoAssetStore, type VideoAssetStream } from './storage';
+import { storeVideoFromUrl } from './storage/utils';
+import type { VideoGenerationOptions, VideoGenerationResult, VideoGenerationServiceOptions } from './types';
 
 /**
  * VideoGenerationService - Orchestrates video generation providers
@@ -29,9 +30,9 @@ export class VideoGenerationService {
   private readonly geminiApiKey: string | null;
   private readonly geminiBaseUrl: string;
   private readonly log = logger.child({ service: 'VideoGenerationService' });
-  private readonly contentStore: VideoContentStore;
+  private readonly assetStore: VideoAssetStore;
 
-  constructor(options: ReplicateOptions) {
+  constructor(options: VideoGenerationServiceOptions) {
     if (!options.apiToken) {
       this.log.warn('REPLICATE_API_TOKEN not provided, Replicate-based video generation will be disabled');
       this.replicate = null;
@@ -72,8 +73,7 @@ export class VideoGenerationService {
     }
 
     this.geminiBaseUrl = (options.geminiBaseUrl || DEFAULT_VEO_BASE_URL).replace(/\/+$/, '');
-
-    this.contentStore = new VideoContentStore();
+    this.assetStore = options.assetStore ?? createVideoAssetStore();
   }
 
   /**
@@ -81,9 +81,12 @@ export class VideoGenerationService {
    *
    * @param prompt - The optimized prompt
    * @param options - Generation options (model, aspect ratio, etc.)
-   * @returns URL of the generated video
+   * @returns Stored video asset details
    */
-  async generateVideo(prompt: string, options: VideoGenerationOptions = {}): Promise<string> {
+  async generateVideo(
+    prompt: string,
+    options: VideoGenerationOptions = {}
+  ): Promise<VideoGenerationResult> {
     const modelSelection = options.model || 'PRO';
     const modelId = resolveModelId(modelSelection, this.log);
 
@@ -98,35 +101,63 @@ export class VideoGenerationService {
         if (!this.openai) {
           throw new Error('Sora video generation requires OPENAI_API_KEY.');
         }
-        return await generateSoraVideo(this.openai, prompt, modelId, options, this.contentStore, this.log);
+        const asset = await generateSoraVideo(
+          this.openai,
+          prompt,
+          modelId,
+          options,
+          this.assetStore,
+          this.log
+        );
+        return this.formatResult(asset);
       }
 
       if (isLumaModel(modelId)) {
         if (!this.luma) {
           throw new Error('Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.');
         }
-        return await generateLumaVideo(this.luma, prompt, this.log);
+        const url = await generateLumaVideo(this.luma, prompt, this.log);
+        const asset = await storeVideoFromUrl(this.assetStore, url, this.log);
+        return this.formatResult(asset);
       }
 
       if (isKlingModel(modelId)) {
         if (!this.klingApiKey) {
           throw new Error('Kling video generation requires KLING_API_KEY.');
         }
-        return await generateKlingVideo(this.klingApiKey, this.klingBaseUrl, prompt, modelId, options, this.log);
+        const url = await generateKlingVideo(
+          this.klingApiKey,
+          this.klingBaseUrl,
+          prompt,
+          modelId,
+          options,
+          this.log
+        );
+        const asset = await storeVideoFromUrl(this.assetStore, url, this.log);
+        return this.formatResult(asset);
       }
 
       if (isVeoModel(modelId)) {
         if (!this.geminiApiKey) {
           throw new Error('Veo video generation requires GEMINI_API_KEY.');
         }
-        return await generateVeoVideo(this.geminiApiKey, this.geminiBaseUrl, prompt, this.contentStore, this.log);
+        const asset = await generateVeoVideo(
+          this.geminiApiKey,
+          this.geminiBaseUrl,
+          prompt,
+          this.assetStore,
+          this.log
+        );
+        return this.formatResult(asset);
       }
 
       if (!this.replicate) {
         throw new Error('Replicate API token is required for the selected video model.');
       }
 
-      return await generateReplicateVideo(this.replicate, prompt, modelId, options, this.log);
+      const url = await generateReplicateVideo(this.replicate, prompt, modelId, options, this.log);
+      const asset = await storeVideoFromUrl(this.assetStore, url, this.log);
+      return this.formatResult(asset);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log.error('Video generation failed', error instanceof Error ? error : new Error(errorMessage));
@@ -134,7 +165,19 @@ export class VideoGenerationService {
     }
   }
 
-  public getVideoContent(id: string): StoredVideoContent | null {
-    return this.contentStore.get(id);
+  public async getVideoContent(id: string): Promise<VideoAssetStream | null> {
+    return await this.assetStore.getStream(id);
+  }
+
+  public async getVideoUrl(id: string): Promise<string | null> {
+    return await this.assetStore.getPublicUrl(id);
+  }
+
+  private formatResult(asset: StoredVideoAsset): VideoGenerationResult {
+    return {
+      assetId: asset.id,
+      videoUrl: asset.url,
+      contentType: asset.contentType,
+    };
   }
 }

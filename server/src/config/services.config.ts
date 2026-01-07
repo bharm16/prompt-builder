@@ -35,6 +35,10 @@ import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService'
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import { VideoToImagePromptTransformer } from '@services/image-generation/VideoToImagePromptTransformer';
+import { createVideoAssetStore } from '@services/video-generation/storage';
+import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
+import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
+import { userCreditService } from '@services/credits/UserCreditService';
 
 // Import enhancement sub-services
 import { PlaceholderDetectionService } from '@services/enhancement/services/PlaceholderDetectionService';
@@ -101,6 +105,9 @@ export async function configureServices(): Promise<DIContainer> {
   container.registerValue('logger', logger);
   container.registerValue('metricsService', metricsService);
   container.registerValue('cacheService', cacheService);
+  container.registerValue('userCreditService', userCreditService);
+  container.register('videoAssetStore', () => createVideoAssetStore(), [], { singleton: true });
+  container.register('videoJobStore', () => new VideoJobStore(), [], { singleton: true });
 
   // ============================================================================
   // Configuration Values
@@ -444,7 +451,7 @@ export async function configureServices(): Promise<DIContainer> {
 
   container.register(
     'videoGenerationService',
-    () => {
+    (videoAssetStore: ReturnType<typeof createVideoAssetStore>) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       const openAIKey = process.env.OPENAI_API_KEY;
       const lumaApiKey = process.env.LUMA_API_KEY || process.env.LUMAAI_API_KEY;
@@ -466,9 +473,34 @@ export async function configureServices(): Promise<DIContainer> {
         klingBaseUrl,
         geminiApiKey,
         geminiBaseUrl,
+        assetStore: videoAssetStore,
       });
     },
-    []
+    ['videoAssetStore']
+  );
+
+  container.register(
+    'videoJobWorker',
+    (
+      videoJobStore: VideoJobStore,
+      videoGenerationService: VideoGenerationService | null,
+      creditService: typeof userCreditService
+    ) => {
+      if (!videoGenerationService) {
+        return null;
+      }
+
+      const pollIntervalMs = Number.parseInt(process.env.VIDEO_JOB_POLL_INTERVAL_MS || '2000', 10);
+      const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
+      const maxConcurrent = Number.parseInt(process.env.VIDEO_JOB_MAX_CONCURRENT || '2', 10);
+
+      return new VideoJobWorker(videoJobStore, videoGenerationService, creditService, {
+        pollIntervalMs: Number.isFinite(pollIntervalMs) ? pollIntervalMs : 2000,
+        leaseMs: Number.isFinite(leaseSeconds) ? leaseSeconds * 1000 : 900000,
+        maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,
+      });
+    },
+    ['videoJobStore', 'videoGenerationService', 'userCreditService']
   );
 
   return container;
@@ -661,6 +693,17 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   } else {
     logger.info('ℹ️ GLiNER warmup skipped (prewarm disabled or GLiNER disabled)');
   }
-  
+
+  const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
+  const workerDisabled = process.env.VIDEO_JOB_WORKER_DISABLED === 'true';
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+
+  if (videoJobWorker && !workerDisabled && !isTestEnv) {
+    videoJobWorker.start();
+    logger.info('✅ Video job worker started');
+  } else if (videoJobWorker && workerDisabled) {
+    logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
+  }
+
   return container;
 }
