@@ -24,7 +24,7 @@ function formatRelativeOrDate(iso: string | undefined): string {
 }
 
 function deriveTitle(entry: PromptHistoryEntry): string {
-  const source = (entry.input || entry.output || '').trim().replace(/\s+/g, ' ');
+  const source = (entry.output || '').trim().replace(/\s+/g, ' ');
   if (!source) return 'Untitled prompt';
   return source.length > 96 ? `${source.slice(0, 96).trim()}…` : source;
 }
@@ -46,6 +46,11 @@ export function HistoryPage(): React.ReactElement {
   }, []);
 
   const promptHistory = usePromptHistory(user);
+  const filteredOutputs = React.useMemo(() => {
+    const q = promptHistory.searchQuery.trim().toLowerCase();
+    if (!q) return promptHistory.history;
+    return promptHistory.history.filter((entry) => entry.output.toLowerCase().includes(q));
+  }, [promptHistory.history, promptHistory.searchQuery]);
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-b from-neutral-50 via-white to-neutral-50">
@@ -67,7 +72,7 @@ export function HistoryPage(): React.ReactElement {
                   History
                 </h1>
                 <p className="text-geist-accents-6 max-w-2xl">
-                  Search across every prompt you’ve optimized — input, output, and everything in between.
+                  Search across every optimized output you’ve saved.
                 </p>
               </div>
 
@@ -100,7 +105,7 @@ export function HistoryPage(): React.ReactElement {
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 text-sm text-geist-accents-6">
                   <span className="tabular-nums">
-                    {promptHistory.filteredHistory.length}
+                    {filteredOutputs.length}
                     {promptHistory.searchQuery ? ' results' : ' prompts'}
                   </span>
                   {user ? (
@@ -134,7 +139,7 @@ export function HistoryPage(): React.ReactElement {
             <div className="spinner-sm mx-auto mb-3" />
             <p className="text-sm text-geist-accents-6">Loading history…</p>
           </div>
-        ) : promptHistory.filteredHistory.length === 0 ? (
+        ) : filteredOutputs.length === 0 ? (
           <div className="py-16 text-center">
             <p className="text-sm text-geist-accents-6">
               {promptHistory.searchQuery
@@ -144,7 +149,7 @@ export function HistoryPage(): React.ReactElement {
           </div>
         ) : (
           <div className="pb-16 grid grid-cols-1 gap-4">
-            {promptHistory.filteredHistory.map((entry, index) => {
+            {filteredOutputs.map((entry, index) => {
               const title = deriveTitle(entry);
               const uuid = typeof entry.uuid === 'string' ? entry.uuid : null;
               const when = formatRelativeOrDate(entry.timestamp);
@@ -196,28 +201,15 @@ export function HistoryPage(): React.ReactElement {
                       ) : null}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-geist-lg border border-geist-accents-2 bg-geist-accents-1 p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-semibold tracking-wide text-geist-accents-6">
-                            INPUT
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm text-geist-foreground line-clamp-3 whitespace-pre-wrap break-words">
-                          {deriveSnippet(entry.input)}
-                        </p>
+                    <div className="mt-4 rounded-geist-lg border border-geist-accents-2 bg-geist-accents-1 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold tracking-wide text-geist-accents-6">
+                          OUTPUT
+                        </span>
                       </div>
-
-                      <div className="rounded-geist-lg border border-geist-accents-2 bg-geist-accents-1 p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-semibold tracking-wide text-geist-accents-6">
-                            OUTPUT
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm text-geist-foreground line-clamp-3 whitespace-pre-wrap break-words">
-                          {deriveSnippet(entry.output)}
-                        </p>
-                      </div>
+                      <p className="mt-2 text-sm text-geist-foreground line-clamp-3 whitespace-pre-wrap break-words">
+                        {deriveSnippet(entry.output)}
+                      </p>
                     </div>
 
                     {uuid ? (
