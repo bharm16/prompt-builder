@@ -25,7 +25,7 @@ import { createHealthRoutes } from '@routes/health.routes';
 import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
 import { createLabelSpansRoute } from '@routes/labelSpansRoute';
 import { createSuggestionsRoute } from '@routes/suggestions';
-import { createPreviewRoutes } from '@routes/preview.routes';
+import { createPreviewRoutes, createPublicPreviewRoutes } from '@routes/preview.routes';
 import { createPaymentRoutes } from '@routes/payment.routes';
 import { userCreditService } from '@services/credits/UserCreditService';
 
@@ -46,6 +46,15 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   });
 
   app.use('/', healthRoutes);
+
+  // ============================================================================
+  // Public Preview Routes (no auth required for video content)
+  // ============================================================================
+
+  const publicPreviewRoutes = createPublicPreviewRoutes({
+    videoGenerationService: container.resolve('videoGenerationService'),
+  });
+  app.use('/api/preview', publicPreviewRoutes);
 
   // ============================================================================
   // API Routes (auth required)

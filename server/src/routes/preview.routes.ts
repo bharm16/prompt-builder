@@ -18,6 +18,41 @@ import { userCreditService as defaultUserCreditService } from '@services/credits
 import { extractFirebaseToken } from '@utils/auth';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 
+function registerVideoContentRoute(
+  router: Router,
+  videoGenerationService: PreviewRoutesServices['videoGenerationService']
+): void {
+  router.get(
+    '/video/content/:contentId',
+    asyncHandler(async (req: Request, res: Response) => {
+      if (!videoGenerationService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Video generation service is not available',
+        });
+      }
+
+      const { contentId } = req.params as { contentId?: string };
+      if (!contentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'contentId is required',
+        });
+      }
+
+      const entry = await videoGenerationService.getVideoContent(contentId);
+      if (!entry) {
+        return res.status(404).json({
+          success: false,
+          error: 'Video content not found or expired',
+        });
+      }
+
+      return sendVideoContent(res, entry);
+    })
+  );
+}
+
 /**
  * Create preview routes
  */
@@ -309,35 +344,15 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   );
 
   // GET /api/preview/video/content/:contentId - Serve cached video bytes
-  router.get(
-    '/video/content/:contentId',
-    asyncHandler(async (req: Request, res: Response) => {
-      if (!videoGenerationService) {
-        return res.status(503).json({
-          success: false,
-          error: 'Video generation service is not available',
-        });
-      }
+  registerVideoContentRoute(router, videoGenerationService);
 
-      const { contentId } = req.params as { contentId?: string };
-      if (!contentId) {
-        return res.status(400).json({
-          success: false,
-          error: 'contentId is required',
-        });
-      }
+  return router;
+}
 
-      const entry = await videoGenerationService.getVideoContent(contentId);
-      if (!entry) {
-        return res.status(404).json({
-          success: false,
-          error: 'Video content not found or expired',
-        });
-      }
-
-      return sendVideoContent(res, entry);
-    })
-  );
-
+export function createPublicPreviewRoutes(
+  services: Pick<PreviewRoutesServices, 'videoGenerationService'>
+): Router {
+  const router = express.Router();
+  registerVideoContentRoute(router, services.videoGenerationService);
   return router;
 }

@@ -39,6 +39,20 @@ function resolveSoraSize(
   return SORA_SIZES_BY_ASPECT_RATIO[aspectRatio || '16:9'] || '1280x720';
 }
 
+async function resolveSoraInputReference(inputReference: string, log: LogSink): Promise<Response> {
+  log.debug('Fetching Sora input reference', { inputReference });
+  const response = await fetch(inputReference);
+  if (!response.ok) {
+    log.warn('Failed to fetch Sora input reference', {
+      inputReference,
+      status: response.status,
+      statusText: response.statusText,
+    });
+    throw new Error(`Failed to fetch inputReference (${response.status})`);
+  }
+  return response;
+}
+
 export async function generateSoraVideo(
   openai: OpenAI,
   prompt: string,
@@ -47,9 +61,9 @@ export async function generateSoraVideo(
   assetStore: VideoAssetStore,
   log: LogSink
 ): Promise<StoredVideoAsset> {
-  if (options.inputReference) {
-    log.debug('Sora inputReference provided; OpenAI Sora API call is text-only for now.');
-  }
+  const inputReference = options.inputReference
+    ? await resolveSoraInputReference(options.inputReference, log)
+    : undefined;
 
   const seconds = resolveSoraSeconds(options.seconds);
   const size = resolveSoraSize(options.aspectRatio, options.size, log);
@@ -59,6 +73,7 @@ export async function generateSoraVideo(
     prompt,
     seconds,
     size,
+    ...(inputReference ? { input_reference: inputReference } : {}),
   });
 
   let video = job;
