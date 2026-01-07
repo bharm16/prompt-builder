@@ -19,7 +19,39 @@ export interface PromptHistoryEntry {
   generationParams?: Record<string, unknown> | null;
   brainstormContext?: unknown | null;
   highlightCache?: unknown | null;
-  versions?: unknown[];
+  versions?: PromptVersionEntry[];
+}
+
+export interface PromptVersionEdit {
+  timestamp: string;
+  delta?: number;
+  source?: 'manual' | 'suggestion' | 'unknown';
+}
+
+export interface PromptVersionPreview {
+  generatedAt: string;
+  imageUrl?: string | null;
+  aspectRatio?: string | null;
+}
+
+export interface PromptVersionVideo {
+  generatedAt: string;
+  videoUrl?: string | null;
+  model?: string | null;
+  generationParams?: Record<string, unknown> | null;
+}
+
+export interface PromptVersionEntry {
+  versionId: string;
+  label?: string;
+  signature: string;
+  prompt: string;
+  timestamp: string;
+  highlights?: unknown | null;
+  editCount?: number;
+  edits?: PromptVersionEdit[];
+  preview?: PromptVersionPreview | null;
+  video?: PromptVersionVideo | null;
 }
 
 export interface Toast {

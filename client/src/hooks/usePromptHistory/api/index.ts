@@ -10,6 +10,7 @@ export {
   saveEntry,
   updateHighlights,
   updateOutput,
+  updateVersions,
   deleteEntry,
   clearAll,
 } from './historyRepository';

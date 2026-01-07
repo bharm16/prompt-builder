@@ -118,12 +118,6 @@ export function useHighlightsPersistence({
         const promptRepository = getPromptRepository();
         await promptRepository.updateHighlights(currentPromptDocId, {
           highlightCache: snapshot,
-          versionEntry: {
-            versionId: `v-${Date.now()}`,
-            signature: result.signature,
-            spansCount: result.spans.length,
-            timestamp: new Date().toISOString(),
-          },
         });
         persistedSignatureRef.current = result.signature;
       } catch (error) {

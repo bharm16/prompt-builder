@@ -5,7 +5,7 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import type { PromptHistoryEntry } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
@@ -93,6 +93,7 @@ export interface PromptHistory {
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
   updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
   updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptHistoryEntry['versions']) => void;
   [key: string]: unknown;
 }
 
@@ -161,6 +162,8 @@ export interface PromptStateContextValue {
   // Refs
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
   persistedSignatureRef: React.MutableRefObject<string | null>;
+  versionEditCountRef: React.MutableRefObject<number>;
+  versionEditsRef: React.MutableRefObject<PromptVersionEdit[]>;
   undoStackRef: React.MutableRefObject<StateSnapshot[]>;
   redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   isApplyingHistoryRef: React.MutableRefObject<boolean>;
@@ -176,6 +179,8 @@ export interface PromptStateContextValue {
     options?: { bumpVersion?: boolean; markPersisted?: boolean }
   ) => void;
   resetEditStacks: () => void;
+  registerPromptEdit: (payload: { previousText: string; nextText: string; source?: 'manual' | 'suggestion' | 'unknown' }) => void;
+  resetVersionEdits: () => void;
   setDisplayedPromptSilently: (text: string) => void;
   handleCreateNew: () => void;
   loadFromHistory: (entry: PromptHistoryEntry) => void;

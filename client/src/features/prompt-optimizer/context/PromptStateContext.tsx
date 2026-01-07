@@ -12,6 +12,7 @@ import { usePromptOptimizer } from '@hooks/usePromptOptimizer';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { PromptVersionEdit } from '@hooks/types';
 import type { CapabilityValues } from '@shared/capabilities';
 import type {
   PromptStateContextValue,
@@ -128,10 +129,41 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   // Refs
   const latestHighlightRef = useRef<HighlightSnapshot | null>(null);
   const persistedSignatureRef = useRef<string | null>(null);
+  const versionEditCountRef = useRef<number>(0);
+  const versionEditsRef = useRef<PromptVersionEdit[]>([]);
   const undoStackRef = useRef<StateSnapshot[]>([]);
   const redoStackRef = useRef<StateSnapshot[]>([]);
   const isApplyingHistoryRef = useRef<boolean>(false);
   const skipLoadFromUrlRef = useRef<boolean>(false);
+
+  const registerPromptEdit = useCallback(
+    ({
+      previousText,
+      nextText,
+      source = 'unknown',
+    }: {
+      previousText: string;
+      nextText: string;
+      source?: PromptVersionEdit['source'];
+    }): void => {
+      if (previousText === nextText) return;
+      versionEditCountRef.current += 1;
+      versionEditsRef.current.push({
+        timestamp: new Date().toISOString(),
+        delta: nextText.length - previousText.length,
+        source,
+      });
+      if (versionEditsRef.current.length > 50) {
+        versionEditsRef.current.shift();
+      }
+    },
+    []
+  );
+
+  const resetVersionEdits = useCallback((): void => {
+    versionEditCountRef.current = 0;
+    versionEditsRef.current = [];
+  }, []);
 
   // Custom hooks
   const promptOptimizer = usePromptOptimizer(selectedMode, selectedModel);
@@ -174,6 +206,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     generationParams,
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    resetVersionEdits,
     setSuggestionsData,
     setConceptElements,
     setPromptContext,
@@ -245,6 +278,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     // Refs
     latestHighlightRef,
     persistedSignatureRef,
+    versionEditCountRef,
+    versionEditsRef,
     undoStackRef,
     redoStackRef,
     isApplyingHistoryRef,
@@ -257,6 +292,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     // Helper functions
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
     setDisplayedPromptSilently,
     handleCreateNew,
     loadFromHistory,

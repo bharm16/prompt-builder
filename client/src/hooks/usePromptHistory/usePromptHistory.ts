@@ -20,10 +20,11 @@ import {
   saveEntry,
   updateHighlights,
   updateOutput,
+  updateVersions,
   deleteEntry,
   clearAll,
 } from './api';
-import type { User, PromptHistoryEntry, Toast, SaveResult } from './types';
+import type { User, PromptHistoryEntry, PromptVersionEntry, Toast, SaveResult } from './types';
 
 const log = logger.child('usePromptHistory');
 
@@ -233,6 +234,14 @@ export const usePromptHistory = (user: User | null) => {
     [user, updateEntry]
   );
 
+  const updateEntryVersions = useCallback(
+    (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => {
+      updateEntry(uuid, { versions });
+      updateVersions(user?.uid, uuid, docId, versions);
+    },
+    [user, updateEntry]
+  );
+
   // Clear all history
   const clearHistory = useCallback(async () => {
     log.debug('Clearing history', {
@@ -290,5 +299,6 @@ export const usePromptHistory = (user: User | null) => {
     loadHistoryFromFirestore,
     updateEntryHighlight,
     updateEntryOutput,
+    updateEntryVersions,
   };
 };

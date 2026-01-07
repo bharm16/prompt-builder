@@ -31,6 +31,7 @@ interface PromptHistoryActionsOptions {
     options?: { bumpVersion?: boolean; markPersisted?: boolean }
   ) => void;
   resetEditStacks: () => void;
+  resetVersionEdits: () => void;
   setSuggestionsData: (data: SuggestionsData | null) => void;
   setConceptElements: (data: unknown | null) => void;
   setPromptContext: (context: PromptContext | null) => void;
@@ -61,6 +62,7 @@ export const usePromptHistoryActions = ({
   generationParams,
   applyInitialHighlightSnapshot,
   resetEditStacks,
+  resetVersionEdits,
   setSuggestionsData,
   setConceptElements,
   setPromptContext,
@@ -93,6 +95,7 @@ export const usePromptHistoryActions = ({
     setSuggestionsData(null);
     setConceptElements(null);
     setPromptContext(null);
+    resetVersionEdits();
     const draft = promptHistory.createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
@@ -125,6 +128,7 @@ export const usePromptHistoryActions = ({
     applyInitialHighlightSnapshot,
     persistedSignatureRef,
     resetEditStacks,
+    resetVersionEdits,
     navigate,
   ]);
 
@@ -170,6 +174,7 @@ export const usePromptHistoryActions = ({
         : null;
 
       applyInitialHighlightSnapshot(preloadedHighlight, { bumpVersion: true, markPersisted: true });
+      resetVersionEdits();
       resetEditStacks();
 
       if (entry.brainstormContext) {
@@ -218,6 +223,7 @@ export const usePromptHistoryActions = ({
       setShowResults,
       applyInitialHighlightSnapshot,
       resetEditStacks,
+      resetVersionEdits,
       setPromptContext,
       navigate,
     ]

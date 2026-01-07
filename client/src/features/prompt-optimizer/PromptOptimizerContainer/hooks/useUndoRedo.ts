@@ -20,6 +20,7 @@ export interface UseUndoRedoParams {
     highlight: HighlightSnapshot | null,
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
+  onEdit?: (payload: { previousText: string; nextText: string; timestamp: number }) => void;
   undoStackRef: React.MutableRefObject<StateSnapshot[]>;
   redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
@@ -47,6 +48,7 @@ export function useUndoRedo({
   promptOptimizer,
   setDisplayedPromptSilently,
   applyInitialHighlightSnapshot,
+  onEdit,
   undoStackRef,
   redoStackRef,
   latestHighlightRef,
@@ -270,7 +272,8 @@ export function useUndoRedo({
       const changeType: ChangeType = newText.length > currentText.length ? 'adding' : 'deleting';
 
       // DECISION: Do we start a new undo group?
-      if (shouldCreateUndoPoint(currentText, newText, cursorPosition)) {
+      const shouldCreate = shouldCreateUndoPoint(currentText, newText, cursorPosition);
+      if (shouldCreate) {
         // IMPORTANT: Save the state *BEFORE* the change (currentText)
         pushToUndoStack(createSnapshot(currentText));
         
@@ -280,6 +283,12 @@ export function useUndoRedo({
         
         // Increment version for this new editing session
         setVersionCounter(v => v + 1);
+
+        onEdit?.({
+          previousText: currentText,
+          nextText: newText,
+          timestamp: Date.now(),
+        });
       }
 
       // Update tracking refs
@@ -293,6 +302,7 @@ export function useUndoRedo({
     },
     [
       promptOptimizer,
+      onEdit,
       isApplyingHistoryRef,
       shouldCreateUndoPoint,
       pushToUndoStack,

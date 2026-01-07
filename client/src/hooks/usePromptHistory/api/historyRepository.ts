@@ -7,7 +7,7 @@
 
 import { getPromptRepositoryForUser } from '../../../repositories';
 import { logger } from '../../../services/LoggingService';
-import type { PromptHistoryEntry, SaveEntryParams, SaveResult } from '../types';
+import type { PromptHistoryEntry, PromptVersionEntry, SaveEntryParams, SaveResult } from '../types';
 
 const log = logger.child('historyRepository');
 
@@ -176,6 +176,44 @@ export async function updateOutput(
       }
     } catch (error) {
       log.warn('Unable to persist updated output', {
+        uuid,
+        docId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
+/**
+ * Update versions array for an entry
+ */
+export async function updateVersions(
+  userId: string | undefined,
+  uuid: string,
+  docId: string | null,
+  versions: PromptVersionEntry[]
+): Promise<void> {
+  const repository = getPromptRepositoryForUser(!!userId);
+
+  if ('updateVersions' in repository && typeof repository.updateVersions === 'function') {
+    const isFirestoreRepo = 'collectionName' in repository && userId;
+
+    try {
+      if (isFirestoreRepo && docId) {
+        const updateFn = repository.updateVersions as (
+          docId: string,
+          versions: PromptVersionEntry[]
+        ) => Promise<void>;
+        await updateFn(docId, versions);
+      } else {
+        const updateFn = repository.updateVersions as (
+          uuid: string,
+          versions: PromptVersionEntry[]
+        ) => Promise<void>;
+        await updateFn(uuid, versions);
+      }
+    } catch (error) {
+      log.warn('Unable to persist updated versions', {
         uuid,
         docId,
         error: error instanceof Error ? error.message : String(error),

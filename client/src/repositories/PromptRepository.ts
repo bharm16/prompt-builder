@@ -30,7 +30,7 @@ import {
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
-import type { PromptHistoryEntry } from '../hooks/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
 
 const log = logger.child('PromptRepository');
 
@@ -38,7 +38,7 @@ export interface PromptData {
   uuid?: string;
   generationParams?: Record<string, unknown> | null;
   highlightCache?: unknown | null;
-  versions?: unknown[];
+  versions?: PromptVersionEntry[];
   input: string;
   output: string;
   score?: number | null;
@@ -301,6 +301,33 @@ export class PromptRepository {
   }
 
   /**
+   * Replace versions array for a prompt
+   */
+  async updateVersions(docId: string, versions: PromptVersionEntry[]): Promise<void> {
+    try {
+      if (!docId) return;
+
+      // Guard against uninitialized db
+      if (!this.db) {
+        log.warn('Firestore db not initialized, skipping version update');
+        return;
+      }
+
+      await updateDoc(doc(this.db, this.collectionName, docId), {
+        versions: Array.isArray(versions) ? versions : [],
+      });
+    } catch (error) {
+      if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
+        log.warn('Skipping version update due to insufficient Firestore permissions');
+        return;
+      }
+
+      log.error('Error updating prompt versions', error as Error);
+      throw new PromptRepositoryError('Failed to update versions', error);
+    }
+  }
+
+  /**
    * Delete a prompt by its document ID
    */
   async deleteById(docId: string): Promise<void> {
@@ -466,6 +493,38 @@ export class LocalStoragePromptRepository {
       }
     } catch (error) {
       log.warn('Unable to persist highlights to localStorage', {
+        error: (error as Error).message,
+      });
+    }
+  }
+
+  /**
+   * Replace versions array in localStorage
+   */
+  async updateVersions(uuid: string, versions: PromptVersionEntry[]): Promise<void> {
+    try {
+      if (!uuid) return;
+
+      const history = this._getHistory();
+      const updated = history.map(entry =>
+        entry.uuid === uuid
+          ? { ...entry, versions: Array.isArray(versions) ? versions : [] }
+          : entry
+      );
+
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(updated));
+      } catch (storageError) {
+        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+          const trimmed = updated.slice(0, 50);
+          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+          log.warn('Storage limit reached, keeping only 50 most recent items');
+        } else {
+          throw storageError;
+        }
+      }
+    } catch (error) {
+      log.warn('Unable to persist versions to localStorage', {
         error: (error as Error).message,
       });
     }

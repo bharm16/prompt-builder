@@ -79,6 +79,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     // Refs
     latestHighlightRef,
     persistedSignatureRef,
+    registerPromptEdit,
+    resetVersionEdits,
     undoStackRef,
     redoStackRef,
     isApplyingHistoryRef,
@@ -131,6 +133,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    resetVersionEdits,
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
@@ -156,6 +159,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
+    onEdit: ({ previousText, nextText }) =>
+      registerPromptEdit({ previousText, nextText, source: 'manual' }),
     undoStackRef,
     redoStackRef,
     latestHighlightRef,

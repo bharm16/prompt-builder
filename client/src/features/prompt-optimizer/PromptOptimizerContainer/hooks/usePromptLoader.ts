@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
-import type { Toast } from '@hooks/types';
+import type { PromptVersionEntry, Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 
 interface PromptData {
@@ -19,7 +19,7 @@ interface PromptData {
   } | null;
   brainstormContext?: string | Record<string, unknown> | null;
   timestamp?: string;
-  versions?: unknown[];
+  versions?: PromptVersionEntry[];
   [key: string]: unknown;
 }
 
@@ -45,6 +45,7 @@ interface UsePromptLoaderParams {
     options: { bumpVersion: boolean; markPersisted: boolean }
   ) => void;
   resetEditStacks: () => void;
+  resetVersionEdits: () => void;
   setCurrentPromptDocId: (id: string | null) => void;
   setCurrentPromptUuid: (uuid: string) => void;
   setShowResults: (show: boolean) => void;
@@ -69,6 +70,7 @@ export function usePromptLoader({
   setDisplayedPromptSilently,
   applyInitialHighlightSnapshot,
   resetEditStacks,
+  resetVersionEdits,
   setCurrentPromptDocId,
   setCurrentPromptUuid,
   setShowResults,
@@ -115,6 +117,7 @@ export function usePromptLoader({
             bumpVersion: true,
             markPersisted: true,
           });
+          resetVersionEdits();
           resetEditStacks();
 
           // Restore brainstorm context if available
@@ -163,6 +166,7 @@ export function usePromptLoader({
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    resetVersionEdits,
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,

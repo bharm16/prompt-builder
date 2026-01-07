@@ -15,7 +15,12 @@ interface VisualPreviewProps {
   isVisible: boolean;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
-  onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onPreviewGenerated?: ((payload: {
+    prompt: string;
+    generatedAt: number;
+    imageUrl?: string | null;
+    aspectRatio?: string | null;
+  }) => void) | undefined;
   onLoadingChange?: ((loading: boolean) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
@@ -126,9 +131,11 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
       onPreviewGenerated({
         prompt: lastRequestedPrompt || prompt,
         generatedAt: Date.now(),
+        imageUrl,
+        aspectRatio: normalizedAspectRatio ?? null,
       });
     }
-  }, [imageUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
+  }, [imageUrl, lastRequestedPrompt, normalizedAspectRatio, onPreviewGenerated, prompt]);
 
   React.useEffect(() => {
     onLoadingChange?.(loading);

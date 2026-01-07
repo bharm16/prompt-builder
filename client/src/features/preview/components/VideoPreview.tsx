@@ -19,7 +19,13 @@ interface VideoPreviewProps {
   isVisible: boolean;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
-  onPreviewGenerated?: ((payload: { prompt: string; generatedAt: number }) => void) | undefined;
+  onPreviewGenerated?: ((payload: {
+    prompt: string;
+    generatedAt: number;
+    videoUrl?: string | null;
+    aspectRatio?: string | null;
+    model?: string | null;
+  }) => void) | undefined;
   onLoadingChange?: ((loading: boolean) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
@@ -76,9 +82,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       onPreviewGenerated({
         prompt: lastRequestedPrompt || prompt,
         generatedAt: Date.now(),
+        videoUrl,
+        aspectRatio: normalizedAspectRatio ?? null,
+        model: model ?? null,
       });
     }
-  }, [videoUrl, lastRequestedPrompt, onPreviewGenerated, prompt]);
+  }, [videoUrl, lastRequestedPrompt, model, normalizedAspectRatio, onPreviewGenerated, prompt]);
 
   React.useEffect(() => {
     onLoadingChange?.(loading);
