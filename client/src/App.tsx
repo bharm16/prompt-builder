@@ -11,6 +11,7 @@ import { PricingPage } from './pages/PricingPage';
 import { DocsPage } from './pages/DocsPage';
 import { SignInPage } from './pages/SignInPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { HistoryPage } from './pages/HistoryPage';
 
 function AppShell(): React.ReactElement {
   const location = useLocation();
@@ -26,6 +27,7 @@ function AppShell(): React.ReactElement {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/history" element={<HistoryPage />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 

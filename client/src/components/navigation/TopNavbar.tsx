@@ -47,6 +47,7 @@ export function TopNavbar(): React.ReactElement {
             <TopNavbarLink to="/products">Products</TopNavbarLink>
             <TopNavbarLink to="/pricing">Pricing</TopNavbarLink>
             <TopNavbarLink to="/docs">Docs</TopNavbarLink>
+            <TopNavbarLink to="/history">History</TopNavbarLink>
           </nav>
         </div>
 
@@ -72,5 +73,4 @@ export function TopNavbar(): React.ReactElement {
     </header>
   );
 }
-
 
