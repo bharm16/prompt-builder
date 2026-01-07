@@ -1,8 +1,42 @@
 import admin from 'firebase-admin';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { logger } from './Logger';
 
 let initialized = false;
+
+function loadServiceAccount(): admin.ServiceAccount | null {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (serviceAccountJson) {
+    try {
+      return JSON.parse(serviceAccountJson) as admin.ServiceAccount;
+    } catch (error) {
+      logger.warn('Invalid FIREBASE_SERVICE_ACCOUNT_JSON, falling back to file/ADC', {
+        error: (error as Error).message,
+      });
+    }
+  }
+
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (serviceAccountPath) {
+    if (!existsSync(serviceAccountPath)) {
+      logger.warn('FIREBASE_SERVICE_ACCOUNT_PATH not found, falling back to ADC', {
+        serviceAccountPath,
+      });
+      return null;
+    }
+
+    try {
+      return JSON.parse(readFileSync(serviceAccountPath, 'utf8')) as admin.ServiceAccount;
+    } catch (error) {
+      logger.warn('Failed to read FIREBASE_SERVICE_ACCOUNT_PATH, falling back to ADC', {
+        serviceAccountPath,
+        error: (error as Error).message,
+      });
+    }
+  }
+
+  return null;
+}
 
 function initializeFirebaseAdmin(): admin.app.App {
   if (initialized && admin.apps.length > 0) {
@@ -10,14 +44,7 @@ function initializeFirebaseAdmin(): admin.app.App {
   }
 
   try {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-    const serviceAccount =
-      serviceAccountJson
-        ? JSON.parse(serviceAccountJson)
-        : serviceAccountPath
-          ? JSON.parse(readFileSync(serviceAccountPath, 'utf8'))
-          : null;
+    const serviceAccount = loadServiceAccount();
 
     if (serviceAccount) {
       admin.initializeApp({

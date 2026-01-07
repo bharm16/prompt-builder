@@ -76,6 +76,19 @@ function useDeepCompareMemoize<T>(value: T): T {
   return useMemo(() => ref.current, [signalRef.current]);
 }
 
+function normalizeMetaVersion(meta: SpanMeta | null, templateVersion: string): SpanMeta | null {
+  if (!meta || typeof meta !== 'object') {
+    return { version: templateVersion };
+  }
+
+  const normalized = { ...meta } as Record<string, unknown>;
+  if (typeof normalized.version !== 'string' || !normalized.version.trim()) {
+    normalized.version = templateVersion;
+  }
+
+  return normalized as SpanMeta;
+}
+
 /**
  * Hook to call the /llm/label-spans endpoint with debounce + cancellation.
  */
@@ -289,9 +302,10 @@ export function useSpanLabeling({
     (result: unknown, payload: SpanLabelingPayload) => {
       const apiResult = result as { spans: LabeledSpan[]; meta: SpanMeta | null };
       const signature = hashString(payload.text ?? '');
+      const normalizedMeta = normalizeMetaVersion(apiResult.meta, templateVersion);
       const normalizedResult = {
         spans: apiResult.spans,
-        meta: apiResult.meta,
+        meta: normalizedMeta,
         signature,
       };
 
@@ -309,7 +323,7 @@ export function useSpanLabeling({
       emitResult(
         {
           spans: normalizedResult.spans,
-          meta: normalizedResult.meta,
+          meta: normalizedMeta,
           text: payload.text,
           cacheId: payload.cacheId ?? null,
           signature,
@@ -317,7 +331,7 @@ export function useSpanLabeling({
         'network'
       );
     },
-    [setCacheForPayload, emitResult, log]
+    [setCacheForPayload, emitResult, log, templateVersion]
   );
 
   const onError = useCallback(
@@ -377,6 +391,10 @@ export function useSpanLabeling({
         const cacheResult = checkCacheForPayload(payload);
 
         if (cacheResult.cached) {
+          const normalizedMeta = normalizeMetaVersion(
+            cacheResult.cached.meta as SpanMeta | null,
+            templateVersion
+          );
           performance.mark('span-cache-hit');
           performance.measure(
             'span-labeling-cache-hit',
@@ -388,7 +406,7 @@ export function useSpanLabeling({
             spans: Array.isArray(cacheResult.cached.spans)
               ? cacheResult.cached.spans
               : [],
-            meta: cacheResult.cached.meta as SpanMeta | null,
+            meta: normalizedMeta,
             status: 'success',
             error: null,
             signature: cacheResult.cached.signature,
@@ -396,7 +414,7 @@ export function useSpanLabeling({
           emitResult(
             {
               spans: cacheResult.cached.spans as LabeledSpan[],
-              meta: cacheResult.cached.meta as SpanMeta | null,
+              meta: normalizedMeta,
               text: payload.text,
               cacheId: cacheResult.cached.cacheId ?? payload.cacheId ?? null,
               signature: cacheResult.cached.signature,
@@ -410,7 +428,7 @@ export function useSpanLabeling({
       // Schedule API request
       scheduleRequest(payload, immediate);
     },
-    [enabled, checkCacheForPayload, scheduleRequest, emitResult]
+    [enabled, checkCacheForPayload, scheduleRequest, emitResult, templateVersion]
   );
 
   useEffect(() => {
@@ -439,12 +457,17 @@ export function useSpanLabeling({
       (stableInitialData.meta as Record<string, unknown>).localUpdate === true
     );
 
+    const initialVersion =
+      typeof stableInitialData?.meta?.version === 'string'
+        ? stableInitialData.meta.version
+        : null;
+    const versionMatches = !initialVersion || initialVersion === templateVersion;
     const initialMatch =
       stableInitialData &&
       Array.isArray(stableInitialData.spans) &&
       stableInitialData.spans.length > 0 &&
       stableInitialData.signature === hashString(normalized ?? '') &&
-      (isLocalUpdate || stableInitialData.meta?.version === templateVersion);
+      (isLocalUpdate || versionMatches);
 
     // Debug: trace initialMatch evaluation
     if (import.meta.env.DEV) {
@@ -457,23 +480,24 @@ export function useSpanLabeling({
     }
 
     if (initialMatch) {
+      const normalizedMeta = normalizeMetaVersion(stableInitialData.meta ?? null, templateVersion);
       cancelPending();
       setState({
         spans: stableInitialData.spans,
-        meta: stableInitialData.meta ?? null,
+        meta: normalizedMeta,
         status: 'success',
         error: null,
         signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       setCacheForPayload(payload, {
         spans: stableInitialData.spans,
-        meta: stableInitialData.meta ?? null,
+        meta: normalizedMeta,
         signature: stableInitialData.signature ?? hashString(normalized ?? ''),
       });
       emitResult(
         {
           spans: stableInitialData.spans,
-          meta: stableInitialData.meta,
+          meta: normalizedMeta,
           text: normalized,
           cacheId: payload.cacheId ?? null,
           signature: stableInitialData.signature,
