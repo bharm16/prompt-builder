@@ -12,6 +12,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
 import { PromptInputLayout } from '../layouts/PromptInputLayout';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
@@ -41,6 +42,8 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   React.useEffect(() => {
     document.documentElement.classList.remove('dark');
   }, []);
+
+  const location = useLocation();
 
   const toast = useToast();
   const {
@@ -97,6 +100,19 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     navigate,
     uuid,
   } = usePromptState();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldOpenSettings = params.get('settings');
+    if (shouldOpenSettings !== '1' && shouldOpenSettings !== 'true') return;
+
+    setShowSettings(true);
+
+    params.delete('settings');
+    const nextSearch = params.toString();
+    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
+    navigate(nextUrl, { replace: true });
+  }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
 
   const aiNames = ['Claude AI', 'ChatGPT', 'Gemini'] as const;
 
