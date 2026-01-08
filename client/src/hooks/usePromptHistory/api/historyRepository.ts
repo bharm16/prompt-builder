@@ -8,6 +8,7 @@
 import { getLocalPromptRepository, getPromptRepositoryForUser } from '../../../repositories';
 import { logger } from '../../../services/LoggingService';
 import type { PromptHistoryEntry, PromptVersionEntry, SaveEntryParams, SaveResult } from '../types';
+import type { UpdatePromptOptions } from '../../../repositories/promptRepositoryTypes';
 
 const log = logger.child('historyRepository');
 
@@ -110,6 +111,38 @@ export async function saveEntry(
     logger.endTimer('saveEntry');
     log.error('Failed to save entry', error as Error);
     throw error;
+  }
+}
+
+/**
+ * Update prompt details (persisted)
+ */
+export async function updatePrompt(
+  userId: string | undefined,
+  uuid: string,
+  docId: string | null,
+  updates: UpdatePromptOptions
+): Promise<void> {
+  const repository = getPromptRepositoryForUser(!!userId);
+
+  if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
+    const isFirestoreRepo = 'collectionName' in repository && userId;
+
+    try {
+      if (isFirestoreRepo && docId) {
+        const updateFn = repository.updatePrompt as (docId: string, updates: UpdatePromptOptions) => Promise<void>;
+        await updateFn(docId, updates);
+      } else {
+        const updateFn = repository.updatePrompt as (uuid: string, updates: UpdatePromptOptions) => Promise<void>;
+        await updateFn(uuid, updates);
+      }
+    } catch (error) {
+      log.warn('Unable to persist updated prompt', {
+        uuid,
+        docId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
 

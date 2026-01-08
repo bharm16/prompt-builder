@@ -21,10 +21,12 @@ import {
   updateHighlights,
   updateOutput,
   updateVersions,
+  updatePrompt,
   deleteEntry,
   clearAll,
 } from './api';
 import type { User, PromptHistoryEntry, PromptVersionEntry, Toast, SaveResult } from './types';
+import type { UpdatePromptOptions } from '../../repositories/promptRepositoryTypes';
 
 const log = logger.child('usePromptHistory');
 
@@ -210,6 +212,24 @@ export const usePromptHistory = (user: User | null) => {
     [updateEntry]
   );
 
+  // Update prompt details (persisted)
+  const updateEntryPersisted = useCallback(
+    (uuid: string, docId: string | null, updates: UpdatePromptOptions) => {
+      // Update repository (fire and forget)
+      updatePrompt(user?.uid, uuid, docId, updates);
+
+      // Update local state (map UpdatePromptOptions to Partial<PromptHistoryEntry>)
+      const localUpdates: Partial<PromptHistoryEntry> = {};
+      if (updates.input !== undefined) localUpdates.input = updates.input;
+      if (updates.mode !== undefined) localUpdates.mode = updates.mode;
+      if (updates.targetModel !== undefined) localUpdates.targetModel = updates.targetModel;
+      if (updates.generationParams !== undefined) localUpdates.generationParams = updates.generationParams;
+
+      updateEntry(uuid, localUpdates);
+    },
+    [user, updateEntry]
+  );
+
   // Update highlight cache
   const updateEntryHighlight = useCallback(
     (uuid: string, highlightCache: unknown) => {
@@ -294,6 +314,7 @@ export const usePromptHistory = (user: User | null) => {
     saveToHistory,
     createDraft,
     updateEntryLocal,
+    updateEntryPersisted,
     clearHistory,
     deleteFromHistory,
     loadHistoryFromFirestore,

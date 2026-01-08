@@ -25,7 +25,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
 import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
-import type { PromptData, SavedPromptResult, UpdateHighlightsOptions } from './promptRepositoryTypes';
+import type { PromptData, SavedPromptResult, UpdateHighlightsOptions, UpdatePromptOptions } from './promptRepositoryTypes';
 import { PromptRepositoryError } from './promptRepositoryTypes';
 
 const log = logger.child('PromptRepository');
@@ -180,6 +180,50 @@ export class PromptRepository {
     } catch (error) {
       log.error('Error fetching prompt by UUID', error as Error);
       throw new PromptRepositoryError('Failed to fetch prompt by UUID', error);
+    }
+  }
+
+  /**
+   * Update prompt details (input, model, params)
+   */
+  async updatePrompt(docId: string, updates: UpdatePromptOptions): Promise<void> {
+    try {
+      if (!docId) return;
+
+      // Guard against uninitialized db
+      if (!this.db) {
+        log.warn('Firestore db not initialized, skipping prompt update');
+        return;
+      }
+
+      const updatePayload: Record<string, unknown> = {};
+
+      if (updates.input !== undefined) {
+        updatePayload.input = updates.input;
+      }
+      if (updates.mode !== undefined) {
+        updatePayload.mode = updates.mode;
+      }
+      if (updates.targetModel !== undefined) {
+        updatePayload.targetModel = updates.targetModel;
+      }
+      if (updates.generationParams !== undefined) {
+        updatePayload.generationParams = updates.generationParams;
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        return;
+      }
+
+      await updateDoc(doc(this.db, this.collectionName, docId), updatePayload);
+    } catch (error) {
+      if (isFirestoreError(error) && (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions'))) {
+        log.warn('Skipping prompt update due to insufficient Firestore permissions');
+        return;
+      }
+
+      log.error('Error updating prompt', error as Error);
+      throw new PromptRepositoryError('Failed to update prompt', error);
     }
   }
 

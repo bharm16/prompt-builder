@@ -27,6 +27,13 @@ export type UpdateHighlightsOptions = {
   };
 };
 
+export type UpdatePromptOptions = {
+  input?: string;
+  targetModel?: string | null;
+  generationParams?: Record<string, unknown> | null;
+  mode?: string;
+};
+
 export class PromptRepositoryError extends Error {
   originalError: unknown;
 

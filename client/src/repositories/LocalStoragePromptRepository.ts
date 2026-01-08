@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../services/LoggingService';
 import type { PromptHistoryEntry, PromptVersionEntry } from '../hooks/types';
-import type { PromptData, SavedPromptResult } from './promptRepositoryTypes';
+import type { PromptData, SavedPromptResult, UpdatePromptOptions } from './promptRepositoryTypes';
 import { PromptRepositoryError } from './promptRepositoryTypes';
 
 const log = logger.child('LocalStoragePromptRepository');
@@ -161,6 +161,42 @@ export class LocalStoragePromptRepository {
     } catch (error) {
       log.error('Error fetching from localStorage', error as Error);
       return null;
+    }
+  }
+
+  /**
+   * Update prompt details in localStorage
+   */
+  async updatePrompt(uuid: string, updates: UpdatePromptOptions): Promise<void> {
+    try {
+      const history = this._getHistory();
+      const updated = history.map((entry) => {
+        if (entry.uuid !== uuid) return entry;
+
+        return {
+          ...entry,
+          ...(updates.input !== undefined ? { input: updates.input } : {}),
+          ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
+          ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
+          ...(updates.generationParams !== undefined ? { generationParams: updates.generationParams } : {}),
+        };
+      });
+
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(updated));
+      } catch (storageError) {
+        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+          const trimmed = updated.slice(0, 50);
+          localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+          log.warn('Storage limit reached, keeping only 50 most recent items');
+        } else {
+          throw storageError;
+        }
+      }
+    } catch (error) {
+      log.warn('Unable to persist prompt updates to localStorage', {
+        error: (error as Error).message,
+      });
     }
   }
 

@@ -265,6 +265,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   usePromptStatePersistence({ selectedModel, generationParams });
   useDraftHistorySync({
     currentPromptUuid,
+    currentPromptDocId,
     promptHistory,
     promptOptimizer,
     selectedModel,
