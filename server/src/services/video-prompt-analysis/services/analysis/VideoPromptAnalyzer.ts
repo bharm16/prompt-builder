@@ -27,7 +27,7 @@ interface LlmIrResult {
     mood?: string[];
     style?: string[];
   };
-  technical?: Record<string, string>;
+  technical?: Array<{ key: string; value: string }>;
 }
 
 const TECHNICAL_HEADER_LABELS = [
@@ -232,8 +232,13 @@ export class VideoPromptAnalyzer {
       }
     }
 
-    if (parsed.technical && typeof parsed.technical === 'object') {
-      ir.technical = parsed.technical;
+    if (Array.isArray(parsed.technical)) {
+      ir.technical = parsed.technical.reduce((acc, { key, value }) => {
+        if (key && value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, string>);
     }
 
     return ir;
@@ -252,7 +257,7 @@ Rules:
 - environment.setting, lighting, weather: scene setting and lighting cues.
 - meta.style and meta.mood: style/mood keywords if present.
 - audio.dialogue/music/sfx: only if clearly specified.
-- technical: key-value specs (duration, aspect ratio, frame rate, resolution, etc).
+- technical: list of specs as key-value pairs (e.g., key="duration", value="5s").
 
 Input:
 """
@@ -302,8 +307,15 @@ Return ONLY the JSON object.`;
           },
         },
         technical: {
-          type: 'object',
-          additionalProperties: { type: 'string' },
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string' },
+              value: { type: 'string' },
+            },
+            required: ['key', 'value'],
+          },
         },
       },
       required: ['narrative'],
