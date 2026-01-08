@@ -1464,46 +1464,109 @@ export function PromptCanvas({
             <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
               <div className="prompt-band__content prompt-canvas-content-wrapper">
               <div className="prompt-card prompt-card--original">
-                <div className="prompt-card__header">
-                  <span className="prompt-card__label">
-                    Input
-                  </span>
-                  {!isEditing ? (
-                    <button
-                      type="button"
-                      onClick={handleEditClick}
-                      disabled={isOptimizing}
-                      className="prompt-card__action-button"
-                      aria-label="Edit prompt"
-                      title="Edit prompt"
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-geist-accents-5" />
-                      <span>Edit</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-geist-2">
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={isOptimizing}
-                        className="prompt-card__action-button"
-                        aria-label="Cancel editing"
-                        title="Cancel editing"
+                <div
+                  className="prompt-card__header"
+                  data-has-video-controls={showVideoPreview ? 'true' : 'false'}
+                >
+                  <div className="prompt-card__header-row prompt-card__header-row--top">
+                    <div className="prompt-card__header-left">
+                      <span className="prompt-card__label">Input</span>
+                    </div>
+
+                    <div className="prompt-card__header-actions">
+                      {!isEditing ? (
+                        <button
+                          type="button"
+                          onClick={handleEditClick}
+                          disabled={isOptimizing}
+                          className="prompt-card__action-button"
+                          aria-label="Edit prompt"
+                          title="Edit prompt"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-geist-accents-5" />
+                          <span>Edit</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-geist-2">
+                          <button
+                            type="button"
+                            onClick={handleCancel}
+                            disabled={isOptimizing}
+                            className="prompt-card__action-button"
+                            aria-label="Cancel editing"
+                            title="Cancel editing"
+                          >
+                            <X className="h-3.5 w-3.5 text-geist-accents-5" />
+                            <span>Cancel</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleUpdate}
+                            disabled={isReoptimizeDisabled}
+                            className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Update prompt"
+                            title="Update and re-optimize (Cmd/Ctrl+Enter)"
+                          >
+                            <Check className="h-3.5 w-3.5 text-white" />
+                            <span>Update</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {showVideoPreview && (
+                    <div className="prompt-card__header-row prompt-card__header-row--controls">
+                      <div
+                        className="pc-video-toolbar pc-video-toolbar--light"
+                        aria-label="Video generation controls"
                       >
-                        <X className="h-3.5 w-3.5 text-geist-accents-5" />
-                        <span>Cancel</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleUpdate}
-                        disabled={isReoptimizeDisabled}
-                        className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Update prompt"
-                        title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                      >
-                        <Check className="h-3.5 w-3.5 text-white" />
-                        <span>Update</span>
-                      </button>
+                        <div className="pc-video-toolbar__item">
+                          <div className="pc-video-toolbar__label">Model</div>
+                          <ModelSelectorDropdown
+                            selectedModel={selectedModel}
+                            onModelChange={handleModelChange}
+                            disabled={isOptimizing || isAnyVideoPreviewGenerating}
+                            variant="pill"
+                          />
+                        </div>
+
+                        {aspectRatioInfo && (
+                          <div className="pc-video-toolbar__item">
+                            <div className="pc-video-toolbar__label">Aspect</div>
+                            {renderDropdown(
+                              aspectRatioInfo,
+                              'aspect_ratio',
+                              'Aspect Ratio',
+                              isOptimizing || isAnyVideoPreviewGenerating
+                            )}
+                          </div>
+                        )}
+
+                        {durationInfo && (
+                          <div className="pc-video-toolbar__item">
+                            <div className="pc-video-toolbar__label">Duration</div>
+                            {renderDropdown(
+                              durationInfo,
+                              'duration_s',
+                              'Duration',
+                              isOptimizing || isAnyVideoPreviewGenerating
+                            )}
+                          </div>
+                        )}
+
+                        {fpsInfo && (
+                          <div className="pc-video-toolbar__item">
+                            <div className="pc-video-toolbar__label">FPS</div>
+                            {renderDropdown(
+                              fpsInfo,
+                              'fps',
+                              'Frame Rate',
+                              isOptimizing || isAnyVideoPreviewGenerating
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1837,7 +1900,7 @@ export function PromptCanvas({
                               aspectRatioInfo,
                               'aspect_ratio',
                               'Aspect Ratio',
-                              isOptimizing
+                              isOptimizing || isAnyVideoPreviewGenerating
                             )}
                           </div>
                         )}
@@ -1845,14 +1908,24 @@ export function PromptCanvas({
                         {durationInfo && (
                           <div className="pc-video-advanced-row">
                             <div className="pc-video-advanced-label">Duration</div>
-                            {renderPills(durationInfo, 'duration_s', 'Duration', isOptimizing)}
+                            {renderPills(
+                              durationInfo,
+                              'duration_s',
+                              'Duration',
+                              isOptimizing || isAnyVideoPreviewGenerating
+                            )}
                           </div>
                         )}
 
                         {fpsInfo && (
                           <div className="pc-video-advanced-row">
                             <div className="pc-video-advanced-label">FPS</div>
-                            {renderPills(fpsInfo, 'fps', 'Frame Rate', isOptimizing)}
+                            {renderPills(
+                              fpsInfo,
+                              'fps',
+                              'Frame Rate',
+                              isOptimizing || isAnyVideoPreviewGenerating
+                            )}
                           </div>
                         )}
 

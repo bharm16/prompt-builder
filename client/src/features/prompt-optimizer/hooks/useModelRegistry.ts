@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { capabilitiesApi } from '@/services';
-import { AI_MODEL_LABELS } from '../components/constants';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from '../components/constants';
 import type { CapabilitiesSchema } from '@shared/capabilities';
 
 export interface ModelOption {
@@ -43,6 +43,15 @@ const flattenRegistry = (
   return options.sort((a, b) => a.label.localeCompare(b.label));
 };
 
+const fallbackModels = (): ModelOption[] =>
+  [...AI_MODEL_IDS]
+    .map((id) => ({
+      id,
+      label: AI_MODEL_LABELS[id],
+      provider: AI_MODEL_PROVIDERS[id],
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
 export const useModelRegistry = (): UseModelRegistryResult => {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,12 +65,15 @@ export const useModelRegistry = (): UseModelRegistryResult => {
       try {
         const registry = await capabilitiesApi.getRegistry();
         if (!active) return;
-        setModels(flattenRegistry(registry));
+        const resolved = flattenRegistry(registry);
+        setModels(resolved.length ? resolved : fallbackModels());
       } catch (err) {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Unable to load models';
         console.error('Failed to load models:', err);
         setError(message);
+        // Ensure the UI still has a usable model list even if the registry endpoint is unavailable.
+        setModels(fallbackModels());
       } finally {
         if (active) {
           setIsLoading(false);

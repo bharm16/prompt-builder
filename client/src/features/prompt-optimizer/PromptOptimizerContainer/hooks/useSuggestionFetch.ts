@@ -61,7 +61,11 @@ interface UseSuggestionFetchParams {
 
 /** Response type from the enhancement suggestions API */
 interface EnhancementSuggestionsResponse {
-  suggestions: string[];
+  suggestions: Array<
+    | SuggestionItem
+    | string
+    | { suggestions?: Array<SuggestionItem | string>; category?: string }
+  >;
   isPlaceholder: boolean;
 }
 
@@ -74,6 +78,69 @@ const REQUEST_CONFIG = {
 const CACHE_CONFIG = {
   ttlMs: 300000, // 5 minutes
   maxEntries: 50,
+};
+
+const normalizeSuggestionList = (
+  input: Array<
+    | SuggestionItem
+    | string
+    | { suggestions?: Array<SuggestionItem | string>; category?: string }
+  >
+): SuggestionItem[] => {
+  const normalized: SuggestionItem[] = [];
+
+  input.forEach((entry) => {
+    if (!entry) {
+      return;
+    }
+
+    if (typeof entry === 'string') {
+      normalized.push({ text: entry });
+      return;
+    }
+
+    if (typeof entry !== 'object') {
+      return;
+    }
+
+    const candidate = entry as SuggestionItem & {
+      suggestions?: Array<SuggestionItem | string>;
+      category?: string;
+    };
+
+    if (Array.isArray(candidate.suggestions)) {
+      const groupCategory =
+        typeof candidate.category === 'string' ? candidate.category : undefined;
+
+      candidate.suggestions.forEach((nested) => {
+        if (!nested) {
+          return;
+        }
+
+        if (typeof nested === 'string') {
+          normalized.push({
+            text: nested,
+            ...(groupCategory ? { category: groupCategory } : {}),
+          });
+          return;
+        }
+
+        if (typeof nested === 'object') {
+          const nestedItem = nested as SuggestionItem;
+          const hasCategory = typeof nestedItem.category === 'string';
+          normalized.push({
+            ...nestedItem,
+            ...(groupCategory && !hasCategory ? { category: groupCategory } : {}),
+          });
+        }
+      });
+      return;
+    }
+
+    normalized.push(candidate);
+  });
+
+  return normalized;
 };
 
 /**
@@ -206,8 +273,8 @@ export function useSuggestionFetch({
       const cached = cacheRef.current.get(cacheKey);
       if (cached) {
         // Cache hit - return immediately without API call
-        const suggestionsAsObjects: SuggestionItem[] = cached.suggestions.map((s) =>
-          typeof s === 'string' ? { text: s } : s
+        const suggestionsAsObjects = normalizeSuggestionList(
+          cached.suggestions ?? []
         );
 
         const mergeSuggestions = (
@@ -351,13 +418,17 @@ export function useSuggestionFetch({
           }
         );
 
+        const normalizedSuggestions = normalizeSuggestionList(
+          result.suggestions ?? []
+        );
         // Cache the result - Requirement 6.1
-        cacheRef.current.set(cacheKey, result);
+        cacheRef.current.set(cacheKey, {
+          ...result,
+          suggestions: normalizedSuggestions,
+        });
 
         // Update state with results
-        const suggestionsAsObjects: SuggestionItem[] = result.suggestions.map((s) =>
-          typeof s === 'string' ? { text: s } : s
-        );
+        const suggestionsAsObjects = normalizedSuggestions;
 
         setSuggestionsData((prev) => {
           if (!prev) return prev;

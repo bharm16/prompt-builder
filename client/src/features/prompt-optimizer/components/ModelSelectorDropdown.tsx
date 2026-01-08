@@ -46,8 +46,14 @@ export const ModelSelectorDropdown = memo<{
   
   // Find label for current selection
   const selectedOption = availableModels.find(m => m.id === selectedModel);
-  const currentLabel = selectedOption?.label ?? 
-    (selectedModel ? (AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel) : 'Auto (Recommended)');
+  const currentLabel =
+    selectedOption?.label ??
+    (selectedModel
+      ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel
+      : 'Auto (Recommended)');
+
+  // UI polish: keep labels compact in tight control bars
+  const displayLabel = currentLabel.replace(/\s*\(recommended\)\s*/i, '').trim();
 
   // Handle clicks outside dropdown
   useEffect(() => {
@@ -108,7 +114,7 @@ export const ModelSelectorDropdown = memo<{
             variant === 'pillDark' ? 'text-white/80' : variant === 'pill' ? 'text-[#222]' : 'text-geist-accents-5'
           }`}
         />
-        <span className="truncate max-w-[220px]">{isLoading ? 'Loading...' : currentLabel}</span>
+        <span className="truncate max-w-[220px]">{isLoading ? 'Loading...' : displayLabel}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 ${
             variant === 'pillDark'
