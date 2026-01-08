@@ -1,4 +1,4 @@
-import { createReadStream, createWriteStream, existsSync } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -81,7 +81,9 @@ export class LocalVideoAssetStore implements VideoAssetStore {
     }
 
     const dataPath = path.join(this.directory, assetId);
-    if (!existsSync(dataPath)) {
+    try {
+      await stat(dataPath);
+    } catch {
       return null;
     }
 
@@ -105,7 +107,9 @@ export class LocalVideoAssetStore implements VideoAssetStore {
       return 0;
     }
 
-    if (!existsSync(this.directory)) {
+    try {
+      await stat(this.directory);
+    } catch {
       return 0;
     }
 
@@ -153,12 +157,8 @@ export class LocalVideoAssetStore implements VideoAssetStore {
 
   private async readMetadata(assetId: string): Promise<LocalVideoMetadata | null> {
     const metaPath = this.metadataPath(assetId);
-    if (!existsSync(metaPath)) {
-      return null;
-    }
-
-    const raw = await readFile(metaPath, 'utf8');
     try {
+      const raw = await readFile(metaPath, 'utf8');
       const parsed = JSON.parse(raw) as LocalVideoMetadata;
       if (!parsed || typeof parsed.contentType !== 'string') {
         return null;
