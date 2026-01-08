@@ -234,13 +234,11 @@ export class LumaStrategy extends BaseStrategy {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
 
-    const basePrompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-    const enforced = this.enforceMandatoryConstraints(basePrompt, [...HDR_TRIGGERS]);
-    changes.push(...enforced.changes);
-    triggersInjected.push(...enforced.injected);
+    // HDR_TRIGGERS are now handled by the LLM via Mandatory Constraints
+    const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
     return {
-      prompt: enforced.prompt,
+      prompt,
       changes,
       triggersInjected,
     };

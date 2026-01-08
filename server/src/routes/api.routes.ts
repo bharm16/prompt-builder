@@ -20,7 +20,7 @@ interface ApiServices {
   promptOptimizationService: any;
   enhancementService: any;
   sceneDetectionService: any;
-  videoConceptService: any;
+  videoConceptService?: any | null;
   metricsService?: any;
 }
 
@@ -47,10 +47,12 @@ export function createAPIRoutes(services: ApiServices): Router {
   );
 
   // Mount video routes under /video (creates /api/video/* paths)
-  router.use(
-    '/video',
-    createVideoRoutes({ videoConceptService })
-  );
+  if (videoConceptService) {
+    router.use(
+      '/video',
+      createVideoRoutes({ videoConceptService })
+    );
+  }
 
   // Mount enhancement routes at root level (preserves existing paths)
   router.use(

@@ -89,81 +89,20 @@ export class WanStrategy extends BaseStrategy {
    */
   protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, _context?: PromptContext): TransformResult {
     const changes: string[] = [];
+    let prompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
     
-    // Construct structured prompt from IR components
-    const segments: string[] = [];
-
-    // 1. Subject & Action
-    const subjectParts: string[] = [];
-    ir.subjects.forEach(sub => {
-      let text = sub.text;
-      if (sub.attributes && sub.attributes.length > 0) {
-        text = `${sub.attributes.join(' ')} ${text}`;
-      }
-      subjectParts.push(text);
-    });
-    
-    // Add main action if present
-    if (ir.actions && ir.actions.length > 0) {
-        subjectParts.push(ir.actions.join(', '));
+    // Fallback if LLM failed to produce string
+    if (typeof llmPrompt !== 'string') {
+        prompt = JSON.stringify(llmPrompt);
     }
     
-    if (subjectParts.length > 0) {
-      segments.push(subjectParts.join(' '));
-    }
-
-    // 2. Environment/Scene
-    const envParts: string[] = [];
-    if (ir.environment.setting) envParts.push(ir.environment.setting);
-    if (ir.environment.weather) envParts.push(ir.environment.weather);
-    
-    if (envParts.length > 0) {
-      segments.push(envParts.join(', '));
-    }
-
-    // 3. Camera Movement
-    const cameraParts: string[] = [];
-    if (ir.camera.shotType) cameraParts.push(ir.camera.shotType);
-    if (ir.camera.angle) cameraParts.push(ir.camera.angle);
-    if (ir.camera.movements && ir.camera.movements.length > 0) {
-      cameraParts.push(ir.camera.movements.join(', '));
-    }
-
-    if (cameraParts.length > 0) {
-      segments.push(cameraParts.join(', '));
-    }
-
-    // 4. Lighting & Style
-    const styleParts: string[] = [];
-    if (ir.environment.lighting && ir.environment.lighting.length > 0) {
-      styleParts.push(ir.environment.lighting.join(', '));
-    }
-    if (ir.meta.style && ir.meta.style.length > 0) {
-      styleParts.push(ir.meta.style.join(', '));
-    }
-
-    if (styleParts.length > 0) {
-      segments.push(styleParts.join(', '));
-    }
-
-    // Combine segments
-    let structuredPrompt = segments.join('. ');
-    
-    // Fallback if IR extraction yielded an empty or very short string (unlikely but possible)
-    if (structuredPrompt.length < 10 && typeof llmPrompt === 'string') {
-      structuredPrompt = llmPrompt;
-      changes.push('Used LLM rewrite directly (IR extraction insufficient)');
-    } else {
-      changes.push('Enforced structured narrative: Subject -> Environment -> Camera -> Lighting');
-    }
-
     // Cleanup punctuation
-    structuredPrompt = this.cleanWhitespace(structuredPrompt)
+    prompt = this.cleanWhitespace(prompt)
       .replace(/\.\./g, '.')
       .replace(/\s\./g, '.');
 
     return { 
-      prompt: structuredPrompt, 
+      prompt: prompt, 
       changes,
       negativePrompt: DEFAULT_NEGATIVE_PROMPT
     };
@@ -180,15 +119,6 @@ export class WanStrategy extends BaseStrategy {
     const triggersInjected: string[] = [];
 
     let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-
-    // Inject Wan-specific triggers
-    for (const trigger of WAN_TRIGGERS) {
-      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-        prompt = `${prompt}, ${trigger}`;
-        triggersInjected.push(trigger);
-        changes.push(`Injected Wan quality trigger: "${trigger}"`);
-      }
-    }
 
     // Clean up final prompt
     prompt = this.cleanWhitespace(prompt);

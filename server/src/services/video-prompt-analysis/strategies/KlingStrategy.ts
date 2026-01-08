@@ -415,32 +415,8 @@ export class KlingStrategy extends BaseStrategy {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
 
-    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-
-    // Check if prompt has dialogue content
-    const hasDialogue = /\[.+\]\s*\(.+\)\s*:\s*"/.test(prompt) || /["'][^"']+["']/.test(prompt);
-
-    // Inject audio triggers for dialogue content
-    if (hasDialogue) {
-      for (const trigger of AUDIO_TRIGGERS) {
-        if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-          prompt = `${prompt}, ${trigger}`;
-          triggersInjected.push(trigger);
-          changes.push(`Injected audio trigger: "${trigger}"`);
-        }
-      }
-    } else {
-      // For non-dialogue content, only inject high fidelity audio if there's audio content
-      const hasAudio = /audio:|sfx:|ambience:|music:/i.test(prompt);
-      if (hasAudio && !prompt.toLowerCase().includes('high fidelity audio')) {
-        prompt = `${prompt}, high fidelity audio`;
-        triggersInjected.push('high fidelity audio');
-        changes.push('Injected audio trigger: "high fidelity audio"');
-      }
-    }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
+    // Audio triggers are now handled by the LLM via Mandatory Constraints
+    const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
 
     return {
       prompt,

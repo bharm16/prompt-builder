@@ -33,6 +33,8 @@ import { userCreditService } from '@services/credits/UserCreditService';
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+
   // ============================================================================
   // Health Routes (no auth required)
   // ============================================================================
@@ -51,11 +53,13 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Public Preview Routes (no auth required for video content)
   // ============================================================================
 
-  const publicPreviewRoutes = createPublicPreviewRoutes({
-    videoGenerationService: container.resolve('videoGenerationService'),
-    videoContentAccessService: container.resolve('videoContentAccessService'),
-  });
-  app.use('/api/preview', publicPreviewRoutes);
+  if (!promptOutputOnly) {
+    const publicPreviewRoutes = createPublicPreviewRoutes({
+      videoGenerationService: container.resolve('videoGenerationService'),
+      videoContentAccessService: container.resolve('videoContentAccessService'),
+    });
+    app.use('/api/preview', publicPreviewRoutes);
+  }
 
   // ============================================================================
   // API Routes (auth required)
@@ -66,7 +70,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     promptOptimizationService: container.resolve('promptOptimizationService'),
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
-    videoConceptService: container.resolve('videoConceptService'),
+    videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
   });
 
   app.use('/api', apiAuthMiddleware, apiRoutes);
@@ -102,14 +106,16 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // Preview Routes (image and video generation)
   // ============================================================================
 
-  const previewRoutes = createPreviewRoutes({
-    imageGenerationService: container.resolve('imageGenerationService'),
-    videoGenerationService: container.resolve('videoGenerationService'),
-    videoJobStore: container.resolve('videoJobStore'),
-    videoContentAccessService: container.resolve('videoContentAccessService'),
-    userCreditService,
-  });
-  app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+  if (!promptOutputOnly) {
+    const previewRoutes = createPreviewRoutes({
+      imageGenerationService: container.resolve('imageGenerationService'),
+      videoGenerationService: container.resolve('videoGenerationService'),
+      videoJobStore: container.resolve('videoJobStore'),
+      videoContentAccessService: container.resolve('videoContentAccessService'),
+      userCreditService,
+    });
+    app.use('/api/preview', apiAuthMiddleware, previewRoutes);
+  }
 
   // ============================================================================
   // Payment Routes (auth required)

@@ -713,10 +713,16 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   }
 
   logger.info('All services initialized and validated successfully');
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
   
   // Only warmup GLiNER if neuro-symbolic pipeline is enabled and prewarm is requested
   const { NEURO_SYMBOLIC } = await import('@llm/span-labeling/config/SpanLabelingConfig');
-  if (NEURO_SYMBOLIC.ENABLED && NEURO_SYMBOLIC.GLINER?.ENABLED && NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP) {
+  const shouldWarmGliner = !promptOutputOnly &&
+    NEURO_SYMBOLIC.ENABLED &&
+    NEURO_SYMBOLIC.GLINER?.ENABLED &&
+    NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP;
+  if (shouldWarmGliner) {
     try {
       const glinerResult = await warmupGliner();
       if (glinerResult.success) {
@@ -729,31 +735,34 @@ export async function initializeServices(container: DIContainer): Promise<DICont
       logger.warn('⚠️ GLiNER warmup failed', { error: errorMessage });
     }
   } else {
-    logger.info('ℹ️ GLiNER warmup skipped (prewarm disabled or GLiNER disabled)');
+    const reason = promptOutputOnly ? 'PROMPT_OUTPUT_ONLY' : 'prewarm disabled or GLiNER disabled';
+    logger.info(`ℹ️ GLiNER warmup skipped (${reason})`);
   }
 
-  const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
-  const workerDisabled = process.env.VIDEO_JOB_WORKER_DISABLED === 'true';
-  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_WORKER_ID;
+  if (!isTestEnv && !promptOutputOnly) {
+    const videoAssetRetentionService =
+      container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
+    if (videoAssetRetentionService) {
+      videoAssetRetentionService.start();
+      logger.info('✅ Video asset retention service started');
+    }
 
-  const videoAssetRetentionService =
-    container.resolve<VideoAssetRetentionService | null>('videoAssetRetentionService');
-  if (videoAssetRetentionService && !isTestEnv) {
-    videoAssetRetentionService.start();
-    logger.info('✅ Video asset retention service started');
-  }
+    const videoJobSweeper = container.resolve<VideoJobSweeper | null>('videoJobSweeper');
+    if (videoJobSweeper) {
+      videoJobSweeper.start();
+      logger.info('✅ Video job sweeper started');
+    }
 
-  const videoJobSweeper = container.resolve<VideoJobSweeper | null>('videoJobSweeper');
-  if (videoJobSweeper && !isTestEnv) {
-    videoJobSweeper.start();
-    logger.info('✅ Video job sweeper started');
-  }
-
-  if (videoJobWorker && !workerDisabled && !isTestEnv) {
-    videoJobWorker.start();
-    logger.info('✅ Video job worker started');
-  } else if (videoJobWorker && workerDisabled) {
-    logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
+    const videoJobWorker = container.resolve<VideoJobWorker | null>('videoJobWorker');
+    const workerDisabled = process.env.VIDEO_JOB_WORKER_DISABLED === 'true';
+    if (videoJobWorker && !workerDisabled) {
+      videoJobWorker.start();
+      logger.info('✅ Video job worker started');
+    } else if (videoJobWorker && workerDisabled) {
+      logger.warn('Video job worker disabled via VIDEO_JOB_WORKER_DISABLED');
+    }
+  } else if (promptOutputOnly) {
+    logger.info('ℹ️ Video background services skipped (PROMPT_OUTPUT_ONLY)');
   }
 
   return container;

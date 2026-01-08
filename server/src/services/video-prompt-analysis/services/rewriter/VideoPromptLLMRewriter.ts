@@ -38,7 +38,7 @@ export class VideoPromptLLMRewriter {
     // For others, we want optimized text
     const response = await adapter.generateText(prompt, {
         temperature: 0.4, // Keep it relatively deterministic but creative
-        maxTokens: 1024
+        maxTokens: 8192
     });
 
     return response.trim();
@@ -65,42 +65,40 @@ ${constraintBlock}`;
     switch (modelId) {
       case 'runway-gen45':
         return `${baseHeader}
-INSTRUCTIONS for Runway Gen-4.5:
-1. Use the CSAE Protocol: Camera -> Subject -> Action -> Environment.
-2. Synthesize the 'camera' and 'environment' fields from the IR into high-fidelity cinematographic triggers.
-3. Prepend camera movement (e.g., "Dolly in of...").
-4. Extract the core 'subjects' and 'actions' from the IR. Remove all emotional, abstract, or vague adjectives.
-5. Incorporate any 'technical' specs (like aspect ratio or duration) if they influence the visual description.
-6. Inject high-fidelity technical triggers (e.g., "bokeh", "anamorphic lens flare", "film grain", "shallow depth of field").
-7. The result must be a single, fluid, highly technical paragraph.
-8. Do NOT use word lists joined by 'and'. Use natural but structured language.
-9. Avoid multi-shot language ("cut to", "then it switches", "montage"), and avoid morphing/warping/blur terms unless explicitly required by the IR.
+INSTRUCTIONS for Runway Gen-4.5 (A2D):
+1. Use the strict structure: [Camera Movement]: [Establishing Scene]. [Additional Details].
+2. Start with the camera movement (e.g., "Zoom in:", "Truck left:", "Static:").
+3. Follow with the Subject and Action in a clear, continuous narrative.
+4. Synthesize 'environment' and 'lighting' into the scene description.
+5. Incorporate technical specifications naturally into the description (e.g., "shot on 35mm film", "cinematic lighting").
+6. Avoid using "morphing" or "blur" unless explicitly requested.
+7. Integrate the MANDATORY CONSTRAINTS naturally into the flow of the description, do not just append them.
 
 Output ONLY the optimized prompt.`;
 
       case 'luma-ray3':
         return `${baseHeader}
 INSTRUCTIONS for Luma Ray-3:
-1. Focus on physical consistency and high-motion stability using the 'actions' and 'camera' data from the IR.
-2. Use causal chains ("A does X, which causes Y") to describe motion.
-3. Include detailed material properties and light interactions based on 'environment.lighting' and 'meta.style' (e.g., "subsurface scattering on skin", "ray-traced reflections on chrome").
-4. Ignore resolution/quality boosters unless they are mandatory constraints (e.g., avoid "4k", "8k", "ultra hd", "masterpiece").
-5. Ensure all technical specifications from the IR are reflected in the scene's detail.
-6. Avoid crowded multi-subject interactions and avoid non-physical abstractions.
+1. Use the strict structure: [Camera Shot/Angle], [Subject Description], [Action], [Lighting], [Mood/Atmosphere].
+2. Ensure "Lighting" is a distinct, descriptive element (e.g., "soft morning light", "volumetric fog").
+3. Describe motion with causal chains ("A does X, causing Y").
+4. Incorporate 'environment' details into the Mood/Atmosphere section.
+5. Integrate MANDATORY CONSTRAINTS (like HDR triggers) naturally into the Lighting or Style sections.
+6. Avoid "loop" or "seamless" unless requested.
 
 Output ONLY the optimized prompt.`;
 
       case 'kling-26':
         return `${baseHeader}
 INSTRUCTIONS for Kling 2.6:
-1. Use SCREENPLAY FORMAT for all character interactions.
-2. Use 'subjects' from the IR to define characters and 'audio.dialogue' for their lines.
-3. Pattern: "[CHARACTER NAME] (Emotion/Tone): 'Dialogue line'".
-4. Use separate blocks for audio triggers from the IR 'audio' and 'technical' fields: "Audio (SFX): ...", "Audio (Ambience): ...", "Audio (Music): ...".
-5. Ensure the visual description is clear and separate from the dialogue blocks, incorporating 'environment' and 'camera' details.
-6. Avoid markdown bullets, numbered lists, or JSON. Keep strict screenplay formatting only.
+1. Use the structure: [Subject], [Subject Description], [Movement/Action], [Scene/Context], [Camera/Lighting].
+2. Use strong, active verbs for motion (e.g., "sprinting", "gliding").
+3. detailed physical appearance for subjects.
+4. Specify camera movement clearly (e.g., "Wide aerial shot", "Low-angle tracking shot").
+5. Keep the description clear and precise; avoid ambiguous or abstract terms.
+6. Do NOT use screenplay format. Use standard descriptive prose.
 
-Output the optimized prompt in valid Kling screenplay structure.`;
+Output ONLY the optimized prompt.`;
 
       case 'sora-2':
         return `${baseHeader}
@@ -110,7 +108,6 @@ INSTRUCTIONS for Sora:
 3. Detail background layers, atmospheric effects, and complex interactions between multiple subjects as defined in the IR.
 4. Describe the "feel" through rich, evocative adjectives, mapping 'meta.mood' and 'meta.style' to descriptive prose.
 5. Use 'technical' specs to ground the scene's scale and duration.
-6. Avoid bullet lists and avoid terse camera-command syntax ("pan to", "cut to", "zoom to").
 
 Output ONLY the optimized prompt.`;
 
@@ -124,24 +121,22 @@ INSTRUCTIONS for Google Veo 4:
 5. Map 'camera.movements' to 'camera.movement'.
 6. Map 'environment.lighting', 'environment.weather', and 'environment.setting' to their respective fields.
 7. Select an appropriate 'style_preset' based on 'meta.style'.
-8. If 'audio' data is present in the IR, include it in the output if the schema permits (though not required by schema).
-9. Avoid placing camera or motion terms into lighting/weather fields. Do not add extra keys outside the schema.
+8. Use cinematic language in all text fields (e.g., "wide shot", "dolly in").
 
 Output ONLY the valid JSON object.`;
 
       case 'wan-2.2':
         return `${baseHeader}
-INSTRUCTIONS for Wan 2.2 (MoE):
-1. Use a highly descriptive, cinematic narrative style.
-2. For maximum adherence to Alibaba's Wan 2.2 MoE architecture, use DUAL-TEXT (Bilingual) prompting for key visual elements.
-3. Structure: "Description in English (中文描述)".
-4. Map 'subjects', 'actions', and 'environment' from the IR into this bilingual structure.
-5. Emphasize complex interactions and lighting consistency.
-6. Target 1080p 30fps quality triggers (e.g., "ultra-high definition", "masterpiece").
-7. Ensure all 'technical' specifications from the IR are reflected.
-8. Avoid mixing scripts inside a single phrase; keep English and Chinese paired.
+INSTRUCTIONS for Wan 2.2:
+1. Use the structure: Subject + Scene + Motion.
+2. Be clear and sufficiently detailed (the "Golden Rule" for Wan).
+3. Describe the subject's appearance and action precisely.
+4. Define the environment and background elements.
+5. Specify camera movement (e.g., "camera follows", "smooth pan") and lighting.
+6. Target high-definition quality naturally (e.g., "captured in high definition").
+7. Do NOT use bilingual output; use English only.
 
-Output ONLY the optimized bilingual prompt.`;
+Output ONLY the optimized prompt.`;
 
       default:
         return `${baseHeader} Optimize this prompt for high-quality video generation.`;

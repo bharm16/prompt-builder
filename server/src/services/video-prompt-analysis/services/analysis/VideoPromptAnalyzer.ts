@@ -63,11 +63,13 @@ export class VideoPromptAnalyzer {
    * @returns Structured VideoPromptIR
    */
   async analyze(text: string): Promise<VideoPromptIR> {
-    const llmParsed = await this.tryAnalyzeWithLLM(text);
+    const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+    const useGliner = !promptOutputOnly;
+    const llmParsed = promptOutputOnly ? null : await this.tryAnalyzeWithLLM(text);
     if (llmParsed) {
       const cleanNarrative = this.cleanText(llmParsed.raw);
       try {
-        const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner: true });
+        const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner });
         this.mapSpansToIR(extractionResult.spans, llmParsed);
       } catch (error) {
         if (this.isIrSparse(llmParsed)) {
@@ -92,7 +94,7 @@ export class VideoPromptAnalyzer {
     // We use the existing high-fidelity NLP service to detect roles semantically
     try {
       // Use the project's established ML pipeline for open-vocabulary extraction
-      const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner: true });
+      const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner });
       this.mapSpansToIR(extractionResult.spans, ir);
     } catch (error) {
       // Fallback to basic heuristics if the ML service is unavailable
