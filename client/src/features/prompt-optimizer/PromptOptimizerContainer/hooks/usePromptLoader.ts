@@ -27,6 +27,7 @@ interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   setDisplayedPrompt: (prompt: string) => void;
+  setGenericOptimizedPrompt?: (prompt: string | null) => void;
   displayedPrompt: string;
   setPreviewPrompt?: (prompt: string | null) => void;
   setPreviewAspectRatio?: (ratio: string | null) => void;
@@ -97,6 +98,7 @@ export function usePromptLoader({
           promptOptimizer.setInputPrompt(promptData.input || '');
           promptOptimizer.setOptimizedPrompt(promptData.output || '');
           setDisplayedPromptSilently(promptData.output || '');
+          promptOptimizer.setGenericOptimizedPrompt?.(null);
           promptOptimizer.setPreviewPrompt?.(null);
           promptOptimizer.setPreviewAspectRatio?.(null);
           setCurrentPromptUuid(promptData.uuid);

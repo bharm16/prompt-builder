@@ -20,6 +20,7 @@
 export {
   // Prompt schemas
   promptSchema,
+  compileSchema,
   
   // Suggestion schemas
   suggestionSchema,
@@ -49,4 +50,3 @@ export {
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
 } from '@config/schemas/index';
-

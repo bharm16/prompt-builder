@@ -1,6 +1,51 @@
 import nlp from 'compromise';
 import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
+import { GeminiAdapter } from '../../../../clients/adapters/GeminiAdapter';
 import type { VideoPromptIR } from '../../types';
+
+interface LlmIrResult {
+  narrative: string;
+  subjects?: string[];
+  actions?: string[];
+  camera?: {
+    shotType?: string;
+    angle?: string;
+    movements?: string[];
+  };
+  environment?: {
+    setting?: string;
+    lighting?: string[];
+    weather?: string;
+  };
+  audio?: {
+    dialogue?: string;
+    music?: string;
+    sfx?: string;
+    ambience?: string;
+  };
+  meta?: {
+    mood?: string[];
+    style?: string[];
+  };
+  technical?: Record<string, string>;
+}
+
+const TECHNICAL_HEADER_LABELS = [
+  'technical specs',
+  'technical specifications',
+  'technical details',
+  'tech specs',
+  'specifications',
+  'technical',
+  'parameters',
+] as const;
+
+const ALTERNATIVE_HEADER_LABELS = [
+  'alternative approaches',
+  'alternatives',
+  'variations',
+  'alt approaches',
+] as const;
 
 /**
  * Service responsible for analyzing raw text and extracting structured VideoPromptIR
@@ -9,6 +54,7 @@ import type { VideoPromptIR } from '../../types';
  * 2. Semantic Entity Extraction (GLiNER) for high-fidelity role detection
  */
 export class VideoPromptAnalyzer {
+  private adapter: GeminiAdapter | null = null;
   
   /**
    * Analyze raw text and produce a structured Intermediate Representation (IR)
@@ -17,24 +63,25 @@ export class VideoPromptAnalyzer {
    * @returns Structured VideoPromptIR
    */
   async analyze(text: string): Promise<VideoPromptIR> {
-    const ir: VideoPromptIR = {
-      subjects: [],
-      actions: [],
-      camera: {
-        movements: [],
-      },
-      environment: {
-        setting: '',
-        lighting: [],
-      },
-      audio: {},
-      meta: {
-        mood: [],
-        style: [],
-      },
-      technical: {},
-      raw: text,
-    };
+    const llmParsed = await this.tryAnalyzeWithLLM(text);
+    if (llmParsed) {
+      const cleanNarrative = this.cleanText(llmParsed.raw);
+      try {
+        const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner: true });
+        this.mapSpansToIR(extractionResult.spans, llmParsed);
+      } catch (error) {
+        if (this.isIrSparse(llmParsed)) {
+          this.extractBasicHeuristics(cleanNarrative, llmParsed);
+        }
+      }
+      if (llmParsed.technical && Object.keys(llmParsed.technical).length > 0) {
+        this.enrichFromTechnicalSpecs(llmParsed.technical, llmParsed);
+      }
+      this.enrichIR(llmParsed);
+      return llmParsed;
+    }
+
+    const ir = this.createEmptyIR(text);
 
     // 1. Structural Parsing (Markdown headers / JSON)
     const sections = this.parseInputStructure(text);
@@ -62,6 +109,218 @@ export class VideoPromptAnalyzer {
     this.enrichIR(ir);
 
     return ir;
+  }
+
+  private createEmptyIR(raw: string): VideoPromptIR {
+    return {
+      subjects: [],
+      actions: [],
+      camera: {
+        movements: [],
+      },
+      environment: {
+        setting: '',
+        lighting: [],
+      },
+      audio: {},
+      meta: {
+        mood: [],
+        style: [],
+      },
+      technical: {},
+      raw,
+    };
+  }
+
+  private getAdapter(): GeminiAdapter {
+    if (!this.adapter) {
+      this.adapter = new GeminiAdapter({
+        apiKey: process.env.GEMINI_API_KEY || '',
+        defaultModel: 'gemini-2.5-flash',
+      });
+    }
+    return this.adapter;
+  }
+
+  private async tryAnalyzeWithLLM(text: string): Promise<VideoPromptIR | null> {
+    try {
+      const adapter = this.getAdapter();
+      const response = (await adapter.generateStructuredOutput(
+        this.buildLlmPrompt(text),
+        this.getIrSchema()
+      )) as LlmIrResult;
+
+      if (!response || typeof response.narrative !== 'string' || response.narrative.trim().length === 0) {
+        return null;
+      }
+
+      return this.buildIrFromLlm(response, text);
+    } catch {
+      return null;
+    }
+  }
+
+  private buildIrFromLlm(parsed: LlmIrResult, raw: string): VideoPromptIR {
+    const ir = this.createEmptyIR(raw);
+
+    ir.raw = parsed.narrative.trim();
+
+    if (Array.isArray(parsed.subjects)) {
+      ir.subjects = parsed.subjects
+        .map((text) => text?.trim())
+        .filter((text): text is string => Boolean(text))
+        .map((text) => ({ text, attributes: [] }));
+    }
+
+    if (Array.isArray(parsed.actions)) {
+      ir.actions = parsed.actions
+        .map((action) => action?.trim())
+        .filter((action): action is string => Boolean(action))
+        .map((action) => action.toLowerCase());
+    }
+
+    if (parsed.camera) {
+      if (Array.isArray(parsed.camera.movements)) {
+        ir.camera.movements = parsed.camera.movements
+          .map((movement) => movement?.trim())
+          .filter((movement): movement is string => Boolean(movement))
+          .map((movement) => movement.toLowerCase());
+      }
+      if (parsed.camera.shotType) {
+        ir.camera.shotType = parsed.camera.shotType.trim().toLowerCase();
+      }
+      if (parsed.camera.angle) {
+        ir.camera.angle = parsed.camera.angle.trim().toLowerCase();
+      }
+    }
+
+    if (parsed.environment) {
+      if (parsed.environment.setting) {
+        ir.environment.setting = parsed.environment.setting.trim();
+      }
+      if (Array.isArray(parsed.environment.lighting)) {
+        ir.environment.lighting = parsed.environment.lighting
+          .map((lighting) => lighting?.trim())
+          .filter((lighting): lighting is string => Boolean(lighting))
+          .map((lighting) => lighting.toLowerCase());
+      }
+      if (parsed.environment.weather) {
+        ir.environment.weather = parsed.environment.weather.trim().toLowerCase();
+      }
+    }
+
+    if (parsed.audio) {
+      if (parsed.audio.dialogue) ir.audio.dialogue = parsed.audio.dialogue.trim();
+      if (parsed.audio.music) ir.audio.music = parsed.audio.music.trim();
+      if (parsed.audio.sfx) ir.audio.sfx = parsed.audio.sfx.trim();
+    }
+
+    if (parsed.meta) {
+      if (Array.isArray(parsed.meta.mood)) {
+        ir.meta.mood = parsed.meta.mood
+          .map((mood) => mood?.trim())
+          .filter((mood): mood is string => Boolean(mood))
+          .map((mood) => mood.toLowerCase());
+      }
+      if (Array.isArray(parsed.meta.style)) {
+        ir.meta.style = parsed.meta.style
+          .map((style) => style?.trim())
+          .filter((style): style is string => Boolean(style))
+          .map((style) => style.toLowerCase());
+      }
+    }
+
+    if (parsed.technical && typeof parsed.technical === 'object') {
+      ir.technical = parsed.technical;
+    }
+
+    return ir;
+  }
+
+  private buildLlmPrompt(text: string): string {
+    return `Extract a structured video prompt IR from the input text.
+
+Rules:
+- narrative: main visual description only (exclude section headers or bullet labels).
+- subjects: primary subjects as noun phrases.
+- actions: key verbs describing motion.
+- camera.movements: list of movements (e.g., "dolly in", "pan left").
+- camera.shotType: shot framing if stated (e.g., "wide shot").
+- camera.angle: angle if stated (e.g., "low angle").
+- environment.setting, lighting, weather: scene setting and lighting cues.
+- meta.style and meta.mood: style/mood keywords if present.
+- audio.dialogue/music/sfx: only if clearly specified.
+- technical: key-value specs (duration, aspect ratio, frame rate, resolution, etc).
+
+Input:
+"""
+${text}
+"""
+
+Return ONLY the JSON object.`;
+  }
+
+  private getIrSchema(): Record<string, unknown> {
+    return {
+      type: 'object',
+      properties: {
+        narrative: { type: 'string' },
+        subjects: { type: 'array', items: { type: 'string' } },
+        actions: { type: 'array', items: { type: 'string' } },
+        camera: {
+          type: 'object',
+          properties: {
+            shotType: { type: 'string' },
+            angle: { type: 'string' },
+            movements: { type: 'array', items: { type: 'string' } },
+          },
+        },
+        environment: {
+          type: 'object',
+          properties: {
+            setting: { type: 'string' },
+            lighting: { type: 'array', items: { type: 'string' } },
+            weather: { type: 'string' },
+          },
+        },
+        audio: {
+          type: 'object',
+          properties: {
+            dialogue: { type: 'string' },
+            music: { type: 'string' },
+            sfx: { type: 'string' },
+            ambience: { type: 'string' },
+          },
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            mood: { type: 'array', items: { type: 'string' } },
+            style: { type: 'array', items: { type: 'string' } },
+          },
+        },
+        technical: {
+          type: 'object',
+          additionalProperties: { type: 'string' },
+        },
+      },
+      required: ['narrative'],
+    };
+  }
+
+  private isIrSparse(ir: VideoPromptIR): boolean {
+    return (
+      ir.subjects.length === 0 &&
+      ir.actions.length === 0 &&
+      ir.camera.movements.length === 0 &&
+      !ir.camera.angle &&
+      !ir.camera.shotType &&
+      !ir.environment.setting &&
+      ir.environment.lighting.length === 0 &&
+      !ir.environment.weather &&
+      ir.meta.mood.length === 0 &&
+      ir.meta.style.length === 0
+    );
   }
 
   /**
@@ -285,9 +544,9 @@ export class VideoPromptAnalyzer {
       } catch (e) {}
     }
 
-    // Match common markdown headers or bold capitalized labels
-    const specsMatch = text.match(/\n?\s*(?:\*\*|##)\s*(?:TECHNICAL SPECS|Technical Specs)\s*(?:\*\*|:)?/i);
-    const altsMatch = text.match(/\n?\s*(?:\*\*|##)\s*(?:ALTERNATIVE APPROACHES|Alternative Approaches)\s*(?:\*\*|:)?/i);
+    // Match common markdown headers or bold/plain labels
+    const specsMatch = this.matchSectionHeader(text, [...TECHNICAL_HEADER_LABELS]);
+    const altsMatch = this.matchSectionHeader(text, [...ALTERNATIVE_HEADER_LABELS]);
 
     let narrativeEndIndex = text.length;
     if (specsMatch && specsMatch.index !== undefined) {
@@ -302,7 +561,7 @@ export class VideoPromptAnalyzer {
     };
 
     if (specsMatch) {
-      const specsSection = this.extractSectionText(text, specsMatch[0]);
+      const specsSection = this.extractSectionText(text, specsMatch);
       if (specsSection) {
         sections.technical = this.parseTechnicalSpecs(specsSection);
       }
@@ -311,18 +570,35 @@ export class VideoPromptAnalyzer {
     return sections;
   }
 
-  private extractSectionText(fullText: string, header: string): string | null {
-    const start = fullText.indexOf(header);
-    if (start === -1) return null;
+  private extractSectionText(fullText: string, match: RegExpMatchArray | null): string | null {
+    if (!match || match.index === undefined) return null;
 
-    const contentStart = start + header.length;
-    const nextHeaderMatch = fullText.substring(contentStart).match(/\n\s*(\*\*|##)/);
-    
+    const contentStart = match.index + match[0].length;
+    const nextHeaderIndex = this.findNextHeaderIndex(fullText, contentStart);
+    return fullText.substring(contentStart, nextHeaderIndex).trim();
+  }
+
+  private matchSectionHeader(text: string, labels: readonly string[]): RegExpMatchArray | null {
+    const pattern = this.getHeaderRegex(labels);
+    return text.match(pattern);
+  }
+
+  private findNextHeaderIndex(fullText: string, startIndex: number): number {
+    const allLabels = [...TECHNICAL_HEADER_LABELS, ...ALTERNATIVE_HEADER_LABELS];
+    const remainder = fullText.substring(startIndex);
+    const nextHeaderMatch = remainder.match(this.getHeaderRegex(allLabels));
     if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
-      return fullText.substring(contentStart, contentStart + nextHeaderMatch.index).trim();
+      return startIndex + nextHeaderMatch.index;
     }
-    
-    return fullText.substring(contentStart).trim();
+    return fullText.length;
+  }
+
+  private getHeaderRegex(labels: readonly string[]): RegExp {
+    const escaped = labels.map((label) => this.escapeRegex(label));
+    return new RegExp(
+      `(?:^|\\n)\\s*(?:\\*\\*|##)?\\s*(?:${escaped.join('|')})\\s*(?:\\*\\*|:)?\\s*(?:\\n|$)`,
+      'i'
+    );
   }
 
   private parseTechnicalSpecs(specsText: string): Record<string, string> {

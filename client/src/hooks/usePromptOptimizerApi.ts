@@ -13,6 +13,8 @@ export type OptimizeWithFallbackOptions = Omit<
   'mode'
 >;
 
+export type CompilePromptOptions = Parameters<typeof promptOptimizationApiV2.compilePrompt>[0];
+
 export function usePromptOptimizerApi(
   selectedMode: string,
   log: ReturnType<typeof logger.child>
@@ -87,6 +89,7 @@ export function usePromptOptimizerApi(
   return {
     analyzeAndOptimize,
     optimizeWithFallback,
+    compilePrompt: promptOptimizationApiV2.compilePrompt.bind(promptOptimizationApiV2),
     calculateQualityScore,
   };
 }

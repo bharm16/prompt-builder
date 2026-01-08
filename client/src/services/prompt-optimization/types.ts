@@ -18,6 +18,19 @@ export interface OptimizeResult {
   metadata?: Record<string, unknown>;
 }
 
+export interface CompileOptions {
+  prompt: string;
+  targetModel: string;
+  context?: unknown | null;
+  signal?: AbortSignal;
+}
+
+export interface CompileResult {
+  compiledPrompt: string;
+  metadata?: Record<string, unknown>;
+  targetModel?: string;
+}
+
 export interface OptimizeWithStreamingOptions extends OptimizeOptions {
   onDraft?: ((draft: string) => void) | null;
   onSpans?: ((spans: unknown[], source: string, meta?: unknown) => void) | null;

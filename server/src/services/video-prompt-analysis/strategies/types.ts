@@ -96,3 +96,15 @@ export interface PromptOptimizationStrategy {
     context?: PromptContext
   ): PromptOptimizationResult;
 }
+
+/**
+ * Optional constraints for LLM rewrite.
+ */
+export interface RewriteConstraints {
+  /** Constraints that must appear in the output */
+  mandatory?: string[];
+  /** Constraints that should be included when natural */
+  suggested?: string[];
+  /** Tokens or phrases to avoid including */
+  avoid?: string[];
+}

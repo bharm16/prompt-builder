@@ -7,6 +7,7 @@ import type { CapabilityValues } from '@shared/capabilities';
 
 interface PromptOptimizer {
   inputPrompt: string;
+  genericOptimizedPrompt?: string | null;
   improvementContext: unknown;
   optimize: (
     prompt: string,
@@ -14,6 +15,11 @@ interface PromptOptimizer {
     brainstormContext: unknown | null,
     targetModel?: string,
     options?: OptimizationOptions
+  ) => Promise<{ optimized: string; score: number | null } | null>;
+  compile: (
+    prompt: string,
+    targetModel?: string,
+    context?: unknown | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   [key: string]: unknown;
 }
@@ -114,17 +120,29 @@ export function usePromptOptimization({
           }
         : null;
 
-      // Optimize the prompt
-      const result = await promptOptimizer.optimize(
-        prompt,
-        ctx,
-        brainstormContextData,
-        selectedMode === 'video' ? selectedModel : undefined,
-        {
-          ...options,
-          ...(generationParams ? { generationParams } : {}),
-        }
-      );
+      const isCompileOnly = options?.compileOnly === true;
+      const compilePrompt =
+        options?.compilePrompt ||
+        (typeof promptOptimizer.genericOptimizedPrompt === 'string'
+          ? promptOptimizer.genericOptimizedPrompt
+          : null);
+
+      const result = isCompileOnly
+        ? await promptOptimizer.compile(
+            compilePrompt || prompt,
+            selectedMode === 'video' ? selectedModel : undefined,
+            ctx
+          )
+        : await promptOptimizer.optimize(
+            prompt,
+            ctx,
+            brainstormContextData,
+            selectedMode === 'video' ? selectedModel : undefined,
+            {
+              ...options,
+              ...(generationParams ? { generationParams } : {}),
+            }
+          );
       
       if (result) {
         // Save to history

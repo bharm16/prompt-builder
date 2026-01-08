@@ -3,7 +3,7 @@
  *
  * Provides common pipeline logic for all model-specific optimization strategies.
  * Implements shared validate, normalize, transform, augment scaffolding with
- * integrated TechStripper and SafetySanitizer calls, plus metadata tracking and timing.
+ * integrated SafetySanitizer calls, post-IR TechStripper, plus metadata tracking and timing.
  *
  * @module BaseStrategy
  */
@@ -19,6 +19,7 @@ import type {
   OptimizationMetadata,
   PhaseResult,
   VideoPromptIR,
+  RewriteConstraints,
 } from './types';
 
 /**
@@ -49,12 +50,14 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
 
   constructor(
     techStripperInstance: TechStripper = techStripper,
-    safetySanitizerInstance: SafetySanitizer = safetySanitizer
+    safetySanitizerInstance: SafetySanitizer = safetySanitizer,
+    analyzerInstance: VideoPromptAnalyzer = new VideoPromptAnalyzer(),
+    llmRewriterInstance: VideoPromptLLMRewriter = new VideoPromptLLMRewriter()
   ) {
     this.techStripper = techStripperInstance;
     this.safetySanitizer = safetySanitizerInstance;
-    this.analyzer = new VideoPromptAnalyzer();
-    this.llmRewriter = new VideoPromptLLMRewriter();
+    this.analyzer = analyzerInstance;
+    this.llmRewriter = llmRewriterInstance;
   }
 
   /**
@@ -148,12 +151,11 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   }
 
   /**
-   * Phase 1: Normalize input by stripping incompatible tokens
+   * Phase 1: Normalize input (safety compliance + model-specific cleanup)
    *
    * Pipeline:
    * 1. Apply SafetySanitizer (safety compliance)
-   * 2. Apply TechStripper (model-aware placebo removal)
-   * 3. Apply model-specific normalization
+   * 2. Apply model-specific normalization
    */
   normalize(input: string, context?: PromptContext): string {
     const startTime = performance.now();
@@ -174,17 +176,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
       }
     }
 
-    // Step 2: Tech stripping (model-aware)
-    const stripperResult = this.techStripper.strip(processedText, this.modelId);
-    if (stripperResult.tokensWereStripped) {
-      processedText = stripperResult.text;
-      for (const token of stripperResult.strippedTokens) {
-        changes.push(`Stripped placebo token: "${token}"`);
-      }
-      this.recordStrippedTokens(stripperResult.strippedTokens);
-    }
-
-    // Step 3: Model-specific normalization
+    // Step 2: Model-specific normalization
     const modelNormalizeResult = this.doNormalize(processedText, context);
     if (modelNormalizeResult.text !== processedText) {
       processedText = modelNormalizeResult.text;
@@ -213,15 +205,34 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     const ir = await this.analyzer.analyze(input);
 
     // 2. LLM-powered rewrite (Consumes structured IR)
-    const rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId);
+    const rewriteConstraints = this.getRewriteConstraints(ir, context);
+    const rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+
+    // 2.5. Post-IR TechStripper (model-aware placebo removal on LLM output)
+    let postRewritePrompt = rewrittenPrompt as string | Record<string, unknown>;
+    const postStripChanges: string[] = [];
+    if (typeof rewrittenPrompt === 'string') {
+      const stripperResult = this.techStripper.strip(rewrittenPrompt, this.modelId);
+      if (stripperResult.tokensWereStripped) {
+        postRewritePrompt = stripperResult.text;
+        this.recordStrippedTokens(stripperResult.strippedTokens);
+        postStripChanges.push(
+          `Stripped placebo tokens post-IR: ${stripperResult.strippedTokens.join(', ')}`
+        );
+      }
+    }
 
     // 3. Model-specific final adjustments
-    const transformResult = this.doTransform(rewrittenPrompt, ir, context);
+    const transformResult = this.doTransform(postRewritePrompt, ir, context);
 
     this.recordPhaseResult({
       phase: 'transform',
       durationMs: performance.now() - startTime,
-      changes: [...transformResult.changes, 'LLM-powered model rewrite from IR'],
+      changes: [
+        ...transformResult.changes,
+        'LLM-powered model rewrite from IR',
+        ...postStripChanges,
+      ],
     });
 
     const result: PromptOptimizationResult = {
@@ -372,6 +383,47 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   protected escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+
+  /**
+   * Provide model-specific constraints for the LLM rewrite.
+   * Override to inject mandatory or suggested triggers without blind string concatenation.
+   */
+  protected getRewriteConstraints(
+    _ir: VideoPromptIR,
+    _context?: PromptContext
+  ): RewriteConstraints {
+    return {};
+  }
+
+  /**
+   * Ensure mandatory constraints appear in the prompt, appending only if missing.
+   */
+  protected enforceMandatoryConstraints(
+    prompt: string,
+    constraints: string[]
+  ): { prompt: string; injected: string[]; changes: string[] } {
+    if (constraints.length === 0) {
+      return { prompt, injected: [], changes: [] };
+    }
+
+    let nextPrompt = prompt;
+    const injected: string[] = [];
+    const changes: string[] = [];
+
+    for (const constraint of constraints) {
+      if (!nextPrompt.toLowerCase().includes(constraint.toLowerCase())) {
+        nextPrompt = `${nextPrompt}, ${constraint}`;
+        injected.push(constraint);
+        changes.push(`Injected mandatory constraint: "${constraint}"`);
+      }
+    }
+
+    return {
+      prompt: this.cleanWhitespace(nextPrompt),
+      injected,
+      changes,
+    };
+  }
 }
 
 // ============================================================
@@ -415,3 +467,7 @@ export interface AugmentResult {
   /** Triggers that were injected */
   triggersInjected: string[];
 }
+
+/**
+ * Optional constraints for LLM rewrite.
+ */

@@ -28,6 +28,7 @@ export interface PromptOptimizerState {
   isProcessing: boolean;
   optimizedPrompt: string;
   displayedPrompt: string;
+  genericOptimizedPrompt: string | null;
   previewPrompt: string | null;
   previewAspectRatio: string | null;
   qualityScore: number | null;
@@ -45,6 +46,7 @@ export type PromptOptimizerAction =
   | { type: 'SET_INPUT_PROMPT'; payload: string }
   | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
   | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
+  | { type: 'SET_GENERIC_OPTIMIZED_PROMPT'; payload: string | null }
   | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
   | { type: 'SET_PREVIEW_ASPECT_RATIO'; payload: string | null }
   | { type: 'SET_QUALITY_SCORE'; payload: number | null }
@@ -68,6 +70,7 @@ const initialState: PromptOptimizerState = {
   isProcessing: false,
   optimizedPrompt: '',
   displayedPrompt: '',
+  genericOptimizedPrompt: null,
   previewPrompt: null,
   previewAspectRatio: null,
   qualityScore: null,
@@ -105,6 +108,8 @@ function reducer(
       return { ...state, optimizedPrompt: action.payload };
     case 'SET_DISPLAYED_PROMPT':
       return { ...state, displayedPrompt: action.payload };
+    case 'SET_GENERIC_OPTIMIZED_PROMPT':
+      return { ...state, genericOptimizedPrompt: action.payload };
     case 'SET_PREVIEW_PROMPT':
       return { ...state, previewPrompt: action.payload };
     case 'SET_PREVIEW_ASPECT_RATIO':
@@ -152,6 +157,7 @@ function reducer(
         isProcessing: true,
         optimizedPrompt: '',
         displayedPrompt: '',
+        genericOptimizedPrompt: null,
         previewPrompt: null,
         previewAspectRatio: null,
         qualityScore: null,
@@ -189,6 +195,10 @@ export function usePromptOptimizerState() {
 
   const setDisplayedPrompt = useCallback((prompt: string) => {
     dispatch({ type: 'SET_DISPLAYED_PROMPT', payload: prompt });
+  }, []);
+
+  const setGenericOptimizedPrompt = useCallback((prompt: string | null) => {
+    dispatch({ type: 'SET_GENERIC_OPTIMIZED_PROMPT', payload: prompt });
   }, []);
 
   const setQualityScore = useCallback((score: number | null) => {
@@ -272,6 +282,7 @@ export function usePromptOptimizerState() {
     setInputPrompt,
     setOptimizedPrompt,
     setDisplayedPrompt,
+    setGenericOptimizedPrompt,
     setPreviewPrompt,
     setPreviewAspectRatio,
     setQualityScore,

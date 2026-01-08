@@ -16,6 +16,8 @@ import {
 } from './prompt-optimization/offlineFallback';
 import { streamWithFetch } from './prompt-optimization/streamWithFetch';
 import type {
+  CompileOptions,
+  CompileResult,
   OptimizeOptions,
   OptimizeResult,
   OptimizeWithStreamingOptions,
@@ -67,6 +69,27 @@ export class PromptOptimizationApi {
 
       throw error;
     }
+  }
+
+  /**
+   * Compile a pre-optimized prompt for a target model (Stage 3 only)
+   */
+  async compilePrompt({
+    prompt,
+    targetModel,
+    context = null,
+    signal,
+  }: CompileOptions): Promise<CompileResult> {
+    const requestOptions = signal ? { signal } : {};
+    return (await this.client.post(
+      '/optimize-compile',
+      {
+        prompt,
+        targetModel,
+        ...(context ? { context } : {}),
+      },
+      requestOptions
+    )) as CompileResult;
   }
 
   /**

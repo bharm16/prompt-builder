@@ -50,6 +50,8 @@ export type ExportFormat = 'text' | 'markdown' | 'json';
 export interface OptimizationOptions {
   skipCache?: boolean;
   generationParams?: CapabilityValues;
+  compileOnly?: boolean;
+  compilePrompt?: string;
 }
 
 export interface LockedSpan {

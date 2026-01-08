@@ -4,7 +4,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { normalizeOptimizationRequest } from '@middleware/normalizeOptimizationRequest';
 import { validateRequest } from '@middleware/validateRequest';
 import { extractUserId } from '@utils/requestHelpers';
-import { promptSchema } from '@utils/validation';
+import { promptSchema, compileSchema } from '@utils/validation';
 import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
 import { createSseChannel } from '@routes/optimize/sse';
 
@@ -244,6 +244,62 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
         });
 
         close();
+      }
+    })
+  );
+
+  // POST /optimize-compile - Compile a pre-optimized prompt for a target model (Stage 3 only)
+  router.post(
+    '/optimize-compile',
+    validateRequest(compileSchema),
+    asyncHandler(async (req, res) => {
+      const startTime = Date.now();
+      const requestId = req.id || 'unknown';
+      const userId = extractUserId(req);
+      const operation = 'optimize-compile';
+
+      const { prompt, targetModel, context } = req.body;
+
+      logger.info('Optimize-compile request received', {
+        operation,
+        requestId,
+        userId,
+        promptLength: prompt?.length || 0,
+        targetModel,
+        hasContext: !!context,
+      });
+
+      try {
+        const result = await promptOptimizationService.compilePrompt({
+          prompt,
+          targetModel,
+          context,
+        });
+
+        logger.info('Optimize-compile request completed', {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+          outputLength: result.compiledPrompt?.length || 0,
+          targetModel: result.targetModel,
+        });
+
+        res.json({
+          compiledPrompt: result.compiledPrompt,
+          ...(result.metadata ? { metadata: result.metadata } : {}),
+          ...(result.targetModel ? { targetModel: result.targetModel } : {}),
+        });
+      } catch (error: any) {
+        logger.error('Optimize-compile request failed', error, {
+          operation,
+          requestId,
+          userId,
+          duration: Date.now() - startTime,
+          promptLength: prompt?.length || 0,
+          targetModel,
+        });
+        throw error;
       }
     })
   );

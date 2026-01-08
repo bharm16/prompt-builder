@@ -29,19 +29,6 @@ const REQUIRED_STABILITY_TRIGGERS = [
   'consistent geometry',
 ] as const;
 
-/**
- * Cinematographic triggers that may be injected based on content
- */
-const CINEMATOGRAPHIC_TRIGGERS = [
-  'chromatic aberration',
-  'anamorphic lens flare',
-  'shallow depth of field',
-  'film grain',
-  'cinematic lighting',
-  'volumetric lighting',
-  'lens distortion',
-  'bokeh',
-] as const;
 
 /**
  * Execute the full pipeline for a strategy
@@ -131,47 +118,6 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
             for (const trigger of REQUIRED_STABILITY_TRIGGERS) {
               expect(lowerPrompt).toContain(trigger.toLowerCase());
             }
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    it('records injected triggers in metadata', async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
-          async (input) => {
-            const result = await executePipeline(strategy, input);
-
-            // Metadata should contain injected triggers
-            expect(result.metadata.triggersInjected.length).toBeGreaterThan(0);
-
-            // At least the stability triggers should be recorded
-            const lowerTriggers = result.metadata.triggersInjected.map(t => t.toLowerCase());
-            for (const trigger of REQUIRED_STABILITY_TRIGGERS) {
-              expect(lowerTriggers).toContain(trigger.toLowerCase());
-            }
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    it('injects at least one cinematographic trigger', async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
-          async (input) => {
-            const result = await executePipeline(strategy, input);
-            const lowerPrompt = result.prompt.toLowerCase();
-
-            // At least one cinematographic trigger should be present
-            const hasCinematographicTrigger = CINEMATOGRAPHIC_TRIGGERS.some(
-              trigger => lowerPrompt.includes(trigger.toLowerCase())
-            );
-
-            expect(hasCinematographicTrigger).toBe(true);
           }
         ),
         { numRuns: 100 }

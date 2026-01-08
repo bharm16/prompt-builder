@@ -9,6 +9,8 @@
 export {
   promptSchema,
   type PromptRequest,
+  compileSchema,
+  type CompileRequest,
 } from './promptSchemas.ts';
 
 // Suggestion schemas
@@ -57,4 +59,3 @@ export {
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
 } from './outputSchemas.ts';
-

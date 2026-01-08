@@ -21,6 +21,7 @@ import {
   type AugmentResult,
 } from './BaseStrategy';
 import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import type { RewriteConstraints } from './types';
 
 /**
  * Emotional/abstract terms to strip (unless translatable to lighting)
@@ -216,34 +217,25 @@ export class RunwayStrategy extends BaseStrategy {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
 
-    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-
-    // Inject stability triggers for A2D architecture
-    for (const trigger of STABILITY_TRIGGERS) {
-      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-        prompt = `${prompt}, ${trigger}`;
-        triggersInjected.push(trigger);
-        changes.push(`Injected stability trigger: "${trigger}"`);
-      }
-    }
-
-    // Inject cinematographic triggers (select 2-3 based on content)
-    const selectedTriggers = this.selectCinematographicTriggers(prompt);
-    for (const trigger of selectedTriggers) {
-      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-        prompt = `${prompt}, ${trigger}`;
-        triggersInjected.push(trigger);
-        changes.push(`Injected cinematographic trigger: "${trigger}"`);
-      }
-    }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
+    const basePrompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    const enforced = this.enforceMandatoryConstraints(basePrompt, [...STABILITY_TRIGGERS]);
+    changes.push(...enforced.changes);
+    triggersInjected.push(...enforced.injected);
 
     return {
-      prompt,
+      prompt: enforced.prompt,
       changes,
       triggersInjected,
+    };
+  }
+
+  /**
+   * Provide mandatory and suggested constraints for LLM rewrite.
+   */
+  protected getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+    return {
+      mandatory: [...STABILITY_TRIGGERS],
+      suggested: this.selectCinematographicTriggers(ir.raw || ''),
     };
   }
 

@@ -5,8 +5,7 @@
  * - Property 3 (Luma): Normalization Token Stripping
  *
  * For any Luma prompt with loop:true API parameter active, the normalize phase
- * SHALL strip "loop" and "seamless" terms. Additionally, redundant resolution
- * tokens like "4k" and "8k" SHALL be stripped.
+ * SHALL strip "loop" and "seamless" terms.
  *
  * @module luma-normalization.property.test
  */
@@ -32,9 +31,6 @@ describe('Luma Normalization Property Tests', () => {
     'perfect loop',
     'endless',
   ];
-
-  // Resolution terms that should always be stripped
-  const resolutionTerms = ['4k', '8k', '1080p', '720p', '2k'];
 
   /**
    * Property 3 (Luma): Normalization Token Stripping
@@ -86,43 +82,16 @@ describe('Luma Normalization Property Tests', () => {
 
             const result = strategy.normalize(input, context);
 
-            // Loop term should be preserved in output (unless it's also a resolution term)
-            if (!resolutionTerms.some(r => loopTerm.toLowerCase().includes(r.toLowerCase()))) {
-              const termRegex = new RegExp(`\\b${loopTerm}\\b`, 'i');
-              expect(result).toMatch(termRegex);
-            }
+            // Loop term should be preserved in output
+            const termRegex = new RegExp(`\\b${loopTerm}\\b`, 'i');
+            expect(result).toMatch(termRegex);
           }
         ),
         { numRuns: 100 }
       );
     });
 
-    it('strips resolution tokens regardless of loop setting', () => {
-      fc.assert(
-        fc.property(
-          fc.constantFrom(...resolutionTerms),
-          fc.string({ minLength: 0, maxLength: 50 }).filter(s => !resolutionTerms.some(t => s.toLowerCase().includes(t.toLowerCase()))),
-          fc.string({ minLength: 0, maxLength: 50 }).filter(s => !resolutionTerms.some(t => s.toLowerCase().includes(t.toLowerCase()))),
-          fc.boolean(),
-          (resTerm, prefix, suffix, loopActive) => {
-            const input = `${prefix} ${resTerm} ${suffix}`.trim();
-            const context: PromptContext = {
-              userIntent: 'test',
-              apiParams: { loop: loopActive },
-            };
-
-            const result = strategy.normalize(input, context);
-
-            // Resolution term should be removed from output
-            const termRegex = new RegExp(`\\b${resTerm}\\b`, 'i');
-            expect(result).not.toMatch(termRegex);
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    it('preserves non-loop, non-resolution content', () => {
+    it('preserves non-loop content', () => {
       fc.assert(
         fc.property(
           fc.array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')), {
@@ -132,8 +101,7 @@ describe('Luma Normalization Property Tests', () => {
             .map(chars => chars.join(''))
             .filter(s => 
               s.trim().length > 0 &&
-              !loopTerms.some(t => s.toLowerCase().includes(t.toLowerCase())) &&
-              !resolutionTerms.some(t => s.toLowerCase().includes(t.toLowerCase()))
+              !loopTerms.some(t => s.toLowerCase().includes(t.toLowerCase()))
             ),
           fc.constantFrom(...loopTerms),
           fc.boolean(),
@@ -154,13 +122,12 @@ describe('Luma Normalization Property Tests', () => {
       );
     });
 
-    it('handles multiple loop and resolution terms in single input', () => {
+    it('handles multiple loop terms in single input', () => {
       fc.assert(
         fc.property(
           fc.array(fc.constantFrom(...loopTerms), { minLength: 1, maxLength: 3 }),
-          fc.array(fc.constantFrom(...resolutionTerms), { minLength: 1, maxLength: 2 }),
-          (loopTokens, resTokens) => {
-            const input = [...loopTokens, ...resTokens].join(', ');
+          (loopTokens) => {
+            const input = loopTokens.join(', ');
             const context: PromptContext = {
               userIntent: 'test',
               apiParams: { loop: true },
@@ -174,11 +141,6 @@ describe('Luma Normalization Property Tests', () => {
               expect(result).not.toMatch(tokenRegex);
             }
 
-            // All resolution tokens should be removed
-            for (const token of resTokens) {
-              const tokenRegex = new RegExp(`\\b${token}\\b`, 'i');
-              expect(result).not.toMatch(tokenRegex);
-            }
           }
         ),
         { numRuns: 100 }

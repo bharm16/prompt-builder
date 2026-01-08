@@ -38,6 +38,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
     setInputPrompt,
     setOptimizedPrompt,
     setDisplayedPrompt,
+    setGenericOptimizedPrompt,
     setQualityScore,
     setPreviewPrompt,
     setPreviewAspectRatio,
@@ -62,7 +63,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       abortControllerRef.current?.abort();
     };
   }, []);
-  const { analyzeAndOptimize, optimizeWithFallback, calculateQualityScore } =
+  const { analyzeAndOptimize, optimizeWithFallback, compilePrompt, calculateQualityScore } =
     usePromptOptimizerApi(selectedMode, log);
 
   const optimize = useCallback(
@@ -107,6 +108,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
           setDraftPrompt,
           setOptimizedPrompt,
           setDisplayedPrompt,
+          setGenericOptimizedPrompt,
           setIsDraftReady,
           setIsRefining,
           setIsProcessing,
@@ -205,6 +207,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       setDraftPrompt,
       setOptimizedPrompt,
       setDisplayedPrompt,
+      setGenericOptimizedPrompt,
       setIsDraftReady,
       setIsRefining,
       setQualityScore,
@@ -213,6 +216,103 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
       setDraftSpans,
       setRefinedSpans,
       selectedModel,
+    ]
+  );
+
+  const compile = useCallback(
+    async (
+      promptToCompile: string,
+      targetModel?: string,
+      context: unknown | null = state.improvementContext
+    ) => {
+      if (!promptToCompile.trim()) {
+        toast.warning('No prompt available to compile');
+        return null;
+      }
+
+      const resolvedModel =
+        typeof targetModel === 'string' && targetModel.trim()
+          ? targetModel
+          : (typeof selectedModel === 'string' && selectedModel.trim()
+            ? selectedModel
+            : undefined);
+
+      if (!resolvedModel) {
+        toast.warning('Select a model to compile');
+        return null;
+      }
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      const requestId = ++requestIdRef.current;
+
+      setIsProcessing(true);
+      setIsRefining(false);
+
+      try {
+        const result = await compilePrompt({
+          prompt: promptToCompile,
+          targetModel: resolvedModel,
+          context,
+          signal: abortController.signal,
+        });
+
+        if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+          return null;
+        }
+
+        const compiled = result.compiledPrompt;
+        setOptimizedPrompt(compiled);
+        setDisplayedPrompt(compiled);
+        setGenericOptimizedPrompt(promptToCompile);
+
+        if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
+          setPreviewPrompt(result.metadata.previewPrompt);
+        }
+        if (typeof result.metadata?.aspectRatio === 'string' && result.metadata.aspectRatio.trim()) {
+          setPreviewAspectRatio(result.metadata.aspectRatio.trim());
+        }
+
+        return {
+          optimized: compiled,
+          score: state.qualityScore,
+        };
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') {
+          log.debug('Compile aborted', { operation: 'compile' });
+          return null;
+        }
+        log.error('compile failed', error as Error, {
+          operation: 'compile',
+          mode: selectedMode,
+        });
+        toast.error('Failed to compile. Make sure the server is running.');
+        return null;
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsProcessing(false);
+          setIsRefining(false);
+        }
+      }
+    },
+    [
+      state.improvementContext,
+      state.qualityScore,
+      compilePrompt,
+      selectedMode,
+      selectedModel,
+      setIsProcessing,
+      setIsRefining,
+      setOptimizedPrompt,
+      setDisplayedPrompt,
+      setGenericOptimizedPrompt,
+      setPreviewPrompt,
+      setPreviewAspectRatio,
+      toast,
+      log,
     ]
   );
 
@@ -225,6 +325,8 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
     setOptimizedPrompt,
     displayedPrompt: state.displayedPrompt,
     setDisplayedPrompt,
+    genericOptimizedPrompt: state.genericOptimizedPrompt,
+    setGenericOptimizedPrompt,
     previewPrompt: state.previewPrompt,
     setPreviewPrompt,
     previewAspectRatio: state.previewAspectRatio,
@@ -247,6 +349,7 @@ export const usePromptOptimizer = (selectedMode: string, selectedModel?: string,
 
     // Actions
     optimize,
+    compile,
     resetPrompt,
     setLockedSpans,
     addLockedSpan,

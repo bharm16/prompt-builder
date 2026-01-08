@@ -445,6 +445,9 @@ export class PromptOptimizationService {
         }
       }
 
+      // Record generic prompt before model compilation
+      handleMetadata({ genericPrompt: optimizedPrompt });
+
       // STAGE 3: Model-Specific Compilation (The "Compiler" Phase)
       // If we are in video mode and have the video service, compile the generic LLM output
       // into the exact syntax required by the target model (Runway, Luma, Veo, etc.)
@@ -473,16 +476,10 @@ export class PromptOptimizationService {
           });
 
           try {
-            // Extract core narrative from the formatted prompt
-            // The formatted prompt usually looks like:
-            // "Visual description paragraph...\n\n**TECHNICAL SPECS**\n..."
-            // We only want the description for the compiler.
-            const narrativePrompt = optimizedPrompt.split(/\*\*TECHNICAL SPECS\*\*/i)[0]?.trim() || optimizedPrompt;
-
             // 2. Compile using the Strategy Pipeline (Analyzer -> IR -> Synthesizer)
-            // This applies CSAE, JSON schemas, physics tokens, etc.
+            // Pass the full generic prompt so the analyzer can extract narrative + technical specs.
             const compilationResult = await this.videoPromptService.optimizeForModel(
-              narrativePrompt, // Use clean narrative
+              optimizedPrompt,
               resolvedTargetModel
             );
 
@@ -552,6 +549,63 @@ export class PromptOptimizationService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Compile a pre-optimized prompt for a specific video model (Stage 3 only)
+   */
+  async compilePrompt({
+    prompt,
+    targetModel,
+    context,
+  }: {
+    prompt: string;
+    targetModel: string;
+    context?: unknown | null;
+  }): Promise<{
+    compiledPrompt: string;
+    metadata: Record<string, unknown> | null;
+    targetModel: string;
+  }> {
+    const operation = 'compilePrompt';
+
+    if (!this.videoPromptService) {
+      throw new Error('Video prompt service unavailable');
+    }
+
+    let resolvedTargetModel = targetModel?.trim();
+    if (!resolvedTargetModel) {
+      throw new Error('Target model is required for compilation');
+    }
+
+    if (VideoPromptService.MODEL_ID_MAP[resolvedTargetModel]) {
+      resolvedTargetModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
+    }
+
+    this.log.info('Compiling prompt for target model', {
+      operation,
+      targetModel: resolvedTargetModel,
+      promptLength: prompt.length,
+    });
+
+    const compilationResult = await this.videoPromptService.optimizeForModel(
+      prompt,
+      resolvedTargetModel
+    );
+
+    const compiledPrompt = typeof compilationResult.prompt === 'string'
+      ? compilationResult.prompt
+      : JSON.stringify(compilationResult.prompt, null, 2);
+
+    return {
+      compiledPrompt,
+      metadata: {
+        compiledFor: resolvedTargetModel,
+        genericPrompt: prompt,
+        compilationMeta: compilationResult.metadata,
+      },
+      targetModel: resolvedTargetModel,
+    };
   }
 
   /**

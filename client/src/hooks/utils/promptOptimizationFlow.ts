@@ -18,6 +18,7 @@ export interface PromptOptimizerActions {
   setDraftPrompt: (prompt: string) => void;
   setOptimizedPrompt: (prompt: string) => void;
   setDisplayedPrompt: (prompt: string) => void;
+  setGenericOptimizedPrompt: (prompt: string | null) => void;
   setIsDraftReady: (ready: boolean) => void;
   setIsRefining: (refining: boolean) => void;
   setIsProcessing: (processing: boolean) => void;
@@ -238,6 +239,9 @@ export async function runTwoStageOptimization({
       if (!refinedSpans) {
         actions.setDisplayedPrompt(refined);
       }
+      if (metadata?.genericPrompt && typeof metadata.genericPrompt === 'string') {
+        actions.setGenericOptimizedPrompt(metadata.genericPrompt);
+      }
       if (metadata?.previewPrompt && typeof metadata.previewPrompt === 'string') {
         actions.setPreviewPrompt(metadata.previewPrompt);
       }
@@ -303,6 +307,9 @@ export async function runTwoStageOptimization({
   if (result.metadata?.previewPrompt && typeof result.metadata.previewPrompt === 'string') {
     actions.setPreviewPrompt(result.metadata.previewPrompt);
   }
+  if (result.metadata?.genericPrompt && typeof result.metadata.genericPrompt === 'string') {
+    actions.setGenericOptimizedPrompt(result.metadata.genericPrompt);
+  }
   if (typeof result.metadata?.aspectRatio === 'string' && result.metadata.aspectRatio.trim()) {
     actions.setPreviewAspectRatio(result.metadata.aspectRatio.trim());
   }
@@ -367,6 +374,9 @@ export async function runSingleStageOptimization({
 
   actions.setOptimizedPrompt(optimized);
   actions.setQualityScore(score);
+  if (response.metadata?.genericPrompt && typeof response.metadata.genericPrompt === 'string') {
+    actions.setGenericOptimizedPrompt(response.metadata.genericPrompt);
+  }
   if (response.metadata?.previewPrompt && typeof response.metadata.previewPrompt === 'string') {
     actions.setPreviewPrompt(response.metadata.previewPrompt);
   }

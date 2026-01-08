@@ -20,7 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+import type { PromptOptimizationResult, PromptContext, VideoPromptIR, RewriteConstraints } from './types';
 
 /**
  * Loop-related terms to strip when loop:true is active
@@ -38,7 +38,7 @@ const LOOP_TERMS = [
 ] as const;
 
 /**
- * Resolution tokens to strip (handled by TechStripper, but we add extras)
+ * Resolution tokens to avoid in LLM output
  */
 const RESOLUTION_TERMS = [
   '4k',
@@ -171,7 +171,7 @@ export class LumaStrategy extends BaseStrategy {
   }
 
   /**
-   * Normalize input by stripping loop terms (when loop:true) and resolution tokens
+   * Normalize input by stripping loop terms (when loop:true)
    */
   protected doNormalize(input: string, context?: PromptContext): NormalizeResult {
     let text = input;
@@ -189,15 +189,6 @@ export class LumaStrategy extends BaseStrategy {
           changes.push(`Stripped loop term: "${term}" (loop:true active)`);
           strippedTokens.push(term);
         }
-      }
-    }
-
-    // Strip resolution tokens (additional to TechStripper)
-    for (const term of RESOLUTION_TERMS) {
-      if (this.containsWord(text, term)) {
-        text = this.replaceWord(text, term, '');
-        changes.push(`Stripped resolution term: "${term}"`);
-        strippedTokens.push(term);
       }
     }
 
@@ -243,32 +234,27 @@ export class LumaStrategy extends BaseStrategy {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
 
-    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
-
-    // Inject HDR pipeline triggers
-    for (const trigger of HDR_TRIGGERS) {
-      if (!prompt.toLowerCase().includes(trigger.toLowerCase())) {
-        prompt = `${prompt}, ${trigger}`;
-        triggersInjected.push(trigger);
-        changes.push(`Injected HDR trigger: "${trigger}"`);
-      }
-    }
-
-    // Detect and inject appropriate motion triggers
-    const motionTrigger = this.selectMotionTrigger(prompt);
-    if (motionTrigger && !prompt.toLowerCase().includes(motionTrigger.toLowerCase())) {
-      prompt = `${prompt}, ${motionTrigger}`;
-      triggersInjected.push(motionTrigger);
-      changes.push(`Injected motion trigger: "${motionTrigger}"`);
-    }
-
-    // Clean up final prompt
-    prompt = this.cleanWhitespace(prompt);
+    const basePrompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    const enforced = this.enforceMandatoryConstraints(basePrompt, [...HDR_TRIGGERS]);
+    changes.push(...enforced.changes);
+    triggersInjected.push(...enforced.injected);
 
     return {
-      prompt,
+      prompt: enforced.prompt,
       changes,
       triggersInjected,
+    };
+  }
+
+  /**
+   * Provide mandatory and suggested constraints for LLM rewrite.
+   */
+  protected getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+    const motionTrigger = this.selectMotionTrigger(ir.raw || '');
+    return {
+      mandatory: [...HDR_TRIGGERS],
+      suggested: motionTrigger ? [motionTrigger] : [],
+      avoid: [...RESOLUTION_TERMS],
     };
   }
 

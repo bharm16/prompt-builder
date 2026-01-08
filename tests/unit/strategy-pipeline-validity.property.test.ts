@@ -26,6 +26,27 @@ import {
   type VideoPromptIR,
 } from '../../server/src/services/video-prompt-analysis/strategies';
 
+class StubAnalyzer {
+  async analyze(text: string): Promise<VideoPromptIR> {
+    return {
+      subjects: [],
+      actions: [],
+      camera: { movements: [] },
+      environment: { setting: '', lighting: [] },
+      audio: {},
+      meta: { mood: [], style: [] },
+      technical: {},
+      raw: text,
+    };
+  }
+}
+
+class StubRewriter {
+  async rewrite(ir: VideoPromptIR): Promise<string> {
+    return ir.raw;
+  }
+}
+
 /**
  * Mock strategy implementation for testing pipeline validity
  * This represents a minimal valid strategy that follows the interface contract
@@ -471,7 +492,12 @@ describe('BaseStrategy Implementation Tests', () => {
    */
   describe('TechStripper Integration', () => {
     it('strips placebo tokens for Runway model', async () => {
-      const strategy = new TestBaseStrategy();
+      const strategy = new TestBaseStrategy(
+        undefined,
+        undefined,
+        new StubAnalyzer(),
+        new StubRewriter()
+      );
 
       await fc.assert(
         fc.asyncProperty(
@@ -479,10 +505,14 @@ describe('BaseStrategy Implementation Tests', () => {
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);
+            const transformed = await strategy.transform(normalized);
+            const output = typeof transformed.prompt === 'string'
+              ? transformed.prompt
+              : JSON.stringify(transformed.prompt);
 
             // Placebo tokens should be stripped for Runway
-            expect(normalized.toLowerCase()).not.toContain('4k');
-            expect(normalized.toLowerCase()).not.toContain('trending on artstation');
+            expect(output.toLowerCase()).not.toContain('4k');
+            expect(output.toLowerCase()).not.toContain('trending on artstation');
           }
         ),
         { numRuns: 100 }
@@ -490,7 +520,12 @@ describe('BaseStrategy Implementation Tests', () => {
     });
 
     it('preserves placebo tokens for Kling model', async () => {
-      const strategy = new TestKlingStrategy();
+      const strategy = new TestKlingStrategy(
+        undefined,
+        undefined,
+        new StubAnalyzer(),
+        new StubRewriter()
+      );
 
       await fc.assert(
         fc.asyncProperty(
@@ -498,10 +533,14 @@ describe('BaseStrategy Implementation Tests', () => {
           async (baseInput) => {
             const inputWithPlacebo = `${baseInput} 4k trending on artstation`;
             const normalized = strategy.normalize(inputWithPlacebo);
+            const transformed = await strategy.transform(normalized);
+            const output = typeof transformed.prompt === 'string'
+              ? transformed.prompt
+              : JSON.stringify(transformed.prompt);
 
             // Placebo tokens should be preserved for Kling
-            expect(normalized.toLowerCase()).toContain('4k');
-            expect(normalized.toLowerCase()).toContain('trending on artstation');
+            expect(output.toLowerCase()).toContain('4k');
+            expect(output.toLowerCase()).toContain('trending on artstation');
           }
         ),
         { numRuns: 100 }

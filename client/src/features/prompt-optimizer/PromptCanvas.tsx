@@ -987,13 +987,33 @@ export function PromptCanvas({
     // Changes are already saved via onInputPromptChange as user types
     // Run reoptimize with the current input prompt
     debug.logAction('reoptimize', { promptLength: inputPrompt.length });
-    void onReoptimize(inputPrompt);
+    const promptChanged = inputPrompt !== originalInputPrompt;
+    const modelChanged =
+      typeof originalSelectedModel === 'string' && originalSelectedModel !== selectedModel;
+    const genericPrompt =
+      typeof promptOptimizer.genericOptimizedPrompt === 'string' &&
+      promptOptimizer.genericOptimizedPrompt.trim()
+        ? promptOptimizer.genericOptimizedPrompt
+        : null;
+
+    if (modelChanged && !promptChanged && genericPrompt) {
+      void onReoptimize(inputPrompt, {
+        compileOnly: true,
+        compilePrompt: genericPrompt,
+      });
+    } else {
+      void onReoptimize(inputPrompt);
+    }
     // Exit edit mode
     setIsEditing(false);
     setOriginalInputPrompt('');
     setOriginalSelectedModel(undefined);
   }, [
     inputPrompt,
+    originalInputPrompt,
+    originalSelectedModel,
+    promptOptimizer,
+    selectedModel,
     isProcessing,
     isRefining,
     onReoptimize,

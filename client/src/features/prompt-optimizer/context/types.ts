@@ -34,6 +34,8 @@ export interface PromptOptimizer {
   setOptimizedPrompt: (prompt: string) => void;
   displayedPrompt: string;
   setDisplayedPrompt: (prompt: string) => void;
+  genericOptimizedPrompt: string | null;
+  setGenericOptimizedPrompt?: (prompt: string | null) => void;
   previewPrompt: string | null;
   setPreviewPrompt: (prompt: string | null) => void;
   previewAspectRatio: string | null;
@@ -55,6 +57,11 @@ export interface PromptOptimizer {
     brainstormContext?: unknown | null,
     targetModel?: string,
     options?: OptimizationOptions
+  ) => Promise<{ optimized: string; score: number | null } | null>;
+  compile: (
+    prompt: string,
+    targetModel?: string,
+    context?: unknown | null
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
   setLockedSpans: (spans: LockedSpan[]) => void;

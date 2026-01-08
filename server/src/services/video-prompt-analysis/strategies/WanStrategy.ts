@@ -72,7 +72,7 @@ export class WanStrategy extends BaseStrategy {
   }
 
   /**
-   * Normalize input by cleaning up redundant tech tokens handled by TechStripper
+   * Normalize input with whitespace cleanup
    */
   protected doNormalize(input: string, _context?: PromptContext): NormalizeResult {
     const text = this.cleanWhitespace(input);
