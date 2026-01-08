@@ -55,6 +55,9 @@ export class VideoJobStore {
     }
 
     const doc = snapshot.docs[0];
+    if (!doc) {
+      return null;
+    }
     return this.parseJob(doc.id, doc.data());
   }
 
@@ -174,6 +177,9 @@ export class VideoJobStore {
       }
 
       const doc = snapshot.docs[0];
+      if (!doc) {
+        return null;
+      }
       const data = doc.data();
       if (!data) {
         return null;
@@ -205,7 +211,40 @@ export class VideoJobStore {
 
   private parseJob(id: string, data: DocumentData | undefined): VideoJobRecord {
     const parsed = VideoJobRecordSchema.parse(data || {});
-    return { id, ...parsed };
+    const normalizedOptions = Object.fromEntries(
+      Object.entries(parsed.request.options ?? {}).filter(([, value]) => value !== undefined)
+    ) as VideoJobRequest['options'];
+
+    const base: VideoJobRecord = {
+      id,
+      status: parsed.status,
+      userId: parsed.userId,
+      request: {
+        ...parsed.request,
+        options: normalizedOptions,
+      },
+      creditsReserved: parsed.creditsReserved,
+      createdAtMs: parsed.createdAtMs,
+      updatedAtMs: parsed.updatedAtMs,
+    };
+
+    if (typeof parsed.completedAtMs === 'number') {
+      base.completedAtMs = parsed.completedAtMs;
+    }
+    if (parsed.result) {
+      base.result = parsed.result;
+    }
+    if (parsed.error) {
+      base.error = parsed.error;
+    }
+    if (typeof parsed.workerId === 'string') {
+      base.workerId = parsed.workerId;
+    }
+    if (typeof parsed.leaseExpiresAtMs === 'number') {
+      base.leaseExpiresAtMs = parsed.leaseExpiresAtMs;
+    }
+
+    return base;
   }
 
   private async failFromQuery(query: Query, reason: string): Promise<VideoJobRecord | null> {
@@ -216,6 +255,9 @@ export class VideoJobStore {
       }
 
       const doc = snapshot.docs[0];
+      if (!doc) {
+        return null;
+      }
       const data = doc.data();
       if (!data) {
         return null;

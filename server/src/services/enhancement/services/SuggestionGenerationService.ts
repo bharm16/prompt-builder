@@ -32,7 +32,7 @@ export interface SuggestionGenerationParams {
   temperature: number;
   metrics: EnhancementMetrics;
   /** Provider for optimization selection */
-  provider?: 'openai' | 'groq';
+  provider?: 'openai' | 'groq' | 'qwen';
   /** Developer message for OpenAI (hard constraints) */
   developerMessage?: string;
   /** Whether to use strict schema mode (OpenAI) */

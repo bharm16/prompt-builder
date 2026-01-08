@@ -1,4 +1,4 @@
-import type { LabelSpansResult, LLMSpan } from '@llm/span-labeling/types';
+import type { LabelSpansResult, LLMSpan, SpanLike } from '@llm/span-labeling/types';
 
 export interface PublicSpan {
   text: string;
@@ -12,12 +12,17 @@ export interface PublicLabelSpansResult extends Omit<LabelSpansResult, 'spans'> 
   spans: PublicSpan[];
 }
 
-export const toPublicSpan = (span: LLMSpan): PublicSpan => ({
+export const toPublicSpan = (span: LLMSpan | SpanLike): PublicSpan => ({
   text: span.text,
-  start: span.start,
-  end: span.end,
-  category: span.role,
-  confidence: span.confidence,
+  ...(typeof span.start === 'number' ? { start: span.start } : {}),
+  ...(typeof span.end === 'number' ? { end: span.end } : {}),
+  category:
+    typeof span.role === 'string'
+      ? span.role
+      : 'category' in span && typeof span.category === 'string'
+        ? span.category
+        : 'unknown',
+  ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
 });
 
 export const toPublicLabelSpansResult = (

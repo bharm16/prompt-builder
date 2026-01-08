@@ -44,15 +44,15 @@ export function resolveModelId(
   }
 
   if (typeof model === 'string' && Object.prototype.hasOwnProperty.call(SORA_MODEL_ALIASES, model)) {
-    return SORA_MODEL_ALIASES[model];
+    return SORA_MODEL_ALIASES[model]!;
   }
 
   if (typeof model === 'string' && Object.prototype.hasOwnProperty.call(KLING_MODEL_ALIASES, model)) {
-    return KLING_MODEL_ALIASES[model];
+    return KLING_MODEL_ALIASES[model]!;
   }
 
   if (typeof model === 'string' && Object.prototype.hasOwnProperty.call(VEO_MODEL_ALIASES, model)) {
-    return VEO_MODEL_ALIASES[model];
+    return VEO_MODEL_ALIASES[model]!;
   }
 
   if (model === 'luma') {

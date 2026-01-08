@@ -61,7 +61,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
               spans={groups[category] || []}
               config={config}
               onSpanClick={handleSpanClick}
-              onSpanHoverChange={onSpanHoverChange}
+              {...(onSpanHoverChange ? { onSpanHoverChange } : {})}
               defaultExpanded={category === TAXONOMY.SHOT.id || category === TAXONOMY.SUBJECT.id}
             />
           );

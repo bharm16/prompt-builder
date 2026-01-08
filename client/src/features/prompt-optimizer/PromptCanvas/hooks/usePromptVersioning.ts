@@ -200,6 +200,9 @@ export function usePromptVersioning({
       }
 
       const lastVersion = versions[versions.length - 1];
+      if (!lastVersion) {
+        return;
+      }
       if (lastVersion.signature !== snapshot.signature) {
         return;
       }

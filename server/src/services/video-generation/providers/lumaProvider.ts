@@ -12,7 +12,10 @@ export async function generateLumaVideo(
   prompt: string,
   log: LogSink
 ): Promise<string> {
-  const generation = await luma.generations.create({ prompt });
+  const generation = await luma.generations.create({ prompt, model: 'ray-2' });
+  if (!generation.id) {
+    throw new Error('Luma generation did not return an id');
+  }
   log.info('Luma generation started', { generationId: generation.id });
 
   let result = generation;

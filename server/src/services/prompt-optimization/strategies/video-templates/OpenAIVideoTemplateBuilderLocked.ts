@@ -19,9 +19,9 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
-      interpretedPlan,
       includeInstructions,
-      generationParams,
+      ...(interpretedPlan !== undefined ? { interpretedPlan } : {}),
+      ...(generationParams ? { generationParams } : {}),
     });
 
     const developerMessage = `${baseTemplate.developerMessage ?? ''}\n\n${this.buildLockedSpanInstructions()}`.trim();
@@ -68,4 +68,3 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
     return wrapUserData(fields);
   }
 }
-

@@ -55,6 +55,13 @@ import './PromptCanvas.css';
 
 const RAIL_VIDEO_PREVIEW_MODEL = 'wan-2.2';
 
+type InlineSuggestion = {
+  key: string;
+  text: string;
+  meta: string | null;
+  item: SuggestionItem | string;
+};
+
 // Main PromptCanvas Component
 export function PromptCanvas({
   user = null,
@@ -180,6 +187,12 @@ export function PromptCanvas({
     if (!allowsVideoInputReference && videoInputReference) {
       setVideoInputReference('');
     }
+  }, [allowsVideoInputReference, videoInputReference]);
+
+  const resolvedVideoInputReference = useMemo(() => {
+    if (!allowsVideoInputReference) return undefined;
+    const trimmed = videoInputReference.trim();
+    return trimmed ? trimmed : undefined;
   }, [allowsVideoInputReference, videoInputReference]);
 
   const handleParamChange = useCallback(
@@ -1051,11 +1064,11 @@ export function PromptCanvas({
     return (displayQuote || quote || text).trim();
   }, [selectedSpan]);
 
-  const inlineSuggestions = useMemo(() => {
-    const rawSuggestions = suggestionsData?.suggestions ?? [];
+  const inlineSuggestions = useMemo<InlineSuggestion[]>(() => {
+    const rawSuggestions = (suggestionsData?.suggestions ?? []) as Array<SuggestionItem | string>;
     return rawSuggestions
       .map((item, index) => {
-        const text =
+        const rawText =
           typeof item === 'string'
             ? item
             : typeof item?.text === 'string'
@@ -1063,8 +1076,9 @@ export function PromptCanvas({
               : typeof (item as { label?: string } | null)?.label === 'string'
                 ? (item as { label?: string }).label
                 : '';
+        const text = (rawText ?? '').trim();
 
-        if (!text.trim()) {
+        if (!text) {
           return null;
         }
 
@@ -1086,9 +1100,7 @@ export function PromptCanvas({
           item,
         };
       })
-      .filter((item): item is { key: string; text: string; meta: string | null; item: SuggestionItem | string } =>
-        Boolean(item)
-      );
+      .filter((item): item is InlineSuggestion => item !== null);
   }, [suggestionsData?.suggestions]);
 
   const suggestionCount = inlineSuggestions.length;
@@ -1239,8 +1251,8 @@ export function PromptCanvas({
       handleVideoPreviewGenerated({
         prompt,
         generatedAt,
-        videoUrl,
-        aspectRatio,
+        videoUrl: videoUrl ?? null,
+        aspectRatio: aspectRatio ?? null,
       });
     },
     [handleVideoPreviewGenerated]
@@ -1787,7 +1799,9 @@ export function PromptCanvas({
                         aspectRatio={effectiveAspectRatio}
                         model={selectedModel}
                         generationParams={generationParams}
-                        inputReference={allowsVideoInputReference ? videoInputReference : undefined}
+                        {...(resolvedVideoInputReference
+                          ? { inputReference: resolvedVideoInputReference }
+                          : {})}
                         isVisible={true}
                         generateRequestId={videoGenerateRequestId}
                         lastGeneratedAt={videoLastGeneratedAt}
@@ -1952,7 +1966,9 @@ export function PromptCanvas({
                   aspectRatio={effectiveAspectRatio}
                   model={RAIL_VIDEO_PREVIEW_MODEL}
                   generationParams={generationParams}
-                  inputReference={allowsVideoInputReference ? videoInputReference : undefined}
+                  {...(resolvedVideoInputReference
+                    ? { inputReference: resolvedVideoInputReference }
+                    : {})}
                   isVisible={showVideoPreview}
                   generateRequestId={railVideoGenerateRequestId}
                   lastGeneratedAt={railVideoLastGeneratedAt}

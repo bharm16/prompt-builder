@@ -399,6 +399,7 @@ export class VideoStrategy implements OptimizationStrategy {
         shotPlan as ShotPlan | null,
         lockedSpans,
         config,
+        generationParams,
         signal,
         onMetadata
       );
@@ -413,14 +414,16 @@ export class VideoStrategy implements OptimizationStrategy {
     shotPlan: ShotPlan | null,
     lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>,
     config: { maxTokens: number; temperature: number; timeout: number },
+    generationParams?: CapabilityValues | null,
     signal?: AbortSignal,
     onMetadata?: (metadata: Record<string, unknown>) => void
   ): Promise<string> {
     // Generate full system prompt (legacy format)
+    const normalizedShotPlan = shotPlan ? (shotPlan as unknown as Record<string, unknown>) : null;
     const systemPrompt =
       lockedSpans && lockedSpans.length > 0
-        ? generateUniversalVideoPromptWithLockedSpans(prompt, shotPlan, lockedSpans)
-        : generateUniversalVideoPrompt(prompt, shotPlan);
+        ? generateUniversalVideoPromptWithLockedSpans(prompt, normalizedShotPlan, lockedSpans)
+        : generateUniversalVideoPrompt(prompt, normalizedShotPlan);
 
     // Simpler schema for non-strict fallback
     const looseSchema = {

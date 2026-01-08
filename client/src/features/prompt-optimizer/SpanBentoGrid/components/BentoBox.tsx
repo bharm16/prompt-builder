@@ -47,7 +47,7 @@ export const BentoBox = memo<BentoBoxProps>(({
                   key={span.id}
                   span={span}
                   onClick={onSpanClick}
-                  onHoverChange={onSpanHoverChange}
+                  {...(onSpanHoverChange ? { onHoverChange: onSpanHoverChange } : {})}
                   backgroundColor={config.backgroundColor}
                   borderColor={config.borderColor}
                 />

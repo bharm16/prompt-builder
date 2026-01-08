@@ -34,7 +34,10 @@ export const PromptInput = ({
   });
 
   const { aspectRatioInfo, durationInfo, resolutionInfo, fpsInfo, audioInfo } =
-    usePromptInputCapabilities({ selectedModel, generationParams });
+    usePromptInputCapabilities({
+      generationParams,
+      ...(selectedModel ? { selectedModel } : {}),
+    });
   const coverageMeters = useCoverageMeters(inputPrompt);
   const { hasSeenWorkflowChip, markWorkflowChipSeen } = useWorkflowChipSeen();
 

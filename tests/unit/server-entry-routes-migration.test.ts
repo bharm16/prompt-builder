@@ -174,7 +174,7 @@ describe('health.routes', () => {
 describe('api.routes', () => {
   it('validates and processes optimize requests', async () => {
     const promptOptimizationService = {
-      optimize: vi.fn(async () => 'optimized prompt'),
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
     };
 
     const app = express();
@@ -212,7 +212,7 @@ describe('api.routes', () => {
 
   it('passes skipCache through optimize requests', async () => {
     const promptOptimizationService = {
-      optimize: vi.fn(async () => 'optimized prompt'),
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
     };
 
     const app = express();
@@ -247,7 +247,7 @@ describe('api.routes', () => {
 
   it('passes locked spans through optimize requests', async () => {
     const promptOptimizationService = {
-      optimize: vi.fn(async () => 'optimized prompt'),
+      optimize: vi.fn(async (_args: Record<string, unknown>) => 'optimized prompt'),
     };
 
     const app = express();

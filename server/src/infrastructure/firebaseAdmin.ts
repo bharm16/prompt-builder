@@ -46,15 +46,16 @@ function initializeFirebaseAdmin(): admin.app.App {
   try {
     const serviceAccount = loadServiceAccount();
 
+    const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
     if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        ...(projectId ? { projectId } : {}),
       });
     } else {
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        ...(projectId ? { projectId } : {}),
       });
     }
 

@@ -34,7 +34,11 @@ const loadSettings = (): AppSettings => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = PartialSettingsSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? normalizeSettings(parsed.data) : DEFAULT_SETTINGS;
+    if (!parsed.success) return DEFAULT_SETTINGS;
+    const cleaned = Object.fromEntries(
+      Object.entries(parsed.data).filter(([, value]) => value !== undefined)
+    ) as Partial<AppSettings>;
+    return normalizeSettings(cleaned);
   } catch {
     return DEFAULT_SETTINGS;
   }

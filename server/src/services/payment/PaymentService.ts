@@ -82,7 +82,7 @@ export class PaymentService {
     }
 
     this.stripe = new Stripe(secretKey, {
-      apiVersion: '2025-01-27.acacia',
+      apiVersion: '2025-02-24.acacia',
     });
   }
 
@@ -95,12 +95,13 @@ export class PaymentService {
   }
 
   public isPriceIdConfigured(priceId: string): boolean {
-    return Number.isFinite(this.priceCredits[priceId]) && this.priceCredits[priceId] > 0;
+    const credits = this.priceCredits[priceId];
+    return typeof credits === 'number' && Number.isFinite(credits) && credits > 0;
   }
 
   public getCreditsForPriceId(priceId: string): number {
     const credits = this.priceCredits[priceId];
-    if (!Number.isFinite(credits) || credits <= 0) {
+    if (typeof credits !== 'number' || !Number.isFinite(credits) || credits <= 0) {
       throw new Error(`Unknown Stripe price ID: ${priceId}`);
     }
     return credits;

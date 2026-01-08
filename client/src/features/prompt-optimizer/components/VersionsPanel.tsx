@@ -4,6 +4,7 @@ import { cn } from '@/utils/cn';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
+import type { PromptVersionEdit } from '@hooks/types';
 
 type VersionEntry = {
   id?: string;
@@ -11,9 +12,10 @@ type VersionEntry = {
   label?: string;
   version?: string | number;
   meta?: string;
-  edits?: number;
+  edits?: PromptVersionEdit[] | number;
   editCount?: number;
   timestamp?: string | number;
+  signature?: string;
   isDirty?: boolean;
   dirty?: boolean;
   isSelected?: boolean;
@@ -43,9 +45,11 @@ const resolveMetaLabel = (entry: VersionEntry): string => {
   }
   const count = typeof entry.editCount === 'number'
     ? entry.editCount
-    : typeof entry.edits === 'number'
-      ? entry.edits
-      : null;
+    : Array.isArray(entry.edits)
+      ? entry.edits.length
+      : typeof entry.edits === 'number'
+        ? entry.edits
+        : null;
   if (typeof count === 'number' && Number.isFinite(count)) {
     return `${count} edit${count === 1 ? '' : 's'}`;
   }

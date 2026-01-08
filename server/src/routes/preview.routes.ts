@@ -140,7 +140,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       }
 
       if (!userCreditService) {
-        logger.error('User credit service is not available - blocking paid feature access', {
+        logger.error('User credit service is not available - blocking paid feature access', undefined, {
           path: req.path,
         });
         return res.status(503).json({
@@ -156,10 +156,10 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       const normalized = normalizeGenerationParams({
         generationParams,
-        targetModel: model,
         operation,
         requestId: requestId || 'unknown',
-        userId: userId || undefined,
+        userId,
+        ...(model ? { targetModel: model } : {}),
       });
 
       if (normalized.error) {
@@ -211,18 +211,32 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
-      const options: VideoGenerationOptions = {
-        ...(paramAspectRatio || aspectRatio
-          ? { aspectRatio: (paramAspectRatio || aspectRatio) as VideoGenerationOptions['aspectRatio'] }
-          : {}),
-        ...(model ? { model: model as VideoGenerationOptions['model'] } : {}),
-        ...(startImage ? { startImage } : {}),
-        ...(inputReference ? { inputReference } : {}),
-        ...(typeof paramFps === 'number' ? { fps: paramFps } : {}),
-        ...(seconds ? { seconds } : {}),
-        ...(size ? { size } : {}),
-        ...(typeof numFrames === 'number' ? { numFrames } : {}),
-      };
+      const options: VideoGenerationOptions = {};
+      const resolvedAspectRatio = paramAspectRatio || aspectRatio;
+      if (resolvedAspectRatio) {
+        options.aspectRatio = resolvedAspectRatio as NonNullable<VideoGenerationOptions['aspectRatio']>;
+      }
+      if (model) {
+        options.model = model as NonNullable<VideoGenerationOptions['model']>;
+      }
+      if (startImage) {
+        options.startImage = startImage;
+      }
+      if (inputReference) {
+        options.inputReference = inputReference;
+      }
+      if (typeof paramFps === 'number') {
+        options.fps = paramFps;
+      }
+      if (seconds) {
+        options.seconds = seconds;
+      }
+      if (size) {
+        options.size = size;
+      }
+      if (typeof numFrames === 'number') {
+        options.numFrames = numFrames;
+      }
 
       logger.debug(`Queueing ${operation}`, {
         operation,

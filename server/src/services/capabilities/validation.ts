@@ -108,6 +108,9 @@ export const validateCapabilityValues = (
     }
 
     const value = values[fieldId];
+    if (typeof value === 'undefined') {
+      continue;
+    }
     const error = validateFieldValue(fieldId, field, value, state.allowedValues);
     if (error) {
       errors.push(error);

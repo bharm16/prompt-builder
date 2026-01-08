@@ -40,12 +40,14 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
     const [metadata] = await file.getMetadata();
     const url = await this.getSignedUrl(file);
+    const resolvedSize = Number(metadata.size || 0);
+    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
     return {
       id,
       url,
       contentType,
       createdAt: Date.now(),
-      sizeBytes: Number(metadata.size || 0) || undefined,
+      ...(sizeBytes !== undefined ? { sizeBytes } : {}),
     };
   }
 
@@ -65,12 +67,14 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
     const [metadata] = await file.getMetadata();
     const url = await this.getSignedUrl(file);
+    const resolvedSize = Number(metadata.size || 0);
+    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
     return {
       id,
       url,
       contentType,
       createdAt: Date.now(),
-      sizeBytes: Number(metadata.size || 0) || undefined,
+      ...(sizeBytes !== undefined ? { sizeBytes } : {}),
     };
   }
 
@@ -83,12 +87,13 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
     const [metadata] = await file.getMetadata();
     const contentType = typeof metadata.contentType === 'string' ? metadata.contentType : 'video/mp4';
-    const sizeBytes = Number(metadata.size || 0) || undefined;
+    const resolvedSize = Number(metadata.size || 0);
+    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
 
     return {
       stream: file.createReadStream(),
       contentType,
-      contentLength: sizeBytes,
+      ...(sizeBytes !== undefined ? { contentLength: sizeBytes } : {}),
     };
   }
 

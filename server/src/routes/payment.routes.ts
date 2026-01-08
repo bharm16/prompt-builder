@@ -137,13 +137,13 @@ export const createPaymentRoutes = (): express.Router => {
         normalizedPriceId,
         `${origin}/settings/billing`
       );
-      res.json(session);
+      return res.json(session);
     } catch (error) {
       logger.error('Failed to create checkout session', error as Error, {
         userId,
         priceId: normalizedPriceId,
       });
-      res.status(500).json({ error: 'Failed to create checkout session' });
+      return res.status(500).json({ error: 'Failed to create checkout session' });
     }
   });
 

@@ -8,7 +8,7 @@ export const aspectRatioField = (
 ): CapabilityField => ({
   type: 'enum',
   values,
-  default: values[0],
+  ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
     label: 'Aspect ratio',
     control: 'segmented',
@@ -20,7 +20,7 @@ export const aspectRatioField = (
 export const durationField = (values: number[] = [4, 8, 12]): CapabilityField => ({
   type: 'enum',
   values,
-  default: values[0],
+  ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
     label: 'Duration',
     control: 'select',
@@ -32,7 +32,7 @@ export const durationField = (values: number[] = [4, 8, 12]): CapabilityField =>
 export const fpsField = (values: number[] = [24, 30]): CapabilityField => ({
   type: 'enum',
   values,
-  default: values[0],
+  ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
     label: 'Frame rate',
     control: 'select',
@@ -44,7 +44,7 @@ export const fpsField = (values: number[] = [24, 30]): CapabilityField => ({
 export const resolutionField = (values: string[] = ['720p', '1080p']): CapabilityField => ({
   type: 'enum',
   values,
-  default: values[0],
+  ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
     label: 'Resolution',
     control: 'select',

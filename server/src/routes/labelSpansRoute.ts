@@ -73,8 +73,8 @@ export function createLabelSpansRoute(aiService: AIModelService): Router {
       const { result, headers } = await coordinator.resolve({
         payload,
         text,
-        policy,
-        templateVersion,
+        policy: policy ?? null,
+        templateVersion: templateVersion ?? null,
         requestId,
         userId,
         startTimeMs: startTime,

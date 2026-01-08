@@ -12,11 +12,12 @@ type LogSink = {
 };
 
 const SORA_STATUS_POLL_INTERVAL_MS = 2000;
-const SORA_SIZES_BY_ASPECT_RATIO: Record<string, string> = {
+type SoraVideoSize = '720x1280' | '1280x720' | '1024x1792' | '1792x1024';
+const SORA_SIZES_BY_ASPECT_RATIO: Record<'16:9' | '9:16', SoraVideoSize> = {
   '16:9': '1280x720',
   '9:16': '720x1280',
-  '1:1': '1024x1024',
 };
+const SORA_SIZES: SoraVideoSize[] = ['720x1280', '1280x720', '1024x1792', '1792x1024'];
 
 function resolveSoraSeconds(seconds?: VideoGenerationOptions['seconds']): '4' | '8' | '12' {
   if (seconds === '4' || seconds === '8' || seconds === '12') {
@@ -29,14 +30,20 @@ function resolveSoraSize(
   aspectRatio?: VideoGenerationOptions['aspectRatio'],
   sizeOverride?: string,
   log?: LogSink
-): string {
+): SoraVideoSize {
   if (sizeOverride) {
-    return sizeOverride;
+    if (SORA_SIZES.includes(sizeOverride as SoraVideoSize)) {
+      return sizeOverride as SoraVideoSize;
+    }
+    log?.warn('Unsupported Sora size override; defaulting to 1280x720', { sizeOverride });
   }
-  if (aspectRatio && !SORA_SIZES_BY_ASPECT_RATIO[aspectRatio]) {
-    log?.warn('Aspect ratio not mapped for Sora size; defaulting to 1280x720', { aspectRatio });
+  if (aspectRatio === '9:16') {
+    return SORA_SIZES_BY_ASPECT_RATIO['9:16'];
   }
-  return SORA_SIZES_BY_ASPECT_RATIO[aspectRatio || '16:9'] || '1280x720';
+  if (aspectRatio === '1:1') {
+    log?.warn('Sora does not support 1:1; defaulting to 1280x720', { aspectRatio });
+  }
+  return SORA_SIZES_BY_ASPECT_RATIO['16:9'];
 }
 
 async function resolveSoraInputReference(inputReference: string, log: LogSink): Promise<Response> {
@@ -77,7 +84,7 @@ export async function generateSoraVideo(
   });
 
   let video = job;
-  while (video.status === 'queued' || video.status === 'running') {
+  while (video.status === 'queued' || video.status === 'in_progress') {
     await sleep(SORA_STATUS_POLL_INTERVAL_MS);
     video = await openai.videos.retrieve(video.id);
   }

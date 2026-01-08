@@ -547,7 +547,11 @@ export class VideoPromptService {
       while (true) {
         const index = nextIndex++;
         if (index >= allStrategies.length) break;
-        optimizationResults[index] = await runStrategy(allStrategies[index]);
+        const strategy = allStrategies[index];
+        if (!strategy) {
+          continue;
+        }
+        optimizationResults[index] = await runStrategy(strategy);
       }
     };
 

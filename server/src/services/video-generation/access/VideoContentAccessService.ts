@@ -49,6 +49,9 @@ export class VideoContentAccessService {
     }
 
     const [encoded, signature] = parts;
+    if (!encoded || !signature) {
+      return null;
+    }
     const expected = this.sign(encoded);
     if (!this.timingSafeEqual(signature, expected)) {
       return null;
@@ -73,7 +76,7 @@ export class VideoContentAccessService {
 
     return {
       assetId: parsed.assetId,
-      userId: parsed.userId,
+      ...(parsed.userId ? { userId: parsed.userId } : {}),
       expiresAtMs: parsed.expiresAtMs,
     };
   }
@@ -83,7 +86,10 @@ export class VideoContentAccessService {
       return url;
     }
 
-    const token = this.issueToken({ assetId, userId });
+    const token = this.issueToken({
+      assetId,
+      ...(userId ? { userId } : {}),
+    });
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}token=${encodeURIComponent(token)}`;
   }

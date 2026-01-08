@@ -5,6 +5,7 @@ import {
   resolveProviderForModel,
   validateCapabilityValues,
 } from '@services/capabilities';
+import type { CapabilityValues } from '@shared/capabilities';
 
 interface NormalizeGenerationParamsInput {
   generationParams: unknown;
@@ -50,7 +51,7 @@ export const normalizeGenerationParams = ({
     };
   }
 
-  const validation = validateCapabilityValues(schema, generationParams as Record<string, unknown>);
+  const validation = validateCapabilityValues(schema, generationParams as CapabilityValues);
   if (!validation.ok) {
     logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
       operation,

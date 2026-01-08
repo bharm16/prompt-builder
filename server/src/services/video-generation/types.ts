@@ -22,6 +22,7 @@ export type SoraModelId = 'sora-2' | 'sora-2-pro';
 export type LumaModelId = 'luma-ray3';
 export type KlingModelId = 'kling-v2-1-master';
 export type VeoModelId = 'google/veo-3';
+export type KlingAspectRatio = '16:9' | '9:16' | '1:1';
 
 export interface VideoGenerationOptions {
   model?: VideoModelKey | VideoModelId;

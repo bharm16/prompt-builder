@@ -32,6 +32,7 @@ export function createSuggestionsHandlers({
       }
 
       const { suggestions, context, rubric } = validation.data;
+      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
       const operation = 'evaluateSuggestions';
       const requestId = req.id;
       const userId = extractUserId(req);
@@ -41,7 +42,7 @@ export function createSuggestionsHandlers({
         requestId,
         userId,
         suggestionCount: suggestions.length,
-        rubric: rubric || 'auto-detect',
+        rubric: resolvedRubric || 'auto-detect',
         isVideoPrompt: context.isVideoPrompt,
       });
 
@@ -49,7 +50,7 @@ export function createSuggestionsHandlers({
         const evaluation = await llmJudge.evaluateSuggestions({
           suggestions,
           context,
-          rubricType: rubric,
+          ...(resolvedRubric ? { rubricType: resolvedRubric } : {}),
         });
 
         const responseTime = Math.round(performance.now() - startTime);
@@ -101,6 +102,7 @@ export function createSuggestionsHandlers({
       }
 
       const { suggestion, context, rubric } = validation.data;
+      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
       try {
         logger.debug(`Starting ${operation}`, {
@@ -108,13 +110,13 @@ export function createSuggestionsHandlers({
           requestId,
           userId,
           suggestionLength: suggestion.length,
-          rubric: rubric || 'auto-detect',
+          rubric: resolvedRubric || 'auto-detect',
         });
 
         const evaluation = await llmJudge.evaluateSingleSuggestion(
           suggestion,
           context,
-          rubric
+          resolvedRubric
         );
 
         const responseTime = Math.round(performance.now() - startTime);
@@ -167,6 +169,7 @@ export function createSuggestionsHandlers({
       }
 
       const { setA, setB, context, rubric } = validation.data;
+      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
 
       try {
         logger.debug(`Starting ${operation}`, {
@@ -180,7 +183,7 @@ export function createSuggestionsHandlers({
           setA,
           setB,
           context,
-          rubric
+          resolvedRubric
         );
 
         const responseTime = Math.round(performance.now() - startTime);

@@ -19,9 +19,9 @@ export const buildLockedSpan = (span: HighlightSpan): LockedSpan | null => {
     text,
     leftCtx: normalize(span.displayLeftCtx ?? span.leftCtx),
     rightCtx: normalize(span.displayRightCtx ?? span.rightCtx),
-    category: typeof span.category === 'string' ? span.category : undefined,
-    source: typeof span.source === 'string' ? span.source : undefined,
-    confidence: typeof span.confidence === 'number' ? span.confidence : undefined,
+    ...(typeof span.category === 'string' ? { category: span.category } : {}),
+    ...(typeof span.source === 'string' ? { source: span.source } : {}),
+    ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
   };
 };
 

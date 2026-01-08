@@ -8,7 +8,7 @@ import { PromptRepositoryError } from './promptRepositoryTypes';
 const log = logger.child('LocalStoragePromptRepository');
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-const GenerationParamsSchema = z.record(CapabilityValueSchema);
+const GenerationParamsSchema = z.record(z.string(), CapabilityValueSchema);
 
 const PromptVersionEditSchema = z
   .object({
@@ -75,7 +75,7 @@ const safeParseHistory = (raw: string): PromptHistoryEntry[] | null => {
   try {
     const parsed = JSON.parse(raw) as unknown;
     const result = PromptHistoryEntriesSchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    return result.success ? (result.data as PromptHistoryEntry[]) : null;
   } catch {
     return null;
   }

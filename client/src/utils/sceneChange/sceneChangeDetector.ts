@@ -62,8 +62,8 @@ export async function detectAndApplySceneChange({
         newValue,
         fullPrompt: baselinePrompt,
         affectedFields: normalizedAffectedFields,
-        sectionHeading,
-        sectionContext,
+        ...(typeof sectionHeading === 'string' ? { sectionHeading } : {}),
+        ...(typeof sectionContext === 'string' ? { sectionContext } : {}),
       },
       fetchImpl
     );

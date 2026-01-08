@@ -62,7 +62,10 @@ export const sanitizeCapabilityValues = (
       const current = next[fieldId];
       const isValid = state.allowedValues.some((value) => Object.is(value, current));
       if (!isValid) {
-        next[fieldId] = state.allowedValues[0];
+        const fallback = state.allowedValues[0];
+        if (fallback !== undefined) {
+          next[fieldId] = fallback;
+        }
       }
     }
   }

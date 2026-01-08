@@ -486,14 +486,14 @@ export async function configureServices(): Promise<DIContainer> {
         return null;
       }
       return new VideoGenerationService({
-        apiToken,
-        openAIKey,
-        lumaApiKey,
-        klingApiKey,
-        klingBaseUrl,
-        geminiApiKey,
-        geminiBaseUrl,
         assetStore: videoAssetStore,
+        ...(apiToken ? { apiToken } : {}),
+        ...(openAIKey ? { openAIKey } : {}),
+        ...(lumaApiKey ? { lumaApiKey } : {}),
+        ...(klingApiKey ? { klingApiKey } : {}),
+        ...(klingBaseUrl ? { klingBaseUrl } : {}),
+        ...(geminiApiKey ? { geminiApiKey } : {}),
+        ...(geminiBaseUrl ? { geminiBaseUrl } : {}),
       });
     },
     ['videoAssetStore']

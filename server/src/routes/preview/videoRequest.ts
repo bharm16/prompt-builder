@@ -50,8 +50,8 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     ok: true,
     payload: {
       prompt,
-      aspectRatio,
-      model,
+      ...(aspectRatio ? { aspectRatio } : {}),
+      ...(model ? { model } : {}),
       ...(startImage ? { startImage } : {}),
       ...(inputReference ? { inputReference } : {}),
       ...(generationParams !== undefined ? { generationParams } : {}),

@@ -327,14 +327,45 @@ export class PromptRepository {
     const highlightCache = convertHighlightCache(data.highlightCache as { updatedAt?: Timestamp | string; [key: string]: unknown } | null | undefined);
 
     // Convert version timestamps
-    const versions = convertVersions(data.versions as Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined);
+    const versions = convertVersions(
+      data.versions as Array<{ timestamp?: Timestamp | string; [key: string]: unknown }> | undefined
+    ) as unknown as PromptVersionEntry[];
+    const input = typeof data.input === 'string' ? data.input : '';
+    const output = typeof data.output === 'string' ? data.output : '';
 
-    return {
+    const entry: PromptHistoryEntry = {
       id: doc.id,
-      ...data,
+      input,
+      output,
       timestamp,
       highlightCache,
       versions,
-    } as PromptHistoryEntry;
+    };
+
+    if (typeof data.uuid === 'string') {
+      entry.uuid = data.uuid;
+    }
+    if (typeof data.score === 'number' || data.score === null) {
+      entry.score = data.score;
+    }
+    if (typeof data.mode === 'string') {
+      entry.mode = data.mode;
+    }
+    if (typeof data.targetModel === 'string' || data.targetModel === null) {
+      entry.targetModel = data.targetModel;
+    }
+    if (data.generationParams === null) {
+      entry.generationParams = null;
+    } else if (data.generationParams && typeof data.generationParams === 'object') {
+      entry.generationParams = data.generationParams as Record<string, unknown>;
+    }
+    if (data.brainstormContext !== undefined) {
+      entry.brainstormContext = data.brainstormContext as unknown;
+    }
+    if (data.highlightCache !== undefined) {
+      entry.highlightCache = highlightCache;
+    }
+
+    return entry;
   }
 }

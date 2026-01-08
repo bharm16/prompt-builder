@@ -19,9 +19,9 @@ export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
-      interpretedPlan,
       includeInstructions,
-      generationParams,
+      ...(interpretedPlan !== undefined ? { interpretedPlan } : {}),
+      ...(generationParams ? { generationParams } : {}),
     });
 
     const systemPrompt = `${baseTemplate.systemPrompt}\n\n${this.buildLockedSpanInstructions()}`.trim();
@@ -71,4 +71,3 @@ export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
 IMPORTANT: Respond with ONLY valid JSON. Start with { - no markdown code blocks, no explanatory text.`;
   }
 }
-

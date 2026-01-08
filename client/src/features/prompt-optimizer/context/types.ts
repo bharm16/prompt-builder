@@ -5,7 +5,7 @@
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import type { PromptHistoryEntry, PromptVersionEdit } from '@hooks/types';
+import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
@@ -93,7 +93,7 @@ export interface PromptHistory {
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
   updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
   updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
-  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptHistoryEntry['versions']) => void;
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   [key: string]: unknown;
 }
 

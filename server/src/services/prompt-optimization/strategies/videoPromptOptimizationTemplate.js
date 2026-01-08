@@ -199,6 +199,13 @@ Return ONLY JSON (no markdown, no prose):
 `;
 }
 
+/**
+ * @param {string} userConcept
+ * @param {Record<string, unknown> | null} shotPlan
+ * @param {Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null; category?: string | null }>} lockedSpans
+ * @param {boolean} instructionsOnly
+ * @returns {string}
+ */
 export function generateUniversalVideoPromptWithLockedSpans(
   userConcept,
   shotPlan = null,

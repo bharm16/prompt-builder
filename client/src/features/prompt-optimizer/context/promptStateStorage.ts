@@ -7,7 +7,7 @@ const STORAGE_KEYS = {
 } as const;
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-const CapabilityValuesSchema = z.record(CapabilityValueSchema);
+const CapabilityValuesSchema = z.record(z.string(), CapabilityValueSchema);
 const SelectedModelSchema = z.string();
 
 const safeParseJson = (raw: string): unknown => {
@@ -36,7 +36,7 @@ export const loadGenerationParams = (): CapabilityValues => {
     const raw = window.localStorage.getItem(STORAGE_KEYS.generationParams);
     if (!raw) return {};
     const parsed = CapabilityValuesSchema.safeParse(safeParseJson(raw));
-    return parsed.success ? parsed.data : {};
+    return parsed.success ? (parsed.data as CapabilityValues) : {};
   } catch {
     return {};
   }

@@ -63,9 +63,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     prompt,
     isVisible,
     aspectRatio: normalizedAspectRatio,
-    model,
-    inputReference: inputReference?.trim() || undefined,
-    generationParams,
+    ...(model ? { model } : {}),
+    ...(inputReference?.trim() ? { inputReference: inputReference.trim() } : {}),
+    ...(generationParams ? { generationParams } : {}),
   });
   const displayError = error;
 

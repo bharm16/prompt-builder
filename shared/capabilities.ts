@@ -126,10 +126,12 @@ export const resolveFieldState = (
   const disabled = (field.constraints?.disabled_if ?? []).some((condition) =>
     isConditionMatch(condition, values)
   );
-  const allowedValues =
-    field.type === 'enum' ? resolveAllowedValues(field, values) : undefined;
+  if (field.type === 'enum') {
+    const allowedValues = resolveAllowedValues(field, values);
+    return { available, disabled, allowedValues };
+  }
 
-  return { available, disabled, allowedValues };
+  return { available, disabled };
 };
 
 export const getDefaultValue = (field: CapabilityField): CapabilityValue | undefined => {

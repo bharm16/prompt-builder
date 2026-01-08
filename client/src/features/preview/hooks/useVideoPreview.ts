@@ -78,11 +78,18 @@ export function useVideoPreview({
       abortControllerRef.current = abortController;
 
       try {
-        const response = await generateVideoPreview(promptToGenerate, aspectRatio, model, {
-          startImage,
-          inputReference,
-          generationParams,
-        });
+        const options = (() => {
+          const payload: {
+            startImage?: string;
+            inputReference?: string;
+            generationParams?: Record<string, unknown>;
+          } = {};
+          if (startImage) payload.startImage = startImage;
+          if (inputReference) payload.inputReference = inputReference;
+          if (generationParams) payload.generationParams = generationParams;
+          return Object.keys(payload).length ? payload : undefined;
+        })();
+        const response = await generateVideoPreview(promptToGenerate, aspectRatio, model, options);
 
         // Check if request was aborted
         if (abortController.signal.aborted) {

@@ -51,7 +51,6 @@ describe('VideoTemplateBuilder - Generation Params', () => {
       const builder = new OpenAIVideoTemplateBuilder();
       const result = builder.buildTemplate({
         ...mockContext,
-        generationParams: undefined,
       });
 
       expect(result.developerMessage).not.toContain('USER OVERRIDES');
@@ -88,7 +87,6 @@ describe('VideoTemplateBuilder - Generation Params', () => {
       const builder = new GroqVideoTemplateBuilder();
       const result = builder.buildTemplate({
         ...mockContext,
-        generationParams: undefined,
       });
 
       expect(result.systemPrompt).not.toContain('USER OVERRIDES');
