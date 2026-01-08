@@ -10,6 +10,7 @@
 import { APIError, TimeoutError, ClientAbortError } from '../LLMClient.ts';
 import { logger } from '@infrastructure/Logger';
 import type { ILogger } from '@interfaces/ILogger';
+import CircuitBreaker from 'opossum';
 import { GeminiMessageBuilder } from './gemini/GeminiMessageBuilder.ts';
 import { GeminiResponseParser } from './gemini/GeminiResponseParser.ts';
 import type {
@@ -30,6 +31,7 @@ export class GeminiAdapter {
   private readonly messageBuilder: GeminiMessageBuilder;
   private readonly responseParser: GeminiResponseParser;
   public capabilities: { streaming: boolean };
+  private breaker: CircuitBreaker;
 
   constructor({
     apiKey,
@@ -54,25 +56,37 @@ export class GeminiAdapter {
     this.messageBuilder = new GeminiMessageBuilder();
     this.responseParser = new GeminiResponseParser();
     this.capabilities = { streaming: true };
-  }
 
-  async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
-    const startTime = performance.now();
-    const operation = 'complete';
-    const timeout = options.timeout || this.defaultTimeout;
-    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(timeout, options.signal);
-
-    this.log.debug(`Starting ${operation}`, {
-      operation,
-      model: options.model || this.defaultModel,
-      maxTokens: options.maxTokens,
-      jsonMode: options.jsonMode,
+    // Initialize Circuit Breaker
+    this.breaker = new CircuitBreaker(this._executeRequest.bind(this), {
+      timeout: this.defaultTimeout + 5000, // Slightly higher than internal timeout
+      errorThresholdPercentage: 50,
+      resetTimeout: 10000, // Wait 10s before retrying after open
+      name: 'GeminiAPI',
     });
 
-    // Map IAIClient 'schema' to Gemini 'responseSchema' if present
-    if (options.schema && !options.responseSchema) {
-      options.responseSchema = options.schema;
-    }
+    this.breaker.fallback(() => {
+      throw new APIError('Gemini API Circuit Breaker Open', 503, true);
+    });
+
+    this.breaker.on('open', () => this.log.warn('Gemini Circuit Breaker OPENED'));
+    this.breaker.on('halfOpen', () => this.log.info('Gemini Circuit Breaker HALF-OPEN'));
+    this.breaker.on('close', () => this.log.info('Gemini Circuit Breaker CLOSED'));
+  }
+
+  /**
+   * Internal method to execute the request, wrapped by Circuit Breaker
+   */
+  private async _executeRequest(
+    systemPrompt: string,
+    options: CompletionOptions
+  ): Promise<AIResponse> {
+    const operation = 'complete';
+    const timeout = options.timeout || this.defaultTimeout;
+    const { controller, timeoutId, abortedByTimeout } = this._createAbortController(
+      timeout,
+      options.signal
+    );
 
     try {
       const payload = this.messageBuilder.buildPayload(systemPrompt, options);
@@ -99,12 +113,10 @@ export class GeminiAdapter {
           isRetryable
         );
 
-        this.log.warn('Gemini API request failed', {
-          operation,
-          status: response.status,
-          isRetryable,
-          error: errorBody.substring(0, 200),
-        });
+        // Don't trip breaker for 4xx errors (except 429)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          throw apiError; // Will be caught below but we might want to suppress breaker failure
+        }
 
         throw apiError;
       }
@@ -114,7 +126,6 @@ export class GeminiAdapter {
 
       this.log.info(`${operation} completed`, {
         operation,
-        duration: Math.round(performance.now() - startTime),
         responseLength: result.text?.length || 0,
         model: options.model || this.defaultModel,
       });
@@ -122,7 +133,33 @@ export class GeminiAdapter {
       return result;
     } catch (error) {
       clearTimeout(timeoutId);
-      throw this._handleError(error, abortedByTimeout, timeout, operation, startTime);
+      throw this._handleError(error, abortedByTimeout, timeout, operation, performance.now());
+    }
+  }
+
+  async complete(systemPrompt: string, options: CompletionOptions = {}): Promise<AIResponse> {
+    const startTime = performance.now();
+    const operation = 'complete';
+    
+    this.log.debug(`Starting ${operation}`, {
+      operation,
+      model: options.model || this.defaultModel,
+      maxTokens: options.maxTokens,
+      jsonMode: options.jsonMode,
+    });
+
+    // Map IAIClient 'schema' to Gemini 'responseSchema' if present
+    if (options.schema && !options.responseSchema) {
+      options.responseSchema = options.schema;
+    }
+
+    // Fire the circuit breaker
+    try {
+      return await this.breaker.fire(systemPrompt, options) as AIResponse;
+    } catch (error) {
+       // If it's a 4xx error that we allowed through, re-throw it. 
+       // If it's the breaker open error, let it bubble.
+       throw error;
     }
   }
 
