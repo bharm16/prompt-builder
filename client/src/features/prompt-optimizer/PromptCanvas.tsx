@@ -116,6 +116,7 @@ export function PromptCanvas({
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [isOutputHovered, setIsOutputHovered] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [tokenPopover, setTokenPopover] = useState<{
     left: number;
     top: number;
@@ -128,6 +129,10 @@ export function PromptCanvas({
   const [isRailVideoPreviewGenerating, setIsRailVideoPreviewGenerating] = useState(false);
   const [railVideoGenerateRequestId, setRailVideoGenerateRequestId] = useState(0);
   const [railVideoLastGeneratedAt, setRailVideoLastGeneratedAt] = useState<number | null>(null);
+  
+  // Refs for tracking previous state to prevent loops
+  const previousTokenPopoverRef = useRef(tokenPopover);
+  const previousSuggestionCountRef = useRef(0);
 
   // Get model + layout state from context
   const {
@@ -732,7 +737,13 @@ export function PromptCanvas({
 
   useEffect(() => {
     if (!selectedSpanId) return;
-    const handleScroll = (): void => updateTokenPopover();
+    const handleScroll = (e: Event): void => {
+      // Don't update if the scroll came from the suggestions list
+      if (suggestionsListRef.current && suggestionsListRef.current.contains(e.target as Node)) {
+        return;
+      }
+      updateTokenPopover();
+    };
     window.addEventListener('scroll', handleScroll, true);
     return () => window.removeEventListener('scroll', handleScroll, true);
   }, [selectedSpanId, updateTokenPopover]);
@@ -1157,12 +1168,24 @@ export function PromptCanvas({
   const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
 
   useEffect(() => {
-    if (!tokenPopover) return;
-    setActiveSuggestionIndex(0);
+    const justOpened = !previousTokenPopoverRef.current && tokenPopover;
+    const countChanged = suggestionCount !== previousSuggestionCountRef.current;
+
+    if (tokenPopover && (justOpened || countChanged)) {
+      interactionSourceRef.current = 'auto';
+      setActiveSuggestionIndex(0);
+    }
+
+    previousTokenPopoverRef.current = tokenPopover;
+    previousSuggestionCountRef.current = suggestionCount;
   }, [tokenPopover, suggestionCount]);
 
   useEffect(() => {
     if (!tokenPopover || !suggestionsListRef.current) return;
+    
+    // Skip scrolling if the change came from mouse hover to prevent fighting/looping
+    if (interactionSourceRef.current === 'mouse') return;
+
     const list = suggestionsListRef.current;
     const activeItem = list.querySelector(
       `[data-index="${activeSuggestionIndex}"]`
@@ -1191,12 +1214,14 @@ export function PromptCanvas({
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
+        interactionSourceRef.current = 'keyboard';
         setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCount);
         return;
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
+        interactionSourceRef.current = 'keyboard';
         setActiveSuggestionIndex((prev) =>
           prev - 1 < 0 ? suggestionCount - 1 : prev - 1
         );
@@ -1733,7 +1758,10 @@ export function PromptCanvas({
                                   }
                                   className="inline-suggest-item"
                                   onMouseDown={(e) => e.preventDefault()}
-                                  onMouseEnter={() => setActiveSuggestionIndex(index)}
+                                  onMouseEnter={() => {
+                                    interactionSourceRef.current = 'mouse';
+                                    setActiveSuggestionIndex(index);
+                                  }}
                                   onClick={() => {
                                     handleSuggestionClickWithFeedback(suggestion.item);
                                     closeInlinePopover();

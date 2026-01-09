@@ -8,6 +8,7 @@ export {
   loadFromLocalStorage,
   syncToLocalStorage,
   saveEntry,
+  updatePrompt,
   updateHighlights,
   updateOutput,
   updateVersions,
