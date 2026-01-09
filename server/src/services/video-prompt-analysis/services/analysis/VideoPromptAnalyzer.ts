@@ -138,7 +138,7 @@ export class VideoPromptAnalyzer {
     if (!this.adapter) {
       this.adapter = new GeminiAdapter({
         apiKey: process.env.GEMINI_API_KEY || '',
-        defaultModel: 'gemini-3.0-flash',
+        defaultModel: 'gemini-2.5-flash',
       });
     }
     return this.adapter;

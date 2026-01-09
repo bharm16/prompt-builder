@@ -145,7 +145,7 @@ export async function configureServices(): Promise<DIContainer> {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
-      model: process.env.GEMINI_MODEL || 'gemini-3.0-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     },
     redis: {

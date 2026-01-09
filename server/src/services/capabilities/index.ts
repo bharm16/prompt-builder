@@ -1,5 +1,5 @@
 export {
-  CAPABILITIES_REGISTRY,
+  getCapabilitiesRegistry,
   getCapabilities,
   listModels,
   listProviders,

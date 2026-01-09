@@ -6,13 +6,16 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const shouldGenerateSourcemaps =
+  Boolean(process.env.SENTRY_AUTH_TOKEN) ||
+  process.env.GENERATE_SOURCEMAP === 'true';
 
 export default defineConfig({
   root: path.resolve(__dirname, '../../client'),
   envDir: path.resolve(__dirname, '../../'),
   build: {
     outDir: path.resolve(__dirname, '../../dist'),
-    sourcemap: true,
+    sourcemap: shouldGenerateSourcemaps,
   },
   css: {
     postcss: path.resolve(__dirname, './postcss.config.js'),

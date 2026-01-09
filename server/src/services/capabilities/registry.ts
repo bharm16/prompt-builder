@@ -36,23 +36,31 @@ const mergeRegistries = (
   return merged;
 };
 
-export const CAPABILITIES_REGISTRY: CapabilitiesRegistry = mergeRegistries(
-  MANUAL_CAPABILITIES_REGISTRY,
-  loadGeneratedRegistry()
-);
+let cachedRegistry: CapabilitiesRegistry | null = null;
 
-export const listProviders = (): string[] => Object.keys(CAPABILITIES_REGISTRY);
+const buildRegistry = (): CapabilitiesRegistry => {
+  return mergeRegistries(MANUAL_CAPABILITIES_REGISTRY, loadGeneratedRegistry());
+};
+
+export const getCapabilitiesRegistry = (): CapabilitiesRegistry => {
+  if (!cachedRegistry) {
+    cachedRegistry = buildRegistry();
+  }
+  return cachedRegistry;
+};
+
+export const listProviders = (): string[] => Object.keys(getCapabilitiesRegistry());
 
 export const listModels = (provider: string): string[] => {
-  return Object.keys(CAPABILITIES_REGISTRY[provider] || {});
+  return Object.keys(getCapabilitiesRegistry()[provider] || {});
 };
 
 export const getCapabilities = (provider: string, model: string): CapabilitiesSchema | null => {
-  return CAPABILITIES_REGISTRY[provider]?.[model] ?? null;
+  return getCapabilitiesRegistry()[provider]?.[model] ?? null;
 };
 
 export const findProviderForModel = (model: string): string | null => {
-  for (const [provider, models] of Object.entries(CAPABILITIES_REGISTRY)) {
+  for (const [provider, models] of Object.entries(getCapabilitiesRegistry())) {
     if (models[model]) {
       return provider;
     }

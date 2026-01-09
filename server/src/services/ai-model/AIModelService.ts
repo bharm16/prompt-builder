@@ -106,7 +106,7 @@ const DEFAULT_PROVIDER_SETTINGS: Record<string, { model: string; timeout: number
     timeout: Number.parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
   },
   gemini: {
-    model: process.env.GEMINI_MODEL || 'gemini-3.0-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     timeout: Number.parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
   },
 };

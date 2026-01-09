@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import { logger } from '@infrastructure/Logger';
 
+const COALESCING_WINDOW_MS = 100;
+const MAX_INLINE_KEY_LENGTH = 512;
+
 /**
  * Request coalescing middleware
  * Deduplicates identical in-flight requests to prevent redundant API calls
@@ -24,11 +27,7 @@ export class RequestCoalescingMiddleware {
       unique: 0,
       totalSaved: 0,
     };
-
-    // Start periodic cleanup of completed requests
-    this.cleanupInterval = setInterval(() => {
-      this._cleanupCompletedRequests();
-    }, 1000); // Run cleanup every second
+    this.cleanupTimer = null;
   }
 
   /**
@@ -38,23 +37,39 @@ export class RequestCoalescingMiddleware {
   generateKey(req) {
     // Include: method, path, and request body
     // Exclude: headers (except auth), timestamps, request IDs
-    const keyData = {
-      method: req.method,
-      path: req.path,
-      body: req.body,
-      // Include user auth if present (different users shouldn't coalesce)
-      auth: req.get('authorization')?.substring(0, 20), // First 20 chars only
-    };
+    const auth = req.get('authorization');
+    const authPrefix = auth ? auth.substring(0, 20) : '';
+    const baseKey = `${req.method}:${req.path}:${authPrefix}`;
 
-    // Fast hashing: Use first 16 chars of SHA256
-    // This is sufficient for collision resistance in short-lived map
+    if (req.body === null || req.body === undefined) {
+      return baseKey;
+    }
+
+    let bodyFingerprint = '';
+    if (typeof req.body === 'string') {
+      bodyFingerprint = req.body;
+    } else if (Buffer.isBuffer(req.body)) {
+      bodyFingerprint = req.body.toString('utf8');
+    } else {
+      bodyFingerprint = JSON.stringify(req.body);
+    }
+
+    if (!bodyFingerprint) {
+      return baseKey;
+    }
+
+    if (bodyFingerprint.length <= MAX_INLINE_KEY_LENGTH) {
+      return `${baseKey}:${bodyFingerprint}`;
+    }
+
+    // Hash large bodies to avoid oversized keys
     const hash = crypto
       .createHash('sha256')
-      .update(JSON.stringify(keyData))
+      .update(bodyFingerprint)
       .digest('hex')
       .substring(0, 16);
 
-    return `${req.method}:${req.path}:${hash}`;
+    return `${baseKey}:${hash}`;
   }
 
   /**
@@ -130,6 +145,7 @@ export class RequestCoalescingMiddleware {
         if (entry) {
           entry.completedAt = Date.now();
         }
+        this._scheduleCleanup();
 
         // Send the original response
         return originalJson(data);
@@ -154,13 +170,35 @@ export class RequestCoalescingMiddleware {
    */
   _cleanupCompletedRequests() {
     const now = Date.now();
-    const coalescingWindow = 100; // 100ms window for coalescing
 
     for (const [key, entry] of this.pendingRequests.entries()) {
-      if (entry.completedAt && now - entry.completedAt > coalescingWindow) {
+      if (entry.completedAt && now - entry.completedAt > COALESCING_WINDOW_MS) {
         this.pendingRequests.delete(key);
       }
     }
+  }
+
+  _hasCompletedEntries() {
+    for (const entry of this.pendingRequests.values()) {
+      if (entry.completedAt) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _scheduleCleanup() {
+    if (this.cleanupTimer) {
+      return;
+    }
+
+    this.cleanupTimer = setTimeout(() => {
+      this.cleanupTimer = null;
+      this._cleanupCompletedRequests();
+      if (this._hasCompletedEntries()) {
+        this._scheduleCleanup();
+      }
+    }, COALESCING_WINDOW_MS);
   }
 
   /**
@@ -194,9 +232,9 @@ export class RequestCoalescingMiddleware {
    */
   clear() {
     this.pendingRequests.clear();
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
+    if (this.cleanupTimer) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
     }
   }
 }

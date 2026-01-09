@@ -16,8 +16,8 @@ export function createCapabilitiesRoutes(): Router {
   router.get(
     '/registry',
     asyncHandler(async (_req, res) => {
-      const { CAPABILITIES_REGISTRY } = await import('@services/capabilities');
-      res.json(CAPABILITIES_REGISTRY);
+      const { getCapabilitiesRegistry } = await import('@services/capabilities');
+      res.json(getCapabilitiesRegistry());
     })
   );
 

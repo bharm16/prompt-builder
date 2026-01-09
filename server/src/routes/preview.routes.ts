@@ -18,22 +18,27 @@ import { userCreditService as defaultUserCreditService } from '@services/credits
 import { extractFirebaseToken } from '@utils/auth';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
-import { CAPABILITIES_REGISTRY } from '@services/capabilities';
+import { getCapabilitiesRegistry } from '@services/capabilities';
 
 const LOCAL_CONTENT_PREFIX = '/api/preview/video/content';
 
+let capabilityModelIdsCache: string[] | null = null;
+
 const getCapabilityModelIds = (): string[] => {
+  if (capabilityModelIdsCache) {
+    return capabilityModelIdsCache;
+  }
+
   const ids = new Set<string>();
-  for (const [provider, models] of Object.entries(CAPABILITIES_REGISTRY)) {
+  for (const [provider, models] of Object.entries(getCapabilitiesRegistry())) {
     if (provider === 'generic') continue;
     for (const modelId of Object.keys(models)) {
       ids.add(modelId);
     }
   }
-  return Array.from(ids);
+  capabilityModelIdsCache = Array.from(ids);
+  return capabilityModelIdsCache;
 };
-
-const CAPABILITY_MODEL_IDS = getCapabilityModelIds();
 
 const emptyAvailability = () => ({
   providers: {
@@ -200,7 +205,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         return res.json(emptyAvailability());
       }
 
-      const report = videoGenerationService.getAvailabilityReport(CAPABILITY_MODEL_IDS);
+      const report = videoGenerationService.getAvailabilityReport(getCapabilityModelIds());
       return res.json(report);
     })
   );
@@ -250,7 +255,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
 
       const availability = videoGenerationService.getModelAvailability(model);
       if (!availability.available) {
-        const report = videoGenerationService.getAvailabilityReport(CAPABILITY_MODEL_IDS);
+        const report = videoGenerationService.getAvailabilityReport(getCapabilityModelIds());
         const statusCode = availability.statusCode || 424;
         return res.status(statusCode).json({
           success: false,
