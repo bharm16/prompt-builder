@@ -145,6 +145,7 @@ export function PromptCanvas({
     promptHistory,
     currentPromptUuid,
     currentPromptDocId,
+    activeVersionId,
     latestHighlightRef,
     versionEditCountRef,
     versionEditsRef,
@@ -366,6 +367,18 @@ export function PromptCanvas({
   );
   const showVideoPanel = Boolean(showVideoPreview && videoPreviewPrompt.trim());
 
+  const activeVersion = useMemo(() => {
+    const entry =
+      promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
+      promptHistory.history.find((item) => item.id === currentPromptDocId) ||
+      null;
+    const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+    return versions.find((version) => version.versionId === activeVersionId) ?? null;
+  }, [promptHistory.history, currentPromptUuid, currentPromptDocId, activeVersionId]);
+
+  const seedImageUrl = activeVersion?.preview?.imageUrl ?? null;
+  const seedVideoUrl = activeVersion?.video?.videoUrl ?? null;
+
   const { upsertVersionOutput, syncVersionHighlights } = usePromptVersioning({
     promptHistory,
     currentPromptUuid,
@@ -437,6 +450,18 @@ export function PromptCanvas({
     (value: number | null) => setState({ videoLastGeneratedAt: value }),
     [setState]
   );
+
+  useEffect(() => {
+    const toMs = (iso?: string | null): number | null =>
+      iso ? Date.parse(iso) : null;
+    setVisualLastGeneratedAt(toMs(activeVersion?.preview?.generatedAt ?? null));
+    setVideoLastGeneratedAt(toMs(activeVersion?.video?.generatedAt ?? null));
+  }, [
+    activeVersion?.preview?.generatedAt,
+    activeVersion?.video?.generatedAt,
+    setVisualLastGeneratedAt,
+    setVideoLastGeneratedAt,
+  ]);
 
   const closeOutlineOverlay = useCallback((): void => {
     setHoveredSpanId(null);
@@ -1023,6 +1048,7 @@ export function PromptCanvas({
       void onReoptimize(inputPrompt, {
         compileOnly: true,
         compilePrompt: genericPrompt,
+        createVersion: true,
       });
     } else {
       void onReoptimize(inputPrompt);
@@ -1926,6 +1952,7 @@ export function PromptCanvas({
                           ? { inputReference: resolvedVideoInputReference }
                           : {})}
                         isVisible={true}
+                        seedVideoUrl={seedVideoUrl}
                         generateRequestId={videoGenerateRequestId}
                         lastGeneratedAt={videoLastGeneratedAt}
                         onPreviewGenerated={handleVideoPreviewGenerated}
@@ -2050,6 +2077,7 @@ export function PromptCanvas({
                 prompt={previewSource}
                 aspectRatio={effectiveAspectRatio}
                 isVisible={true}
+                seedImageUrl={seedImageUrl}
                 generateRequestId={visualGenerateRequestId}
                 lastGeneratedAt={visualLastGeneratedAt}
                 onPreviewGenerated={handleVisualPreviewGenerated}
@@ -2103,6 +2131,7 @@ export function PromptCanvas({
                     ? { inputReference: resolvedVideoInputReference }
                     : {})}
                   isVisible={showVideoPreview}
+                  seedVideoUrl={seedVideoUrl}
                   generateRequestId={railVideoGenerateRequestId}
                   lastGeneratedAt={railVideoLastGeneratedAt}
                   onPreviewGenerated={handleRailVideoPreviewGenerated}

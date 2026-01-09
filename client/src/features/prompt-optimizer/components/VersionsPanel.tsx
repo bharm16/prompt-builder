@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Image as ImageIcon, Play } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { createHighlightSignature } from '@/features/span-highlighting';
@@ -16,6 +16,8 @@ type VersionEntry = {
   editCount?: number;
   timestamp?: string | number;
   signature?: string;
+  prompt?: string;
+  highlights?: unknown | null;
   isDirty?: boolean;
   dirty?: boolean;
   isSelected?: boolean;
@@ -74,16 +76,32 @@ const resolveVersionLabel = (entry: VersionEntry, index: number, total: number):
 };
 
 export const VersionsPanel = (): React.ReactElement => {
-  const { promptHistory, currentPromptUuid, currentPromptDocId, promptOptimizer } = usePromptState();
+  const {
+    promptHistory,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptOptimizer,
+    setDisplayedPromptSilently,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    resetVersionEdits,
+    activeVersionId,
+    setActiveVersionId,
+  } = usePromptState();
 
-  const versions = useMemo<VersionEntry[]>(() => {
-    if (!promptHistory?.history?.length) return [];
-    const entry =
+  const entry = useMemo(() => {
+    if (!promptHistory?.history?.length) return null;
+    return (
       promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
-      promptHistory.history.find((item) => item.id === currentPromptDocId);
-    if (!entry || !Array.isArray(entry.versions)) return [];
-    return entry.versions.filter(Boolean) as VersionEntry[];
+      promptHistory.history.find((item) => item.id === currentPromptDocId) ||
+      null
+    );
   }, [promptHistory.history, currentPromptUuid, currentPromptDocId]);
+
+  const versions = useMemo<VersionEntry[]>(
+    () => (entry?.versions?.filter(Boolean) as VersionEntry[]) ?? [],
+    [entry]
+  );
 
   const orderedVersions = useMemo(() => {
     if (versions.length <= 1) return versions;
@@ -107,6 +125,33 @@ export const VersionsPanel = (): React.ReactElement => {
     latestVersionSignature && currentSignature && latestVersionSignature !== currentSignature
   );
 
+  const handleSelectVersion = useCallback(
+    (version: VersionEntry) => {
+      const versionId = typeof version.versionId === 'string' ? version.versionId : null;
+      const promptText =
+        typeof version.prompt === 'string' ? version.prompt : '';
+
+      if (!promptText.trim()) return;
+
+      setActiveVersionId(versionId);
+      promptOptimizer.setOptimizedPrompt(promptText);
+      setDisplayedPromptSilently(promptText);
+
+      const highlights = version.highlights ?? null;
+      applyInitialHighlightSnapshot(highlights, { bumpVersion: true, markPersisted: false });
+      resetEditStacks();
+      resetVersionEdits();
+    },
+    [
+      applyInitialHighlightSnapshot,
+      promptOptimizer,
+      resetEditStacks,
+      resetVersionEdits,
+      setActiveVersionId,
+      setDisplayedPromptSilently,
+    ]
+  );
+
   return (
     <div className="h-full flex flex-col px-3 py-3 gap-3 rounded-2xl bg-white/70 backdrop-blur-md shadow-sm">
       <div className="flex items-center justify-between px-1">
@@ -125,20 +170,26 @@ export const VersionsPanel = (): React.ReactElement => {
             const isDirty = hasEditsSinceLastVersion && index === 0
               ? true
               : Boolean(entry.isDirty ?? entry.dirty);
-            const isSelected = Boolean(entry.isSelected ?? entry.isCurrent);
+            const versionId = typeof entry.versionId === 'string' ? entry.versionId : null;
+            const isSelected = versionId && activeVersionId
+              ? versionId === activeVersionId
+              : index === 0;
             const hasPreview = Boolean(entry.hasPreview ?? entry.preview);
             const hasVideo = Boolean(entry.hasVideo ?? entry.video);
             const label = resolveVersionLabel(entry, index, orderedVersions.length);
             const meta = resolveMetaLabel(entry);
-            const key = entry.versionId ?? entry.id ?? `${label}-${index}`;
+            const key = versionId ?? entry.id ?? `${label}-${index}`;
 
             return (
-              <div
+              <button
                 key={key}
+                type="button"
+                onClick={() => handleSelectVersion(entry)}
                 className={cn(
-                  'group relative flex items-center gap-2 rounded-xl px-2.5 py-2 bg-white/60 hover:bg-white/90 shadow-[0_1px_0_rgba(0,0,0,0.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition transform-gpu hover:-translate-y-[1px]',
+                  'group relative flex items-center gap-2 rounded-xl px-2.5 py-2 bg-white/60 hover:bg-white/90 shadow-[0_1px_0_rgba(0,0,0,0.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition transform-gpu hover:-translate-y-[1px] text-left w-full',
                   isSelected && 'bg-white ring-1 ring-zinc-900/10 shadow-[0_10px_28px_rgba(0,0,0,0.10)]'
                 )}
+                aria-pressed={isSelected}
               >
                 <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                   <div className="flex items-center gap-2 min-w-0">
@@ -164,7 +215,7 @@ export const VersionsPanel = (): React.ReactElement => {
                     </div>
                   ) : null}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

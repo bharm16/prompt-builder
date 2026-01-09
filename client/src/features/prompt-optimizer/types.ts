@@ -52,6 +52,7 @@ export interface OptimizationOptions {
   generationParams?: CapabilityValues;
   compileOnly?: boolean;
   compilePrompt?: string;
+  createVersion?: boolean;
 }
 
 export interface LockedSpan {

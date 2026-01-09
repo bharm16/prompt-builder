@@ -18,6 +18,7 @@ interface VideoPreviewProps {
   generationParams?: Record<string, unknown>;
   inputReference?: string;
   isVisible: boolean;
+  seedVideoUrl?: string | null;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
   onPreviewGenerated?: ((payload: {
@@ -46,6 +47,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   generationParams,
   inputReference,
   isVisible,
+  seedVideoUrl = null,
   generateRequestId,
   lastGeneratedAt = null,
   onPreviewGenerated,
@@ -69,6 +71,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     ...(inputReference?.trim() ? { inputReference: inputReference.trim() } : {}),
     ...(generationParams ? { generationParams } : {}),
   });
+  const displayVideoUrl = videoUrl ?? seedVideoUrl;
   const displayError = error;
 
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
@@ -112,10 +115,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   const handleDownload = React.useCallback(async () => {
     await download({
-      url: videoUrl,
+      url: displayVideoUrl,
       fileName: `motion-preview-${Date.now()}.mp4`,
     });
-  }, [download, videoUrl]);
+  }, [download, displayVideoUrl]);
 
   if (!isVisible) return null;
 
@@ -135,7 +138,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     ? 'loading'
     : displayError
       ? 'failed'
-      : videoUrl
+      : displayVideoUrl
         ? 'ready'
         : 'idle';
 
@@ -194,7 +197,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             </span>
           </div>
 
-          {videoUrl && (
+          {displayVideoUrl && (
             <div className="pc-video-stage__tools" role="group" aria-label="Preview actions">
               <button
                 type="button"
@@ -207,14 +210,14 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
               <button
                 type="button"
                 onClick={handleDownload}
-                disabled={!videoUrl || isDownloading}
+                disabled={!displayVideoUrl || isDownloading}
                 className="pc-video-stage__tool"
               >
                 {isDownloading ? 'Downloading…' : 'Download'}
               </button>
               <button
                 type="button"
-                onClick={() => window.open(videoUrl, '_blank', 'noopener,noreferrer')}
+                onClick={() => window.open(displayVideoUrl, '_blank', 'noopener,noreferrer')}
                 className="pc-video-stage__tool"
               >
                 Open
@@ -229,9 +232,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             <div className="pc-video-stage__title">Generation failed</div>
             <div className="pc-video-stage__subtitle">{displayError}</div>
           </div>
-        ) : stageState === 'ready' && videoUrl ? (
+        ) : stageState === 'ready' && displayVideoUrl ? (
           <video
-            src={videoUrl}
+            src={displayVideoUrl}
             controls
             autoPlay
             loop
@@ -274,7 +277,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         )}
       </div>
 
-      {videoUrl && (
+      {displayVideoUrl && (
         <div className="pc-video-preview__next">
           <button type="button" onClick={onKeepRefining} className="pc-video-preview__link">
             ✓ Looks right → Keep refining

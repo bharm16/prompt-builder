@@ -19,7 +19,8 @@ export class DraftGenerationService {
     mode: OptimizationMode,
     shotPlan: ShotPlan | null,
     generationParams: Record<string, any> | null,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onChunk?: (delta: string) => void
   ): Promise<string> {
     const operation = 'generateDraft';
     const draftSystemPrompt = this.getDraftSystemPrompt(mode, shotPlan, generationParams);
@@ -30,16 +31,34 @@ export class DraftGenerationService {
       hasShotPlan: !!shotPlan,
     });
 
-    const draftResponse = await this.ai.execute('optimize_draft', {
-      systemPrompt: draftSystemPrompt,
-      userMessage: prompt,
-      maxTokens: OptimizationConfig.tokens.draft[mode] || OptimizationConfig.tokens.draft.default,
-      temperature: OptimizationConfig.temperatures.draft,
-      timeout: OptimizationConfig.timeouts.draft,
-      ...(signal ? { signal } : {}),
-    });
+    const canStream =
+      !!onChunk &&
+      typeof this.ai.stream === 'function' &&
+      (this.ai.supportsStreaming?.('optimize_draft') ?? true);
 
-    const draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
+    let draft = '';
+    if (canStream) {
+      draft = await this.ai.stream('optimize_draft', {
+        systemPrompt: draftSystemPrompt,
+        userMessage: prompt,
+        maxTokens: OptimizationConfig.tokens.draft[mode] || OptimizationConfig.tokens.draft.default,
+        temperature: OptimizationConfig.temperatures.draft,
+        timeout: OptimizationConfig.timeouts.draft,
+        onChunk,
+        ...(signal ? { signal } : {}),
+      });
+    } else {
+      const draftResponse = await this.ai.execute('optimize_draft', {
+        systemPrompt: draftSystemPrompt,
+        userMessage: prompt,
+        maxTokens: OptimizationConfig.tokens.draft[mode] || OptimizationConfig.tokens.draft.default,
+        temperature: OptimizationConfig.temperatures.draft,
+        timeout: OptimizationConfig.timeouts.draft,
+        ...(signal ? { signal } : {}),
+      });
+
+      draft = draftResponse.text || draftResponse.content?.[0]?.text || '';
+    }
     
     this.log.info('Draft generated', {
       operation,

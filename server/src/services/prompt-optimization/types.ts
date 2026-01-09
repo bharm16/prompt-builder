@@ -86,6 +86,7 @@ export interface OptimizationRequest {
   useConstitutionalAI?: boolean;
   useIterativeRefinement?: boolean;
   onMetadata?: (metadata: Record<string, unknown>) => void;
+  onChunk?: (delta: string) => void;
   signal?: AbortSignal;
 }
 
@@ -99,6 +100,8 @@ export interface TwoStageOptimizationRequest {
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
   onDraft?: ((draft: string, spans: any) => void) | null;
+  onDraftChunk?: ((delta: string) => void) | null;
+  onRefinedChunk?: ((delta: string) => void) | null;
   signal?: AbortSignal;
 }
 
@@ -129,6 +132,10 @@ export interface OptimizationStrategy {
  */
 export interface AIService {
   execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
+  stream?(
+    operation: string,
+    options: ExecuteParams & { onChunk: (chunk: string) => void }
+  ): Promise<string>;
   supportsStreaming?(operation: string): boolean;
   getAvailableClients?(): string[];
 }

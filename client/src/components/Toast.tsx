@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { logger } from '../services/LoggingService';
 
@@ -44,42 +44,49 @@ interface ToastProviderProps {
 // Toast Provider Component
 export function ToastProvider({ children }: ToastProviderProps): React.ReactElement {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const log = logger.child('ToastProvider');
-
-  const addToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000): number => {
-    const id = Date.now() + Math.random();
-    const toast: Toast = { id, message, type, duration };
-
-    log.debug('Toast created', { 
-      type, 
-      messageLength: message.length,
-      duration,
-      toastCount: toasts.length + 1,
-    });
-
-    setToasts((prev) => [...prev, toast]);
-
-    // Auto-dismiss after duration
-    if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, duration);
-    }
-
-    return id;
-  }, [log, toasts.length]);
+  const log = useMemo(() => logger.child('ToastProvider'), []);
 
   const removeToast = useCallback((id: number): void => {
     log.debug('Toast removed', { id });
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, [log]);
 
-  const toast: ToastContextValue = {
-    success: (message: string, duration?: number) => addToast(message, 'success', duration),
-    error: (message: string, duration?: number) => addToast(message, 'error', duration),
-    warning: (message: string, duration?: number) => addToast(message, 'warning', duration),
-    info: (message: string, duration?: number) => addToast(message, 'info', duration),
-  };
+  const addToast = useCallback(
+    (message: string, type: ToastType = 'info', duration: number = 4000): number => {
+      const id = Date.now() + Math.random();
+      const toast: Toast = { id, message, type, duration };
+
+      setToasts((prev) => {
+        log.debug('Toast created', {
+          type,
+          messageLength: message.length,
+          duration,
+          toastCount: prev.length + 1,
+        });
+        return [...prev, toast];
+      });
+
+      // Auto-dismiss after duration
+      if (duration > 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration);
+      }
+
+      return id;
+    },
+    [log, removeToast]
+  );
+
+  const toast = useMemo<ToastContextValue>(
+    () => ({
+      success: (message: string, duration?: number) => addToast(message, 'success', duration),
+      error: (message: string, duration?: number) => addToast(message, 'error', duration),
+      warning: (message: string, duration?: number) => addToast(message, 'warning', duration),
+      info: (message: string, duration?: number) => addToast(message, 'info', duration),
+    }),
+    [addToast]
+  );
 
   return (
     <ToastContext.Provider value={toast}>
@@ -191,4 +198,3 @@ function ToastItem({ id, message, type, onClose }: ToastItemProps): React.ReactE
 }
 
 export default Toast;
-

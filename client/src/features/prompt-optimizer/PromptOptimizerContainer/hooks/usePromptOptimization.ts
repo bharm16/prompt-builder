@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
+import { createHighlightSignature } from '@features/span-highlighting';
 import type { NavigateFunction } from 'react-router-dom';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import type { PromptHistoryEntry, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { OptimizationOptions } from '../../types';
 import type { CapabilityValues } from '@shared/capabilities';
@@ -25,6 +27,8 @@ interface PromptOptimizer {
 }
 
 interface PromptHistory {
+  history: PromptHistoryEntry[];
+  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   saveToHistory: (
     input: string,
     output: string,
@@ -127,6 +131,12 @@ export function usePromptOptimization({
           ? promptOptimizer.genericOptimizedPrompt
           : null);
 
+      const optimizationInput = isCompileOnly ? compilePrompt || prompt : prompt;
+      if (typeof optimizationInput === 'string' && optimizationInput.trim()) {
+        setShowResults(true);
+        setDisplayedPromptSilently('');
+      }
+
       const result = isCompileOnly
         ? await promptOptimizer.compile(
             compilePrompt || prompt,
@@ -143,7 +153,7 @@ export function usePromptOptimization({
               ...(generationParams ? { generationParams } : {}),
             }
           );
-      
+
       if (result) {
         // Save to history
         const saveResult = await promptHistory.saveToHistory(
@@ -174,6 +184,41 @@ export function usePromptOptimization({
           // Navigate to the new prompt URL
           if (saveResult.uuid) {
             navigate(`/prompt/${saveResult.uuid}`, { replace: true });
+          }
+        }
+
+        if (saveResult?.uuid && options?.createVersion) {
+          const promptText = result.optimized.trim();
+          if (promptText) {
+            const uuidForVersions = saveResult.uuid;
+            const history = Array.isArray(promptHistory.history) ? promptHistory.history : [];
+            const existingEntry =
+              history.find((entry) => entry.uuid === uuidForVersions) ?? null;
+            const currentVersions = Array.isArray(existingEntry?.versions)
+              ? existingEntry.versions
+              : [];
+
+            const signature = createHighlightSignature(promptText);
+            const last = currentVersions[currentVersions.length - 1] ?? null;
+
+            if (!last || last.signature !== signature) {
+              const nextVersion: PromptVersionEntry = {
+                versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                label: `v${currentVersions.length + 1}`,
+                signature,
+                prompt: promptText,
+                timestamp: new Date().toISOString(),
+                highlights: null,
+                preview: null,
+                video: null,
+              };
+
+              promptHistory.updateEntryVersions(
+                uuidForVersions,
+                saveResult.id ?? null,
+                [...currentVersions, nextVersion]
+              );
+            }
           }
         }
       }

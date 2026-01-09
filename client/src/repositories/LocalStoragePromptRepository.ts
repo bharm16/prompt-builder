@@ -95,29 +95,34 @@ export class LocalStoragePromptRepository {
     try {
       const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
       const uuid = providedUuid ? providedUuid : uuidv4();
+      const history = this._getHistory();
+      const existing = history.find((entry) => entry.uuid === uuid) ?? null;
+      const versions = Array.isArray(promptData.versions)
+        ? promptData.versions
+        : (existing?.versions ?? []);
       const generationParams =
         promptData.generationParams && typeof promptData.generationParams === 'object'
           ? promptData.generationParams
-          : null;
+          : (existing?.generationParams ?? null);
       const entry: PromptHistoryEntry = {
-        id: String(Date.now()),
+        ...(existing ?? {}),
+        id: existing?.id ?? String(Date.now()),
         uuid,
         timestamp: new Date().toISOString(),
         input: promptData.input,
         output: promptData.output,
         score: promptData.score ?? null,
         generationParams,
-        brainstormContext: promptData.brainstormContext ?? null,
+        brainstormContext: promptData.brainstormContext ?? (existing?.brainstormContext ?? null),
         highlightCache: promptData.highlightCache ?? null,
-        versions: promptData.versions ?? [],
+        versions,
         ...(typeof promptData.mode === 'string' ? { mode: promptData.mode } : {}),
         ...(typeof promptData.targetModel === 'string'
           ? { targetModel: promptData.targetModel }
           : {}),
       };
 
-      const history = this._getHistory();
-      const updatedHistory = [entry, ...history].slice(0, 100);
+      const updatedHistory = [entry, ...history.filter((historyEntry) => historyEntry.uuid !== uuid)].slice(0, 100);
 
       try {
         localStorage.setItem(this.storageKey, JSON.stringify(updatedHistory));

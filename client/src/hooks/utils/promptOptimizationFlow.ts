@@ -131,6 +131,9 @@ export async function runTwoStageOptimization({
     stage: 'two-stage',
   });
 
+  let draftNotified = false;
+  let refinementComplete = false;
+
   const result = await optimizeWithFallback({
     prompt: promptToOptimize,
     mode: selectedMode,
@@ -145,6 +148,18 @@ export async function runTwoStageOptimization({
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
         return;
       }
+      actions.setDraftPrompt(draft);
+      actions.setOptimizedPrompt(draft);
+      actions.setDisplayedPrompt(draft);
+
+      const draftScore = calculateQualityScore(promptToOptimize, draft);
+      actions.setQualityScore(draftScore);
+
+      if (draftNotified) {
+        return;
+      }
+      draftNotified = true;
+
       const draftDuration = logger.endTimer('optimize');
       logger.startTimer('optimize');
 
@@ -158,15 +173,9 @@ export async function runTwoStageOptimization({
         duration: draftDuration,
       });
 
-      actions.setDraftPrompt(draft);
-      actions.setOptimizedPrompt(draft);
-      actions.setDisplayedPrompt(draft);
       actions.setIsDraftReady(true);
       actions.setIsRefining(true);
       actions.setIsProcessing(false);
-
-      const draftScore = calculateQualityScore(promptToOptimize, draft);
-      actions.setQualityScore(draftScore);
 
       log.info('Draft ready', {
         operation: 'optimize',
@@ -220,6 +229,19 @@ export async function runTwoStageOptimization({
       if (abortController.signal.aborted || requestId !== requestIdRef.current) {
         return;
       }
+
+      actions.setOptimizedPrompt(refined);
+      if (!refinedSpans) {
+        actions.setDisplayedPrompt(refined);
+      }
+      if (metadata?.streaming === true) {
+        return;
+      }
+      if (refinementComplete) {
+        return;
+      }
+      refinementComplete = true;
+
       const refinementDuration = logger.endTimer('optimize');
 
       markRefinementComplete();
@@ -235,10 +257,6 @@ export async function runTwoStageOptimization({
 
       const refinedScore = calculateQualityScore(promptToOptimize, refined);
 
-      actions.setOptimizedPrompt(refined);
-      if (!refinedSpans) {
-        actions.setDisplayedPrompt(refined);
-      }
       if (metadata?.genericPrompt && typeof metadata.genericPrompt === 'string') {
         actions.setGenericOptimizedPrompt(metadata.genericPrompt);
       }

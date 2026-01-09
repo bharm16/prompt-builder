@@ -153,6 +153,18 @@ export class PromptOptimizationApi {
         onMessage: (event, data) => {
           try {
             switch (event) {
+              case 'draft_delta': {
+                const delta = typeof data.delta === 'string' ? data.delta : '';
+                if (data.reset === true) {
+                  draft = '';
+                }
+                draft = `${draft || ''}${delta}`;
+                if (onDraft && typeof onDraft === 'function') {
+                  onDraft(draft);
+                }
+                break;
+              }
+
               case 'draft':
                 draft = data.draft as string;
                 if (onDraft && typeof onDraft === 'function') {
@@ -179,6 +191,18 @@ export class PromptOptimizationApi {
                   onRefined(refined, metadata || undefined);
                 }
                 break;
+
+              case 'refined_delta': {
+                const delta = typeof data.delta === 'string' ? data.delta : '';
+                if (data.reset === true) {
+                  refined = '';
+                }
+                refined = `${refined || ''}${delta}`;
+                if (onRefined && typeof onRefined === 'function') {
+                  onRefined(refined, { streaming: true });
+                }
+                break;
+              }
 
               case 'done':
                 // Resolve with final result including spans

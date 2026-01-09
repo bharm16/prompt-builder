@@ -18,9 +18,9 @@ const MODEL_PATTERNS = {
     indicators: /\b(sora|openai\s*video|continuous\s*action|realistic\s*physics)\b/i,
   },
   veo3: {
-    keywords: ['veo3', 'veo 3', 'google veo', 'vertex'],
+    keywords: ['veo3', 'veo 3', 'veo-3', 'veo3.1', 'veo 3.1', 'veo-3.1', 'google veo', 'vertex'],
     technicalMarkers: ['atmospheric', 'cinematic lighting', 'mood'],
-    indicators: /\b(veo\s*3|veo3|google\s*veo|vertex\s*ai|atmospheric\s*lighting)\b/i,
+    indicators: /\b(veo[\s-]*3(\.1)?|google\s*veo|vertex\s*ai|atmospheric\s*lighting)\b/i,
   },
   runway: {
     keywords: ['runway', 'runwayml', 'gen-3', 'gen3'],
@@ -298,7 +298,8 @@ export class ModelDetectionService {
       'luma': 'luma-ray3',
       'kling': 'kling-26',
       'sora': 'sora-2',
-      'veo': 'veo-4'
+      'veo': 'veo-4',
+      'veo3': 'veo-4'
     };
 
     if (topModels[0] && legacyToPoe[topModels[0]]) {
@@ -458,4 +459,3 @@ export class ModelDetectionService {
     return context;
   }
 }
-

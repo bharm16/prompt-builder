@@ -84,6 +84,13 @@ export function useVideoPreview({
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastPromptRef = useRef<string>('');
 
+  useEffect(() => {
+    setVideoUrl(null);
+    setError(null);
+    setLoading(false);
+    lastPromptRef.current = '';
+  }, [prompt, aspectRatio, inputReference]);
+
   /**
    * Generate preview video
    */

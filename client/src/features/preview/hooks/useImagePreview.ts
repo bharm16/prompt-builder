@@ -42,6 +42,13 @@ export function useImagePreview({
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastPromptRef = useRef<string>('');
 
+  useEffect(() => {
+    setImageUrl(null);
+    setError(null);
+    setLoading(false);
+    lastPromptRef.current = '';
+  }, [prompt, aspectRatio]);
+
   /**
    * Generate preview image
    */
@@ -165,4 +172,3 @@ export function useImagePreview({
     regenerate,
   };
 }
-

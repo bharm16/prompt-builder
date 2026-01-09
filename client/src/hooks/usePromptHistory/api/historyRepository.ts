@@ -12,6 +12,14 @@ import type { UpdatePromptOptions } from '../../../repositories/promptRepository
 
 const log = logger.child('historyRepository');
 
+const isValidFirestoreDocId = (docId: string | null | undefined): docId is string => {
+  if (!docId) {
+    return false;
+  }
+  const normalized = docId.trim();
+  return normalized.length > 0 && !normalized.startsWith('draft-');
+};
+
 /**
  * Normalize prompt entries to ensure consistent shape
  */
@@ -127,15 +135,17 @@ export async function updatePrompt(
 
   if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
     const isFirestoreRepo = 'collectionName' in repository && userId;
+    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
 
     try {
-      if (isFirestoreRepo && docId) {
-        const updateFn = repository.updatePrompt as (docId: string, updates: UpdatePromptOptions) => Promise<void>;
-        await updateFn(docId, updates);
-      } else {
-        const updateFn = repository.updatePrompt as (uuid: string, updates: UpdatePromptOptions) => Promise<void>;
-        await updateFn(uuid, updates);
+      if (isFirestoreRepo) {
+        if (!canUseFirestoreDoc) {
+          return;
+        }
+        await repository.updatePrompt(docId, updates);
+        return;
       }
+      await repository.updatePrompt(uuid, updates);
     } catch (error) {
       log.warn('Unable to persist updated prompt', {
         uuid,
@@ -181,15 +191,17 @@ export async function updateOutput(
 
   if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
     const isFirestoreRepo = 'collectionName' in repository && userId;
+    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
 
     try {
-      if (isFirestoreRepo && docId) {
-        const updateFn = repository.updateOutput as (docId: string, output: string) => Promise<void>;
-        await updateFn(docId, output);
-      } else {
-        const updateFn = repository.updateOutput as (uuid: string, output: string) => Promise<void>;
-        await updateFn(uuid, output);
+      if (isFirestoreRepo) {
+        if (!canUseFirestoreDoc) {
+          return;
+        }
+        await repository.updateOutput(docId, output);
+        return;
       }
+      await repository.updateOutput(uuid, output);
     } catch (error) {
       log.warn('Unable to persist updated output', {
         uuid,
@@ -213,21 +225,17 @@ export async function updateVersions(
 
   if ('updateVersions' in repository && typeof repository.updateVersions === 'function') {
     const isFirestoreRepo = 'collectionName' in repository && userId;
+    const canUseFirestoreDoc = isValidFirestoreDocId(docId);
 
     try {
-      if (isFirestoreRepo && docId) {
-        const updateFn = repository.updateVersions as (
-          docId: string,
-          versions: PromptVersionEntry[]
-        ) => Promise<void>;
-        await updateFn(docId, versions);
-      } else {
-        const updateFn = repository.updateVersions as (
-          uuid: string,
-          versions: PromptVersionEntry[]
-        ) => Promise<void>;
-        await updateFn(uuid, versions);
+      if (isFirestoreRepo) {
+        if (!canUseFirestoreDoc) {
+          return;
+        }
+        await repository.updateVersions(docId, versions);
+        return;
       }
+      await repository.updateVersions(uuid, versions);
     } catch (error) {
       log.warn('Unable to persist updated versions', {
         uuid,

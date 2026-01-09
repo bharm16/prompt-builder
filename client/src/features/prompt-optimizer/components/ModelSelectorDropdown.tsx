@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, memo } from 'react';
+import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Video } from 'lucide-react';
 import { AI_MODEL_LABELS } from './constants';
 import { useModelRegistry } from '../hooks/useModelRegistry';
@@ -15,6 +16,11 @@ export const ModelSelectorDropdown = memo<{
   const [isOpen, setIsOpen] = useState(false);
   const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; placement: 'bottom' | 'top' } | null>(
+    null
+  );
 
   const resolveModelMeta = (modelId: string): { strength: string; badges: Array<string> } => {
     const id = modelId.toLowerCase();
@@ -58,7 +64,10 @@ export const ModelSelectorDropdown = memo<{
   // Handle clicks outside dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent): void => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      if (isOpen) {
         setIsOpen(false);
       }
     };
@@ -69,6 +78,55 @@ export const ModelSelectorDropdown = memo<{
     }
     return undefined;
   }, [isOpen]);
+
+  const computeMenuPosition = useMemo(() => {
+    return (): { top: number; left: number; placement: 'bottom' | 'top' } | null => {
+      const button = buttonRef.current;
+      if (!button) return null;
+      const rect = button.getBoundingClientRect();
+      const viewportMargin = 8;
+      const preferredLeft = rect.left;
+      const maxLeft = Math.max(viewportMargin, window.innerWidth - 260 - viewportMargin);
+      const left = Math.max(viewportMargin, Math.min(preferredLeft, maxLeft));
+      const top = rect.bottom + 8;
+      return { top, left, placement: 'bottom' };
+    };
+  }, []);
+
+  // Position the portal menu so it isn't clipped by overflow containers.
+  useEffect(() => {
+    if (!isOpen) {
+      setMenuPosition(null);
+      return;
+    }
+    const next = computeMenuPosition();
+    setMenuPosition(next);
+    const handleReposition = (): void => {
+      setMenuPosition(computeMenuPosition());
+    };
+    window.addEventListener('scroll', handleReposition, true);
+    window.addEventListener('resize', handleReposition);
+    return () => {
+      window.removeEventListener('scroll', handleReposition, true);
+      window.removeEventListener('resize', handleReposition);
+    };
+  }, [isOpen, computeMenuPosition]);
+
+  // If the menu would run offscreen, flip it upward.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!menuPosition) return;
+    const el = menuRef.current;
+    const button = buttonRef.current;
+    if (!el || !button) return;
+    const rect = button.getBoundingClientRect();
+    const viewportMargin = 8;
+    const menuHeight = el.getBoundingClientRect().height;
+    const wouldOverflowBottom = menuPosition.top + menuHeight + viewportMargin > window.innerHeight;
+    if (!wouldOverflowBottom) return;
+    const nextTop = Math.max(viewportMargin, rect.top - menuHeight - 8);
+    setMenuPosition({ top: nextTop, left: menuPosition.left, placement: 'top' });
+  }, [isOpen, menuPosition]);
 
   useEffect(() => {
     if (disabled && isOpen) {
@@ -86,10 +144,11 @@ export const ModelSelectorDropdown = memo<{
       <button
         type="button"
         onClick={() => {
-          if (!disabled) {
+          if (!disabled && !isLoading) {
             setIsOpen(!isOpen);
           }
         }}
+        ref={buttonRef}
         disabled={disabled || isLoading}
         className={
           variant === 'pillDark'
@@ -107,7 +166,7 @@ export const ModelSelectorDropdown = memo<{
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current model: ${currentLabel}`}
-        aria-disabled={disabled}
+        aria-disabled={disabled || isLoading}
       >
         <Video
           className={`h-3.5 w-3.5 ${
@@ -127,135 +186,149 @@ export const ModelSelectorDropdown = memo<{
         />
       </button>
 
-      {isOpen && (
-        <div
-          className={
-            variant === 'pillDark'
-              ? 'absolute top-full left-0 mt-2 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-[#111] rounded-[10px] border border-white/10 shadow-2xl animate-slide-down'
-              : 'absolute top-full left-0 mt-2 min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-white rounded-[10px] border border-neutral-200 shadow-lg animate-slide-down'
-          }
-          role="listbox"
-          aria-label="Available video models"
-        >
-          {/* Auto-detect Option */}
-          <button
-            onClick={() => handleModelSelect('')}
-            className={`
-              w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
-              transition-colors duration-150
-              ${
-                variant === 'pillDark'
-                  ? !selectedModel
-                    ? 'bg-white/10'
-                    : 'hover:bg-white/8'
-                  : !selectedModel
-                    ? 'bg-neutral-100'
-                    : 'hover:bg-neutral-100'
-              }
-              ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'}
-            `}
-            role="option"
-            aria-selected={!selectedModel}
+      {isOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className={
+              variant === 'pillDark'
+                ? 'fixed min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-[#111] rounded-[10px] border border-white/10 shadow-2xl animate-slide-down'
+                : 'fixed min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-white rounded-[10px] border border-neutral-200 shadow-lg animate-slide-down'
+            }
+            style={{
+              top: `${menuPosition?.top ?? 0}px`,
+              left: `${menuPosition?.left ?? 0}px`,
+              visibility: menuPosition ? 'visible' : 'hidden',
+            }}
+            role="listbox"
+            aria-label="Available video models"
+            data-placement={menuPosition?.placement ?? 'bottom'}
           >
-            <div className="flex flex-col flex-1 min-w-0">
-              <span
-                className={`truncate ${
+            {/* Auto-detect Option */}
+            <button
+              onClick={() => handleModelSelect('')}
+              className={`
+                w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
+                transition-colors duration-150
+                ${
                   variant === 'pillDark'
                     ? !selectedModel
-                      ? 'font-semibold text-white'
-                      : 'text-white/80'
+                      ? 'bg-white/10'
+                      : 'hover:bg-white/8'
                     : !selectedModel
-                      ? 'font-semibold text-neutral-900'
-                      : 'text-neutral-700'
-                }`}
-              >
-                Auto (Recommended)
-              </span>
-              <span className={`text-[11px] ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
-                Picks the best model for the prompt
-              </span>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                <span className={badgeClass}>Recommended</span>
-                <span className={badgeClass}>Balanced</span>
-              </div>
-            </div>
-            {!selectedModel && (
-              <Check
-                className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
-                aria-hidden="true"
-              />
-            )}
-          </button>
-
-          {/* Model Options */}
-          {availableModels.map((option) => {
-            const isSelected = option.id === selectedModel;
-            const meta = resolveModelMeta(option.id);
-
-            return (
-              <button
-                key={option.id}
-                onClick={() => handleModelSelect(option.id)}
-                className={`
-                  w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
-                  transition-colors duration-150
-                  ${
+                      ? 'bg-neutral-100'
+                      : 'hover:bg-neutral-100'
+                }
+                ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'}
+              `}
+              role="option"
+              aria-selected={!selectedModel}
+            >
+              <div className="flex flex-col flex-1 min-w-0">
+                <span
+                  className={`truncate ${
                     variant === 'pillDark'
-                      ? isSelected
-                        ? 'bg-white/10'
-                        : 'hover:bg-white/8'
-                      : isSelected
-                        ? 'bg-neutral-100'
-                        : 'hover:bg-neutral-100'
-                  }
-                  ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'} last:border-b-0
-                `}
-                role="option"
-                aria-selected={isSelected}
-              >
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span
-                    className={`truncate ${
+                      ? !selectedModel
+                        ? 'font-semibold text-white'
+                        : 'text-white/80'
+                      : !selectedModel
+                        ? 'font-semibold text-neutral-900'
+                        : 'text-neutral-700'
+                  }`}
+                >
+                  Auto (Recommended)
+                </span>
+                <span className={`text-[11px] ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
+                  Picks the best model for the prompt
+                </span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <span className={badgeClass}>Recommended</span>
+                  <span className={badgeClass}>Balanced</span>
+                </div>
+              </div>
+              {!selectedModel && (
+                <Check
+                  className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+
+            {/* Model Options */}
+            {availableModels.map((option) => {
+              const isSelected = option.id === selectedModel;
+              const meta = resolveModelMeta(option.id);
+
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => handleModelSelect(option.id)}
+                  className={`
+                    w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
+                    transition-colors duration-150
+                    ${
                       variant === 'pillDark'
                         ? isSelected
-                          ? 'font-semibold text-white'
-                          : 'text-white/80'
+                          ? 'bg-white/10'
+                          : 'hover:bg-white/8'
                         : isSelected
-                          ? 'font-semibold text-neutral-900'
-                          : 'text-neutral-700'
-                    }`}
-                  >
-                    {option.label}
-                  </span>
-                  <span
-                    className={`text-[10px] uppercase tracking-wider ${
-                      variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
-                    }`}
-                  >
-                    {option.provider}
-                  </span>
-                  <span className={`text-[11px] mt-0.5 ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
-                    {meta.strength}
-                  </span>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {meta.badges.map((badge) => (
-                      <span key={badge} className={badgeClass}>
-                        {badge}
-                      </span>
-                    ))}
+                          ? 'bg-neutral-100'
+                          : 'hover:bg-neutral-100'
+                    }
+                    ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'} last:border-b-0
+                  `}
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span
+                      className={`truncate ${
+                        variant === 'pillDark'
+                          ? isSelected
+                            ? 'font-semibold text-white'
+                            : 'text-white/80'
+                          : isSelected
+                            ? 'font-semibold text-neutral-900'
+                            : 'text-neutral-700'
+                      }`}
+                    >
+                      {option.label}
+                    </span>
+                    <span
+                      className={`text-[10px] uppercase tracking-wider ${
+                        variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
+                      }`}
+                    >
+                      {option.provider}
+                    </span>
+                    <span
+                      className={`text-[11px] mt-0.5 ${
+                        variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
+                      }`}
+                    >
+                      {meta.strength}
+                    </span>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {meta.badges.map((badge) => (
+                        <span key={badge} className={badgeClass}>
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                {isSelected && (
-                  <Check
-                    className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
-                    aria-hidden="true"
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  {isSelected && (
+                    <Check
+                      className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 });

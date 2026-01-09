@@ -96,6 +96,8 @@ export class PromptOptimizationService {
     skipCache = false,
     lockedSpans = [],
     onDraft = null,
+    onDraftChunk = null,
+    onRefinedChunk = null,
     signal,
   }: TwoStageOptimizationRequest): Promise<TwoStageOptimizationResult> {
     const startTime = performance.now();
@@ -175,7 +177,8 @@ export class PromptOptimizationService {
         finalMode,
         shotPlan,
         generationParams,
-        signal
+        signal,
+        onDraftChunk ? (delta) => onDraftChunk(delta) : undefined
       );
 
       const draftDuration = Math.round(performance.now() - draftStartTime);
@@ -219,6 +222,7 @@ export class PromptOptimizationService {
         onMetadata: (metadata) => {
           refinementMetadata = { ...(refinementMetadata || {}), ...metadata };
         },
+        ...(onRefinedChunk ? { onChunk: (delta) => onRefinedChunk(delta) } : {}),
         ...(signal ? { signal } : {}),
       });
 
@@ -314,6 +318,7 @@ export class PromptOptimizationService {
     useConstitutionalAI = false,
     useIterativeRefinement = false,
     onMetadata,
+    onChunk,
     signal,
     targetModel, // Extract targetModel
   }: OptimizationRequest): Promise<string> {
@@ -436,6 +441,7 @@ export class PromptOptimizationService {
           shotPlan: interpretedShotPlan,
           lockedSpans,
           onMetadata: handleMetadata,
+          ...(onChunk ? { onChunk } : {}),
           ...(signal ? { signal } : {}),
         });
 

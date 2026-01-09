@@ -75,10 +75,17 @@ export const useModelRegistry = (): UseModelRegistryResult => {
 
         try {
           const availability = await capabilitiesApi.getVideoAvailability();
-          if (Array.isArray(availability.availableModels)) {
-            availabilityApplied = true;
+          if (Array.isArray(availability.availableModels) && availability.availableModels.length > 0) {
             const availableSet = new Set(availability.availableModels);
             filtered = resolved.filter((model) => availableSet.has(model.id));
+            if (filtered.length > 0) {
+              availabilityApplied = true;
+            } else {
+              log.warn('Video availability returned no matching models', {
+                operation: 'getVideoAvailability',
+                availableModels: availability.availableModels,
+              });
+            }
           }
         } catch (availabilityError) {
           const info = sanitizeError(availabilityError);

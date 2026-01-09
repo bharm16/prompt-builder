@@ -54,6 +54,13 @@ export class VideoPromptService {
     'kling': 'kling-26',
     'sora': 'sora-2',
     'veo': 'veo-4',
+    'veo3': 'veo-4',
+    'veo-3': 'veo-4',
+    'veo-3.0-generate-001': 'veo-4',
+    'veo-3.0-fast-generate-001': 'veo-4',
+    'veo-3.1': 'veo-4',
+    'veo-3.1-generate-preview': 'veo-4',
+    'google/veo-3': 'veo-4',
     'wan': 'wan-2.2'
   };
 

@@ -174,6 +174,24 @@ export function createOptimizeRoutes(services: OptimizeServices): Router {
           skipCache,
           lockedSpans,
           signal,
+          onDraftChunk: (delta: string): void => {
+            if (!delta) {
+              return;
+            }
+            sendEvent('draft_delta', {
+              delta,
+              timestamp: Date.now(),
+            });
+          },
+          onRefinedChunk: (delta: string): void => {
+            if (!delta) {
+              return;
+            }
+            sendEvent('refined_delta', {
+              delta,
+              timestamp: Date.now(),
+            });
+          },
           onDraft: (
             draft: string,
             spans: { spans?: unknown[]; meta?: unknown } | null

@@ -80,6 +80,7 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   const [promptContext, setPromptContext] = useState<PromptContext | null>(null);
   const [currentPromptUuid, setCurrentPromptUuid] = useState<string | null>(null);
   const [currentPromptDocId, setCurrentPromptDocId] = useState<string | null>(null);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [initialHighlights, setInitialHighlights] = useState<HighlightSnapshot | null>(null);
   const [initialHighlightsVersion, setInitialHighlightsVersion] = useState<number>(0);
   const [canUndo, setCanUndo] = useState<boolean>(false);
@@ -223,6 +224,8 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     setCurrentPromptUuid,
     currentPromptDocId,
     setCurrentPromptDocId,
+    activeVersionId,
+    setActiveVersionId,
 
     // Highlights
     initialHighlights,

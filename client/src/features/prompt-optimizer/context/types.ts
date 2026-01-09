@@ -155,6 +155,8 @@ export interface PromptStateContextValue {
   setCurrentPromptUuid: (uuid: string | null) => void;
   currentPromptDocId: string | null;
   setCurrentPromptDocId: (docId: string | null) => void;
+  activeVersionId: string | null;
+  setActiveVersionId: (id: string | null) => void;
 
   // Highlights
   initialHighlights: HighlightSnapshot | null;

@@ -13,6 +13,7 @@ interface VisualPreviewProps {
   prompt: string;
   aspectRatio?: string | null;
   isVisible: boolean;
+  seedImageUrl?: string | null;
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
   onPreviewGenerated?: ((payload: {
@@ -95,6 +96,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   prompt,
   aspectRatio = null,
   isVisible,
+  seedImageUrl = null,
   generateRequestId,
   onPreviewGenerated,
   onLoadingChange,
@@ -110,6 +112,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     isVisible,
     ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
   });
+  const displayUrl = imageUrl ?? seedImageUrl;
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const copyTimeoutRef = React.useRef<number | null>(null);
@@ -189,8 +192,8 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           position: 'relative',
         }}
       >
-        {imageUrl ? (
-          <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+        {displayUrl ? (
+          <img src={displayUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center p-6 text-center">
             <div style={{ maxWidth: 220, margin: 'auto', transform: `translateY(${emptyStateOffset}px)` }}>

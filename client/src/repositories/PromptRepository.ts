@@ -109,18 +109,44 @@ export class PromptRepository {
     try {
       const providedUuid = typeof promptData.uuid === 'string' ? promptData.uuid.trim() : '';
       const resolvedUuid = providedUuid ? providedUuid : uuidv4();
-      const { uuid: _ignoredUuid, ...rest } = promptData;
-      const payload: PromptData = {
-        highlightCache: promptData.highlightCache ?? null,
-        versions: Array.isArray(promptData.versions) ? promptData.versions : [],
-        ...rest,
-      };
-
-      const docRef = await addDoc(collection(this.db, this.collectionName), {
+      const basePayload: Record<string, unknown> = {
         userId,
         uuid: resolvedUuid,
-        ...payload,
+        input: promptData.input,
+        output: promptData.output,
+        score: promptData.score ?? null,
+        ...(promptData.mode !== undefined ? { mode: promptData.mode } : {}),
+        ...(promptData.targetModel !== undefined ? { targetModel: promptData.targetModel } : {}),
+        ...(promptData.generationParams !== undefined ? { generationParams: promptData.generationParams } : {}),
+        ...(promptData.brainstormContext !== undefined ? { brainstormContext: promptData.brainstormContext } : {}),
+        ...(promptData.highlightCache !== undefined ? { highlightCache: promptData.highlightCache } : {}),
         timestamp: serverTimestamp(),
+      };
+
+      if (providedUuid) {
+        const q = query(
+          collection(this.db, this.collectionName),
+          where('uuid', '==', resolvedUuid),
+          limit(5)
+        );
+        const snap = await getDocs(q);
+        const match =
+          snap.docs.find((doc) => (doc.data() as { userId?: string }).userId === userId) ??
+          null;
+
+        if (match) {
+          const updatePayload: Record<string, unknown> = { ...basePayload };
+          if (Array.isArray(promptData.versions)) {
+            updatePayload.versions = promptData.versions;
+          }
+          await updateDoc(doc(this.db, this.collectionName, match.id), updatePayload);
+          return { id: match.id, uuid: resolvedUuid };
+        }
+      }
+
+      const docRef = await addDoc(collection(this.db, this.collectionName), {
+        ...basePayload,
+        versions: Array.isArray(promptData.versions) ? promptData.versions : [],
       });
 
       return { id: docRef.id, uuid: resolvedUuid };

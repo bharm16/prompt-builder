@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
@@ -83,7 +83,13 @@ export function usePromptLoader({
   setPromptContext,
   skipLoadFromUrlRef,
 }: UsePromptLoaderParams): void {
-  const location = useLocation();
+  const {
+    setInputPrompt,
+    setOptimizedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
+  } = promptOptimizer;
 
   // Handle loading from URL parameter
   useEffect(() => {
@@ -99,12 +105,12 @@ export function usePromptLoader({
 
         if (promptData) {
           // Load prompt data
-          promptOptimizer.setInputPrompt(promptData.input || '');
-          promptOptimizer.setOptimizedPrompt(promptData.output || '');
+          setInputPrompt(promptData.input || '');
+          setOptimizedPrompt(promptData.output || '');
           setDisplayedPromptSilently(promptData.output || '');
-          promptOptimizer.setGenericOptimizedPrompt?.(null);
-          promptOptimizer.setPreviewPrompt?.(null);
-          promptOptimizer.setPreviewAspectRatio?.(null);
+          setGenericOptimizedPrompt?.(null);
+          setPreviewPrompt?.(null);
+          setPreviewAspectRatio?.(null);
           setCurrentPromptUuid(promptData.uuid);
           setCurrentPromptDocId(promptData.id || null);
           setShowResults(true);
@@ -155,7 +161,7 @@ export function usePromptLoader({
             setPromptContext(null);
           }
         } else {
-          toast.error('Prompt not found');
+          log.warn('Prompt not found for URL parameter', { operation: 'loadPromptFromUrl', promptUuid: uuid });
           navigate('/', { replace: true });
         }
       } catch (error) {
@@ -172,7 +178,6 @@ export function usePromptLoader({
     currentPromptUuid,
     navigate,
     toast,
-    promptOptimizer,
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     resetEditStacks,
@@ -183,6 +188,10 @@ export function usePromptLoader({
     setSelectedModel,
     setPromptContext,
     skipLoadFromUrlRef,
-    location,
+    setInputPrompt,
+    setOptimizedPrompt,
+    setGenericOptimizedPrompt,
+    setPreviewPrompt,
+    setPreviewAspectRatio,
   ]);
 }
