@@ -10,6 +10,7 @@
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
+import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
 import type {
   ImageGenerationOptions,
   ImageGenerationResult,
@@ -48,6 +49,7 @@ export class ImageGenerationService {
   private readonly replicate: ReplicateClient | null;
   private readonly model: string;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
+  private readonly videoPromptDetector: VideoPromptDetectionService;
 
   constructor(
     options: ImageGenerationServiceOptions = {},
@@ -67,6 +69,7 @@ export class ImageGenerationService {
     // Flux Schnell model identifier
     this.model = 'black-forest-labs/flux-schnell';
     this.promptTransformer = promptTransformer ?? null;
+    this.videoPromptDetector = new VideoPromptDetectionService();
   }
 
   /**
@@ -105,31 +108,42 @@ export class ImageGenerationService {
     const mappedAspectRatio = aspectRatioMap[aspectRatio] || '16:9';
 
     const trimmedPrompt = prompt.trim();
+    const cleanedPrompt = this.stripPreviewSections(trimmedPrompt);
 
     // Transform video prompt to image prompt using LLM
     let promptForModel: string;
     let promptWasTransformed = false;
 
-    if (this.promptTransformer) {
+    const shouldTransform =
+      !!this.promptTransformer && this.shouldTransformPrompt(cleanedPrompt);
+
+    if (this.promptTransformer && shouldTransform) {
       try {
-        promptForModel = await this.promptTransformer.transform(trimmedPrompt);
-        promptWasTransformed = promptForModel !== trimmedPrompt;
+        promptForModel = await this.promptTransformer.transform(cleanedPrompt);
+        promptWasTransformed = promptForModel !== cleanedPrompt;
       } catch (error) {
         // Fallback to original prompt if transformation fails
         logger.warn('Prompt transformation failed, using original', {
           error: error instanceof Error ? error.message : String(error),
           userId,
         });
-        promptForModel = trimmedPrompt;
+        promptForModel = cleanedPrompt;
       }
     } else {
-      promptForModel = trimmedPrompt;
+      if (this.promptTransformer) {
+        logger.debug('Skipping video-to-image prompt transformation', {
+          promptPreview: cleanedPrompt.substring(0, 100),
+          userId,
+        });
+      }
+      promptForModel = cleanedPrompt;
     }
 
     logger.info('Generating image preview', {
       prompt: promptForModel.substring(0, 100),
       promptWasTransformed,
       aspectRatio: mappedAspectRatio,
+      promptWasStripped: cleanedPrompt !== trimmedPrompt,
       userId,
     });
 
@@ -456,5 +470,47 @@ export class ImageGenerationService {
     }
 
     return imageUrl;
+  }
+
+  private shouldTransformPrompt(prompt: string): boolean {
+    if (this.videoPromptDetector.isVideoPrompt(prompt)) {
+      return true;
+    }
+
+    const normalized = prompt.toLowerCase();
+    const temporalPatterns: RegExp[] = [
+      /\b(?:pan|pans|panning|tilt|tilts|tilting|dolly|dollies|dolly\s*(?:in|out)|push\s*(?:in|out)|pull\s*(?:in|out)|zoom|zooms|zooming|crane|cranes|crane\s*(?:up|down)|tracking|truck|trucking|orbit|arc|sweep|whip\s*pan|rack\s*focus|focus\s*pull)\b/i,
+      /\b(?:cut\s*to|fade\s*(?:in|out)|dissolve|montage|sequence|storyboard|shot\s*\d+)\b/i,
+      /\b(?:duration|seconds?|secs?|fps|frame\s*rate|time-?lapse|timelapse)\b/i,
+      /\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds)\b/i,
+    ];
+
+    return temporalPatterns.some((pattern) => pattern.test(normalized));
+  }
+
+  private stripPreviewSections(prompt: string): string {
+    if (!prompt) {
+      return prompt;
+    }
+
+    const markers: RegExp[] = [
+      /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
+      /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
+      /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
+      /\r?\n\s*technical specs\s*[:\n]/i,
+      /\r?\n\s*alternative approaches\s*[:\n]/i,
+      /\r?\n\s*variation\s+\d+/i,
+    ];
+
+    let cutIndex = -1;
+    for (const marker of markers) {
+      const match = marker.exec(prompt);
+      if (match && (cutIndex === -1 || match.index < cutIndex)) {
+        cutIndex = match.index;
+      }
+    }
+
+    const stripped = (cutIndex >= 0 ? prompt.slice(0, cutIndex) : prompt).trim();
+    return stripped.length >= 10 ? stripped : prompt.trim();
   }
 }
