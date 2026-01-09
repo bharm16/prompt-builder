@@ -1,12 +1,44 @@
 # PromptCanvas
 
-> **Interactive editing for AI video prompts. Every phrase is semantically labeled. Click any word to get context-aware alternatives.**
+> **Preview first. Generate once.**
 
-It's Grammarly + Production Studio for Sora, Runway, Veo, Kling, and Luma.
+AI video generation platform with a preview workflow that prevents wasted credits.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![React Version](https://img.shields.io/badge/react-18.2.0-blue)](https://reactjs.org/)
+
+---
+
+## The Problem
+
+Video generation is expensive. One Sora generation costs real money. One Veo render burns real credits.
+
+And you won't know if your prompt works until it's done rendering.
+
+So you generate. Wait. Hate it. Tweak. Generate again. Wait again. Hate it again.
+
+By the time you get what you wanted, you've burned through half your credits on bad takes.
+
+## The Solution
+
+**Draft cheap. Render perfect.**
+
+PromptCanvas lets you preview your video with fast, inexpensive models before committing to final generation:
+
+| Stage | Model | Cost | Time | Purpose |
+|-------|-------|------|------|--------|
+| **Image Preview** | Flux Schnell | ~$0.01 | 5-10s | Validate framing, lighting, mood |
+| **Video Preview** | Wan 2.2 | ~$0.05 | 30-60s | Test motion, pacing, camera |
+| **Final Generation** | Sora 2, Veo 3, Kling, Luma | $2-5 | 2-5min | Production-ready output |
+
+**The workflow:**
+1. **Write** → Interactive editor with semantic highlighting
+2. **Preview** → Fast drafts with Flux/Wan to validate direction  
+3. **Refine** → Click any highlighted phrase for AI-powered alternatives
+4. **Generate** → Final video with Sora, Veo, Kling, or Luma
+
+**Result:** 5 preview iterations + 1 final generation beats 5 blind generation attempts. Same output, 70% fewer credits.
 
 ---
 
