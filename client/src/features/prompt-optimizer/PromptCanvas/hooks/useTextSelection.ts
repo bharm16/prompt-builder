@@ -13,6 +13,9 @@ import {
   createHighlightRange,
 } from '@features/prompt-optimizer/utils/highlightInteractionHelpers';
 import type { ParseResult, SuggestionPayload, SpanClickPayload } from '../types';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('useTextSelection');
 
 export interface UseTextSelectionOptions {
   selectedMode: string;
@@ -128,9 +131,12 @@ export function useTextSelection({
         selectRange(range);
 
         // Trigger suggestions
-        if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-          console.debug('[HighlightClick] spanContextCount:', spanContextSpans.length);
-          console.debug('[HighlightClick] metadata:', metadata ?? null);
+        if (import.meta.env.DEV) {
+          log.debug('Highlight click -> suggestion fetch', {
+            trigger: 'highlight',
+            spanContextCount: spanContextSpans.length,
+            hasMetadata: Boolean(metadata),
+          });
         }
         onFetchSuggestions({
           highlightedText: wordText,

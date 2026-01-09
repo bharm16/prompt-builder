@@ -16,6 +16,10 @@ import { updateHighlightSnapshotForSuggestion } from '@features/prompt-optimizer
 import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot, SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useSuggestionApply');
 
 interface UseSuggestionApplyParams {
   suggestionsData: SuggestionsData | null;
@@ -111,17 +115,12 @@ export function useSuggestionApply({
 
           if (updatedHighlights) {
             // Debug: trace what we're applying
-            if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-              console.debug('[useSuggestionApply] applying highlight update:', {
+            if (import.meta.env.DEV) {
+              log.debug('Applying highlight update', {
                 spansCount: updatedHighlights.spans?.length,
-                signature: updatedHighlights.signature?.slice(0, 16),
+                signaturePrefix: updatedHighlights.signature?.slice(0, 16),
                 hasLocalUpdate: updatedHighlights.meta?.localUpdate,
                 version: updatedHighlights.meta?.version,
-                spans: updatedHighlights.spans?.map((s) => ({
-                  start: s.start,
-                  end: s.end,
-                  category: s.category,
-                })),
               });
             }
             applyInitialHighlightSnapshot(updatedHighlights, {
@@ -155,7 +154,14 @@ export function useSuggestionApply({
               );
             } catch (error) {
               // Don't block UI if save fails - just log warning
-              console.warn('Failed to persist suggestion update:', error);
+              const info = sanitizeError(error);
+              log.warn('Failed to persist suggestion update', {
+                operation: 'updateEntryOutput',
+                error: info.message,
+                errorName: info.name,
+                promptUuid: currentPromptUuid,
+                promptDocId: currentPromptDocId ?? null,
+              });
             }
           }
         } else {
@@ -165,7 +171,8 @@ export function useSuggestionApply({
         // Close suggestions panel
         setSuggestionsData(null);
       } catch (error) {
-        console.error('Error applying suggestion:', error);
+        const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+        log.error('Error applying suggestion', errObj, { operation: 'handleSuggestionClick' });
         toast.error('Failed to apply suggestion');
       }
     },

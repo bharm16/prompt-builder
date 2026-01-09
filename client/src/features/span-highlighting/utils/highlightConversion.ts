@@ -5,6 +5,9 @@
  */
 
 import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('highlightConversion');
 
 const LLM_PARSER_VERSION = 'llm-v2-taxonomy';
 const CONTEXT_WINDOW_CHARS = 20;
@@ -80,13 +83,22 @@ function normalizeRole(role: string | null | undefined): string {
   // Check for legacy capitalized format
   if (LEGACY_ROLE_TO_CATEGORY[role]) {
     if (import.meta.env.DEV) {
-      console.warn(`[highlightConversion] Legacy role "${role}" detected, mapping to "${LEGACY_ROLE_TO_CATEGORY[role]}"`);
+      log.warn('Legacy role mapped to taxonomy category', {
+        operation: 'normalizeRole',
+        role,
+        mappedTo: LEGACY_ROLE_TO_CATEGORY[role],
+      });
     }
     return LEGACY_ROLE_TO_CATEGORY[role];
   }
 
   // Debugging: Log invalid roles to help identify drift
-  console.warn(`[highlightConversion] Invalid role "${role}" not in taxonomy. Defaulting to "${TAXONOMY.SUBJECT.id}". Valid categories:`, Array.from(VALID_CATEGORIES));
+  log.warn('Invalid role not in taxonomy; defaulting', {
+    operation: 'normalizeRole',
+    role,
+    defaultingTo: TAXONOMY.SUBJECT.id,
+    validCategoryCount: VALID_CATEGORIES.size,
+  });
 
   // Fallback for unknown roles
   return TAXONOMY.SUBJECT.id;
@@ -184,7 +196,7 @@ export const convertLabeledSpansToHighlights = ({
   canonical?: CanonicalText;
 }): Highlight[] => {
   if (import.meta.env.DEV) {
-    console.debug('[convertLabeledSpansToHighlights] Input', {
+    log.debug('convertLabeledSpansToHighlights input', {
       spanCount: Array.isArray(spans) ? spans.length : 0,
       textLength: text?.length,
       sampleSpans: spans?.slice(0, 3)
@@ -199,7 +211,9 @@ export const convertLabeledSpansToHighlights = ({
   const rawHighlights = spans
     .map((span, index): Highlight | null => {
       if (!span || typeof span !== 'object') {
-        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Invalid span object', span);
+        if (import.meta.env.DEV) {
+          log.debug('convertLabeledSpansToHighlights invalid span object', { span });
+        }
         return null;
       }
 
@@ -215,20 +229,26 @@ export const convertLabeledSpansToHighlights = ({
       const end = Number(span.end);
 
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Invalid indices', { start, end, span });
+        if (import.meta.env.DEV) {
+          log.debug('convertLabeledSpansToHighlights invalid indices', { start, end, span });
+        }
         return null;
       }
 
       const clampedStart = Math.max(0, Math.min(text.length, start));
       const clampedEnd = Math.max(clampedStart, Math.min(text.length, end));
       if (clampedEnd <= clampedStart) {
-        if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Clamped empty range', { clampedStart, clampedEnd, span });
+        if (import.meta.env.DEV) {
+          log.debug('convertLabeledSpansToHighlights clamped empty range', { clampedStart, clampedEnd, span });
+        }
         return null;
       }
 
       const slice = text.slice(clampedStart, clampedEnd);
       if (!slice) {
-         if (import.meta.env.DEV) console.debug('[convertLabeledSpansToHighlights] Empty slice', { clampedStart, clampedEnd, span });
+        if (import.meta.env.DEV) {
+          log.debug('convertLabeledSpansToHighlights empty slice', { clampedStart, clampedEnd, span });
+        }
         return null;
       }
 
@@ -282,7 +302,7 @@ export const convertLabeledSpansToHighlights = ({
   const merged = mergeFragmentedSpans(rawHighlights, text);
   
   if (import.meta.env.DEV) {
-    console.debug('[convertLabeledSpansToHighlights] Result', {
+    log.debug('convertLabeledSpansToHighlights result', {
       rawCount: rawHighlights.length,
       mergedCount: merged.length
     });

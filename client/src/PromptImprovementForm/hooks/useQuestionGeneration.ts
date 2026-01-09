@@ -4,6 +4,10 @@ import type { Question } from '../types';
 
 import { fetchGeneratedQuestions } from '../api';
 import { generateFallbackQuestions } from '../utils/questionGeneration';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useQuestionGeneration');
 
 export interface UseQuestionGenerationResult {
   questions: Question[];
@@ -34,7 +38,11 @@ export function useQuestionGeneration(initialPrompt: string): UseQuestionGenerat
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         if (!isActive) return;
-        console.error('Error fetching questions:', err);
+        const errObj = err instanceof Error ? err : new Error(sanitizeError(err).message);
+        log.error('Error fetching questions', errObj, {
+          operation: 'loadQuestions',
+          promptLength: initialPrompt.length,
+        });
         setError(errorMessage);
         setQuestions(generateFallbackQuestions(initialPrompt));
       } finally {

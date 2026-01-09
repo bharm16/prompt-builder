@@ -2,6 +2,10 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics, type Analytics } from 'firebase/analytics';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('firebase');
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,7 +25,12 @@ let analytics: Analytics | null = null;
 try {
   analytics = getAnalytics(app);
 } catch (error) {
-  console.warn('Firebase Analytics initialization failed (this is okay in development)', error);
+  const info = sanitizeError(error);
+  log.warn('Firebase Analytics initialization failed (ok in development)', {
+    operation: 'getAnalytics',
+    error: info.message,
+    errorName: info.name,
+  });
 }
 
 export { auth, db, analytics };

@@ -17,6 +17,10 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import type { User } from '../hooks/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('AuthRepository');
 
 export interface SentryIntegration {
   setUser: (user: User | null) => void;
@@ -55,7 +59,8 @@ export class AuthRepository {
 
       return this._mapFirebaseUser(result.user);
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error signing in with Google', errObj, { operation: 'signInWithGoogle' });
       throw new AuthRepositoryError('Failed to sign in with Google', error);
     }
   }
@@ -73,7 +78,8 @@ export class AuthRepository {
         this.sentry.addBreadcrumb('auth', 'User signed out');
       }
     } catch (error) {
-      console.error('Error signing out:', error);
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error signing out', errObj, { operation: 'signOut' });
       throw new AuthRepositoryError('Failed to sign out', error);
     }
   }
@@ -180,4 +186,3 @@ export class MockAuthRepository {
     this.authStateCallbacks.forEach(callback => callback(this.currentUser));
   }
 }
-

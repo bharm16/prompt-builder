@@ -5,6 +5,10 @@ import { createHighlightSignature } from '@features/span-highlighting';
 import { PromptContext } from '@utils/PromptContext';
 import type { PromptVersionEntry, Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('usePromptLoader');
 
 interface PromptData {
   id?: string;
@@ -135,10 +139,13 @@ export function usePromptLoader({
               const restoredContext = PromptContext.fromJSON(contextData);
               setPromptContext(restoredContext);
             } catch (contextError) {
-              console.error(
-                'Failed to restore prompt context from shared link:',
-                contextError
-              );
+              const info = sanitizeError(contextError);
+              log.warn('Failed to restore prompt context from shared link', {
+                operation: 'restorePromptContext',
+                promptUuid: uuid,
+                error: info.message,
+                errorName: info.name,
+              });
               toast.warning(
                 'Could not restore video context. The prompt will still load.'
               );
@@ -152,7 +159,8 @@ export function usePromptLoader({
           navigate('/', { replace: true });
         }
       } catch (error) {
-        console.error('Error loading prompt from URL:', error);
+        const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
+        log.error('Error loading prompt from URL', err, { operation: 'loadPromptFromUrl', promptUuid: uuid });
         toast.error('Failed to load prompt');
         navigate('/', { replace: true });
       }

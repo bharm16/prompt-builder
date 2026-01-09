@@ -1,4 +1,7 @@
 import { TAXONOMY, VALID_CATEGORIES } from '@shared/taxonomy';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('categoryValidators');
 
 /**
  * Structural-Only Span Validation
@@ -113,7 +116,11 @@ export const validateSpan = (span: Span | null | undefined): ValidationResult =>
   // Handle Legacy Mappings
   if (category && LEGACY_MAPPINGS[category]) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn(`[Validator] Legacy category "${category}" mapped to "${LEGACY_MAPPINGS[category]}"`);
+      log.warn('Legacy category mapped', {
+        operation: 'validateSpan',
+        from: category,
+        to: LEGACY_MAPPINGS[category],
+      });
     }
     category = LEGACY_MAPPINGS[category];
   }

@@ -18,6 +18,7 @@ import { userCreditService as defaultUserCreditService } from '@services/credits
 import { extractFirebaseToken } from '@utils/auth';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
+import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
 import { getCapabilitiesRegistry } from '@services/capabilities';
 
 const LOCAL_CONTENT_PREFIX = '/api/preview/video/content';
@@ -88,6 +89,125 @@ function buildVideoContentUrl(
   }
 
   return accessService.buildAccessUrl(rawUrl, assetId, userId || undefined);
+}
+
+function getVideoJobLeaseMs(): number {
+  const leaseSeconds = Number.parseInt(process.env.VIDEO_JOB_LEASE_SECONDS || '900', 10);
+  if (!Number.isFinite(leaseSeconds) || leaseSeconds <= 0) {
+    return 900000;
+  }
+  return leaseSeconds * 1000;
+}
+
+function scheduleInlineVideoPreviewProcessing(params: {
+  jobId: string;
+  requestId?: string;
+  videoJobStore: VideoJobStore;
+  videoGenerationService: NonNullable<PreviewRoutesServices['videoGenerationService']>;
+  userCreditService: NonNullable<PreviewRoutesServices['userCreditService']>;
+}): void {
+  const { jobId, requestId, videoJobStore, videoGenerationService, userCreditService } = params;
+  const leaseMs = getVideoJobLeaseMs();
+  const workerId = `inline-preview-${requestId || Date.now()}`;
+
+  setTimeout(() => {
+    void (async () => {
+      const claimed = await videoJobStore.claimJob(jobId, workerId, leaseMs);
+      if (!claimed) {
+        logger.debug('Inline preview job claim skipped', {
+          jobId,
+          workerId,
+        });
+        return;
+      }
+
+      logger.info('Inline preview job claimed', {
+        jobId,
+        workerId,
+        userId: claimed.userId,
+      });
+
+      try {
+        const result = await videoGenerationService.generateVideo(
+          claimed.request.prompt,
+          claimed.request.options
+        );
+        const marked = await videoJobStore.markCompleted(jobId, result);
+        if (!marked) {
+          logger.warn('Inline preview job completion skipped (status changed)', {
+            jobId,
+            workerId,
+            userId: claimed.userId,
+            assetId: result.assetId,
+          });
+          return;
+        }
+
+        logger.info('Inline preview job completed', {
+          jobId,
+          workerId,
+          userId: claimed.userId,
+          assetId: result.assetId,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorInstance = error instanceof Error ? error : new Error(errorMessage);
+        logger.error('Inline preview job failed', errorInstance, {
+          jobId,
+          workerId,
+          userId: claimed.userId,
+          errorMessage,
+        });
+
+        const marked = await videoJobStore.markFailed(jobId, errorMessage);
+        if (marked) {
+          await userCreditService.refundCredits(claimed.userId, claimed.creditsReserved);
+        } else {
+          logger.warn('Inline preview job failure skipped (status changed)', {
+            jobId,
+            workerId,
+            userId: claimed.userId,
+          });
+        }
+      }
+    })();
+  }, 300);
+}
+
+function stripVideoPreviewPrompt(prompt: string): { cleaned: string; wasStripped: boolean } {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return { cleaned: trimmed, wasStripped: false };
+  }
+
+  const markers: RegExp[] = [
+    /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
+    /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
+    /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
+    /\r?\n\s*technical specs\s*[:\n]/i,
+    /\r?\n\s*alternative approaches\s*[:\n]/i,
+    /\r?\n\s*variation\s+\d+/i,
+  ];
+
+  let cutIndex = -1;
+  for (const marker of markers) {
+    const match = marker.exec(trimmed);
+    if (match && (cutIndex === -1 || match.index < cutIndex)) {
+      cutIndex = match.index;
+    }
+  }
+
+  let cleaned = (cutIndex >= 0 ? trimmed.slice(0, cutIndex) : trimmed).trim();
+  cleaned = cleaned
+    .replace(/^\s*\*\*\s*prompt\s*:\s*\*\*/i, '')
+    .replace(/^\s*prompt\s*:\s*/i, '')
+    .trim();
+
+  if (cleaned.length < 10) {
+    cleaned = trimmed;
+  }
+
+  return { cleaned, wasStripped: cleaned !== trimmed };
 }
 
 /**
@@ -232,7 +352,19 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
       }
 
       const { prompt, aspectRatio, model, startImage, inputReference, generationParams } = parsed.payload;
+      const { cleaned: cleanedPrompt, wasStripped: promptWasStripped } = stripVideoPreviewPrompt(prompt);
       const userId = await getAuthenticatedUserId(req);
+
+      logger.info('Video preview request received', {
+        operation: 'generateVideoPreview',
+        requestId: (req as Request & { id?: string }).id,
+        promptLength: cleanedPrompt.length,
+        promptWasStripped,
+        aspectRatio,
+        model,
+        hasStartImage: Boolean(startImage),
+        hasInputReference: Boolean(inputReference),
+      });
 
       if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
         return res.status(401).json({
@@ -362,7 +494,8 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         operation,
         requestId,
         userId,
-        promptLength: prompt.length,
+        promptLength: cleanedPrompt.length,
+        promptWasStripped,
         aspectRatio,
         model,
         estimatedCost,
@@ -372,7 +505,7 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         const job = await videoJobStore.createJob({
           userId,
           request: {
-            prompt,
+            prompt: cleanedPrompt,
             options,
           },
           creditsReserved: estimatedCost,
@@ -384,6 +517,14 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
           userId,
           jobId: job.id,
           cost: estimatedCost,
+        });
+
+        scheduleInlineVideoPreviewProcessing({
+          jobId: job.id,
+          requestId,
+          videoJobStore,
+          videoGenerationService,
+          userCreditService,
         });
 
         return res.status(202).json({
@@ -421,6 +562,11 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   router.get(
     '/video/jobs/:jobId',
     asyncHandler(async (req: Request, res: Response) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+
       if (!videoGenerationService || !videoJobStore) {
         return res.status(503).json({
           success: false,

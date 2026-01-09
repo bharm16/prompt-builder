@@ -102,6 +102,43 @@ export class VideoJobStore {
     return await this.claimFromQuery(expiredQuery, workerId, leaseMs);
   }
 
+  async claimJob(jobId: string, workerId: string, leaseMs: number): Promise<VideoJobRecord | null> {
+    return await this.db.runTransaction(async (transaction) => {
+      const docRef = this.collection.doc(jobId);
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        return null;
+      }
+
+      const data = snapshot.data();
+      if (!data || data.status !== 'queued') {
+        return null;
+      }
+
+      const now = Date.now();
+      const leaseExpiresAtMs = now + leaseMs;
+
+      transaction.update(docRef, {
+        status: 'processing',
+        workerId,
+        leaseExpiresAtMs,
+        updatedAtMs: now,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return this.parseJob(jobId, {
+        ...data,
+        status: 'processing',
+        workerId,
+        leaseExpiresAtMs,
+        updatedAtMs: now,
+      });
+    }).catch((error: Error) => {
+      logger.error('Failed to claim video job by id', error, { jobId, workerId });
+      return null;
+    });
+  }
+
   async markCompleted(jobId: string, result: VideoJobRecord['result']): Promise<boolean> {
     const now = Date.now();
 

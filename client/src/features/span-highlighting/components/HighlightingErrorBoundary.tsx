@@ -9,6 +9,8 @@
 import React, { type ReactNode } from 'react';
 import { ErrorBoundary, type FallbackProps } from '@components/ErrorBoundary/ErrorBoundary';
 import { spanLabelingCache } from '../services/index.ts';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 
 export interface HighlightingErrorBoundaryProps {
   children: ReactNode;
@@ -19,15 +21,18 @@ export interface HighlightingErrorBoundaryProps {
  * Clears cache on reset to recover from corrupt data
  */
 export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundaryProps): React.ReactElement {
+  const log = React.useMemo(() => logger.child('HighlightingErrorBoundary'), []);
+
   const handleReset = (): void => {
     // Clear highlighting cache on error reset to recover from corrupt data
     try {
       if (spanLabelingCache) {
         spanLabelingCache.clear();
-        console.log('[HighlightingErrorBoundary] Cache cleared after error');
+        log.info('Cache cleared after error reset', { operation: 'handleReset' });
       }
     } catch (error) {
-      console.error('[HighlightingErrorBoundary] Failed to clear cache:', error);
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Failed to clear cache after error reset', errObj, { operation: 'handleReset' });
     }
   };
   

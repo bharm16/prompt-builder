@@ -9,6 +9,10 @@ import {
 } from '@features/prompt-optimizer/utils/lockedSpans';
 import type { LockedSpan } from '@features/prompt-optimizer/types';
 import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useLockedSpanInteractions');
 
 interface UseLockedSpanInteractionsOptions {
   editorRef: RefObject<HTMLElement>;
@@ -118,7 +122,10 @@ export const useLockedSpanInteractions = ({
           scheduleHideLockButton();
         }
       } catch (error) {
-        console.debug('[PromptCanvas] Error in hover detection:', error);
+        if (import.meta.env.DEV) {
+          const info = sanitizeError(error);
+          log.debug('Hover detection error', { error: info.message, errorName: info.name });
+        }
       }
     },
     [

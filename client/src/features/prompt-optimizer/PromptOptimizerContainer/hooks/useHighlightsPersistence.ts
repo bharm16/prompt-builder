@@ -2,6 +2,10 @@ import { useCallback } from 'react';
 import { getPromptRepository } from '@repositories/index';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useHighlightsPersistence');
 
 interface Span {
   id?: string;
@@ -121,7 +125,14 @@ export function useHighlightsPersistence({
         });
         persistedSignatureRef.current = result.signature;
       } catch (error) {
-        console.error('Failed to persist highlight snapshot:', error);
+        const info = sanitizeError(error);
+        log.warn('Failed to persist highlight snapshot', {
+          operation: 'updateHighlights',
+          error: info.message,
+          errorName: info.name,
+          promptUuid: currentPromptUuid ?? null,
+          promptDocId: currentPromptDocId ?? null,
+        });
         // Silent failure for background highlight persistence - not critical to user workflow
         // Only show error if it's a permission issue
         const err = error as Error & { code?: string };

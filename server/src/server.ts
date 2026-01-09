@@ -38,11 +38,10 @@ export async function startServer(
           port: PORT,
           environment: config.server.environment,
           nodeVersion: process.version,
+          proxyUrl: `http://localhost:${PORT}`,
+          metricsPath: '/metrics',
+          healthPath: '/health',
         });
-
-        console.log(`🚀 Proxy server running on http://localhost:${PORT}`);
-        console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
-        console.log(`💚 Health check at http://localhost:${PORT}/health`);
 
         resolve(server);
       });

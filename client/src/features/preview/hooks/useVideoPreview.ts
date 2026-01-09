@@ -27,6 +27,43 @@ interface UseVideoPreviewReturn {
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_WAIT_MS = 6 * 60 * 1000;
+const COMPILE_TIMEOUT_MS = 4000;
+
+const stripVideoPreviewPrompt = (prompt: string): string => {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const markers: RegExp[] = [
+    /\r?\n\s*\*\*\s*technical specs\s*\*\*/i,
+    /\r?\n\s*\*\*\s*technical parameters\s*\*\*/i,
+    /\r?\n\s*\*\*\s*alternative approaches\s*\*\*/i,
+    /\r?\n\s*technical specs\s*[:\n]/i,
+    /\r?\n\s*alternative approaches\s*[:\n]/i,
+    /\r?\n\s*variation\s+\d+/i,
+  ];
+
+  let cutIndex = -1;
+  for (const marker of markers) {
+    const match = marker.exec(trimmed);
+    if (match && (cutIndex === -1 || match.index < cutIndex)) {
+      cutIndex = match.index;
+    }
+  }
+
+  let cleaned = (cutIndex >= 0 ? trimmed.slice(0, cutIndex) : trimmed).trim();
+  cleaned = cleaned
+    .replace(/^\s*\*\*\s*prompt\s*:\s*\*\*/i, '')
+    .replace(/^\s*prompt\s*:\s*/i, '')
+    .trim();
+
+  if (cleaned.length < 10) {
+    return trimmed;
+  }
+
+  return cleaned;
+};
 
 /**
  * Hook for managing video preview state
@@ -57,8 +94,10 @@ export function useVideoPreview({
         abortControllerRef.current.abort();
       }
 
+      const cleanedPrompt = stripVideoPreviewPrompt(promptToGenerate);
+
       // Don't generate if prompt is empty
-      if (!promptToGenerate || promptToGenerate.trim().length === 0) {
+      if (!cleanedPrompt || cleanedPrompt.trim().length === 0) {
         setVideoUrl(null);
         setError(null);
         setLoading(false);
@@ -66,13 +105,13 @@ export function useVideoPreview({
       }
 
       // Skip if prompt hasn't changed and it's not a manual regeneration
-      if (!isManual && promptToGenerate === lastPromptRef.current && videoUrl) {
+      if (!isManual && cleanedPrompt === lastPromptRef.current && videoUrl) {
         return;
       }
 
       setLoading(true);
       setError(null);
-      lastPromptRef.current = promptToGenerate;
+      lastPromptRef.current = cleanedPrompt;
 
       // Create new abort controller for this request
       const abortController = new AbortController();
@@ -90,28 +129,40 @@ export function useVideoPreview({
           if (generationParams) payload.generationParams = generationParams;
           return Object.keys(payload).length ? payload : undefined;
         })();
-        let wanPrompt = promptToGenerate;
+        let wanPrompt = cleanedPrompt;
         try {
-          const compiled = await promptOptimizationApiV2.compilePrompt({
-            prompt: promptToGenerate,
-            targetModel: 'wan',
-            signal: abortController.signal,
-          });
+          const compileAbortController = new AbortController();
+          const abortCompile = () => compileAbortController.abort();
+          const timeoutId = window.setTimeout(() => {
+            compileAbortController.abort();
+          }, COMPILE_TIMEOUT_MS);
 
-          if (abortController.signal.aborted) {
-            return;
-          }
+          abortController.signal.addEventListener('abort', abortCompile, { once: true });
+          try {
+            const compiled = await promptOptimizationApiV2.compilePrompt({
+              prompt: cleanedPrompt,
+              targetModel: 'wan',
+              signal: compileAbortController.signal,
+            });
 
-          if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
-            const trimmed = compiled.compiledPrompt.trim();
-            if (trimmed) {
-              wanPrompt = trimmed;
+            if (!compileAbortController.signal.aborted) {
+              if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
+                const trimmed = compiled.compiledPrompt.trim();
+                if (trimmed) {
+                  wanPrompt = trimmed;
+                }
+              }
             }
+          } finally {
+            window.clearTimeout(timeoutId);
+            abortController.signal.removeEventListener('abort', abortCompile);
           }
         } catch {
-          if (abortController.signal.aborted) {
-            return;
-          }
+          // Best-effort compile; fallback to cleaned prompt on errors/timeouts.
+        }
+
+        if (abortController.signal.aborted) {
+          return;
         }
 
         const previewModel = 'wan-2.2';
@@ -237,6 +288,10 @@ async function waitForVideoJob(jobId: string, signal: AbortSignal): Promise<stri
 
     if (status.status === 'completed' && status.videoUrl) {
       return status.videoUrl;
+    }
+
+    if (status.status === 'completed') {
+      throw new Error('Video preview completed but no URL was returned');
     }
 
     if (status.status === 'failed') {

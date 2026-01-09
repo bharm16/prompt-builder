@@ -4,6 +4,10 @@ import { PERFORMANCE_CONFIG } from '@config/performance.config';
 import type { Toast } from '@hooks/types';
 import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
 import type { CapabilityValues } from '@shared/capabilities';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('useConceptBrainstorm');
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
@@ -169,8 +173,13 @@ export function useConceptBrainstorm({
             }
           }
         } catch (error) {
+          const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+          log.error('Error generating video prompt from brainstorm', errObj, {
+            operation: 'handleConceptComplete',
+            selectedMode,
+            selectedModel,
+          });
           toast.error('Failed to generate video prompt. Please try again.');
-          console.error('Error in handleConceptComplete:', error);
         } finally {
           conceptOptimizeTimeoutRef.current = null;
         }

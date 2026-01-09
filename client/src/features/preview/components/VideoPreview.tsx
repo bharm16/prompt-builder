@@ -8,6 +8,7 @@ import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useVideoPreview } from '../hooks/useVideoPreview';
 import { useRemoteDownload } from '../hooks/useRemoteDownload';
+import { logger } from '@/services/LoggingService';
 import './VideoPreview.css';
 
 interface VideoPreviewProps {
@@ -56,6 +57,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     () => normalizeAspectRatio(aspectRatio),
     [aspectRatio]
   );
+  const log = React.useMemo(() => logger.child('VideoPreview'), []);
 
   const hasPrompt = prompt.trim().length > 0;
 
@@ -237,10 +239,17 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             playsInline
             className="pc-video-stage__video"
             onError={(e) => {
-              console.error('Video playback error:', e);
+              log.warn('Video playback error', {
+                operation: 'video.onError',
+                eventType: e.type,
+              });
               const target = e.target as HTMLVideoElement;
-              if (target.error) {
-                console.error('Media Error Details:', target.error);
+              if (target?.error) {
+                log.warn('Media error details', {
+                  operation: 'video.onError',
+                  mediaErrorCode: target.error.code,
+                  mediaErrorMessage: (target.error as unknown as { message?: string }).message ?? null,
+                });
               }
             }}
           />

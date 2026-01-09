@@ -1,3 +1,7 @@
+import { logger } from '@infrastructure/Logger';
+
+const log = logger.child({ service: 'validateEnv' });
+
 export function validateEnv(): void {
   const baseRequired = [
     'VITE_FIREBASE_API_KEY',
@@ -29,7 +33,10 @@ export function validateEnv(): void {
       Boolean(process.env.ALLOWED_API_KEYS && process.env.ALLOWED_API_KEYS.trim()) ||
       Boolean(process.env.API_KEY && process.env.API_KEY.trim());
     if (!hasApiKeys) {
-      console.warn('⚠️  No API keys configured; relying on Firebase auth or public access');
+      log.warn('⚠️  No API keys configured; relying on Firebase auth or public access', {
+        operation: 'validateEnv',
+        environment: 'production',
+      });
     }
 
     const hasVideoBucket =
@@ -51,9 +58,11 @@ export function validateEnv(): void {
     }
     const allowedApiKeys = process.env.ALLOWED_API_KEYS;
     if (allowedApiKeys && !allowedApiKeys.includes(',')) {
-      console.warn(
-        '⚠️  Consider configuring multiple API keys in ALLOWED_API_KEYS for rotation'
-      );
+      log.warn('⚠️  Consider configuring multiple API keys in ALLOWED_API_KEYS for rotation', {
+        operation: 'validateEnv',
+        environment: 'production',
+        hasAllowedApiKeys: Boolean(allowedApiKeys?.trim()),
+      });
     }
   }
 
@@ -64,16 +73,23 @@ export function validateEnv(): void {
     Boolean(process.env.GOOGLE_API_KEY);
 
   if (!hasLlmProvider) {
-    console.warn('⚠️  No LLM provider API keys configured; AI features will be disabled');
+    log.warn('⚠️  No LLM provider API keys configured; AI features will be disabled', {
+      operation: 'validateEnv',
+      hasOpenAi: Boolean(process.env.OPENAI_API_KEY),
+      hasGroq: Boolean(process.env.GROQ_API_KEY),
+      hasGemini: Boolean(process.env.GEMINI_API_KEY),
+      hasGoogle: Boolean(process.env.GOOGLE_API_KEY),
+    });
   } else {
     // Validate OpenAI API key format (light check only)
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey && !openaiKey.startsWith('sk-')) {
-      console.warn(
-        '⚠️  OPENAI_API_KEY may not be in the expected format'
-      );
+      log.warn('⚠️  OPENAI_API_KEY may not be in the expected format', {
+        operation: 'validateEnv',
+        environment: process.env.NODE_ENV,
+      });
     }
   }
 
-  console.log('✅ Environment variables validated successfully');
+  log.info('✅ Environment variables validated successfully', { operation: 'validateEnv' });
 }

@@ -435,6 +435,7 @@
   background: rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(1px);
   cursor: progress;
+  pointer-events: none;
 }
 
 .prompt-canvas-history {

@@ -6,6 +6,9 @@
 
 import type { SpanLabelingPayload, SpanLabelingState, SpanMeta, LabeledSpan } from '../hooks/types.ts';
 import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('spanLabelingErrorHandler');
 
 export interface ErrorHandlerOptions {
   requestId: number;
@@ -113,7 +116,8 @@ export function logErrorWarning(
   payload: SpanLabelingPayload,
   cacheAge?: number
 ): void {
-  console.warn('Span labeling network error - using cached fallback', {
+  log.warn('Span labeling network error - using cached fallback', {
+    operation: 'spanLabeling',
     error: error.message,
     cacheAgeMs: cacheAge,
     textLength: payload.text?.length,

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { apiClient } from '../../services/ApiClient';
 import { Button } from '../../components/Button';
+import { logger } from '../../services/LoggingService';
+import { sanitizeError } from '../../utils/logging';
 
 const TIERS = [
   { 
@@ -28,6 +30,7 @@ const TIERS = [
 
 export const CreditPurchaseModal = () => {
   const [loading, setLoading] = useState<string | null>(null);
+  const log = logger.child('CreditPurchaseModal');
 
   const handlePurchase = async (priceId: string) => {
     setLoading(priceId);
@@ -41,7 +44,8 @@ export const CreditPurchaseModal = () => {
 
       window.location.href = redirectUrl;
     } catch (error) {
-      console.error('Checkout failed', error);
+      const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Checkout failed', err, { operation: 'checkout', priceId });
       setLoading(null);
     }
   };

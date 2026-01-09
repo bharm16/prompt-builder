@@ -14,6 +14,10 @@ import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../uti
 import { getCacheStorage } from './storageAdapter.ts';
 import { getVersionString } from '@shared/version';
 import type { LabeledSpan, SpanMeta } from '../hooks/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('SpanLabelingCache');
 
 // Cache version - includes system versions from shared/version.js
 // This ensures cache invalidation when taxonomy, prompts, or API changes
@@ -73,12 +77,21 @@ class SpanLabelingCache {
     try {
       const storedVersion = storage.getItem(this.versionKey);
       if (storedVersion !== this.version) {
-        console.log(`[SpanLabelingCache] Version changed from ${storedVersion} to ${this.version}, clearing cache`);
+        log.info('Cache version changed; clearing cache', {
+          operation: 'validateVersion',
+          from: storedVersion,
+          to: this.version,
+        });
         this.clear();
         storage.setItem(this.versionKey, this.version);
       }
     } catch (error) {
-      console.warn('[SpanLabelingCache] Failed to validate version:', error);
+      const info = sanitizeError(error);
+      log.warn('Failed to validate cache version', {
+        operation: 'validateVersion',
+        error: info.message,
+        errorName: info.name,
+      });
     }
   }
 
@@ -167,7 +180,12 @@ class SpanLabelingCache {
           }
         }
       } catch (error) {
-        console.warn('Unable to hydrate span labeling cache:', error);
+        const info = sanitizeError(error);
+        log.warn('Unable to hydrate span labeling cache', {
+          operation: 'hydrate',
+          error: info.message,
+          errorName: info.name,
+        });
         this.cache.clear();
       }
     };
@@ -206,7 +224,12 @@ class SpanLabelingCache {
       ]);
       storage.setItem(this.storageKey, JSON.stringify(serialized));
     } catch (error) {
-      console.warn('Unable to persist span labeling cache:', error);
+      const info = sanitizeError(error);
+      log.warn('Unable to persist span labeling cache', {
+        operation: 'persist',
+        error: info.message,
+        errorName: info.name,
+      });
     }
   }
 
@@ -228,7 +251,9 @@ class SpanLabelingCache {
     // CACHE VERSION CHECK: Invalidate entries with different version
     const entryVersion = cached.version || (cached.meta as Record<string, unknown>)?.cacheVersion || '';
     if (entryVersion !== CURRENT_CACHE_VERSION) {
-      console.log('[SpanLabelingCache] Invalidating outdated cache entry (version mismatch)');
+      log.debug('Invalidating outdated cache entry (version mismatch)', {
+        operation: 'get',
+      });
       this.cache.delete(key);
       return null;
     }
@@ -237,7 +262,10 @@ class SpanLabelingCache {
     const timestamp = cached.timestamp || 0;
     const age = Date.now() - timestamp;
     if (age > MAX_CACHE_AGE_MS) {
-      console.log(`[SpanLabelingCache] Invalidating expired cache entry (age: ${Math.round(age / 3600000)}h)`);
+      log.debug('Invalidating expired cache entry', {
+        operation: 'get',
+        ageHours: Math.round(age / 3600000),
+      });
       this.cache.delete(key);
       return null;
     }

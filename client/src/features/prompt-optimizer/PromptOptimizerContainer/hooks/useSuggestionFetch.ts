@@ -27,6 +27,8 @@ import { SuggestionCache, simpleHash } from '@features/prompt-optimizer/utils/Su
 import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
 import type { Toast } from '@hooks/types';
 import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 
 interface PromptOptimizer {
   displayedPrompt: string;
@@ -79,6 +81,8 @@ const CACHE_CONFIG = {
   ttlMs: 300000, // 5 minutes
   maxEntries: 50,
 };
+
+const log = logger.child('useSuggestionFetch');
 
 const normalizeSuggestionList = (
   input: Array<
@@ -238,9 +242,12 @@ export function useSuggestionFetch({
       );
 
       if (!suggestionContext.found) {
-        console.warn(
-          '[EnhancementApi] Could not locate highlight in prompt. Context may be inaccurate.'
-        );
+        log.warn('Could not locate highlight in prompt; context may be inaccurate', {
+          operation: 'buildSuggestionContext',
+          highlightLength: normalizedHighlight.length,
+          promptLength: normalizedPrompt.length,
+          preferIndex,
+        });
       }
 
       // Check cache BEFORE showing loading state - Requirement 6.3
@@ -448,7 +455,8 @@ export function useSuggestionFetch({
           return;
         }
 
-        console.error('Error fetching suggestions:', error);
+        const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+        log.error('Error fetching suggestions', errObj, { operation: 'fetchEnhancementSuggestions' });
         toast.error('Failed to load suggestions');
 
         // Set error state with retry callback - Requirement 3.1, 3.3
@@ -458,7 +466,7 @@ export function useSuggestionFetch({
             ...prev,
             isLoading: false,
             isError: true,
-            errorMessage: (error as Error).message || 'Failed to load suggestions. Please try again.',
+            errorMessage: errObj.message || 'Failed to load suggestions. Please try again.',
             suggestions: [],
             onRetry: retryFn, // Wire up retry callback
           };

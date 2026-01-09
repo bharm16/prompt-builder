@@ -2,6 +2,10 @@
  * Text Selection Manager
  * Handles text selection and cursor position management in contentEditable elements
  */
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('textSelection');
 
 export interface SelectionOffsets {
   start: number;
@@ -38,7 +42,8 @@ export const getSelectionOffsets = (
 
     return { start, end };
   } catch (error) {
-    console.error('Error computing selection offsets:', error);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('Error computing selection offsets', errObj, { operation: 'getSelectionOffsets' });
     return null;
   }
 };
@@ -65,7 +70,8 @@ export const selectRange = (range: Range | null): void => {
     selection.removeAllRanges();
     selection.addRange(range);
   } catch (error) {
-    console.error('Error selecting range:', error);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('Error selecting range', errObj, { operation: 'selectRange' });
   }
 };
 
@@ -139,7 +145,8 @@ export const restoreSelectionFromOffsets = (
     range.setStart(startPosition.node, startPosition.offset);
     range.setEnd(endPosition.node, endPosition.offset);
   } catch (error) {
-    console.error('Error restoring selection offsets:', error);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('Error restoring selection offsets', errObj, { operation: 'restoreSelectionFromOffsets' });
     return;
   }
 
@@ -147,7 +154,8 @@ export const restoreSelectionFromOffsets = (
     selection.removeAllRanges();
     selection.addRange(range);
   } catch (error) {
-    console.error('Error applying selection range:', error);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('Error applying selection range', errObj, { operation: 'restoreSelectionFromOffsets' });
   }
 };
 

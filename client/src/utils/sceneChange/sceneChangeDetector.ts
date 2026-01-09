@@ -8,6 +8,10 @@ import { extractSceneContext } from './sceneContextParser.ts';
 import { detectSceneChange } from './sceneChangeApi';
 import { applySceneChangeUpdates } from './sceneChangeUpdates';
 import type { SceneChangeParams } from './types';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('sceneChangeDetector');
 
 const buildConfirmationMessage = (
   oldValue: string,
@@ -90,7 +94,12 @@ export async function detectAndApplySceneChange({
       normalizedAffectedFields
     );
   } catch (error) {
-    console.error('Error detecting scene change:', error);
+    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error('Error detecting scene change', errObj, {
+      operation: 'detectSceneChange',
+      oldValueLength: typeof oldValue === 'string' ? oldValue.length : null,
+      newValueLength: typeof newValue === 'string' ? newValue.length : null,
+    });
     return baselinePrompt;
   }
 }

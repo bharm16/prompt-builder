@@ -1583,7 +1583,7 @@ export function PromptCanvas({
                           <ModelSelectorDropdown
                             selectedModel={selectedModel}
                             onModelChange={handleModelChange}
-                            disabled={isOptimizing || isAnyVideoPreviewGenerating}
+                            disabled={isOptimizing}
                             variant="pill"
                           />
                         </div>
@@ -1595,7 +1595,7 @@ export function PromptCanvas({
                               aspectRatioInfo,
                               'aspect_ratio',
                               'Aspect Ratio',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1607,7 +1607,7 @@ export function PromptCanvas({
                               durationInfo,
                               'duration_s',
                               'Duration',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1619,7 +1619,7 @@ export function PromptCanvas({
                               fpsInfo,
                               'fps',
                               'Frame Rate',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1894,7 +1894,7 @@ export function PromptCanvas({
                     <button
                       type="button"
                       onClick={handleJumpToPromptEditor}
-                      disabled={isVideoPreviewGenerating}
+                      disabled={isOptimizing}
                       className="pc-video-panel__prompt"
                       title={promptEcho}
                       aria-label="Jump to prompt editor"
@@ -1937,7 +1937,7 @@ export function PromptCanvas({
 
                     <details
                       className="pc-video-panel__advanced"
-                      data-disabled={isVideoPreviewGenerating ? 'true' : 'false'}
+                      data-disabled={isOptimizing ? 'true' : 'false'}
                     >
                       <summary className="pc-video-panel__advanced-summary">
                         Advanced Controls
@@ -1948,7 +1948,7 @@ export function PromptCanvas({
                           <ModelSelectorDropdown
                             selectedModel={selectedModel}
                             onModelChange={handleModelChange}
-                            disabled={isOptimizing || isVideoPreviewGenerating}
+                            disabled={isOptimizing}
                             variant="pillDark"
                           />
                         </div>
@@ -1960,7 +1960,7 @@ export function PromptCanvas({
                               aspectRatioInfo,
                               'aspect_ratio',
                               'Aspect Ratio',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1972,7 +1972,7 @@ export function PromptCanvas({
                               durationInfo,
                               'duration_s',
                               'Duration',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1984,7 +1984,7 @@ export function PromptCanvas({
                               fpsInfo,
                               'fps',
                               'Frame Rate',
-                              isOptimizing || isAnyVideoPreviewGenerating
+                              isOptimizing
                             )}
                           </div>
                         )}
@@ -1998,7 +1998,7 @@ export function PromptCanvas({
                               onChange={(event) => setVideoInputReference(event.target.value)}
                               placeholder="Reference image URL (optional)"
                               className="pc-video-advanced-input"
-                              disabled={isOptimizing || isVideoPreviewGenerating}
+                              disabled={isOptimizing}
                               aria-label="Reference image URL (optional)"
                             />
                           </div>

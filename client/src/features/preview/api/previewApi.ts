@@ -110,5 +110,9 @@ export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStat
     throw new Error('jobId is required');
   }
 
-  return apiClient.get(`/preview/video/jobs/${jobId}`) as Promise<VideoJobStatusResponse>;
+  return apiClient.get(`/preview/video/jobs/${jobId}`, {
+    fetchOptions: {
+      cache: 'no-store',
+    },
+  }) as Promise<VideoJobStatusResponse>;
 }

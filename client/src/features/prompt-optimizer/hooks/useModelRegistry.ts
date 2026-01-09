@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { capabilitiesApi } from '@/services';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from '../components/constants';
 import type { CapabilitiesSchema } from '@shared/capabilities';
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
 
 export interface ModelOption {
   id: string;
@@ -52,6 +54,8 @@ const fallbackModels = (): ModelOption[] =>
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
+const log = logger.child('useModelRegistry');
+
 export const useModelRegistry = (): UseModelRegistryResult => {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +81,12 @@ export const useModelRegistry = (): UseModelRegistryResult => {
             filtered = resolved.filter((model) => availableSet.has(model.id));
           }
         } catch (availabilityError) {
-          console.warn('Failed to load video availability:', availabilityError);
+          const info = sanitizeError(availabilityError);
+          log.warn('Failed to load video availability', {
+            operation: 'getVideoAvailability',
+            error: info.message,
+            errorName: info.name,
+          });
         }
 
         if (availabilityApplied) {
@@ -88,7 +97,8 @@ export const useModelRegistry = (): UseModelRegistryResult => {
       } catch (err) {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Unable to load models';
-        console.error('Failed to load models:', err);
+        const errObj = err instanceof Error ? err : new Error(sanitizeError(err).message);
+        log.error('Failed to load models', errObj, { operation: 'fetchModels' });
         setError(message);
         // Ensure the UI still has a usable model list even if the registry endpoint is unavailable.
         setModels(fallbackModels());

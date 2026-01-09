@@ -3,6 +3,9 @@
  */
 
 import type { RefObject } from 'react';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('spanFormatting');
 
 export interface Span {
   id: string;
@@ -25,7 +28,7 @@ export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | und
   ) as HTMLElement | null;
   
   if (!wrapper) {
-    console.warn('Span not found in editor:', span.id);
+    log.warn('Span not found in editor', { operation: 'scrollToSpan', spanId: span.id });
     return;
   }
   
@@ -44,4 +47,3 @@ export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | und
     wrapper.classList.remove('highlight-pulse');
   }, 1000);
 }
-

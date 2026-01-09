@@ -1,4 +1,7 @@
 import { TAXONOMY, parseCategoryId, getAttributesForParent, resolveCategory } from '@shared/taxonomy';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('CategoryStyles');
 
 /**
  * Category Styling Configuration
@@ -119,7 +122,7 @@ export function getCategoryColor(category: string): ColorScheme {
   if (!parsed) {
     // Fallback for invalid categories
     if (import.meta.env?.DEV) {
-      console.warn(`[CategoryStyles] Invalid category: "${category}"`);
+      log.warn('Invalid category; using fallback color', { operation: 'getCategoryColor', category });
     }
     return FALLBACK_COLOR;
   }
@@ -130,7 +133,7 @@ export function getCategoryColor(category: string): ColorScheme {
   const color = CATEGORY_PALETTE[parentId as keyof typeof CATEGORY_PALETTE];
   if (!color) {
     if (import.meta.env?.DEV) {
-      console.warn(`[CategoryStyles] Unknown parent category: "${parentId}"`);
+      log.warn('Unknown parent category; using fallback color', { operation: 'getCategoryColor', parentId, category });
     }
     return FALLBACK_COLOR;
   }

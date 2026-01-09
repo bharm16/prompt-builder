@@ -2,8 +2,10 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import type { Application } from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import { logger } from '@infrastructure/Logger';
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
+const log = logger.child({ service: 'Sentry' });
 
 export function initSentry(app: Application): void {
   // Read environment variables inside function (after dotenv.config() has run)
@@ -13,7 +15,7 @@ export function initSentry(app: Application): void {
   // Only initialize Sentry if DSN is provided
   if (!SENTRY_DSN) {
     if (ENVIRONMENT === 'development') {
-      console.warn('Sentry DSN not configured. Error tracking is disabled.');
+      log.warn('Sentry DSN not configured. Error tracking is disabled.', { operation: 'initSentry' });
     }
     return;
   }
@@ -95,7 +97,7 @@ export function initSentry(app: Application): void {
   // Sentry request handling is now done automatically through integrations
   // No need for explicit middleware in newer versions
   
-  console.log(`✓ Sentry initialized (env: ${ENVIRONMENT})`);
+  log.info('Sentry initialized', { operation: 'initSentry', environment: ENVIRONMENT });
 }
 
 // Error handler must be registered after all routes but before other error middleware
@@ -159,7 +161,8 @@ export function addSentryBreadcrumb(category: string, message: string, data: Rec
 // Helper to capture exceptions manually
 export function captureException(error: unknown, context: Record<string, unknown> = {}): void {
   if (!SENTRY_DSN) {
-    console.error('Error:', error, context);
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('captureException called but Sentry is not configured', err, { operation: 'captureException', context });
     return;
   }
 
@@ -173,7 +176,13 @@ export function captureException(error: unknown, context: Record<string, unknown
 // Helper to capture messages
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info', context: Record<string, unknown> = {}): void {
   if (!SENTRY_DSN) {
-    console.log(`[${level}]`, message, context);
+    if (level === 'error') {
+      log.error(message, undefined, { operation: 'captureMessage', context });
+    } else if (level === 'warning') {
+      log.warn(message, { operation: 'captureMessage', context });
+    } else {
+      log.info(message, { operation: 'captureMessage', context });
+    }
     return;
   }
 

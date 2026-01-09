@@ -6,6 +6,9 @@
 
 import { getHighlightClassName, applyHighlightStyles, type HighlightColor } from '../config/highlightStyles.ts';
 import { DATASET_KEYS, DEBUG_HIGHLIGHTS } from '../config/constants.ts';
+import { logger } from '@/services/LoggingService';
+
+const log = logger.child('domManipulation');
 
 export interface SpanForWrapper {
   category?: string;
@@ -108,7 +111,8 @@ export function logEmptyWrappers(
 ): void {
   if (!DEBUG_HIGHLIGHTS) return;
   
-  console.warn('[HIGHLIGHT] wrapRangeSegments returned 0 wrappers for:', {
+  log.warn('wrapRangeSegments returned 0 wrappers', {
+    operation: 'logEmptyWrappers',
     text: span.quote,
     role: span.role,
     start: highlightStart,

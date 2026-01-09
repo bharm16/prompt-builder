@@ -1,3 +1,7 @@
+import { logger } from '@/services/LoggingService';
+import { sanitizeError } from '@/utils/logging';
+
+const log = logger.child('anchorRanges');
 const NODE_FILTER = typeof NodeFilter !== 'undefined' ? NodeFilter.SHOW_TEXT : null;
 
 interface TextNodeEntry {
@@ -145,7 +149,12 @@ export const mapGlobalRangeToDom = (
     range.setStart(startTarget.node, startTarget.localOffset);
     range.setEnd(endTarget.node, endTarget.localOffset);
   } catch (error) {
-    console.warn('[anchorRanges] Unable to set range:', error);
+    const info = sanitizeError(error);
+    log.warn('Unable to set range', {
+      operation: 'mapGlobalRangeToDom',
+      error: info.message,
+      errorName: info.name,
+    });
     return null;
   }
 
@@ -182,7 +191,12 @@ export const surroundRange = ({
     mapping.range.surroundContents(wrapper);
     return wrapper;
   } catch (error) {
-    console.warn('[anchorRanges] Failed to surround contents:', error);
+    const info = sanitizeError(error);
+    log.warn('Failed to surround contents', {
+      operation: 'surroundRange',
+      error: info.message,
+      errorName: info.name,
+    });
     return null;
   } finally {
     mapping.range.detach?.();
@@ -304,7 +318,12 @@ export const wrapRangeSegments = ({
       range.surroundContents(wrapper);
       wrappers.push(wrapper);
     } catch (error) {
-      console.warn('[anchorRanges] Failed to wrap segment:', error);
+      const info = sanitizeError(error);
+      log.warn('Failed to wrap segment', {
+        operation: 'wrapRangeSegments',
+        error: info.message,
+        errorName: info.name,
+      });
     } finally {
       range.detach?.();
     }
