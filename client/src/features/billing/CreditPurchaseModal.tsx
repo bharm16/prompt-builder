@@ -3,9 +3,27 @@ import { apiClient } from '../../services/ApiClient';
 import { Button } from '../../components/Button';
 
 const TIERS = [
-  { id: 'price_creator_id_from_stripe', name: 'Creator', credits: 800, price: '$29' },
-  { id: 'price_pro_id_from_stripe', name: 'Pro', credits: 2500, price: '$79' },
-  { id: 'price_power_id_from_stripe', name: 'Power', credits: 7000, price: '$199' },
+  { 
+    id: 'price_explorer_monthly', 
+    name: 'Explorer', 
+    credits: 400, 
+    price: '$15',
+    description: 'Perfect for hobbyists and students'
+  },
+  { 
+    id: 'price_creator_monthly', 
+    name: 'Creator', 
+    credits: 1600, 
+    price: '$49',
+    description: 'For freelancers and content creators'
+  },
+  { 
+    id: 'price_agency_monthly', 
+    name: 'Agency', 
+    credits: 6000, 
+    price: '$149',
+    description: 'High volume for teams and agencies'
+  },
 ];
 
 export const CreditPurchaseModal = () => {
@@ -33,18 +51,19 @@ export const CreditPurchaseModal = () => {
       {TIERS.map((tier) => (
         <div
           key={tier.id}
-          className="rounded-lg border border-gray-200 p-6 transition-colors hover:border-blue-500"
+          className="rounded-lg border border-gray-200 p-6 transition-colors hover:border-blue-500 flex flex-col"
         >
           <h3 className="text-xl font-bold">{tier.name}</h3>
-          <div className="mt-2 text-3xl font-bold">{tier.price}</div>
-          <p className="mt-1 text-gray-500">{tier.credits} Credits</p>
+          <div className="mt-2 text-3xl font-bold">{tier.price}<span className="text-base font-normal text-gray-500">/mo</span></div>
+          <p className="mt-1 text-gray-500 font-medium">{tier.credits} Credits</p>
+          <p className="mt-2 text-sm text-gray-400 flex-grow">{tier.description}</p>
 
           <Button
             onClick={() => handlePurchase(tier.id)}
             loading={loading === tier.id}
-            className="mt-4 w-full"
+            className="mt-6 w-full"
           >
-            Buy with Link
+            Subscribe
           </Button>
         </div>
       ))}
