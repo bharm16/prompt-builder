@@ -18,8 +18,34 @@ import { userCreditService as defaultUserCreditService } from '@services/credits
 import { extractFirebaseToken } from '@utils/auth';
 import type { VideoGenerationOptions } from '@services/video-generation/types';
 import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
+import { CAPABILITIES_REGISTRY } from '@services/capabilities';
 
 const LOCAL_CONTENT_PREFIX = '/api/preview/video/content';
+
+const getCapabilityModelIds = (): string[] => {
+  const ids = new Set<string>();
+  for (const [provider, models] of Object.entries(CAPABILITIES_REGISTRY)) {
+    if (provider === 'generic') continue;
+    for (const modelId of Object.keys(models)) {
+      ids.add(modelId);
+    }
+  }
+  return Array.from(ids);
+};
+
+const CAPABILITY_MODEL_IDS = getCapabilityModelIds();
+
+const emptyAvailability = () => ({
+  providers: {
+    replicate: false,
+    openai: false,
+    luma: false,
+    kling: false,
+    gemini: false,
+  },
+  models: [],
+  availableModels: [],
+});
 
 function extractVideoContentToken(req: Request): string | null {
   const token = req.query?.token;
@@ -166,6 +192,19 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
     })
   );
 
+  // GET /api/preview/video/availability - Available video providers/models
+  router.get(
+    '/video/availability',
+    asyncHandler(async (_req: Request, res: Response) => {
+      if (!videoGenerationService) {
+        return res.json(emptyAvailability());
+      }
+
+      const report = videoGenerationService.getAvailabilityReport(CAPABILITY_MODEL_IDS);
+      return res.json(report);
+    })
+  );
+
   // POST /api/preview/video/generate - Generate video preview
   router.post(
     '/video/generate',
@@ -209,9 +248,26 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
         });
       }
 
+      const availability = videoGenerationService.getModelAvailability(model);
+      if (!availability.available) {
+        const report = videoGenerationService.getAvailabilityReport(CAPABILITY_MODEL_IDS);
+        const statusCode = availability.statusCode || 424;
+        return res.status(statusCode).json({
+          success: false,
+          error: 'Video model not available',
+          message: availability.message || 'Requested video model is not available',
+          model: model || 'auto',
+          reason: availability.reason,
+          requiredKey: availability.requiredKey,
+          resolvedModelId: availability.resolvedModelId,
+          availableModels: report.availableModels,
+        });
+      }
+
       const operation = 'generateVideoPreview';
       const requestId = (req as Request & { id?: string }).id;
-      const estimatedCost = getVideoCost(model);
+      const costModel = availability.resolvedModelId || model;
+      const estimatedCost = getVideoCost(costModel);
 
       const normalized = normalizeGenerationParams({
         generationParams,

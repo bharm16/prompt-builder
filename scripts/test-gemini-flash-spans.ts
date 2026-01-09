@@ -848,7 +848,7 @@ Evaluate the span extraction quality using the rubric. Return only JSON.`;
 // 1. Setup & Configuration
 // Support both GOOGLE_API_KEY (from .env) and GOOGLE_GENERATIVE_AI_API_KEY (legacy)
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-3.0-flash';
 const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`;
 
 if (!API_KEY) {

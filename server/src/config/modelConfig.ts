@@ -393,7 +393,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     responseFormat: 'json_object',
     fallbackTo: 'gemini',
     fallbackConfig: {
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.0-flash',
       timeout: 45000,
     },
     useSeed: true, // Same text should label identically
@@ -405,7 +405,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    */
   span_labeling_gemini: {
     client: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.0-flash',
     temperature: 0.1,
     maxTokens: 16384,
     timeout: 45000,

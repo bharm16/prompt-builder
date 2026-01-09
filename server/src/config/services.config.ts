@@ -20,7 +20,7 @@ import { OpenAICompatibleAdapter } from '@clients/adapters/OpenAICompatibleAdapt
 import { GroqLlamaAdapter } from '@clients/adapters/GroqLlamaAdapter';
 import { GroqQwenAdapter } from '@clients/adapters/GroqQwenAdapter';
 import { GeminiAdapter } from '@clients/adapters/GeminiAdapter';
-import { openAILimiter } from '@services/concurrency/ConcurrencyService';
+import { openAILimiter, groqLimiter, qwenLimiter, geminiLimiter } from '@services/concurrency/ConcurrencyService';
 
 // Import AI Model Service
 import { AIModelService } from '@services/ai-model/index';
@@ -145,7 +145,7 @@ export async function configureServices(): Promise<DIContainer> {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.0-flash',
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     },
     redis: {
@@ -220,7 +220,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 60, // More tolerant for fast provider
           resetTimeout: 15000, // Faster recovery
         },
-        concurrencyLimiter: null, // No concurrency limiting for Groq
+        concurrencyLimiter: groqLimiter,
       });
     },
     ['config']
@@ -250,7 +250,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 60,
           resetTimeout: 15000,
         },
-        concurrencyLimiter: null,
+        concurrencyLimiter: qwenLimiter,
       });
     },
     ['config']
@@ -279,7 +279,7 @@ export async function configureServices(): Promise<DIContainer> {
           errorThresholdPercentage: 55,
           resetTimeout: 20000,
         },
-        concurrencyLimiter: null,
+        concurrencyLimiter: geminiLimiter,
       });
     },
     ['config']
@@ -440,20 +440,20 @@ export async function configureServices(): Promise<DIContainer> {
   // Image Generation Service
   // ============================================================================
 
-  // Video-to-image prompt transformer (uses Groq for fast transformation)
+  // Video-to-image prompt transformer (uses Gemini for fast transformation)
   container.register(
     'videoToImageTransformer',
-    (groqClient: LLMClient | null) => {
-      if (!groqClient) {
-        logger.warn('Groq client not available, video-to-image transformation disabled');
+    (geminiClient: LLMClient | null) => {
+      if (!geminiClient) {
+        logger.warn('Gemini client not available, video-to-image transformation disabled');
         return null;
       }
       return new VideoToImagePromptTransformer({
-        llmClient: groqClient,
+        llmClient: geminiClient,
         timeoutMs: 5000,
       });
     },
-    ['groqClient']
+    ['geminiClient']
   );
 
   container.register(
@@ -652,6 +652,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
   const geminiClient = container.resolve<LLMClient | null>('geminiClient');
   if (geminiClient) {
     logger.info('Gemini client initialized for adapter-based routing');
+    const allowUnhealthyGemini = process.env.GEMINI_ALLOW_UNHEALTHY === 'true';
 
     try {
       const geminiHealth = await geminiClient.healthCheck() as HealthCheckResult;
@@ -663,11 +664,11 @@ export async function initializeServices(container: DIContainer): Promise<DICont
             error: geminiHealth.error,
           }
         );
-        if (process.env.NODE_ENV === 'production') {
-          logger.warn('⚠️  Gemini adapter disabled (production safeguard)');
+        if (!allowUnhealthyGemini) {
+          logger.warn('⚠️  Gemini adapter disabled (health check failed)');
           container.registerValue('geminiClient', null);
         } else {
-          logger.warn('Keeping Gemini adapter enabled in non-production for debugging');
+          logger.warn('Keeping Gemini adapter enabled despite failed health check');
         }
       } else {
         logger.info('✅ Gemini API key validated successfully', {
@@ -682,11 +683,11 @@ export async function initializeServices(container: DIContainer): Promise<DICont
           error: errorMessage,
         }
       );
-      if (process.env.NODE_ENV === 'production') {
-        logger.warn('⚠️  Gemini adapter disabled (production safeguard)');
+      if (!allowUnhealthyGemini) {
+        logger.warn('⚠️  Gemini adapter disabled (health check failed)');
         container.registerValue('geminiClient', null);
       } else {
-        logger.warn('Keeping Gemini adapter enabled in non-production for debugging');
+        logger.warn('Keeping Gemini adapter enabled despite failed health check');
       }
     }
   }

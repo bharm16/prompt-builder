@@ -115,9 +115,8 @@ async function selectBestModel(preferredModel?: string): Promise<string> {
 
   // Priority order for model selection
   const priorities = [
-    'gemini-2.5-flash',                 // Stable 2.5 flash
-    'gemini-2.5-flash-preview-04-17',  // Latest 2.5 flash preview
-    'gemini-2.0-flash',                 // 2.0 flash
+    'gemini-3.0-flash',                 // 3.0 flash
+    'gemini-3.0-flash-preview',        // 3.0 flash preview
     'gemini-1.5-flash',                 // 1.5 flash (stable)
     'gemini-1.5-pro',                   // 1.5 pro as fallback
   ];

@@ -9,27 +9,29 @@
 import type { LLMClient } from '@clients/LLMClient';
 import { logger } from '@infrastructure/Logger';
 
-const TRANSFORMATION_SYSTEM_PROMPT = `You convert video prompts into static image descriptions for image generation models.
+const TRANSFORMATION_SYSTEM_PROMPT = `You convert video prompts into static image descriptions optimized for Flux Schnell.
 
-RULES:
-1. Remove ALL temporal language: durations, "over X seconds", "gradually", "begins to", "slowly", timing references
-2. Convert camera movements to static compositions:
-   - "dolly in" → "close-up framing"
-   - "pan left" → "left-weighted composition"
-   - "crane shot" → "elevated perspective"
-   - "tracking shot" → "dynamic composition"
-   - "zoom in" → "close-up detail"
-   - etc.
-3. Convert actions-in-progress to states:
-   - "begins to smile" → "smiling"
-   - "starts walking" → "walking"
-   - "continues to run" → "running"
-4. KEEP all visual details: subject, lighting, environment, style, colors, mood, aesthetic
-5. KEEP aspect ratio if mentioned (16:9, 9:16, etc.)
-6. REMOVE frame rates (24fps, 60fps, etc.)
-7. REMOVE duration references (5s, 10 seconds, etc.)
+Flux Schnell Prompting Rules:
+1. STRUCTURE: Subject → Action/Pose → Environment → Lighting → Style/Modifiers
+2. STYLE: Use natural language. Be descriptive but precise.
+3. NO NEGATIVE PROMPTS: Describe what IS there, not what isn't.
+4. TECHNICAL: Include camera settings (e.g., "f/2.8", "35mm lens", "photorealistic", "4k").
+5. TEMPORAL: Remove ALL temporal language (durations, "begins to", "slowly", "pan left", "zoom in"). Convert movements to static framing.
 
-OUTPUT: Return ONLY the transformed prompt. No explanations, no quotes, no markdown.`;
+CONVERSION GUIDELINES:
+- "pan left" → "wide angle, left-weighted composition"
+- "dolly in" → "close-up, intimate framing"
+- "zoom in" → "macro detail"
+- "begins to smile" → "smiling expression"
+- "walking across" → "mid-stride pose"
+
+EXAMPLE INPUT:
+"Camera pans across a cyberpunk city at night. Neon lights reflect in rain puddles. A cyborg woman walks towards the camera, her mechanical arm glowing blue. 4k, cinematic."
+
+EXAMPLE OUTPUT:
+"A cyborg woman walking towards the camera, mid-stride, mechanical arm glowing blue. Cyberpunk city background at night, neon lights reflecting in rain puddles. Wide angle, cinematic lighting, photorealistic, 4k, f/1.8, 35mm lens, sharp focus."
+
+OUTPUT: Return ONLY the transformed prompt. No explanations.`;
 
 export interface VideoToImageTransformerOptions {
   llmClient: LLMClient;
@@ -39,7 +41,7 @@ export interface VideoToImageTransformerOptions {
 /**
  * LLM-powered video-to-image prompt transformer
  *
- * Uses Groq/Llama for fast, intelligent transformation that handles
+ * Uses Gemini for fast, intelligent transformation that handles
  * any prompt format - not limited to predefined patterns.
  */
 export class VideoToImagePromptTransformer {

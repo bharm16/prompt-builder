@@ -41,3 +41,27 @@ export interface VideoGenerationResult {
   videoUrl: string;
   contentType: string;
 }
+
+export interface VideoProviderAvailability {
+  replicate: boolean;
+  openai: boolean;
+  luma: boolean;
+  kling: boolean;
+  gemini: boolean;
+}
+
+export interface VideoModelAvailability {
+  id: string;
+  available: boolean;
+  reason?: 'unsupported_model' | 'missing_credentials';
+  requiredKey?: string;
+  resolvedModelId?: VideoModelId;
+  statusCode?: number;
+  message?: string;
+}
+
+export interface VideoAvailabilityReport {
+  providers: VideoProviderAvailability;
+  models: VideoModelAvailability[];
+  availableModels: string[];
+}

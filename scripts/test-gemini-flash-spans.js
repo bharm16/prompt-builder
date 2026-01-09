@@ -24,11 +24,11 @@ try {
   }
 
   // 2. Find a "Flash" model
-  // We prefer 'gemini-2.5-flash' variants.
+  // We prefer 'gemini-3.0-flash' variants.
   const availableModels = listJson.models.map(m => m.name.replace('models/', ''));
   console.log("📋 Available Models:", availableModels.join(', '));
 
-  let selectedModel = availableModels.find(m => m === 'gemini-2.5-flash');
+  let selectedModel = availableModels.find(m => m === 'gemini-3.0-flash');
   if (!selectedModel) selectedModel = availableModels.find(m => m.includes('2.5') && m.includes('flash'));
   if (!selectedModel) selectedModel = availableModels.find(m => m === 'gemini-1.5-flash');
   if (!selectedModel) selectedModel = availableModels.find(m => m.includes('flash') && !m.includes('8b')); // 8b is often preview

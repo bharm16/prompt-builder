@@ -66,7 +66,25 @@ export const useModelRegistry = (): UseModelRegistryResult => {
         const registry = await capabilitiesApi.getRegistry();
         if (!active) return;
         const resolved = flattenRegistry(registry);
-        setModels(resolved.length ? resolved : fallbackModels());
+        let availabilityApplied = false;
+        let filtered = resolved;
+
+        try {
+          const availability = await capabilitiesApi.getVideoAvailability();
+          if (Array.isArray(availability.availableModels)) {
+            availabilityApplied = true;
+            const availableSet = new Set(availability.availableModels);
+            filtered = resolved.filter((model) => availableSet.has(model.id));
+          }
+        } catch (availabilityError) {
+          console.warn('Failed to load video availability:', availabilityError);
+        }
+
+        if (availabilityApplied) {
+          setModels(filtered);
+        } else {
+          setModels(resolved.length ? resolved : fallbackModels());
+        }
       } catch (err) {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Unable to load models';

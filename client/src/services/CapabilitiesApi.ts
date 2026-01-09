@@ -10,6 +10,10 @@ interface ModelsResponse {
   models: string[];
 }
 
+interface VideoAvailabilityResponse {
+  availableModels: string[];
+}
+
 export class CapabilitiesApi {
   constructor(private readonly client: ApiClient) {}
 
@@ -36,6 +40,10 @@ export class CapabilitiesApi {
       string,
       Record<string, CapabilitiesSchema>
     >;
+  }
+
+  async getVideoAvailability(): Promise<VideoAvailabilityResponse> {
+    return (await this.client.get('/preview/video/availability')) as VideoAvailabilityResponse;
   }
 }
 

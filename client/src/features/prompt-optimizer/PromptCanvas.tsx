@@ -342,7 +342,19 @@ export function PromptCanvas({
   // Extract suggestions visibility state for contextual UI
   const isSuggestionsOpen = Boolean(selectedSpanId || (suggestionsData && suggestionsData.show !== false));
   const showVideoPreview = selectedMode === 'video';
-  const videoPreviewPrompt = normalizedDisplayedPrompt ?? '';
+  const videoPreviewPrompt = useMemo(() => {
+    const generic =
+      typeof promptOptimizer.genericOptimizedPrompt === 'string' &&
+      promptOptimizer.genericOptimizedPrompt.trim()
+        ? promptOptimizer.genericOptimizedPrompt
+        : null;
+
+    if (generic) {
+      return sanitizeText(generic);
+    }
+
+    return normalizedDisplayedPrompt ?? '';
+  }, [promptOptimizer.genericOptimizedPrompt, normalizedDisplayedPrompt]);
   const promptEcho = useMemo(
     () => (videoPreviewPrompt ? videoPreviewPrompt.replace(/\s+/g, ' ').trim() : ''),
     [videoPreviewPrompt]

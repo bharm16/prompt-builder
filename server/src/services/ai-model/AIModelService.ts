@@ -90,8 +90,32 @@ interface RequestOptions extends CompletionOptions {
   topLogprobs?: number;
 }
 
+const DEFAULT_FALLBACK_ORDER = ['openai', 'groq', 'gemini', 'qwen'] as const;
+
+const DEFAULT_PROVIDER_SETTINGS: Record<string, { model: string; timeout: number }> = {
+  openai: {
+    model: process.env.OPENAI_MODEL || DEFAULT_CONFIG.model,
+    timeout: Number.parseInt(process.env.OPENAI_TIMEOUT_MS || String(DEFAULT_CONFIG.timeout), 10),
+  },
+  groq: {
+    model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+    timeout: Number.parseInt(process.env.GROQ_TIMEOUT_MS || '5000', 10),
+  },
+  qwen: {
+    model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
+    timeout: Number.parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
+  },
+  gemini: {
+    model: process.env.GEMINI_MODEL || 'gemini-3.0-flash',
+    timeout: Number.parseInt(process.env.GEMINI_TIMEOUT_MS || '30000', 10),
+  },
+};
+
 export class AIModelService {
   private readonly clients: ClientsMap;
+  private readonly availableClients: Set<string>;
+  private readonly loggedAutoFallbacks: Set<string>;
+  private readonly hasAnyClient: boolean;
 
   constructor({ clients }: { clients: ClientsMap }) {
     if (!clients || typeof clients !== 'object') {
@@ -99,16 +123,19 @@ export class AIModelService {
     }
 
     const availableClients = Object.keys(clients).filter(key => clients[key] !== null);
-    if (availableClients.length === 0) {
-      throw new Error('AIModelService requires at least one configured client');
+    this.clients = clients;
+    this.availableClients = new Set(availableClients);
+    this.loggedAutoFallbacks = new Set();
+    this.hasAnyClient = availableClients.length > 0;
+
+    if (!this.hasAnyClient) {
+      logger.error('No AI clients configured; AI operations will be unavailable until a provider is enabled');
     }
 
     if (!clients.openai) {
       logger.warn('OpenAI client not configured; operations targeting OpenAI will require fallbacks');
     }
 
-    this.clients = clients;
-    
     logger.info('AIModelService initialized', {
       availableClients,
     });
@@ -129,7 +156,12 @@ export class AIModelService {
       throw new Error('systemPrompt is required');
     }
 
-    const config = this._getConfig(operation);
+    if (!this.hasAnyClient) {
+      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+    }
+
+    const plan = this._resolveExecutionPlan(operation);
+    const config = plan.primaryConfig;
     
     // Try to get the primary client, falling back if unavailable
     let client: IAIClient;
@@ -137,29 +169,29 @@ export class AIModelService {
       client = this._getClient(config);
     } catch (clientError) {
       // Primary client unavailable - try fallback immediately
-      if (config.fallbackTo && this.clients[config.fallbackTo]) {
+      if (plan.fallback && this.clients[plan.fallback.client]) {
         logger.warn('Primary client unavailable, using fallback', {
           operation,
           primary: config.client,
-          fallback: config.fallbackTo,
+          fallback: plan.fallback.client,
         });
         
         // Build minimal request options for fallback
         const fallbackOptions: RequestOptions = {
           ...params,
-          model: config.fallbackConfig?.model || '',
+          model: plan.fallback.model,
           temperature: params.temperature !== undefined ? params.temperature : config.temperature,
           maxTokens: params.maxTokens || config.maxTokens,
-          timeout: config.fallbackConfig?.timeout || params.timeout || config.timeout,
+          timeout: plan.fallback.timeout,
           jsonMode: config.responseFormat === 'json_object' || params.jsonMode || false,
         };
         
         return await this._executeFallback(
-          config.fallbackTo, 
+          plan.fallback.client, 
           operation, 
           params.systemPrompt, 
           fallbackOptions,
-          config.fallbackConfig
+          { model: plan.fallback.model, timeout: plan.fallback.timeout }
         );
       }
       
@@ -317,21 +349,21 @@ export class AIModelService {
       });
 
       // Intelligent fallback
-      const shouldFallback = config.fallbackTo && 
-                            this.clients[config.fallbackTo] && 
+      const shouldFallback = plan.fallback &&
+                            this.clients[plan.fallback.client] && 
                             (err.isRetryable !== false);
 
-      if (shouldFallback && config.fallbackTo) {
+      if (shouldFallback && plan.fallback) {
         logger.info('Error is retryable, attempting fallback', {
           operation,
-          fallbackTo: config.fallbackTo,
+          fallbackTo: plan.fallback.client,
         });
         return await this._executeFallback(
-          config.fallbackTo, 
+          plan.fallback.client, 
           operation, 
           params.systemPrompt, 
           requestOptions,
-          config.fallbackConfig
+          { model: plan.fallback.model, timeout: plan.fallback.timeout }
         );
       }
 
@@ -349,7 +381,12 @@ export class AIModelService {
    * Execute an AI operation with streaming
    */
   async stream(operation: string, params: StreamParams): Promise<string> {
-    const config = this._getConfig(operation);
+    if (!this.hasAnyClient) {
+      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+    }
+
+    const plan = this._resolveExecutionPlan(operation);
+    const config = plan.primaryConfig;
     const client = this._getClient(config);
 
     if (typeof (client as { streamComplete?: (systemPrompt: string, options: unknown) => Promise<string> }).streamComplete !== 'function') {
@@ -608,8 +645,125 @@ export class AIModelService {
   }
 
   supportsStreaming(operation: string): boolean {
-    const config = this._getConfig(operation);
-    const client = this._getClient(config);
+    if (!this.hasAnyClient) {
+      return false;
+    }
+    const plan = this._resolveExecutionPlan(operation);
+    const client = this._getClient(plan.primaryConfig);
     return typeof (client as { streamComplete?: (systemPrompt: string, options: unknown) => Promise<string> }).streamComplete === 'function';
+  }
+
+  private _resolveExecutionPlan(operation: string): {
+    primaryConfig: ModelConfigEntry;
+    fallback: { client: string; model: string; timeout: number } | null;
+  } {
+    const baseConfig = this._getConfig(operation);
+    const primaryAvailable = this._hasClient(baseConfig.client);
+
+    if (!primaryAvailable) {
+      const replacement = this._selectAvailableClient(baseConfig.fallbackTo, baseConfig.fallbackConfig);
+      if (replacement) {
+        const config: ModelConfigEntry = {
+          ...baseConfig,
+          client: replacement.client,
+          model: replacement.model,
+          timeout: replacement.timeout,
+        };
+
+        if (!this.loggedAutoFallbacks.has(operation)) {
+          this.loggedAutoFallbacks.add(operation);
+          logger.warn('Primary client unavailable, remapping operation to available provider', {
+            operation,
+            requestedClient: baseConfig.client,
+            resolvedClient: replacement.client,
+          });
+        }
+
+        return {
+          primaryConfig: config,
+          fallback: this._resolveFallbackClient(replacement.client, baseConfig),
+        };
+      }
+    }
+
+    if (!primaryAvailable && !this.hasAnyClient) {
+      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+    }
+
+    return {
+      primaryConfig: baseConfig,
+      fallback: this._resolveFallbackClient(baseConfig.client, baseConfig),
+    };
+  }
+
+  private _resolveFallbackClient(
+    primaryClient: string,
+    baseConfig: ModelConfigEntry
+  ): { client: string; model: string; timeout: number } | null {
+    if (baseConfig.fallbackTo && baseConfig.fallbackTo !== primaryClient && this._hasClient(baseConfig.fallbackTo)) {
+      return {
+        client: baseConfig.fallbackTo,
+        model: baseConfig.fallbackConfig?.model || this._getDefaultProviderModel(baseConfig.fallbackTo),
+        timeout: baseConfig.fallbackConfig?.timeout || this._getDefaultProviderTimeout(baseConfig.fallbackTo),
+      };
+    }
+
+    for (const candidate of DEFAULT_FALLBACK_ORDER) {
+      if (candidate !== primaryClient && this._hasClient(candidate)) {
+        return {
+          client: candidate,
+          model: this._getDefaultProviderModel(candidate),
+          timeout: this._getDefaultProviderTimeout(candidate),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private _selectAvailableClient(
+    preferred?: string,
+    fallbackConfig?: { model: string; timeout: number }
+  ): { client: string; model: string; timeout: number } | null {
+    if (preferred && this._hasClient(preferred)) {
+      return {
+        client: preferred,
+        model: fallbackConfig?.model || this._getDefaultProviderModel(preferred),
+        timeout: fallbackConfig?.timeout || this._getDefaultProviderTimeout(preferred),
+      };
+    }
+
+    for (const candidate of DEFAULT_FALLBACK_ORDER) {
+      if (this._hasClient(candidate)) {
+        return {
+          client: candidate,
+          model: this._getDefaultProviderModel(candidate),
+          timeout: this._getDefaultProviderTimeout(candidate),
+        };
+      }
+    }
+
+    const firstAvailable = Array.from(this.availableClients)[0];
+    if (firstAvailable) {
+      return {
+        client: firstAvailable,
+        model: this._getDefaultProviderModel(firstAvailable),
+        timeout: this._getDefaultProviderTimeout(firstAvailable),
+      };
+    }
+
+    return null;
+  }
+
+  private _hasClient(clientName: string): boolean {
+    return this.availableClients.has(clientName);
+  }
+
+  private _getDefaultProviderModel(provider: string): string {
+    return DEFAULT_PROVIDER_SETTINGS[provider]?.model || DEFAULT_CONFIG.model;
+  }
+
+  private _getDefaultProviderTimeout(provider: string): number {
+    return DEFAULT_PROVIDER_SETTINGS[provider]?.timeout || DEFAULT_CONFIG.timeout;
   }
 }

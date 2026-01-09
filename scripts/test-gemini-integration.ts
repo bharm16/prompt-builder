@@ -28,7 +28,7 @@ async function main() {
   const geminiAdapter = new GeminiAdapter({
     apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY!,
     baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3.0-flash',
     providerName: 'gemini',
   });
 
@@ -52,7 +52,7 @@ async function main() {
 
   // 2. Configure Environment for Factory
   process.env.SPAN_PROVIDER = 'gemini';
-  process.env.SPAN_MODEL = 'gemini-2.5-flash';
+  process.env.SPAN_MODEL = 'gemini-3.0-flash';
 
   // 3. Prepare Input
   const inputText = `Medium Shot of a futuristic city with flying cars and neon lights. The camera pans slowly to reveal a cybernetic detective walking in the rain.`;

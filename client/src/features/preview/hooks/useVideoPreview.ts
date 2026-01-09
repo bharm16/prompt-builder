@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { promptOptimizationApiV2 } from '@/services';
 import { generateVideoPreview, getVideoPreviewStatus } from '../api/previewApi';
 
 interface UseVideoPreviewOptions {
@@ -89,7 +90,32 @@ export function useVideoPreview({
           if (generationParams) payload.generationParams = generationParams;
           return Object.keys(payload).length ? payload : undefined;
         })();
-        const response = await generateVideoPreview(promptToGenerate, aspectRatio, model, options);
+        let wanPrompt = promptToGenerate;
+        try {
+          const compiled = await promptOptimizationApiV2.compilePrompt({
+            prompt: promptToGenerate,
+            targetModel: 'wan',
+            signal: abortController.signal,
+          });
+
+          if (abortController.signal.aborted) {
+            return;
+          }
+
+          if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
+            const trimmed = compiled.compiledPrompt.trim();
+            if (trimmed) {
+              wanPrompt = trimmed;
+            }
+          }
+        } catch {
+          if (abortController.signal.aborted) {
+            return;
+          }
+        }
+
+        const previewModel = 'wan-2.2';
+        const response = await generateVideoPreview(wanPrompt, aspectRatio, previewModel, options);
 
         // Check if request was aborted
         if (abortController.signal.aborted) {
