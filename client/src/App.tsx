@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
 import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
 import SharedPrompt from './components/SharedPrompt';
@@ -10,16 +10,19 @@ import { ProductsPage } from './pages/ProductsPage';
 import { PricingPage } from './pages/PricingPage';
 import { DocsPage } from './pages/DocsPage';
 import { SignInPage } from './pages/SignInPage';
+import { SignUpPage } from './pages/SignUpPage';
+import { AccountPage } from './pages/AccountPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { HistoryPage } from './pages/HistoryPage';
 
 function AppShell(): React.ReactElement {
   const location = useLocation();
   const isPromptCanvasRoute = location.pathname.startsWith('/prompt/');
+  const isAuthRoute = ['/signin', '/signup', '/account', '/login', '/register'].includes(location.pathname);
 
   return (
     <div className="min-h-full h-full flex flex-col bg-geist-background">
-      {!isPromptCanvasRoute && <TopNavbar />}
+      {!isPromptCanvasRoute && !isAuthRoute && <TopNavbar />}
       <div className="flex-1 min-h-0">
         <Routes>
           {/* Marketing / company navigation */}
@@ -29,6 +32,10 @@ function AppShell(): React.ReactElement {
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/signin" element={<SignInPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/login" element={<Navigate to="/signin" replace />} />
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
           {/* App routes */}

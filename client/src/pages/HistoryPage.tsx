@@ -114,7 +114,7 @@ export function HistoryPage(): React.ReactElement {
                     </span>
                   ) : (
                     <Link
-                      to="/signin"
+                      to="/signin?redirect=/history"
                       className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1 text-xs text-geist-accents-6 hover:text-geist-foreground"
                     >
                       Sign in to sync

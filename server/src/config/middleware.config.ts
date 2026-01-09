@@ -157,6 +157,14 @@ const SECURITY_CONFIG = {
 const COMPRESSION_CONFIG: compression.CompressionOptions = {
   filter: (req: express.Request, res: express.Response): boolean => {
     if (req.headers['x-no-compression']) return false;
+    const accept = String(req.headers.accept ?? '');
+    const url = String(req.originalUrl ?? req.url ?? '');
+    const isStreamingEndpoint =
+      accept.includes('text/event-stream') ||
+      url.includes('/optimize-stream') ||
+      url.includes('/label-spans/stream');
+
+    if (isStreamingEndpoint) return false;
     return compression.filter(req, res);
   },
   level: 6,

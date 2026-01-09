@@ -10,8 +10,12 @@
 
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
+  updateProfile,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   type Auth,
   type User as FirebaseUser,
@@ -62,6 +66,73 @@ export class AuthRepository {
       const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
       log.error('Error signing in with Google', errObj, { operation: 'signInWithGoogle' });
       throw new AuthRepositoryError('Failed to sign in with Google', error);
+    }
+  }
+
+  /**
+   * Sign in with email + password
+   */
+  async signInWithEmail(email: string, password: string): Promise<User> {
+    try {
+      const result = await signInWithEmailAndPassword(this.auth, email, password);
+
+      if (this.sentry) {
+        const mappedUser = this._mapFirebaseUser(result.user);
+        this.sentry.setUser(mappedUser);
+        this.sentry.addBreadcrumb('auth', 'User signed in with email', {
+          userId: result.user.uid,
+        });
+      }
+
+      return this._mapFirebaseUser(result.user);
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error signing in with email', errObj, { operation: 'signInWithEmail' });
+      throw new AuthRepositoryError('Failed to sign in with email', error);
+    }
+  }
+
+  /**
+   * Sign up with email + password
+   */
+  async signUpWithEmail(email: string, password: string, displayName?: string): Promise<User> {
+    try {
+      const result = await createUserWithEmailAndPassword(this.auth, email, password);
+
+      const normalizedName = typeof displayName === 'string' ? displayName.trim() : '';
+      if (normalizedName) {
+        await updateProfile(result.user, { displayName: normalizedName });
+      }
+
+      if (this.sentry) {
+        const mappedUser = this._mapFirebaseUser(result.user);
+        this.sentry.setUser(mappedUser);
+        this.sentry.addBreadcrumb('auth', 'User signed up with email', {
+          userId: result.user.uid,
+        });
+      }
+
+      return this._mapFirebaseUser(result.user);
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error signing up with email', errObj, { operation: 'signUpWithEmail' });
+      throw new AuthRepositoryError('Failed to sign up with email', error);
+    }
+  }
+
+  /**
+   * Send a password reset email
+   */
+  async sendPasswordReset(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(this.auth, email);
+      if (this.sentry) {
+        this.sentry.addBreadcrumb('auth', 'Password reset email requested');
+      }
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error sending password reset email', errObj, { operation: 'sendPasswordReset' });
+      throw new AuthRepositoryError('Failed to send password reset email', error);
     }
   }
 
@@ -156,6 +227,36 @@ export class MockAuthRepository {
 
     this._notifyAuthStateChange();
     return this.currentUser;
+  }
+
+  async signInWithEmail(email: string, _password: string): Promise<User> {
+    this.currentUser = {
+      uid: 'mock-user-id',
+      email,
+      displayName: 'Test User',
+      emailVerified: true,
+      isAnonymous: false,
+    };
+
+    this._notifyAuthStateChange();
+    return this.currentUser;
+  }
+
+  async signUpWithEmail(email: string, _password: string, displayName?: string): Promise<User> {
+    this.currentUser = {
+      uid: 'mock-user-id',
+      email,
+      displayName: displayName || 'Test User',
+      emailVerified: false,
+      isAnonymous: false,
+    };
+
+    this._notifyAuthStateChange();
+    return this.currentUser;
+  }
+
+  async sendPasswordReset(_email: string): Promise<void> {
+    return;
   }
 
   async signOut(): Promise<void> {

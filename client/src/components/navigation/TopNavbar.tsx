@@ -149,14 +149,14 @@ function SignedInControl({ user }: { user: User }): React.ReactElement {
         ].join(' ')}
       >
         <Link
-          to="/signin"
+          to="/account"
           role="menuitem"
           tabIndex={open ? 0 : -1}
           onClick={() => setOpen(false)}
           className="flex h-8 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium text-slate-900 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-violet-500/10 focus:outline-none focus-visible:bg-violet-500/10"
         >
           <UserIcon className="relative top-[-0.5px] h-3.5 w-3.5 text-slate-900/70" aria-hidden="true" />
-          Profile
+          Account
         </Link>
 
         <Link
@@ -199,7 +199,9 @@ function SignedInControl({ user }: { user: User }): React.ReactElement {
 }
 
 export function TopNavbar(): React.ReactElement {
+  const location = useLocation();
   const [user, setUser] = React.useState<User | null>(null);
+  const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
 
   React.useEffect(() => {
     const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
@@ -233,7 +235,37 @@ export function TopNavbar(): React.ReactElement {
         </div>
 
         <div className="flex items-center gap-2">
-          {user ? <SignedInControl user={user} /> : null}
+          {user ? (
+            <SignedInControl user={user} />
+          ) : (
+            <>
+              <Link
+                to={`/signin?redirect=${returnTo}`}
+                className="inline-flex h-9 items-center rounded-geist px-3 text-[13px] font-medium text-geist-accents-6 transition-colors hover:bg-geist-accents-1 hover:text-geist-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+              >
+                Sign in
+              </Link>
+              <Link
+                to={`/signup?redirect=${returnTo}`}
+                className={[
+                  'inline-flex h-9 items-center rounded-full',
+                  'px-3',
+                  'border border-black/5',
+                  'bg-gradient-to-br from-violet-500/12 to-blue-500/10',
+                  'text-[13px] font-semibold text-slate-900',
+                  'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+                  'transition duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                  'hover:-translate-y-px',
+                  'hover:border-violet-500/25',
+                  'hover:bg-gradient-to-br hover:from-violet-500/16 hover:to-blue-500/14',
+                  'hover:shadow-[0_6px_18px_rgba(124,58,237,0.16)]',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                ].join(' ')}
+              >
+                Create account
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
