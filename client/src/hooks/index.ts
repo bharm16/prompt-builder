@@ -10,6 +10,7 @@ export { usePromptOptimizer } from './usePromptOptimizer';
 export { usePromptOptimizerState } from './usePromptOptimizerState';
 export { usePromptHistory } from './usePromptHistory/index';
 export { useHierarchyValidation } from './useHierarchyValidation';
+export { useUserCreditBalance } from './useUserCreditBalance';
 
 // Re-export types
 export type * from './types';

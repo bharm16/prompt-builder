@@ -160,7 +160,7 @@ function SignedInControl({ user }: { user: User }): React.ReactElement {
         </Link>
 
         <Link
-          to="/pricing"
+          to="/settings/billing"
           role="menuitem"
           tabIndex={open ? 0 : -1}
           onClick={() => setOpen(false)}
@@ -230,6 +230,7 @@ export function TopNavbar(): React.ReactElement {
             <TopNavbarLink to="/products">Products</TopNavbarLink>
             <TopNavbarLink to="/pricing">Pricing</TopNavbarLink>
             <TopNavbarLink to="/docs">Docs</TopNavbarLink>
+            <TopNavbarLink to="/contact">Support</TopNavbarLink>
             <TopNavbarLink to="/history">History</TopNavbarLink>
           </nav>
         </div>

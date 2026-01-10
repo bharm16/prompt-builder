@@ -249,6 +249,10 @@ export function SignUpPage(): React.ReactElement {
 
           <p className="text-[12px] leading-relaxed text-white/45">
             By creating an account, you agree to our{' '}
+            <Link to="/terms-of-service" className="text-white/70 hover:text-white hover:underline">
+              terms
+            </Link>{' '}
+            and{' '}
             <Link to="/privacy-policy" className="text-white/70 hover:text-white hover:underline">
               privacy policy
             </Link>
@@ -268,4 +272,3 @@ export function SignUpPage(): React.ReactElement {
     </AuthShell>
   );
 }
-

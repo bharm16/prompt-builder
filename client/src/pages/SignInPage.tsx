@@ -120,26 +120,14 @@ export function SignInPage(): React.ReactElement {
     }
   };
 
-  const handleResetPassword = async (): Promise<void> => {
+  const forgotPasswordLink = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (redirect) params.set('redirect', redirect);
     const normalizedEmail = email.trim();
-    setError(null);
-
-    if (!normalizedEmail) {
-      setError('Enter your email to reset your password.');
-      return;
-    }
-
-    setIsBusy(true);
-    try {
-      await getAuthRepository().sendPasswordReset(normalizedEmail);
-      toast.success('Password reset email sent.');
-    } catch (err) {
-      setError(mapAuthError(err));
-      toast.error('Failed to send reset email.');
-    } finally {
-      setIsBusy(false);
-    }
-  };
+    if (normalizedEmail) params.set('email', normalizedEmail);
+    const query = params.toString();
+    return query ? `/forgot-password?${query}` : '/forgot-password';
+  }, [email, redirect]);
 
   return (
     <AuthShell
@@ -233,14 +221,12 @@ export function SignInPage(): React.ReactElement {
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={handleResetPassword}
-              disabled={isBusy}
-              className="text-[13px] font-medium text-white/60 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            <Link
+              to={forgotPasswordLink}
+              className="text-[13px] font-medium text-white/60 transition hover:text-white"
             >
               Forgot password?
-            </button>
+            </Link>
             <Link
               to="/privacy-policy"
               className="text-[13px] font-medium text-white/40 transition hover:text-white/70"
@@ -262,5 +248,4 @@ export function SignInPage(): React.ReactElement {
     </AuthShell>
   );
 }
-
 

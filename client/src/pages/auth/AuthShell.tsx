@@ -113,6 +113,9 @@ export function AuthShell({
               <Link to="/docs" className="hidden sm:inline hover:text-white">
                 Docs
               </Link>
+              <Link to="/contact" className="hidden sm:inline hover:text-white">
+                Support
+              </Link>
               <Link
                 to="/"
                 className={cn(
@@ -217,4 +220,3 @@ export function AuthShell({
     </div>
   );
 }
-
