@@ -15,6 +15,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  applyActionCode,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   updateProfile,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   type Auth,
@@ -123,9 +127,14 @@ export class AuthRepository {
   /**
    * Send a password reset email
    */
-  async sendPasswordReset(email: string): Promise<void> {
+  async sendPasswordReset(email: string, redirectPath?: string): Promise<void> {
     try {
-      await sendPasswordResetEmail(this.auth, email);
+      const actionCodeSettings = this._getActionCodeSettings('/reset-password', redirectPath);
+      if (actionCodeSettings) {
+        await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
+      } else {
+        await sendPasswordResetEmail(this.auth, email);
+      }
       if (this.sentry) {
         this.sentry.addBreadcrumb('auth', 'Password reset email requested');
       }
@@ -133,6 +142,101 @@ export class AuthRepository {
       const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
       log.error('Error sending password reset email', errObj, { operation: 'sendPasswordReset' });
       throw new AuthRepositoryError('Failed to send password reset email', error);
+    }
+  }
+
+  /**
+   * Send an email verification link to the current user
+   */
+  async sendVerificationEmail(redirectPath?: string): Promise<void> {
+    try {
+      const currentUser = this.auth.currentUser;
+      if (!currentUser) {
+        throw new AuthRepositoryError('No authenticated user to verify', null);
+      }
+
+      const actionCodeSettings = this._getActionCodeSettings('/email-verification', redirectPath);
+      if (actionCodeSettings) {
+        await sendEmailVerification(currentUser, actionCodeSettings);
+      } else {
+        await sendEmailVerification(currentUser);
+      }
+
+      if (this.sentry) {
+        this.sentry.addBreadcrumb('auth', 'Verification email requested', {
+          userId: currentUser.uid,
+        });
+      }
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error sending verification email', errObj, { operation: 'sendVerificationEmail' });
+      throw new AuthRepositoryError('Failed to send verification email', error);
+    }
+  }
+
+  /**
+   * Apply an email verification code from an email action link
+   */
+  async verifyEmailWithCode(oobCode: string): Promise<void> {
+    try {
+      await applyActionCode(this.auth, oobCode);
+      if (this.sentry) {
+        this.sentry.addBreadcrumb('auth', 'Email verified via action code');
+      }
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error verifying email with action code', errObj, { operation: 'verifyEmailWithCode' });
+      throw new AuthRepositoryError('Failed to verify email', error);
+    }
+  }
+
+  /**
+   * Validate a password reset code and return the email address it is for
+   */
+  async validatePasswordResetCode(oobCode: string): Promise<string> {
+    try {
+      return await verifyPasswordResetCode(this.auth, oobCode);
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error validating password reset code', errObj, { operation: 'validatePasswordResetCode' });
+      throw new AuthRepositoryError('Invalid or expired password reset link', error);
+    }
+  }
+
+  /**
+   * Confirm a password reset using the code from the email link
+   */
+  async confirmPasswordResetWithCode(oobCode: string, newPassword: string): Promise<void> {
+    try {
+      await confirmPasswordReset(this.auth, oobCode, newPassword);
+      if (this.sentry) {
+        this.sentry.addBreadcrumb('auth', 'Password reset confirmed via action code');
+      }
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error confirming password reset', errObj, { operation: 'confirmPasswordResetWithCode' });
+      throw new AuthRepositoryError('Failed to reset password', error);
+    }
+  }
+
+  /**
+   * Force-refresh the current user so fields like emailVerified are up to date
+   */
+  async refreshCurrentUser(): Promise<User | null> {
+    const currentUser = this.auth.currentUser;
+    if (!currentUser) return null;
+
+    try {
+      await currentUser.reload();
+      const mapped = this._mapFirebaseUser(currentUser);
+      if (this.sentry) {
+        this.sentry.setUser(mapped);
+      }
+      return mapped;
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
+      log.error('Error refreshing current user', errObj, { operation: 'refreshCurrentUser' });
+      throw new AuthRepositoryError('Failed to refresh user', error);
     }
   }
 
@@ -193,6 +297,17 @@ export class AuthRepository {
       isAnonymous: firebaseUser.isAnonymous,
     };
   }
+
+  private _getActionCodeSettings(path: string, redirectPath?: string): { url: string; handleCodeInApp: true } | null {
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : null;
+    if (!origin) return null;
+
+    const url = new URL(path, origin);
+    if (redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+      url.searchParams.set('redirect', redirectPath);
+    }
+    return { url: url.toString(), handleCodeInApp: true };
+  }
 }
 
 /**
@@ -200,11 +315,19 @@ export class AuthRepository {
  */
 export class AuthRepositoryError extends Error {
   originalError: unknown;
+  code?: string;
 
   constructor(message: string, originalError: unknown) {
     super(message);
     this.name = 'AuthRepositoryError';
     this.originalError = originalError;
+    const extractedCode =
+      originalError && typeof originalError === 'object' && 'code' in originalError && typeof originalError.code === 'string'
+        ? originalError.code
+        : null;
+    if (extractedCode) {
+      this.code = extractedCode;
+    }
   }
 }
 
@@ -257,6 +380,32 @@ export class MockAuthRepository {
 
   async sendPasswordReset(_email: string): Promise<void> {
     return;
+  }
+
+  async sendVerificationEmail(_redirectPath?: string): Promise<void> {
+    return;
+  }
+
+  async verifyEmailWithCode(_oobCode: string): Promise<void> {
+    if (this.currentUser) {
+      this.currentUser.emailVerified = true;
+      this._notifyAuthStateChange();
+    }
+    return;
+  }
+
+  async validatePasswordResetCode(_oobCode: string): Promise<string> {
+    return this.currentUser && typeof this.currentUser.email === 'string'
+      ? this.currentUser.email
+      : 'test@example.com';
+  }
+
+  async confirmPasswordResetWithCode(_oobCode: string, _newPassword: string): Promise<void> {
+    return;
+  }
+
+  async refreshCurrentUser(): Promise<User | null> {
+    return this.currentUser;
   }
 
   async signOut(): Promise<void> {

@@ -45,6 +45,10 @@ function mapAuthError(error: unknown): string {
       return 'No account found for that email.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Try again in a bit.';
+    case 'auth/unauthorized-continue-uri':
+    case 'auth/invalid-continue-uri':
+    case 'auth/missing-continue-uri':
+      return 'Password reset links aren’t configured for this domain yet.';
     default:
       return 'Failed to send reset email. Please try again.';
   }
@@ -83,7 +87,7 @@ export function ForgotPasswordPage(): React.ReactElement {
 
     setIsBusy(true);
     try {
-      await getAuthRepository().sendPasswordReset(normalizedEmail);
+      await getAuthRepository().sendPasswordReset(normalizedEmail, redirect ?? undefined);
       setSentTo(normalizedEmail);
       toast.success('Password reset email sent.');
     } catch (err) {
@@ -184,4 +188,3 @@ export function ForgotPasswordPage(): React.ReactElement {
     </AuthShell>
   );
 }
-

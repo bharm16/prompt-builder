@@ -117,7 +117,19 @@ export function SignUpPage(): React.ReactElement {
       const newUser = await getAuthRepository().signUpWithEmail(normalizedEmail, password, normalizedName);
       const name = typeof newUser.displayName === 'string' ? newUser.displayName : 'there';
       toast.success(`Account created. Welcome, ${name}!`);
-      navigate(redirect ?? '/', { replace: true });
+
+      try {
+        await getAuthRepository().sendVerificationEmail(redirect ?? undefined);
+        toast.success('Verification email sent.');
+      } catch {
+        toast.error('Failed to send verification email.');
+      }
+
+      const params = new URLSearchParams();
+      if (redirect) params.set('redirect', redirect);
+      if (normalizedEmail) params.set('email', normalizedEmail);
+      const query = params.toString();
+      navigate(query ? `/email-verification?${query}` : '/email-verification', { replace: true });
     } catch (err) {
       setError(mapAuthError(err));
     } finally {

@@ -12,6 +12,8 @@ import { DocsPage } from './pages/DocsPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { EmailVerificationPage } from './pages/EmailVerificationPage';
+import { PasswordResetPage } from './pages/PasswordResetPage';
 import { AccountPage } from './pages/AccountPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
@@ -26,6 +28,8 @@ function AppShell(): React.ReactElement {
     '/signin',
     '/signup',
     '/forgot-password',
+    '/email-verification',
+    '/reset-password',
     '/account',
     '/login',
     '/register',
@@ -46,6 +50,8 @@ function AppShell(): React.ReactElement {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/email-verification" element={<EmailVerificationPage />} />
+          <Route path="/reset-password" element={<PasswordResetPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/login" element={<Navigate to="/signin" replace />} />
           <Route path="/register" element={<Navigate to="/signup" replace />} />
