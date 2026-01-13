@@ -4,7 +4,7 @@
  * Handles common LLM response formats like markdown code fences
  * and provides safe parsing with error handling.
  */
-import { attemptJsonRepair } from '@clients/adapters/ResponseValidator';
+import { attemptJsonRepair } from '@clients/adapters/jsonRepair';
 import { cleanJSONResponse } from '@utils/JsonExtractor';
 
 export interface UserPayloadParams {

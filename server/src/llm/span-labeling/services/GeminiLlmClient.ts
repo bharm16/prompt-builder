@@ -2,7 +2,7 @@ import { RobustLlmClient, type ProviderRequestOptions } from './RobustLlmClient'
 import { parseJson, cleanJsonEnvelope } from '../utils/jsonUtils';
 import type { LabelSpansResult } from '../types';
 import type { LlmSpanParams } from './ILlmClient';
-import { attemptJsonRepair } from '@clients/adapters/ResponseValidator';
+import { attemptJsonRepair } from '@clients/adapters/jsonRepair';
 import { logger } from '@infrastructure/Logger';
 import { GEMINI_STREAMING_SYSTEM_PROMPT } from '../schemas/GeminiSchema';
 

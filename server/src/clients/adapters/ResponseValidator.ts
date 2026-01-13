@@ -12,8 +12,6 @@
  * for automatic retry logic on validation failures.
  */
 
-import { logger } from '@infrastructure/Logger';
-
 export interface ValidationOptions {
   expectJson?: boolean;
   expectArray?: boolean;
@@ -329,84 +327,3 @@ function hasNestedField(obj: Record<string, unknown>, path: string): boolean {
 /**
  * Attempt to repair common JSON issues
  */
-export function attemptJsonRepair(text: string): { repaired: string; changes: string[] } {
-  const changes: string[] = [];
-  let repaired = text;
-
-  // Fix trailing commas before closing brackets
-  const trailingCommaPattern = /,(\s*[}\]])/g;
-  if (trailingCommaPattern.test(repaired)) {
-    repaired = repaired.replace(trailingCommaPattern, '$1');
-    changes.push('Removed trailing commas');
-  }
-
-  // Fix missing commas between array elements
-  const missingCommaPattern = /}(\s*){/g;
-  if (missingCommaPattern.test(repaired)) {
-    repaired = repaired.replace(missingCommaPattern, '},$1{');
-    changes.push('Added missing commas between objects');
-  }
-
-  // Fix single quotes to double quotes
-  const singleQuotePattern = /'([^']*)'(?=\s*:)/g;
-  if (singleQuotePattern.test(repaired)) {
-    repaired = repaired.replace(singleQuotePattern, '"$1"');
-    changes.push('Converted single quotes to double quotes');
-  }
-
-  // Fix unquoted keys
-  const unquotedKeyPattern = /([{,]\s*)(\w+)(\s*:)/g;
-  const originalRepaired = repaired;
-  repaired = repaired.replace(unquotedKeyPattern, '$1"$2"$3');
-  if (repaired !== originalRepaired) {
-    changes.push('Added quotes to unquoted keys');
-  }
-
-  // Attempt to close unclosed JSON
-  const openBraces = (repaired.match(/{/g) || []).length;
-  const closeBraces = (repaired.match(/}/g) || []).length;
-  if (openBraces > closeBraces) {
-    repaired += '}'.repeat(openBraces - closeBraces);
-    changes.push(`Added ${openBraces - closeBraces} closing braces`);
-  }
-
-  const openBrackets = (repaired.match(/\[/g) || []).length;
-  const closeBrackets = (repaired.match(/\]/g) || []).length;
-  if (openBrackets > closeBrackets) {
-    repaired += ']'.repeat(openBrackets - closeBrackets);
-    changes.push(`Added ${openBrackets - closeBrackets} closing brackets`);
-  }
-
-  return { repaired, changes };
-}
-
-/**
- * Extract confidence from logprobs
- * 
- * More reliable than asking the model to self-report confidence.
- * Uses actual token probabilities from the API response.
- */
-export function calculateConfidenceFromLogprobs(
-  logprobs: Array<{ logprob: number; probability?: number }>
-): {
-  average: number;
-  min: number;
-  max: number;
-  lowConfidenceTokens: number; // Count of tokens with <50% probability
-} {
-  if (!logprobs || logprobs.length === 0) {
-    return { average: 0, min: 0, max: 0, lowConfidenceTokens: 0 };
-  }
-
-  const probabilities = logprobs.map(lp => 
-    lp.probability !== undefined ? lp.probability : Math.exp(lp.logprob)
-  );
-
-  const sum = probabilities.reduce((a, b) => a + b, 0);
-  const average = sum / probabilities.length;
-  const min = Math.min(...probabilities);
-  const max = Math.max(...probabilities);
-  const lowConfidenceTokens = probabilities.filter(p => p < 0.5).length;
-
-  return { average, min, max, lowConfidenceTokens };
-}

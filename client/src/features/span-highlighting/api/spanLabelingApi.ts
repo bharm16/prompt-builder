@@ -7,42 +7,11 @@
 
 import { logger } from '@/services/LoggingService';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-
-interface LabelSpansPayload {
-  text: string;
-  maxSpans?: number;
-  minConfidence?: number;
-  policy?: unknown;
-  templateVersion?: string;
-}
-
-interface LabelSpansResponse {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-    text?: string;
-    role?: string;
-  }>;
-  meta: Record<string, unknown> | null;
-}
-
-/**
- * Builds the request body for span labeling API call
- * @private
- */
-function buildBody(payload: LabelSpansPayload): string {
-  const body = {
-    text: payload.text,
-    maxSpans: payload.maxSpans,
-    minConfidence: payload.minConfidence,
-    policy: payload.policy,
-    templateVersion: payload.templateVersion,
-  };
-
-  return JSON.stringify(body);
-}
+import type { LabelSpansPayload, LabelSpansResponse } from './spanLabelingTypes';
+import { buildLabelSpansBody } from './spanLabelingRequest';
+import { buildRequestError } from './spanLabelingErrors';
+import { parseLabelSpansResponse } from './spanLabelingResponse';
+import { readSpanLabelStream } from './spanLabelingStream';
 
 /**
  * Span Labeling API
@@ -69,33 +38,16 @@ export class SpanLabelingApi {
         'Content-Type': 'application/json',
         ...authHeaders,
       },
-      body: buildBody(payload),
+      body: buildLabelSpansBody(payload),
       ...(signal && { signal }),
     });
 
     if (!res.ok) {
-      let message = `Request failed with status ${res.status}`;
-      try {
-        const errorBody = (await res.json()) as { message?: string };
-        if (errorBody?.message) {
-          message = errorBody.message;
-        }
-      } catch {
-        // Ignore JSON parse errors and fall back to default message
-      }
-      const error = new Error(message) as Error & { status?: number };
-      error.status = res.status;
-      throw error;
+      throw await buildRequestError(res);
     }
 
-    const data = (await res.json()) as {
-      spans?: unknown[];
-      meta?: Record<string, unknown> | null;
-    };
-    return {
-      spans: Array.isArray(data?.spans) ? (data.spans as LabelSpansResponse['spans']) : [],
-      meta: data?.meta ?? null,
-    };
+    const data: unknown = await res.json();
+    return parseLabelSpansResponse(data);
   }
 
   /**
@@ -112,7 +64,7 @@ export class SpanLabelingApi {
   ): Promise<LabelSpansResponse> {
     this.log.debug('Stream started', {
       textLength: payload.text.length,
-      maxSpans: payload.maxSpans
+      maxSpans: payload.maxSpans,
     });
 
     const authHeaders = await buildFirebaseAuthHeaders();
@@ -122,98 +74,34 @@ export class SpanLabelingApi {
         'Content-Type': 'application/json',
         ...authHeaders,
       },
-      body: buildBody(payload),
+      body: buildLabelSpansBody(payload),
       ...(signal && { signal }),
     });
 
     if (!res.ok) {
-        // Fallback to blocking if stream endpoint missing (404) or error
-        if (res.status === 404) {
-            this.log.warn('Stream endpoint not found, falling back to blocking', { status: 404 });
-            const blocking = await this.labelSpans(payload, signal);
-            blocking.spans.forEach(onChunk);
-            return blocking;
-        }
-        
-        // Error handling matches labelSpans
-        let message = `Request failed with status ${res.status}`;
-        try {
-            const errorBody = (await res.json()) as { message?: string };
-            if (errorBody?.message) {
-            message = errorBody.message;
-            }
-        } catch {
-             // Ignore
-        }
-        const error = new Error(message) as Error & { status?: number };
-        error.status = res.status;
-        this.log.error('Stream request failed', error, { status: res.status });
-        throw error;
+      if (res.status === 404) {
+        this.log.warn('Stream endpoint not found, falling back to blocking', { status: 404 });
+        const blocking = await this.labelSpans(payload, signal);
+        blocking.spans.forEach(onChunk);
+        return blocking;
+      }
+
+      const error = await buildRequestError(res);
+      this.log.error('Stream request failed', error, { status: res.status });
+      throw error;
     }
-    
-    // Process NDJSON stream
+
     const reader = res.body?.getReader();
     if (!reader) throw new Error('Response body not readable');
-    
-    const decoder = new TextDecoder();
-    let buffer = '';
-    const spans: LabelSpansResponse['spans'] = [];
-    let linesProcessed = 0;
-    let parseErrors = 0;
-    let lastProgressLogAt = Date.now();
-    const progressLogIntervalMs = 1000;
-    const maxParseErrorLogs = 3;
 
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep last incomplete line
-            
-            for (const line of lines) {
-                if (!line.trim()) continue;
-                linesProcessed++;
-                try {
-                    const span = JSON.parse(line);
-                    if (span.error) {
-                         // Stream reported error
-                         throw new Error(span.error);
-                    }
-                    if (span.text && (span.category || span.role)) {
-                         onChunk(span);
-                         spans.push(span);
-                    }
-                } catch (e) {
-                    parseErrors++;
-                    if (parseErrors <= maxParseErrorLogs) {
-                        this.log.warn('JSON parse failed', {
-                            linePreview: line.slice(0, 200),
-                            error: (e as Error).message
-                        });
-                    }
-                }
+    const { spans, linesProcessed, parseErrors } = await readSpanLabelStream(reader, onChunk, this.log);
 
-                if (Date.now() - lastProgressLogAt >= progressLogIntervalMs) {
-                    this.log.debug('Stream progress', {
-                        linesProcessed,
-                        spanCount: spans.length
-                    });
-                    lastProgressLogAt = Date.now();
-                }
-            }
-        }
-    } finally {
-        reader.releaseLock();
-    }
-    
     this.log.info('Stream completed', {
-        spanCount: spans.length,
-        linesProcessed,
-        parseErrors
+      spanCount: spans.length,
+      linesProcessed,
+      parseErrors,
     });
+
     return { spans, meta: { streaming: true } };
   }
 }
