@@ -25,11 +25,6 @@ export function normalizeOptimizationRequest(
 ): void {
   const body = isPlainObject(req.body) ? req.body : {};
 
-  // Force video-only mode to avoid schema rejection.
-  if (body.mode !== 'video') {
-    body.mode = 'video';
-  }
-
   const coercedContext = coerceJsonObject(body.context);
   body.context = isPlainObject(coercedContext) || coercedContext === null ? coercedContext : null;
 
