@@ -1,17 +1,14 @@
-import { createHash } from 'crypto';
 import { logger } from '@infrastructure/Logger';
-import { metricsService } from '@infrastructure/MetricsService';
 import type {
   SpanLabelingCacheServiceOptions,
   RedisClient,
-  MemoryCacheEntry,
   SpanLabelingCacheStats,
   SpanLabelingPolicy
 } from './types';
-
-// Bump this to invalidate old cached span results when the NLP/LLM pipeline changes.
-// v4: Fixed role → category transformation for Gemini provider (2024-12-28)
-const SPAN_LABELING_CACHE_KEY_VERSION = '4';
+import { MemoryLruCache } from './spanLabeling/memoryLru';
+import { generateCacheKey, buildTextPattern, buildTextPrefix } from './spanLabeling/key';
+import { deleteRedisKey, deleteRedisPattern, getRedisValue, setRedisValue } from './spanLabeling/redisStore';
+import { recordCacheHit, recordCacheMiss } from './spanLabeling/metrics';
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -39,7 +36,7 @@ export class SpanLabelingCacheService {
   private readonly defaultTTL: number;
   private readonly shortTTL: number;
   private readonly maxMemoryCacheSize: number;
-  private readonly memoryCache: Map<string, MemoryCacheEntry>;
+  private readonly memoryCache: MemoryLruCache;
   private readonly stats: {
     hits: number;
     misses: number;
@@ -55,7 +52,7 @@ export class SpanLabelingCacheService {
     this.maxMemoryCacheSize = options.maxMemoryCacheSize || 100;
 
     // In-memory fallback cache (LRU)
-    this.memoryCache = new Map();
+    this.memoryCache = new MemoryLruCache(this.maxMemoryCacheSize);
 
     // Metrics
     this.stats = {
@@ -74,37 +71,6 @@ export class SpanLabelingCacheService {
   }
 
   /**
-   * Generate cache key from text, policy, and template version
-   */
-  private _generateCacheKey(
-    text: string,
-    policy: SpanLabelingPolicy | null,
-    templateVersion: string | null,
-    provider: string | null = null
-  ): string {
-    // Create a deterministic hash of the text
-    const textHash = createHash('sha256')
-      .update(text)
-      .digest('hex')
-      .substring(0, 16);
-
-    // Create a deterministic hash of policy + templateVersion
-    const policyString = JSON.stringify({
-      v: SPAN_LABELING_CACHE_KEY_VERSION,
-      policy: policy || {},
-      templateVersion: templateVersion || 'v1',
-      provider: provider || 'unknown',
-    });
-
-    const policyHash = createHash('sha256')
-      .update(policyString)
-      .digest('hex')
-      .substring(0, 8);
-
-    return `span:${textHash}:${policyHash}`;
-  }
-
-  /**
    * Get cached span labeling result
    */
   async get(
@@ -114,63 +80,48 @@ export class SpanLabelingCacheService {
     provider: string | null = null
   ): Promise<unknown | null> {
     const startTime = Date.now();
-    const cacheKey = this._generateCacheKey(text, policy, templateVersion, provider);
+    const cacheKey = generateCacheKey(text, policy, templateVersion, provider);
 
     try {
       // Try Redis first
-      if (this.redis && this.redis.status === 'ready' && this.redis.get) {
-        const cached = await this.redis.get(cacheKey);
+      const cached = await getRedisValue(this.redis, cacheKey);
 
-        if (cached) {
-          const result = JSON.parse(cached);
-          this.stats.hits++;
+      if (cached) {
+        const result = JSON.parse(cached);
+        this.stats.hits++;
 
-          const duration = Date.now() - startTime;
-          logger.debug('Cache hit (Redis)', {
-            cacheKey,
-            duration,
-            textLength: text.length,
-          });
+        const duration = Date.now() - startTime;
+        logger.debug('Cache hit (Redis)', {
+          cacheKey,
+          duration,
+          textLength: text.length,
+        });
 
-          metricsService.recordCacheHit('span_labeling_redis');
-          metricsService.recordHistogram('cache_retrieval_time_ms', duration);
+        recordCacheHit('span_labeling_redis', duration);
 
-          return result;
-        }
+        return result;
       }
 
       // Try in-memory cache
-      if (this.memoryCache.has(cacheKey)) {
-        const cacheEntry = this.memoryCache.get(cacheKey)!;
+      const cacheEntry = this.memoryCache.get(cacheKey);
+      if (cacheEntry) {
+        this.stats.hits++;
 
-        // Check if entry is expired
-        if (Date.now() < cacheEntry.expiresAt) {
-          // Move to end (LRU)
-          this.memoryCache.delete(cacheKey);
-          this.memoryCache.set(cacheKey, cacheEntry);
+        const duration = Date.now() - startTime;
+        logger.debug('Cache hit (memory)', {
+          cacheKey,
+          duration,
+          textLength: text.length,
+        });
 
-          this.stats.hits++;
+        recordCacheHit('span_labeling_memory', duration);
 
-          const duration = Date.now() - startTime;
-          logger.debug('Cache hit (memory)', {
-            cacheKey,
-            duration,
-            textLength: text.length,
-          });
-
-          metricsService.recordCacheHit('span_labeling_memory');
-          metricsService.recordHistogram('cache_retrieval_time_ms', duration);
-
-          return cacheEntry.data;
-        } else {
-          // Expired, remove from cache
-          this.memoryCache.delete(cacheKey);
-        }
+        return cacheEntry.data;
       }
 
       // Cache miss
       this.stats.misses++;
-      metricsService.recordCacheMiss('span_labeling');
+      recordCacheMiss('span_labeling');
 
       const duration = Date.now() - startTime;
       logger.debug('Cache miss', {
@@ -197,7 +148,7 @@ export class SpanLabelingCacheService {
     result: unknown,
     options: { ttl?: number; provider?: string | null } = {}
   ): Promise<boolean> {
-    const cacheKey = this._generateCacheKey(
+    const cacheKey = generateCacheKey(
       text,
       policy,
       templateVersion,
@@ -209,9 +160,10 @@ export class SpanLabelingCacheService {
       const serialized = JSON.stringify(result);
 
       // Set in Redis
-      if (this.redis && this.redis.status === 'ready' && this.redis.set) {
-        await this.redis.set(cacheKey, serialized, 'EX', ttl);
+      const redisReady = !!this.redis && this.redis.status === 'ready' && typeof this.redis.set === 'function';
+      await setRedisValue(this.redis, cacheKey, serialized, ttl);
 
+      if (redisReady) {
         logger.debug('Cache set (Redis)', {
           cacheKey,
           ttl,
@@ -220,19 +172,7 @@ export class SpanLabelingCacheService {
       }
 
       // Set in memory cache (with LRU eviction)
-      const expiresAt = Date.now() + ttl * 1000;
-      this.memoryCache.set(cacheKey, {
-        data: result,
-        expiresAt,
-      });
-
-      // LRU eviction: remove oldest entry if cache is full
-      if (this.memoryCache.size > this.maxMemoryCacheSize) {
-        const firstKey = this.memoryCache.keys().next().value;
-        if (firstKey) {
-          this.memoryCache.delete(firstKey);
-        }
-      }
+      this.memoryCache.set(cacheKey, result, ttl);
 
       this.stats.sets++;
       return true;
@@ -253,18 +193,14 @@ export class SpanLabelingCacheService {
   ): Promise<number> {
     if (policy && templateVersion) {
       // Invalidate specific cache entry
-      const cacheKey = this._generateCacheKey(text, policy, templateVersion);
+      const cacheKey = generateCacheKey(text, policy, templateVersion);
 
       try {
         // Delete from Redis
-        let deletedCount = 0;
-        if (this.redis && this.redis.status === 'ready' && this.redis.del) {
-          deletedCount = await this.redis.del(cacheKey);
-        }
+        let deletedCount = await deleteRedisKey(this.redis, cacheKey);
 
         // Delete from memory cache
-        if (this.memoryCache.has(cacheKey)) {
-          this.memoryCache.delete(cacheKey);
+        if (this.memoryCache.delete(cacheKey)) {
           deletedCount++;
         }
 
@@ -274,40 +210,27 @@ export class SpanLabelingCacheService {
         logger.error('Cache invalidation error', error as Error, { cacheKey });
         return 0;
       }
-    } else {
-      // Invalidate all entries for this text (pattern matching)
-      const textHash = createHash('sha256')
-        .update(text)
-        .digest('hex')
-        .substring(0, 16);
+    }
 
-      const pattern = `span:${textHash}:*`;
+    const pattern = buildTextPattern(text);
+    const prefix = buildTextPrefix(text);
 
-      try {
-        let deletedCount = 0;
+    try {
+      let deletedCount = await deleteRedisPattern(this.redis, pattern);
 
-        // Delete from Redis
-        if (this.redis && this.redis.status === 'ready' && this.redis.keys && this.redis.del) {
-          const keys = await this.redis.keys(pattern);
-          if (keys.length > 0) {
-            deletedCount = await this.redis.del(...keys);
-          }
+      // Delete from memory cache
+      for (const key of this.memoryCache.keys()) {
+        if (key.startsWith(prefix)) {
+          this.memoryCache.delete(key);
+          deletedCount++;
         }
-
-        // Delete from memory cache
-        for (const [key] of this.memoryCache.entries()) {
-          if (key.startsWith(`span:${textHash}:`)) {
-            this.memoryCache.delete(key);
-            deletedCount++;
-          }
-        }
-
-        logger.debug('Cache invalidated (pattern)', { pattern, deletedCount });
-        return deletedCount;
-      } catch (error) {
-        logger.error('Cache invalidation error (pattern)', error as Error, { pattern });
-        return 0;
       }
+
+      logger.debug('Cache invalidated (pattern)', { pattern, deletedCount });
+      return deletedCount;
+    } catch (error) {
+      logger.error('Cache invalidation error (pattern)', error as Error, { pattern });
+      return 0;
     }
   }
 
@@ -317,12 +240,7 @@ export class SpanLabelingCacheService {
   async clear(): Promise<boolean> {
     try {
       // Clear Redis
-      if (this.redis && this.redis.status === 'ready' && this.redis.keys && this.redis.del) {
-        const keys = await this.redis.keys('span:*');
-        if (keys.length > 0) {
-          await this.redis.del(...keys);
-        }
-      }
+      await deleteRedisPattern(this.redis, 'span:*');
 
       // Clear memory cache
       this.memoryCache.clear();
@@ -345,7 +263,7 @@ export class SpanLabelingCacheService {
     return {
       ...this.stats,
       hitRate: hitRate.toFixed(2) + '%',
-      cacheSize: this.memoryCache.size,
+      cacheSize: this.memoryCache.size(),
       redisConnected: this.redis ? this.redis.status === 'ready' : false,
     };
   }
@@ -354,20 +272,11 @@ export class SpanLabelingCacheService {
    * Clean up expired entries from memory cache
    */
   private _cleanupExpired(): void {
-    const now = Date.now();
-    const toDelete: string[] = [];
+    const removedCount = this.memoryCache.cleanupExpired();
 
-    for (const [key, entry] of this.memoryCache.entries()) {
-      if (now >= entry.expiresAt) {
-        toDelete.push(key);
-      }
-    }
-
-    toDelete.forEach(key => this.memoryCache.delete(key));
-
-    if (toDelete.length > 0) {
+    if (removedCount > 0) {
       logger.debug('Cleaned up expired cache entries', {
-        count: toDelete.length,
+        count: removedCount,
       });
     }
   }
