@@ -7,13 +7,14 @@ import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
 import { getVideoTemplateBuilder } from './video-templates/index';
 import { getVideoOptimizationSchema } from '@utils/provider/SchemaFactory';
 import { detectProvider } from '@utils/provider/ProviderDetector';
-import { wrapUserData } from '@utils/provider/PromptBuilder';
-import { SECURITY_REMINDER } from '@utils/SecurityPrompts';
 import type { CapabilityValues } from '@shared/capabilities';
 import type { AIService, TemplateService, OptimizationRequest, ShotPlan, OptimizationStrategy } from '../types';
-import type { VideoPromptStructuredResponse, VideoPromptSlots } from './videoPromptTypes';
+import type { VideoPromptStructuredResponse } from './videoPromptTypes';
 import { lintVideoPromptSlots } from './videoPromptLinter';
 import { renderAlternativeApproaches, renderMainVideoPrompt, renderPreviewPrompt } from './videoPromptRenderer';
+import { buildStreamingPrompt } from './video/prompts/buildStreamingPrompt';
+import { normalizeSlots } from './video/slots/normalizeSlots';
+import { rerollSlots } from './video/slots/rerollSlots';
 
 function isCriticalVideoPromptLintError(error: string): boolean {
   return (
@@ -22,124 +23,6 @@ function isCriticalVideoPromptLintError(error: string): boolean {
     /Missing `camera_angle`/i.test(error) ||
     /If `subject` is null, `subject_details` must be null/i.test(error)
   );
-}
-
-function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
-  const normalizeStringOrNull = (value: unknown): string | null => {
-    if (value === null || typeof value === 'undefined') return null;
-    if (typeof value !== 'string') return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  };
-
-  const normalizeString = (value: unknown, fallback: string): string => {
-    const normalized = normalizeStringOrNull(value);
-    return normalized ?? fallback;
-  };
-
-  const normalizeStringArrayOrNull = (value: unknown): string[] | null => {
-    if (value === null || typeof value === 'undefined') return null;
-    if (!Array.isArray(value)) return null;
-    const rawItems = value.filter((item) => typeof item === 'string') as string[];
-
-    // Expand comma-separated details (e.g., "red coat, blonde hair") into separate items.
-    const expanded = rawItems.flatMap((item) =>
-      item
-        .split(',')
-        .map((part) => part.trim())
-        .filter(Boolean)
-    );
-
-    // De-duplicate while preserving order
-    const seen = new Set<string>();
-    const deduped: string[] = [];
-    for (const item of expanded) {
-      const key = item.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      deduped.push(item);
-    }
-
-    const cleaned = deduped.slice(0, 3);
-    return cleaned.length > 0 ? cleaned : null;
-  };
-
-  const subject = normalizeStringOrNull(raw.subject);
-  let subjectDetails = subject ? normalizeStringArrayOrNull(raw.subject_details) : null;
-
-  // Drop generic filler details.
-  if (subjectDetails) {
-    const generic = new Set(['main subject', 'subject', 'the subject', 'person']);
-    subjectDetails = subjectDetails.filter((d) => !generic.has(d.trim().toLowerCase()));
-    if (subjectDetails.length === 0) subjectDetails = null;
-  }
-
-  let action = normalizeStringOrNull(raw.action);
-
-  // If the model mistakenly put an action into `subject_details`, salvage it without another model call.
-  if (subject && subjectDetails) {
-    const looksLikeActionDetail = (detail: string): boolean => {
-      const firstToken = detail.trim().split(/\s+/)[0]?.toLowerCase() || '';
-      if (!firstToken.endsWith('ing')) return false;
-      // Allow clothing/appearance phrasing to remain as a subject detail.
-      if (firstToken === 'wearing' || firstToken === 'dressed') return false;
-      return true;
-    };
-
-    const actionLikeIndices = subjectDetails
-      .map((detail, idx) => (looksLikeActionDetail(detail) ? idx : -1))
-      .filter((idx) => idx >= 0);
-
-    // If an action-like detail was placed into `subject_details`, move it into `action` to preserve slot semantics.
-    if (!action && actionLikeIndices.length > 0) {
-      const idx = actionLikeIndices[0]!;
-      action = subjectDetails[idx] || null;
-      subjectDetails = subjectDetails.filter((_, i) => i !== idx);
-    }
-
-    // If we now have an action, remove remaining action-like items from subject details.
-    if (action && subjectDetails) {
-      subjectDetails = subjectDetails.filter((d) => !looksLikeActionDetail(d));
-    }
-
-    if (subjectDetails && subjectDetails.length === 0) subjectDetails = null;
-  }
-
-  if (subjectDetails) {
-    const normalizedDetails = subjectDetails
-      .map((d) => d.trim().replace(/\s+/g, ' '))
-      .map((d) => d.replace(/^[-*•]\s+/, ''))
-      .map((d) => d.replace(/^(?:and|with)\s+/i, ''))
-      .map((d) => d.replace(/[.]+$/g, '').trim())
-      .map((d) => {
-        const words = d.split(/\s+/).filter(Boolean);
-        return words.length > 6 ? words.slice(0, 6).join(' ') : d;
-      })
-      .filter(Boolean);
-
-    // De-dupe after normalization.
-    const seen = new Set<string>();
-    subjectDetails = normalizedDetails.filter((d) => {
-      const key = d.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    subjectDetails = subjectDetails.length > 0 ? subjectDetails.slice(0, 3) : null;
-  }
-
-  return {
-    shot_framing: normalizeString(raw.shot_framing, 'Wide Shot'),
-    camera_angle: normalizeString(raw.camera_angle, 'Eye-Level Shot'),
-    camera_move: normalizeStringOrNull(raw.camera_move),
-    subject,
-    subject_details: subjectDetails,
-    action,
-    setting: normalizeStringOrNull(raw.setting),
-    time: normalizeStringOrNull(raw.time),
-    lighting: normalizeStringOrNull(raw.lighting),
-    style: normalizeStringOrNull(raw.style),
-  };
 }
 
 /**
@@ -165,154 +48,6 @@ export class VideoStrategy implements OptimizationStrategy {
       hash |= 0;
     }
     return Math.abs(hash);
-  }
-
-  private _scoreSlots(slots: VideoPromptSlots): number {
-    const wordCount = (value: string | null): number => (value ? value.trim().split(/\s+/).filter(Boolean).length : 0);
-
-    let score = 0;
-    const details = slots.subject_details || [];
-    for (const detail of details) {
-      score += Math.max(0, wordCount(detail) - 3);
-    }
-
-    score += Math.max(0, wordCount(slots.action) - 8);
-    score += Math.max(0, wordCount(slots.setting) - 10);
-    score += Math.max(0, wordCount(slots.lighting) - 18);
-    score += Math.max(0, wordCount(slots.style) - 10);
-
-    // Light penalty for repeated anchors across fields.
-    const anchors = ['window', 'door', 'street', 'park', 'alley', 'beach'];
-    const fields = [slots.action, slots.setting, slots.lighting].map((v) => (v || '').toLowerCase());
-    for (const anchor of anchors) {
-      const mentions = fields.reduce((count, f) => count + (f.includes(anchor) ? 1 : 0), 0);
-      if (mentions > 1) score += (mentions - 1);
-    }
-
-    return score;
-  }
-
-  private async _rerollSlots(options: {
-    templateSystemPrompt: string;
-    developerMessage?: string;
-    schema: Record<string, unknown>;
-    messages: Array<{ role: string; content: string }>;
-    config: { maxTokens: number; temperature: number; timeout: number };
-    baseSeed: number;
-    attempts?: number;
-    signal?: AbortSignal;
-  }): Promise<VideoPromptStructuredResponse | null> {
-    const attempts = Math.max(0, Math.min(options.attempts ?? 2, 4));
-    if (attempts === 0) return null;
-
-    type Candidate = { parsed: VideoPromptStructuredResponse; slots: VideoPromptSlots; score: number };
-    const candidates: Candidate[] = [];
-
-    for (let i = 0; i < attempts; i++) {
-      const seed = (options.baseSeed + i + 1) % 2147483647;
-      try {
-        const response = await this.ai.execute('optimize_standard', {
-          systemPrompt: options.templateSystemPrompt,
-          messages: options.messages,
-          schema: options.schema,
-          ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
-          maxTokens: options.config.maxTokens,
-          temperature: 0.2,
-          timeout: options.config.timeout,
-          seed,
-          ...(options.signal ? { signal: options.signal } : {}),
-        });
-
-        const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
-        const slots = normalizeSlots(parsed);
-        const lint = lintVideoPromptSlots(slots);
-        if (!lint.ok) {
-          continue;
-        }
-
-        candidates.push({ parsed: { ...parsed, ...slots }, slots, score: this._scoreSlots(slots) });
-      } catch {
-        // Ignore and continue trying other seeds.
-      }
-    }
-
-    if (candidates.length === 0) return null;
-    candidates.sort((a, b) => a.score - b.score);
-    return candidates[0]!.parsed;
-  }
-
-  private _buildStreamingPrompt(options: {
-    prompt: string;
-    shotPlan: ShotPlan | null;
-    lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null; category?: string | null }>;
-    generationParams?: CapabilityValues | null;
-  }): { systemPrompt: string; userMessage: string } {
-    const constraintLines: string[] = [];
-    if (options.generationParams) {
-      const params = options.generationParams;
-      if (params.aspect_ratio) constraintLines.push(`- Aspect Ratio: ${params.aspect_ratio}`);
-      if (params.duration_s) constraintLines.push(`- Duration: ${params.duration_s}s`);
-      if (params.fps) constraintLines.push(`- Frame Rate: ${params.fps}fps`);
-      if (params.resolution) constraintLines.push(`- Resolution: ${params.resolution}`);
-      if (typeof params.audio === 'boolean') constraintLines.push(`- Audio: ${params.audio ? 'Enabled' : 'Muted'}`);
-    }
-
-    const lockedSpanInstructions =
-      options.lockedSpans && options.lockedSpans.length > 0
-        ? `
-LOCKED SPANS:
-- Include EVERY locked span text verbatim in the final prompt.
-- Do NOT paraphrase or drop locked spans.
-- You may reposition them, but preserve their meaning and any provided context.`
-        : '';
-
-    const constraintBlock = constraintLines.length > 0
-      ? `\nUSER CONSTRAINTS:\n${constraintLines.join('\n')}`
-      : '';
-
-    const systemPrompt = `${SECURITY_REMINDER}
-You are an elite Film Director and Cinematographer. Optimize the user's video prompt for clarity, visual specificity, and technical coherence.
-
-Requirements:
-- ONE continuous action only (if none exists, focus on camera movement and visual focus).
-- Describe only what the camera can SEE. No audience language or abstract emotions without visible cues.
-- Avoid negative phrasing. State what to show instead.
-- Use concrete cinematic language for framing, camera angle, movement, lighting, and style.${lockedSpanInstructions}${constraintBlock}
-
-Output ONLY the final optimized prompt text (no JSON, no markdown code blocks).
-
-FORMAT:
-<main paragraph>
-
-**TECHNICAL SPECS**
-- **Duration:** 4-8s
-- **Aspect Ratio:** 16:9
-- **Resolution:** (omit if not specified)
-- **Frame Rate:** 24fps
-- **Audio:** mute
-- **Camera:** (camera behavior + angle + lens + aperture)
-- **Lighting:** (source, direction, quality, color temperature)
-- **Style:** (film stock/genre/director reference)
-
-**ALTERNATIVE APPROACHES**
-- **Variation 1 (label):** ...
-- **Variation 2 (label):** ...
-(Include ALTERNATIVE APPROACHES only if you have meaningful alternatives.)`;
-
-    const lockedPayload = options.lockedSpans.map((span) => ({
-      text: span.text,
-      leftCtx: span.leftCtx ?? null,
-      rightCtx: span.rightCtx ?? null,
-      category: span.category ?? null,
-    }));
-
-    const userMessage = wrapUserData({
-      user_concept: options.prompt,
-      interpreted_plan: options.shotPlan ? JSON.stringify(options.shotPlan, null, 2) : '',
-      locked_spans: lockedPayload.length > 0 ? JSON.stringify(lockedPayload, null, 2) : '',
-    });
-
-    return { systemPrompt, userMessage };
   }
 
   /**
@@ -359,7 +94,7 @@ FORMAT:
       (this.ai.supportsStreaming?.('optimize_standard') ?? true);
 
     if (canStream) {
-      const streamingPrompt = this._buildStreamingPrompt({
+      const streamingPrompt = buildStreamingPrompt({
         prompt,
         shotPlan,
         lockedSpans,
@@ -450,7 +185,8 @@ FORMAT:
           provider,
         });
 
-      const rerolled = await this._rerollSlots({
+      const rerolled = await rerollSlots({
+        ai: this.ai,
         templateSystemPrompt: template.systemPrompt,
         schema,
         messages,
