@@ -19,6 +19,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { ContactSupportPage } from './pages/ContactSupportPage';
 import { BillingPage } from './pages/BillingPage';
+import { BillingInvoicesPage } from './pages/BillingInvoicesPage';
 import { HistoryPage } from './pages/HistoryPage';
 
 function AppShell(): React.ReactElement {
@@ -34,6 +35,7 @@ function AppShell(): React.ReactElement {
     '/login',
     '/register',
     '/settings/billing',
+    '/settings/billing/invoices',
   ].includes(location.pathname);
 
   return (
@@ -60,6 +62,7 @@ function AppShell(): React.ReactElement {
           <Route path="/contact" element={<ContactSupportPage />} />
           <Route path="/support" element={<Navigate to="/contact" replace />} />
           <Route path="/settings/billing" element={<BillingPage />} />
+          <Route path="/settings/billing/invoices" element={<BillingInvoicesPage />} />
           <Route path="/billing" element={<Navigate to="/settings/billing" replace />} />
 
           {/* App routes */}

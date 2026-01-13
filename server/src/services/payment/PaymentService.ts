@@ -161,11 +161,17 @@ export class PaymentService {
     return resolveUserId(fetched.metadata);
   }
 
-  async createCheckoutSession(userId: string, priceId: string, returnUrl: string): Promise<{ url: string }> {
+  async createCheckoutSession(
+    userId: string,
+    priceId: string,
+    returnUrl: string,
+    customerId?: string
+  ): Promise<{ url: string }> {
     try {
       const credits = this.getCreditsForPriceId(priceId);
       const stripe = this.getStripe();
       const session = await stripe.checkout.sessions.create({
+        ...(customerId ? { customer: customerId } : {}),
         payment_method_types: ['card', 'link'],
         line_items: [
           {
@@ -198,6 +204,40 @@ export class PaymentService {
       logger.error('Stripe Checkout Error', error as Error);
       throw error;
     }
+  }
+
+  async createCustomer(userId: string): Promise<{ id: string; livemode: boolean }> {
+    const stripe = this.getStripe();
+    const customer = await stripe.customers.create({
+      metadata: {
+        userId,
+      },
+    });
+
+    return { id: customer.id, livemode: customer.livemode };
+  }
+
+  async createBillingPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }> {
+    const stripe = this.getStripe();
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+
+    if (!session.url) {
+      throw new Error('Stripe billing portal session URL was not generated');
+    }
+
+    return { url: session.url };
+  }
+
+  async listInvoices(customerId: string, limit = 20): Promise<Stripe.Invoice[]> {
+    const stripe = this.getStripe();
+    const invoices = await stripe.invoices.list({
+      customer: customerId,
+      limit,
+    });
+    return invoices.data;
   }
 
   constructEvent(payload: string | Buffer, signature: string): Stripe.Event {

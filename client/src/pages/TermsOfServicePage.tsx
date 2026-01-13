@@ -55,13 +55,17 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
 }
 
 export function TermsOfServicePage(): React.ReactElement {
-  const updatedAt = 'January 9, 2026';
+  const updatedAt = 'January 13, 2026';
+  const supportEmail =
+    (import.meta as { env?: { VITE_SUPPORT_EMAIL?: string } }).env?.VITE_SUPPORT_EMAIL?.trim() || 'support@yourdomain.com';
+  const companyName = 'Vidra';
+  const productName = 'Vidra';
 
   return (
     <MarketingPage
       eyebrow="LEGAL"
       title="Terms of Service"
-      subtitle={`Template terms for Vidra. Replace placeholders and have counsel review. Last updated ${updatedAt}.`}
+      subtitle={`Terms for using ${productName}. Last updated ${updatedAt}.`}
     >
       <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="lg:sticky lg:top-[calc(var(--global-top-nav-height)+24px)] lg:self-start">
@@ -72,27 +76,19 @@ export function TermsOfServicePage(): React.ReactElement {
 
         <div className="border-gradient rounded-geist-lg">
           <div className="card p-6">
-            <div className="rounded-geist-lg border border-warning-500/25 bg-warning-50 px-4 py-3">
-              <p className="text-[13px] text-warning-900">
-                This page is a starter template, not legal advice. Update company details, billing terms,
-                and policy links to match your product.
-              </p>
-            </div>
-
             <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-geist-accents-6">
               <section>
                 <SectionHeading id="summary">Summary</SectionHeading>
                 <p className="mt-2">
-                  These Terms govern your use of Vidra (the “Service”). By accessing or using the Service, you agree
-                  to these Terms.
+                  These Terms govern your use of {productName} (the “Service”). By accessing or using the Service, you agree to these Terms.
                 </p>
               </section>
 
               <section>
                 <SectionHeading id="who">Who we are</SectionHeading>
                 <p className="mt-2">
-                  The Service is provided by <span className="font-medium text-geist-foreground">[Your Company Name]</span>{' '}
-                  (“we”, “us”, “our”). Contact: <span className="font-medium text-geist-foreground">[support@yourdomain.com]</span>.
+                  The Service is provided by {companyName} (“we”, “us”, “our”). Contact:{' '}
+                  <span className="font-medium text-geist-foreground">{supportEmail}</span>.
                 </p>
               </section>
 
@@ -117,11 +113,13 @@ export function TermsOfServicePage(): React.ReactElement {
               <section>
                 <SectionHeading id="billing">Billing</SectionHeading>
                 <p className="mt-2">
-                  Some features may require payment. If you purchase a subscription, you authorize us (and our payment
-                  provider) to charge your payment method on a recurring basis until you cancel.
+                  Some features require payment. If you purchase a subscription, you authorize us (and our payment provider, Stripe) to charge your payment method
+                  on a recurring basis until you cancel.
                 </p>
                 <ul className="mt-2 list-disc pl-5 space-y-2">
                   <li>Taxes may apply.</li>
+                  <li>You can manage billing details, payment methods, and subscription changes via the billing portal (when available).</li>
+                  <li>Invoices and receipts are available in the Service after payment.</li>
                   <li>Refunds, if any, follow our posted policy or the requirements of applicable law.</li>
                   <li>We may change prices with advance notice where required.</li>
                 </ul>
@@ -179,7 +177,7 @@ export function TermsOfServicePage(): React.ReactElement {
               <section>
                 <SectionHeading id="contact">Contact</SectionHeading>
                 <p className="mt-2">
-                  Questions about these Terms? Email <span className="font-medium text-geist-foreground">[support@yourdomain.com]</span>.
+                  Questions about these Terms? Email <span className="font-medium text-geist-foreground">{supportEmail}</span>.
                 </p>
               </section>
             </div>
@@ -189,4 +187,3 @@ export function TermsOfServicePage(): React.ReactElement {
     </MarketingPage>
   );
 }
-

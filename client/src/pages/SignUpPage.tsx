@@ -51,6 +51,7 @@ export function SignUpPage(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
   const redirect = getSafeRedirect(location.search);
+  const suppressAutoRedirect = React.useRef(false);
 
   const [user, setUser] = React.useState<User | null>(null);
   const [displayName, setDisplayName] = React.useState('');
@@ -70,6 +71,7 @@ export function SignUpPage(): React.ReactElement {
 
   React.useEffect(() => {
     if (!user) return;
+    if (suppressAutoRedirect.current) return;
     if (redirect) {
       navigate(redirect, { replace: true });
       return;
@@ -81,6 +83,7 @@ export function SignUpPage(): React.ReactElement {
     'mt-1 w-full rounded-[12px] border border-white/10 bg-black/30 px-4 py-3 text-[14px] text-white placeholder-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition focus:border-white/20 focus:ring-4 focus:ring-white/10';
 
   const handleGoogleSignUp = async (): Promise<void> => {
+    suppressAutoRedirect.current = true;
     setError(null);
     setIsBusy(true);
     try {
@@ -99,6 +102,7 @@ export function SignUpPage(): React.ReactElement {
 
   const handleEmailSignUp = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
+    suppressAutoRedirect.current = true;
     setError(null);
     setIsBusy(true);
     try {

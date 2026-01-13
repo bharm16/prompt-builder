@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Check, CreditCard } from 'lucide-react';
+import { Check, CreditCard, FileText } from 'lucide-react';
 import { apiClient } from '@/services/ApiClient';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -80,6 +80,33 @@ export function BillingPage(): React.ReactElement {
     }
   };
 
+  const handleOpenPortal = async (): Promise<void> => {
+    if (!user) {
+      toast.error('Sign in to manage billing.');
+      return;
+    }
+
+    setIsBusy('portal');
+    try {
+      const response = await apiClient.post('/api/payment/portal', {});
+      const redirectUrl = (response as { url?: string }).url;
+
+      if (!redirectUrl) {
+        throw new Error('Missing billing portal URL');
+      }
+
+      window.location.href = redirectUrl;
+    } catch (error) {
+      const info = sanitizeError(error);
+      log.error('Billing portal failed', error instanceof Error ? error : new Error(info.message), {
+        operation: 'portal',
+      });
+      toast.error('Billing portal unavailable. Subscribe first or contact support.');
+    } finally {
+      setIsBusy(null);
+    }
+  };
+
   return (
     <AuthShell
       title="Billing."
@@ -149,6 +176,37 @@ export function BillingPage(): React.ReactElement {
             ) : null}
           </div>
         )}
+
+        {user ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleOpenPortal}
+              disabled={isBusy !== null}
+              className={cn(
+                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'border border-white/10 bg-white/[0.04]',
+                'text-[14px] font-semibold text-white transition hover:bg-white/[0.06]',
+                'disabled:cursor-not-allowed disabled:opacity-60'
+              )}
+            >
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              Manage billing
+            </button>
+
+            <Link
+              to="/settings/billing/invoices"
+              className={cn(
+                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'border border-white/10 bg-black/30',
+                'text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white'
+              )}
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              View invoices
+            </Link>
+          </div>
+        ) : null}
 
         <div>
           <div className="flex items-center justify-between gap-3">
@@ -243,4 +301,3 @@ export function BillingPage(): React.ReactElement {
     </AuthShell>
   );
 }
-

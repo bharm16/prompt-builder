@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Sparkles, User as UserIcon } from 'lucide-react';
+import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User as UserIcon } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
 import type { User } from '@hooks/types';
@@ -43,6 +43,24 @@ export function AccountPage(): React.ReactElement {
   };
 
   const label = user ? formatUserLabel(user) : null;
+  const email = user && typeof user.email === 'string' ? user.email : '';
+  const isVerified = user && typeof user.emailVerified === 'boolean' ? user.emailVerified : false;
+  const resetPasswordLink = email
+    ? `/forgot-password?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent('/account')}`
+    : `/forgot-password?redirect=${encodeURIComponent('/account')}`;
+
+  const handleResendVerification = async (): Promise<void> => {
+    if (!user) return;
+    setIsBusy(true);
+    try {
+      await getAuthRepository().sendVerificationEmail('/account');
+      toast.success('Verification email sent.');
+    } catch {
+      toast.error('Failed to send verification email.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
 
   return (
     <AuthShell
@@ -97,7 +115,47 @@ export function AccountPage(): React.ReactElement {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-start gap-3">
+              <Mail className="mt-0.5 h-4 w-4 text-white/70" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-white">Email</p>
+                <p className="mt-1 text-[13px] leading-snug text-white/60">{email || '—'}</p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span
+                    className={[
+                      'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide',
+                      isVerified
+                        ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100'
+                        : 'border-amber-400/20 bg-amber-400/10 text-amber-100',
+                    ].join(' ')}
+                  >
+                    {isVerified ? 'VERIFIED' : 'NOT VERIFIED'}
+                  </span>
+
+                  {!isVerified ? (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={isBusy}
+                      className="inline-flex h-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-3 text-[12px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Resend verification
+                    </button>
+                  ) : null}
+
+                  {!isVerified ? (
+                    <Link to="/email-verification?redirect=%2Faccount" className="text-[12px] font-semibold text-white/70 hover:text-white hover:underline">
+                      Open verification page
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <Link
               to="/history"
               className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
@@ -105,16 +163,47 @@ export function AccountPage(): React.ReactElement {
               Open history
             </Link>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isBusy}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-red-500/10 text-[14px] font-semibold text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+            <Link
+              to={resetPasswordLink}
+              className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
             >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign out
-            </button>
+              Reset password
+            </Link>
+
+            <Link
+              to="/settings/billing"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            >
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              Billing
+            </Link>
+
+            <Link
+              to="/settings/billing/invoices"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Invoices
+            </Link>
+
+            <Link
+              to="/?settings=1"
+              className="sm:col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              Preferences
+            </Link>
           </div>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isBusy}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-red-500/10 text-[14px] font-semibold text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Sign out
+          </button>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -141,4 +230,3 @@ export function AccountPage(): React.ReactElement {
     </AuthShell>
   );
 }
-

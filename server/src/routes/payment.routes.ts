@@ -3,12 +3,14 @@ import type Stripe from 'stripe';
 import { logger } from '@infrastructure/Logger';
 import { admin } from '@infrastructure/firebaseAdmin';
 import { PaymentService } from '@services/payment/PaymentService';
+import { BillingProfileStore } from '@services/payment/BillingProfileStore';
 import { StripeWebhookEventStore, type StripeWebhookClaimResult } from '@services/payment/StripeWebhookEventStore';
 import { userCreditService } from '@services/credits/UserCreditService';
 import { extractFirebaseToken } from '@utils/auth';
 
 const paymentService = new PaymentService();
 const webhookEventStore = new StripeWebhookEventStore();
+const billingProfileStore = new BillingProfileStore();
 
 async function resolveUserId(req: Request): Promise<string | null> {
   const reqWithAuth = req as Request & { user?: { uid?: string }; apiKey?: string; body?: { userId?: string } };
@@ -45,6 +47,35 @@ async function resolveUserId(req: Request): Promise<string | null> {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
   if (session.mode === 'subscription') {
+    const userId = session.metadata?.userId || session.client_reference_id || null;
+    const stripeCustomerId =
+      typeof session.customer === 'string'
+        ? session.customer
+        : session.customer && typeof session.customer === 'object' && 'id' in session.customer
+          ? (session.customer.id as string)
+          : null;
+    const stripeSubscriptionId =
+      typeof session.subscription === 'string'
+        ? session.subscription
+        : session.subscription && typeof session.subscription === 'object' && 'id' in session.subscription
+          ? (session.subscription.id as string)
+          : null;
+
+    if (userId && stripeCustomerId) {
+      try {
+        await billingProfileStore.upsertProfile(userId, {
+          stripeCustomerId,
+          ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+          stripeLivemode: session.livemode,
+        });
+      } catch (error) {
+        logger.error('Failed to persist billing profile from checkout', error as Error, {
+          userId,
+          sessionId: session.id,
+        });
+      }
+    }
+
     logger.info('Subscription checkout completed; credits will be applied on invoice.paid', {
       sessionId: session.id,
       subscriptionId: session.subscription,
@@ -81,6 +112,35 @@ async function handleInvoicePaid(invoice: Stripe.Invoice, eventId: string): Prom
     return;
   }
 
+  const stripeCustomerId =
+    typeof invoice.customer === 'string'
+      ? invoice.customer
+      : invoice.customer && typeof invoice.customer === 'object' && 'id' in invoice.customer
+        ? (invoice.customer.id as string)
+        : null;
+  const stripeSubscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription && typeof invoice.subscription === 'object' && 'id' in invoice.subscription
+        ? (invoice.subscription.id as string)
+        : null;
+
+  if (stripeCustomerId) {
+    try {
+      await billingProfileStore.upsertProfile(userId, {
+        stripeCustomerId,
+        ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+        stripeLivemode: invoice.livemode,
+      });
+    } catch (error) {
+      logger.error('Failed to persist billing profile from invoice', error as Error, {
+        userId,
+        invoiceId: invoice.id,
+        eventId,
+      });
+    }
+  }
+
   const { credits, missingPriceIds } = paymentService.calculateCreditsForInvoice(invoice);
   if (invoice.amount_paid <= 0) {
     logger.info('Invoice paid with zero amount; skipping credit grant', {
@@ -108,6 +168,65 @@ async function handleInvoicePaid(invoice: Stripe.Invoice, eventId: string): Prom
 export const createPaymentRoutes = (): express.Router => {
   const router = express.Router();
 
+  router.get('/invoices', async (req: Request, res: Response) => {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+      const profile = await billingProfileStore.getProfile(userId);
+      const stripeCustomerId = profile?.stripeCustomerId;
+      if (!stripeCustomerId) {
+        return res.json({ invoices: [] });
+      }
+
+      const invoices = await paymentService.listInvoices(stripeCustomerId, 20);
+      return res.json({
+        invoices: invoices.map((invoice) => ({
+          id: invoice.id,
+          number: invoice.number ?? null,
+          status: invoice.status ?? null,
+          created: typeof invoice.created === 'number' ? invoice.created : null,
+          currency: invoice.currency ?? null,
+          amountDue: typeof invoice.amount_due === 'number' ? invoice.amount_due : null,
+          amountPaid: typeof invoice.amount_paid === 'number' ? invoice.amount_paid : null,
+          hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+          invoicePdf: invoice.invoice_pdf ?? null,
+        })),
+      });
+    } catch (error) {
+      logger.error('Failed to list invoices', error as Error, { userId });
+      return res.status(500).json({ error: 'Failed to load invoices' });
+    }
+  });
+
+  router.post('/portal', async (req: Request, res: Response) => {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+      const profile = await billingProfileStore.getProfile(userId);
+      const stripeCustomerId = profile?.stripeCustomerId;
+      if (!stripeCustomerId) {
+        return res.status(400).json({ error: 'No billing profile found' });
+      }
+
+      const origin = req.headers.origin || process.env.FRONTEND_URL;
+      if (!origin) {
+        return res.status(500).json({ error: 'Billing return URL is not configured' });
+      }
+
+      const session = await paymentService.createBillingPortalSession(stripeCustomerId, `${origin}/settings/billing`);
+      return res.json(session);
+    } catch (error) {
+      logger.error('Failed to create billing portal session', error as Error, { userId });
+      return res.status(500).json({ error: 'Failed to create billing portal session' });
+    }
+  });
+
   router.post('/checkout', async (req: Request, res: Response) => {
     const { priceId } = req.body ?? {};
     const userId = await resolveUserId(req);
@@ -132,10 +251,31 @@ export const createPaymentRoutes = (): express.Router => {
     }
 
     try {
+      let stripeCustomerId: string | undefined;
+      try {
+        const profile = await billingProfileStore.getProfile(userId);
+        if (profile?.stripeCustomerId) {
+          stripeCustomerId = profile.stripeCustomerId;
+        } else {
+          const customer = await paymentService.createCustomer(userId);
+          stripeCustomerId = customer.id;
+          await billingProfileStore.upsertProfile(userId, {
+            stripeCustomerId: customer.id,
+            stripeLivemode: customer.livemode,
+          });
+        }
+      } catch (error) {
+        logger.warn('Failed to ensure Stripe customer; checkout will create one automatically', {
+          userId,
+          error: (error as Error).message,
+        });
+      }
+
       const session = await paymentService.createCheckoutSession(
         userId,
         normalizedPriceId,
-        `${origin}/settings/billing`
+        `${origin}/settings/billing`,
+        stripeCustomerId
       );
       return res.json(session);
     } catch (error) {
