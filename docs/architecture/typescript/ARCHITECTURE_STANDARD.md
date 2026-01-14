@@ -355,4 +355,725 @@ import { VideoBuilder, type VideoBuilderProps } from '@/components/VideoBuilder'
 
 ---
 
+## 8. Code Smells: What Actually Triggers Refactoring
+
+**Core Principle:** Line counts are secondary indicators. These code smells are the primary triggers for refactoring. Use this section when reviewing code or asking Claude Code to find architectural issues.
+
+### 8.1 Dependency Explosion
+
+**The Smell:** Constructor or hook requires 6+ dependencies.
+
+```typescript
+// 🚨 RED FLAG: 6+ constructor dependencies
+class PromptService {
+  constructor(
+    private readonly aiService: AIService,
+    private readonly cacheService: CacheService,
+    private readonly videoService: VideoService,
+    private readonly promptBuilder: PromptBuilder,
+    private readonly validationService: ValidationService,
+    private readonly metricsService: MetricsService,
+    private readonly loggingService: LoggingService,
+    private readonly configService: ConfigService,  // 8 deps = definite smell
+  ) {}
+}
+
+// 🚨 RED FLAG: Hook with 6+ dependencies
+function usePromptEditor() {
+  const auth = useAuth();
+  const api = useApi();
+  const validation = useValidation();
+  const analytics = useAnalytics();
+  const storage = useStorage();
+  const notifications = useNotifications();  // 6 hooks = smell
+  // ...
+}
+```
+
+**Why It Matters:** Each dependency is a "reason to change." High dependency count indicates the unit is orchestrating multiple unrelated workflows.
+
+**The Fix:** Split into focused services/hooks, or introduce a facade that groups related dependencies.
+
+```typescript
+// ✅ BETTER: Grouped dependencies behind focused interfaces
+class PromptService {
+  constructor(
+    private readonly generation: IGenerationPipeline,  // groups AI + prompts
+    private readonly persistence: IPersistencePipeline, // groups cache + storage
+    private readonly observability: IObservability,     // groups metrics + logging
+  ) {}
+}
+```
+
+**Detection Command:**
+```bash
+# Find classes/functions with many constructor params or hook calls
+grep -r "constructor(" server/src --include="*.ts" -A 10 | grep -c "private readonly"
+```
+
+---
+
+### 8.2 Method Name Clustering
+
+**The Smell:** Methods in a class/hook group into distinct prefixes that represent different concerns.
+
+```typescript
+// 🚨 RED FLAG: Method names reveal hidden sub-services
+class PromptService {
+  // Cluster 1: Generation concern
+  generatePrompt() {}
+  generateVariations() {}
+  generateFromTemplate() {}
+  
+  // Cluster 2: Validation concern (different reason to change!)
+  validatePromptLength() {}
+  validatePromptSafety() {}
+  validatePromptStructure() {}
+  
+  // Cluster 3: Persistence concern (different reason to change!)
+  savePrompt() {}
+  loadPrompt() {}
+  deletePrompt() {}
+}
+
+// 🚨 RED FLAG: React component with method clusters
+function PromptEditor() {
+  // Cluster 1: Form state
+  const handleInputChange = () => {};
+  const handleFormSubmit = () => {};
+  const resetForm = () => {};
+  
+  // Cluster 2: API operations (different concern!)
+  const fetchSuggestions = () => {};
+  const saveDraft = () => {};
+  const publishPrompt = () => {};
+  
+  // Cluster 3: UI state (different concern!)
+  const toggleSidebar = () => {};
+  const openModal = () => {};
+  const showToast = () => {};
+}
+```
+
+**The Test:** Can you group methods by prefix? Do those groups have different reasons to change? If yes, split.
+
+**The Fix:**
+```typescript
+// ✅ BETTER: Separate services for separate concerns
+class PromptGenerationService { /* generate* methods */ }
+class PromptValidationService { /* validate* methods */ }
+class PromptRepository { /* save/load/delete methods */ }
+
+// ✅ BETTER: Separate hooks for separate concerns
+function usePromptForm() { /* form state */ }
+function usePromptApi() { /* API operations */ }
+function useEditorUI() { /* UI state */ }
+```
+
+---
+
+### 8.3 Cross-Domain Imports
+
+**The Smell:** A file imports from 4+ unrelated feature domains.
+
+```typescript
+// 🚨 RED FLAG: Service importing from unrelated domains
+import { UserService } from '@services/user';
+import { BillingService } from '@services/billing';
+import { AnalyticsService } from '@services/analytics';
+import { NotificationService } from '@services/notification';
+import { VideoService } from '@services/video';
+import { TemplateService } from '@services/templates';
+
+// 🚨 RED FLAG: Component importing from unrelated features
+import { useAuth } from '@features/auth';
+import { useSubscription } from '@features/billing';
+import { usePromptHistory } from '@features/history';
+import { useTeamMembers } from '@features/teams';
+import { useAnalytics } from '@features/analytics';
+```
+
+**Why It Matters:** A unit touching auth, billing, video, AND notifications is doing too much. It will break when any of those domains change.
+
+**The Fix:** Create a focused orchestrator at a higher level, or split into domain-specific handlers.
+
+**Detection Command:**
+```bash
+# Find files with imports from many different service directories
+grep -l "@services/" server/src/**/*.ts | xargs -I {} sh -c 'echo "{}:"; grep -c "@services/" {}' | sort -t: -k2 -rn
+```
+
+---
+
+### 8.4 Type/Mode Switching
+
+**The Smell:** Large if/else or switch statements based on a "type" or "mode" parameter.
+
+```typescript
+// 🚨 RED FLAG: Giant conditional based on type
+async function processPrompt(input: Input) {
+  if (input.type === 'video') {
+    // 50 lines of video-specific logic
+    const model = detectVideoModel(input.text);
+    const constraints = getVideoConstraints(model);
+    // ... more video stuff
+  } else if (input.type === 'image') {
+    // 50 lines of image-specific logic
+    const dimensions = parseImageDimensions(input.text);
+    // ... more image stuff
+  } else if (input.type === 'audio') {
+    // 50 lines of audio-specific logic
+    const duration = parseAudioDuration(input.text);
+    // ... more audio stuff
+  } else if (input.type === 'research') {
+    // 50 lines of research-specific logic
+  }
+}
+
+// 🚨 RED FLAG: Component rendering based on mode
+function Editor({ mode }: { mode: 'basic' | 'advanced' | 'expert' }) {
+  if (mode === 'basic') {
+    return <BasicEditor />; // But with 100 lines of basic-specific setup
+  } else if (mode === 'advanced') {
+    return <AdvancedEditor />; // With 100 lines of advanced-specific setup
+  }
+  // ...
+}
+```
+
+**The Fix:** Strategy pattern for backend, component composition for frontend.
+
+```typescript
+// ✅ BETTER: Strategy pattern
+interface IProcessingStrategy {
+  process(input: Input): Promise<Output>;
+}
+
+class VideoStrategy implements IProcessingStrategy { /* video logic */ }
+class ImageStrategy implements IProcessingStrategy { /* image logic */ }
+class AudioStrategy implements IProcessingStrategy { /* audio logic */ }
+
+class PromptProcessor {
+  constructor(private strategies: Map<string, IProcessingStrategy>) {}
+  
+  async process(input: Input): Promise<Output> {
+    const strategy = this.strategies.get(input.type);
+    if (!strategy) throw new Error(`Unknown type: ${input.type}`);
+    return strategy.process(input);
+  }
+}
+
+// ✅ BETTER: Component composition
+const EDITOR_COMPONENTS = {
+  basic: BasicEditor,
+  advanced: AdvancedEditor,
+  expert: ExpertEditor,
+} as const;
+
+function Editor({ mode }: { mode: keyof typeof EDITOR_COMPONENTS }) {
+  const EditorComponent = EDITOR_COMPONENTS[mode];
+  return <EditorComponent />;
+}
+```
+
+---
+
+### 8.5 Mixed Concerns in Methods
+
+**The Smell:** A single method performs data transformation + business logic + I/O side effects.
+
+```typescript
+// 🚨 RED FLAG: Method doing 3 different things
+async function processEnhancement(prompt: string) {
+  // 1. Data transformation (should be in utils/)
+  const normalized = prompt.toLowerCase().trim().replace(/\s+/g, ' ');
+  const tokens = normalized.split(' ').filter(t => t.length > 2);
+  const wordCount = tokens.length;
+  
+  // 2. Business logic (core responsibility - OK here)
+  const suggestions = await this.ai.generate(tokens);
+  const filtered = suggestions.filter(s => s.confidence > 0.5);
+  
+  // 3. I/O side effects (should be separate)
+  await this.db.save({ prompt, suggestions: filtered, timestamp: Date.now() });
+  await this.analytics.track('enhancement_generated', { count: filtered.length });
+  await this.cache.set(prompt, filtered);
+  
+  return filtered;
+}
+
+// 🚨 RED FLAG: React handler doing too much
+const handleSubmit = async () => {
+  // 1. Validation (could be in schema)
+  if (!form.title || form.title.length < 3) {
+    setError('Title too short');
+    return;
+  }
+  
+  // 2. Transformation (could be in utils)
+  const slug = form.title.toLowerCase().replace(/\s+/g, '-');
+  const normalized = { ...form, slug, createdAt: new Date().toISOString() };
+  
+  // 3. API call
+  const result = await api.create(normalized);
+  
+  // 4. Side effects
+  analytics.track('created');
+  toast.success('Created!');
+  router.push(`/prompts/${result.id}`);
+};
+```
+
+**The Fix:** Single responsibility per function.
+
+```typescript
+// ✅ BETTER: Separated concerns
+// utils/normalize.ts
+export function normalizePrompt(prompt: string): NormalizedPrompt {
+  const text = prompt.toLowerCase().trim().replace(/\s+/g, ' ');
+  const tokens = text.split(' ').filter(t => t.length > 2);
+  return { text, tokens, wordCount: tokens.length };
+}
+
+// services/EnhancementService.ts
+async function processEnhancement(prompt: string) {
+  const normalized = normalizePrompt(prompt);  // Pure transformation
+  const suggestions = await this.generateSuggestions(normalized);  // Business logic
+  await this.persistResults(prompt, suggestions);  // I/O (could be event-driven)
+  return suggestions;
+}
+
+// ✅ BETTER: React with separated concerns
+const handleSubmit = async () => {
+  const validation = validateForm(form);  // Pure function
+  if (!validation.ok) {
+    setError(validation.error);
+    return;
+  }
+  
+  const normalized = prepareForSubmit(form);  // Pure function
+  await submitAndNavigate(normalized);  // Async handler
+};
+```
+
+---
+
+### 8.6 Trapped Utilities
+
+**The Smell:** Private methods that are generic algorithms with no domain-specific logic.
+
+```typescript
+// 🚨 RED FLAG: Generic algorithm trapped in domain service
+class SuggestionService {
+  private calculateJaccardSimilarity(a: string, b: string): number {
+    // This is a generic text algorithm, nothing suggestion-specific
+    const set1 = new Set(a.toLowerCase().split(/\s+/));
+    const set2 = new Set(b.toLowerCase().split(/\s+/));
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+    return intersection.size / union.size;
+  }
+  
+  private formatAsMarkdown(text: string): string {
+    // Generic formatting, could be in @utils/format
+    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  }
+  
+  private debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: number) {
+    // Generic utility, definitely should be in @utils/
+    let timeout: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), ms);
+    };
+  }
+}
+
+// 🚨 RED FLAG: Component with generic helpers
+function PromptEditor() {
+  // Generic deep equality check
+  const isEqual = (a: unknown, b: unknown) => 
+    JSON.stringify(a) === JSON.stringify(b);
+  
+  // Generic array shuffle
+  const shuffle = <T>(arr: T[]): T[] => 
+    [...arr].sort(() => Math.random() - 0.5);
+}
+```
+
+**The Test:** Could this function work in a completely different feature without modification? If yes, extract it.
+
+**The Fix:**
+```typescript
+// ✅ BETTER: Extracted to utils
+// utils/text/similarity.ts
+export function jaccardSimilarity(a: string, b: string): number { /* ... */ }
+
+// utils/format/markdown.ts  
+export function markdownToHtml(text: string): string { /* ... */ }
+
+// utils/async/debounce.ts
+export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: number) { /* ... */ }
+
+// Now SuggestionService just imports them
+import { jaccardSimilarity } from '@utils/text/similarity';
+```
+
+---
+
+### 8.7 Observability Bloat
+
+**The Smell:** More logging/metrics code than actual business logic.
+
+```typescript
+// 🚨 RED FLAG: 20 lines of observability for 3 lines of logic
+async function generateSuggestions(prompt: string) {
+  const startTime = Date.now();
+  const requestId = crypto.randomUUID();
+  
+  this.logger.info('Starting suggestion generation', {
+    requestId,
+    promptLength: prompt.length,
+    timestamp: new Date().toISOString(),
+  });
+  this.metrics.increment('suggestions.generation.started');
+  this.metrics.gauge('suggestions.generation.prompt_length', prompt.length);
+  
+  try {
+    const result = await this.ai.complete(prompt);  // <- Actual work: 1 line
+    
+    const duration = Date.now() - startTime;
+    this.logger.info('Suggestion generation complete', {
+      requestId,
+      duration,
+      resultCount: result.length,
+      avgConfidence: result.reduce((a, b) => a + b.confidence, 0) / result.length,
+    });
+    this.metrics.histogram('suggestions.generation.duration', duration);
+    this.metrics.increment('suggestions.generation.success');
+    this.metrics.gauge('suggestions.generation.result_count', result.length);
+    
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    this.logger.error('Suggestion generation failed', {
+      requestId,
+      duration,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    this.metrics.increment('suggestions.generation.error');
+    this.metrics.histogram('suggestions.generation.error_duration', duration);
+    throw error;
+  }
+}
+```
+
+**The Fix:** Use decorators, middleware, or aspect-oriented patterns.
+
+```typescript
+// ✅ BETTER: Decorator pattern
+@Traced('suggestions.generation')
+@Metered('suggestions.generation')
+async function generateSuggestions(prompt: string) {
+  return this.ai.complete(prompt);  // Just the business logic
+}
+
+// ✅ BETTER: Wrapper utility
+const generateSuggestions = withObservability(
+  'suggestions.generation',
+  async (prompt: string) => this.ai.complete(prompt)
+);
+
+// ✅ ACCEPTABLE: Minimal inline logging
+async function generateSuggestions(prompt: string) {
+  this.logger.debug('Generating suggestions', { promptLength: prompt.length });
+  const result = await this.ai.complete(prompt);
+  this.logger.debug('Generated suggestions', { count: result.length });
+  return result;
+}
+```
+
+---
+
+### 8.8 The "And" Test
+
+**The Smell:** You can't describe what a unit does without using "and" multiple times.
+
+```typescript
+// 🚨 RED FLAG: Description requires multiple "and"s
+// "PromptManager validates prompts AND generates suggestions AND 
+//  saves to database AND sends notifications AND tracks analytics"
+
+class PromptManager {
+  async handlePrompt(prompt: string) {
+    // Validation
+    const isValid = await this.validate(prompt);
+    if (!isValid) throw new ValidationError();
+    
+    // Generation
+    const suggestions = await this.generateSuggestions(prompt);
+    
+    // Persistence
+    await this.db.savePrompt({ prompt, suggestions });
+    
+    // Notifications
+    await this.notificationService.notify(user, 'prompt_processed');
+    
+    // Analytics
+    await this.analytics.track('prompt_processed', { suggestionCount: suggestions.length });
+    
+    return suggestions;
+  }
+}
+```
+
+**The Test:** Describe your class/function/component in one sentence. Count the "and"s.
+- 0 "and"s: Good single responsibility
+- 1 "and": Possibly OK if tightly coupled
+- 2+ "and"s: Needs splitting
+
+**The Fix:**
+```typescript
+// ✅ BETTER: Each service has one "and"-free description
+// "PromptValidationService validates prompts"
+class PromptValidationService { /* ... */ }
+
+// "SuggestionGenerationService generates suggestions"
+class SuggestionGenerationService { /* ... */ }
+
+// "PromptRepository persists prompts"
+class PromptRepository { /* ... */ }
+
+// "PromptOrchestrator coordinates the prompt processing workflow"
+class PromptOrchestrator {
+  async handlePrompt(prompt: string) {
+    const validated = await this.validation.validate(prompt);
+    const suggestions = await this.generation.generate(validated);
+    await this.repository.save({ prompt, suggestions });
+    this.events.emit('prompt:processed', { prompt, suggestions });  // Let listeners handle notifications/analytics
+    return suggestions;
+  }
+}
+```
+
+---
+
+### 8.9 Props/Parameter Drilling
+
+**The Smell:** Passing props through 3+ component layers without using them.
+
+```typescript
+// 🚨 RED FLAG: Props passed through multiple layers
+function PageLayout({ user, theme, onLogout, notifications, ...props }) {
+  return (
+    <MainContent 
+      user={user} 
+      theme={theme} 
+      onLogout={onLogout}
+      notifications={notifications}  // Just passing through
+    >
+      {props.children}
+    </MainContent>
+  );
+}
+
+function MainContent({ user, theme, onLogout, notifications, children }) {
+  return (
+    <Sidebar 
+      user={user} 
+      onLogout={onLogout}
+      notifications={notifications}  // Still just passing through
+    />
+    <Content theme={theme}>{children}</Content>
+  );
+}
+
+function Sidebar({ user, onLogout, notifications }) {
+  // Finally uses these props
+  return <UserMenu user={user} onLogout={onLogout} notifications={notifications} />;
+}
+```
+
+**The Fix:** Context for truly global state, or composition pattern.
+
+```typescript
+// ✅ BETTER: Context for cross-cutting concerns
+const UserContext = createContext<UserContextValue>(null);
+
+function PageLayout({ children }) {
+  return <MainContent>{children}</MainContent>;
+}
+
+function Sidebar() {
+  const { user, onLogout, notifications } = useUserContext();
+  return <UserMenu user={user} onLogout={onLogout} notifications={notifications} />;
+}
+
+// ✅ BETTER: Composition pattern
+function PageLayout({ sidebar, children }) {
+  return (
+    <div>
+      {sidebar}  {/* Sidebar rendered at top level with direct access to props */}
+      <Content>{children}</Content>
+    </div>
+  );
+}
+
+// Usage
+<PageLayout sidebar={<Sidebar user={user} onLogout={onLogout} />}>
+  <MyPage />
+</PageLayout>
+```
+
+---
+
+### 8.10 Async/State Spaghetti
+
+**The Smell:** Multiple `useState` calls that depend on each other, or async operations that must happen in sequence with manual coordination.
+
+```typescript
+// 🚨 RED FLAG: Interdependent useState calls
+function PromptEditor() {
+  const [prompt, setPrompt] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [canUndo, setCanUndo] = useState(false);  // Derived from history!
+  
+  // Now you have to manually keep these in sync...
+  const handleSelectSuggestion = (s: Suggestion) => {
+    setSelectedSuggestion(s);
+    setError(null);  // Clear error when selecting
+  };
+  
+  const handleApply = async () => {
+    setIsApplying(true);
+    setError(null);
+    try {
+      // ...
+      setHistory([...history, prompt]);
+      setCanUndo(true);  // Must remember to sync this!
+      setPrompt(selectedSuggestion.text);
+      setSelectedSuggestion(null);
+      setSuggestions([]);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+}
+```
+
+**The Fix:** `useReducer` for complex state, derived state for computed values.
+
+```typescript
+// ✅ BETTER: useReducer with clear state machine
+type State = {
+  prompt: string;
+  suggestions: Suggestion[];
+  selectedIndex: number | null;
+  history: string[];
+  status: 'idle' | 'loading' | 'applying' | 'error';
+  error: string | null;
+};
+
+type Action =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; suggestions: Suggestion[] }
+  | { type: 'FETCH_ERROR'; error: string }
+  | { type: 'SELECT'; index: number }
+  | { type: 'APPLY_START' }
+  | { type: 'APPLY_SUCCESS'; newPrompt: string }
+  | { type: 'UNDO' };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'APPLY_SUCCESS':
+      return {
+        ...state,
+        prompt: action.newPrompt,
+        history: [...state.history, state.prompt],
+        suggestions: [],
+        selectedIndex: null,
+        status: 'idle',
+      };
+    // ... other cases
+  }
+}
+
+function PromptEditor() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  
+  // Derived state - no useState needed!
+  const canUndo = state.history.length > 0;
+  const selectedSuggestion = state.selectedIndex !== null 
+    ? state.suggestions[state.selectedIndex] 
+    : null;
+  const isLoading = state.status === 'loading';
+}
+```
+
+---
+
+## Code Smell Detection Checklist
+
+Use this checklist when reviewing code or running architectural audits:
+
+| Smell | Detection Method | Threshold |
+|-------|------------------|----------|
+| Dependency explosion | Count constructor params / hook imports | >5 dependencies |
+| Method clustering | Group methods by prefix | 3+ distinct clusters |
+| Cross-domain imports | Count unique `@services/` or `@features/` imports | >4 domains |
+| Type switching | Search for `if.*type ===` or `switch.*type` | >3 branches with 20+ lines each |
+| Mixed concerns | Count distinct operations in one method | Transform + Logic + I/O |
+| Trapped utilities | Private methods usable elsewhere unchanged | Any generic algorithm |
+| Observability bloat | Ratio of logging lines to logic lines | >2:1 ratio |
+| The "And" test | Describe unit in one sentence | >1 "and" |
+| Props drilling | Props passed through without use | >2 layers |
+| Async spaghetti | Count interdependent `useState` calls | >5 related states |
+
+### Quick Detection Commands
+
+```bash
+# Find files with many dependencies (constructor params)
+grep -r "constructor(" server/src --include="*.ts" -A 15 | grep -c "private readonly"
+
+# Find potential type-switching (large conditionals)
+grep -rn "if.*\.type ===\|switch.*\.type" server/src client/src --include="*.ts" --include="*.tsx"
+
+# Find files with many useState calls (potential spaghetti)
+grep -c "useState" client/src/**/*.tsx | awk -F: '$2 > 5 {print}'
+
+# Find cross-domain imports
+for f in server/src/services/**/*.ts; do
+  count=$(grep -c "@services/" "$f" 2>/dev/null || echo 0)
+  if [ "$count" -gt 4 ]; then echo "$f: $count imports"; fi
+done
+```
+
+---
+
+## When to Refactor vs. Leave Alone
+
+### ✅ Refactor When:
+- Adding a feature would require touching 3+ unrelated methods
+- A bug fix in one area keeps breaking another area
+- New team members consistently misunderstand the code's purpose
+- You need to copy-paste code because it's trapped in a specific context
+- Tests require mocking 5+ dependencies
+
+### ❌ Leave Alone When:
+- Code is stable and rarely changes
+- "Smell" is just line count, not actual coupling
+- Splitting would create files with <50 lines that always change together
+- The code is scheduled for replacement anyway
+- Refactoring would delay a critical deadline with no ongoing maintenance benefit
+
+---
+
 *Companion docs: [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md), [STYLE_RULES.md](./STYLE_RULES.md)*
