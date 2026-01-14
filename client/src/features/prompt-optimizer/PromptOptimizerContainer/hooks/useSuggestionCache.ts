@@ -20,6 +20,8 @@ interface CacheKeyInput {
   normalizedPrompt: string;
   suggestionContext: SuggestionContextResult;
   contextWindow?: number;
+  category?: string | null;
+  spanFingerprint?: string | null;
 }
 
 const CACHE_CONFIG = {
@@ -113,6 +115,8 @@ export function useSuggestionCache(): {
       normalizedPrompt,
       suggestionContext,
       contextWindow = DEFAULT_CACHE_CONTEXT_WINDOW,
+      category = null,
+      spanFingerprint = null,
     }: CacheKeyInput): string => {
       const contextBefore = normalizedPrompt.slice(
         Math.max(0, suggestionContext.startIndex - contextWindow),
@@ -123,11 +127,19 @@ export function useSuggestionCache(): {
         suggestionContext.startIndex + suggestionContext.matchLength + contextWindow
       );
 
+      const categoryKey =
+        typeof category === 'string' ? category.trim().toLowerCase() : '';
+      const spanKey =
+        typeof spanFingerprint === 'string' ? spanFingerprint : '';
+      const promptHash = simpleHash(
+        `${normalizedPrompt}|${categoryKey}|${spanKey}`
+      );
+
       return SuggestionCache.generateKey(
         normalizedHighlight,
         contextBefore,
         contextAfter,
-        simpleHash(normalizedPrompt)
+        promptHash
       );
     },
     []

@@ -65,6 +65,8 @@ export class CleanPromptBuilder {
     });
     
     const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
+    const { capabilities } = detectAndGetCapabilities({ operation: 'enhance_suggestions' });
+    const useWrapper = !capabilities.strictJsonSchema;
 
     // Get provider-aware security prefix
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
@@ -79,9 +81,14 @@ export class CleanPromptBuilder {
     // Get format instruction (provider-aware)
     const formatInstruction = getFormatInstruction({ 
       operation: 'enhance_suggestions',
-      isArray: true,
+      isArray: !useWrapper,
       hasSchema: true,
+      targetStart: useWrapper ? '{' : '[',
     });
+
+    const outputLine = useWrapper
+      ? 'Output JSON object: {"suggestions": [{"text":"replacement","category":"custom","explanation":"why this fits"}]}'
+      : 'Output JSON array: [{"text":"replacement","category":"custom","explanation":"why this fits"}]';
 
     const result = [
       securityPrefix,
@@ -94,7 +101,7 @@ export class CleanPromptBuilder {
       '2. Keep the same subject/topic - just vary the description',
       '3. Return ONLY the replacement phrase (2-50 words)',
       '',
-      'Output JSON: [{"text":"replacement","category":"custom","explanation":"why this fits"}]',
+      outputLine,
       formatInstruction,
     ].filter(Boolean).join('\n');
     
@@ -131,6 +138,9 @@ export class CleanPromptBuilder {
       promptSection = null,
       videoConstraints = null,
       highlightWordCount = null,
+      spanAnchors = '',
+      nearbySpanHints = '',
+      focusGuidance = [],
       mode = 'rewrite',
     } = params;
 
@@ -169,20 +179,24 @@ export class CleanPromptBuilder {
       promptSection,
       videoConstraints,
       highlightWordCount,
+      spanAnchors,
+      nearbySpanHints,
+      focusGuidance,
       slot,
       mode,
     });
 
-    const { provider } = detectAndGetCapabilities({ operation: 'enhance_suggestions' });
+    const { provider, capabilities } = detectAndGetCapabilities({ operation: 'enhance_suggestions' });
+    const useWrapper = !capabilities.strictJsonSchema;
 
     // Select prompt based on design
     let result: string;
     if (design === 'orthogonal') {
-      result = this._buildTechnicalPrompt(ctx, provider);
+      result = this._buildTechnicalPrompt(ctx, provider, useWrapper);
     } else if (design === 'narrative') {
-      result = this._buildActionPrompt(ctx, provider);
+      result = this._buildActionPrompt(ctx, provider, useWrapper);
     } else {
-      result = this._buildVisualPrompt(ctx, provider);
+      result = this._buildVisualPrompt(ctx, provider, useWrapper);
     }
     
     const duration = Math.round(performance.now() - startTime);
@@ -204,7 +218,11 @@ export class CleanPromptBuilder {
    * Provider-aware: Security prefix only added for non-OpenAI providers
    * OpenAI uses developerMessage for security (passed separately)
    */
-  private _buildTechnicalPrompt(ctx: SharedPromptContext, provider: string): string {
+  private _buildTechnicalPrompt(
+    ctx: SharedPromptContext,
+    provider: string,
+    useWrapper: boolean
+  ): string {
     // Get provider-aware security prefix
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
@@ -213,16 +231,31 @@ export class CleanPromptBuilder {
       full_context: ctx.promptPreview,
       highlighted_text: ctx.highlightedText,
       surrounding_context: ctx.inlineContext,
+      ...(ctx.spanAnchors ? { span_anchors: ctx.spanAnchors } : {}),
+      ...(ctx.nearbySpanHints ? { nearby_spans: ctx.nearbySpanHints } : {}),
     });
 
     // Get format instruction (provider-aware - may be empty for OpenAI with schema)
     const formatInstruction = getFormatInstruction({ 
       operation: 'enhance_suggestions',
-      isArray: true,
+      isArray: !useWrapper,
       hasSchema: true,
+      targetStart: useWrapper ? '{' : '[',
     });
 
-    const exampleBlock = this._buildExampleBlock(TECHNICAL_EXAMPLES, ctx.slotLabel, provider);
+    const exampleBlock = this._buildExampleBlock(
+      TECHNICAL_EXAMPLES,
+      ctx.slotLabel,
+      provider,
+      useWrapper
+    );
+    const spanRule =
+      ctx.spanAnchors || ctx.nearbySpanHints
+        ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
+        : '';
+    const outputLine = useWrapper
+      ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]}`
+      : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]`;
 
     return [
       securityPrefix,
@@ -237,10 +270,13 @@ export class CleanPromptBuilder {
       '4. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Vary angle, lens, movement, or lighting (not just synonyms).',
       ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
+      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      ctx.constraintNotes ? `REQUIREMENTS: ${ctx.constraintNotes}` : '',
       '',
-      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"visual effect"}]`,
+      outputLine,
       exampleBlock,
       formatInstruction,
     ].filter(Boolean).join('\n');
@@ -251,22 +287,41 @@ export class CleanPromptBuilder {
    * 
    * Provider-aware: Uses XML wrapper for user data
    */
-  private _buildVisualPrompt(ctx: SharedPromptContext, provider: string): string {
+  private _buildVisualPrompt(
+    ctx: SharedPromptContext,
+    provider: string,
+    useWrapper: boolean
+  ): string {
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
     const userDataSection = wrapUserData({
       full_context: ctx.promptPreview,
       highlighted_text: ctx.highlightedText,
       surrounding_context: ctx.inlineContext,
+      ...(ctx.spanAnchors ? { span_anchors: ctx.spanAnchors } : {}),
+      ...(ctx.nearbySpanHints ? { nearby_spans: ctx.nearbySpanHints } : {}),
     });
 
     const formatInstruction = getFormatInstruction({ 
       operation: 'enhance_suggestions',
-      isArray: true,
+      isArray: !useWrapper,
       hasSchema: true,
+      targetStart: useWrapper ? '{' : '[',
     });
 
-    const exampleBlock = this._buildExampleBlock(VISUAL_EXAMPLES, ctx.slotLabel, provider);
+    const exampleBlock = this._buildExampleBlock(
+      VISUAL_EXAMPLES,
+      ctx.slotLabel,
+      provider,
+      useWrapper
+    );
+    const spanRule =
+      ctx.spanAnchors || ctx.nearbySpanHints
+        ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
+        : '';
+    const outputLine = useWrapper
+      ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]}`
+      : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`;
 
     return [
       securityPrefix,
@@ -282,10 +337,13 @@ export class CleanPromptBuilder {
       '5. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Prefer role-level changes that alter the visual outcome, not minor adjective swaps.',
       ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
+      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      ctx.constraintNotes ? `REQUIREMENTS: ${ctx.constraintNotes}` : '',
       '',
-      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"what viewer sees differently"}]`,
+      outputLine,
       exampleBlock,
       formatInstruction,
     ].filter(Boolean).join('\n');
@@ -294,22 +352,41 @@ export class CleanPromptBuilder {
   /**
    * Design 3: Action/Verb slots
    */
-  private _buildActionPrompt(ctx: SharedPromptContext, provider: string): string {
+  private _buildActionPrompt(
+    ctx: SharedPromptContext,
+    provider: string,
+    useWrapper: boolean
+  ): string {
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
     const userDataSection = wrapUserData({
       full_context: ctx.promptPreview,
       highlighted_text: ctx.highlightedText,
       surrounding_context: ctx.inlineContext,
+      ...(ctx.spanAnchors ? { span_anchors: ctx.spanAnchors } : {}),
+      ...(ctx.nearbySpanHints ? { nearby_spans: ctx.nearbySpanHints } : {}),
     });
 
     const formatInstruction = getFormatInstruction({ 
       operation: 'enhance_suggestions',
-      isArray: true,
+      isArray: !useWrapper,
       hasSchema: true,
+      targetStart: useWrapper ? '{' : '[',
     });
 
-    const exampleBlock = this._buildExampleBlock(NARRATIVE_EXAMPLES, ctx.slotLabel, provider);
+    const exampleBlock = this._buildExampleBlock(
+      NARRATIVE_EXAMPLES,
+      ctx.slotLabel,
+      provider,
+      useWrapper
+    );
+    const spanRule =
+      ctx.spanAnchors || ctx.nearbySpanHints
+        ? 'CONTEXT: Respect span anchors; avoid conflicting nearby spans.'
+        : '';
+    const outputLine = useWrapper
+      ? `Output JSON object: {"suggestions": [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]}`
+      : `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]`;
 
     return [
       securityPrefix,
@@ -324,10 +401,13 @@ export class CleanPromptBuilder {
       '4. Return ONLY the replacement phrase (2-50 words)',
       'DIVERSITY: Vary the physical behavior or staging, not just intensity.',
       ctx.guidance ? `GUIDANCE: ${ctx.guidance}` : '',
+      ctx.focusGuidance ? `FOCUS: ${ctx.focusGuidance}` : '',
+      spanRule,
       '',
       ctx.constraintLine ? `CONSTRAINTS: ${ctx.constraintLine}` : '',
+      ctx.constraintNotes ? `REQUIREMENTS: ${ctx.constraintNotes}` : '',
       '',
-      `Output JSON array: [{"text":"phrase","category":"${ctx.slotLabel}","explanation":"how motion changes"}]`,
+      outputLine,
       exampleBlock,
       formatInstruction,
     ].filter(Boolean).join('\n');
@@ -336,7 +416,8 @@ export class CleanPromptBuilder {
   private _buildExampleBlock(
     examples: Array<{ text: string; explanation: string }>,
     slotLabel: string,
-    provider: string
+    provider: string,
+    useWrapper: boolean
   ): string {
     if (!this._shouldIncludeExamples(provider)) return '';
     const escapeValue = (value: string): string =>
@@ -344,12 +425,12 @@ export class CleanPromptBuilder {
     const sample = examples.slice(0, 2);
     const lines = [
       'EXAMPLE OUTPUT (format only; do not copy content):',
-      '[',
+      ...(useWrapper ? ['{', '  "suggestions": ['] : ['[']),
       ...sample.map((example, index) => {
         const suffix = index < sample.length - 1 ? ',' : '';
         return `  {"text":"${escapeValue(example.text)}","category":"${slotLabel}","explanation":"${escapeValue(example.explanation)}"}${suffix}`;
       }),
-      ']',
+      ...(useWrapper ? ['  ]', '}'] : [']']),
     ];
     return lines.join('\n');
   }
@@ -373,6 +454,9 @@ export class CleanPromptBuilder {
     promptSection,
     videoConstraints,
     highlightWordCount,
+    spanAnchors,
+    nearbySpanHints,
+    focusGuidance,
     slot,
     mode,
   }: {
@@ -387,6 +471,9 @@ export class CleanPromptBuilder {
     promptSection: string | null;
     videoConstraints: { mode?: string; minWords?: number; maxWords?: number; maxSentences?: number; disallowTerminalPunctuation?: boolean; formRequirement?: string; focusGuidance?: string[]; extraRequirements?: string[] } | null;
     highlightWordCount: number | null;
+    spanAnchors?: string;
+    nearbySpanHints?: string;
+    focusGuidance?: string[];
     slot: string;
     mode: 'rewrite' | 'placeholder';
   }): SharedPromptContext {
@@ -400,6 +487,7 @@ export class CleanPromptBuilder {
 
     // Build constraint line
     let constraintLine = '';
+    const constraintNotes: string[] = [];
     if (videoConstraints) {
       const parts: string[] = [];
       if (videoConstraints.minWords || videoConstraints.maxWords) {
@@ -409,6 +497,13 @@ export class CleanPromptBuilder {
         parts.push('noun phrases only');
       }
       constraintLine = parts.join(', ');
+
+      if (videoConstraints.formRequirement) {
+        constraintNotes.push(videoConstraints.formRequirement);
+      }
+      if (Array.isArray(videoConstraints.extraRequirements)) {
+        constraintNotes.push(...videoConstraints.extraRequirements);
+      }
     }
 
     // Add word count hint
@@ -418,6 +513,11 @@ export class CleanPromptBuilder {
         : `aim for ~${highlightWordCount} words`;
     }
 
+    const focusGuidanceCombined = [
+      ...(videoConstraints?.focusGuidance || []),
+      ...(focusGuidance || []),
+    ].filter(Boolean);
+
     return {
       highlightedText,
       highlightedCategory,
@@ -426,10 +526,14 @@ export class CleanPromptBuilder {
       suffix,
       promptPreview,
       constraintLine,
+      constraintNotes: constraintNotes.length ? constraintNotes.join(' | ') : '',
       modelLine: modelTarget ? `Target: ${modelTarget}` : '',
       sectionLine: promptSection ? `Section: ${promptSection}` : '',
       slotLabel: slot || 'subject',
       guidance: getCategoryGuidance(highlightedCategory),
+      focusGuidance: focusGuidanceCombined.length ? focusGuidanceCombined.join(' | ') : '',
+      spanAnchors,
+      nearbySpanHints,
       highlightWordCount,
       mode,
       replacementInstruction: '',

@@ -19,6 +19,7 @@ import type {
   CategoryAligner,
   AIService,
   OutputSchema,
+  EditHistoryEntry,
 } from './types';
 import type { FallbackRegenerationService } from './FallbackRegenerationService';
 import type { SuggestionProcessor } from './SuggestionProcessor';
@@ -40,9 +41,14 @@ export interface SuggestionProcessingParams {
   fullPrompt: string;
   originalUserPrompt: string;
   brainstormContext: BrainstormContext | null;
-  editHistory: Array<{ original?: string; category?: string }>;
+  editHistory: EditHistoryEntry[];
   modelTarget: string | null;
   promptSection: string | null;
+  spanAnchors?: string;
+  nearbySpanHints?: string;
+  focusGuidance?: string[];
+  lockedSpanCategories?: string[];
+  skipDiversityCheck?: boolean;
 }
 
 export interface SuggestionProcessingResult {
@@ -72,9 +78,9 @@ export class SuggestionProcessingService {
   async processSuggestions(
     params: SuggestionProcessingParams
   ): Promise<SuggestionProcessingResult> {
-    const diverseSuggestions = await this.diversityEnforcer.ensureDiverseSuggestions(
-      params.suggestions
-    );
+    const diverseSuggestions = params.skipDiversityCheck
+      ? params.suggestions
+      : await this.diversityEnforcer.ensureDiverseSuggestions(params.suggestions);
 
     const alignmentResult = this.applyCategoryAlignment(
       diverseSuggestions,
@@ -87,6 +93,8 @@ export class SuggestionProcessingService {
       alignmentResult.suggestions,
       {
         highlightedText: params.highlightedText,
+        highlightedCategory: params.highlightedCategory,
+        lockedSpanCategories: params.lockedSpanCategories,
         isPlaceholder: params.isPlaceholder,
         isVideoPrompt: params.isVideoPrompt,
         ...(params.videoConstraints ? { videoConstraints: params.videoConstraints } : {}),
@@ -97,6 +105,7 @@ export class SuggestionProcessingService {
       sanitizedSuggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
+      lockedSpanCategories: params.lockedSpanCategories,
       regenerationDetails: {
         highlightWordCount: params.highlightWordCount,
       },
@@ -116,6 +125,9 @@ export class SuggestionProcessingService {
         editHistory: params.editHistory,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
+        spanAnchors: params.spanAnchors,
+        nearbySpanHints: params.nearbySpanHints,
+        focusGuidance: params.focusGuidance,
       },
       aiService: this.ai,
       schema: params.schema,
@@ -205,4 +217,3 @@ export class SuggestionProcessingService {
     return alignmentResult;
   }
 }
-

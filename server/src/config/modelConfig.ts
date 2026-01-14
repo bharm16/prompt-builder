@@ -180,6 +180,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     responseFormat: 'json_object',
     fallbackTo: 'openai',
     // Note: Seed not used - we want variation in suggestions
+    useDeveloperMessage: true,
   },
 
   /**

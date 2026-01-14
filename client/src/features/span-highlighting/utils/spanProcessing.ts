@@ -43,6 +43,12 @@ export interface SpanContext {
   nearbySpans: NearbySpan[];
 }
 
+interface SpanFingerprintOptions {
+  maxSpans?: number;
+  maxNearby?: number;
+  maxTextLength?: number;
+}
+
 /**
  * Find spans that are near the selected text
  */
@@ -137,4 +143,35 @@ export function prepareSpanContext(
     simplifiedSpans,
     nearbySpans,
   };
+}
+
+/**
+ * Build a stable fingerprint for span context (for caching/deduplication)
+ */
+export function buildSpanFingerprint(
+  simplifiedSpans: NormalizedSpan[],
+  nearbySpans: NearbySpan[],
+  options: SpanFingerprintOptions = {}
+): string {
+  const {
+    maxSpans = 6,
+    maxNearby = 4,
+    maxTextLength = 40,
+  } = options;
+
+  const normalize = (value: string): string =>
+    value.trim().toLowerCase().slice(0, maxTextLength);
+
+  const spanPart = simplifiedSpans
+    .slice(0, maxSpans)
+    .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
+    .join('|');
+
+  const nearbyPart = nearbySpans
+    .slice(0, maxNearby)
+    .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
+    .join('|');
+
+  const combined = [spanPart, nearbyPart].filter(Boolean).join('||');
+  return combined;
 }

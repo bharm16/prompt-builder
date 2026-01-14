@@ -18,6 +18,33 @@ export interface Suggestion {
   [key: string]: unknown;
 }
 
+export interface LabeledSpan {
+  text: string;
+  role: string;
+  category?: string;
+  start?: number;
+  end?: number;
+  confidence?: number;
+}
+
+export interface NearbySpan {
+  text: string;
+  role: string;
+  category?: string;
+  confidence?: number;
+  distance: number;
+  position: 'before' | 'after';
+  start?: number;
+  end?: number;
+}
+
+export interface EditHistoryEntry {
+  original?: string;
+  replacement?: string;
+  category?: string | null;
+  timestamp?: number;
+}
+
 /**
  * Sanitization context for suggestions
  */
@@ -26,6 +53,8 @@ export interface SanitizationContext {
   isPlaceholder?: boolean;
   isVideoPrompt?: boolean;
   videoConstraints?: VideoConstraints;
+  highlightedCategory?: string | null;
+  lockedSpanCategories?: string[];
 }
 
 /**
@@ -134,7 +163,7 @@ export interface PromptBuildParams {
   fullPrompt?: string;
   originalUserPrompt?: string;
   brainstormContext?: BrainstormContext | null;
-  editHistory?: Array<{ original?: string; category?: string }>;
+  editHistory?: EditHistoryEntry[];
   modelTarget?: string | null;
   isVideoPrompt?: boolean;
   phraseRole?: string | null;
@@ -146,6 +175,9 @@ export interface PromptBuildParams {
   mode?: 'rewrite' | 'placeholder';
   isPlaceholder?: boolean;
   customRequest?: string;
+  spanAnchors?: string;
+  nearbySpanHints?: string;
+  focusGuidance?: string[];
 }
 
 /**
@@ -171,9 +203,13 @@ export interface SharedPromptContext {
   suffix: string;                   // Text after highlight (trimmed)
   promptPreview: string;            // Full prompt (trimmed)
   constraintLine: string;           // Simplified constraints
+  constraintNotes?: string;         // Additional constraint notes
   modelLine: string;                // Target model (optional)
   sectionLine: string;              // Prompt section (optional)
   guidance: string;                 // Creative guidance (optional)
+  focusGuidance?: string;           // Context-aware guidance (optional)
+  spanAnchors?: string;             // Anchors from labeled spans
+  nearbySpanHints?: string;         // Nearby spans to avoid conflicting with
   replacementInstruction: string;   // Deprecated - kept for compatibility
   highlightWordCount?: number | null;
   mode: 'rewrite' | 'placeholder';
@@ -224,6 +260,7 @@ export interface FallbackRegenerationParams {
   isVideoPrompt: boolean;
   isPlaceholder: boolean;
   videoConstraints?: VideoConstraints;
+  lockedSpanCategories?: string[];
   regenerationDetails: {
     highlightWordCount?: number;
     phraseRole?: string;
@@ -316,6 +353,13 @@ export interface VideoService {
     fullPrompt: string,
     contextBefore: string
   ): string | null;
+  getCategoryFocusGuidance(
+    phraseRole: string | null | undefined,
+    categoryHint: string | null | undefined,
+    fullContext: string,
+    allSpans: Array<{ category?: string; text?: string }>,
+    editHistory: EditHistoryEntry[]
+  ): string[] | null;
   getVideoFallbackConstraints(
     currentConstraints: VideoConstraints | null | undefined,
     details?: Record<string, unknown>,
@@ -405,7 +449,9 @@ export interface EnhancementRequestParams {
   highlightedCategory?: string | null;
   highlightedCategoryConfidence?: number | null;
   highlightedPhrase?: string | null;
-  editHistory?: Array<{ original?: string; category?: string }>;
+  allLabeledSpans?: LabeledSpan[];
+  nearbySpans?: NearbySpan[];
+  editHistory?: EditHistoryEntry[];
 }
 
 /**

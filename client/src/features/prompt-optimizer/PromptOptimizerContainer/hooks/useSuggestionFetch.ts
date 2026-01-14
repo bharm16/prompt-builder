@@ -23,6 +23,10 @@ import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
 import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import { buildSuggestionContext } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
 import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import {
+  prepareSpanContext,
+  buildSpanFingerprint,
+} from '@features/span-highlighting/utils/spanProcessing';
 import type { Toast } from '@hooks/types';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -169,6 +173,12 @@ export function useSuggestionFetch({
         1000
       );
 
+      const spanContext = prepareSpanContext(metadata, allLabeledSpans);
+      const spanFingerprint = buildSpanFingerprint(
+        spanContext.simplifiedSpans,
+        spanContext.nearbySpans
+      );
+
       if (!suggestionContext.found) {
         log.warn('Could not locate highlight in prompt; context may be inaccurate', {
           operation: 'buildSuggestionContext',
@@ -183,6 +193,8 @@ export function useSuggestionFetch({
         normalizedHighlight,
         normalizedPrompt,
         suggestionContext,
+        category: metadata?.category ?? null,
+        spanFingerprint,
       });
 
       // DEDUPLICATION: Use cache key to avoid duplicate in-flight requests

@@ -60,6 +60,7 @@ export class FallbackRegenerationService {
       isVideoPrompt,
       isPlaceholder,
       videoConstraints,
+      lockedSpanCategories,
       regenerationDetails,
       requestParams,
       aiService,
@@ -125,6 +126,7 @@ export class FallbackRegenerationService {
           temperature,
           isPlaceholder,
           isVideoPrompt,
+          lockedSpanCategories,
         });
 
         if (result.suggestions.length > 0) {
@@ -178,6 +180,7 @@ export class FallbackRegenerationService {
     temperature,
     isPlaceholder,
     isVideoPrompt,
+    lockedSpanCategories,
   }: {
     fallbackConstraints: VideoConstraints;
     requestParams: PromptBuildParams;
@@ -186,6 +189,7 @@ export class FallbackRegenerationService {
     temperature: number;
     isPlaceholder: boolean;
     isVideoPrompt: boolean;
+    lockedSpanCategories?: string[];
   }): Promise<FallbackRegenerationResult> {
     // Build fallback prompt
     const fallbackPrompt = this.promptBuilder.buildRewritePrompt({
@@ -218,6 +222,8 @@ export class FallbackRegenerationService {
       isPlaceholder?: boolean;
       isVideoPrompt?: boolean;
       videoConstraints?: VideoConstraints;
+      highlightedCategory?: string | null;
+      lockedSpanCategories?: string[];
     } = {
       isPlaceholder,
       isVideoPrompt,
@@ -225,6 +231,12 @@ export class FallbackRegenerationService {
     };
     if (requestParams.highlightedText !== undefined) {
       sanitizationContext.highlightedText = requestParams.highlightedText;
+    }
+    if (requestParams.highlightedCategory !== undefined) {
+      sanitizationContext.highlightedCategory = requestParams.highlightedCategory;
+    }
+    if (lockedSpanCategories && lockedSpanCategories.length > 0) {
+      sanitizationContext.lockedSpanCategories = lockedSpanCategories;
     }
     
     const fallbackSanitized = this.validationService.sanitizeSuggestions(
@@ -241,4 +253,3 @@ export class FallbackRegenerationService {
     };
   }
 }
-

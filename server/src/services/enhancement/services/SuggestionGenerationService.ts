@@ -121,53 +121,73 @@ export class SuggestionGenerationService {
     const groqStart = Date.now();
     const { provider = 'groq', developerMessage, useStrictSchema, reasoningEffort } = params;
 
-    // PDF Enhancement: Try contrastive decoding for enhanced diversity
-    let suggestions: Suggestion[] | null =
-      await this.contrastiveDiversity.generateWithContrastiveDecoding({
+    const providerSchema = getEnhancementSchema(params.isPlaceholder, { provider });
+    const enforceOptions: Parameters<typeof StructuredOutputEnforcer.enforceJSON>[2] = {
+      schema: providerSchema as
+        | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
+        | null,
+      isArray: true,
+      maxTokens: 2048,
+      maxRetries: 2,
+      temperature: params.temperature,
+      operation: 'enhance_suggestions',
+      provider,
+      ...(provider === 'openai' && developerMessage ? { developerMessage } : {}),
+      ...(provider === 'openai' && useStrictSchema ? { useStrictSchema } : {}),
+      ...(provider === 'qwen' && !reasoningEffort ? { reasoningEffort: 'none' } : {}),
+      ...(reasoningEffort ? { reasoningEffort } : {}),
+    };
+
+    let suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+      this.ai,
+      params.systemPrompt,
+      enforceOptions
+    );
+
+    let usedContrastiveDecoding = false;
+    const diversityMetrics = Array.isArray(suggestions)
+      ? this.contrastiveDiversity.calculateDiversityMetrics(suggestions)
+      : null;
+    const tooFewSuggestions = Array.isArray(suggestions) && suggestions.length < 6;
+    const tooSimilar =
+      !!diversityMetrics &&
+      (diversityMetrics.avgSimilarity > 0.6 || diversityMetrics.maxSimilarity > 0.85);
+
+    const shouldAttemptContrastive =
+      provider !== 'openai' &&
+      this.contrastiveDiversity.shouldUseContrastiveDecoding({
         systemPrompt: params.systemPrompt,
-        schema: params.schema,
+        schema: providerSchema as OutputSchema,
         isVideoPrompt: params.isVideoPrompt,
         isPlaceholder: params.isPlaceholder,
         highlightedText: params.highlightedText,
-      });
+      }) &&
+      (tooFewSuggestions || tooSimilar);
 
-    let usedContrastiveDecoding = false;
+    if (shouldAttemptContrastive) {
+      const contrastiveSuggestions =
+        await this.contrastiveDiversity.generateWithContrastiveDecoding({
+          systemPrompt: params.systemPrompt,
+          schema: providerSchema as OutputSchema,
+          isVideoPrompt: params.isVideoPrompt,
+          isPlaceholder: params.isPlaceholder,
+          highlightedText: params.highlightedText,
+        });
 
-    // Fallback to standard generation if contrastive decoding not used/failed
-    if (!suggestions) {
-      // Get provider-specific schema
-      const providerSchema = getEnhancementSchema(params.isPlaceholder, { provider });
-      const enforceOptions: Parameters<typeof StructuredOutputEnforcer.enforceJSON>[2] = {
-        schema: providerSchema as
-          | { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] }; additionalProperties?: boolean }
-          | null,
-        isArray: true,
-        maxTokens: 2048,
-        maxRetries: 2,
-        temperature: params.temperature,
-        operation: 'enhance_suggestions',
-        provider,
-        ...(provider === 'openai' && developerMessage ? { developerMessage } : {}),
-        ...(provider === 'openai' && useStrictSchema ? { useStrictSchema } : {}),
-        ...(reasoningEffort ? { reasoningEffort } : {}),
-      };
+      if (contrastiveSuggestions && contrastiveSuggestions.length > 0) {
+        suggestions = contrastiveSuggestions;
+        usedContrastiveDecoding = true;
+      }
+    }
 
-      suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-        this.ai,
-        params.systemPrompt,
-        enforceOptions
-      );
-    } else {
-      usedContrastiveDecoding = true;
-
-      // Calculate and log diversity metrics
-      const diversityMetrics =
+    if (usedContrastiveDecoding && Array.isArray(suggestions)) {
+      const contrastiveMetrics =
         this.contrastiveDiversity.calculateDiversityMetrics(suggestions);
       logger.info('Contrastive decoding diversity metrics', {
-        avgSimilarity: diversityMetrics.avgSimilarity,
-        minSimilarity: diversityMetrics.minSimilarity,
-        maxSimilarity: diversityMetrics.maxSimilarity,
-        pairCount: diversityMetrics.pairCount,
+        avgSimilarity: contrastiveMetrics.avgSimilarity,
+        minSimilarity: contrastiveMetrics.minSimilarity,
+        maxSimilarity: contrastiveMetrics.maxSimilarity,
+        pairCount: contrastiveMetrics.pairCount,
       });
     }
 

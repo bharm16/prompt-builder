@@ -98,21 +98,12 @@ export class AIModelService {
           fallback: plan.fallback.client,
         });
 
-        // Build minimal request options for fallback
-        const fallbackOptions: RequestOptions = {
-          ...params,
-          model: plan.fallback.model,
-          temperature: params.temperature !== undefined ? params.temperature : config.temperature,
-          maxTokens: params.maxTokens || config.maxTokens,
-          timeout: plan.fallback.timeout,
-          jsonMode: config.responseFormat === 'json_object' || params.jsonMode || false,
-        };
-
         return await this._executeFallback(
           plan.fallback.client,
           operation,
           params.systemPrompt,
-          fallbackOptions,
+          params,
+          config,
           { model: plan.fallback.model, timeout: plan.fallback.timeout }
         );
       }
@@ -221,7 +212,8 @@ export class AIModelService {
           plan.fallback.client,
           operation,
           params.systemPrompt,
-          requestOptions,
+          params,
+          config,
           { model: plan.fallback.model, timeout: plan.fallback.timeout }
         );
       }
@@ -318,7 +310,8 @@ export class AIModelService {
     fallbackClient: string,
     operation: string,
     systemPrompt: string,
-    requestOptions: RequestOptions,
+    params: ExecuteParams,
+    primaryConfig: ModelConfigEntry,
     fallbackConfig?: { model: string; timeout: number }
   ): Promise<AIResponse> {
     logger.info('Attempting fallback to alternative client', {
@@ -347,16 +340,13 @@ export class AIModelService {
         }
       }
 
-      // Build fallback options with fallbackConfig when available
-      // This ensures we use the correct model for the fallback provider
-      const fallbackOptions: CompletionOptions = {
-        ...requestOptions,
-        // Use fallbackConfig.timeout if provided
-        timeout: fallbackConfig?.timeout || requestOptions.timeout,
-        ...(fallbackConfig?.model ? { model: fallbackConfig.model } : {}),
-      };
-
-      delete (fallbackOptions as { developerMessage?: string }).developerMessage;
+      const fallbackOptions = this._buildFallbackOptions({
+        operation,
+        params,
+        primaryConfig,
+        fallbackClient,
+        fallbackConfig,
+      });
 
       const response = await client.complete(systemPrompt, fallbackOptions);
 
@@ -379,6 +369,54 @@ export class AIModelService {
       });
       throw fallbackError;
     }
+  }
+
+  private _buildFallbackOptions({
+    operation,
+    params,
+    primaryConfig,
+    fallbackClient,
+    fallbackConfig,
+  }: {
+    operation: string;
+    params: ExecuteParams;
+    primaryConfig: ModelConfigEntry;
+    fallbackClient: string;
+    fallbackConfig?: { model: string; timeout: number };
+  }): RequestOptions {
+    const fallbackEntry: ModelConfigEntry = {
+      ...primaryConfig,
+      client: fallbackClient,
+      model: fallbackConfig?.model || primaryConfig.model,
+      timeout: fallbackConfig?.timeout || primaryConfig.timeout,
+    };
+
+    const fallbackParams: ExecuteParams = {
+      ...params,
+      model: fallbackEntry.model,
+      timeout: fallbackEntry.timeout,
+    };
+
+    const { capabilities } = detectAndGetCapabilities({
+      operation,
+      model: fallbackEntry.model,
+      client: fallbackEntry.client,
+    });
+
+    const { responseFormat, jsonMode } = buildResponseFormat(
+      fallbackParams,
+      fallbackEntry,
+      capabilities
+    );
+
+    return buildRequestOptions({
+      operation,
+      params: fallbackParams,
+      config: fallbackEntry,
+      capabilities,
+      jsonMode,
+      ...(responseFormat ? { responseFormat } : {}),
+    });
   }
 
   listOperations(): string[] {

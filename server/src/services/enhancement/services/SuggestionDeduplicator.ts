@@ -10,6 +10,8 @@ import type { Suggestion, AIService } from './types.js';
  * Single Responsibility: Suggestion diversity and deduplication
  */
 export class SuggestionDiversityEnforcer {
+  private readonly maxLlmReplacements = 2;
+
   constructor(private readonly ai: AIService) {}
 
   /**
@@ -63,7 +65,10 @@ export class SuggestionDiversityEnforcer {
 
     // Generate replacements for similar suggestions
     const diverseSuggestions = [...suggestions];
-    for (const idx of toReplace) {
+    const replacementIndices = Array.from(toReplace);
+    const limitedReplacements = replacementIndices.slice(0, this.maxLlmReplacements);
+
+    for (const idx of limitedReplacements) {
       diverseSuggestions[idx] = await this.generateDiverseAlternative(
         suggestions,
         idx
@@ -72,7 +77,8 @@ export class SuggestionDiversityEnforcer {
 
     logger.info('Enforced diversity', {
       original: suggestions.length,
-      replaced: toReplace.size,
+      replaced: limitedReplacements.length,
+      skipped: toReplace.size - limitedReplacements.length,
     });
 
     return diverseSuggestions;

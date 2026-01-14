@@ -14,6 +14,8 @@ import { SuggestionGenerationService } from './services/SuggestionGenerationServ
 import { SuggestionProcessingService } from './services/SuggestionProcessingService';
 import { CacheKeyFactory } from './utils/CacheKeyFactory';
 import { PROMPT_MODES } from './constants';
+import { getParentCategory } from '@shared/taxonomy';
+import { hashString } from '@utils/hash';
 import type {
   AIService,
   VideoService,
@@ -35,6 +37,8 @@ import type {
   PromptBuildParams,
   GroupedSuggestions,
   OutputSchema,
+  LabeledSpan,
+  NearbySpan,
 } from './services/types';
 
 /**
@@ -131,6 +135,8 @@ export class EnhancementService {
     highlightedCategory,
     highlightedCategoryConfidence,
     highlightedPhrase,
+    allLabeledSpans = [],
+    nearbySpans = [],
     editHistory = [],
   }: EnhancementRequestParams): Promise<EnhancementResult> {
     const metrics: EnhancementMetrics = {
@@ -179,6 +185,20 @@ export class EnhancementService {
       const highlightWordCount = videoContext.highlightWordCount;
       const phraseRole = videoContext.phraseRole;
       const videoConstraints = videoContext.videoConstraints;
+      const spanContext = this._buildSpanContext({
+        allLabeledSpans,
+        nearbySpans,
+        highlightedText,
+        highlightedCategory: highlightedCategory ?? null,
+        phraseRole,
+      });
+      const focusGuidance = this.videoService.getCategoryFocusGuidance(
+        phraseRole,
+        highlightedCategory ?? null,
+        fullPrompt,
+        spanContext.guidanceSpans,
+        editHistory
+      ) || undefined;
 
       const cacheStart = Date.now();
       const cacheKey = CacheKeyFactory.generateKey(this.cacheConfig.namespace, {
@@ -196,6 +216,7 @@ export class EnhancementService {
         editHistory,
         modelTarget,
         promptSection,
+        spanFingerprint: spanContext.spanFingerprint,
       });
 
       const cached = await cacheService.get<EnhancementResult>(cacheKey, 'enhancement');
@@ -244,6 +265,9 @@ export class EnhancementService {
         videoConstraints,
         highlightWordCount,
         isPlaceholder,
+        spanAnchors: spanContext.spanAnchors,
+        nearbySpanHints: spanContext.nearbySpanHints,
+        focusGuidance,
       };
       const promptResult = isPlaceholder
         ? this.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
@@ -288,6 +312,11 @@ export class EnhancementService {
         editHistory,
         modelTarget,
         promptSection,
+        spanAnchors: spanContext.spanAnchors,
+        nearbySpanHints: spanContext.nearbySpanHints,
+        focusGuidance,
+        lockedSpanCategories: spanContext.lockedSpanCategories,
+        skipDiversityCheck: generationResult.usedContrastiveDecoding,
       });
 
       const result = this._buildEnhancementResult({
@@ -490,6 +519,100 @@ export class EnhancementService {
     if (params.suggestionsToUse.length === 0) buildResultParams.hasNoSuggestions = true;
     
     return this.suggestionProcessor.buildResult(buildResultParams);
+  }
+
+  private _buildSpanContext({
+    allLabeledSpans,
+    nearbySpans,
+    highlightedText,
+    highlightedCategory,
+    phraseRole,
+  }: {
+    allLabeledSpans: LabeledSpan[];
+    nearbySpans: NearbySpan[];
+    highlightedText: string;
+    highlightedCategory: string | null;
+    phraseRole: string | null;
+  }): {
+    spanAnchors: string;
+    nearbySpanHints: string;
+    spanFingerprint: string | null;
+    lockedSpanCategories: string[];
+    guidanceSpans: Array<{ category?: string; text?: string }>;
+  } {
+    const normalizedHighlight = highlightedText.trim().toLowerCase();
+    const highlightParent =
+      getParentCategory(highlightedCategory) ||
+      getParentCategory(phraseRole) ||
+      null;
+
+    const guidanceSpans = (allLabeledSpans || [])
+      .map((span) => ({
+        category: span.category || span.role,
+        text: span.text,
+      }))
+      .filter((span) => span.text && span.text.trim());
+
+    const anchorCandidates = (allLabeledSpans || [])
+      .map((span) => ({
+        text: (span.text || '').replace(/\s+/g, ' ').trim(),
+        category: span.category || span.role || 'unknown',
+        confidence: typeof span.confidence === 'number' ? span.confidence : 0,
+      }))
+      .filter((span) => span.text && span.text.toLowerCase() !== normalizedHighlight);
+
+    const anchorByCategory = new Map<string, { text: string; confidence: number }>();
+    for (const span of anchorCandidates) {
+      const parent = getParentCategory(span.category) || span.category;
+      if (!parent) continue;
+      if (highlightParent && parent === highlightParent) continue;
+      const existing = anchorByCategory.get(parent);
+      if (!existing || span.confidence > existing.confidence) {
+        anchorByCategory.set(parent, { text: span.text, confidence: span.confidence });
+      }
+    }
+
+    const anchorLines = Array.from(anchorByCategory.entries())
+      .sort(([, a], [, b]) => b.confidence - a.confidence)
+      .slice(0, 4)
+      .map(([category, span]) => `- ${category}: "${span.text.replace(/"/g, "'")}"`);
+
+    const nearbyCandidates = (nearbySpans || [])
+      .map((span) => ({
+        text: (span.text || '').replace(/\s+/g, ' ').trim(),
+        category: span.category || span.role || 'unknown',
+        distance: typeof span.distance === 'number' ? span.distance : Number.MAX_SAFE_INTEGER,
+      }))
+      .filter((span) => span.text && span.text.toLowerCase() !== normalizedHighlight)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 4);
+
+    const nearbyLines = nearbyCandidates.map(
+      (span) => `- ${getParentCategory(span.category) || span.category}: "${span.text.replace(/"/g, "'")}"`
+    );
+
+    const lockedSpanCategories = Array.from(
+      new Set(
+        nearbyCandidates
+          .map((span) => getParentCategory(span.category) || span.category)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+
+    const fingerprintSeed = [...anchorLines, ...nearbyLines]
+      .map((line) => line.replace(/^-\s*/, ''))
+      .join('|');
+    const spanFingerprint = fingerprintSeed
+      ? hashString(fingerprintSeed).toString(36)
+      : null;
+
+    return {
+      spanAnchors: anchorLines.join('\n'),
+      nearbySpanHints: nearbyLines.join('\n'),
+      spanFingerprint,
+      lockedSpanCategories,
+      guidanceSpans,
+    };
   }
 
   private _countSuggestions(suggestions: EnhancementResult['suggestions'] | undefined): number {
