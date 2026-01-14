@@ -233,7 +233,7 @@ export class OpenAICompatibleAdapter {
         throw apiError;
       }
 
-      const data: OpenAIResponseData = await response.json();
+      const data = (await response.json()) as OpenAIResponseData;
       return this.responseParser.parseResponse(data, options);
     } catch (error) {
       clearTimeout(timeoutId);

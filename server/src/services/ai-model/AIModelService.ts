@@ -136,8 +136,8 @@ export class AIModelService {
       params,
       config,
       capabilities,
-      responseFormat,
       jsonMode,
+      ...(responseFormat ? { responseFormat } : {}),
     });
 
     try {

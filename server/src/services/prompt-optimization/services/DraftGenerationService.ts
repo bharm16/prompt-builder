@@ -31,13 +31,12 @@ export class DraftGenerationService {
       hasShotPlan: !!shotPlan,
     });
 
-    const canStream =
-      !!onChunk &&
-      typeof this.ai.stream === 'function' &&
-      (this.ai.supportsStreaming?.('optimize_draft') ?? true);
-
     let draft = '';
-    if (canStream) {
+    if (
+      onChunk &&
+      this.ai.stream &&
+      (this.ai.supportsStreaming?.('optimize_draft') ?? true)
+    ) {
       draft = await this.ai.stream('optimize_draft', {
         systemPrompt: draftSystemPrompt,
         userMessage: prompt,

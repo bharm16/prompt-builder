@@ -44,10 +44,8 @@ function resolveWanSize(aspectRatio: string, rawSize?: string): string {
   }
 
   const normalizedAspectRatio = aspectRatio.trim();
-  return (
-    WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ||
-    WAN_ASPECT_RATIO_SIZE_MAP['16:9']
-  );
+  const defaultSize = WAN_ASPECT_RATIO_SIZE_MAP['16:9'] ?? '1280*720';
+  return WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ?? defaultSize;
 }
 
 export function buildReplicateInput(

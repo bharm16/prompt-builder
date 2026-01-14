@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 
-import { LumaStrategy } from '@services/video-prompt-analysis/strategies';
+import { LumaStrategy } from '@services/video-prompt-analysis/strategies/LumaStrategy';
 import type { PromptContext } from '@services/video-prompt-analysis/strategies';
 
 describe('Luma Normalization Property Tests', () => {

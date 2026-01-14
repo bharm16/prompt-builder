@@ -34,5 +34,5 @@ export function buildResponseFormat(
     jsonMode = params.jsonMode || false;
   }
 
-  return { responseFormat, jsonMode };
+  return responseFormat ? { responseFormat, jsonMode } : { jsonMode };
 }

@@ -65,11 +65,15 @@ function tryParseJsonStructure(text: string): ParsedInputSections | null {
             : '';
       if (narrative) {
         const technical = isRecord(parsed.technical) ? coerceTechnicalRecord(parsed.technical) : undefined;
-        return {
-          narrative,
-          technical,
-          alternatives: Array.isArray(parsed.alternatives) ? parsed.alternatives : undefined,
-        };
+        const alternatives = Array.isArray(parsed.alternatives) ? parsed.alternatives : undefined;
+        const result: ParsedInputSections = { narrative };
+        if (technical) {
+          result.technical = technical;
+        }
+        if (alternatives) {
+          result.alternatives = alternatives;
+        }
+        return result;
       }
     }
   } catch {

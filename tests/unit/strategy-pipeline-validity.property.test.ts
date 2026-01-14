@@ -24,10 +24,13 @@ import {
   type TransformResult,
   type AugmentResult,
   type VideoPromptIR,
-} from '../../server/src/services/video-prompt-analysis/strategies';
+  type RewriteConstraints,
+} from '@services/video-prompt-analysis/strategies';
+import { VideoPromptAnalyzer } from '@services/video-prompt-analysis/services/analysis/VideoPromptAnalyzer';
+import { VideoPromptLLMRewriter } from '@services/video-prompt-analysis/services/rewriter/VideoPromptLLMRewriter';
 
-class StubAnalyzer {
-  async analyze(text: string): Promise<VideoPromptIR> {
+class StubAnalyzer extends VideoPromptAnalyzer {
+  override async analyze(text: string): Promise<VideoPromptIR> {
     return {
       subjects: [],
       actions: [],
@@ -41,8 +44,12 @@ class StubAnalyzer {
   }
 }
 
-class StubRewriter {
-  async rewrite(ir: VideoPromptIR): Promise<string> {
+class StubRewriter extends VideoPromptLLMRewriter {
+  override async rewrite(
+    ir: VideoPromptIR,
+    _modelId: string,
+    _constraints: RewriteConstraints = {}
+  ): Promise<string | Record<string, unknown>> {
     return ir.raw;
   }
 }

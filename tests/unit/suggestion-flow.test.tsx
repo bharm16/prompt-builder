@@ -7,8 +7,9 @@ import { useTextSelection } from '@features/prompt-optimizer/PromptCanvas/hooks/
 import { fetchEnhancementSuggestions } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
 import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
 import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
+import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
 import type { Toast } from '@hooks/types';
-import { createCanonicalText } from '../../client/src/utils/canonicalText';
+import { createCanonicalText } from '@/utils/canonicalText';
 
 vi.mock('@features/prompt-optimizer/api/enhancementSuggestionsApi', () => ({
   fetchEnhancementSuggestions: vi.fn().mockResolvedValue({
@@ -49,6 +50,39 @@ const spanContext = [
   },
 ];
 
+const createPromptOptimizer = (prompt: string): PromptOptimizer => ({
+  inputPrompt: prompt,
+  setInputPrompt: vi.fn(),
+  isProcessing: false,
+  optimizedPrompt: prompt,
+  setOptimizedPrompt: vi.fn(),
+  displayedPrompt: prompt,
+  setDisplayedPrompt: vi.fn(),
+  genericOptimizedPrompt: null,
+  previewPrompt: null,
+  setPreviewPrompt: vi.fn(),
+  previewAspectRatio: null,
+  setPreviewAspectRatio: vi.fn(),
+  qualityScore: null,
+  skipAnimation: false,
+  setSkipAnimation: vi.fn(),
+  improvementContext: null,
+  setImprovementContext: vi.fn(),
+  draftPrompt: '',
+  isDraftReady: false,
+  isRefining: false,
+  draftSpans: null,
+  refinedSpans: null,
+  lockedSpans: [],
+  optimize: vi.fn().mockResolvedValue(null),
+  compile: vi.fn().mockResolvedValue(null),
+  resetPrompt: vi.fn(),
+  setLockedSpans: vi.fn(),
+  addLockedSpan: vi.fn(),
+  removeLockedSpan: vi.fn(),
+  clearLockedSpans: vi.fn(),
+});
+
 function SuggestionFlowHarness(): React.ReactElement {
   const editorRef = useRef<HTMLDivElement>(null);
   const [suggestionsData, setSuggestionsData] = useState<SuggestionsData | null>(null);
@@ -64,12 +98,7 @@ function SuggestionFlowHarness(): React.ReactElement {
   );
 
   const promptOptimizer = useMemo(
-    () => ({
-      displayedPrompt: promptText,
-      inputPrompt: promptText,
-      setDisplayedPrompt: vi.fn(),
-      setOptimizedPrompt: vi.fn(),
-    }),
+    () => createPromptOptimizer(promptText),
     []
   );
 
@@ -202,12 +231,7 @@ describe('useSuggestionFetch integration', () => {
     );
 
     const promptOptimizer = useMemo(
-      () => ({
-        displayedPrompt: promptText,
-        inputPrompt: promptText,
-        setDisplayedPrompt: vi.fn(),
-        setOptimizedPrompt: vi.fn(),
-      }),
+      () => createPromptOptimizer(promptText),
       []
     );
 
@@ -326,12 +350,7 @@ describe('useSuggestionFetch integration', () => {
         error: vi.fn(),
       }) as Toast, []);
 
-      const promptOptimizer = useMemo(() => ({
-        displayedPrompt: promptText,
-        inputPrompt: promptText,
-        setDisplayedPrompt: vi.fn(),
-        setOptimizedPrompt: vi.fn(),
-      }), []);
+      const promptOptimizer = useMemo(() => createPromptOptimizer(promptText), []);
 
       const { fetchEnhancementSuggestions: triggerFetch } = useSuggestionFetch({
         promptOptimizer,

@@ -579,13 +579,14 @@ export class PromptOptimizationService {
       throw new Error('Video prompt service unavailable');
     }
 
-    let resolvedTargetModel = targetModel?.trim();
+    let resolvedTargetModel = targetModel.trim();
     if (!resolvedTargetModel) {
       throw new Error('Target model is required for compilation');
     }
 
-    if (VideoPromptService.MODEL_ID_MAP[resolvedTargetModel]) {
-      resolvedTargetModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
+    const mappedModel = VideoPromptService.MODEL_ID_MAP[resolvedTargetModel];
+    if (mappedModel) {
+      resolvedTargetModel = mappedModel;
     }
 
     this.log.info('Compiling prompt for target model', {

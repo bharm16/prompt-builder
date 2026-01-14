@@ -2,7 +2,7 @@
 
 **Generated:** 2026-01-14  
 **Method:** Static import analysis + test guideline audit + observed test failures  
-**Coverage Tool:** Vitest v8 (attempted; artifacts blocked by .gitignore)
+**Coverage Tool:** Vitest v8 (configured; no recent coverage artifacts found)
 
 ---
 
@@ -13,98 +13,19 @@ This report documents:
 2. **Tests that violate TypeScript testing guidelines** (definitive violations)
 3. **Test failures observed during coverage run** (definitive)
 
-**Note:** Runtime coverage percentages could not be extracted because coverage artifacts are ignored by `.gitignore` and `.cursorignore`. This report uses static analysis (import-based) to identify untested files, which is a reliable approximation.
+**Note:** Runtime coverage percentages were not extracted because no recent `coverage/` artifacts were found. `.gitignore` and `.cursorignore` do not prevent coverage generation; they only keep artifacts out of git and editor context.
 
 ---
 
 ## 1. Test Guideline Violations (Definitive)
 
-These tests violate patterns defined in [`TEST_PATTERNS.md`](./TEST_PATTERNS.md):
+No current violations found after updates on 2026-01-14.
 
-### 1.1 Testing a Copy Instead of Production Code
-
-**File:** `tests/unit/enhancement-suggestions-api.test.ts`
-
-**Issue:** Contains an inline reimplementation of `fetchEnhancementSuggestions` instead of importing the real function.
-
-**Evidence:**
-```typescript
-/**
- * Inline implementation of fetchEnhancementSuggestions for testing
- * This avoids import resolution issues with path aliases
- */
-async function fetchEnhancementSuggestions({...}) {
-  // ... inline implementation
-}
-```
-
-**Impact:** 
-- The real `client/src/features/prompt-optimizer/api/enhancementSuggestionsApi.ts` is **not actually tested**
-- Tests won't fail when production code breaks
-- Creates false confidence
-
-**Fix:** Import the real function and fix path alias resolution in test config.
-
----
-
-### 1.2 Type-Safety Loss (`as unknown as`)
-
-**File:** `tests/unit/veo-json-schema.property.test.ts`
-
-**Issue:** Repeated use of `as unknown as VeoPromptSchema` (11 instances), violating the "type-safe mocking" principle.
-
-**Evidence:**
-```typescript
-const schema = result.prompt as unknown as VeoPromptSchema;
-// Repeated 11 times throughout the test file
-```
-
-**Impact:** Loses type safety - TypeScript can't catch type mismatches.
-
-**Fix:** Use proper type guards or Zod schema validation instead of unsafe casts.
-
----
-
-**File:** `tests/unit/span-labeling-legacy-migration.test.ts`
-
-**Issue:** Uses `as unknown as boolean` and `as unknown as number`.
-
-**Evidence:**
-```typescript
-const policy = sanitizePolicy({ nonTechnicalWordLimit: -1, allowOverlap: 'yes' as unknown as boolean });
-expect(clamp01('x' as unknown as number)).toBe(DEFAULT_CONFIDENCE);
-```
-
-**Fix:** Use proper type guards or test with correct types.
-
----
-
-### 1.3 Use of `any` in Tests
-
-**File:** `tests/unit/cross-model-translation-isolation.property.test.ts`
-
-**Issue:** Uses `as any` in a filter predicate.
-
-**Evidence:**
-```typescript
-.filter((s) => !EXPECTED_MODEL_IDS.includes(s as any))
-```
-
-**Impact:** Violates the "no `any`" rule from `STYLE_RULES.md`.
-
-**Fix:** Use proper type narrowing or a type guard.
-
----
-
-### 1.4 Deep Relative Imports in Tests
-
-**Files:**
-- `tests/unit/strategy-pipeline-validity.property.test.ts`: `../../server/src/services/video-prompt-analysis/strategies`
-- `tests/unit/suggestion-flow.test.tsx`: `../../client/src/utils/canonicalText`
-
-**Issue:** Violates path alias guidelines from [`PATH_ALIASES.md`](./PATH_ALIASES.md).
-
-**Fix:** Use path aliases (`@services/...`, `@utils/...`) instead of relative imports.
+Resolved:
+- `tests/unit/enhancement-suggestions-api.test.ts` now imports the production `fetchEnhancementSuggestions`
+- `tests/unit/veo-json-schema.property.test.ts` uses a schema guard helper instead of unsafe casts
+- `tests/unit/span-labeling-legacy-migration.test.ts` and `tests/unit/cross-model-translation-isolation.property.test.ts` avoid `as unknown as` / `as any`
+- `tests/unit/strategy-pipeline-validity.property.test.ts` and `tests/unit/suggestion-flow.test.tsx` use path aliases
 
 ---
 
@@ -120,12 +41,9 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `utils/SuggestionRequestManager.ts` ✅
 - `PromptCanvas/hooks/useTextSelection.ts` ✅
 - `PromptOptimizerContainer/hooks/useSuggestionFetch.ts` ✅
-- `api/enhancementSuggestionsApi.ts` ⚠️ (tested via inline copy, not real implementation)
+- `api/enhancementSuggestionsApi.ts` ✅
 
 **Untested (high priority):**
-
-#### API Layer
-- `api/enhancementSuggestionsApi.ts` (real implementation not tested)
 
 #### Core Hooks
 - `PromptOptimizerContainer/hooks/usePromptOptimization.ts`
@@ -243,17 +161,17 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 
 **Currently Tested:**
 - Strategies: `KlingStrategy.ts`, `LumaStrategy.ts`, `RunwayStrategy.ts`, `SoraStrategy.ts`, `VeoStrategy.ts` ✅
+- `services/analysis/VideoPromptAnalyzer.ts` ⚠️ (imported via stub subclass; core logic not exercised)
 - `services/detection/ModelDetectionService.ts` ✅
 - `utils/SafetySanitizer.ts` ✅
 - `utils/TechStripper.ts` ✅
 - `services/MultimodalAssetManager.ts` ✅
 - `VideoPromptService.ts` ✅
-- `services/rewriter/VideoPromptLLMRewriter.ts` ✅
+- `services/rewriter/VideoPromptLLMRewriter.ts` ⚠️ (imported via stub subclass; core logic not exercised)
 
 **Untested (high priority):**
 
 #### Analysis Services
-- `services/analysis/VideoPromptAnalyzer.ts`
 - `services/analysis/IrEnricher.ts`
 - `services/analysis/HeuristicIrExtractor.ts`
 - `services/analysis/SpanToIrMapper.ts`
@@ -381,39 +299,19 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 
 ---
 
-## 3. Test Failures Observed During Coverage Run
+## 3. Test Failures Observed During Verification
 
-These failures were observed during the actual test run (definitive):
+No current failures observed in the checks run on 2026-01-14.
 
 ### 3.1 TypeScript Compilation Errors
 
-**Test:** `tests/unit/typescript-config.test.ts`
-
-**Failures:**
-- **Server code:** 23 TypeScript errors
-- **Client code:** 8 TypeScript errors (reduced from 5 in earlier run)
-- **Root project:** 35 TypeScript errors
-
-**Sample Errors:**
-- `client/src/features/prompt-optimizer/components/VersionsPanel.tsx`: Type mismatch with `HighlightSnapshot | null`
-- `client/src/features/prompt-optimizer/context/hooks/useDraftHistorySync.ts`: `updateEntryPersisted` is `unknown`
-- `client/src/features/span-highlighting/hooks/useSpanLabeling.ts`: Type mismatch; `exactOptionalPropertyTypes` issue
-- `client/src/pages/AccountPage.tsx`: `string | undefined` not assignable to `string`
-- `server/src/llm/span-labeling/services/RobustLlmClient.ts`: `exactOptionalPropertyTypes` mismatch
-- `server/src/routes/optimize/handlers/optimize.ts`: `unknown` not assignable to `CapabilityValues | null`
-- `server/src/routes/payment/auth.ts`: Express request typing issue
-
-**Impact:** These files cannot be properly type-checked, which may hide bugs.
-
----
+- `npx tsc --project server/tsconfig.json --noEmit`: pass
+- `npx tsc --project client/tsconfig.json --noEmit`: pass
+- `npx tsc --noEmit`: pass
 
 ### 3.2 Property Test Failures
 
-**Test:** `tests/unit/sora-safety-filtering.property.test.ts`
-
-**Failures:** 6 out of 10 property tests failed
-
-**Impact:** SoraStrategy's celebrity name stripping may not be working correctly.
+- `tests/unit/sora-safety-filtering.property.test.ts`: pass (10/10)
 
 ---
 
@@ -421,36 +319,28 @@ These failures were observed during the actual test run (definitive):
 
 ### Immediate Actions
 
-1. **Fix test guideline violations:**
-   - Replace inline `fetchEnhancementSuggestions` with real import
-   - Replace `as unknown as` casts with type guards or Zod validation
-   - Remove `as any` usage
-   - Fix deep relative imports in tests
-
-2. **Fix TypeScript compilation errors:**
-   - Address the 35 compilation errors blocking proper type checking
-   - Fix `exactOptionalPropertyTypes` mismatches
-   - Fix Express request typing issues
-
-3. **Add unit tests for high-priority untested files:**
+1. **Add unit tests for high-priority untested files:**
    - Start with core hooks (`usePromptOptimization`, `useSuggestionApply`, etc.)
    - Add tests for API layers (`spanLabelingApi.ts`, `customSuggestionsApi.ts`)
    - Add tests for analysis services (`VideoPromptAnalyzer.ts`, `HeuristicIrExtractor.ts`)
 
+2. **Decide on coverage for `VideoPromptLLMRewriter.ts`:**
+   - Add unit coverage if it should be directly tested
+   - Otherwise keep it listed as untested (current state)
+
+3. **Enable runtime coverage reporting:**
+   - Generate coverage artifacts locally
+   - Or configure coverage to write to a non-ignored directory
+
 ### Long-Term Actions
 
-1. **Enable runtime coverage reporting:**
-   - Remove `coverage/` from `.cursorignore` (keep in `.gitignore` for git)
-   - Or configure coverage to write to a non-ignored directory
-   - Set up CI to generate and track coverage reports
-
-2. **Fix property test failures:**
-   - Investigate why SoraStrategy property tests are failing
-   - Ensure celebrity name stripping works correctly
-
-3. **Add integration tests for routes:**
+1. **Add integration tests for routes:**
    - Most route handlers are not unit-tested (likely by design)
    - Ensure they are covered by integration/e2e tests
+
+2. **Set up CI coverage tracking:**
+   - Generate coverage reports in CI
+   - Track trends over time
 
 ---
 
@@ -462,9 +352,9 @@ According to `config/test/vitest.config.js`, the project aims for:
 - **Branches:** 75%
 - **Statements:** 85%
 
-**Note:** Actual coverage percentages could not be calculated due to coverage artifacts being ignored. This report uses static analysis as a proxy.
+**Note:** Actual coverage percentages were not calculated because no recent `coverage/` artifacts were found. This report uses static analysis as a proxy.
 
 ---
 
 *Last Updated: 2026-01-14*  
-*Report Method: Static import analysis + test guideline audit + observed test failures*
+*Report Method: Static import analysis + test guideline audit + tsc checks + targeted test run*

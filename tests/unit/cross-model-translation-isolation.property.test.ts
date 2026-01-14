@@ -27,6 +27,10 @@ const EXPECTED_MODEL_IDS = [
   'sora-2',
   'veo-4',
 ] as const;
+type ExpectedModelId = typeof EXPECTED_MODEL_IDS[number];
+
+const isExpectedModelId = (value: string): value is ExpectedModelId =>
+  (EXPECTED_MODEL_IDS as readonly string[]).includes(value);
 
 describe('Cross-Model Translation Isolation Property Tests', () => {
   let service: VideoPromptService;
@@ -267,7 +271,7 @@ describe('Cross-Model Translation Isolation Property Tests', () => {
         fc.property(
           fc
             .string({ minLength: 1, maxLength: 30 })
-            .filter((s) => !EXPECTED_MODEL_IDS.includes(s as any)),
+            .filter((s) => !isExpectedModelId(s)),
           (unknownModelId) => {
             expect(service.isModelSupported(unknownModelId)).toBe(false);
           }

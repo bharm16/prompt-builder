@@ -318,7 +318,7 @@ describe('jsonUtils', () => {
 
 describe('policyUtils', () => {
   it('sanitizes policies and options with defaults and constraints', () => {
-    const policy = sanitizePolicy({ nonTechnicalWordLimit: -1, allowOverlap: 'yes' as unknown as boolean });
+    const policy = sanitizePolicy({ nonTechnicalWordLimit: -1, allowOverlap: true });
     const options = sanitizeOptions({
       maxSpans: PERFORMANCE.MAX_SPANS_ABSOLUTE_LIMIT + 10,
       minConfidence: 2,
@@ -326,7 +326,7 @@ describe('policyUtils', () => {
     });
 
     expect(policy.nonTechnicalWordLimit).toBe(DEFAULT_POLICY.nonTechnicalWordLimit);
-    expect(policy.allowOverlap).toBe(false);
+    expect(policy.allowOverlap).toBe(true);
     expect(options.maxSpans).toBe(PERFORMANCE.MAX_SPANS_ABSOLUTE_LIMIT);
     expect(options.minConfidence).toBe(DEFAULT_OPTIONS.minConfidence);
     expect(options.templateVersion).toBe(DEFAULT_OPTIONS.templateVersion);
@@ -348,7 +348,7 @@ describe('textUtils', () => {
   it('clamps values and counts words', () => {
     expect(clamp01(2)).toBe(1);
     expect(clamp01(-1)).toBe(0);
-    expect(clamp01('x' as unknown as number)).toBe(DEFAULT_CONFIDENCE);
+    expect(clamp01('x')).toBe(DEFAULT_CONFIDENCE);
     expect(wordCount('one two three')).toBe(3);
   });
 

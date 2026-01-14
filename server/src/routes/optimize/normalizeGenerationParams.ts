@@ -16,7 +16,7 @@ interface NormalizeGenerationParamsInput {
 }
 
 interface NormalizeGenerationParamsResult {
-  normalizedGenerationParams: unknown;
+  normalizedGenerationParams: CapabilityValues | null;
   error?: {
     status: number;
     error: string;
@@ -32,7 +32,7 @@ export const normalizeGenerationParams = ({
   userId,
 }: NormalizeGenerationParamsInput): NormalizeGenerationParamsResult => {
   if (!generationParams || typeof generationParams !== 'object') {
-    return { normalizedGenerationParams: generationParams };
+    return { normalizedGenerationParams: null };
   }
 
   const resolvedModel = resolveModelId(targetModel);
@@ -42,7 +42,7 @@ export const normalizeGenerationParams = ({
   const schema = getCapabilities(provider, model);
   if (!schema) {
     return {
-      normalizedGenerationParams: generationParams,
+      normalizedGenerationParams: null,
       error: {
         status: 400,
         error: 'Capabilities not found',

@@ -29,6 +29,17 @@ const REQUIRED_STABILITY_TRIGGERS = [
   'consistent geometry',
 ] as const;
 
+const CINEMATOGRAPHIC_TRIGGERS = [
+  'chromatic aberration',
+  'anamorphic lens flare',
+  'shallow depth of field',
+  'film grain',
+  'cinematic lighting',
+  'volumetric lighting',
+  'lens distortion',
+  'bokeh',
+] as const;
+
 
 /**
  * Execute the full pipeline for a strategy

@@ -230,7 +230,7 @@ export class RunwayStrategy extends BaseStrategy {
   /**
    * Provide mandatory and suggested constraints for LLM rewrite.
    */
-  protected getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
     return {
       mandatory: [...STABILITY_TRIGGERS],
       suggested: this.selectCinematographicTriggers(ir.raw || ''),

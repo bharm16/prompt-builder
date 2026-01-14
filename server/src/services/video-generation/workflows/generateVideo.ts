@@ -1,4 +1,4 @@
-import { AppError } from '@types/common';
+import { AppError } from '@server/types/common';
 import {
   isKlingModel,
   isLumaModel,
@@ -19,6 +19,7 @@ import { getModelAvailability } from '../availability';
 import type { ProviderClients } from '../providers/ProviderClients';
 
 type LogSink = {
+  debug: (message: string, meta?: Record<string, unknown>) => void;
   info: (message: string, meta?: Record<string, unknown>) => void;
   warn: (message: string, meta?: Record<string, unknown>) => void;
   error: (message: string, error?: Error) => void;

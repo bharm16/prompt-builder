@@ -247,7 +247,7 @@ export class LumaStrategy extends BaseStrategy {
   /**
    * Provide mandatory and suggested constraints for LLM rewrite.
    */
-  protected getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
     const motionTrigger = this.selectMotionTrigger(ir.raw || '');
     return {
       mandatory: [...HDR_TRIGGERS],

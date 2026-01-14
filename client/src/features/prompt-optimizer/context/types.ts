@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { CapabilityValues } from '@shared/capabilities';
+import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
 import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData, SpansData } from '../PromptCanvas/types';
 import type { LockedSpan, OptimizationOptions } from '../types';
 
@@ -100,6 +101,7 @@ export interface PromptHistory {
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
   updateEntryHighlight: (uuid: string, highlightCache: unknown) => void;
   updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+  updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
   updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
   [key: string]: unknown;
 }

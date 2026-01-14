@@ -5,6 +5,7 @@ export interface SpanLabel {
   confidence: number;
   text?: string;
   role?: string;
+  [key: string]: unknown;
 }
 
 export interface LabelSpansPayload {

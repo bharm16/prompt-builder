@@ -5,6 +5,7 @@ import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
 import type { PromptVersionEdit } from '@hooks/types';
+import type { HighlightSnapshot } from '../PromptCanvas/types';
 
 type VersionEntry = {
   id?: string;
@@ -27,6 +28,11 @@ type VersionEntry = {
   preview?: unknown;
   video?: unknown;
 };
+
+const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
+  !!value &&
+  typeof value === 'object' &&
+  Array.isArray((value as HighlightSnapshot).spans);
 
 const resolveTimestamp = (value: VersionEntry['timestamp']): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -137,7 +143,7 @@ export const VersionsPanel = (): React.ReactElement => {
       promptOptimizer.setOptimizedPrompt(promptText);
       setDisplayedPromptSilently(promptText);
 
-      const highlights = version.highlights ?? null;
+      const highlights = isHighlightSnapshot(version.highlights) ? version.highlights : null;
       applyInitialHighlightSnapshot(highlights, { bumpVersion: true, markPersisted: false });
       resetEditStacks();
       resetVersionEdits();

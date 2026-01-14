@@ -18,6 +18,12 @@ import { VeoStrategy, type VeoPromptSchema } from '@services/video-prompt-analys
 
 describe('VeoStrategy Property Tests', () => {
   const strategy = new VeoStrategy();
+  const getSchema = (value: unknown): VeoPromptSchema => {
+    if (!strategy.isValidSchema(value)) {
+      throw new Error('Expected VeoPromptSchema');
+    }
+    return value;
+  };
 
   // Sample prompts for testing
   const samplePrompts = [
@@ -112,7 +118,7 @@ describe('VeoStrategy Property Tests', () => {
             // Result should be an object (JSON schema)
             expect(typeof result.prompt).toBe('object');
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Validate required fields exist
             expect(schema).toHaveProperty('subject');
@@ -150,7 +156,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(prompt);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Camera type should be detected
             expect(schema.camera.type).toBeDefined();
@@ -172,7 +178,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(prompt);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Camera movement should be detected
             expect(schema.camera.movement).toBeDefined();
@@ -194,7 +200,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(prompt);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Lighting should be detected
             expect(schema.environment.lighting).toBeDefined();
@@ -216,7 +222,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(prompt);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Weather should be detected
             expect(schema.environment.weather).toBeDefined();
@@ -277,7 +283,7 @@ describe('VeoStrategy Property Tests', () => {
             const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
-            const schema = augmentResult.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(augmentResult.prompt);
 
             // style_preset should be injected
             const stylePreset = schema.style_preset;
@@ -304,7 +310,7 @@ describe('VeoStrategy Property Tests', () => {
             const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
-            const schema = augmentResult.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(augmentResult.prompt);
 
             // style_preset should be detected
             expect(schema.style_preset).toBeDefined();
@@ -323,7 +329,7 @@ describe('VeoStrategy Property Tests', () => {
             const transformResult = await strategy.transform(normalized);
             const augmentResult = strategy.augment(transformResult);
 
-            const schema = augmentResult.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(augmentResult.prompt);
 
             // All required fields should still be present after augmentation
             expect(schema.subject).toBeDefined();
@@ -358,7 +364,7 @@ describe('VeoStrategy Property Tests', () => {
             // Should still produce valid schema structure
             expect(typeof result.prompt).toBe('object');
             
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
             expect(schema.subject).toBeDefined();
             expect(schema.camera).toBeDefined();
             expect(schema.environment).toBeDefined();
@@ -439,7 +445,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(editInstruction);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Should be in edit mode
             expect(schema.mode).toBe('edit');
@@ -459,7 +465,7 @@ describe('VeoStrategy Property Tests', () => {
             const normalized = strategy.normalize(prompt);
             const result = await strategy.transform(normalized);
 
-            const schema = result.prompt as unknown as VeoPromptSchema;
+            const schema = getSchema(result.prompt);
 
             // Should be in generate mode
             expect(schema.mode).toBe('generate');

@@ -9,7 +9,8 @@ import { AuthShell } from './auth/AuthShell';
 function formatUserLabel(user: User): { title: string; subtitle: string } {
   const displayName = typeof user.displayName === 'string' ? user.displayName.trim() : '';
   const email = typeof user.email === 'string' ? user.email.trim() : '';
-  const title = displayName || (email ? email.split('@')[0] : 'Account');
+  const emailPrefix = email.split('@')[0] ?? '';
+  const title = displayName || emailPrefix || 'Account';
   return {
     title,
     subtitle: email ? email : 'Signed in',

@@ -18,6 +18,7 @@ import { PromptInputLayout } from '../layouts/PromptInputLayout';
 import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
+import { PromptSidebar } from '../components/PromptSidebar';
 import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
@@ -139,7 +140,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
 
   // Load prompt from URL parameter
-  usePromptLoader({
+  const { isLoading } = usePromptLoader({
     uuid,
     currentPromptUuid,
     navigate,
@@ -368,6 +369,9 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
   // Render
   // ============================================================================
+  const isPromptRoute = location.pathname.startsWith('/prompt/');
+  const shouldShowLoading = isLoading || (isPromptRoute && !showResults);
+
   return (
     <div
       className="prompt-optimizer-workspace"
@@ -408,6 +412,18 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           suggestionsData={suggestionsData}
           displayedPrompt={promptOptimizer.displayedPrompt}
         />
+      ) : shouldShowLoading ? (
+        <div className="prompt-input-layout">
+          <PromptSidebar user={user} />
+          <main className="prompt-input-layout__main" id="main-content">
+            <div className="prompt-input-layout__content">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
+                <p className="text-neutral-500 text-sm">Loading prompt...</p>
+              </div>
+            </div>
+          </main>
+        </div>
       ) : (
         <PromptInputLayout
           user={user}

@@ -130,8 +130,8 @@ export class RobustLlmClient implements ILlmClient {
         maxTokens: estimatedMaxTokens,
         providerOptions,
         providerName,
-        modelName: configuredModelName,
-        clientName: process.env.SPAN_PROVIDER || undefined,
+        ...(configuredModelName ? { modelName: configuredModelName } : {}),
+        ...(process.env.SPAN_PROVIDER ? { clientName: process.env.SPAN_PROVIDER } : {}),
         ...(spanSchema && { schema: spanSchema }),
       });
     } else {

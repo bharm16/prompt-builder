@@ -13,6 +13,7 @@ export interface NlpSpan {
   start: number;
   end: number;
   source?: 'aho-corasick' | 'gliner' | 'pattern' | 'heuristic' | 'compromise' | 'lighting';
+  [key: string]: unknown;
 }
 
 /**

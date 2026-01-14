@@ -74,6 +74,7 @@ const CELEBRITY_REPLACEMENTS: Record<string, string> = {
   'oprah winfrey': 'a woman with dark hair',
   'barack obama': 'a man with short dark hair',
   'michelle obama': 'a woman with dark hair',
+  'lebron james': 'a professional basketball player',
 };
 
 /**

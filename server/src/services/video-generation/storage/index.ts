@@ -123,15 +123,17 @@ function formatStorageError(error: unknown): string {
   return String(error);
 }
 
-async function readStreamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+async function readStreamToBuffer(
+  stream: NodeJS.ReadableStream & AsyncIterable<Buffer | Uint8Array | string>
+): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
     if (Buffer.isBuffer(chunk)) {
       chunks.push(chunk);
-    } else if (chunk instanceof Uint8Array) {
+    } else if (typeof chunk === 'string') {
       chunks.push(Buffer.from(chunk));
     } else {
-      chunks.push(Buffer.from(String(chunk)));
+      chunks.push(Buffer.from(chunk));
     }
   }
   return Buffer.concat(chunks);

@@ -88,12 +88,11 @@ export class VideoStrategy implements OptimizationStrategy {
 
     logger.debug('Provider detected for video optimization', { provider });
 
-    const canStream =
-      !!onChunk &&
-      typeof this.ai.stream === 'function' &&
-      (this.ai.supportsStreaming?.('optimize_standard') ?? true);
-
-    if (canStream) {
+    if (
+      onChunk &&
+      this.ai.stream &&
+      (this.ai.supportsStreaming?.('optimize_standard') ?? true)
+    ) {
       const streamingPrompt = buildStreamingPrompt({
         prompt,
         shotPlan,

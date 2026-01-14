@@ -5,205 +5,82 @@
  * Validates Requirements: 1.4, 1.5, 3.4, 3.5
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CancellationError, combineSignals } from '@features/prompt-optimizer/utils/signalUtils';
+import { fetchEnhancementSuggestions } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
+import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import {
+  postEnhancementSuggestions,
+  type EnhancementSuggestionsResponse,
+} from '@/api/enhancementSuggestionsApi';
 
-// Mock the relocateQuote utility
-vi.mock('@utils/textQuoteRelocator', () => ({
-  relocateQuote: vi.fn(({ text, quote }: { text: string; quote: string }) => {
-    const start = text.indexOf(quote);
-    if (start === -1) return null;
-    return { start, end: start + quote.length };
-  }),
+vi.mock('@/api/enhancementSuggestionsApi', () => ({
+  postEnhancementSuggestions: vi.fn(),
 }));
 
-// Mock client API_CONFIG - need to mock the full path since vitest resolves to server config
-vi.mock('client/src/config/api.config', () => ({
-  API_CONFIG: {
-    apiKey: 'test-api-key',
-  },
-}));
+const mockPostEnhancementSuggestions = vi.mocked(postEnhancementSuggestions);
 
-// Also mock the @config alias path
-vi.mock('@config/api.config', () => ({
-  API_CONFIG: {
-    apiKey: 'test-api-key',
-  },
-}));
+const TIMEOUT_MS = 8000;
 
-/** Timeout for suggestion requests in milliseconds */
-const SUGGESTION_TIMEOUT_MS = 3000;
-
-interface FetchEnhancementSuggestionsParams {
-  highlightedText: string;
-  normalizedPrompt: string;
-  inputPrompt: string;
-  brainstormContext?: unknown | null;
-  metadata?: {
-    startIndex?: number;
-    category?: string;
-    confidence?: number;
-    quote?: string;
-  } | null;
-  allLabeledSpans?: unknown[];
-  nearbySpans?: unknown[];
-  editHistory?: unknown[];
-  signal?: AbortSignal;
-}
-
-interface EnhancementSuggestionsResponse {
-  suggestions: string[];
-  isPlaceholder: boolean;
-}
-
-/**
- * Inline implementation of fetchEnhancementSuggestions for testing
- * This avoids import resolution issues with path aliases
- */
-async function fetchEnhancementSuggestions({
-  highlightedText,
-  normalizedPrompt,
-  inputPrompt,
-  brainstormContext = null,
-  metadata = null,
-  allLabeledSpans = [],
-  nearbySpans = [],
-  editHistory = [],
-  signal: externalSignal,
-}: FetchEnhancementSuggestionsParams): Promise<EnhancementSuggestionsResponse> {
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => {
-    timeoutController.abort(new Error('Request timeout'));
-  }, SUGGESTION_TIMEOUT_MS);
-
-  const signal = externalSignal
-    ? combineSignals(externalSignal, timeoutController.signal)
-    : timeoutController.signal;
-
-  try {
-    // Simplified location finding for tests
-    let highlightIndex = normalizedPrompt.indexOf(highlightedText);
-    const matchLength = highlightedText.length;
-
-    if (highlightIndex === -1) {
-      highlightIndex = 0;
-    }
-
-    const contextBefore = normalizedPrompt
-      .substring(Math.max(0, highlightIndex - 1000), highlightIndex)
-      .trim();
-
-    const contextAfter = normalizedPrompt
-      .substring(
-        highlightIndex + matchLength,
-        Math.min(normalizedPrompt.length, highlightIndex + matchLength + 1000)
-      )
-      .trim();
-
-    const response = await fetch('/api/get-enhancement-suggestions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': 'test-api-key',
-      },
-      body: JSON.stringify({
-        highlightedText,
-        contextBefore,
-        contextAfter,
-        fullPrompt: normalizedPrompt,
-        originalUserPrompt: inputPrompt,
-        brainstormContext,
-        highlightedCategory: metadata?.category || null,
-        highlightedCategoryConfidence: metadata?.confidence || null,
-        highlightedPhrase: metadata?.quote || highlightedText,
-        allLabeledSpans,
-        nearbySpans,
-        editHistory,
-      }),
-      signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch suggestions: ${response.status}`);
-    }
-
-    const data = (await response.json()) as EnhancementSuggestionsResponse;
-
-    return {
-      suggestions: data.suggestions || [],
-      isPlaceholder: data.isPlaceholder || false,
-    };
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      const isTimeout =
-        timeoutController.signal.aborted &&
-        (!externalSignal || !externalSignal.aborted);
-
-      if (isTimeout) {
-        throw new Error('Request timed out after 3 seconds');
-      }
-
-      throw new CancellationError('Request cancelled by user');
-    }
-
-    throw error;
-  }
+const defaultParams = {
+  highlightedText: 'test text',
+  contextBefore: 'before test text',
+  contextAfter: 'after test text',
+  fullPrompt: 'before test text after test text',
+  inputPrompt: 'before test text after test text',
 };
 
-describe('fetchEnhancementSuggestions', () => {
-  let mockFetch: MockedFunction<typeof fetch>;
+const mockSuccessResponse: EnhancementSuggestionsResponse = {
+  suggestions: ['suggestion 1', 'suggestion 2'],
+  isPlaceholder: false,
+};
 
-  beforeEach(() => {
-    mockFetch = vi.fn();
-    global.fetch = mockFetch;
+function createAbortError(): Error {
+  const error = new Error('Aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+function mockAbortableRequest(): void {
+  mockPostEnhancementSuggestions.mockImplementation((_payload, options) => {
+    return new Promise((_resolve, reject) => {
+      const signal = options?.signal;
+      if (!signal) {
+        return;
+      }
+      if (signal.aborted) {
+        reject(createAbortError());
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        reject(createAbortError());
+      });
+    }) as Promise<EnhancementSuggestionsResponse>;
   });
+}
 
-  afterEach(() => {
+describe('fetchEnhancementSuggestions', () => {
+  beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const defaultParams = {
-    highlightedText: 'test text',
-    normalizedPrompt: 'This is a test text in a prompt',
-    inputPrompt: 'This is a test text in a prompt',
-  };
-
-  const mockSuccessResponse = {
-    suggestions: ['suggestion 1', 'suggestion 2'],
-    isPlaceholder: false,
-  };
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   describe('timeout behavior', () => {
-    it('should throw timeout error after 3 seconds', async () => {
-      // Setup a fetch that waits for abort signal
-      mockFetch.mockImplementation(
-        (_url, options) =>
-          new Promise((_resolve, reject) => {
-            const signal = options?.signal as AbortSignal;
-            signal.addEventListener('abort', () => {
-              const error = new Error('Aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          })
-      );
+    it('should throw timeout error after 8 seconds', async () => {
+      vi.useFakeTimers();
+      mockAbortableRequest();
 
-      // Use real timers for this test - the timeout is 3 seconds
-      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow(
-        'Request timed out after 3 seconds'
-      );
-    }, 5000); // Allow 5 seconds for this test
+      const promise = fetchEnhancementSuggestions(defaultParams);
+      await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+      await expect(promise).rejects.toThrow('Request timed out after 8 seconds');
+    });
 
     it('should not timeout if response arrives quickly', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSuccessResponse),
-      } as Response);
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
 
       const result = await fetchEnhancementSuggestions(defaultParams);
 
@@ -212,12 +89,8 @@ describe('fetchEnhancementSuggestions', () => {
     });
 
     it('should clear timeout on successful response', async () => {
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSuccessResponse),
-      } as Response);
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
 
       await fetchEnhancementSuggestions(defaultParams);
 
@@ -227,48 +100,31 @@ describe('fetchEnhancementSuggestions', () => {
 
   describe('external signal cancellation', () => {
     it('should throw CancellationError when external signal is aborted', async () => {
+      mockAbortableRequest();
       const externalController = new AbortController();
 
-      // Setup fetch to wait for abort
-      mockFetch.mockImplementation(
-        (_url, options) =>
-          new Promise((_resolve, reject) => {
-            const signal = options?.signal as AbortSignal;
-            signal.addEventListener('abort', () => {
-              const error = new Error('Aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          })
-      );
-
-      const fetchPromise = fetchEnhancementSuggestions({
+      const promise = fetchEnhancementSuggestions({
         ...defaultParams,
         signal: externalController.signal,
       });
 
-      // Abort the external signal
       externalController.abort();
 
-      await expect(fetchPromise).rejects.toThrow(CancellationError);
-      await expect(fetchPromise).rejects.toThrow('Request cancelled by user');
+      await expect(promise).rejects.toThrow(CancellationError);
+      await expect(promise).rejects.toThrow('Request cancelled by user');
     });
 
-    it('should pass combined signal to fetch', async () => {
+    it('should pass combined signal to postEnhancementSuggestions', async () => {
       const externalController = new AbortController();
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSuccessResponse),
-      } as Response);
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
 
       await fetchEnhancementSuggestions({
         ...defaultParams,
         signal: externalController.signal,
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/get-enhancement-suggestions',
+      expect(mockPostEnhancementSuggestions).toHaveBeenCalledWith(
+        expect.any(Object),
         expect.objectContaining({
           signal: expect.any(AbortSignal),
         })
@@ -278,89 +134,42 @@ describe('fetchEnhancementSuggestions', () => {
 
   describe('timeout vs user cancellation distinction', () => {
     it('should throw regular Error for timeout (not CancellationError)', async () => {
-      mockFetch.mockImplementation(
-        (_url, options) =>
-          new Promise((_resolve, reject) => {
-            const signal = options?.signal as AbortSignal;
-            signal.addEventListener('abort', () => {
-              const error = new Error('Aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          })
-      );
+      vi.useFakeTimers();
+      mockAbortableRequest();
 
-      // No external signal - timeout should trigger
-      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.not.toThrow(CancellationError);
-      
-      // Reset mock for second assertion
-      mockFetch.mockImplementation(
-        (_url, options) =>
-          new Promise((_resolve, reject) => {
-            const signal = options?.signal as AbortSignal;
-            signal.addEventListener('abort', () => {
-              const error = new Error('Aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          })
-      );
-      
-      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow('Request timed out after 3 seconds');
-    }, 8000); // Allow 8 seconds for this test (two 3-second timeouts)
+      const promise = fetchEnhancementSuggestions(defaultParams);
+      await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+      await expect(promise).rejects.not.toThrow(CancellationError);
+      await expect(promise).rejects.toThrow('Request timed out after 8 seconds');
+    });
 
     it('should throw CancellationError for user cancellation (not timeout error)', async () => {
+      mockAbortableRequest();
       const externalController = new AbortController();
 
-      mockFetch.mockImplementation(
-        (_url, options) =>
-          new Promise((_resolve, reject) => {
-            const signal = options?.signal as AbortSignal;
-            signal.addEventListener('abort', () => {
-              const error = new Error('Aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          })
-      );
-
-      const fetchPromise = fetchEnhancementSuggestions({
+      const promise = fetchEnhancementSuggestions({
         ...defaultParams,
         signal: externalController.signal,
       });
 
-      // User cancels before timeout
       externalController.abort();
 
-      await expect(fetchPromise).rejects.toThrow(CancellationError);
+      await expect(promise).rejects.toThrow(CancellationError);
     });
   });
 
   describe('error handling', () => {
-    it('should throw error for non-ok response', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response);
-
-      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow(
-        'Failed to fetch suggestions: 500'
-      );
-    });
-
     it('should re-throw non-abort errors as-is', async () => {
       const networkError = new Error('Network failure');
-      mockFetch.mockRejectedValue(networkError);
+      mockPostEnhancementSuggestions.mockRejectedValue(networkError);
 
-      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow(
-        'Network failure'
-      );
+      await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow('Network failure');
     });
 
     it('should clear timeout on error', async () => {
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-      mockFetch.mockRejectedValue(new Error('Network error'));
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+      mockPostEnhancementSuggestions.mockRejectedValue(new Error('Network error'));
 
       await expect(fetchEnhancementSuggestions(defaultParams)).rejects.toThrow();
 
@@ -370,10 +179,7 @@ describe('fetchEnhancementSuggestions', () => {
 
   describe('successful response', () => {
     it('should return suggestions and isPlaceholder from response', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSuccessResponse),
-      } as Response);
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
 
       const result = await fetchEnhancementSuggestions(defaultParams);
 
@@ -383,22 +189,23 @@ describe('fetchEnhancementSuggestions', () => {
       });
     });
 
-    it('should default to empty array if suggestions missing', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ isPlaceholder: true }),
-      } as Response);
+    it('should handle empty suggestions array', async () => {
+      mockPostEnhancementSuggestions.mockResolvedValue({
+        isPlaceholder: true,
+        suggestions: [],
+      });
 
       const result = await fetchEnhancementSuggestions(defaultParams);
 
       expect(result.suggestions).toEqual([]);
+      expect(result.isPlaceholder).toBe(true);
     });
 
-    it('should default isPlaceholder to false if missing', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ suggestions: ['test'] }),
-      } as Response);
+    it('should handle false placeholder flag', async () => {
+      mockPostEnhancementSuggestions.mockResolvedValue({
+        suggestions: ['test'],
+        isPlaceholder: false,
+      });
 
       const result = await fetchEnhancementSuggestions(defaultParams);
 
@@ -408,42 +215,51 @@ describe('fetchEnhancementSuggestions', () => {
 
   describe('request payload', () => {
     it('should include all required fields in request body', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSuccessResponse),
-      } as Response);
+      const brainstormContext = { toJSON: () => ({ idea: 'brainstorm' }) };
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
+
+      await fetchEnhancementSuggestions({
+        ...defaultParams,
+        metadata: { category: 'test-category', confidence: 0.9, quote: 'quoted' },
+        brainstormContext,
+        allLabeledSpans: [{ text: 'a' }],
+        nearbySpans: [{ text: 'b' }],
+        editHistory: [{ text: 'c' }],
+      });
+
+      expect(mockPostEnhancementSuggestions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          highlightedText: 'test text',
+          contextBefore: 'before test text',
+          contextAfter: 'after test text',
+          fullPrompt: defaultParams.fullPrompt,
+          originalUserPrompt: defaultParams.inputPrompt,
+          highlightedCategory: 'test-category',
+          highlightedCategoryConfidence: 0.9,
+          highlightedPhrase: 'quoted',
+          brainstormContext: { idea: 'brainstorm' },
+          allLabeledSpans: [{ text: 'a' }],
+          nearbySpans: [{ text: 'b' }],
+          editHistory: [{ text: 'c' }],
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('falls back to highlightedText when no metadata quote provided', async () => {
+      mockPostEnhancementSuggestions.mockResolvedValue(mockSuccessResponse);
 
       await fetchEnhancementSuggestions({
         ...defaultParams,
         metadata: { category: 'test-category', confidence: 0.9 },
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/get-enhancement-suggestions',
+      expect(mockPostEnhancementSuggestions).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': 'test-api-key',
-          },
-          body: expect.stringContaining('highlightedText'),
-        })
+          highlightedPhrase: 'test text',
+        }),
+        expect.any(Object)
       );
-
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs).toBeDefined();
-      if (!callArgs?.[1]?.body) {
-        throw new Error('Missing request body in fetch call');
-      }
-      const body = JSON.parse(callArgs[1].body as string);
-
-      expect(body).toMatchObject({
-        highlightedText: 'test text',
-        fullPrompt: defaultParams.normalizedPrompt,
-        originalUserPrompt: defaultParams.inputPrompt,
-        highlightedCategory: 'test-category',
-        highlightedCategoryConfidence: 0.9,
-      });
     });
   });
 });

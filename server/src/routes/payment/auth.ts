@@ -6,7 +6,7 @@ import { extractFirebaseToken } from '@utils/auth';
 interface PaymentRequestWithAuth extends Request {
   user?: { uid?: string };
   apiKey?: string;
-  body?: { userId?: string };
+  body: { userId?: string };
 }
 
 export async function resolveUserId(req: Request): Promise<string | null> {

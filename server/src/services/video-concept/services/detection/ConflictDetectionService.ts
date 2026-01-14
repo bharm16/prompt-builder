@@ -1,6 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import { conflictsOutputSchema } from '@utils/validation';
+import type { StructuredOutputSchema } from '@utils/structured-output/types';
 import {
   detectDescriptorCategory,
 } from '@services/video-concept/config/descriptorCategories';
@@ -119,12 +119,19 @@ Return ONLY a JSON array of conflicts (empty array if none):
 ]`;
 
     try {
+      const schema: StructuredOutputSchema = {
+        type: 'array',
+        items: {
+          required: ['elements', 'severity', 'message'],
+        },
+      };
+
       const conflicts = await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
           operation: 'video_conflict_detection',
-          schema: conflictsOutputSchema,
+          schema,
           isArray: true,
           maxTokens: 512,
           temperature: 0.3,
