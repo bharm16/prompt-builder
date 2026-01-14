@@ -22,7 +22,14 @@ export function registerCustomSuggestionsRoute(
       const requestId = req.id || 'unknown';
       const operation = 'get-custom-suggestions';
 
-      const { highlightedText, customRequest, fullPrompt } = req.body;
+      const {
+        highlightedText,
+        customRequest,
+        fullPrompt,
+        contextBefore,
+        contextAfter,
+        metadata,
+      } = req.body;
 
       logger.info('Custom suggestions request received', {
         operation,
@@ -33,11 +40,14 @@ export function registerCustomSuggestionsRoute(
       });
 
       try {
-        const result = await enhancementService.getCustomSuggestions({
-          highlightedText,
-          customRequest,
-          fullPrompt,
-        });
+      const result = await enhancementService.getCustomSuggestions({
+        highlightedText,
+        customRequest,
+        fullPrompt,
+        contextBefore,
+        contextAfter,
+        metadata,
+      });
 
         logger.info('Custom suggestions request completed', {
           operation,

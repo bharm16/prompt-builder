@@ -44,7 +44,15 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
     return this._buildSpanPrompt({ ...params, mode: 'placeholder' });
   }
 
-  buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): PromptBuildResult {
+  buildCustomPrompt({
+    highlightedText,
+    customRequest,
+    fullPrompt,
+    isVideoPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
+  }: CustomPromptParams): PromptBuildResult {
     const startTime = performance.now();
     const operation = 'buildCustomPrompt';
     
@@ -56,10 +64,16 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
     });
     
     const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
+    const trimmedContextBefore = contextBefore ? this._trim(contextBefore, 500, true) : '';
+    const trimmedContextAfter = contextAfter ? this._trim(contextAfter, 500) : '';
+    const metadataBlob =
+      metadata && Object.keys(metadata).length > 0
+        ? this._trim(JSON.stringify(metadata), 2000)
+        : '';
 
     // Include all constraints in system prompt for Llama
     // Using output-oriented verbs and CoT reasoning per Llama 3 PDF best practices
-    const systemPrompt = [
+    const systemPromptSections: string[] = [
       SECURITY_REMINDER,
       'Return up to 12 replacement phrases for the highlighted text.',
       '',
@@ -69,10 +83,43 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       promptPreview,
       '</full_context>',
       '',
+    ];
+
+    if (trimmedContextBefore) {
+      systemPromptSections.push(
+        '<context_before>',
+        trimmedContextBefore,
+        '</context_before>',
+        ''
+      );
+    }
+
+    systemPromptSections.push(
       '<highlighted_text>',
       highlightedText,
       '</highlighted_text>',
-      '',
+      ''
+    );
+
+    if (trimmedContextAfter) {
+      systemPromptSections.push(
+        '<context_after>',
+        trimmedContextAfter,
+        '</context_after>',
+        ''
+      );
+    }
+
+    if (metadataBlob) {
+      systemPromptSections.push(
+        '<span_metadata>',
+        metadataBlob,
+        '</span_metadata>',
+        ''
+      );
+    }
+
+    systemPromptSections.push(
       '<custom_request>',
       customRequest,
       '</custom_request>',
@@ -80,8 +127,9 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       'THINK STEP-BY-STEP:',
       '1. Analyze the highlighted phrase and its role in the full prompt.',
       '2. Understand the custom request constraints.',
-      '3. Self-Correction: Check if your ideas contain banned words (distinctive, remarkable, notable) or conversational fillers (Try, Consider). Discard them if they do.',
-      '4. Generate up to 12 alternatives that fit both context and request.',
+      '3. Use local context and span metadata when provided.',
+      '4. Self-Correction: Check if your ideas contain banned words (distinctive, remarkable, notable) or conversational fillers (Try, Consider). Discard them if they do.',
+      '5. Generate up to 12 alternatives that fit both context and request.',
       '',
       'RULES:',
       '1. Replacements must fit the context of the full prompt',
@@ -93,8 +141,10 @@ export class GroqPromptBuilder extends BasePromptBuilder implements IPromptBuild
       'Do NOT invent details not present in the input.',
       '',
       'Output JSON object with suggestions array:',
-      '{"suggestions": [{"text":"replacement","category":"custom","explanation":"why this fits"}]}',
-    ].join('\n');
+      '{"suggestions": [{"text":"replacement","category":"custom","explanation":"why this fits"}]}'
+    );
+
+    const systemPrompt = systemPromptSections.join('\n');
 
     return {
       systemPrompt,

@@ -400,8 +400,12 @@
            animate-fade-in;
   }
 
-  /* Modal container */
-  .modal {
+  /*
+    Modal container
+    NOTE: We intentionally avoid the classname `.modal` because daisyUI also defines it
+    and can hide modal content unless `modal-open` is present.
+  */
+  .app-modal {
     @apply fixed inset-0 z-modal
            flex items-center justify-center
            p-4 overflow-y-auto;

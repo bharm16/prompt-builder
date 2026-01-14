@@ -395,7 +395,10 @@ export class EnhancementService {
   async getCustomSuggestions({ 
     highlightedText, 
     customRequest, 
-    fullPrompt 
+    fullPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
   }: CustomSuggestionRequestParams): Promise<{ suggestions: Suggestion[] }> {
     const startTime = performance.now();
     const operation = 'getCustomSuggestions';
@@ -404,6 +407,9 @@ export class EnhancementService {
       operation,
       customRequestLength: customRequest?.length || 0,
       highlightedLength: highlightedText?.length,
+      hasContextBefore: Boolean(contextBefore?.trim()),
+      hasContextAfter: Boolean(contextAfter?.trim()),
+      hasMetadata: Boolean(metadata && Object.keys(metadata).length > 0),
     });
 
     // Check cache
@@ -411,6 +417,11 @@ export class EnhancementService {
       highlightedText,
       customRequest,
       fullPrompt: fullPrompt.substring(0, 500),
+      contextBefore: contextBefore?.substring(0, 200),
+      contextAfter: contextAfter?.substring(0, 200),
+      spanId: (metadata as { spanId?: string } | null)?.spanId
+        ?? (metadata as { span?: { id?: string } } | null)?.span?.id
+        ?? null,
     });
 
     const cached = await cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'enhancement');
@@ -432,6 +443,9 @@ export class EnhancementService {
       customRequest,
       fullPrompt,
       isVideoPrompt,
+      contextBefore,
+      contextAfter,
+      metadata,
     });
 
     // Generate suggestions

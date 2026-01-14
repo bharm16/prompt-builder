@@ -57,7 +57,7 @@ export const PromptModals = ({
       {showImprover && (
         <div className="modal-backdrop" onClick={() => setShowImprover(false)}>
           <div
-            className="modal"
+            className="app-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"

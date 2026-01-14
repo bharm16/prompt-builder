@@ -26,6 +26,9 @@ interface FetchCustomSuggestionsParams {
   highlightedText: string;
   customRequest: string;
   fullPrompt: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
   /** Optional AbortSignal for external cancellation */
   signal?: AbortSignal;
 }
@@ -42,6 +45,9 @@ export async function fetchCustomSuggestions({
   highlightedText,
   customRequest,
   fullPrompt,
+  contextBefore,
+  contextAfter,
+  metadata,
   signal: externalSignal,
 }: FetchCustomSuggestionsParams): Promise<string[]> {
   const fetchFn = typeof fetch !== 'undefined' ? fetch : null;
@@ -73,6 +79,9 @@ export async function fetchCustomSuggestions({
         highlightedText,
         customRequest,
         fullPrompt: fullPrompt || '',
+        contextBefore,
+        contextAfter,
+        metadata: metadata ?? undefined,
       }),
       signal,
     });

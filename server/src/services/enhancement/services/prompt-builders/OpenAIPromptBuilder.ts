@@ -60,7 +60,15 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
     return this._buildSpanPrompt({ ...params, mode: 'placeholder' });
   }
 
-  buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): PromptBuildResult {
+  buildCustomPrompt({
+    highlightedText,
+    customRequest,
+    fullPrompt,
+    isVideoPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
+  }: CustomPromptParams): PromptBuildResult {
     const startTime = performance.now();
     const operation = 'buildCustomPrompt';
     
@@ -72,26 +80,57 @@ export class OpenAIPromptBuilder extends BasePromptBuilder implements IPromptBui
     });
     
     const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
+    const trimmedContextBefore = contextBefore ? this._trim(contextBefore, 500, true) : '';
+    const trimmedContextAfter = contextAfter ? this._trim(contextAfter, 500) : '';
+    const metadataBlob =
+      metadata && Object.keys(metadata).length > 0
+        ? this._trim(JSON.stringify(metadata), 2000)
+        : '';
 
     // System prompt is minimal - developer role handles constraints
-    const systemPrompt = `Generate up to 12 replacement phrases for the highlighted text based on the custom request.
+    const contextBlocks: string[] = [
+      '<full_context>',
+      promptPreview,
+      '</full_context>',
+      '',
+    ];
 
-<full_context>
-${promptPreview}
-</full_context>
+    if (trimmedContextBefore) {
+      contextBlocks.push('<context_before>', trimmedContextBefore, '</context_before>', '');
+    }
 
-<highlighted_text>
-${highlightedText}
-</highlighted_text>
+    contextBlocks.push(
+      '<highlighted_text>',
+      highlightedText,
+      '</highlighted_text>',
+      ''
+    );
 
-<custom_request>
-${customRequest}
-</custom_request>
+    if (trimmedContextAfter) {
+      contextBlocks.push('<context_after>', trimmedContextAfter, '</context_after>', '');
+    }
 
-Requirements:
-- Replacements must fit the context of the full prompt
-- Keep the same subject/topic - just vary the description
-- Return ONLY the replacement phrase (2-50 words)`;
+    if (metadataBlob) {
+      contextBlocks.push('<span_metadata>', metadataBlob, '</span_metadata>', '');
+    }
+
+    contextBlocks.push(
+      '<custom_request>',
+      customRequest,
+      '</custom_request>'
+    );
+
+    const systemPrompt = [
+      'Generate up to 12 replacement phrases for the highlighted text based on the custom request.',
+      '',
+      ...contextBlocks,
+      '',
+      'Requirements:',
+      '- Replacements must fit the context of the full prompt',
+      '- Use local context and span metadata when provided',
+      '- Keep the same subject/topic - just vary the description',
+      '- Return ONLY the replacement phrase (2-50 words)',
+    ].join('\n');
 
     const duration = Math.round(performance.now() - startTime);
     const result = {

@@ -4,6 +4,8 @@ import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
 import { useToast } from '@components/Toast';
+import { MAX_REQUEST_LENGTH } from '@components/SuggestionsPanel/config/panelConfig';
+import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRequest';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 
 // Internal absolute imports
@@ -20,6 +22,7 @@ import { useHighlightRendering } from '@/features/span-highlighting';
 import { useHighlightFingerprint } from '@/features/span-highlighting';
 import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
 import { formatTextToHTML, escapeHTMLForMLHighlighting } from './utils/textFormatting';
+import { buildSuggestionContext } from './utils/enhancementSuggestionContext';
 import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversion';
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
 import { useParseResult } from './PromptCanvas/hooks/useParseResult';
@@ -117,6 +120,7 @@ export function PromptCanvas({
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [isOutputHovered, setIsOutputHovered] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const [customRequestError, setCustomRequestError] = useState('');
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [tokenPopover, setTokenPopover] = useState<{
     left: number;
@@ -1201,6 +1205,67 @@ export function PromptCanvas({
     tokenPopover && !isInlineLoading && !isInlineError && suggestionCount === 0
   );
   const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
+  const customRequestSelection = selectionLabel.trim();
+  const customRequestPrompt = (suggestionsData?.fullPrompt || normalizedDisplayedPrompt || '').trim();
+
+  const customRequestPreferIndex = useMemo(() => {
+    const preferIndexRaw =
+      suggestionsData?.metadata?.span?.start ??
+      suggestionsData?.metadata?.start ??
+      suggestionsData?.offsets?.start ??
+      null;
+    return typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
+      ? preferIndexRaw
+      : null;
+  }, [suggestionsData?.metadata, suggestionsData?.offsets]);
+
+  const customRequestContext = useMemo(() => {
+    if (!customRequestSelection || !customRequestPrompt) {
+      return null;
+    }
+    const normalizedPrompt = customRequestPrompt.normalize('NFC');
+    const normalizedHighlight = customRequestSelection.normalize('NFC');
+    return buildSuggestionContext(
+      normalizedPrompt,
+      normalizedHighlight,
+      customRequestPreferIndex,
+      1000
+    );
+  }, [customRequestSelection, customRequestPrompt, customRequestPreferIndex]);
+
+  const {
+    customRequest,
+    setCustomRequest,
+    handleCustomRequest,
+    isCustomLoading,
+  } = useCustomRequest({
+    selectedText: customRequestSelection,
+    fullPrompt: customRequestPrompt,
+    contextBefore: customRequestContext?.contextBefore,
+    contextAfter: customRequestContext?.contextAfter,
+    metadata: suggestionsData?.metadata ?? null,
+    setSuggestions: suggestionsData?.setSuggestions,
+    setError: setCustomRequestError,
+  });
+
+  const isCustomRequestReady =
+    Boolean(customRequestSelection && customRequestPrompt) && !isInlineLoading;
+  const isCustomRequestDisabled =
+    !isCustomRequestReady || !customRequest.trim() || isCustomLoading;
+
+  const handleCustomRequestSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>): void => {
+      event.preventDefault();
+      if (isCustomRequestDisabled) return;
+      void handleCustomRequest();
+    },
+    [handleCustomRequest, isCustomRequestDisabled]
+  );
+
+  useEffect(() => {
+    setCustomRequest('');
+    setCustomRequestError('');
+  }, [selectedSpanId, setCustomRequest]);
 
   useEffect(() => {
     const justOpened = !previousTokenPopoverRef.current && tokenPopover;
@@ -1239,6 +1304,17 @@ export function PromptCanvas({
   useEffect(() => {
     if (!tokenPopover) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      const isEditableTarget =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (isEditableTarget && event.key !== 'Escape') {
+        return;
+      }
+
       if (event.key === 'Escape') {
         event.preventDefault();
         closeInlinePopover();
@@ -1767,6 +1843,42 @@ export function PromptCanvas({
                           </div>
 
                           <div className="inline-suggest-divider" />
+
+                          <div className="inline-suggest-custom">
+                            <form
+                              className="inline-suggest-custom-form"
+                              onSubmit={handleCustomRequestSubmit}
+                            >
+                              <textarea
+                                id="inline-custom-request"
+                                value={customRequest}
+                                onChange={(event) => {
+                                  setCustomRequest(event.target.value);
+                                  if (customRequestError) {
+                                    setCustomRequestError('');
+                                  }
+                                }}
+                                placeholder="Add a specific change (e.g. football field)"
+                                className="inline-suggest-custom-input"
+                                maxLength={MAX_REQUEST_LENGTH}
+                                rows={1}
+                                aria-label="Custom suggestion request"
+                              />
+                              <button
+                                type="submit"
+                                className="inline-suggest-cta"
+                                disabled={isCustomRequestDisabled}
+                                aria-busy={isCustomLoading}
+                              >
+                                {isCustomLoading ? 'Applying...' : 'Apply'}
+                              </button>
+                            </form>
+                            {customRequestError && (
+                              <div className="inline-suggest-custom-error" role="alert">
+                                {customRequestError}
+                              </div>
+                            )}
+                          </div>
 
                           {isInlineError && (
                             <div className="inline-suggest-error" role="alert">

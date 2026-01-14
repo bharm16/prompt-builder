@@ -53,7 +53,15 @@ export class CleanPromptBuilder {
     return this._buildSpanPrompt({ ...params, mode: 'placeholder' });
   }
 
-  buildCustomPrompt({ highlightedText, customRequest, fullPrompt, isVideoPrompt }: CustomPromptParams): string {
+  buildCustomPrompt({
+    highlightedText,
+    customRequest,
+    fullPrompt,
+    isVideoPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
+  }: CustomPromptParams): string {
     const startTime = performance.now();
     const operation = 'buildCustomPrompt';
     
@@ -72,10 +80,20 @@ export class CleanPromptBuilder {
     const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
     
     // Use XML wrapper for user data
+    const trimmedContextBefore = contextBefore ? this._trim(contextBefore, 500, true) : '';
+    const trimmedContextAfter = contextAfter ? this._trim(contextAfter, 500) : '';
+    const metadataBlob =
+      metadata && Object.keys(metadata).length > 0
+        ? this._trim(JSON.stringify(metadata), 2000)
+        : '';
+
     const userDataSection = wrapUserData({
       full_context: promptPreview,
       highlighted_text: highlightedText,
       custom_request: customRequest,
+      context_before: trimmedContextBefore,
+      context_after: trimmedContextAfter,
+      span_metadata: metadataBlob,
     });
 
     // Get format instruction (provider-aware)
@@ -98,8 +116,9 @@ export class CleanPromptBuilder {
       '',
       'RULES:',
       '1. Replacements must fit the context of the full prompt',
-      '2. Keep the same subject/topic - just vary the description',
-      '3. Return ONLY the replacement phrase (2-50 words)',
+      '2. Use local context and span metadata when provided',
+      '3. Keep the same subject/topic - just vary the description',
+      '4. Return ONLY the replacement phrase (2-50 words)',
       '',
       outputLine,
       formatInstruction,

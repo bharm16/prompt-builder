@@ -99,12 +99,15 @@ export const customSuggestionSchema = z.object({
   highlightedText: z.string()
     .min(1, 'Highlighted text is required')
     .max(10000, 'Highlighted text must not exceed 10,000 characters'),
+  contextBefore: z.string().max(5000).optional(),
+  contextAfter: z.string().max(5000).optional(),
   customRequest: z.string()
     .min(1, 'Custom request is required')
     .max(1000, 'Custom request must not exceed 1,000 characters'),
   fullPrompt: z.string()
     .min(1, 'Full prompt is required')
     .max(50000, 'Full prompt must not exceed 50,000 characters'),
+  metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export const sceneChangeSchema = z.object({

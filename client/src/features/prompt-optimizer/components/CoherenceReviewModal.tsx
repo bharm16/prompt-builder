@@ -213,7 +213,7 @@ export function CoherenceReviewModal({
 
   const modal = (
     <div className="modal-backdrop" onClick={onDismiss}>
-      <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="app-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <div className="modal-content-lg coherence-review-modal">
           <header className="coherence-review-header">
             <div>

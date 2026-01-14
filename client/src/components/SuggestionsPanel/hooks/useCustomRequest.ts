@@ -21,6 +21,9 @@ import type { SuggestionItem } from './types';
 interface UseCustomRequestParams {
   selectedText?: string;
   fullPrompt?: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
   onCustomRequest?: (request: string) => Promise<SuggestionItem[]>;
   setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
   /** NEW: Proper error state handler - Requirement 3.1 */
@@ -51,6 +54,9 @@ const REQUEST_CONFIG = {
 export function useCustomRequest({
   selectedText = '',
   fullPrompt = '',
+  contextBefore,
+  contextAfter,
+  metadata = null,
   onCustomRequest = undefined,
   setSuggestions = undefined,
   setError = undefined,
@@ -74,7 +80,14 @@ export function useCustomRequest({
    * Handle custom request submission
    */
   const handleCustomRequest = useCallback(async (): Promise<void> => {
-    if (!customRequest.trim()) return;
+    const trimmedRequest = customRequest.trim();
+    if (!trimmedRequest) return;
+    if (!selectedText.trim() || !fullPrompt.trim()) {
+      if (setError) {
+        setError('Select text in the prompt before applying a custom request.');
+      }
+      return;
+    }
 
     const startTime = performance.now();
     const operation = 'handleCustomRequest';
@@ -89,18 +102,21 @@ export function useCustomRequest({
 
     try {
       const result = await requestManagerRef.current.scheduleRequest(
-        customRequest.trim(), // Use request text as dedup key
+        trimmedRequest, // Use request text as dedup key
         async (signal) => {
           // If custom handler provided, use it
           if (typeof onCustomRequest === 'function') {
-            return onCustomRequest(customRequest.trim());
+            return onCustomRequest(trimmedRequest);
           }
           
           // Otherwise, use default API with cancellation support
           const suggestions = await fetchCustomSuggestions({
             highlightedText: selectedText,
-            customRequest: customRequest.trim(),
+            customRequest: trimmedRequest,
             fullPrompt,
+            ...(contextBefore ? { contextBefore } : {}),
+            ...(contextAfter ? { contextAfter } : {}),
+            ...(metadata ? { metadata } : {}),
             signal, // Pass abort signal for cancellation
           });
 
@@ -132,7 +148,7 @@ export function useCustomRequest({
         hook: 'useCustomRequest',
         operation,
         duration,
-        customRequestLength: customRequest.trim().length,
+        customRequestLength: trimmedRequest.length,
         selectedTextLength: selectedText.length,
       });
       
@@ -145,7 +161,17 @@ export function useCustomRequest({
       setIsCustomLoading(false);
       setCustomRequest('');
     }
-  }, [customRequest, selectedText, fullPrompt, onCustomRequest, setSuggestions, setError]);
+  }, [
+    customRequest,
+    selectedText,
+    fullPrompt,
+    contextBefore,
+    contextAfter,
+    metadata,
+    onCustomRequest,
+    setSuggestions,
+    setError,
+  ]);
 
   return {
     customRequest,
@@ -154,4 +180,3 @@ export function useCustomRequest({
     isCustomLoading,
   };
 }
-

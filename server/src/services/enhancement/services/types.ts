@@ -188,6 +188,9 @@ export interface CustomPromptParams {
   customRequest: string;
   fullPrompt: string;
   isVideoPrompt: boolean;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 /**
@@ -461,6 +464,9 @@ export interface CustomSuggestionRequestParams {
   highlightedText: string;
   customRequest: string;
   fullPrompt: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 /**
