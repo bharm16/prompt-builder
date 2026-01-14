@@ -33,8 +33,14 @@ import { SceneChangeDetectionService } from '@services/video-concept/services/de
 import { VideoConceptService } from '@services/VideoConceptService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import { VideoToImagePromptTransformer } from '@services/image-generation/VideoToImagePromptTransformer';
+import { VideoToImagePromptTransformer } from '@services/image-generation/providers/VideoToImagePromptTransformer';
+import type { ImagePreviewProvider } from '@services/image-generation/providers/types';
+import {
+  parseImagePreviewProviderOrder,
+  resolveImagePreviewProviderSelection,
+} from '@services/image-generation/providers/registry';
 import { createVideoAssetStore } from '@services/video-generation/storage';
 import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
 import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
@@ -457,16 +463,55 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
-    'imageGenerationService',
+    'replicateFluxSchnellProvider',
     (transformer: VideoToImagePromptTransformer | null) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
       if (!apiToken) {
-        logger.warn('REPLICATE_API_TOKEN not provided, image generation disabled');
+        logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
         return null;
       }
-      return new ImageGenerationService({ apiToken }, transformer);
+      return new ReplicateFluxSchnellProvider({ apiToken, promptTransformer: transformer });
     },
     ['videoToImageTransformer']
+  );
+
+  container.register(
+    'imageGenerationService',
+    (replicateProvider: ReplicateFluxSchnellProvider | null) => {
+      const providers = [replicateProvider].filter(
+        (provider): provider is ImagePreviewProvider => Boolean(provider)
+      );
+
+      if (providers.length === 0) {
+        logger.warn('No image preview providers configured');
+        return null;
+      }
+
+      const selection = resolveImagePreviewProviderSelection(
+        process.env.IMAGE_PREVIEW_PROVIDER
+      );
+      if (process.env.IMAGE_PREVIEW_PROVIDER && !selection) {
+        logger.warn('Invalid IMAGE_PREVIEW_PROVIDER value', {
+          value: process.env.IMAGE_PREVIEW_PROVIDER,
+        });
+      }
+
+      const fallbackOrder = parseImagePreviewProviderOrder(
+        process.env.IMAGE_PREVIEW_PROVIDER_ORDER
+      );
+      if (process.env.IMAGE_PREVIEW_PROVIDER_ORDER && fallbackOrder.length === 0) {
+        logger.warn('No valid IMAGE_PREVIEW_PROVIDER_ORDER entries found', {
+          value: process.env.IMAGE_PREVIEW_PROVIDER_ORDER,
+        });
+      }
+
+      return new ImageGenerationService({
+        providers,
+        defaultProvider: selection ?? 'auto',
+        fallbackOrder,
+      });
+    },
+    ['replicateFluxSchnellProvider']
   );
 
   container.register(

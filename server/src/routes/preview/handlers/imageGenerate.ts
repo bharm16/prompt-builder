@@ -13,7 +13,7 @@ export const createImageGenerateHandler = ({
       return res.status(503).json({
         success: false,
         error: 'Image generation service is not available',
-        message: 'REPLICATE_API_TOKEN is not configured',
+        message: 'No image preview providers are configured',
       });
     }
 
