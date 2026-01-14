@@ -123,7 +123,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
 
   // Load prompt from URL parameter
-  usePromptLoader({
+  const { isLoading } = usePromptLoader({
     uuid,
     currentPromptUuid,
     navigate,
@@ -340,13 +340,23 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         }}
       >
         {/* Input Section */}
-        {!showResults && (
+        {!showResults && !isLoading && (
           <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
             <PromptInputSection
               aiNames={aiNames}
               onOptimize={handleOptimize}
               onShowBrainstorm={() => setShowBrainstorm(true)}
             />
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
+              <p className="text-neutral-500 text-sm">Loading prompt...</p>
+            </div>
           </div>
         )}
 

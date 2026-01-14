@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPromptRepository } from '@repositories/index';
 import { createHighlightSignature } from '@features/span-highlighting';
@@ -82,7 +82,7 @@ export function usePromptLoader({
   setSelectedModel,
   setPromptContext,
   skipLoadFromUrlRef,
-}: UsePromptLoaderParams): void {
+}: UsePromptLoaderParams): { isLoading: boolean } {
   const {
     setInputPrompt,
     setOptimizedPrompt,
@@ -91,11 +91,27 @@ export function usePromptLoader({
     setPreviewAspectRatio,
   } = promptOptimizer;
 
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Initial state: loading if we have a UUID that doesn't match current
+    if (!uuid) return false;
+    if (uuid === currentPromptUuid) return false;
+    return true;
+  });
+
   // Handle loading from URL parameter
   useEffect(() => {
     const loadPromptFromUrl = async (): Promise<void> => {
-      if (!uuid) return;
-      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) return;
+      if (!uuid) {
+        setIsLoading(false);
+        return;
+      }
+      
+      if (skipLoadFromUrlRef.current || currentPromptUuid === uuid) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
 
       try {
         const promptRepository = getPromptRepository();
@@ -169,6 +185,8 @@ export function usePromptLoader({
         log.error('Error loading prompt from URL', err, { operation: 'loadPromptFromUrl', promptUuid: uuid });
         toast.error('Failed to load prompt');
         navigate('/', { replace: true });
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -194,4 +212,6 @@ export function usePromptLoader({
     setPreviewPrompt,
     setPreviewAspectRatio,
   ]);
+
+  return { isLoading };
 }
