@@ -657,7 +657,7 @@ export function PromptCanvas({
   }, [normalizedDisplayedPrompt, enableMLHighlighting, debug]);
 
   const isOptimizing = Boolean(isProcessing || isRefining);
-  const isOutputLoading = Boolean(isProcessing && !isDraftReady);
+  const isOutputLoading = Boolean(isProcessing || isRefining);
   const isInputLocked = !isEditing || isOptimizing;
 
   const hasSuggestionSelection = Boolean(selectedSpanId) || Boolean(suggestionsData?.selectedText.trim());

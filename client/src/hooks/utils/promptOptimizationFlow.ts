@@ -150,7 +150,6 @@ export async function runTwoStageOptimization({
       }
       actions.setDraftPrompt(draft);
       actions.setOptimizedPrompt(draft);
-      actions.setDisplayedPrompt(draft);
 
       const draftScore = calculateQualityScore(promptToOptimize, draft);
       actions.setQualityScore(draftScore);
