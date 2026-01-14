@@ -69,3 +69,51 @@ export const alternativePhrasingsOutputSchema = z.array(
   })
 );
 
+export const coherenceCheckOutputSchema = z.object({
+  conflicts: z.array(
+    z.object({
+      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      message: z.string(),
+      reasoning: z.string(),
+      involvedSpanIds: z.array(z.string()).optional(),
+      recommendations: z.array(
+        z.object({
+          title: z.string(),
+          rationale: z.string(),
+          edits: z.array(
+            z.object({
+              type: z.enum(['replaceSpanText', 'removeSpan']),
+              spanId: z.string().optional(),
+              replacementText: z.string().optional(),
+              anchorQuote: z.string().optional(),
+            })
+          ).min(1),
+          confidence: z.number().min(0).max(1).optional(),
+        })
+      ),
+    })
+  ),
+  harmonizations: z.array(
+    z.object({
+      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      message: z.string(),
+      reasoning: z.string(),
+      involvedSpanIds: z.array(z.string()).optional(),
+      recommendations: z.array(
+        z.object({
+          title: z.string(),
+          rationale: z.string(),
+          edits: z.array(
+            z.object({
+              type: z.enum(['replaceSpanText', 'removeSpan']),
+              spanId: z.string().optional(),
+              replacementText: z.string().optional(),
+              anchorQuote: z.string().optional(),
+            })
+          ).min(1),
+          confidence: z.number().min(0).max(1).optional(),
+        })
+      ),
+    })
+  ),
+});

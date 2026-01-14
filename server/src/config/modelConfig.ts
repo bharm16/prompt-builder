@@ -206,6 +206,20 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
     useSeed: true, // Consistent deduplication
   },
 
+  /**
+   * Prompt-wide coherence checks after span edits
+   */
+  prompt_coherence_check: {
+    client: 'openai',
+    model: 'gpt-4o-mini-2024-07-18',
+    temperature: 0.2,
+    maxTokens: 2048,
+    timeout: 25000,
+    responseFormat: 'json_object',
+    useSeed: true, // Consistent coherence findings
+    useDeveloperMessage: true,
+  },
+
   // ============================================================================
   // Video Concept Operations
   // ============================================================================

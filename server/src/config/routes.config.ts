@@ -70,6 +70,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
     promptOptimizationService: container.resolve('promptOptimizationService'),
     enhancementService: container.resolve('enhancementService'),
     sceneDetectionService: container.resolve('sceneDetectionService'),
+    promptCoherenceService: container.resolve('promptCoherenceService'),
     videoConceptService: promptOutputOnly ? null : container.resolve('videoConceptService'),
   });
 

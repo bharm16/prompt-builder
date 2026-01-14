@@ -8,6 +8,8 @@ export interface VideoPromptLintResult {
 const VIEWER_LANGUAGE = [
   /(?:the\s+)?viewer/i,
   /(?:the\s+)?audience/i,
+  /\bwe\s+see\b/i,
+  /\byou\s+see\b/i,
   /\binviting\b/i,
   /\bawaits?\b/i,
   /\beager(?:ly)?\b/i,
@@ -143,6 +145,9 @@ export function lintVideoPromptSlots(slots: Partial<VideoPromptSlots>): VideoPro
       errors.push('`action` should start with a present-participle (-ing) verb phrase (e.g., "running...", "carrying...").');
     }
     const actionWords = action.split(/\s+/).filter(Boolean).length;
+    if (actionWords < 4) {
+      errors.push('`action` is too short; use a single verb phrase with 4-12 words.');
+    }
     if (actionWords > 12) {
       errors.push('`action` is too long; keep a short single verb phrase (aim for 4-12 words).');
     }

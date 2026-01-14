@@ -20,6 +20,7 @@ interface ApiServices {
   promptOptimizationService: any;
   enhancementService: any;
   sceneDetectionService: any;
+  promptCoherenceService: any;
   videoConceptService?: any | null;
   metricsService?: any;
 }
@@ -36,6 +37,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     promptOptimizationService,
     enhancementService,
     sceneDetectionService,
+    promptCoherenceService,
     videoConceptService,
     metricsService,
   } = services;
@@ -60,6 +62,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     createEnhancementRoutes({
       enhancementService,
       sceneDetectionService,
+      promptCoherenceService,
       metricsService,
     })
   );

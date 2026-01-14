@@ -19,6 +19,7 @@ import { PromptResultsLayout } from '../layouts/PromptResultsLayout';
 import { PromptModals } from '../components/PromptModals';
 import { PromptTopBar } from '../components/PromptTopBar';
 import { PromptSidebar } from '../components/PromptSidebar';
+import { CoherenceReviewModal } from '../components/CoherenceReviewModal';
 import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
@@ -32,6 +33,7 @@ import {
   useImprovementFlow,
   useConceptBrainstorm,
   useEnhancementSuggestions,
+  useCoherenceReview,
 } from './hooks';
 import type { User } from '../context/types';
 
@@ -316,6 +318,24 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     toast,
   });
 
+  const {
+    reviewData,
+    isChecking: isCoherenceChecking,
+    isApplying: isCoherenceApplying,
+    runCoherenceCheck,
+    applyRecommendations,
+    dismissReview,
+  } = useCoherenceReview({
+    promptOptimizer,
+    handleDisplayedPromptChange,
+    applyInitialHighlightSnapshot,
+    latestHighlightRef,
+    toast,
+    currentPromptUuid,
+    currentPromptDocId,
+    promptHistory,
+  });
+
   // Enhancement suggestions
   const { fetchEnhancementSuggestions, handleSuggestionClick } = useEnhancementSuggestions({
     promptOptimizer,
@@ -330,6 +350,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
     currentPromptUuid,
     currentPromptDocId,
     promptHistory,
+    onCoherenceCheck: runCoherenceCheck,
   });
 
   // ============================================================================
@@ -392,6 +413,18 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         onImprovementComplete={handleImprovementComplete}
         onConceptComplete={handleConceptComplete}
         onSkipBrainstorm={handleSkipBrainstorm}
+      />
+
+      <CoherenceReviewModal
+        review={reviewData}
+        isChecking={isCoherenceChecking}
+        isApplying={isCoherenceApplying}
+        onDismiss={dismissReview}
+        onUndoOriginal={() => {
+          handleUndo();
+          dismissReview();
+        }}
+        onApplySelected={applyRecommendations}
       />
 
       {/* Top Action Buttons */}

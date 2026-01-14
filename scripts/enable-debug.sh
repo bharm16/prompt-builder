@@ -43,6 +43,26 @@ if grep -q "^VITE_LOG_LEVEL=" .env; then
 else
   echo "VITE_LOG_LEVEL=debug" >> .env
   echo "✅ Added VITE_LOG_LEVEL=debug"
+
+fi
+
+# Enable verbose stack metadata
+if grep -q '^LOG_STACK_LEVELS=' .env; then
+  sed -i '' 's/^LOG_STACK_LEVELS=.*/LOG_STACK_LEVELS=debug,info,warn,error/' .env 2>/dev/null || \
+  sed -i 's/^LOG_STACK_LEVELS=.*/LOG_STACK_LEVELS=debug,info,warn,error/' .env
+  echo "✅ Set LOG_STACK_LEVELS=debug,info,warn,error"
+else
+  echo 'LOG_STACK_LEVELS=debug,info,warn,error' >> .env
+  echo "✅ Added LOG_STACK_LEVELS=debug,info,warn,error"
+fi
+
+if grep -q '^VITE_LOG_STACK_LEVELS=' .env; then
+  sed -i '' 's/^VITE_LOG_STACK_LEVELS=.*/VITE_LOG_STACK_LEVELS=debug,info,warn,error/' .env 2>/dev/null || \
+  sed -i 's/^VITE_LOG_STACK_LEVELS=.*/VITE_LOG_STACK_LEVELS=debug,info,warn,error/' .env
+  echo "✅ Set VITE_LOG_STACK_LEVELS=debug,info,warn,error"
+else
+  echo 'VITE_LOG_STACK_LEVELS=debug,info,warn,error' >> .env
+  echo "✅ Added VITE_LOG_STACK_LEVELS=debug,info,warn,error"
 fi
 
 echo ""

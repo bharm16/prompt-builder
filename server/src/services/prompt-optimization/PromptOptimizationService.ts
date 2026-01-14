@@ -14,6 +14,7 @@ import { DraftGenerationService } from './services/DraftGenerationService';
 import { OptimizationCacheService } from './services/OptimizationCacheService';
 import { templateService } from './services/TemplateService';
 import { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
+import type { CapabilityValues } from '@shared/capabilities';
 import type {
   AIService,
   OptimizationMode,
@@ -418,6 +419,8 @@ export class PromptOptimizationService {
           context,
           brainstormContext,
           lockedSpans,
+          generationParams,
+          interpretedShotPlan,
           useConstitutionalAI,
           signal,
           handleMetadata
@@ -449,6 +452,45 @@ export class PromptOptimizationService {
         if (useConstitutionalAI) {
           optimizedPrompt = await this.applyConstitutionalAI(optimizedPrompt, finalMode, signal);
         }
+      }
+
+      let qualityAssessment = await this.qualityAssessment.assessQuality(optimizedPrompt, finalMode);
+      const qualityThreshold = OptimizationConfig.quality.minAcceptableScore;
+
+      handleMetadata({
+        qualityAssessment,
+      });
+
+      if (!useIterativeRefinement && qualityAssessment.score < qualityThreshold) {
+        const initialScore = qualityAssessment.score;
+        this.log.warn('Quality gate failed, attempting bounded refinement', {
+          operation,
+          score: initialScore,
+          threshold: qualityThreshold,
+        });
+
+        optimizedPrompt = await this.optimizeIteratively(
+          prompt,
+          finalMode,
+          context,
+          brainstormContext,
+          lockedSpans,
+          generationParams,
+          interpretedShotPlan,
+          useConstitutionalAI,
+          signal,
+          handleMetadata
+        );
+
+        qualityAssessment = await this.qualityAssessment.assessQuality(optimizedPrompt, finalMode);
+        handleMetadata({
+          qualityAssessment,
+          qualityGate: {
+            triggered: true,
+            initialScore,
+            finalScore: qualityAssessment.score,
+          },
+        });
       }
 
       // Record generic prompt before model compilation
@@ -494,6 +536,7 @@ export class PromptOptimizationService {
             const compiledPrompt = typeof compilationResult.prompt === 'string'
               ? compilationResult.prompt
               : JSON.stringify(compilationResult.prompt, null, 2);
+            const compiledIsStructured = typeof compilationResult.prompt !== 'string';
 
             this.log.info('Prompt compiled successfully', {
               operation,
@@ -502,12 +545,43 @@ export class PromptOptimizationService {
               changes: compilationResult.metadata.phases.flatMap(p => p.changes).length
             });
 
-            optimizedPrompt = compiledPrompt;
+            const genericScore = qualityAssessment?.score ?? 0;
+            let compiledScore: number | null = null;
+            let keepCompiled = true;
+
+            if (!compiledIsStructured) {
+              const compiledAssessment = await this.qualityAssessment.assessQuality(compiledPrompt, finalMode);
+              compiledScore = compiledAssessment.score;
+              const dropThreshold = OptimizationConfig.iterativeRefinement.improvementThreshold;
+              const minScore = OptimizationConfig.quality.minAcceptableScore;
+
+              keepCompiled = compiledScore >= minScore && compiledScore + dropThreshold >= genericScore;
+
+              if (!keepCompiled) {
+                this.log.warn('Compiled prompt failed quality gate; returning generic prompt', {
+                  operation,
+                  targetModel: resolvedTargetModel,
+                  genericScore,
+                  compiledScore,
+                });
+              }
+            }
+
+            if (keepCompiled) {
+              optimizedPrompt = compiledPrompt;
+            }
 
             // Merge compilation metadata
             handleMetadata({
               compiledFor: resolvedTargetModel,
-              compilationMeta: compilationResult.metadata
+              compilationMeta: compilationResult.metadata,
+              compilationQuality: {
+                genericScore,
+                compiledScore,
+                keptCompiled: keepCompiled,
+                structuredOutput: compiledIsStructured,
+              },
+              ...(keepCompiled ? {} : { compilationWarning: 'compiled_quality_drop' }),
             });
 
           } catch (compilationError) {
@@ -624,6 +698,8 @@ export class PromptOptimizationService {
     context: InferredContext | null,
     brainstormContext: Record<string, unknown> | null,
     lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
+    generationParams: CapabilityValues | null,
+    shotPlan: ShotPlan | null,
     useConstitutionalAI: boolean,
     signal?: AbortSignal,
     onMetadata?: (metadata: Record<string, unknown>) => void
@@ -667,13 +743,15 @@ export class PromptOptimizationService {
       // Optimize
       const strategy = this.strategyFactory.getStrategy(mode);
       const domainContent = strategy.generateDomainContent
-        ? await strategy.generateDomainContent(currentPrompt, context)
+        ? await strategy.generateDomainContent(currentPrompt, context, shotPlan)
         : null;
       const optimized = await strategy.optimize({
         prompt: currentPrompt,
         context,
         brainstormContext,
+        generationParams,
         domainContent: domainContent as string | null,
+        shotPlan,
         ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
         onMetadata: collectMetadata,
         ...(signal ? { signal } : {}),

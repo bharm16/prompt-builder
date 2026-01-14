@@ -8,6 +8,7 @@ export function buildStreamingPrompt(options: {
   shotPlan: ShotPlan | null;
   lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null; category?: string | null }>;
   generationParams?: CapabilityValues | null;
+  originalUserPrompt?: string | null;
 }): { systemPrompt: string; userMessage: string } {
   const constraintLines: string[] = [];
   if (options.generationParams) {
@@ -34,27 +35,23 @@ LOCKED SPANS:
 
   const systemPrompt = `${SECURITY_REMINDER}
 You are an elite Film Director and Cinematographer. Optimize the user's video prompt for clarity, visual specificity, and technical coherence.
+Primary success metric: improved prompt writing quality (cinematic specificity, constraint adherence, intent preservation, model compliance). Performance is secondary; acceptable to add bounded extra passes only when quality gates fail.
 
 Requirements:
+- **INTEGRATED NARRATIVE:** Weave all creative specifications (Camera Angle, Movement, Lighting, Style) naturally into the main description.
+- **NO HARD SPECS:** Do NOT mention hardware-level technical values in the narrative (e.g., do not say "9:16", "16:9", "24fps", "8-seconds", or "4k"). These are handled by the system parameters. 
+  - *Correct:* "A vertical close-up..." 
+  - *Incorrect:* "A 9:16 close-up..."
 - ONE continuous action only (if none exists, focus on camera movement and visual focus).
 - Describe only what the camera can SEE. No audience language or abstract emotions without visible cues.
+- Do not add camera brands or model names unless explicitly provided.
 - Avoid negative phrasing. State what to show instead.
-- Use concrete cinematic language for framing, camera angle, movement, lighting, and style.${lockedSpanInstructions}${constraintBlock}
+- If <original_user_prompt> is provided, treat it as source of truth; use <user_concept> as a draft candidate and restore any lost constraints.${lockedSpanInstructions}${constraintBlock}
 
 Output ONLY the final optimized prompt text (no JSON, no markdown code blocks).
 
 FORMAT:
-<main paragraph>
-
-**TECHNICAL SPECS**
-- **Duration:** 4-8s
-- **Aspect Ratio:** 16:9
-- **Resolution:** (omit if not specified)
-- **Frame Rate:** 24fps
-- **Audio:** mute
-- **Camera:** (camera behavior + angle + lens + aperture)
-- **Lighting:** (source, direction, quality, color temperature)
-- **Style:** (film stock/genre/director reference)
+<main paragraph (incorporating camera, lighting, and style naturally)>
 
 **ALTERNATIVE APPROACHES**
 - **Variation 1 (label):** ...
@@ -68,11 +65,16 @@ FORMAT:
     category: span.category ?? null,
   }));
 
-  const userMessage = wrapUserData({
+  const userFields: Record<string, string> = {
     user_concept: options.prompt,
     interpreted_plan: options.shotPlan ? JSON.stringify(options.shotPlan, null, 2) : '',
     locked_spans: lockedPayload.length > 0 ? JSON.stringify(lockedPayload, null, 2) : '',
-  });
+  };
+  if (options.originalUserPrompt) {
+    userFields.original_user_prompt = options.originalUserPrompt;
+  }
+
+  const userMessage = wrapUserData(userFields);
 
   return { systemPrompt, userMessage };
 }

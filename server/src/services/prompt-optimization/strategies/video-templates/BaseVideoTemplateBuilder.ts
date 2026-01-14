@@ -20,6 +20,8 @@ import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate';
 export interface VideoTemplateContext {
   /** User's creative concept */
   userConcept: string;
+  /** Original user prompt (verbatim), when refining a draft */
+  originalUserPrompt?: string | null;
   /** Optional interpreted shot plan from ShotInterpreterService */
   interpretedPlan?: Record<string, unknown> | null;
   /** Whether to include full instructions or just core guidance */
@@ -75,7 +77,11 @@ export abstract class BaseVideoTemplateBuilder {
    *
    * @protected
    */
-  protected wrapUserConcept(userConcept: string, interpretedPlan?: Record<string, unknown> | null): string {
+  protected wrapUserConcept(
+    userConcept: string,
+    interpretedPlan?: Record<string, unknown> | null,
+    originalUserPrompt?: string | null
+  ): string {
     this.log.debug('Wrapping user concept in XML', {
       operation: 'wrapUserConcept',
       hasInterpretedPlan: !!interpretedPlan,
@@ -85,6 +91,10 @@ export abstract class BaseVideoTemplateBuilder {
     const fields: Record<string, string> = {
       user_concept: userConcept,
     };
+
+    if (originalUserPrompt) {
+      fields.original_user_prompt = originalUserPrompt;
+    }
 
     if (interpretedPlan) {
       fields.interpreted_plan = JSON.stringify(interpretedPlan, null, 2);

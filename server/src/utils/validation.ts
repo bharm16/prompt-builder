@@ -26,6 +26,7 @@ export {
   suggestionSchema,
   customSuggestionSchema,
   sceneChangeSchema,
+  coherenceCheckSchema,
   
   // Video/creative workflow schemas
   creativeSuggestionSchema,

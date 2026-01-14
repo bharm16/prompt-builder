@@ -10,4 +10,4 @@ export { usePromptOptimization } from './usePromptOptimization';
 export { useImprovementFlow } from './useImprovementFlow';
 export { useConceptBrainstorm } from './useConceptBrainstorm';
 export { useEnhancementSuggestions } from './useEnhancementSuggestions';
-
+export { useCoherenceReview } from './useCoherenceReview';

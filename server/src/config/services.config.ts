@@ -30,6 +30,7 @@ import { cacheService } from '@services/cache/CacheService';
 import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
 import { EnhancementService } from '@services/EnhancementService';
 import { SceneChangeDetectionService } from '@services/video-concept/services/detection/SceneChangeDetectionService';
+import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
 import { VideoConceptService } from '@services/VideoConceptService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
@@ -437,6 +438,12 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
+    'promptCoherenceService',
+    (aiService: AIModelService) => new PromptCoherenceService(aiService),
+    ['aiService']
+  );
+
+  container.register(
     'videoConceptService',
     (aiService: AIModelService) => new VideoConceptService(aiService),
     ['aiService']
@@ -743,6 +750,7 @@ export async function initializeServices(container: DIContainer): Promise<DICont
     'promptOptimizationService',
     'enhancementService',
     'sceneDetectionService',
+    'promptCoherenceService',
     'videoConceptService',
     'spanLabelingCacheService',
   ];

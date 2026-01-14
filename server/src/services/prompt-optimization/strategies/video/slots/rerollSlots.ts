@@ -20,6 +20,10 @@ export async function rerollSlots(options: {
 
   type Candidate = { parsed: VideoPromptStructuredResponse; slots: VideoPromptSlots; score: number };
   const candidates: Candidate[] = [];
+  const mergeLint = (...results: Array<{ ok: boolean; errors: string[] }>) => {
+    const errors = Array.from(new Set(results.flatMap((result) => result.errors)));
+    return { ok: errors.length === 0, errors };
+  };
 
   for (let i = 0; i < attempts; i++) {
     const seed = (options.baseSeed + i + 1) % 2147483647;
@@ -38,7 +42,10 @@ export async function rerollSlots(options: {
 
       const parsed = JSON.parse(response.text) as VideoPromptStructuredResponse;
       const slots = normalizeSlots(parsed);
-      const lint = lintVideoPromptSlots(slots);
+      const lint = mergeLint(
+        lintVideoPromptSlots(parsed),
+        lintVideoPromptSlots(slots)
+      );
       if (!lint.ok) {
         continue;
       }

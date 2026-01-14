@@ -122,6 +122,7 @@ export interface SuggestionsData {
     idempotencyKey?: string | null;
     [key: string]: unknown;
   } | null;
+  allLabeledSpans?: HighlightSpan[];
   onRetry?: () => void;
   setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
   onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;

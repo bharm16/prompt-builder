@@ -22,6 +22,7 @@ import type { Toast } from '@hooks/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { HighlightSnapshot, SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
 import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
+import type { CoherenceCheckRequest } from '@features/prompt-optimizer/types/coherence';
 
 export interface UseEnhancementSuggestionsParams {
   promptOptimizer: PromptOptimizer;
@@ -41,6 +42,7 @@ export interface UseEnhancementSuggestionsParams {
   promptHistory: {
     updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
   };
+  onCoherenceCheck?: (payload: CoherenceCheckRequest) => Promise<void> | void;
 }
 
 export interface UseEnhancementSuggestionsReturn {
@@ -65,6 +67,7 @@ export function useEnhancementSuggestions({
   currentPromptUuid,
   currentPromptDocId,
   promptHistory,
+  onCoherenceCheck,
 }: UseEnhancementSuggestionsParams): UseEnhancementSuggestionsReturn {
   // Handle applying suggestions
   const { handleSuggestionClick } = useSuggestionApply({
@@ -77,6 +80,7 @@ export function useEnhancementSuggestions({
     currentPromptUuid,
     currentPromptDocId,
     promptHistory,
+    onCoherenceCheck,
   });
 
   // Handle fetching suggestions

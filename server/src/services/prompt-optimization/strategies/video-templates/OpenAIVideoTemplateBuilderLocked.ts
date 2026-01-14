@@ -15,17 +15,18 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private readonly baseBuilder = new OpenAIVideoTemplateBuilder();
 
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
-    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams } = context;
+    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams, originalUserPrompt } = context;
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
       includeInstructions,
+      ...(originalUserPrompt ? { originalUserPrompt } : {}),
       ...(interpretedPlan !== undefined ? { interpretedPlan } : {}),
       ...(generationParams ? { generationParams } : {}),
     });
 
     const developerMessage = `${baseTemplate.developerMessage ?? ''}\n\n${this.buildLockedSpanInstructions()}`.trim();
-    const userMessage = this.wrapUserConceptWithLockedSpans(userConcept, interpretedPlan, lockedSpans);
+    const userMessage = this.wrapUserConceptWithLockedSpans(userConcept, interpretedPlan, lockedSpans, originalUserPrompt ?? null);
 
     return {
       ...baseTemplate,
@@ -45,11 +46,16 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private wrapUserConceptWithLockedSpans(
     userConcept: string,
     interpretedPlan?: Record<string, unknown> | null,
-    lockedSpans: VideoTemplateContext['lockedSpans'] = []
+    lockedSpans: VideoTemplateContext['lockedSpans'] = [],
+    originalUserPrompt?: string | null
   ): string {
     const fields: Record<string, string> = {
       user_concept: userConcept,
     };
+
+    if (originalUserPrompt) {
+      fields.original_user_prompt = originalUserPrompt;
+    }
 
     if (interpretedPlan) {
       fields.interpreted_plan = JSON.stringify(interpretedPlan, null, 2);
