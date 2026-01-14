@@ -40,7 +40,7 @@ describe('VideoPromptLLMRewriter', () => {
     
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.stringContaining('INSTRUCTIONS for Runway Gen-4.5'),
-      expect.objectContaining({ maxTokens: 1024 })
+      expect.objectContaining({ maxTokens: 8192 })
     );
     expect(result).toBe('Optimized prompt');
   });

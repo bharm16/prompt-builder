@@ -53,7 +53,18 @@ const localStorageMock = (() => {
 global.localStorage = localStorageMock;
 
 // Mock fetch
-global.fetch = vi.fn();
+// Provide a safe default fetch mock so tests that indirectly touch adapters
+// (e.g. GeminiAdapter) don't crash with "Cannot read properties of undefined (reading 'ok')".
+// Individual tests can still override `global.fetch` as needed.
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  statusText: 'OK',
+  json: async () => ({
+    candidates: [{ content: { parts: [{ text: 'stub' }] } }],
+  }),
+  text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'stub' }] } }] }),
+});
 
 // Mock Firebase
 vi.mock('./src/firebase.js', () => ({

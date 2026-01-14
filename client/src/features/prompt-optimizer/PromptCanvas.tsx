@@ -24,6 +24,7 @@ import { useSpanDataConversion } from './PromptCanvas/hooks/useSpanDataConversio
 import { useSuggestionDetection } from './PromptCanvas/hooks/useSuggestionDetection';
 import { useParseResult } from './PromptCanvas/hooks/useParseResult';
 import { usePromptCanvasState } from './PromptCanvas/hooks/usePromptCanvasState';
+import { usePreviewGenerationState } from './PromptCanvas/hooks/usePreviewGenerationState';
 import { usePromptStatus } from './PromptCanvas/hooks/usePromptStatus';
 import { useSpanSelectionEffects } from './PromptCanvas/hooks/useSpanSelectionEffects';
 import { useSuggestionFeedback } from './PromptCanvas/hooks/useSuggestionFeedback';
@@ -124,9 +125,17 @@ export function PromptCanvas({
     arrowLeft: number;
   } | null>(null);
   const [videoInputReference, setVideoInputReference] = useState('');
-  const [isVisualPreviewGenerating, setIsVisualPreviewGenerating] = useState(false);
-  const [isVideoPreviewGenerating, setIsVideoPreviewGenerating] = useState(false);
-  const [isRailVideoPreviewGenerating, setIsRailVideoPreviewGenerating] = useState(false);
+  const {
+    previewLoading,
+    setVisualPreviewGenerating,
+    setVideoPreviewGenerating,
+    setRailVideoPreviewGenerating,
+  } = usePreviewGenerationState();
+  const {
+    visual: isVisualPreviewGenerating,
+    video: isVideoPreviewGenerating,
+    railVideo: isRailVideoPreviewGenerating,
+  } = previewLoading;
   const [railVideoGenerateRequestId, setRailVideoGenerateRequestId] = useState(0);
   const [railVideoLastGeneratedAt, setRailVideoLastGeneratedAt] = useState<number | null>(null);
   
@@ -1956,7 +1965,7 @@ export function PromptCanvas({
                         generateRequestId={videoGenerateRequestId}
                         lastGeneratedAt={videoLastGeneratedAt}
                         onPreviewGenerated={handleVideoPreviewGenerated}
-                        onLoadingChange={setIsVideoPreviewGenerating}
+                        onLoadingChange={setVideoPreviewGenerating}
                         onKeepRefining={handleKeepRefiningFromPreview}
                         onRefinePrompt={handleSomethingOffFromPreview}
                       />
@@ -2081,7 +2090,7 @@ export function PromptCanvas({
                 generateRequestId={visualGenerateRequestId}
                 lastGeneratedAt={visualLastGeneratedAt}
                 onPreviewGenerated={handleVisualPreviewGenerated}
-                onLoadingChange={setIsVisualPreviewGenerating}
+                onLoadingChange={setVisualPreviewGenerating}
                 onKeepRefining={handleKeepRefiningFromPreview}
                 onRefinePrompt={handleSomethingOffFromPreview}
                 showActions={false}
@@ -2135,7 +2144,7 @@ export function PromptCanvas({
                   generateRequestId={railVideoGenerateRequestId}
                   lastGeneratedAt={railVideoLastGeneratedAt}
                   onPreviewGenerated={handleRailVideoPreviewGenerated}
-                  onLoadingChange={setIsRailVideoPreviewGenerating}
+                  onLoadingChange={setRailVideoPreviewGenerating}
                   onKeepRefining={handleKeepRefiningFromPreview}
                   onRefinePrompt={handleSomethingOffFromPreview}
                 />

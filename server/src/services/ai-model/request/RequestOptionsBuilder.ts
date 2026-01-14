@@ -1,4 +1,5 @@
 import { shouldUseSeed } from '@config/modelConfig';
+import { hashString } from '@utils/hash';
 import type { ProviderCapabilities } from '@utils/provider/ProviderDetector';
 import { resolveDeveloperMessage } from '../policy/DeveloperMessagePolicy';
 import type { ExecuteParams, ModelConfigEntry, RequestOptions } from '../types';
@@ -58,14 +59,4 @@ export function buildRequestOptions(input: BuildRequestOptionsInput): RequestOpt
   }
 
   return requestOptions;
-}
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
 }

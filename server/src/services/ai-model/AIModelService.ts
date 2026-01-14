@@ -1,5 +1,6 @@
 import { logger } from '@infrastructure/Logger';
 import { ModelConfig, shouldUseSeed } from '@config/modelConfig';
+import { hashString } from '@utils/hash';
 import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
 import { AIClientError, type IAIClient, type AIResponse, type CompletionOptions } from '@interfaces/IAIClient';
 import { buildRequestOptions } from './request/RequestOptionsBuilder';
@@ -404,14 +405,4 @@ export class AIModelService {
     const client = this.clientResolver.getClient(plan.primaryConfig);
     return typeof (client as { streamComplete?: (systemPrompt: string, options: unknown) => Promise<string> }).streamComplete === 'function';
   }
-}
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
 }
