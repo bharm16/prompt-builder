@@ -332,6 +332,7 @@ See `.env.example` for full list.
 |-----|----------|
 | **[OVERVIEW.md](OVERVIEW.md)** | Full product documentation, architecture, features |
 | **[docs/API.md](docs/API.md)** | API reference |
+| **[docs/billing/PROMPTCANVAS_BILLING_AND_MODEL_CREDITS_ANALYSIS.md](docs/billing/PROMPTCANVAS_BILLING_AND_MODEL_CREDITS_ANALYSIS.md)** | Billing + credits system analysis and recommendations |
 | **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | Development guide |
 | **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment instructions |
 
