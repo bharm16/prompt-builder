@@ -14,10 +14,10 @@
 import { API_ENDPOINTS } from '../config/panelConfig';
 import {
   CustomSuggestionsResponseSchema,
-  type CustomSuggestionsResponse,
 } from './schemas';
 import { CancellationError, combineSignals } from '@features/prompt-optimizer/utils/signalUtils';
 import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import type { SuggestionItem } from '../hooks/types';
 
 /** Timeout for custom suggestion requests in milliseconds */
 const CUSTOM_SUGGESTION_TIMEOUT_MS = 3000;
@@ -49,7 +49,7 @@ export async function fetchCustomSuggestions({
   contextAfter,
   metadata,
   signal: externalSignal,
-}: FetchCustomSuggestionsParams): Promise<string[]> {
+}: FetchCustomSuggestionsParams): Promise<SuggestionItem[]> {
   const fetchFn = typeof fetch !== 'undefined' ? fetch : null;
 
   if (!fetchFn) {
@@ -97,7 +97,9 @@ export async function fetchCustomSuggestions({
     const data = (await response.json()) as unknown;
     const parsed = CustomSuggestionsResponseSchema.parse(data);
 
-    return parsed.suggestions;
+    return parsed.suggestions
+      .map((item) => (typeof item === 'string' ? { text: item } : item))
+      .filter((item) => typeof item.text === 'string' && item.text.trim().length > 0);
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 

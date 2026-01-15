@@ -13,6 +13,7 @@ export interface CoherenceSpan {
   start?: number;
   end?: number;
   confidence?: number;
+  source?: 'labeled' | 'context';
 }
 
 export interface AppliedChange {
@@ -151,6 +152,10 @@ const CONTRADICTION_SETS = [
 
 const HIGH_IMPACT_PARENTS = new Set(['environment', 'lighting', 'style']);
 const HIGH_IMPACT_KEYWORDS = ['time', 'mood', 'era', 'emotion'];
+const MAX_CONTEXT_SPANS = 12;
+const MIN_CONTEXT_CHARS = 3;
+const SENTENCE_REGEX = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
+const WORD_CHAR_REGEX = /[A-Za-z0-9]/;
 
 const normalizeText = (text: string): string =>
   text
@@ -224,6 +229,151 @@ const sanitizeSpans = (spans: CoherenceSpan[] | undefined): CoherenceSpan[] => {
     .filter((span) => Boolean(summarizeSpan(span)));
 };
 
+interface SpanRange {
+  start: number;
+  end: number;
+}
+
+const buildCoverageRanges = (prompt: string, spans: CoherenceSpan[]): SpanRange[] => {
+  const ranges = spans
+    .map((span) => {
+      const start = Number.isFinite(span.start) ? Number(span.start) : null;
+      const end = Number.isFinite(span.end) ? Number(span.end) : null;
+      if (start === null || end === null || end <= start) {
+        return null;
+      }
+      const safeStart = Math.max(0, Math.min(start, prompt.length));
+      const safeEnd = Math.max(safeStart, Math.min(end, prompt.length));
+      if (safeEnd <= safeStart) {
+        return null;
+      }
+      return { start: safeStart, end: safeEnd };
+    })
+    .filter((range): range is SpanRange => Boolean(range))
+    .sort((a, b) => a.start - b.start);
+
+  const merged: SpanRange[] = [];
+  ranges.forEach((range) => {
+    const last = merged[merged.length - 1];
+    if (!last || range.start > last.end) {
+      merged.push({ ...range });
+      return;
+    }
+    if (range.end > last.end) {
+      last.end = range.end;
+    }
+  });
+
+  return merged;
+};
+
+const splitPromptSentences = (
+  prompt: string
+): Array<{ start: number; end: number; text: string }> => {
+  const sentences: Array<{ start: number; end: number; text: string }> = [];
+  SENTENCE_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = SENTENCE_REGEX.exec(prompt)) !== null) {
+    const raw = match[0];
+    if (!raw) {
+      continue;
+    }
+    const leadingWhitespace = raw.match(/^\s*/)?.[0].length ?? 0;
+    const trailingWhitespace = raw.match(/\s*$/)?.[0].length ?? 0;
+    const start = match.index + leadingWhitespace;
+    const end = match.index + raw.length - trailingWhitespace;
+    if (end <= start) {
+      continue;
+    }
+    const text = prompt.slice(start, end);
+    if (!text) {
+      continue;
+    }
+    sentences.push({ start, end, text });
+  }
+
+  return sentences;
+};
+
+const sentenceHasUncoveredText = (
+  prompt: string,
+  sentenceStart: number,
+  sentenceEnd: number,
+  coverage: SpanRange[]
+): boolean => {
+  if (sentenceEnd <= sentenceStart) return false;
+
+  let cursor = sentenceStart;
+  for (const range of coverage) {
+    if (range.end <= sentenceStart) {
+      continue;
+    }
+    if (range.start >= sentenceEnd) {
+      break;
+    }
+    if (range.start > cursor) {
+      const gapText = prompt.slice(cursor, Math.min(range.start, sentenceEnd));
+      if (WORD_CHAR_REGEX.test(gapText)) {
+        return true;
+      }
+    }
+    cursor = Math.max(cursor, range.end);
+    if (cursor >= sentenceEnd) {
+      return false;
+    }
+  }
+
+  if (cursor < sentenceEnd) {
+    const gapText = prompt.slice(cursor, sentenceEnd);
+    if (WORD_CHAR_REGEX.test(gapText)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const buildContextSpans = (prompt: string, spans: CoherenceSpan[]): CoherenceSpan[] => {
+  if (!prompt) return [];
+  const sentences = splitPromptSentences(prompt);
+  if (sentences.length === 0) return [];
+
+  const coverage = buildCoverageRanges(prompt, spans);
+  const seen = new Set(
+    spans
+      .map((span) => normalizeText(summarizeSpan(span)))
+      .filter(Boolean)
+  );
+  const contextSpans: CoherenceSpan[] = [];
+
+  for (const sentence of sentences) {
+    if (contextSpans.length >= MAX_CONTEXT_SPANS) {
+      break;
+    }
+    if (sentence.text.length < MIN_CONTEXT_CHARS) {
+      continue;
+    }
+    if (!sentenceHasUncoveredText(prompt, sentence.start, sentence.end, coverage)) {
+      continue;
+    }
+    const normalized = normalizeText(sentence.text);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    contextSpans.push({
+      text: sentence.text,
+      quote: sentence.text,
+      start: sentence.start,
+      end: sentence.end,
+      source: 'context',
+    });
+    seen.add(normalized);
+  }
+
+  return contextSpans;
+};
+
 const buildAppliedSpan = (
   spans: CoherenceSpan[],
   appliedChange?: AppliedChange
@@ -272,39 +422,24 @@ export class PromptCoherenceService {
   }: CoherenceCheckParams): Promise<CoherenceResult> {
     const operation = 'prompt-coherence-check';
     const cleanSpans = sanitizeSpans(spans);
-    const appliedSpan = buildAppliedSpan(cleanSpans, appliedChange);
-
-    const deterministic = this.runDeterministicChecks(cleanSpans, appliedSpan);
-
-    const shouldRunLlm =
-      cleanSpans.length > 1 &&
-      (deterministic.conflicts.length > 0 ||
-        deterministic.harmonizations.length > 0 ||
-        this.isLargeChange(appliedChange) ||
-        isHighImpactCategory(appliedChange?.category ?? appliedSpan?.category));
-
-    if (!shouldRunLlm) {
-      return deterministic;
-    }
+    const contextSpans = buildContextSpans(afterPrompt, cleanSpans);
+    const spansForCheck = [...cleanSpans, ...contextSpans];
 
     try {
       const llmResult = await this.runLlmCheck({
         beforePrompt,
         afterPrompt,
         appliedChange,
-        spans: cleanSpans,
+        spans: spansForCheck,
       });
 
-      return {
-        conflicts: [...deterministic.conflicts, ...llmResult.conflicts],
-        harmonizations: [...deterministic.harmonizations, ...llmResult.harmonizations],
-      };
+      return llmResult;
     } catch (error) {
-      log.warn('LLM coherence check failed; returning deterministic results', {
+      log.warn('LLM coherence check failed; returning empty results', {
         operation,
         error: error instanceof Error ? error.message : String(error),
       });
-      return deterministic;
+      return { conflicts: [], harmonizations: [] };
     }
   }
 
@@ -336,7 +471,9 @@ export class PromptCoherenceService {
       const spanText = summarizeSpan(span);
       if (!spanText) return;
 
-      if (!isTechnicalCategory(span.category)) {
+      const isContextSpan = span.source === 'context';
+
+      if (!isContextSpan && !isTechnicalCategory(span.category)) {
         const matchedTerms = new Set<string>();
         let cleaned = spanText;
 
@@ -372,27 +509,29 @@ export class PromptCoherenceService {
         }
       }
 
-      const deduped = collapseDuplicateWords(spanText);
-      if (deduped !== spanText) {
-        harmonizations.push({
-          message: 'Redundant phrasing detected.',
-          reasoning: 'This span repeats descriptors; tightening improves readability.',
-          involvedSpanIds: span.id ? [span.id] : undefined,
-          recommendations: [
-            {
-              title: 'Collapse repeated words',
-              rationale: 'Removes duplicate descriptors without changing meaning.',
-              edits: [
-                {
-                  type: 'replaceSpanText',
-                  ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
-                  replacementText: deduped,
-                },
-              ],
-              confidence: 0.64,
-            },
-          ],
-        });
+      if (!isContextSpan) {
+        const deduped = collapseDuplicateWords(spanText);
+        if (deduped !== spanText) {
+          harmonizations.push({
+            message: 'Redundant phrasing detected.',
+            reasoning: 'This span repeats descriptors; tightening improves readability.',
+            involvedSpanIds: span.id ? [span.id] : undefined,
+            recommendations: [
+              {
+                title: 'Collapse repeated words',
+                rationale: 'Removes duplicate descriptors without changing meaning.',
+                edits: [
+                  {
+                    type: 'replaceSpanText',
+                    ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                    replacementText: deduped,
+                  },
+                ],
+                confidence: 0.64,
+              },
+            ],
+          });
+        }
       }
     });
 
@@ -455,6 +594,9 @@ export class PromptCoherenceService {
 
     const seenDuplicates = new Set<string>();
     spans.forEach((span) => {
+      if (span.source === 'context') {
+        return;
+      }
       const spanText = summarizeSpan(span);
       if (!spanText) return;
       const normalized = normalizeText(spanText);
@@ -515,14 +657,24 @@ export class PromptCoherenceService {
     appliedChange,
     spans,
   }: CoherenceCheckParams & { spans: CoherenceSpan[] }): string {
-    const trimmedSpans = spans.slice(0, 60).map((span) => ({
-      id: span.id ?? null,
-      category: span.category ?? null,
-      text: summarizeSpan(span).slice(0, 200),
-    }));
+    const trimmedSpans = spans.slice(0, 60).map((span) => {
+      const entry: Record<string, string> = {
+        text: summarizeSpan(span).slice(0, 200),
+      };
+      if (span.id) {
+        entry.id = span.id;
+      }
+      if (span.category) {
+        entry.category = span.category;
+      }
+      if (span.source) {
+        entry.source = span.source;
+      }
+      return entry;
+    });
 
     return `You are a prompt coherence auditor.
-Your job: After a user applies a change to one span, check the rest of the prompt for contradictions or optional harmonizations.
+Your job: After a user applies a change, check the full after prompt for contradictions or optional harmonizations.
 
 Return JSON only with this shape:
 {
@@ -565,17 +717,22 @@ Return JSON only with this shape:
 }
 
 Rules:
-- Conflicts are true contradictions (e.g., day vs night, indoor vs outdoor, underwater vs fire).
+- Conflicts are true contradictions (e.g., day vs night, indoor vs outdoor, underwater vs fire, or mismatched subject attributes like age/gender).
 - Harmonizations are optional consistency upgrades (mood, palette, era, lens language).
-- Prefer edits to OTHER spans; avoid undoing the applied change.
-- Use span IDs whenever possible. Only use anchorQuote if spanId is missing.
+- Prefer edits that adjust conflicting text rather than undoing the applied change.
+- Scan the full after prompt for any inconsistencies across entities, attributes, actions, environment, time, physical constraints, and references (including pronouns/possessives).
+- The span list is incomplete and optional. Do NOT limit your analysis to spans.
+- Use span IDs only when the conflicting text is fully contained in a provided span; never invent span IDs.
+- For any text outside spans, include anchorQuote with enough surrounding words to locate the text.
+- Anchor quotes must be exact substrings from the after prompt.
+- If the same inconsistency appears in multiple locations, include edits for each location.
 - Return empty arrays if nothing is needed.
 
 Input data:
 Before prompt: """${beforePrompt}"""
-After prompt: """${afterPrompt}"""
+After prompt (authoritative full text): """${afterPrompt}"""
 Applied change: ${JSON.stringify(appliedChange ?? {}, null, 2)}
-Spans: ${JSON.stringify(trimmedSpans, null, 2)}`;
+Span hints (incomplete): ${JSON.stringify(trimmedSpans, null, 2)}`;
   }
 
   private sanitizeResult(result: CoherenceResult, spans: CoherenceSpan[]): CoherenceResult {
@@ -585,16 +742,28 @@ Spans: ${JSON.stringify(trimmedSpans, null, 2)}`;
         .filter((finding) => Array.isArray(finding.recommendations))
         .map((finding) => ({
           ...finding,
+          involvedSpanIds: Array.isArray(finding.involvedSpanIds)
+            ? finding.involvedSpanIds.filter((id) => spanIds.has(id))
+            : undefined,
           recommendations: finding.recommendations
             .map((rec) => ({
               ...rec,
               edits: Array.isArray(rec.edits)
-                ? rec.edits.filter((edit) => {
+                ? rec.edits
+                    .map((edit) => {
+                      if (edit.spanId && !spanIds.has(edit.spanId)) {
+                        if (edit.anchorQuote) {
+                          const { spanId: _spanId, ...rest } = edit;
+                          return rest as CoherenceEdit;
+                        }
+                        return null;
+                      }
+                      return edit;
+                    })
+                    .filter((edit): edit is CoherenceEdit => Boolean(edit))
+                    .filter((edit) => {
                     if (edit.type === 'replaceSpanText') {
                       if (!edit.replacementText) return false;
-                    }
-                    if (edit.spanId && !spanIds.has(edit.spanId)) {
-                      return false;
                     }
                     return Boolean(edit.spanId || edit.anchorQuote);
                   })

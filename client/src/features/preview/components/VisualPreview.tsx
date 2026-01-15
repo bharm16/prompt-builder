@@ -1,13 +1,14 @@
 /**
  * Visual Preview Component
  *
- * Displays image previews generated from prompts using Flux Schnell.
+ * Displays image previews generated from prompts using Flux models.
  * Provides loading states, error handling, and regeneration controls.
  */
 
 import React from 'react';
 import { Icon } from '@/components/icons/Icon';
 import { useImagePreview } from '../hooks/useImagePreview';
+import type { PreviewProvider } from '../api/previewApi';
 
 interface VisualPreviewProps {
   prompt: string;
@@ -92,6 +93,11 @@ const normalizeAspectRatio = (value?: string | null): string | null => {
   return null;
 };
 
+const PREVIEW_PROVIDERS: { value: PreviewProvider; label: string }[] = [
+  { value: 'replicate-flux-schnell', label: 'Schnell' },
+  { value: 'replicate-flux-kontext-fast', label: 'Kontext Fast' },
+];
+
 export const VisualPreview: React.FC<VisualPreviewProps> = ({
   prompt,
   aspectRatio = null,
@@ -107,12 +113,21 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     () => normalizeAspectRatio(aspectRatio),
     [aspectRatio]
   );
-  const { imageUrl, loading, error, regenerate } = useImagePreview({
+  const [provider, setProvider] =
+    React.useState<PreviewProvider>('replicate-flux-schnell');
+  const [useReferenceImage, setUseReferenceImage] = React.useState(true);
+  const { imageUrl, imageUrls, loading, error, regenerate } = useImagePreview({
     prompt,
     isVisible,
     ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
+    provider,
+    seedImageUrl,
+    useReferenceImage,
   });
-  const displayUrl = imageUrl ?? seedImageUrl;
+  const hasReferenceImage = Boolean(imageUrl || seedImageUrl);
+  const isKontext = provider === 'replicate-flux-kontext-fast';
+  const shouldShowGrid = isKontext && imageUrls.length > 0;
+  const displayUrl = shouldShowGrid ? null : imageUrl ?? seedImageUrl;
   const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const copyTimeoutRef = React.useRef<number | null>(null);
@@ -170,6 +185,30 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     variant === 'rail'
       ? 'inset 0 0 0 1px rgba(255,255,255,0.03)'
       : 'inset 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.6)';
+  const controlPillStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 8px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.12)',
+    background: 'rgba(0,0,0,0.6)',
+    color: '#E6E6E6',
+    fontSize: 11,
+    lineHeight: '14px',
+    pointerEvents: 'auto',
+  };
+  const selectStyle: React.CSSProperties = {
+    background: 'transparent',
+    border: 'none',
+    color: '#F5F6F7',
+    fontSize: 11,
+    fontWeight: 600,
+    outline: 'none',
+  };
+  const checkboxStyle: React.CSSProperties = {
+    accentColor: '#F5F6F7',
+  };
 
   return (
     <div
@@ -192,7 +231,68 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
           position: 'relative',
         }}
       >
-        {displayUrl ? (
+        <div className="absolute left-3 top-3 right-3 z-10 flex flex-wrap items-center gap-2">
+          <label style={controlPillStyle}>
+            <span style={{ color: '#9AA0A6' }}>Draft model</span>
+            <select
+              value={provider}
+              onChange={(event) => setProvider(event.target.value as PreviewProvider)}
+              style={selectStyle}
+              aria-label="Draft model"
+            >
+              {PREVIEW_PROVIDERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {isKontext && (
+            <label style={controlPillStyle}>
+              <input
+                type="checkbox"
+                checked={useReferenceImage}
+                onChange={(event) => setUseReferenceImage(event.target.checked)}
+                style={checkboxStyle}
+                disabled={!hasReferenceImage}
+                aria-label="Use current frame as reference"
+              />
+              <span style={{ color: hasReferenceImage ? '#E6E6E6' : '#9AA0A6' }}>
+                Use current frame
+              </span>
+            </label>
+          )}
+        </div>
+        {shouldShowGrid ? (
+          <div
+            className="w-full h-full"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 4,
+              padding: 4,
+              background: '#0B0C0E',
+            }}
+          >
+            {imageUrls.map((url, index) => (
+              <div
+                key={`${index}-${url ?? 'empty'}`}
+                className="w-full h-full"
+                style={{
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.04)',
+                }}
+              >
+                {url ? (
+                  <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full" />
+                )}
+              </div>
+            ))}
+          </div>
+        ) : displayUrl ? (
           <img src={displayUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center p-6 text-center">

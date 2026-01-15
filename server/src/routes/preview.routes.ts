@@ -10,6 +10,7 @@ import { asyncHandler } from '@middleware/asyncHandler';
 import { userCreditService as defaultUserCreditService } from '@services/credits/UserCreditService';
 import type { PreviewRoutesServices } from './types';
 import { createImageGenerateHandler } from './preview/handlers/imageGenerate';
+import { createImageStoryboardGenerateHandler } from './preview/handlers/imageStoryboardGenerate';
 import { createVideoAvailabilityHandler } from './preview/handlers/videoAvailability';
 import { createVideoGenerateHandler } from './preview/handlers/videoGenerate';
 import { createVideoJobsHandler } from './preview/handlers/videoJobs';
@@ -28,12 +29,14 @@ export function createPreviewRoutes(services: PreviewRoutesServices): Router {
   };
 
   const imageGenerateHandler = createImageGenerateHandler(resolvedServices);
+  const imageStoryboardGenerateHandler = createImageStoryboardGenerateHandler(resolvedServices);
   const videoAvailabilityHandler = createVideoAvailabilityHandler(resolvedServices);
   const videoGenerateHandler = createVideoGenerateHandler(resolvedServices);
   const videoJobsHandler = createVideoJobsHandler(resolvedServices);
   const videoContentHandler = createVideoContentHandler(resolvedServices);
 
   router.post('/generate', asyncHandler(imageGenerateHandler));
+  router.post('/generate/storyboard', asyncHandler(imageStoryboardGenerateHandler));
   router.get('/video/availability', asyncHandler(videoAvailabilityHandler));
   router.post('/video/generate', asyncHandler(videoGenerateHandler));
   router.get('/video/jobs/:jobId', asyncHandler(videoJobsHandler));

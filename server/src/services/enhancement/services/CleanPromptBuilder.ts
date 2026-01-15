@@ -73,11 +73,11 @@ export class CleanPromptBuilder {
     });
     
     const promptPreview = this._trim(fullPrompt, PROMPT_PREVIEW_LIMIT);
-    const { capabilities } = detectAndGetCapabilities({ operation: 'enhance_suggestions' });
+    const { capabilities } = detectAndGetCapabilities({ operation: 'custom_suggestions' });
     const useWrapper = !capabilities.strictJsonSchema;
 
     // Get provider-aware security prefix
-    const securityPrefix = getSecurityPrefix({ operation: 'enhance_suggestions' });
+    const securityPrefix = getSecurityPrefix({ operation: 'custom_suggestions' });
     
     // Use XML wrapper for user data
     const trimmedContextBefore = contextBefore ? this._trim(contextBefore, 500, true) : '';
@@ -98,7 +98,7 @@ export class CleanPromptBuilder {
 
     // Get format instruction (provider-aware)
     const formatInstruction = getFormatInstruction({ 
-      operation: 'enhance_suggestions',
+      operation: 'custom_suggestions',
       isArray: !useWrapper,
       hasSchema: true,
       targetStart: useWrapper ? '{' : '[',

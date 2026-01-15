@@ -1,14 +1,19 @@
 /**
- * Replicate Flux Schnell provider
+ * Replicate Flux Kontext Fast provider
  *
- * Handles prompt cleanup, optional video-to-image transformation,
- * and Replicate polling for Flux Schnell preview images.
+ * Supports prompt cleanup, optional video-to-image transformation,
+ * and Replicate polling for Flux Kontext Fast preview images.
  */
 
 import Replicate from 'replicate';
 import { logger } from '@infrastructure/Logger';
 import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
-import type { ImagePreviewProvider, ImagePreviewRequest, ImagePreviewResult } from './types';
+import type {
+  ImagePreviewProvider,
+  ImagePreviewRequest,
+  ImagePreviewResult,
+  ImagePreviewSpeedMode,
+} from './types';
 import { VideoToImagePromptTransformer } from './VideoToImagePromptTransformer';
 
 interface ReplicateClient {
@@ -20,6 +25,9 @@ interface ReplicateClient {
         aspect_ratio: string;
         output_format: string;
         output_quality: number;
+        speed_mode?: string;
+        seed?: number;
+        img_cond_path?: string;
       };
     }) => Promise<ReplicatePrediction>;
     get: (id: string) => Promise<ReplicatePrediction>;
@@ -36,54 +44,96 @@ interface ReplicatePrediction {
   logs?: string | null;
 }
 
-const FLUX_MODEL_ID = 'black-forest-labs/flux-schnell';
+const KONTEXT_MODEL_ID = 'prunaai/flux-kontext-fast';
 
-const FLUX_ASPECT_RATIOS = [
+const KONTEXT_ASPECT_RATIOS = [
+  'match_input_image',
   '1:1',
   '16:9',
   '21:9',
-  '2:3',
   '3:2',
+  '2:3',
   '4:5',
   '5:4',
+  '3:4',
+  '4:3',
   '9:16',
   '9:21',
 ] as const;
 
-type FluxAspectRatio = (typeof FLUX_ASPECT_RATIOS)[number];
+type KontextAspectRatio = (typeof KONTEXT_ASPECT_RATIOS)[number];
 
-const DEFAULT_ASPECT_RATIO: FluxAspectRatio = '16:9';
-const FLUX_ASPECT_RATIO_SET = new Set<string>(FLUX_ASPECT_RATIOS);
+const DEFAULT_ASPECT_RATIO: KontextAspectRatio = '16:9';
+const KONTEXT_ASPECT_RATIO_SET = new Set<string>(KONTEXT_ASPECT_RATIOS);
+
+const SPEED_MODE_MAP: Record<ImagePreviewSpeedMode, string> = {
+  'Lightly Juiced': 'Lightly Juiced \ud83c\udf4a (more consistent)',
+  'Juiced': 'Juiced \ud83d\udd25 (default)',
+  'Extra Juiced': 'Extra Juiced \ud83d\udd25 (more speed)',
+  'Real Time': 'Real Time',
+};
+
+const DEFAULT_SPEED_MODE = SPEED_MODE_MAP['Juiced'];
+const DEFAULT_OUTPUT_QUALITY = 80;
 const MAX_CREATE_RETRIES = 2;
 const DEFAULT_RETRY_AFTER_MS = 4000;
 
-const isFluxAspectRatio = (value: string): value is FluxAspectRatio =>
-  FLUX_ASPECT_RATIO_SET.has(value);
+const isKontextAspectRatio = (value: string): value is KontextAspectRatio =>
+  KONTEXT_ASPECT_RATIO_SET.has(value);
 
-const normalizeAspectRatio = (value?: string): FluxAspectRatio => {
+const normalizeAspectRatio = (
+  value?: string,
+  useInputImage?: boolean
+): KontextAspectRatio => {
   if (!value) {
-    return DEFAULT_ASPECT_RATIO;
+    return useInputImage ? 'match_input_image' : DEFAULT_ASPECT_RATIO;
   }
 
   const trimmed = value.trim();
-  return isFluxAspectRatio(trimmed) ? trimmed : DEFAULT_ASPECT_RATIO;
+  return isKontextAspectRatio(trimmed)
+    ? trimmed
+    : useInputImage
+      ? 'match_input_image'
+      : DEFAULT_ASPECT_RATIO;
 };
 
-export interface ReplicateFluxSchnellProviderOptions {
+const normalizeOutputQuality = (value?: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_OUTPUT_QUALITY;
+  }
+
+  const rounded = Math.round(value);
+  if (rounded < 1) {
+    return 1;
+  }
+  if (rounded > 100) {
+    return 100;
+  }
+  return rounded;
+};
+
+const normalizeSeed = (value?: number): number | undefined => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+  return Math.round(value);
+};
+
+export interface ReplicateFluxKontextFastProviderOptions {
   apiToken?: string;
   promptTransformer?: VideoToImagePromptTransformer | null;
 }
 
-export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
-  public readonly id = 'replicate-flux-schnell' as const;
-  public readonly displayName = 'Replicate Flux Schnell';
+export class ReplicateFluxKontextFastProvider implements ImagePreviewProvider {
+  public readonly id = 'replicate-flux-kontext-fast' as const;
+  public readonly displayName = 'Replicate Flux Kontext Fast';
 
   private readonly replicate: ReplicateClient | null;
   private readonly promptTransformer: VideoToImagePromptTransformer | null;
   private readonly videoPromptDetector: VideoPromptDetectionService;
-  private readonly log = logger.child({ service: 'ReplicateFluxSchnellProvider' });
+  private readonly log = logger.child({ service: 'ReplicateFluxKontextFastProvider' });
 
-  constructor(options: ReplicateFluxSchnellProviderOptions = {}) {
+  constructor(options: ReplicateFluxKontextFastProviderOptions = {}) {
     const apiToken = options.apiToken || process.env.REPLICATE_API_TOKEN;
     this.replicate = apiToken
       ? (new Replicate({
@@ -112,7 +162,18 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
     }
 
     const userId = request.userId;
-    const aspectRatio = normalizeAspectRatio(request.aspectRatio);
+    const hasInputImage =
+      typeof request.inputImageUrl === 'string' && request.inputImageUrl.trim().length > 0;
+
+    if (!hasInputImage) {
+      const missingInputError = new Error(
+        'Flux Kontext Fast requires inputImageUrl for img2img edits. Generate a base image first.'
+      ) as Error & { statusCode?: number };
+      missingInputError.statusCode = 400;
+      throw missingInputError;
+    }
+
+    const aspectRatio = normalizeAspectRatio(request.aspectRatio, hasInputImage);
     const cleanedPrompt = this.stripPreviewSections(trimmedPrompt);
 
     let promptForModel = cleanedPrompt;
@@ -137,10 +198,17 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
       });
     }
 
+    const speedMode = request.speedMode ? SPEED_MODE_MAP[request.speedMode] : DEFAULT_SPEED_MODE;
+    const outputQuality = normalizeOutputQuality(request.outputQuality);
+    const seed = normalizeSeed(request.seed);
+
     this.log.info('Generating image preview', {
       prompt: promptForModel.substring(0, 100),
       promptWasTransformed,
       aspectRatio,
+      speedMode,
+      outputQuality,
+      hasInputImage,
       promptWasStripped: cleanedPrompt !== trimmedPrompt,
       userId,
     });
@@ -148,15 +216,22 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
     try {
       const startTime = Date.now();
 
-      const prediction = await this.createPrediction(
-        {
-          prompt: promptForModel,
-          aspect_ratio: aspectRatio,
-          output_format: 'webp',
-          output_quality: 80,
-        },
-        userId
-      );
+      const input: ReplicatePredictionInput = {
+        prompt: promptForModel,
+        aspect_ratio: aspectRatio,
+        output_format: 'webp',
+        output_quality: outputQuality,
+        speed_mode: speedMode,
+      };
+
+      if (seed !== undefined) {
+        input.seed = seed;
+      }
+      if (hasInputImage) {
+        input.img_cond_path = request.inputImageUrl?.trim();
+      }
+
+      const prediction = await this.createPrediction(input, userId);
 
       this.log.info('Prediction created', {
         predictionId: prediction.id,
@@ -245,7 +320,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
 
       return {
         imageUrl,
-        model: FLUX_MODEL_ID,
+        model: KONTEXT_MODEL_ID,
         durationMs,
         aspectRatio,
       };
@@ -303,7 +378,7 @@ export class ReplicateFluxSchnellProvider implements ImagePreviewProvider {
     for (let attempt = 0; attempt <= MAX_CREATE_RETRIES; attempt += 1) {
       try {
         return await this.replicate.predictions.create({
-          model: FLUX_MODEL_ID,
+          model: KONTEXT_MODEL_ID,
           input,
         });
       } catch (error) {

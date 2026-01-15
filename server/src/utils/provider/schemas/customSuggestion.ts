@@ -6,7 +6,7 @@ import { buildCapabilityOptions, type JSONSchema, type SchemaOptions } from './t
  */
 export function getCustomSuggestionSchema(options: SchemaOptions = {}): JSONSchema {
   const { capabilities } = detectAndGetCapabilities(
-    buildCapabilityOptions(options, 'enhance_suggestions')
+    buildCapabilityOptions(options, 'custom_suggestions')
   );
 
   if (capabilities.strictJsonSchema) {

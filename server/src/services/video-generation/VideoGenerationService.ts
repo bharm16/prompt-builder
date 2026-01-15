@@ -57,6 +57,15 @@ export class VideoGenerationService {
   }
 
   public getAvailabilityReport(modelIds: string[]): VideoAvailabilityReport {
-    return getAvailabilityReport(modelIds, this.getProviderAvailability(), this.log);
+    const availabilityLog = {
+      warn: (message: string, meta?: Record<string, unknown>) => {
+        if (message === 'Unknown video model requested; falling back to default') {
+          return;
+        }
+        this.log.warn(message, meta);
+      },
+    };
+
+    return getAvailabilityReport(modelIds, this.getProviderAvailability(), availabilityLog);
   }
 }

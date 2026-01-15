@@ -110,6 +110,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   if (!promptOutputOnly) {
     const previewRoutes = createPreviewRoutes({
       imageGenerationService: container.resolve('imageGenerationService'),
+      storyboardPreviewService: container.resolve('storyboardPreviewService'),
       videoGenerationService: container.resolve('videoGenerationService'),
       videoJobStore: container.resolve('videoJobStore'),
       videoContentAccessService: container.resolve('videoContentAccessService'),

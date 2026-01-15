@@ -449,7 +449,7 @@ export class EnhancementService {
     });
 
     // Generate suggestions
-    const schema = getCustomSuggestionSchema();
+    const schema = getCustomSuggestionSchema({ operation: 'custom_suggestions' });
     const temperature = this._getEnhancementTemperature();
 
     const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(

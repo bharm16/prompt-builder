@@ -7,9 +7,21 @@
 import { apiClient } from '@/services/ApiClient';
 import { API_CONFIG } from '@/config/api.config';
 
+export type PreviewProvider =
+  | 'replicate-flux-schnell'
+  | 'replicate-flux-kontext-fast'
+  | 'auto';
+
+export type PreviewSpeedMode = 'Lightly Juiced' | 'Juiced' | 'Extra Juiced' | 'Real Time';
+
 export interface GeneratePreviewRequest {
   prompt: string;
   aspectRatio?: string;
+  provider?: PreviewProvider;
+  inputImageUrl?: string;
+  seed?: number;
+  speedMode?: PreviewSpeedMode;
+  outputQuality?: number;
 }
 
 export interface GeneratePreviewResponse {
@@ -27,6 +39,25 @@ export interface GeneratePreviewResponse {
   message?: string;
 }
 
+export interface GenerateStoryboardPreviewRequest {
+  prompt: string;
+  aspectRatio?: string;
+  seedImageUrl?: string;
+  speedMode?: PreviewSpeedMode;
+  seed?: number;
+}
+
+export interface GenerateStoryboardPreviewResponse {
+  success: boolean;
+  data?: {
+    imageUrls: string[];
+    deltas: string[];
+    baseImageUrl: string;
+  };
+  error?: string;
+  message?: string;
+}
+
 /**
  * Generate a preview image from a prompt
  *
@@ -36,16 +67,61 @@ export interface GeneratePreviewResponse {
  */
 export async function generatePreview(
   prompt: string,
-  aspectRatio?: string
+  options?: string | Omit<GeneratePreviewRequest, 'prompt'>
 ): Promise<GeneratePreviewResponse> {
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     throw new Error('Prompt is required and must be a non-empty string');
   }
 
-  return apiClient.post('/preview/generate', {
-    prompt: prompt.trim(),
-    ...(aspectRatio ? { aspectRatio } : {}),
-  }) as Promise<GeneratePreviewResponse>;
+  const resolvedOptions =
+    typeof options === 'string' ? ({ aspectRatio: options } as const) : options;
+  const inputImageUrl = resolvedOptions?.inputImageUrl?.trim();
+  const isKontext =
+    resolvedOptions?.provider === 'replicate-flux-kontext-fast' || Boolean(inputImageUrl);
+
+  return apiClient.post(
+    '/preview/generate',
+    {
+      prompt: prompt.trim(),
+      ...(resolvedOptions?.aspectRatio ? { aspectRatio: resolvedOptions.aspectRatio } : {}),
+      ...(resolvedOptions?.provider ? { provider: resolvedOptions.provider } : {}),
+      ...(inputImageUrl ? { inputImageUrl } : {}),
+      ...(resolvedOptions?.seed !== undefined ? { seed: resolvedOptions.seed } : {}),
+      ...(resolvedOptions?.speedMode ? { speedMode: resolvedOptions.speedMode } : {}),
+      ...(resolvedOptions?.outputQuality !== undefined
+        ? { outputQuality: resolvedOptions.outputQuality }
+        : {}),
+    },
+    isKontext ? { timeout: 60000 } : {}
+  ) as Promise<GeneratePreviewResponse>;
+}
+
+/**
+ * Generate a storyboard preview (base frame + chained edits)
+ */
+export async function generateStoryboardPreview(
+  prompt: string,
+  options?: Omit<GenerateStoryboardPreviewRequest, 'prompt'>
+): Promise<GenerateStoryboardPreviewResponse> {
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    throw new Error('Prompt is required and must be a non-empty string');
+  }
+
+  const seedImageUrl = options?.seedImageUrl?.trim();
+
+  return apiClient.post(
+    '/preview/generate/storyboard',
+    {
+      prompt: prompt.trim(),
+      ...(options?.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+      ...(seedImageUrl ? { seedImageUrl } : {}),
+      ...(options?.speedMode ? { speedMode: options.speedMode } : {}),
+      ...(options?.seed !== undefined ? { seed: options.seed } : {}),
+    },
+    {
+      timeout: API_CONFIG.timeout.storyboard,
+    }
+  ) as Promise<GenerateStoryboardPreviewResponse>;
 }
 
 export interface GenerateVideoResponse {

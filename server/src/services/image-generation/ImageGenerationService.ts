@@ -68,6 +68,11 @@ export class ImageGenerationService {
           prompt: trimmedPrompt,
           aspectRatio: options.aspectRatio,
           userId,
+          inputImageUrl: options.inputImageUrl,
+          seed: options.seed,
+          speedMode: options.speedMode,
+          outputQuality: options.outputQuality,
+          disablePromptTransformation: options.disablePromptTransformation,
         });
 
         return {

@@ -184,6 +184,20 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
+   * Custom suggestion requests (user-directed replacements)
+   */
+  custom_suggestions: {
+    client: process.env.ENHANCE_PROVIDER || 'qwen',
+    model: process.env.ENHANCE_MODEL || 'qwen/qwen3-32b',
+    temperature: 0.1,
+    maxTokens: 1024,
+    timeout: 8000,
+    responseFormat: 'json_object',
+    fallbackTo: 'openai',
+    useDeveloperMessage: true,
+  },
+
+  /**
    * Style transfer for enhancement suggestions
    */
   enhance_style_transfer: {

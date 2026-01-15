@@ -35,8 +35,11 @@ import { VideoConceptService } from '@services/VideoConceptService';
 import { initSpanLabelingCache } from '@services/cache/SpanLabelingCacheService';
 import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
 import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
+import { ReplicateFluxKontextFastProvider } from '@services/image-generation/providers/ReplicateFluxKontextFastProvider';
 import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import { VideoToImagePromptTransformer } from '@services/image-generation/providers/VideoToImagePromptTransformer';
+import { StoryboardFramePlanner } from '@services/image-generation/storyboard/StoryboardFramePlanner';
+import { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
 import type { ImagePreviewProvider } from '@services/image-generation/providers/types';
 import {
   parseImagePreviewProviderOrder,
@@ -470,6 +473,21 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
+    'storyboardFramePlanner',
+    (geminiClient: LLMClient | null) => {
+      if (!geminiClient) {
+        logger.warn('Gemini client not available, storyboard frame planner disabled');
+        return null;
+      }
+      return new StoryboardFramePlanner({
+        llmClient: geminiClient,
+        timeoutMs: 8000,
+      });
+    },
+    ['geminiClient']
+  );
+
+  container.register(
     'replicateFluxSchnellProvider',
     (transformer: VideoToImagePromptTransformer | null) => {
       const apiToken = process.env.REPLICATE_API_TOKEN;
@@ -483,9 +501,28 @@ export async function configureServices(): Promise<DIContainer> {
   );
 
   container.register(
+    'replicateFluxKontextFastProvider',
+    (transformer: VideoToImagePromptTransformer | null) => {
+      const apiToken = process.env.REPLICATE_API_TOKEN;
+      if (!apiToken) {
+        logger.warn('REPLICATE_API_TOKEN not provided, Replicate image provider disabled');
+        return null;
+      }
+      return new ReplicateFluxKontextFastProvider({
+        apiToken,
+        promptTransformer: transformer,
+      });
+    },
+    ['videoToImageTransformer']
+  );
+
+  container.register(
     'imageGenerationService',
-    (replicateProvider: ReplicateFluxSchnellProvider | null) => {
-      const providers = [replicateProvider].filter(
+    (
+      replicateProvider: ReplicateFluxSchnellProvider | null,
+      kontextProvider: ReplicateFluxKontextFastProvider | null
+    ) => {
+      const providers = [replicateProvider, kontextProvider].filter(
         (provider): provider is ImagePreviewProvider => Boolean(provider)
       );
 
@@ -518,7 +555,28 @@ export async function configureServices(): Promise<DIContainer> {
         fallbackOrder,
       });
     },
-    ['replicateFluxSchnellProvider']
+    ['replicateFluxSchnellProvider', 'replicateFluxKontextFastProvider']
+  );
+
+  container.register(
+    'storyboardPreviewService',
+    (
+      imageGenerationService: ImageGenerationService | null,
+      storyboardFramePlanner: StoryboardFramePlanner | null
+    ) => {
+      if (!imageGenerationService || !storyboardFramePlanner) {
+        logger.warn('Storyboard preview service disabled', {
+          imageGenerationServiceAvailable: Boolean(imageGenerationService),
+          storyboardFramePlannerAvailable: Boolean(storyboardFramePlanner),
+        });
+        return null;
+      }
+      return new StoryboardPreviewService({
+        imageGenerationService,
+        storyboardFramePlanner,
+      });
+    },
+    ['imageGenerationService', 'storyboardFramePlanner']
   );
 
   container.register(

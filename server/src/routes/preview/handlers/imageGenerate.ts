@@ -1,9 +1,21 @@
 import type { Request, Response } from 'express';
 import { logger } from '@infrastructure/Logger';
 import type { PreviewRoutesServices } from '@routes/types';
+import { resolveImagePreviewProviderSelection } from '@services/image-generation/providers/registry';
+import type {
+  ImagePreviewProviderSelection,
+  ImagePreviewSpeedMode,
+} from '@services/image-generation/providers/types';
 import { getAuthenticatedUserId } from '../auth';
 
 type ImageGenerateServices = Pick<PreviewRoutesServices, 'imageGenerationService'>;
+
+const SPEED_MODE_OPTIONS = new Set<ImagePreviewSpeedMode>([
+  'Lightly Juiced',
+  'Juiced',
+  'Extra Juiced',
+  'Real Time',
+]);
 
 export const createImageGenerateHandler = ({
   imageGenerationService,
@@ -17,10 +29,16 @@ export const createImageGenerateHandler = ({
       });
     }
 
-    const { prompt, aspectRatio } = (req.body || {}) as {
-      prompt?: unknown;
-      aspectRatio?: unknown;
-    };
+    const { prompt, aspectRatio, provider, inputImageUrl, seed, speedMode, outputQuality } =
+      (req.body || {}) as {
+        prompt?: unknown;
+        aspectRatio?: unknown;
+        provider?: unknown;
+        inputImageUrl?: unknown;
+        seed?: unknown;
+        speedMode?: unknown;
+        outputQuality?: unknown;
+      };
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       return res.status(400).json({
@@ -36,11 +54,94 @@ export const createImageGenerateHandler = ({
       });
     }
 
+    let resolvedProvider: ImagePreviewProviderSelection | undefined;
+    if (provider !== undefined) {
+      if (typeof provider !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'provider must be a string',
+        });
+      }
+      const selection = resolveImagePreviewProviderSelection(provider);
+      if (!selection) {
+        return res.status(400).json({
+          success: false,
+          error: `Unsupported provider: ${provider}`,
+        });
+      }
+      resolvedProvider = selection;
+    }
+
+    let normalizedInputImageUrl: string | undefined;
+    if (inputImageUrl !== undefined) {
+      if (typeof inputImageUrl !== 'string' || inputImageUrl.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'inputImageUrl must be a non-empty string',
+        });
+      }
+      normalizedInputImageUrl = inputImageUrl.trim();
+    }
+
+    let normalizedSeed: number | undefined;
+    if (seed !== undefined) {
+      if (typeof seed !== 'number' || !Number.isFinite(seed)) {
+        return res.status(400).json({
+          success: false,
+          error: 'seed must be a finite number',
+        });
+      }
+      normalizedSeed = seed;
+    }
+
+    let normalizedSpeedMode: ImagePreviewSpeedMode | undefined;
+    if (speedMode !== undefined) {
+      if (typeof speedMode !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'speedMode must be a string',
+        });
+      }
+      if (!SPEED_MODE_OPTIONS.has(speedMode as ImagePreviewSpeedMode)) {
+        return res.status(400).json({
+          success: false,
+          error: 'speedMode must be one of: Lightly Juiced, Juiced, Extra Juiced, Real Time',
+        });
+      }
+      normalizedSpeedMode = speedMode as ImagePreviewSpeedMode;
+    }
+
+    let normalizedOutputQuality: number | undefined;
+    if (outputQuality !== undefined) {
+      if (typeof outputQuality !== 'number' || !Number.isFinite(outputQuality)) {
+        return res.status(400).json({
+          success: false,
+          error: 'outputQuality must be a finite number',
+        });
+      }
+      normalizedOutputQuality = outputQuality;
+    }
+
+    if (resolvedProvider === 'replicate-flux-kontext-fast' && !normalizedInputImageUrl) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'inputImageUrl is required when using the replicate-flux-kontext-fast provider',
+      });
+    }
+
     const userId = await getAuthenticatedUserId(req);
     try {
       const result = await imageGenerationService.generatePreview(prompt, {
         ...(aspectRatio ? { aspectRatio } : {}),
         ...(userId ? { userId } : {}),
+        ...(resolvedProvider ? { provider: resolvedProvider } : {}),
+        ...(normalizedInputImageUrl ? { inputImageUrl: normalizedInputImageUrl } : {}),
+        ...(normalizedSeed !== undefined ? { seed: normalizedSeed } : {}),
+        ...(normalizedSpeedMode ? { speedMode: normalizedSpeedMode } : {}),
+        ...(normalizedOutputQuality !== undefined
+          ? { outputQuality: normalizedOutputQuality }
+          : {}),
       });
 
       return res.json({

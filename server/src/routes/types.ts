@@ -4,6 +4,7 @@
 
 import type { Router } from 'express';
 import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import type { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
 import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
 import type { AIModelService } from '@services/ai-model/AIModelService';
 import type { UserCreditService } from '@services/credits/UserCreditService';
@@ -15,6 +16,7 @@ import type { VideoContentAccessService } from '@services/video-generation/acces
  */
 export interface PreviewRoutesServices {
   imageGenerationService: ImageGenerationService | null;
+  storyboardPreviewService?: StoryboardPreviewService | null;
   videoGenerationService: VideoGenerationService | null;
   videoJobStore?: VideoJobStore | null;
   videoContentAccessService?: VideoContentAccessService | null;

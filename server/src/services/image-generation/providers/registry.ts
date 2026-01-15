@@ -7,6 +7,10 @@ import { IMAGE_PREVIEW_PROVIDER_IDS } from './types';
 
 const PROVIDER_ALIASES: Record<string, ImagePreviewProviderId> = {
   replicate: 'replicate-flux-schnell',
+  kontext: 'replicate-flux-kontext-fast',
+  'kontext-fast': 'replicate-flux-kontext-fast',
+  'replicate-kontext': 'replicate-flux-kontext-fast',
+  'replicate-kontext-fast': 'replicate-flux-kontext-fast',
 };
 
 const PROVIDER_ID_SET = new Set<string>(IMAGE_PREVIEW_PROVIDER_IDS);

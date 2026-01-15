@@ -4,6 +4,7 @@
 
 export { ImageGenerationService } from './ImageGenerationService';
 export { ReplicateFluxSchnellProvider } from './providers/ReplicateFluxSchnellProvider';
+export { ReplicateFluxKontextFastProvider } from './providers/ReplicateFluxKontextFastProvider';
 export {
   VideoToImagePromptTransformer,
   type VideoToImageTransformerOptions,

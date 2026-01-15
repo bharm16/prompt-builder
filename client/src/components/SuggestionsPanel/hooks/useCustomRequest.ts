@@ -120,8 +120,7 @@ export function useCustomRequest({
             signal, // Pass abort signal for cancellation
           });
 
-          // Convert string[] to SuggestionItem[]
-          return suggestions.map((text) => ({ text })) as SuggestionItem[];
+          return suggestions;
         }
       );
 
