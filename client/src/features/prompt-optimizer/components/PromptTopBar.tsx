@@ -114,11 +114,11 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
   return (
     <header className="po-topbar" role="banner">
-      <div className="po-topbar__inner">
+      <div className="po-topbar__inner topbar">
         <div className="po-topbar__left">
           <button
             type="button"
-            className="po-topbar__iconbtn"
+            className="po-topbar__iconbtn icon-btn"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
@@ -126,12 +126,12 @@ export const PromptTopBar = (): React.ReactElement | null => {
             <PanelLeft size={16} />
           </button>
 
-          <div className="po-topbar__brand">
-            <div className="po-topbar__product">VIDRA</div>
-            <div className="po-topbar__subtitle">Prompt Studio</div>
+          <div className="po-topbar__brand brand">
+            <div className="po-topbar__product brand__name">VIDRA</div>
+            <div className="po-topbar__subtitle brand__sub">Prompt Studio</div>
           </div>
 
-          <div className="po-topbar__title-field">
+          <div className="po-topbar__title-field command-field">
             <span className="po-topbar__title-accent" aria-hidden="true" />
             <input
               type="text"
@@ -154,7 +154,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
         </div>
 
         <div className="po-topbar__center" aria-label="Workflow steps">
-          <div className="po-topbar__stepper">
+          <div className="po-topbar__stepper segmented">
             {steps.map((step) => {
               const isActive = step.id === activeStep;
               return (
@@ -164,7 +164,9 @@ export const PromptTopBar = (): React.ReactElement | null => {
                   data-active={isActive ? 'true' : 'false'}
                   aria-current={isActive ? 'step' : undefined}
                 >
-                  <span className="po-topbar__step-pill">{step.label}</span>
+                  <span className="po-topbar__step-pill segmented__tab" aria-selected={isActive}>
+                    {step.label}
+                  </span>
                   <span className="po-topbar__step-underline" aria-hidden="true" />
                 </div>
               );
@@ -174,7 +176,8 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
         <div className="po-topbar__right">
           {saveLabel ? (
-            <div className="po-topbar__status" data-state={outputSaveState}>
+            <div className="po-topbar__status env-pill" data-state={outputSaveState}>
+              <span className="env-pill__dot" aria-hidden="true" />
               {saveLabel}
             </div>
           ) : (
@@ -183,18 +186,18 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__command"
+            className="po-topbar__command btn-ghost"
             aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
             aria-pressed={showShortcuts}
             onClick={() => setShowShortcuts(!showShortcuts)}
           >
             <Command size={14} />
-            <span>⌘K</span>
+            <span className="kbd">⌘K</span>
           </button>
 
           <button
             type="button"
-            className="po-topbar__btn po-topbar__btn--primary"
+            className="po-topbar__btn po-topbar__btn--primary btn-primary"
             onClick={handleCreateNew}
             aria-label="Create new prompt"
           >
@@ -204,7 +207,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__iconbtn"
+            className="po-topbar__iconbtn icon-btn"
             aria-label={shared ? 'Share link copied' : 'Share prompt'}
             onClick={() => {
               if (currentPromptUuid) {
@@ -220,7 +223,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
           <div className="po-topbar__menu" ref={exportMenuRef}>
             <button
               type="button"
-              className="po-topbar__iconbtn"
+              className="po-topbar__iconbtn icon-btn"
               aria-label="Export prompt"
               aria-expanded={showExportMenu}
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -247,7 +250,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__iconbtn"
+            className="po-topbar__iconbtn icon-btn"
             aria-label={showSettings ? 'Close settings' : 'Open settings'}
             aria-pressed={showSettings}
             onClick={() => setShowSettings(!showSettings)}

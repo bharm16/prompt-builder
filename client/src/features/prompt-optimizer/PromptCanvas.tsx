@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { Pencil, X, Check, Lock, Unlock, LayoutGrid, Share2, RotateCcw, RotateCw } from 'lucide-react';
+import { Pencil, X, Check, Lock, Unlock, LayoutGrid, Share2, RotateCcw, RotateCw, Play, MoreHorizontal } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -57,6 +57,29 @@ import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
 import './PromptCanvas.css';
 
 const RAIL_VIDEO_PREVIEW_MODEL = 'wan-2.2';
+const RUN_ARTIFACTS = {
+  preview: [
+    { id: 'preview-clip', label: 'Preview clip', kind: 'preview' },
+    { id: 'preview-keyframe-1', label: 'Keyframe 1', kind: 'keyframe' },
+    { id: 'preview-keyframe-2', label: 'Keyframe 2', kind: 'keyframe' },
+    { id: 'preview-keyframe-3', label: 'Keyframe 3', kind: 'keyframe' },
+    { id: 'preview-variant-1', label: 'Variant 1', kind: 'variant' },
+    { id: 'preview-variant-2', label: 'Variant 2', kind: 'variant' },
+    { id: 'preview-variant-3', label: 'Variant 3', kind: 'variant' },
+    { id: 'preview-variant-4', label: 'Variant 4', kind: 'variant' },
+  ],
+  final: [
+    { id: 'final-render', label: 'Final render', kind: 'preview' },
+    { id: 'final-keyframe-1', label: 'Keyframe 1', kind: 'keyframe' },
+    { id: 'final-keyframe-2', label: 'Keyframe 2', kind: 'keyframe' },
+    { id: 'final-variant-1', label: 'Variant 1', kind: 'variant' },
+  ],
+} as const;
+
+const RUN_METRICS = {
+  preview: { tokens: '1.2k', cost: '$0.08', quality: 'Pass', safety: 'Clear' },
+  final: { tokens: '3.6k', cost: '$1.92', quality: 'Pass', safety: 'Clear' },
+} as const;
 
 type InlineSuggestion = {
   key: string;
@@ -112,10 +135,13 @@ export function PromptCanvas({
   const tokenPopoverRef = useRef<HTMLDivElement>(null);
   const suggestionsListRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
+  const previewRunMenuRef = useRef<HTMLDivElement>(null);
+  const finalRunMenuRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const [isOutputFocused, setIsOutputFocused] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
+  const [openRunMenu, setOpenRunMenu] = useState<'preview' | 'final' | null>(null);
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
   const [tokenPopover, setTokenPopover] = useState<{
     left: number;
@@ -151,6 +177,7 @@ export function PromptCanvas({
     setGenerationParams,
     promptOptimizer,
     showHistory,
+    setShowSettings,
     promptHistory,
     currentPromptUuid,
     currentPromptDocId,
@@ -326,9 +353,19 @@ export function PromptCanvas({
     const versions = Array.isArray(entry?.versions) ? entry.versions : [];
     return versions.find((version) => version.versionId === activeVersionId) ?? null;
   }, [promptHistory.history, currentPromptUuid, currentPromptDocId, activeVersionId]);
+  const activeVersionIndex = useMemo(() => {
+    const entry =
+      promptHistory.history.find((item) => item.uuid === currentPromptUuid) ||
+      promptHistory.history.find((item) => item.id === currentPromptDocId) ||
+      null;
+    const versions = Array.isArray(entry?.versions) ? entry.versions : [];
+    const index = versions.findIndex((version) => version.versionId === activeVersionId);
+    return index >= 0 ? index + 1 : null;
+  }, [promptHistory.history, currentPromptUuid, currentPromptDocId, activeVersionId]);
 
   const seedImageUrl = activeVersion?.preview?.imageUrl ?? null;
   const seedVideoUrl = activeVersion?.video?.videoUrl ?? null;
+  const runMetaLabel = typeof activeVersionIndex === 'number' ? `Run #${activeVersionIndex}` : null;
 
   const { upsertVersionOutput, syncVersionHighlights } = usePromptVersioning({
     promptHistory,
@@ -358,6 +395,19 @@ export function PromptCanvas({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showExportMenu, setShowExportMenu]);
+
+  useEffect(() => {
+    if (!openRunMenu) return;
+    const handleClickOutside = (event: MouseEvent): void => {
+      const target = event.target as Node;
+      const activeRef = openRunMenu === 'preview' ? previewRunMenuRef : finalRunMenuRef;
+      if (activeRef.current && !activeRef.current.contains(target)) {
+        setOpenRunMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openRunMenu, setOpenRunMenu]);
 
   useEffect(() => {
     if (!showDiff) return;
@@ -592,7 +642,7 @@ export function PromptCanvas({
       tokens.push({
         id: span.id ?? `token_${span.start}_${span.end}`,
         label: label.length > 28 ? `${label.slice(0, 28).trim()}…` : label,
-        variant: variants[tokens.length % variants.length],
+        variant: variants[tokens.length % variants.length]!,
       });
       if (tokens.length >= 6) break;
     }
@@ -1084,29 +1134,61 @@ export function PromptCanvas({
   const hasVideoPreviewSource = Boolean(videoPreviewPrompt.trim());
   const durationValue = generationParams?.duration_s;
   const fpsValue = generationParams?.fps;
+  const seedValue = generationParams?.seed;
   const durationLabel = typeof durationValue === 'number' ? `${durationValue}s` : '—';
   const fpsLabel = typeof fpsValue === 'number' ? `${fpsValue} fps` : '—';
   const aspectLabel = effectiveAspectRatio ? `AR ${effectiveAspectRatio}` : 'AR —';
-  const previewStatus = isVisualPreviewGenerating
-    ? 'Generating'
+  const durationMetaLabel =
+    typeof durationValue === 'number' || typeof durationValue === 'string'
+      ? `Duration ${durationValue}s`
+      : 'Duration —';
+  const fpsMetaLabel =
+    typeof fpsValue === 'number' || typeof fpsValue === 'string' ? `FPS ${fpsValue}` : 'FPS —';
+  const seedLabel =
+    typeof seedValue === 'number' || typeof seedValue === 'string' ? String(seedValue) : 'Auto';
+  const previewStatusState = isVisualPreviewGenerating
+    ? 'generating'
     : visualLastGeneratedAt || seedImageUrl
-      ? 'Ready'
-      : 'Idle';
-  const finalStatus = isRailVideoPreviewGenerating
-    ? 'Generating'
+      ? 'ready'
+      : 'idle';
+  const finalStatusState = isRailVideoPreviewGenerating
+    ? 'generating'
     : railVideoLastGeneratedAt || seedVideoUrl
-      ? 'Ready'
-      : 'Idle';
-  const canCompareRuns = previewStatus === 'Ready' && finalStatus === 'Ready';
+      ? 'ready'
+      : 'idle';
+  const previewStatusLabel =
+    previewStatusState === 'generating'
+      ? 'Running'
+      : previewStatusState === 'ready'
+        ? 'Complete'
+        : 'Idle';
+  const finalStatusLabel =
+    finalStatusState === 'generating'
+      ? 'Running'
+      : finalStatusState === 'ready'
+        ? 'Complete'
+        : 'Idle';
+  const previewEta = previewStatusState === 'generating' ? previewMetaDetail : null;
+  const finalEta = finalStatusState === 'generating' ? finalMetaDetail : null;
+  const canCompareRuns = previewStatusState === 'ready' && finalStatusState === 'ready';
+  const previewCtaLabel = previewStatusState === 'ready' ? 'Open in Stage' : 'Generate Preview';
+  const finalCtaLabel = finalStatusState === 'ready' ? 'Open Final' : 'Render Final';
+  const previewCtaDisabled =
+    previewStatusState === 'ready' ? false : !hasPreviewSource || isVisualPreviewGenerating;
+  const finalCtaDisabled =
+    finalStatusState === 'ready' ? false : !hasVideoPreviewSource || isRailVideoPreviewGenerating;
   const stageIsPreview = stageTab === 'preview';
   const stageIsGenerating = stageIsPreview ? isVisualPreviewGenerating : isRailVideoPreviewGenerating;
   const stageHasOutput = stageIsPreview
     ? Boolean(seedImageUrl || visualLastGeneratedAt)
     : Boolean(seedVideoUrl || railVideoLastGeneratedAt);
-  const stageCtaLabel = stageIsPreview ? 'Generate Preview' : 'Generate Final';
+  const stageCtaLabel = 'Generate';
   const stageCtaDisabled = stageIsPreview
     ? !hasPreviewSource || isVisualPreviewGenerating
     : !hasVideoPreviewSource || isRailVideoPreviewGenerating;
+  const stageFooterMeta = stageIsPreview
+    ? `${aspectLabel} · Draft: ${target.label} · ${durationLabel} · ${fpsLabel}`
+    : `${aspectLabel} · Draft: ${target.label} · ${durationLabel} · ${fpsLabel}`;
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -1242,10 +1324,10 @@ export function PromptCanvas({
   } = useCustomRequest({
     selectedText: customRequestSelection,
     fullPrompt: customRequestPrompt,
-    contextBefore: customRequestContext?.contextBefore,
-    contextAfter: customRequestContext?.contextAfter,
+    contextBefore: customRequestContext?.contextBefore ?? '',
+    contextAfter: customRequestContext?.contextAfter ?? '',
     metadata: suggestionsData?.metadata ?? null,
-    setSuggestions: suggestionsData?.setSuggestions,
+    setSuggestions: suggestionsData?.setSuggestions ?? (() => {}),
     setError: setCustomRequestError,
   });
 
@@ -1599,9 +1681,9 @@ export function PromptCanvas({
               <div className="po-editor-grid">
                 <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
                   <div className="prompt-band__content prompt-canvas-content-wrapper">
-                    <div className="prompt-card prompt-card--original">
+                    <div className="prompt-card card prompt-card--original">
                       <div
-                        className="prompt-card__header"
+                        className="prompt-card__header card__header"
                         data-has-video-controls={showVideoPreview ? 'true' : undefined}
                       >
                         <div className="prompt-card__header-row">
@@ -1653,8 +1735,9 @@ export function PromptCanvas({
                         </div>
 
                         {showVideoPreview && (
-                          <div className="prompt-card__chips" aria-label="Prompt controls">
-                            <div className="prompt-chip">
+                          <div className="prompt-card__chips chip-row" aria-label="Prompt controls">
+                            <div className="prompt-chip chip">
+                              <span className="chip__dot" aria-hidden="true" />
                               <span className="prompt-chip__label">Model</span>
                               <ModelSelectorDropdown
                                 selectedModel={selectedModel}
@@ -1665,7 +1748,8 @@ export function PromptCanvas({
                             </div>
 
                             {aspectRatioInfo && (
-                              <div className="prompt-chip">
+                              <div className="prompt-chip chip">
+                                <span className="chip__dot" aria-hidden="true" />
                                 <span className="prompt-chip__label">Aspect</span>
                                 {renderDropdown(
                                   aspectRatioInfo,
@@ -1677,7 +1761,8 @@ export function PromptCanvas({
                             )}
 
                             {durationInfo && (
-                              <div className="prompt-chip">
+                              <div className="prompt-chip chip">
+                                <span className="chip__dot" aria-hidden="true" />
                                 <span className="prompt-chip__label">Duration</span>
                                 {renderDropdown(
                                   durationInfo,
@@ -1689,7 +1774,8 @@ export function PromptCanvas({
                             )}
 
                             {fpsInfo && (
-                              <div className="prompt-chip">
+                              <div className="prompt-chip chip">
+                                <span className="chip__dot" aria-hidden="true" />
                                 <span className="prompt-chip__label">FPS</span>
                                 {renderDropdown(
                                   fpsInfo,
@@ -1702,24 +1788,26 @@ export function PromptCanvas({
                           </div>
                         )}
                       </div>
-                      <div className="prompt-card__body">
+                      <div className="prompt-card__body card__body">
                         <label htmlFor="original-prompt-input" className="sr-only">
                           Input prompt
                         </label>
-                        <textarea
-                          ref={textareaRef}
-                          id="original-prompt-input"
-                          value={inputPrompt}
-                          onChange={handleInputPromptChange}
-                          onKeyDown={handleInputPromptKeyDown}
-                          placeholder="Describe your shot..."
-                          rows={3}
-                          readOnly={isInputLocked}
-                          className="prompt-input prompt-input--original"
-                          aria-label="Original prompt input"
-                          aria-readonly={isInputLocked}
-                          aria-busy={isOptimizing}
-                        />
+                        <div className="editor-well">
+                          <textarea
+                            ref={textareaRef}
+                            id="original-prompt-input"
+                            value={inputPrompt}
+                            onChange={handleInputPromptChange}
+                            onKeyDown={handleInputPromptKeyDown}
+                            placeholder="Describe your shot..."
+                            rows={3}
+                            readOnly={isInputLocked}
+                            className="prompt-input prompt-input--original input"
+                            aria-label="Original prompt input"
+                            aria-readonly={isInputLocked}
+                            aria-busy={isOptimizing}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1732,304 +1820,328 @@ export function PromptCanvas({
                 >
                   <div className="prompt-band__content prompt-canvas-content-wrapper">
                     <div
-                      className="prompt-card prompt-card--optimized"
+                      className="prompt-card card card--raised prompt-card--optimized"
                       data-settled={normalizedDisplayedPrompt ? 'true' : 'false'}
                     >
-                      <div className="prompt-output-header">
-                        <div className="prompt-output-title">
-                          <div className="prompt-output-label">Optimized</div>
-                          <div className="prompt-output-subtitle">Live rewrite + highlights</div>
-                        </div>
-                        <div className="prompt-output-actions">
-                          <span
-                            className="prompt-output-live"
-                            data-state={isOutputFocused ? 'editing' : 'live'}
-                          >
-                            {isOutputFocused ? 'Editing' : 'LIVE'}
-                          </span>
-                          <button
-                            type="button"
-                            className="po-action-btn"
-                            onClick={handleCopy}
-                          >
-                            {copied ? 'Copied' : 'Copy'}
-                          </button>
-                          <button
-                            type="button"
-                            className="po-action-btn"
-                            onClick={() => setShowDiff(true)}
-                          >
-                            Diff
-                          </button>
-                          <div className="po-action-menu" ref={exportMenuRef}>
+                      <div className="prompt-card__header card__header">
+                        <div className="prompt-output-header">
+                          <div className="prompt-output-title">
+                            <div className="prompt-output-label">Optimized</div>
+                            <div className="prompt-output-subtitle">Live rewrite + highlights</div>
+                          </div>
+                          <div className="prompt-output-actions">
+                            <span
+                              className="prompt-output-live status-pill"
+                              data-state={isOutputFocused ? 'editing' : 'live'}
+                            >
+                              <span className="status-pill__dot" aria-hidden="true" />
+                              {isOutputFocused ? 'Editing' : 'LIVE'}
+                            </span>
                             <button
                               type="button"
-                              className="po-action-btn"
-                              onClick={() => setShowExportMenu(!showExportMenu)}
-                              aria-expanded={showExportMenu}
+                              className="po-action-btn btn-ghost"
+                              onClick={handleCopy}
                             >
-                              Export
+                              {copied ? 'Copied' : 'Copy'}
                             </button>
-                            {showExportMenu && (
-                              <div
-                                className="po-action-menu__popover po-popover po-surface po-surface--grad po-animate-pop-in"
-                                role="menu"
+                            <button
+                              type="button"
+                              className="po-action-btn btn-ghost"
+                              onClick={() => setShowDiff(true)}
+                            >
+                              Diff
+                            </button>
+                            <div className="po-action-menu" ref={exportMenuRef}>
+                              <button
+                                type="button"
+                                className="po-action-btn btn-ghost"
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                aria-expanded={showExportMenu}
                               >
-                                <button type="button" onClick={() => handleExport('text')} role="menuitem">
-                                  Export .txt
-                                </button>
-                                <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
-                                  Export .md
-                                </button>
-                                <button type="button" onClick={() => handleExport('json')} role="menuitem">
-                                  Export .json
-                                </button>
-                              </div>
-                            )}
+                                Export
+                              </button>
+                              {showExportMenu && (
+                                <div
+                                  className="po-action-menu__popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                                  role="menu"
+                                >
+                                  <button type="button" onClick={() => handleExport('text')} role="menuitem">
+                                    Export .txt
+                                  </button>
+                                  <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
+                                    Export .md
+                                  </button>
+                                  <button type="button" onClick={() => handleExport('json')} role="menuitem">
+                                    Export .json
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="po-action-icon icon-btn"
+                              onClick={handleShare}
+                              aria-label="Share prompt"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="po-action-icon icon-btn"
+                              onClick={onUndo}
+                              disabled={!canUndo}
+                              aria-label="Undo"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="po-action-icon icon-btn"
+                              onClick={onRedo}
+                              disabled={!canRedo}
+                              aria-label="Redo"
+                            >
+                              <RotateCw className="h-4 w-4" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            className="po-action-icon"
-                            onClick={handleShare}
-                            aria-label="Share prompt"
-                          >
-                            <Share2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="po-action-icon"
-                            onClick={onUndo}
-                            disabled={!canUndo}
-                            aria-label="Undo"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="po-action-icon"
-                            onClick={onRedo}
-                            disabled={!canRedo}
-                            aria-label="Redo"
-                          >
-                            <RotateCw className="h-4 w-4" />
-                          </button>
                         </div>
                       </div>
 
-                      <div
-                        className="prompt-editor-wrapper"
-                        aria-busy={isOutputLoading}
-                        ref={editorWrapperRef}
-                      >
-                        <PromptEditor
-                          ref={editorRef as React.RefObject<HTMLDivElement>}
-                          onTextSelection={handleTextSelection}
-                          onHighlightClick={handleHighlightClick}
-                          onHighlightMouseDown={handleHighlightMouseDown}
-                          onHighlightMouseEnter={handleHighlightMouseEnter}
-                          onHighlightMouseLeave={handleHighlightMouseLeave}
-                          onCopyEvent={handleCopyEvent}
-                          onInput={handleInput}
-                          onFocus={handleOutputFocus}
-                          onBlur={handleOutputBlur}
-                        />
-                        <div
-                          ref={outputLocklineRef}
-                          className="prompt-output-lockline"
-                          data-active={stageIsGenerating ? 'true' : 'false'}
-                          aria-hidden="true"
-                        />
-                        {/* Inline suggestions popover (anchored to selected span) */}
-                        {tokenPopover && (
-                          <>
-                            <div
-                              className="inline-suggest-backdrop po-backdrop--local po-animate-fade-in"
-                              aria-hidden="true"
-                            />
-                            <div
-                              ref={tokenPopoverRef}
-                              className="inline-suggest-popover po-popover po-surface po-surface--grad po-animate-pop-in"
-                              data-open="true"
-                              data-placement={tokenPopover.placement}
-                              style={
-                                {
-                                  left: tokenPopover.left,
-                                  top: tokenPopover.top,
-                                  '--arrow-x': `${tokenPopover.arrowLeft}px`,
-                                } as React.CSSProperties
-                              }
-                              role="dialog"
-                              aria-label="Suggestions"
-                            >
-                              <div className="inline-suggest-arrow" aria-hidden="true" />
-
-                              <div className="inline-suggest-header">
-                                <div className="inline-suggest-title">
-                                  Suggestions
-                                  <span className="inline-suggest-pill">{suggestionCount}</span>
-                                </div>
-                                <div className="inline-suggest-keys" aria-hidden="true">
-                                  <span className="kbd">Up</span>
-                                  <span className="kbd">Down</span>
-                                  <span className="kbd">Enter</span>
-                                  <span className="kbd">Esc</span>
-                                </div>
-                              </div>
-
-                              <div className="inline-suggest-divider" />
-
-                              <div className="inline-suggest-custom">
-                                <form
-                                  className="inline-suggest-custom-form"
-                                  onSubmit={handleCustomRequestSubmit}
+                      <div className="prompt-card__body card__body">
+                        {tokenHighlights.length > 0 && (
+                          <div className="prompt-output-tokens chip-row" aria-label="Key tokens">
+                            {tokenHighlights.map((token, idx) => {
+                              const dotClass =
+                                token.variant === 'b' ? 'chip__dot chip__dot--accent2' : 'chip__dot';
+                              return (
+                                <span
+                                  key={token.id}
+                                  className="prompt-output-token chip"
+                                  data-variant={token.variant}
+                                  style={{ '--delay': `${idx * 55}ms` } as React.CSSProperties}
                                 >
-                                  <textarea
-                                    id="inline-custom-request"
-                                    value={customRequest}
-                                    onChange={(event) => {
-                                      setCustomRequest(event.target.value);
-                                      if (customRequestError) {
-                                        setCustomRequestError('');
-                                      }
-                                    }}
-                                    placeholder="Add a specific change (e.g. football field)"
-                                    className="inline-suggest-custom-input"
-                                    maxLength={MAX_REQUEST_LENGTH}
-                                    rows={1}
-                                    aria-label="Custom suggestion request"
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="inline-suggest-cta"
-                                    disabled={isCustomRequestDisabled}
-                                    aria-busy={isCustomLoading}
+                                  <span className={dotClass} aria-hidden="true" />
+                                  <span className="prompt-output-token__label">{token.label}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div
+                          className="prompt-editor-wrapper editor-well"
+                          aria-busy={isOutputLoading}
+                          ref={editorWrapperRef}
+                        >
+                          <PromptEditor
+                            ref={editorRef as React.RefObject<HTMLDivElement>}
+                            onTextSelection={handleTextSelection}
+                            onHighlightClick={handleHighlightClick}
+                            onHighlightMouseDown={handleHighlightMouseDown}
+                            onHighlightMouseEnter={handleHighlightMouseEnter}
+                            onHighlightMouseLeave={handleHighlightMouseLeave}
+                            onCopyEvent={handleCopyEvent}
+                            onInput={handleInput}
+                            onFocus={handleOutputFocus}
+                            onBlur={handleOutputBlur}
+                          />
+                          <div
+                            ref={outputLocklineRef}
+                            className="prompt-output-lockline"
+                            data-active={stageIsGenerating ? 'true' : 'false'}
+                            aria-hidden="true"
+                          />
+                          {/* Inline suggestions popover (anchored to selected span) */}
+                          {tokenPopover && (
+                            <>
+                              <div
+                                className="inline-suggest-backdrop po-backdrop--local po-animate-fade-in"
+                                aria-hidden="true"
+                              />
+                              <div
+                                ref={tokenPopoverRef}
+                                className="inline-suggest-popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                                data-open="true"
+                                data-placement={tokenPopover.placement}
+                                style={
+                                  {
+                                    left: tokenPopover.left,
+                                    top: tokenPopover.top,
+                                    '--arrow-x': `${tokenPopover.arrowLeft}px`,
+                                  } as React.CSSProperties
+                                }
+                                role="dialog"
+                                aria-label="Suggestions"
+                              >
+                                <div className="inline-suggest-arrow" aria-hidden="true" />
+
+                                <div className="inline-suggest-header">
+                                  <div className="inline-suggest-title">
+                                    Suggestions
+                                    <span className="inline-suggest-pill">{suggestionCount}</span>
+                                  </div>
+                                  <div className="inline-suggest-keys" aria-hidden="true">
+                                    <span className="kbd">Up</span>
+                                    <span className="kbd">Down</span>
+                                    <span className="kbd">Enter</span>
+                                    <span className="kbd">Esc</span>
+                                  </div>
+                                </div>
+
+                                <div className="inline-suggest-divider" />
+
+                                <div className="inline-suggest-custom">
+                                  <form
+                                    className="inline-suggest-custom-form"
+                                    onSubmit={handleCustomRequestSubmit}
                                   >
-                                    {isCustomLoading ? 'Applying...' : 'Apply'}
-                                  </button>
-                                </form>
-                                {customRequestError && (
-                                  <div className="inline-suggest-custom-error" role="alert">
-                                    {customRequestError}
+                                    <textarea
+                                      id="inline-custom-request"
+                                      value={customRequest}
+                                      onChange={(event) => {
+                                        setCustomRequest(event.target.value);
+                                        if (customRequestError) {
+                                          setCustomRequestError('');
+                                        }
+                                      }}
+                                      placeholder="Add a specific change (e.g. football field)"
+                                      className="inline-suggest-custom-input"
+                                      maxLength={MAX_REQUEST_LENGTH}
+                                      rows={1}
+                                      aria-label="Custom suggestion request"
+                                    />
+                                    <button
+                                      type="submit"
+                                      className="inline-suggest-cta"
+                                      disabled={isCustomRequestDisabled}
+                                      aria-busy={isCustomLoading}
+                                    >
+                                      {isCustomLoading ? 'Applying...' : 'Apply'}
+                                    </button>
+                                  </form>
+                                  {customRequestError && (
+                                    <div className="inline-suggest-custom-error" role="alert">
+                                      {customRequestError}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {isInlineError && (
+                                  <div className="inline-suggest-error" role="alert">
+                                    {inlineErrorMessage}
                                   </div>
                                 )}
-                              </div>
 
-                              {isInlineError && (
-                                <div className="inline-suggest-error" role="alert">
-                                  {inlineErrorMessage}
-                                </div>
-                              )}
+                                {isInlineLoading && (
+                                  <div className="inline-suggest-list">
+                                    <div className="skeleton-row" />
+                                    <div className="skeleton-row" />
+                                    <div className="skeleton-row" />
+                                  </div>
+                                )}
 
-                              {isInlineLoading && (
-                                <div className="inline-suggest-list">
-                                  <div className="skeleton-row" />
-                                  <div className="skeleton-row" />
-                                  <div className="skeleton-row" />
-                                </div>
-                              )}
+                                {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
+                                  <div className="inline-suggest-list" ref={suggestionsListRef}>
+                                    {inlineSuggestions.map((suggestion, index) => (
+                                      <div
+                                        key={suggestion.key}
+                                        data-index={index}
+                                        data-selected={
+                                          activeSuggestionIndex === index ? 'true' : 'false'
+                                        }
+                                        className="inline-suggest-item po-row po-row--interactive"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onMouseEnter={() => {
+                                          interactionSourceRef.current = 'mouse';
+                                          setActiveSuggestionIndex(index);
+                                        }}
+                                        onClick={() => {
+                                          handleSuggestionClickWithFeedback(suggestion.item);
+                                          closeInlinePopover();
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                      >
+                                        <div className="inline-suggest-text">{suggestion.text}</div>
+                                        {index === 0 ? (
+                                          <span
+                                            className="inline-suggest-badge po-badge po-badge--best"
+                                            data-accent="true"
+                                          >
+                                            Best match
+                                          </span>
+                                        ) : suggestion.meta ? (
+                                          <div className="inline-suggest-meta">{suggestion.meta}</div>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
 
-                              {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
-                                <div className="inline-suggest-list" ref={suggestionsListRef}>
-                                  {inlineSuggestions.map((suggestion, index) => (
-                                    <div
-                                      key={suggestion.key}
-                                      data-index={index}
-                                      data-selected={
-                                        activeSuggestionIndex === index ? 'true' : 'false'
-                                      }
-                                      className="inline-suggest-item po-row po-row--interactive"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onMouseEnter={() => {
-                                        interactionSourceRef.current = 'mouse';
-                                        setActiveSuggestionIndex(index);
-                                      }}
+                                {isInlineEmpty && (
+                                  <div className="inline-suggest-empty">No suggestions yet.</div>
+                                )}
+
+                                <div className="inline-suggest-footer">
+                                  <div className="inline-suggest-footnote">
+                                    {selectionLabel
+                                      ? `Replace "${selectionLabel}"`
+                                      : 'Replace selection'}
+                                  </div>
+                                  <div className="inline-suggest-actions">
+                                    <button
+                                      type="button"
+                                      className="inline-suggest-cta"
+                                      onClick={closeInlinePopover}
+                                    >
+                                      Close
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inline-suggest-cta"
+                                      data-primary="true"
                                       onClick={() => {
-                                        handleSuggestionClickWithFeedback(suggestion.item);
+                                        handleApplyActiveSuggestion();
                                         closeInlinePopover();
                                       }}
-                                      role="button"
-                                      tabIndex={0}
+                                      disabled={!suggestionCount}
                                     >
-                                      <div className="inline-suggest-text">{suggestion.text}</div>
-                                      {index === 0 ? (
-                                        <span
-                                          className="inline-suggest-badge po-badge po-badge--best"
-                                          data-accent="true"
-                                        >
-                                          Best match
-                                        </span>
-                                      ) : suggestion.meta ? (
-                                        <div className="inline-suggest-meta">{suggestion.meta}</div>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {isInlineEmpty && (
-                                <div className="inline-suggest-empty">No suggestions yet.</div>
-                              )}
-
-                              <div className="inline-suggest-footer">
-                                <div className="inline-suggest-footnote">
-                                  {selectionLabel
-                                    ? `Replace "${selectionLabel}"`
-                                    : 'Replace selection'}
-                                </div>
-                                <div className="inline-suggest-actions">
-                                  <button
-                                    type="button"
-                                    className="inline-suggest-cta"
-                                    onClick={closeInlinePopover}
-                                  >
-                                    Close
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="inline-suggest-cta"
-                                    data-primary="true"
-                                    onClick={() => {
-                                      handleApplyActiveSuggestion();
-                                      closeInlinePopover();
-                                    }}
-                                    disabled={!suggestionCount}
-                                  >
-                                    Apply
-                                  </button>
+                                      Apply
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </>
-                        )}
+                            </>
+                          )}
                         {enableMLHighlighting &&
                           !outlineOverlayActive &&
                           hoveredSpanId &&
                           lockButtonPosition &&
                           !isOutputLoading && (
-                          <button
-                            ref={lockButtonRef}
-                            type="button"
-                            onClick={handleToggleLock}
-                            onMouseEnter={cancelHideLockButton}
-                            onMouseLeave={handleLockButtonMouseLeave}
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="prompt-lock-button po-fab po-animate-pop-in"
-                            style={{
-                              top: `${lockButtonPosition.top}px`,
-                              left: `${lockButtonPosition.left}px`,
-                            }}
-                            data-locked={isHoveredLocked ? 'true' : 'false'}
-                            aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                            title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                            aria-pressed={isHoveredLocked}
-                          >
-                            {isHoveredLocked ? (
-                              <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
-                            ) : (
-                              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                            )}
-                          </button>
-                        )}
+                            <button
+                              ref={lockButtonRef}
+                              type="button"
+                              onClick={handleToggleLock}
+                              onMouseEnter={cancelHideLockButton}
+                              onMouseLeave={handleLockButtonMouseLeave}
+                              onMouseDown={(e) => e.preventDefault()}
+                              className="prompt-lock-button po-fab po-animate-pop-in"
+                              style={{
+                                top: `${lockButtonPosition.top}px`,
+                                left: `${lockButtonPosition.left}px`,
+                              }}
+                              data-locked={isHoveredLocked ? 'true' : 'false'}
+                              aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                              title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                              aria-pressed={isHoveredLocked}
+                            >
+                              {isHoveredLocked ? (
+                                <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                              ) : (
+                                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                              )}
+                            </button>
+                          )}
                         {isOutputLoading && (
                           <div
                             className="prompt-editor-loading"
@@ -2046,7 +2158,7 @@ export function PromptCanvas({
                 </div>
               </div>
 
-              <section className="po-runs">
+              <section className="po-runs card">
                 <div className="po-runs__header">
                   <div>
                     <div className="po-runs__title">Runs</div>
@@ -2054,82 +2166,228 @@ export function PromptCanvas({
                       Preview + final generations (history, status, ETA)
                     </div>
                   </div>
-                  <span className="po-runs__badge">Queue</span>
+                  <span className="po-runs__badge status-pill" data-status="live">
+                    <span className="status-pill__dot" aria-hidden="true" />
+                    Queue
+                  </span>
                 </div>
 
                 <div className="po-runs__list">
                   <div
-                    className="po-run-card"
-                    data-status={previewStatus.toLowerCase()}
+                    className="po-run-card card card--raised card--interactive"
+                    data-status={previewStatusState}
                     data-variant="preview"
                   >
-                    <div className="po-run-card__main">
-                      <div className="po-run-card__title">Preview Run</div>
-                      <div className="po-run-card__meta">
-                        Draft model: {target.label} · {aspectLabel} · {durationLabel} · {fpsLabel}
+                    <div className="po-run-card__section po-run-card__header">
+                      <div className="po-run-card__heading">
+                        <div className="po-run-card__title">Preview Run</div>
+                        {runMetaLabel && <div className="po-run-card__run-meta">{runMetaLabel}</div>}
+                      </div>
+                      <div className="po-run-card__status-group">
+                        <span className="po-status-pill status-pill" data-status={previewStatusState}>
+                          <span className="status-pill__dot" aria-hidden="true" />
+                          {previewStatusLabel}
+                        </span>
+                        {previewEta && <span className="po-run-card__eta">{previewEta}</span>}
+                        <div className="po-run-card__menu po-action-menu" ref={previewRunMenuRef}>
+                          <button
+                            type="button"
+                            className="po-run-card__menu-btn"
+                            onClick={() =>
+                              setOpenRunMenu(openRunMenu === 'preview' ? null : 'preview')
+                            }
+                            aria-label="Run menu"
+                            aria-haspopup="menu"
+                            aria-expanded={openRunMenu === 'preview'}
+                          >
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          {openRunMenu === 'preview' && (
+                            <div className="po-action-menu__popover" role="menu">
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                View logs
+                              </button>
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                Duplicate settings
+                              </button>
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                Share artifact link
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="po-run-card__status">
-                      <span className="po-status-pill" data-status={previewStatus.toLowerCase()}>
-                        {previewStatus}
-                      </span>
-                      <span className="po-run-card__eta">{previewMetaDetail}</span>
+                    <div className="po-run-card__section po-run-card__meta">
+                      Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
+                      · Seed {seedLabel}
                     </div>
-                    <div className="po-run-card__actions">
+                    <div className="po-run-card__section po-run-card__metrics">
+                      <span className="po-run-card__metrics-label">Metrics:</span>
+                      <span className="po-run-card__metrics-item">Tokens {RUN_METRICS.preview.tokens}</span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item">Est. cost {RUN_METRICS.preview.cost}</span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item" data-state="pass">
+                        <span className="po-run-card__metric-dot" aria-hidden="true" />
+                        Quality: {RUN_METRICS.preview.quality}
+                      </span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item" data-state="pass">
+                        <span className="po-run-card__metric-dot" aria-hidden="true" />
+                        Safety: {RUN_METRICS.preview.safety}
+                      </span>
+                    </div>
+                    <div className="po-run-card__section po-run-card__artifacts">
+                      <div className="po-run-card__artifacts-label">Artifacts</div>
+                      <div className="po-run-card__artifact-strip">
+                        {RUN_ARTIFACTS.preview.map((artifact) => (
+                          <button
+                            key={artifact.id}
+                            type="button"
+                            className="po-run-card__artifact"
+                            data-kind={artifact.kind}
+                            aria-label={artifact.label}
+                          />
+                        ))}
+                        <button type="button" className="po-run-card__view-all">
+                          View all <span aria-hidden="true">&rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="po-run-card__section po-run-card__actions">
                       <div className="po-run-card__links">
-                        <button type="button" disabled={previewStatus !== 'Ready'}>
+                        <button type="button" disabled={previewStatusState !== 'ready'}>
                           Retry
                         </button>
                         <button type="button" disabled={!canCompareRuns}>
                           Compare
                         </button>
-                        <button type="button" disabled={previewStatus === 'Idle'}>
+                        <button type="button" disabled={previewStatusState === 'idle'}>
                           Logs
                         </button>
+                        <button type="button">Copy settings</button>
                       </div>
                       <button
                         type="button"
-                        onClick={handleGenerateVisualPreview}
-                        disabled={!hasPreviewSource || isVisualPreviewGenerating}
+                        onClick={
+                          previewStatusState === 'ready'
+                            ? () => setStageTab('preview')
+                            : handleGenerateVisualPreview
+                        }
+                        disabled={previewCtaDisabled}
                         className="po-run-card__cta"
                       >
-                        Generate Preview
+                        {previewCtaLabel}
                       </button>
                     </div>
                   </div>
 
-                  <div className="po-run-card" data-status={finalStatus.toLowerCase()}>
-                    <div className="po-run-card__main">
-                      <div className="po-run-card__title">Final Render</div>
-                      <div className="po-run-card__meta">
-                        Quality: High · {aspectLabel} · {durationLabel} · {fpsLabel}
+                  <div
+                    className="po-run-card card card--raised card--interactive"
+                    data-status={finalStatusState}
+                  >
+                    <div className="po-run-card__section po-run-card__header">
+                      <div className="po-run-card__heading">
+                        <div className="po-run-card__title">Final Render</div>
+                        {runMetaLabel && <div className="po-run-card__run-meta">{runMetaLabel}</div>}
+                      </div>
+                      <div className="po-run-card__status-group">
+                        <span className="po-status-pill status-pill" data-status={finalStatusState}>
+                          <span className="status-pill__dot" aria-hidden="true" />
+                          {finalStatusLabel}
+                        </span>
+                        {finalEta && <span className="po-run-card__eta">{finalEta}</span>}
+                        <div className="po-run-card__menu po-action-menu" ref={finalRunMenuRef}>
+                          <button
+                            type="button"
+                            className="po-run-card__menu-btn"
+                            onClick={() =>
+                              setOpenRunMenu(openRunMenu === 'final' ? null : 'final')
+                            }
+                            aria-label="Run menu"
+                            aria-haspopup="menu"
+                            aria-expanded={openRunMenu === 'final'}
+                          >
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          {openRunMenu === 'final' && (
+                            <div className="po-action-menu__popover" role="menu">
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                View logs
+                              </button>
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                Duplicate settings
+                              </button>
+                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                                Share artifact link
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="po-run-card__status">
-                      <span className="po-status-pill" data-status={finalStatus.toLowerCase()}>
-                        {finalStatus}
-                      </span>
-                      <span className="po-run-card__eta">{finalMetaDetail}</span>
+                    <div className="po-run-card__section po-run-card__meta">
+                      Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
+                      · Seed {seedLabel}
                     </div>
-                    <div className="po-run-card__actions">
+                    <div className="po-run-card__section po-run-card__metrics">
+                      <span className="po-run-card__metrics-label">Metrics:</span>
+                      <span className="po-run-card__metrics-item">Tokens {RUN_METRICS.final.tokens}</span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item">Est. cost {RUN_METRICS.final.cost}</span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item" data-state="pass">
+                        <span className="po-run-card__metric-dot" aria-hidden="true" />
+                        Quality: {RUN_METRICS.final.quality}
+                      </span>
+                      <span className="po-run-card__metrics-sep">·</span>
+                      <span className="po-run-card__metrics-item" data-state="pass">
+                        <span className="po-run-card__metric-dot" aria-hidden="true" />
+                        Safety: {RUN_METRICS.final.safety}
+                      </span>
+                    </div>
+                    <div className="po-run-card__section po-run-card__artifacts">
+                      <div className="po-run-card__artifacts-label">Artifacts</div>
+                      <div className="po-run-card__artifact-strip">
+                        {RUN_ARTIFACTS.final.map((artifact) => (
+                          <button
+                            key={artifact.id}
+                            type="button"
+                            className="po-run-card__artifact"
+                            data-kind={artifact.kind}
+                            aria-label={artifact.label}
+                          />
+                        ))}
+                        <button type="button" className="po-run-card__view-all">
+                          View all <span aria-hidden="true">&rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="po-run-card__section po-run-card__actions">
                       <div className="po-run-card__links">
-                        <button type="button" disabled={finalStatus !== 'Ready'}>
+                        <button type="button" disabled={finalStatusState !== 'ready'}>
                           Retry
                         </button>
                         <button type="button" disabled={!canCompareRuns}>
                           Compare
                         </button>
-                        <button type="button" disabled={finalStatus === 'Idle'}>
+                        <button type="button" disabled={finalStatusState === 'idle'}>
                           Logs
                         </button>
+                        <button type="button">Copy settings</button>
                       </div>
                       <button
                         type="button"
-                        onClick={handleGenerateRailVideoPreview}
-                        disabled={!hasVideoPreviewSource || isRailVideoPreviewGenerating}
+                        onClick={
+                          finalStatusState === 'ready'
+                            ? () => setStageTab('final')
+                            : handleGenerateRailVideoPreview
+                        }
+                        disabled={finalCtaDisabled}
                         className="po-run-card__cta"
                       >
-                        Generate Final
+                        {finalCtaLabel}
                       </button>
                     </div>
                   </div>
@@ -2137,6 +2395,8 @@ export function PromptCanvas({
               </section>
             </div>
           </div>
+        </div>
+
         </div>
 
         {/* Right Rail - Stage + Inspector */}
@@ -2147,11 +2407,13 @@ export function PromptCanvas({
                 <div className="po-stage__title">Stage</div>
                 <div className="po-stage__subtitle">Preview &amp; refine output</div>
               </div>
-              <div className="po-stage__tabs">
+              <div className="po-stage__tabs segmented">
                 <button
                   type="button"
                   onClick={() => setStageTab('preview')}
                   data-active={stageTab === 'preview' ? 'true' : 'false'}
+                  className="segmented__tab"
+                  aria-selected={stageTab === 'preview'}
                 >
                   Preview
                 </button>
@@ -2159,6 +2421,8 @@ export function PromptCanvas({
                   type="button"
                   onClick={() => setStageTab('final')}
                   data-active={stageTab === 'final' ? 'true' : 'false'}
+                  className="segmented__tab"
+                  aria-selected={stageTab === 'final'}
                 >
                   Final
                 </button>
@@ -2205,6 +2469,9 @@ export function PromptCanvas({
 
               {!stageHasOutput && !stageIsGenerating && (
                 <div className="po-stage__empty">
+                  <div className="po-stage__empty-icon" aria-hidden="true">
+                    <Play className="h-10 w-10" />
+                  </div>
                   <div className="po-stage__empty-title">Stage is set</div>
                   <div className="po-stage__empty-sub">
                     {stageTab === 'preview'
@@ -2217,7 +2484,7 @@ export function PromptCanvas({
 
             <div className="po-stage__footer">
               <div className="po-stage__meta">
-                {aspectLabel} · {target.label}
+                {stageFooterMeta}
               </div>
               <button
                 type="button"
@@ -2232,8 +2499,17 @@ export function PromptCanvas({
 
           <section className="po-inspector">
             <div className="po-inspector__header">
-              <div className="po-inspector__title">Controls</div>
-              <div className="po-inspector__subtitle">Draft model &amp; settings</div>
+              <div className="po-inspector__header-left">
+                <div className="po-inspector__title">Controls</div>
+                <div className="po-inspector__subtitle">Draft model &amp; settings</div>
+              </div>
+              <button
+                type="button"
+                className="po-inspector__settings"
+                onClick={() => setShowSettings(true)}
+              >
+                SETTINGS
+              </button>
             </div>
 
             <div className="po-inspector__body">

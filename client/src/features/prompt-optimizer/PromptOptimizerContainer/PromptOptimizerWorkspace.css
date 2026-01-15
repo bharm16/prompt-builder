@@ -3,108 +3,151 @@
  */
 
 .prompt-optimizer-workspace {
-  /* --- Raw palette (base) --- */
-  --zinc-950: #0B0D12;
-  --zinc-925: #0D0F16;
-  --zinc-900: #10131C;
-  --zinc-850: #121521;
-  --zinc-800: #161A26;
-  --zinc-750: #1A1F2D;
-  --zinc-700: #1E2435;
+  /* --- Foundations (enterprise spec) --- */
+  --bg: #0B0F17;
+  --surface-1: #101622;
+  --surface-2: #121A28;
+  --surface-3: #152033;
+  --border: #24314A;
+  --border-strong: #314163;
 
-  --border-700: #242A3C;
-  --border-600: #2B334A;
-  --border-500: #333C57;
+  --text: #E7EBF3;
+  --text-muted: #A1AABC;
+  --text-faint: #7F8AA6;
 
-  --text-100: #EBF0FF;
-  --text-200: #C9D1E5;
-  --text-300: #AAB2C8;
-  --text-400: #7D859B;
+  --accent: #6886FF;
+  --accent-2: #8B66FF;
 
-  --accent-purple: #7C3AED;
-  --accent-cyan: #06B6D4;
-  --accent-orange: #F97316;
+  --success: #4EC7A2;
+  --warning: #F5C05C;
+  --danger: #FA6E7C;
 
-  --success: #4EC9B0;
-  --warning: #F7C74A;
-  --danger: #F472B6;
-  --info: #60A5FA;
+  --shadow-sm: 0 6px 18px rgba(0,0,0,0.35);
+  --shadow-md: 0 12px 32px rgba(0,0,0,0.45);
+  --shadow-inset: inset 0 1px 0 rgba(255,255,255,0.06);
 
-  /* --- Semantic --- */
-  --bg-app: var(--zinc-950);
-  --bg-sidebar: var(--zinc-900);
-  --bg-surface: var(--zinc-850);
-  --bg-surface-2: var(--zinc-800);
-  --bg-elevated: var(--zinc-750);
+  --r-card: 16px;
+  --r-input: 14px;
+  --r-pill: 999px;
+  --r-chip: 14px;
 
-  --border-subtle: var(--border-700);
-  --border-default: var(--border-600);
-  --border-strong: var(--border-500);
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
 
-  --text-primary: var(--text-100);
-  --text-secondary: var(--text-300);
-  --text-tertiary: var(--text-400);
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
 
-  --focus-ring: color-mix(in srgb, var(--accent-cyan) 70%, white 30%);
+  --lh-tight: 1.2;
+  --lh-normal: 1.4;
+  --lh-relaxed: 1.55;
 
-  --grad-1: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan), var(--accent-orange));
-  --grad-2: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-  --grad-3: radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--accent-purple) 45%, transparent), transparent 55%);
+  --t-fast: 120ms;
+  --t-med: 180ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 
-  --hl-a: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
-  --hl-b: color-mix(in srgb, var(--accent-purple) 18%, transparent);
-  --hl-c: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+  /* --- Legacy alias mapping (keep existing var usage) --- */
+  --zinc-950: var(--bg);
+  --zinc-925: #0D111A;
+  --zinc-900: var(--surface-1);
+  --zinc-850: var(--surface-1);
+  --zinc-800: var(--surface-2);
+  --zinc-750: var(--surface-3);
+  --zinc-700: var(--surface-3);
+
+  --border-700: var(--border);
+  --border-600: var(--border);
+  --border-500: var(--border-strong);
+
+  --text-100: var(--text);
+  --text-200: var(--text-muted);
+  --text-300: var(--text-muted);
+  --text-400: var(--text-faint);
+
+  --accent-purple: var(--accent-2);
+  --accent-cyan: var(--accent);
+  --accent-orange: var(--accent);
+
+  --info: var(--accent);
+
+  --bg-app: var(--bg);
+  --bg-sidebar: var(--surface-1);
+  --bg-surface: var(--surface-1);
+  --bg-surface-2: var(--surface-2);
+  --bg-elevated: var(--surface-3);
+
+  --border-subtle: var(--border);
+  --border-default: var(--border);
+  --border-strong: var(--border-strong);
+
+  --text-primary: var(--text);
+  --text-secondary: var(--text-muted);
+  --text-tertiary: var(--text-faint);
+
+  --focus-ring: rgba(104, 134, 255, 0.75);
+
+  --grad-1: var(--accent);
+  --grad-2: var(--accent-2);
+  --grad-3: transparent;
+
+  --hl-a: rgba(104, 134, 255, 0.12);
+  --hl-b: rgba(139, 102, 255, 0.12);
+  --hl-c: rgba(104, 134, 255, 0.12);
 
   /* Typography */
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   --font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --fs-00: 11px;  --lh-00: 16px;
-  --fs-0: 13px;   --lh-0: 18px;
-  --fs-1: 15px;   --lh-1: 22px;
-  --fs-2: 17px;   --lh-2: 24px;
-  --fs-3: 20px;   --lh-3: 26px;
-  --fs-4: 24px;   --lh-4: 30px;
-  --fs-5: 32px;   --lh-5: 38px;
+  --fs-00: var(--fs-12);  --lh-00: 16px;
+  --fs-0: var(--fs-13);   --lh-0: 18px;
+  --fs-1: var(--fs-14);   --lh-1: 20px;
+  --fs-2: var(--fs-16);   --lh-2: 22px;
+  --fs-3: var(--fs-18);   --lh-3: 24px;
+  --fs-4: 20px;           --lh-4: 26px;
+  --fs-5: 24px;           --lh-5: 30px;
 
   /* Spacing + layout */
-  --space-1: 2px;
-  --space-2: 4px;
-  --space-3: 6px;
-  --space-4: 8px;
-  --space-5: 12px;
-  --space-6: 16px;
-  --space-7: 20px;
-  --space-8: 24px;
-  --space-9: 32px;
+  --space-1: var(--s-1);
+  --space-2: var(--s-2);
+  --space-3: var(--s-3);
+  --space-4: var(--s-4);
+  --space-5: var(--s-5);
+  --space-6: var(--s-6);
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
   --space-10: 40px;
 
-  --radius-1: 8px;
-  --radius-2: 12px;
+  --radius-1: 10px;
+  --radius-2: 14px;
   --radius-3: 16px;
-  --radius-4: 20px;
+  --radius-4: 18px;
 
-  --topbar-h: 80px;
+  --topbar-h: 64px;
   --sidebar-w: 288px;
   --stage-w: 360px;
-  --gutter: 14px;
-  --page-pad: 16px;
+  --gutter: 16px;
+  --page-pad: 20px;
 
   /* Shadows + blur */
-  --shadow-sm: 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.35);
-  --shadow-md: 0 1px 0 rgba(255,255,255,0.05), 0 16px 48px rgba(0,0,0,0.45);
-  --shadow-lg: 0 1px 0 rgba(255,255,255,0.06), 0 24px 72px rgba(0,0,0,0.55);
+  --shadow-lg: 0 24px 72px rgba(0,0,0,0.55);
 
-  --blur-glass: 18px;
+  --blur-glass: 10px;
 
   /* Motion */
-  --dur-1: 90ms;
-  --dur-2: 140ms;
-  --dur-3: 200ms;
+  --dur-1: var(--t-fast);
+  --dur-2: var(--t-med);
+  --dur-3: 240ms;
   --dur-4: 320ms;
 
-  --ease-out: cubic-bezier(.16,1,.3,1);
   --ease-inout: cubic-bezier(.65,0,.35,1);
   --ease-linear: linear;
 
@@ -136,10 +179,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background:
-    var(--grad-3),
-    radial-gradient(140% 120% at 80% -10%, rgba(6, 182, 212, 0.12), transparent 60%),
-    linear-gradient(180deg, var(--bg-app) 0%, var(--zinc-925) 50%, var(--bg-app) 100%);
+  background: var(--bg-app);
   transition: background-color var(--dur-3) var(--ease-out);
 }
 
@@ -151,22 +191,328 @@
 }
 
 .prompt-optimizer-workspace ::selection {
-  background: var(--hl-b);
+  background: rgba(104,134,255,0.25);
   color: var(--text-primary);
+}
+
+.prompt-optimizer-workspace .topbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(16, 22, 34, 0.86);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(36,49,74,0.9);
+  box-shadow: var(--shadow-sm);
+}
+
+.prompt-optimizer-workspace .brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.prompt-optimizer-workspace .brand__name {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.prompt-optimizer-workspace .brand__sub {
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+}
+
+.prompt-optimizer-workspace .command-field {
+  flex: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-inset);
+}
+
+.prompt-optimizer-workspace .command-field input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: var(--fs-14);
+}
+
+.prompt-optimizer-workspace .command-field input::placeholder {
+  color: var(--text-faint);
+}
+
+.prompt-optimizer-workspace .segmented {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-inset);
+}
+
+.prompt-optimizer-workspace .segmented__tab {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-size: var(--fs-13);
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--t-med) var(--ease-out),
+    color var(--t-med) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.prompt-optimizer-workspace .segmented__tab:hover {
+  color: var(--text);
+  background: rgba(21,32,51,0.7);
+}
+
+.prompt-optimizer-workspace .segmented__tab[aria-selected="true"] {
+  color: var(--text);
+  background: var(--surface-3);
+  border-color: rgba(49,65,99,0.9);
+  transform: translateY(-1px);
+}
+
+.prompt-optimizer-workspace .env-pill {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.prompt-optimizer-workspace .env-pill__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgba(78,199,162,0.12);
+}
+
+.prompt-optimizer-workspace .btn-primary {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #0B0F17;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 24px rgba(104,134,255,0.18);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out),
+              filter var(--t-med) var(--ease-out);
+}
+
+.prompt-optimizer-workspace .btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.prompt-optimizer-workspace .btn-primary:active {
+  transform: translateY(0px);
+  filter: brightness(0.98);
+}
+
+.prompt-optimizer-workspace .btn-ghost {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid rgba(36,49,74,0.9);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
+}
+
+.prompt-optimizer-workspace .btn-ghost:hover {
+  background: rgba(18,26,40,0.9);
+  color: var(--text);
+}
+
+.prompt-optimizer-workspace .icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(36,49,74,0.9);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
+}
+
+.prompt-optimizer-workspace .icon-btn:hover {
+  background: rgba(18,26,40,0.9);
+  color: var(--text);
+}
+
+.prompt-optimizer-workspace .status-pill {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid rgba(36,49,74,0.95);
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+}
+
+.prompt-optimizer-workspace .status-pill__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--text-faint);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="live"] .status-pill__dot {
+  background: var(--accent);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="generating"] .status-pill__dot {
+  background: var(--accent);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="ready"] .status-pill__dot {
+  background: var(--success);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="idle"] .status-pill__dot {
+  background: var(--text-faint);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="failed"] .status-pill__dot {
+  background: var(--danger);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="success"] .status-pill__dot {
+  background: var(--success);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="warn"] .status-pill__dot {
+  background: var(--warning);
+}
+
+.prompt-optimizer-workspace .status-pill[data-status="error"] .status-pill__dot {
+  background: var(--danger);
+}
+
+.prompt-optimizer-workspace .input {
+  width: 100%;
+  border-radius: var(--r-input);
+  background: rgba(11,15,23,0.65);
+  border: 1px solid rgba(36,49,74,0.95);
+  color: var(--text);
+  padding: 12px 12px;
+  box-shadow: var(--shadow-inset);
+}
+
+.prompt-optimizer-workspace .input:focus {
+  outline: none;
+  border-color: rgba(104,134,255,0.75);
+  box-shadow: 0 0 0 3px rgba(104,134,255,0.14), var(--shadow-inset);
+}
+
+.prompt-optimizer-workspace .label {
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.prompt-optimizer-workspace .editor-well {
+  border-radius: 14px;
+  background: rgba(11,15,23,0.65);
+  border: 1px solid rgba(36,49,74,0.95);
+  padding: 12px;
+  box-shadow: var(--shadow-inset);
+  min-height: 220px;
+}
+
+.prompt-optimizer-workspace .editor-well.is-loading {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.prompt-optimizer-workspace .editor-well .input {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.prompt-optimizer-workspace .editor-well .input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.prompt-optimizer-workspace .ui-title {
+  font-size: var(--fs-16);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+}
+
+.prompt-optimizer-workspace .ui-subtitle {
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  line-height: var(--lh-normal);
+}
+
+.prompt-optimizer-workspace .ui-body {
+  font-size: var(--fs-14);
+  line-height: var(--lh-relaxed);
+  color: var(--text);
+}
+
+.prompt-optimizer-workspace .ui-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+}
+
+.prompt-optimizer-workspace .stack-16 {
+  display: grid;
+  gap: 16px;
+}
+
+.prompt-optimizer-workspace .stack-12 {
+  display: grid;
+  gap: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .prompt-optimizer-workspace * {
-    animation-duration: var(--dur-1) !important;
-    transition-duration: var(--dur-1) !important;
+    animation: none !important;
+    transition: none !important;
   }
 }
-
-
-
-
-
-
-
-
-
