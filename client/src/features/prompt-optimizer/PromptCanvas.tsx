@@ -1,5 +1,20 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { Pencil, X, Check, Lock, Unlock, LayoutGrid, Share2, RotateCcw, RotateCw, Play, MoreHorizontal } from 'lucide-react';
+import {
+  Pencil,
+  X,
+  Check,
+  Lock,
+  Unlock,
+  LayoutGrid,
+  Share2,
+  RotateCcw,
+  RotateCw,
+  Play,
+  Pause,
+  Download,
+  ExternalLink,
+  MoreHorizontal,
+} from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -47,7 +62,7 @@ import { PromptSidebar } from './components/PromptSidebar';
 import { VersionsPanel } from './components/VersionsPanel';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
-import { VisualPreview, VideoPreview } from '@/features/preview';
+import { VisualPreview, VideoPreview, type PreviewProvider } from '@/features/preview';
 import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
@@ -63,16 +78,16 @@ const RUN_ARTIFACTS = {
     { id: 'preview-keyframe-1', label: 'Keyframe 1', kind: 'keyframe' },
     { id: 'preview-keyframe-2', label: 'Keyframe 2', kind: 'keyframe' },
     { id: 'preview-keyframe-3', label: 'Keyframe 3', kind: 'keyframe' },
-    { id: 'preview-variant-1', label: 'Variant 1', kind: 'variant' },
-    { id: 'preview-variant-2', label: 'Variant 2', kind: 'variant' },
-    { id: 'preview-variant-3', label: 'Variant 3', kind: 'variant' },
-    { id: 'preview-variant-4', label: 'Variant 4', kind: 'variant' },
+    { id: 'preview-variant-1', label: 'Frame 1 (Base)', kind: 'variant' },
+    { id: 'preview-variant-2', label: 'Frame 2 (Edit 1)', kind: 'variant' },
+    { id: 'preview-variant-3', label: 'Frame 3 (Edit 2)', kind: 'variant' },
+    { id: 'preview-variant-4', label: 'Frame 4 (Edit 3)', kind: 'variant' },
   ],
   final: [
     { id: 'final-render', label: 'Final render', kind: 'preview' },
     { id: 'final-keyframe-1', label: 'Keyframe 1', kind: 'keyframe' },
     { id: 'final-keyframe-2', label: 'Keyframe 2', kind: 'keyframe' },
-    { id: 'final-variant-1', label: 'Variant 1', kind: 'variant' },
+    { id: 'final-variant-1', label: 'Frame 1', kind: 'variant' },
   ],
 } as const;
 
@@ -132,7 +147,6 @@ export function PromptCanvas({
   const editorColumnRef = useRef<HTMLDivElement>(null);
   const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
-  const tokenPopoverRef = useRef<HTMLDivElement>(null);
   const suggestionsListRef = useRef<HTMLDivElement>(null);
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const previewRunMenuRef = useRef<HTMLDivElement>(null);
@@ -143,12 +157,6 @@ export function PromptCanvas({
   const [customRequestError, setCustomRequestError] = useState('');
   const [openRunMenu, setOpenRunMenu] = useState<'preview' | 'final' | null>(null);
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
-  const [tokenPopover, setTokenPopover] = useState<{
-    left: number;
-    top: number;
-    placement: 'top' | 'bottom';
-    arrowLeft: number;
-  } | null>(null);
   const [videoInputReference, setVideoInputReference] = useState('');
   const [stageTab, setStageTab] = useState<'preview' | 'final'>('preview');
   const [showDiff, setShowDiff] = useState(false);
@@ -164,9 +172,27 @@ export function PromptCanvas({
   } = previewLoading;
   const [railVideoGenerateRequestId, setRailVideoGenerateRequestId] = useState(0);
   const [railVideoLastGeneratedAt, setRailVideoLastGeneratedAt] = useState<number | null>(null);
+  const [visualProvider, setVisualProvider] = useState<PreviewProvider>('replicate-flux-kontext-fast');
+  const [useSelectedFrameAsBase, setUseSelectedFrameAsBase] = useState(true);
+  const [storyboardSelectedIndex, setStoryboardSelectedIndex] = useState(3);
+  const [storyboardPlaying, setStoryboardPlaying] = useState(false);
+  const [visualPreviewState, setVisualPreviewState] = useState<{
+    provider: PreviewProvider;
+    useReferenceImage: boolean;
+    loading: boolean;
+    error: string | null;
+    imageUrl: string | null;
+    imageUrls: Array<string | null>;
+  } | null>(null);
+  const [videoPreviewState, setVideoPreviewState] = useState<{
+    loading: boolean;
+    error: string | null;
+    videoUrl: string | null;
+  } | null>(null);
+  const finalVideoElRef = useRef<HTMLVideoElement>(null);
   
   // Refs for tracking previous state to prevent loops
-  const previousTokenPopoverRef = useRef(tokenPopover);
+  const previousSelectedSpanIdRef = useRef<string | null>(null);
   const previousSuggestionCountRef = useRef(0);
 
   // Get model + layout state from context
@@ -627,29 +653,6 @@ export function PromptCanvas({
     [parseResult.spans]
   );
 
-  const tokenHighlights = useMemo(() => {
-    const seen = new Set<string>();
-    const variants = ['a', 'b', 'c'] as const;
-    const tokens: Array<{ id: string; label: string; variant: typeof variants[number] }> = [];
-
-    for (const span of bentoSpans) {
-      const raw = typeof span.quote === 'string' ? span.quote : '';
-      const label = raw.replace(/\s+/g, ' ').trim();
-      if (!label || label.length < 3) continue;
-      const key = label.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      tokens.push({
-        id: span.id ?? `token_${span.start}_${span.end}`,
-        label: label.length > 28 ? `${label.slice(0, 28).trim()}…` : label,
-        variant: variants[tokens.length % variants.length]!,
-      });
-      if (tokens.length >= 6) break;
-    }
-
-    return tokens;
-  }, [bentoSpans]);
-
   // Highlight rendering using extracted hook
   const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, {
     spans: parseResult.spans,
@@ -732,98 +735,11 @@ export function PromptCanvas({
     };
   }, [enableMLHighlighting, hoveredSpanId, showHighlights, outlineOverlayActive]);
 
-  const updateTokenPopover = useCallback((): void => {
-    if (typeof window === 'undefined') return;
-    if (!selectedSpanId || !editorRef.current || !editorWrapperRef.current) {
-      setTokenPopover(null);
-      return;
-    }
-
-    const el = editorRef.current.querySelector(
-      `span.value-word[data-span-id="${escapeAttr(selectedSpanId)}"]`
-    ) as HTMLElement | null;
-
-    if (!el) {
-      setTokenPopover(null);
-      return;
-    }
-
-    const rect = el.getBoundingClientRect();
-    const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
-    const viewportMargin = 12;
-    const maxPanelWidth = Math.max(240, window.innerWidth - viewportMargin * 2);
-    const panelWidth = Math.min(420, maxPanelWidth);
-    const panelHeight = 280;
-    const shouldShowBelow = window.innerHeight - rect.bottom >= 180;
-    const placement: 'top' | 'bottom' = shouldShowBelow ? 'bottom' : 'top';
-
-    const leftPreferred = rect.left;
-    const leftClamped = Math.max(
-      viewportMargin,
-      Math.min(leftPreferred, window.innerWidth - panelWidth - viewportMargin)
-    );
-    const topPreferred = shouldShowBelow ? rect.bottom + 10 : rect.top - panelHeight - 10;
-    const topClamped = Math.max(
-      viewportMargin,
-      Math.min(topPreferred, window.innerHeight - panelHeight - viewportMargin)
-    );
-    const arrowLeft = Math.max(
-      12,
-      Math.min(panelWidth - 12, rect.left + rect.width / 2 - leftClamped)
-    );
-
-    setTokenPopover({
-      left: leftClamped - wrapperRect.left,
-      top: topClamped - wrapperRect.top,
-      placement,
-      arrowLeft,
-    });
-  }, [selectedSpanId]);
-
   const closeInlinePopover = useCallback((): void => {
     setSelectedSpanId(null);
-    setTokenPopover(null);
     setActiveSuggestionIndex(0);
     suggestionsData?.onClose?.();
   }, [setSelectedSpanId, suggestionsData]);
-
-  useEffect(() => {
-    updateTokenPopover();
-  }, [updateTokenPopover, normalizedDisplayedPrompt]);
-
-  useEffect(() => {
-    if (!selectedSpanId) return;
-    const handleResize = (): void => updateTokenPopover();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [selectedSpanId, updateTokenPopover]);
-
-  useEffect(() => {
-    if (!selectedSpanId) return;
-    const handleScroll = (e: Event): void => {
-      // Don't update if the scroll came from the suggestions list
-      if (suggestionsListRef.current && suggestionsListRef.current.contains(e.target as Node)) {
-        return;
-      }
-      updateTokenPopover();
-    };
-    window.addEventListener('scroll', handleScroll, true);
-    return () => window.removeEventListener('scroll', handleScroll, true);
-  }, [selectedSpanId, updateTokenPopover]);
-
-  // Close popover on outside click
-  useEffect(() => {
-    if (!tokenPopover) return;
-    const handleMouseDown = (event: MouseEvent): void => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      if (tokenPopoverRef.current?.contains(target)) return;
-      if (target.closest?.('span.value-word')) return;
-      closeInlinePopover();
-    };
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, [tokenPopover, closeInlinePopover]);
 
   // Ambient motion: every ~6s, momentarily fade a random token
   useEffect(() => {
@@ -1182,13 +1098,65 @@ export function PromptCanvas({
   const stageHasOutput = stageIsPreview
     ? Boolean(seedImageUrl || visualLastGeneratedAt)
     : Boolean(seedVideoUrl || railVideoLastGeneratedAt);
-  const stageCtaLabel = 'Generate';
+  const stageCtaLabel = stageIsPreview ? 'Generate' : 'Render Final';
   const stageCtaDisabled = stageIsPreview
     ? !hasPreviewSource || isVisualPreviewGenerating
     : !hasVideoPreviewSource || isRailVideoPreviewGenerating;
+  const qualityLabel = (() => {
+    const raw = (generationParams as Record<string, unknown> | null | undefined)?.quality;
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    return 'High';
+  })();
   const stageFooterMeta = stageIsPreview
-    ? `${aspectLabel} · Draft: ${target.label} · ${durationLabel} · ${fpsLabel}`
-    : `${aspectLabel} · Draft: ${target.label} · ${durationLabel} · ${fpsLabel}`;
+    ? visualProvider === 'replicate-flux-kontext-fast'
+      ? 'Meta: Kontext storyboard · 4 frames · Click a step to preview'
+      : `${aspectLabel} · Draft: ${target.label} · ${durationLabel} · ${fpsLabel}`
+    : `WAN params: ${aspectLabel} · ${durationLabel} · ${fpsLabel} · Quality ${qualityLabel}`;
+
+  const stageFinalVideoUrl = videoPreviewState?.videoUrl ?? seedVideoUrl ?? null;
+
+  const storyboardFrames = useMemo(() => {
+    const urls = visualPreviewState?.imageUrls ?? [];
+    if (urls.length >= 4) return urls.slice(0, 4);
+    if (urls.length > 0) return [...urls, ...Array.from({ length: Math.max(0, 4 - urls.length) }, () => null)];
+    return Array.from({ length: 4 }, () => null);
+  }, [visualPreviewState?.imageUrls]);
+  const hasStoryboardFrames = useMemo(
+    () => storyboardFrames.some((frame) => typeof frame === 'string' && Boolean(frame.trim())),
+    [storyboardFrames]
+  );
+  const selectedStoryboardFrameUrl =
+    storyboardFrames[storyboardSelectedIndex] && typeof storyboardFrames[storyboardSelectedIndex] === 'string'
+      ? (storyboardFrames[storyboardSelectedIndex] as string)
+      : null;
+
+  useEffect(() => {
+    if (stageTab !== 'preview') {
+      setStoryboardPlaying(false);
+    }
+  }, [stageTab]);
+
+  useEffect(() => {
+    if (visualProvider !== 'replicate-flux-kontext-fast') return;
+    if (!storyboardFrames.length) return;
+    const lastNonNull = [...storyboardFrames]
+      .map((url, index) => ({ url, index }))
+      .reverse()
+      .find((entry) => typeof entry.url === 'string' && Boolean(entry.url?.trim()));
+    if (lastNonNull) {
+      setStoryboardSelectedIndex(lastNonNull.index);
+    }
+  }, [visualProvider, storyboardFrames]);
+
+  useEffect(() => {
+    if (!storyboardPlaying) return;
+    if (visualProvider !== 'replicate-flux-kontext-fast') return;
+    if (!hasStoryboardFrames) return;
+    const interval = window.setInterval(() => {
+      setStoryboardSelectedIndex((prev) => (prev + 1) % 4);
+    }, 1100);
+    return () => window.clearInterval(interval);
+  }, [hasStoryboardFrames, storyboardPlaying, visualProvider]);
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -1277,7 +1245,7 @@ export function PromptCanvas({
   }, [selectedSpanText, suggestionsData?.selectedText]);
 
   const isInlineLoading = Boolean(
-    tokenPopover && (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
+    selectedSpanId && (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
   );
   const isInlineError = Boolean(suggestionsData?.isError);
   const inlineErrorMessage =
@@ -1285,7 +1253,7 @@ export function PromptCanvas({
       ? suggestionsData.errorMessage.trim()
       : 'Failed to load suggestions.';
   const isInlineEmpty = Boolean(
-    tokenPopover && !isInlineLoading && !isInlineError && suggestionCount === 0
+    selectedSpanId && !isInlineLoading && !isInlineError && suggestionCount === 0
   );
   const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
   const customRequestSelection = selectionLabel.trim();
@@ -1351,20 +1319,20 @@ export function PromptCanvas({
   }, [selectedSpanId, setCustomRequest]);
 
   useEffect(() => {
-    const justOpened = !previousTokenPopoverRef.current && tokenPopover;
+    const justOpened = previousSelectedSpanIdRef.current !== selectedSpanId && selectedSpanId;
     const countChanged = suggestionCount !== previousSuggestionCountRef.current;
 
-    if (tokenPopover && (justOpened || countChanged)) {
+    if (selectedSpanId && (justOpened || countChanged)) {
       interactionSourceRef.current = 'auto';
       setActiveSuggestionIndex(0);
     }
 
-    previousTokenPopoverRef.current = tokenPopover;
+    previousSelectedSpanIdRef.current = selectedSpanId;
     previousSuggestionCountRef.current = suggestionCount;
-  }, [tokenPopover, suggestionCount]);
+  }, [selectedSpanId, suggestionCount]);
 
   useEffect(() => {
-    if (!tokenPopover || !suggestionsListRef.current) return;
+    if (!selectedSpanId || !suggestionsListRef.current) return;
     
     // Skip scrolling if the change came from mouse hover to prevent fighting/looping
     if (interactionSourceRef.current === 'mouse') return;
@@ -1376,7 +1344,7 @@ export function PromptCanvas({
     if (activeItem) {
       activeItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [tokenPopover, activeSuggestionIndex]);
+  }, [selectedSpanId, activeSuggestionIndex]);
 
   const handleApplyActiveSuggestion = useCallback((): void => {
     const active = inlineSuggestions[activeSuggestionIndex];
@@ -1385,22 +1353,22 @@ export function PromptCanvas({
   }, [activeSuggestionIndex, inlineSuggestions, handleSuggestionClickWithFeedback]);
 
   useEffect(() => {
-    if (!tokenPopover) return;
+    if (!selectedSpanId) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement | null;
-      const isEditableTarget =
-        !!target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable);
-
-      if (isEditableTarget && event.key !== 'Escape') {
-        return;
-      }
+      const isTextInput =
+        !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      const isCustomRequestTarget =
+        !!target && Boolean(target.closest?.('.po-suggest-custom'));
 
       if (event.key === 'Escape') {
         event.preventDefault();
         closeInlinePopover();
+        return;
+      }
+
+      // Don't hijack navigation while typing into inputs (including the custom request box).
+      if (isTextInput || isCustomRequestTarget) {
         return;
       }
 
@@ -1432,7 +1400,7 @@ export function PromptCanvas({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [
-    tokenPopover,
+    selectedSpanId,
     suggestionCount,
     closeInlinePopover,
     handleApplyActiveSuggestion,
@@ -1689,7 +1657,7 @@ export function PromptCanvas({
                         <div className="prompt-card__header-row">
                           <div className="prompt-card__header-left">
                             <div className="prompt-card__title">Prompt</div>
-                            <div className="prompt-card__subtitle">Compose your input</div>
+                            <div className="prompt-card__subtitle">Input + settings (compact)</div>
                           </div>
 
                           <div className="prompt-card__header-actions">
@@ -1826,8 +1794,8 @@ export function PromptCanvas({
                       <div className="prompt-card__header card__header">
                         <div className="prompt-output-header">
                           <div className="prompt-output-title">
-                            <div className="prompt-output-label">Optimized</div>
-                            <div className="prompt-output-subtitle">Live rewrite + highlights</div>
+                            <div className="prompt-output-label">Optimized Editor</div>
+                            <div className="prompt-output-subtitle">Click highlights → replace / edit (no overlay)</div>
                           </div>
                           <div className="prompt-output-actions">
                             <span
@@ -1908,89 +1876,98 @@ export function PromptCanvas({
                       </div>
 
                       <div className="prompt-card__body card__body">
-                        {tokenHighlights.length > 0 && (
-                          <div className="prompt-output-tokens chip-row" aria-label="Key tokens">
-                            {tokenHighlights.map((token, idx) => {
-                              const dotClass =
-                                token.variant === 'b' ? 'chip__dot chip__dot--accent2' : 'chip__dot';
-                              return (
-                                <span
-                                  key={token.id}
-                                  className="prompt-output-token chip"
-                                  data-variant={token.variant}
-                                  style={{ '--delay': `${idx * 55}ms` } as React.CSSProperties}
-                                >
-                                  <span className={dotClass} aria-hidden="true" />
-                                  <span className="prompt-output-token__label">{token.label}</span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <div
-                          className="prompt-editor-wrapper editor-well"
-                          aria-busy={isOutputLoading}
-                          ref={editorWrapperRef}
-                        >
-                          <PromptEditor
-                            ref={editorRef as React.RefObject<HTMLDivElement>}
-                            onTextSelection={handleTextSelection}
-                            onHighlightClick={handleHighlightClick}
-                            onHighlightMouseDown={handleHighlightMouseDown}
-                            onHighlightMouseEnter={handleHighlightMouseEnter}
-                            onHighlightMouseLeave={handleHighlightMouseLeave}
-                            onCopyEvent={handleCopyEvent}
-                            onInput={handleInput}
-                            onFocus={handleOutputFocus}
-                            onBlur={handleOutputBlur}
-                          />
-                          <div
-                            ref={outputLocklineRef}
-                            className="prompt-output-lockline"
-                            data-active={stageIsGenerating ? 'true' : 'false'}
-                            aria-hidden="true"
-                          />
-                          {/* Inline suggestions popover (anchored to selected span) */}
-                          {tokenPopover && (
-                            <>
-                              <div
-                                className="inline-suggest-backdrop po-backdrop--local po-animate-fade-in"
-                                aria-hidden="true"
+                        <div className="po-editor-surface">
+                          <div className="po-editor-surface__main">
+                            <div
+                              className="prompt-editor-wrapper editor-well"
+                              aria-busy={isOutputLoading}
+                              ref={editorWrapperRef}
+                            >
+                              <PromptEditor
+                                ref={editorRef as React.RefObject<HTMLDivElement>}
+                                onTextSelection={handleTextSelection}
+                                onHighlightClick={handleHighlightClick}
+                                onHighlightMouseDown={handleHighlightMouseDown}
+                                onHighlightMouseEnter={handleHighlightMouseEnter}
+                                onHighlightMouseLeave={handleHighlightMouseLeave}
+                                onCopyEvent={handleCopyEvent}
+                                onInput={handleInput}
+                                onFocus={handleOutputFocus}
+                                onBlur={handleOutputBlur}
                               />
                               <div
-                                ref={tokenPopoverRef}
-                                className="inline-suggest-popover po-popover po-surface po-surface--grad po-animate-pop-in"
-                                data-open="true"
-                                data-placement={tokenPopover.placement}
-                                style={
-                                  {
-                                    left: tokenPopover.left,
-                                    top: tokenPopover.top,
-                                    '--arrow-x': `${tokenPopover.arrowLeft}px`,
-                                  } as React.CSSProperties
-                                }
-                                role="dialog"
-                                aria-label="Suggestions"
-                              >
-                                <div className="inline-suggest-arrow" aria-hidden="true" />
-
-                                <div className="inline-suggest-header">
-                                  <div className="inline-suggest-title">
-                                    Suggestions
-                                    <span className="inline-suggest-pill">{suggestionCount}</span>
-                                  </div>
-                                  <div className="inline-suggest-keys" aria-hidden="true">
-                                    <span className="kbd">Up</span>
-                                    <span className="kbd">Down</span>
-                                    <span className="kbd">Enter</span>
-                                    <span className="kbd">Esc</span>
-                                  </div>
+                                ref={outputLocklineRef}
+                                className="prompt-output-lockline"
+                                data-active={stageIsGenerating ? 'true' : 'false'}
+                                aria-hidden="true"
+                              />
+                              {enableMLHighlighting &&
+                          !outlineOverlayActive &&
+                          hoveredSpanId &&
+                          lockButtonPosition &&
+                          !isOutputLoading && (
+                            <button
+                              ref={lockButtonRef}
+                              type="button"
+                              onClick={handleToggleLock}
+                              onMouseEnter={cancelHideLockButton}
+                              onMouseLeave={handleLockButtonMouseLeave}
+                              onMouseDown={(e) => e.preventDefault()}
+                              className="prompt-lock-button po-fab po-animate-pop-in"
+                              style={{
+                                top: `${lockButtonPosition.top}px`,
+                                left: `${lockButtonPosition.left}px`,
+                              }}
+                              data-locked={isHoveredLocked ? 'true' : 'false'}
+                              aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                              title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                              aria-pressed={isHoveredLocked}
+                            >
+                              {isHoveredLocked ? (
+                                <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                              ) : (
+                                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                              )}
+                            </button>
+                          )}
+                              {isOutputLoading && (
+                                <div
+                                  className="prompt-editor-loading"
+                                  role="status"
+                                  aria-live="polite"
+                                  aria-label="Optimizing prompt"
+                                >
+                                  <LoadingDots size={3} color="rgb(163, 163, 163)" />
                                 </div>
+                              )}
+                            </div>
+                          </div>
 
-                                <div className="inline-suggest-divider" />
+                          <aside
+                            className="po-suggest-sidecar"
+                            aria-label="Suggestions"
+                            data-active={selectedSpanId ? 'true' : 'false'}
+                          >
+                            <div className="inline-suggest-header po-suggest-header">
+                              <div className="inline-suggest-title">
+                                Suggestions
+                                <span className="inline-suggest-pill">{selectedSpanId ? suggestionCount : 0}</span>
+                              </div>
+                              <div className="inline-suggest-keys" aria-hidden="true">
+                                <span className="kbd">Up</span>
+                                <span className="kbd">Down</span>
+                                <span className="kbd">Enter</span>
+                                <span className="kbd">Esc</span>
+                              </div>
+                            </div>
 
-                                <div className="inline-suggest-custom">
+                            {!selectedSpanId ? (
+                              <div className="po-suggest-empty-state">
+                                Click a highlighted token to see suggestions.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="inline-suggest-custom po-suggest-custom">
                                   <form
                                     className="inline-suggest-custom-form"
                                     onSubmit={handleCustomRequestSubmit}
@@ -2046,9 +2023,7 @@ export function PromptCanvas({
                                       <div
                                         key={suggestion.key}
                                         data-index={index}
-                                        data-selected={
-                                          activeSuggestionIndex === index ? 'true' : 'false'
-                                        }
+                                        data-selected={activeSuggestionIndex === index ? 'true' : 'false'}
                                         className="inline-suggest-item po-row po-row--interactive"
                                         onMouseDown={(e) => e.preventDefault()}
                                         onMouseEnter={() => {
@@ -2084,9 +2059,7 @@ export function PromptCanvas({
 
                                 <div className="inline-suggest-footer">
                                   <div className="inline-suggest-footnote">
-                                    {selectionLabel
-                                      ? `Replace "${selectionLabel}"`
-                                      : 'Replace selection'}
+                                    {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                                   </div>
                                   <div className="inline-suggest-actions">
                                     <button
@@ -2094,7 +2067,7 @@ export function PromptCanvas({
                                       className="inline-suggest-cta"
                                       onClick={closeInlinePopover}
                                     >
-                                      Close
+                                      Clear
                                     </button>
                                     <button
                                       type="button"
@@ -2110,49 +2083,10 @@ export function PromptCanvas({
                                     </button>
                                   </div>
                                 </div>
-                              </div>
-                            </>
-                          )}
-                        {enableMLHighlighting &&
-                          !outlineOverlayActive &&
-                          hoveredSpanId &&
-                          lockButtonPosition &&
-                          !isOutputLoading && (
-                            <button
-                              ref={lockButtonRef}
-                              type="button"
-                              onClick={handleToggleLock}
-                              onMouseEnter={cancelHideLockButton}
-                              onMouseLeave={handleLockButtonMouseLeave}
-                              onMouseDown={(e) => e.preventDefault()}
-                              className="prompt-lock-button po-fab po-animate-pop-in"
-                              style={{
-                                top: `${lockButtonPosition.top}px`,
-                                left: `${lockButtonPosition.left}px`,
-                              }}
-                              data-locked={isHoveredLocked ? 'true' : 'false'}
-                              aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                              title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                              aria-pressed={isHoveredLocked}
-                            >
-                              {isHoveredLocked ? (
-                                <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
-                              ) : (
-                                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                              )}
-                            </button>
-                          )}
-                        {isOutputLoading && (
-                          <div
-                            className="prompt-editor-loading"
-                            role="status"
-                            aria-live="polite"
-                            aria-label="Optimizing prompt"
-                          >
-                            <LoadingDots size={3} color="rgb(163, 163, 163)" />
-                          </div>
-                        )}
-                      </div>
+                              </>
+                            )}
+                          </aside>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -2430,54 +2364,291 @@ export function PromptCanvas({
             </div>
 
             <div className="po-stage__frame">
-              <div className="po-stage__media">
-                {stageTab === 'preview' ? (
-                  <VisualPreview
-                    prompt={previewSource}
-                    aspectRatio={effectiveAspectRatio}
-                    isVisible={true}
-                    seedImageUrl={seedImageUrl}
-                    generateRequestId={visualGenerateRequestId}
-                    lastGeneratedAt={visualLastGeneratedAt}
-                    onPreviewGenerated={handleVisualPreviewGenerated}
-                    onLoadingChange={setVisualPreviewGenerating}
-                    onKeepRefining={handleKeepRefiningFromPreview}
-                    onRefinePrompt={handleSomethingOffFromPreview}
-                    showActions={false}
-                    variant="rail"
-                  />
-                ) : (
-                  <VideoPreview
-                    prompt={videoPreviewPrompt}
-                    aspectRatio={effectiveAspectRatio}
-                    model={RAIL_VIDEO_PREVIEW_MODEL}
-                    generationParams={generationParams}
-                    {...(resolvedVideoInputReference
-                      ? { inputReference: resolvedVideoInputReference }
-                      : {})}
-                    isVisible={showVideoPreview}
-                    seedVideoUrl={seedVideoUrl}
-                    generateRequestId={railVideoGenerateRequestId}
-                    lastGeneratedAt={railVideoLastGeneratedAt}
-                    onPreviewGenerated={handleRailVideoPreviewGenerated}
-                    onLoadingChange={setRailVideoPreviewGenerating}
-                    onKeepRefining={handleKeepRefiningFromPreview}
-                    onRefinePrompt={handleSomethingOffFromPreview}
-                  />
-                )}
-              </div>
+              {stageTab === 'preview' ? (
+                <>
+                  <div className="po-stagebar" aria-label="Preview controls">
+                    <div className="po-stagebar__left">
+                      <span className="po-stagebar__label">Provider</span>
+                      <select
+                        className="po-stagebar__select"
+                        value={visualProvider}
+                        onChange={(event) => setVisualProvider(event.target.value as PreviewProvider)}
+                        aria-label="Preview provider"
+                      >
+                        <option value="replicate-flux-kontext-fast">Kontext</option>
+                        <option value="replicate-flux-schnell">Schnell</option>
+                      </select>
+                    </div>
 
-              {!stageHasOutput && !stageIsGenerating && (
-                <div className="po-stage__empty">
-                  <div className="po-stage__empty-icon" aria-hidden="true">
-                    <Play className="h-10 w-10" />
+                    <div className="po-stagebar__right">
+                      {visualProvider === 'replicate-flux-kontext-fast' && hasStoryboardFrames && (
+                        <label className="po-stagebar__toggle">
+                          <input
+                            type="checkbox"
+                            checked={useSelectedFrameAsBase}
+                            onChange={(event) => setUseSelectedFrameAsBase(event.target.checked)}
+                          />
+                          <span>Use selected frame as base</span>
+                        </label>
+                      )}
+                    </div>
                   </div>
-                  <div className="po-stage__empty-title">Stage is set</div>
-                  <div className="po-stage__empty-sub">
-                    {stageTab === 'preview'
-                      ? 'Generate a preview to validate framing, lighting, and mood.'
-                      : 'Generate the final render when you are ready.'}
+
+                  {visualProvider === 'replicate-flux-kontext-fast' ? (
+                    <div className="po-storyboard">
+                      <div className="po-storyboard__focused">
+                        <div className="po-storyboard__section-label">Focused frame (selected from timeline)</div>
+                        <div className="po-storyboard__focused-card">
+                          <div className="po-storyboard__focused-title">
+                            Frame {storyboardSelectedIndex + 1}{' '}
+                            <span className="po-storyboard__focused-sub">
+                              — {storyboardSelectedIndex === 0 ? 'Base' : `Edit ${storyboardSelectedIndex}`}
+                            </span>
+                          </div>
+                          <div className="po-storyboard__focused-surface">
+                            {selectedStoryboardFrameUrl ? (
+                              <img
+                                src={selectedStoryboardFrameUrl}
+                                alt={`Frame ${storyboardSelectedIndex + 1}`}
+                                className="po-storyboard__focused-media"
+                              />
+                            ) : (
+                              <div className="po-stage-surface__blank" />
+                            )}
+                            {hasStoryboardFrames && (
+                              <button
+                                type="button"
+                                className="po-storyboard__play"
+                                onClick={() => setStoryboardPlaying((prev) => !prev)}
+                                aria-label={storyboardPlaying ? 'Pause storyboard playback' : 'Play storyboard'}
+                              >
+                                {storyboardPlaying ? (
+                                  <Pause className="h-4 w-4" aria-hidden="true" />
+                                ) : (
+                                  <Play className="h-4 w-4" aria-hidden="true" />
+                                )}
+                              </button>
+                            )}
+                            {!isVisualPreviewGenerating && !hasStoryboardFrames && (
+                              <div className="po-surface-empty" aria-live="polite">
+                                <div className="po-surface-empty__icon" aria-hidden="true">
+                                  <Play className="h-5 w-5" />
+                                </div>
+                                <div className="po-surface-empty__title">Stage is set</div>
+                                <div className="po-surface-empty__sub">
+                                  Generate a preview to validate framing, lighting, and mood.
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="po-storyboard__timeline">
+                        <div className="po-storyboard__section-label">
+                          Timeline (Base &rarr; Edit 1 &rarr; Edit 2 &rarr; Edit 3)
+                        </div>
+                        <div className="po-storyboard__timeline-list" role="list">
+                          {[
+                            { title: '1. Base', delta: '(generated or seeded)' },
+                            { title: '2. Edit 1', delta: 'pose / gesture' },
+                            { title: '3. Edit 2', delta: 'lighting / skyline' },
+                            { title: '4. Edit 3', delta: 'final polish / tone' },
+                          ].map((step, index) => {
+                            const thumb = storyboardFrames[index];
+                            const isSelected = storyboardSelectedIndex === index;
+                            return (
+                              <button
+                                key={step.title}
+                                type="button"
+                                className="po-timeline-item"
+                                data-selected={isSelected ? 'true' : 'false'}
+                                onClick={() => {
+                                  setStoryboardPlaying(false);
+                                  setStoryboardSelectedIndex(index);
+                                }}
+                                role="listitem"
+                              >
+                                <span className="po-timeline-item__rail" aria-hidden="true" />
+                                <span className="po-timeline-item__thumb" aria-hidden="true">
+                                  {typeof thumb === 'string' && thumb ? (
+                                    <img src={thumb} alt="" />
+                                  ) : (
+                                    <span className="po-timeline-item__thumb-blank" />
+                                  )}
+                                </span>
+                                <span className="po-timeline-item__text">
+                                  <span className="po-timeline-item__title">{step.title}</span>
+                                  <span className="po-timeline-item__delta">{step.delta}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Hidden renderer to run generation + keep state in sync */}
+                      <div className="po-storyboard__hidden" aria-hidden="true">
+                        <VisualPreview
+                          prompt={previewSource}
+                          aspectRatio={effectiveAspectRatio}
+                          isVisible={true}
+                          provider={visualProvider}
+                          seedImageUrl={useSelectedFrameAsBase ? selectedStoryboardFrameUrl : null}
+                          useReferenceImage={useSelectedFrameAsBase}
+                          generateRequestId={visualGenerateRequestId}
+                          lastGeneratedAt={visualLastGeneratedAt}
+                          onPreviewGenerated={handleVisualPreviewGenerated}
+                          onLoadingChange={setVisualPreviewGenerating}
+                          onPreviewStateChange={(state) => setVisualPreviewState(state)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="po-stage-surface">
+                      <div className="po-stage-surface__media" aria-label="Image preview surface">
+                        <VisualPreview
+                          prompt={previewSource}
+                          aspectRatio={effectiveAspectRatio}
+                          isVisible={true}
+                          provider={visualProvider}
+                          seedImageUrl={seedImageUrl}
+                          generateRequestId={visualGenerateRequestId}
+                          lastGeneratedAt={visualLastGeneratedAt}
+                          onPreviewGenerated={handleVisualPreviewGenerated}
+                          onLoadingChange={setVisualPreviewGenerating}
+                          onPreviewStateChange={(state) => setVisualPreviewState(state)}
+                        />
+                      </div>
+                      {!isVisualPreviewGenerating && !stageHasOutput && (
+                        <div className="po-surface-empty" aria-live="polite">
+                          <div className="po-surface-empty__icon" aria-hidden="true">
+                            <Play className="h-5 w-5" />
+                          </div>
+                          <div className="po-surface-empty__title">Stage is set</div>
+                          <div className="po-surface-empty__sub">
+                            Generate a preview to validate framing, lighting, and mood.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="po-stagebar po-stagebar--final" aria-label="Final status">
+                    <span className="po-stagebar__status status-pill" data-status={finalStatusState}>
+                      <span className="status-pill__dot" aria-hidden="true" />
+                      {finalStatusState === 'generating'
+                        ? 'Generating'
+                        : finalStatusState === 'ready'
+                          ? 'Ready'
+                          : 'Idle'}
+                    </span>
+                    <span className="po-stagebar__model">Model: WAN 2.2</span>
+                    <span className="po-stagebar__spacer" aria-hidden="true" />
+                    {finalStatusState === 'ready' && stageFinalVideoUrl && (
+                      <div className="po-stagebar__actions" role="group" aria-label="Final quick actions">
+                        <button
+                          type="button"
+                          className="po-stagebar__action"
+                          onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                          Download
+                        </button>
+                        <button
+                          type="button"
+                          className="po-stagebar__action"
+                          onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          Open
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  <div className="po-final-surface">
+                    <div
+                      className="po-final-surface__media"
+                      onClick={() => {
+                        const el = finalVideoElRef.current;
+                        if (!el) return;
+                        if (el.paused) void el.play();
+                        else el.pause();
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Video preview surface"
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        const el = finalVideoElRef.current;
+                        if (!el) return;
+                        if (el.paused) void el.play();
+                        else el.pause();
+                      }}
+                    >
+                      <VideoPreview
+                        prompt={videoPreviewPrompt}
+                        aspectRatio={effectiveAspectRatio}
+                        model={RAIL_VIDEO_PREVIEW_MODEL}
+                        generationParams={generationParams}
+                        {...(resolvedVideoInputReference
+                          ? { inputReference: resolvedVideoInputReference }
+                          : {})}
+                        isVisible={showVideoPreview}
+                        seedVideoUrl={seedVideoUrl}
+                        generateRequestId={railVideoGenerateRequestId}
+                        lastGeneratedAt={railVideoLastGeneratedAt}
+                        videoRef={finalVideoElRef}
+                        onPreviewGenerated={handleRailVideoPreviewGenerated}
+                        onLoadingChange={setRailVideoPreviewGenerating}
+                        onPreviewStateChange={(state) => setVideoPreviewState(state)}
+                      />
+                      {!stageFinalVideoUrl && <div className="po-stage-surface__blank" />}
+                      <div className="po-final-surface__overlay" aria-hidden="true">
+                        <div className="po-final-surface__play">
+                          <Play className="h-5 w-5" aria-hidden="true" />
+                        </div>
+                      </div>
+                      {!isRailVideoPreviewGenerating && !stageFinalVideoUrl && (
+                        <div className="po-surface-empty" aria-live="polite">
+                          <div className="po-surface-empty__icon" aria-hidden="true">
+                            <Play className="h-5 w-5" />
+                          </div>
+                          <div className="po-surface-empty__title">Stage is set</div>
+                          <div className="po-surface-empty__sub">
+                            Generate the final render when you are ready.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="po-final-surface__scrub" aria-label="Timeline scrub">
+                      <input type="range" min={0} max={100} defaultValue={0} disabled={!stageFinalVideoUrl} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Stage-owned overlays */}
+              {stageTab === 'preview' &&
+                visualPreviewState?.error &&
+                !isVisualPreviewGenerating && (
+                  <div className="po-stage__overlay po-stage__overlay--error" role="alert">
+                    Preview failed. Try again.
+                  </div>
+                )}
+              {stageTab === 'final' && videoPreviewState?.error && !isRailVideoPreviewGenerating && (
+                <div className="po-stage__overlay po-stage__overlay--error" role="alert">
+                  Final preview failed. Try again.
+                </div>
+              )}
+              {stageIsGenerating && (
+                <div className="po-stage__overlay po-stage__overlay--loading" aria-label="Generating">
+                  <LoadingDots size={3} color="rgb(163, 163, 163)" />
                 </div>
               )}
             </div>
@@ -2486,6 +2657,15 @@ export function PromptCanvas({
               <div className="po-stage__meta">
                 {stageFooterMeta}
               </div>
+              {stageTab === 'final' && (
+                <button
+                  type="button"
+                  className="po-stage__link"
+                  onClick={() => setShowSettings(true)}
+                >
+                  Edit settings
+                </button>
+              )}
               <button
                 type="button"
                 onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
@@ -2497,56 +2677,7 @@ export function PromptCanvas({
             </div>
           </section>
 
-          <section className="po-inspector">
-            <div className="po-inspector__header">
-              <div className="po-inspector__header-left">
-                <div className="po-inspector__title">Controls</div>
-                <div className="po-inspector__subtitle">Draft model &amp; settings</div>
-              </div>
-              <button
-                type="button"
-                className="po-inspector__settings"
-                onClick={() => setShowSettings(true)}
-              >
-                SETTINGS
-              </button>
-            </div>
-
-            <div className="po-inspector__body">
-              <div className="po-inspector__group">
-                <label>Draft model</label>
-                <ModelSelectorDropdown
-                  selectedModel={selectedModel}
-                  onModelChange={handleModelChange}
-                  disabled={isOptimizing}
-                  variant="pillDark"
-                />
-              </div>
-
-              <div className="po-inspector__group">
-                <label>Aspect</label>
-                {aspectRatioInfo
-                  ? renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing)
-                  : <span className="po-inspector__hint">Auto</span>}
-              </div>
-
-              <div className="po-inspector__row">
-                <div className="po-inspector__group">
-                  <label>Duration</label>
-                  {durationInfo
-                    ? renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)
-                    : <span className="po-inspector__hint">Auto</span>}
-                </div>
-
-                <div className="po-inspector__group">
-                  <label>FPS</label>
-                  {fpsInfo
-                    ? renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing)
-                    : <span className="po-inspector__hint">Auto</span>}
-                </div>
-              </div>
-            </div>
-          </section>
+          {/* Settings live with the Prompt panel (Stage shows read-only summaries). */}
         </div>
       </div>
       {showDiff && (
