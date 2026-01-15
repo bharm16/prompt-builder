@@ -55,7 +55,7 @@ export const PromptModals = ({
 
       {/* Improvement Form Modal */}
       {showImprover && (
-        <div className="modal-backdrop" onClick={() => setShowImprover(false)}>
+        <div className="modal-backdrop po-backdrop po-animate-fade-in" onClick={() => setShowImprover(false)}>
           <div
             className="app-modal"
             onClick={(e) => e.stopPropagation()}
@@ -63,7 +63,7 @@ export const PromptModals = ({
             aria-modal="true"
             aria-labelledby="improvement-title"
           >
-            <div className="my-8 w-full max-w-3xl">
+            <div className="my-8 w-full max-w-3xl po-surface po-surface--grad po-animate-pop-in">
               <Button
                 onClick={() => setShowImprover(false)}
                 variant="ghost"

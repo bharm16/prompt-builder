@@ -25,6 +25,7 @@ import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { getAuthRepository } from '@/repositories';
 import './PromptOptimizerWorkspace.css';
+import '../OverlayKit.css';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -41,11 +42,6 @@ import type { User } from '../context/types';
  * Inner component with access to PromptStateContext
  */
 function PromptOptimizerContent({ user }: { user: User | null }): React.ReactElement {
-  // Force light mode immediately
-  React.useEffect(() => {
-    document.documentElement.classList.remove('dark');
-  }, []);
-
   const location = useLocation();
 
   const toast = useToast();
@@ -428,7 +424,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       />
 
       {/* Top Action Buttons */}
-      {showResults && <PromptTopBar />}
+      <PromptTopBar />
 
       {/* Conditionally render the appropriate layout */}
       {showResults ? (

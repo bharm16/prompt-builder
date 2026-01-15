@@ -212,9 +212,9 @@ export function CoherenceReviewModal({
   }
 
   const modal = (
-    <div className="modal-backdrop" onClick={onDismiss}>
+    <div className="modal-backdrop po-backdrop po-animate-fade-in" onClick={onDismiss}>
       <div className="app-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="modal-content-lg coherence-review-modal">
+        <div className="modal-content-lg coherence-review-modal po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in">
           <header className="coherence-review-header">
             <div>
               <h2>Review coherence updates</h2>

@@ -2,8 +2,6 @@ import React from 'react';
 import {
   ArrowRight as LogIn,
   ChevronLeft as PanelLeft,
-  ChevronRight as PanelRight,
-  Plus,
   User as UserIcon,
 } from '@geist-ui/icons';
 import { getAuthRepository } from '@repositories/index';
@@ -14,6 +12,7 @@ import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import { HistoryItem } from './components/HistoryItem';
 import { AuthMenu } from './components/AuthMenu';
+import './HistorySidebar.css';
 
 type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
 
@@ -332,7 +331,15 @@ export function HistorySidebar({
 
       const key = (entry.id || entry.uuid || `${entry.timestamp ?? ''}-${title}`) as string;
 
-      return { entry, stage, title, meta, isSelected, processingLabel: effectiveProcessingLabel, key };
+      return {
+        entry,
+        stage,
+        title,
+        meta,
+        isSelected,
+        processingLabel: effectiveProcessingLabel,
+        key,
+      };
     });
   }, [displayedHistory, currentPromptUuid, currentPromptDocId, activeDurationS, activeStatusLabel]);
 
@@ -345,43 +352,34 @@ export function HistorySidebar({
   return (
     <aside
       id="history-sidebar"
-      className="h-full overflow-y-auto shadow-geist-medium"
-      style={{
-        width: 'var(--sidebar-width)',
-        isolation: 'isolate',
-        backgroundColor: '#FFFFFF',
-        borderRight: '1px solid rgba(0,0,0,0.06)',
-        transition: 'width 120ms cubic-bezier(0.2, 0, 0, 1)',
-      }}
+      className={`po-sidebar ${isCollapsed ? 'po-sidebar--collapsed' : 'po-sidebar--expanded'}`}
       aria-label="Prompt history"
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
     >
       {isCollapsed ? (
-        // Collapsed state - icon-only sidebar
-        <div className="flex h-full max-h-full flex-col items-center overflow-hidden" style={{ paddingTop: 8, paddingBottom: 8 }}>
+        <div className="po-sidebar__collapsed">
           <button
             type="button"
             onClick={() => {
               hoverExpandedRef.current = false;
               setShowHistory(true);
             }}
-            className="flex items-center justify-center h-10 w-10 rounded-[10px] hover:bg-[rgba(0,0,0,0.04)] transition-colors"
+            className="po-sidebar__logo-btn"
             aria-label="Expand sidebar"
             title="Vidra"
           >
-            <span className="text-[16px] font-semibold text-[#111827]">V</span>
+            <span className="po-sidebar__logo-text">V</span>
           </button>
 
-          <div className="w-full my-2 h-px" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }} aria-hidden="true" />
+          <div className="po-sidebar__divider" aria-hidden="true" />
 
-          <div className="flex flex-col items-center gap-3 py-2">
+          <div className="po-sidebar__collapsed-timeline">
             <div
-              className="h-[6px] w-[6px] rounded-full"
+              className="po-sidebar__collapsed-active"
               style={{
                 backgroundColor: activeDotColor,
                 boxShadow: `0 0 0 2px ${activeDotGlow}`,
-                animation: 'po-active-dot-pulse 1.2s ease-in-out infinite',
               }}
               aria-label="Active prompt"
               role="img"
@@ -394,7 +392,7 @@ export function HistorySidebar({
                 <button
                   key={key ?? `${entry.timestamp ?? ''}-${entry.input.slice(0, 8)}`}
                   type="button"
-                  className="h-[6px] w-[6px] rounded-full hover:opacity-80 transition-opacity"
+                  className="po-sidebar__timeline-dot"
                   style={{ backgroundColor: color }}
                   aria-label="Prompt"
                   onMouseEnter={() => setHoveredEntryKey(key ?? null)}
@@ -409,79 +407,62 @@ export function HistorySidebar({
             })}
 
             {collapsedTimeline.overflow > 0 && (
-              <div
-                className="mt-1 flex items-center justify-center rounded-full text-[10px] font-medium text-[#111827]"
-                style={{
-                  height: 16,
-                  minWidth: 16,
-                  paddingLeft: 4,
-                  paddingRight: 4,
-                  backgroundColor: 'rgba(0,0,0,0.04)',
-                }}
-                aria-label={`+${collapsedTimeline.overflow} more prompts`}
-              >
+              <div className="po-sidebar__timeline-overflow" aria-label={`+${collapsedTimeline.overflow} more prompts`}>
                 +{collapsedTimeline.overflow}
               </div>
             )}
           </div>
 
-          <div className="w-full my-2 h-px" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }} aria-hidden="true" />
+          <div className="po-sidebar__divider" aria-hidden="true" />
 
           <button
             type="button"
             onClick={onCreateNew}
-            className="flex items-center justify-center h-10 w-10 rounded-[10px] hover:bg-[rgba(0,0,0,0.04)] transition-colors text-[#111827]"
+            className="po-sidebar__icon-btn"
             aria-label="New prompt"
             title="New prompt"
           >
-            <span className="text-[18px] leading-none">+</span>
+            <span>+</span>
           </button>
 
-          <div className="w-full my-2 h-px" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }} aria-hidden="true" />
+          <div className="po-sidebar__divider" aria-hidden="true" />
 
-          <div className="flex-1" />
-
-          {!user ? (
-            <button
-              type="button"
-              onClick={handleSignIn}
-              className="flex items-center justify-center h-10 w-10 rounded-full hover:bg-[rgba(0,0,0,0.04)] transition-colors"
-              aria-label="Sign in"
-              title="Sign in"
-            >
-              <LogIn size={18} className="text-[#6B7280]" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                hoverExpandedRef.current = false;
-                setShowHistory(true);
-              }}
-              className="flex items-center justify-center h-10 w-10 rounded-full hover:bg-[rgba(0,0,0,0.04)] transition-colors overflow-hidden"
-              aria-label="User menu"
-              title={typeof user.displayName === 'string' ? user.displayName : 'User'}
-            >
-              {typeof user.photoURL === 'string' && user.photoURL ? (
-                <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
-              ) : (
-                <UserIcon size={18} className="text-[#6B7280]" />
-              )}
-            </button>
-          )}
+          <div className="po-sidebar__collapsed-footer">
+            {!user ? (
+              <button
+                type="button"
+                onClick={handleSignIn}
+                className="po-sidebar__icon-btn"
+                aria-label="Sign in"
+                title="Sign in"
+              >
+                <LogIn size={18} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  hoverExpandedRef.current = false;
+                  setShowHistory(true);
+                }}
+                className="po-sidebar__avatar-btn"
+                aria-label="User menu"
+                title={typeof user.displayName === 'string' ? user.displayName : 'User'}
+              >
+                {typeof user.photoURL === 'string' && user.photoURL ? (
+                  <img src={user.photoURL} alt="" />
+                ) : (
+                  <UserIcon size={18} />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        // Expanded state - full sidebar
-        <div
-          className="flex h-full max-h-full flex-col overflow-hidden"
-          onMouseEnter={() => {
-            // Keep expanded while hovering.
-          }}
-        >
-          {/* Header with toggle + title */}
-          <header className="flex-shrink-0 px-geist-4 py-geist-3">
-            <div className="flex items-center justify-between gap-geist-3">
-              <h1 className="flex-1 text-left text-heading-20 text-geist-foreground">Vidra</h1>
+        <div className="po-sidebar__expanded">
+          <header className="po-sidebar__header">
+            <div className="po-sidebar__header-row">
+              <h1>Vidra</h1>
               <Button
                 onClick={() => {
                   hoverExpandedRef.current = false;
@@ -489,107 +470,75 @@ export function HistorySidebar({
                 }}
                 svgOnly
                 variant="ghost"
-                prefix={<PanelLeft size={20} className="text-geist-accents-6" />}
+                prefix={<PanelLeft size={20} />}
                 aria-label="Collapse sidebar"
               />
             </div>
           </header>
 
-          {/* Active prompt (singleton, not clickable) */}
-          <section className="flex-shrink-0 px-geist-4 pb-geist-3">
-            <div className="flex items-center gap-geist-2 text-label-12 text-geist-accents-5 tracking-wide">
+          <section className="po-sidebar__active" aria-label="Active prompt">
+            <div className="po-sidebar__active-head">
               <span>ACTIVE PROMPT</span>
-              <span className="flex-1 h-px bg-geist-accents-2" aria-hidden="true" />
+              <span className="po-sidebar__active-rule" aria-hidden="true" />
             </div>
-            <div className="mt-geist-2 rounded-geist-lg border border-geist-accents-2 bg-geist-background p-geist-3">
-              <div className="flex items-start gap-geist-3">
-                <span
-                  className="mt-1 h-2.5 w-2.5 rounded-full ring-2 ring-geist-background flex-shrink-0"
-                  style={{ backgroundColor: activeDotColor }}
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="text-[13px] font-medium text-geist-foreground"
-                    style={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={activeTitle}
-                  >
-                    {activeTitle}
-                  </div>
-                  <div className="mt-1 text-[12px] text-geist-accents-5">
-                    <span className="font-medium text-geist-accents-6">Status:</span> {activeStatusLabel}
-                    <span className="mx-2 text-geist-accents-3" aria-hidden="true">·</span>
-                    <span className="font-medium text-geist-accents-6">Model:</span> {activeModelLabel}
-                    {typeof activeDurationS === 'number' ? (
-                      <>
-                        <span className="mx-2 text-geist-accents-3" aria-hidden="true">·</span>
-                        <span className="font-medium text-geist-accents-6">Duration:</span> {activeDurationS}s
-                      </>
-                    ) : null}
-                  </div>
+            <div className="po-sidebar__active-card">
+              <span
+                className="po-sidebar__active-dot"
+                style={{ backgroundColor: activeDotColor }}
+                aria-hidden="true"
+              />
+              <div className="po-sidebar__active-body">
+                <div className="po-sidebar__active-title" title={activeTitle}>
+                  {activeTitle}
+                </div>
+                <div className="po-sidebar__active-meta">
+                  <span className="po-sidebar__active-label">Status:</span> {activeStatusLabel}
+                  <span className="po-sidebar__active-sep" aria-hidden="true">·</span>
+                  <span className="po-sidebar__active-label">Model:</span> {activeModelLabel}
+                  {typeof activeDurationS === 'number' ? (
+                    <>
+                      <span className="po-sidebar__active-sep" aria-hidden="true">·</span>
+                      <span className="po-sidebar__active-label">Duration:</span> {activeDurationS}s
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>
           </section>
 
-
-          <div 
-            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2"
-            style={{
-              position: 'relative',
-            }}
-          >
-            <div className="px-geist-2 pt-geist-2 pb-geist-2 flex items-center gap-geist-2">
-              <h2 className="text-label-12 text-geist-foreground tracking-wide">PROMPTS</h2>
-              <span className="flex-1 h-px bg-geist-accents-2" aria-hidden="true" />
+          <section className="po-sidebar__section po-sidebar__section--sessions">
+            <div className="po-sidebar__section-head">
+              <h2>Prompts</h2>
+              <button type="button" className="po-sidebar__ghost" onClick={onCreateNew}>
+                + New
+              </button>
             </div>
 
-            <button
-              onClick={onCreateNew}
-              className="mx-geist-2 mb-geist-2 flex items-center gap-2 h-12 w-[calc(100%-1rem)] rounded-[8px] text-[13px] transition-colors"
-              style={{
-                paddingLeft: 12,
-                paddingRight: 10,
-                color: '#4B5563',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(0,0,0,0.04)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#111827';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = '#4B5563';
-              }}
-              aria-label="Create new prompt"
-              type="button"
-            >
-              <span className="text-[16px] leading-none">+</span>
-              <span className="font-medium">New prompt</span>
-            </button>
+            <div className="po-sidebar__search">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => onSearchChange(event.target.value)}
+                placeholder="Search prompts..."
+                aria-label="Search prompts"
+              />
+            </div>
 
             {isLoadingHistory ? (
-              <div className="p-geist-4 text-center">
-                <div className="spinner-sm mx-auto mb-geist-2" />
-                <p className="text-label-12 text-geist-accents-5">
-                  Loading...
-                </p>
+              <div className="po-sidebar__empty">
+                <div className="spinner-sm" />
+                <p>Loading...</p>
               </div>
             ) : filteredHistory.length === 0 && searchQuery ? (
-              <div className="p-geist-4 text-center">
-                <p className="text-label-12 text-geist-accents-5">
-                  No results for &quot;{searchQuery}&quot;
-                </p>
+              <div className="po-sidebar__empty">
+                <p>No results for &quot;{searchQuery}&quot;.</p>
               </div>
             ) : filteredHistory.length === 0 ? (
               <HistoryEmptyState onCreateNew={onCreateNew} />
             ) : (
               <>
-                <nav aria-label="Prompts list">
-                  <ul className="space-y-1">
+                <nav aria-label="Prompts list" className="po-sidebar__sessions">
+                  <ul>
                     {promptRows.map(({ entry, title, meta, stage, isSelected, processingLabel, key }) => {
                       const externalHover = Boolean(
                         hoveredEntryKey &&
@@ -617,22 +566,17 @@ export function HistorySidebar({
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     variant="ghost"
                     size="small"
-                    className="w-full text-left text-geist-accents-5 hover:text-geist-accents-7"
+                    className="po-sidebar__see-more"
                   >
                     {showAllHistory ? 'See less' : 'See more...'}
                   </Button>
                 )}
               </>
             )}
-          </div>
+          </section>
 
-          {/* Auth Section */}
-          <footer className="flex-shrink-0 border-t border-geist-accents-1 p-geist-3">
-            <AuthMenu
-              user={user}
-              onSignIn={handleSignIn}
-              onSignOut={handleSignOut}
-            />
+          <footer className="po-sidebar__auth">
+            <AuthMenu user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
           </footer>
         </div>
       )}

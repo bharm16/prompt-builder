@@ -51,13 +51,16 @@ export default function Settings({
 
   return (
     <div
-      className="modal-backdrop"
+      className="modal-backdrop po-backdrop po-animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-title"
     >
-      <div className="modal-content-lg animate-scale-in" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content-lg animate-scale-in po-modal po-surface po-surface--grad po-animate-pop-in"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="card-header flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
           <h2 id="settings-title" className="text-heading-20 text-geist-foreground">

@@ -1,0 +1,535 @@
+/* ==========================================================================
+   OverlayKit.css
+   Global overlay/popover/modal styling for Prompt Studio
+   (Framer motion + gradient polish) x (Raycast dense macOS UI) x (Arc editorial)
+   x (Superhuman speed/status)
+   ========================================================================== */
+
+/* ---- Token fallbacks (won't override your existing tokens if they exist) ---- */
+:root {
+  /* Motion */
+  --po-dur-1: 90ms;
+  --po-dur-2: 140ms;
+  --po-dur-3: 200ms;
+  --po-dur-4: 320ms;
+  --po-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --po-ease-inout: cubic-bezier(.65, 0, .35, 1);
+
+  /* Radii */
+  --po-r-xxl: 20px;
+  --po-r-xl: 18px;
+  --po-r-lg: 16px;
+  --po-r-md: 14px;
+  --po-r-sm: 12px;
+
+  /* Elevation */
+  --po-shadow-sm: 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.35);
+  --po-shadow-md: 0 1px 0 rgba(255,255,255,0.05), 0 16px 48px rgba(0,0,0,0.45);
+  --po-shadow-lg: 0 1px 0 rgba(255,255,255,0.06), 0 24px 72px rgba(0,0,0,0.55);
+
+  /* Glass */
+  --po-glass-bg: rgba(12, 14, 20, 0.82);
+  --po-glass-bg-2: rgba(12, 14, 20, 0.68);
+  --po-glass-border: rgba(255, 255, 255, 0.08);
+  --po-glass-border-2: rgba(255, 255, 255, 0.14);
+
+  /* Backdrop */
+  --po-backdrop: rgba(0, 0, 0, 0.58);
+  --po-backdrop-soft: rgba(0, 0, 0, 0.22);
+
+  /* Accent gradient fallback */
+  --po-grad-1: linear-gradient(90deg, #7C3AED, #06B6D4, #F97316);
+
+  /* Z scale */
+  --po-z-popover: 1000;
+  --po-z-modal: 1100;
+  --po-z-tooltip: 1200;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --po-dur-1: 0ms;
+    --po-dur-2: 0ms;
+    --po-dur-3: 0ms;
+    --po-dur-4: 0ms;
+  }
+}
+
+/* ==========================================================================
+   Motion helpers (optional classes; easy to add in JSX)
+   ========================================================================== */
+
+@keyframes poFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes poPopIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes poShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.po-animate-fade-in {
+  animation: poFadeIn var(--po-dur-3) var(--po-ease-out) both;
+}
+.po-animate-pop-in {
+  animation: poPopIn var(--po-dur-3) var(--po-ease-out) both;
+}
+
+/* ==========================================================================
+   Backdrops
+   ========================================================================== */
+
+.po-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--po-z-modal);
+  background: var(--po-backdrop);
+  backdrop-filter: blur(10px) saturate(1.06);
+  -webkit-backdrop-filter: blur(10px) saturate(1.06);
+}
+
+.po-backdrop--local {
+  position: absolute;
+  inset: 0;
+  z-index: var(--po-z-popover);
+  background: var(--po-backdrop-soft);
+  backdrop-filter: blur(3px) saturate(1.04);
+  -webkit-backdrop-filter: blur(3px) saturate(1.04);
+}
+
+/* Alias common existing backdrops (so you can get 80% benefit with fewer JSX edits) */
+.modal-backdrop,
+.po-diff {
+  position: fixed;
+  inset: 0;
+  z-index: var(--po-z-modal);
+  background: var(--po-backdrop);
+  backdrop-filter: blur(10px) saturate(1.06);
+  -webkit-backdrop-filter: blur(10px) saturate(1.06);
+}
+
+/* Inline suggestions uses a local backdrop */
+.inline-suggest-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: var(--po-z-popover);
+  background: var(--po-backdrop-soft);
+  border-radius: var(--po-r-lg);
+  backdrop-filter: blur(3px) saturate(1.04);
+  -webkit-backdrop-filter: blur(3px) saturate(1.04);
+}
+
+/* ==========================================================================
+   Glass surfaces (popovers + cards)
+   ========================================================================== */
+
+.po-surface {
+  color: var(--text-primary, #EBF0FF);
+  background: var(--po-glass-bg);
+  border: 1px solid var(--po-glass-border);
+  border-radius: var(--po-r-xl);
+  box-shadow: var(--po-shadow-md);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+}
+
+/* Gradient border variant (Framer polish, restrained) */
+.po-surface--grad {
+  /* border-box gradient trick: widely supported, no masking hacks */
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--po-glass-bg), var(--po-glass-bg)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+}
+
+/* Popover base */
+.po-popover {
+  z-index: var(--po-z-popover);
+  border-radius: var(--po-r-lg);
+  box-shadow: var(--po-shadow-lg);
+  overflow: hidden;
+}
+
+/* Modal base */
+.po-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: calc(var(--po-z-modal) + 1);
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+/* XL modal */
+.po-modal--xl {
+  width: min(1180px, calc(100vw - 32px));
+}
+
+/* Alias existing surfaces to kit styling */
+.inline-suggest-popover,
+.po-action-menu__popover,
+.po-topbar__menu-popover {
+  color: var(--text-primary, #EBF0FF);
+  background: var(--po-glass-bg);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--po-glass-bg), var(--po-glass-bg)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+  border-radius: var(--po-r-lg);
+  box-shadow: var(--po-shadow-lg);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+}
+
+/* Diff card, coherence modal, and app-modal (settings / improver) */
+.po-diff__card,
+.coherence-review-modal,
+.app-modal {
+  color: var(--text-primary, #EBF0FF);
+  background: var(--po-glass-bg);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--po-glass-bg), var(--po-glass-bg)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+  border-radius: var(--po-r-xl);
+  box-shadow: var(--po-shadow-lg);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+}
+
+/* Optional: legend uses glass-card utility in your app - scope to workspace */
+.prompt-optimizer-workspace .glass-card,
+.prompt-canvas-root .glass-card {
+  color: var(--text-primary, #EBF0FF);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--po-glass-bg), var(--po-glass-bg)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+  border-radius: var(--po-r-xl);
+  box-shadow: var(--po-shadow-md);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+}
+
+/* ==========================================================================
+   Headers / sections / footers
+   ========================================================================== */
+
+.po-header {
+  padding: 14px 16px 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.po-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #EBF0FF);
+}
+
+.po-subtitle {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary, #7D859B);
+}
+
+.po-body {
+  padding: 14px 16px 16px 16px;
+  overflow: auto;
+}
+
+.po-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   Inputs
+   ========================================================================== */
+
+.po-input,
+.po-textarea {
+  width: 100%;
+  color: var(--text-primary, #EBF0FF);
+  background: rgba(10,12,18,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--po-r-md);
+  outline: none;
+}
+
+.po-input {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.po-textarea {
+  min-height: 54px;
+  padding: 10px 12px;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.po-input:focus,
+.po-textarea:focus {
+  border-color: rgba(6,182,212,0.45);
+  box-shadow: 0 0 0 3px rgba(6,182,212,0.16);
+}
+
+/* ==========================================================================
+   Lists / rows (Raycast dense)
+   ========================================================================== */
+
+.po-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.po-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: var(--po-r-md);
+  background: rgba(22,26,38,0.62);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.po-row--interactive {
+  cursor: pointer;
+  transition: transform var(--po-dur-2) var(--po-ease-out),
+              background var(--po-dur-2) var(--po-ease-out),
+              border-color var(--po-dur-2) var(--po-ease-out);
+}
+
+.po-row--interactive:hover {
+  transform: translateY(-1px);
+  background: rgba(28,33,48,0.72);
+  border-color: rgba(255,255,255,0.10);
+}
+
+.po-row[data-selected="true"],
+.po-row.is-active {
+  background: rgba(34,40,58,0.76);
+  border-color: rgba(255,255,255,0.14);
+}
+
+/* ==========================================================================
+   Badges + keycaps
+   ========================================================================== */
+
+.po-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.30);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 11px;
+  color: var(--text-secondary, #AAB2C8);
+  white-space: nowrap;
+}
+
+.po-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text-secondary, #AAB2C8);
+  background: rgba(22,26,38,0.62);
+}
+
+.po-badge--best {
+  background: rgba(124,58,237,0.18);
+  border-color: rgba(255,255,255,0.14);
+}
+
+/* ==========================================================================
+   Buttons (Superhuman-ish, restrained)
+   ========================================================================== */
+
+.po-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--po-r-md);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(22,26,38,0.70);
+  color: var(--text-primary, #EBF0FF);
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform var(--po-dur-2) var(--po-ease-out),
+              background var(--po-dur-2) var(--po-ease-out),
+              border-color var(--po-dur-2) var(--po-ease-out);
+}
+
+.po-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(28,33,48,0.78);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.po-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.po-btn--primary {
+  border: 1px solid rgba(255,255,255,0.10);
+  background:
+    linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.22)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+  border-color: transparent;
+}
+
+.po-btn--danger {
+  background: rgba(244,114,182,0.16);
+  border-color: rgba(244,114,182,0.28);
+}
+
+/* ==========================================================================
+   Skeleton shimmer (for loading lists)
+   ========================================================================== */
+
+.po-skeleton {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.06),
+    rgba(255,255,255,0.12),
+    rgba(255,255,255,0.06)
+  );
+  background-size: 200% 100%;
+  animation: poShimmer 1.25s linear infinite;
+}
+
+/* ==========================================================================
+   Surface-specific: Inline suggestion popover details (optional overrides)
+   ========================================================================== */
+
+.inline-suggest-popover {
+  /* Keep it dense; your code sets left/top via inline styles */
+  width: 340px;
+  max-height: 460px;
+  overflow: hidden;
+}
+
+.inline-suggest-popover .inline-suggest-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.inline-suggest-popover .inline-suggest-list {
+  padding: 12px 14px;
+  max-height: 290px;
+  overflow: auto;
+}
+
+.inline-suggest-popover .inline-suggest-footer {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   Surface-specific: Outline overlay (Prompt Structure)
+   ========================================================================== */
+
+.pc-outline-overlay {
+  /* It can be absolute or fixed depending on your existing CSS.
+     This kit only polishes surface style. */
+  background: var(--po-glass-bg);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--po-glass-bg), var(--po-glass-bg)) padding-box,
+    var(--grad-1, var(--po-grad-1)) border-box;
+  border-radius: var(--po-r-xl);
+  box-shadow: var(--po-shadow-lg);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+}
+
+/* ==========================================================================
+   Surface-specific: Export popovers
+   ========================================================================== */
+
+.po-action-menu__popover button,
+.po-topbar__menu-popover button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--po-r-md);
+  background: rgba(22,26,38,0.62);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text-secondary, #AAB2C8);
+  cursor: pointer;
+}
+
+.po-action-menu__popover button:hover,
+.po-topbar__menu-popover button:hover {
+  background: rgba(28,33,48,0.72);
+  border-color: rgba(255,255,255,0.12);
+  color: var(--text-primary, #EBF0FF);
+}
+
+/* ==========================================================================
+   Surface-specific: Diff
+   ========================================================================== */
+
+.po-diff__card {
+  width: min(1180px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Tiny floating buttons (lock button polish)
+   ========================================================================== */
+
+.po-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  background: rgba(22,26,38,0.80);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--po-shadow-sm);
+  color: var(--text-secondary, #AAB2C8);
+  cursor: pointer;
+  transition: transform var(--po-dur-2) var(--po-ease-out),
+              background var(--po-dur-2) var(--po-ease-out);
+}
+
+.po-fab:hover {
+  transform: translateY(-1px);
+  background: rgba(28,33,48,0.88);
+  color: var(--text-primary, #EBF0FF);
+}

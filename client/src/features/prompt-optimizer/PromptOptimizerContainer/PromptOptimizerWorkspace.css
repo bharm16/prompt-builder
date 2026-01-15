@@ -1,27 +1,146 @@
 /* PromptOptimizerWorkspace - Workspace Container Styles
- * Minimal styles for the workspace wrapper
- * Layout-specific styles are in their respective layout CSS files
+ * Dark-first redesign tokens scoped to the prompt optimizer shell.
  */
 
 .prompt-optimizer-workspace {
-  /* Prompt Optimizer visual thesis (scoped) */
-  --po-primary: #6D5EF3;
-  --po-primary-rgb: 109 94 243;
-  --po-accent: #FFB020;
-  --po-accent-rgb: 255 176 32;
-  --po-ink: #0B0B0C;
-  --po-base: #FAFAFA;
+  /* --- Raw palette (base) --- */
+  --zinc-950: #0B0D12;
+  --zinc-925: #0D0F16;
+  --zinc-900: #10131C;
+  --zinc-850: #121521;
+  --zinc-800: #161A26;
+  --zinc-750: #1A1F2D;
+  --zinc-700: #1E2435;
 
+  --border-700: #242A3C;
+  --border-600: #2B334A;
+  --border-500: #333C57;
+
+  --text-100: #EBF0FF;
+  --text-200: #C9D1E5;
+  --text-300: #AAB2C8;
+  --text-400: #7D859B;
+
+  --accent-purple: #7C3AED;
+  --accent-cyan: #06B6D4;
+  --accent-orange: #F97316;
+
+  --success: #4EC9B0;
+  --warning: #F7C74A;
+  --danger: #F472B6;
+  --info: #60A5FA;
+
+  /* --- Semantic --- */
+  --bg-app: var(--zinc-950);
+  --bg-sidebar: var(--zinc-900);
+  --bg-surface: var(--zinc-850);
+  --bg-surface-2: var(--zinc-800);
+  --bg-elevated: var(--zinc-750);
+
+  --border-subtle: var(--border-700);
+  --border-default: var(--border-600);
+  --border-strong: var(--border-500);
+
+  --text-primary: var(--text-100);
+  --text-secondary: var(--text-300);
+  --text-tertiary: var(--text-400);
+
+  --focus-ring: color-mix(in srgb, var(--accent-cyan) 70%, white 30%);
+
+  --grad-1: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan), var(--accent-orange));
+  --grad-2: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+  --grad-3: radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--accent-purple) 45%, transparent), transparent 55%);
+
+  --hl-a: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+  --hl-b: color-mix(in srgb, var(--accent-purple) 18%, transparent);
+  --hl-c: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+
+  /* Typography */
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+
+  --fs-00: 11px;  --lh-00: 16px;
+  --fs-0: 13px;   --lh-0: 18px;
+  --fs-1: 15px;   --lh-1: 22px;
+  --fs-2: 17px;   --lh-2: 24px;
+  --fs-3: 20px;   --lh-3: 26px;
+  --fs-4: 24px;   --lh-4: 30px;
+  --fs-5: 32px;   --lh-5: 38px;
+
+  /* Spacing + layout */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+
+  --radius-1: 8px;
+  --radius-2: 12px;
+  --radius-3: 16px;
+  --radius-4: 20px;
+
+  --topbar-h: 80px;
+  --sidebar-w: 288px;
+  --stage-w: 360px;
+  --gutter: 14px;
+  --page-pad: 16px;
+
+  /* Shadows + blur */
+  --shadow-sm: 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.35);
+  --shadow-md: 0 1px 0 rgba(255,255,255,0.05), 0 16px 48px rgba(0,0,0,0.45);
+  --shadow-lg: 0 1px 0 rgba(255,255,255,0.06), 0 24px 72px rgba(0,0,0,0.55);
+
+  --blur-glass: 18px;
+
+  /* Motion */
+  --dur-1: 90ms;
+  --dur-2: 140ms;
+  --dur-3: 200ms;
+  --dur-4: 320ms;
+
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --ease-inout: cubic-bezier(.65,0,.35,1);
+  --ease-linear: linear;
+
+  /* Geist token overrides for legacy UI pieces */
+  --geist-background: var(--bg-app);
+  --geist-foreground: var(--text-primary);
+  --accents-1: var(--bg-surface);
+  --accents-2: var(--border-subtle);
+  --accents-3: var(--border-default);
+  --accents-4: var(--border-strong);
+  --accents-5: var(--text-tertiary);
+  --accents-6: var(--text-secondary);
+  --accents-7: var(--text-primary);
+  --accents-8: var(--text-primary);
+
+  --shadow-small: var(--shadow-sm);
+  --shadow-medium: var(--shadow-md);
+  --shadow-large: var(--shadow-lg);
+
+  --layout-sidebar-width-expanded: var(--sidebar-w);
+  --layout-sidebar-width-collapsed: 56px;
+  --sidebar-width: var(--layout-sidebar-width-collapsed);
+
+  color-scheme: dark;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 0; /* Critical for nested flex layouts */
+  min-height: 0;
   overflow: hidden;
   background:
-    radial-gradient(900px circle at 20% -10%, rgb(var(--po-primary-rgb) / 0.10), transparent 60%),
-    radial-gradient(700px circle at 80% 0%, rgb(var(--po-accent-rgb) / 0.07), transparent 55%),
-    linear-gradient(180deg, var(--po-base) 0%, var(--geist-background) 65%);
-  transition: background-color 0.3s;
+    var(--grad-3),
+    radial-gradient(140% 120% at 80% -10%, rgba(6, 182, 212, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--bg-app) 0%, var(--zinc-925) 50%, var(--bg-app) 100%);
+  transition: background-color var(--dur-3) var(--ease-out);
 }
 
 /* Ensure child layout fills the workspace */
@@ -32,10 +151,16 @@
 }
 
 .prompt-optimizer-workspace ::selection {
-  background: rgb(var(--po-primary-rgb) / 0.22);
-  color: var(--po-ink);
+  background: var(--hl-b);
+  color: var(--text-primary);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .prompt-optimizer-workspace * {
+    animation-duration: var(--dur-1) !important;
+    transition-duration: var(--dur-1) !important;
+  }
+}
 
 
 

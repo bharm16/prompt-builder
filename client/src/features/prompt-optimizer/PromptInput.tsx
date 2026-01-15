@@ -19,10 +19,7 @@ export const PromptInput = ({
   generationParams,
   onGenerationParamsChange,
   onOptimize,
-  onShowBrainstorm,
   isProcessing,
-  aiNames,
-  currentAIIndex,
 }: PromptInputProps): React.ReactElement => {
   // App is video-only now; keep a local constant for logging/behavior.
   const selectedMode = 'video' as const;
@@ -215,7 +212,6 @@ export const PromptInput = ({
                 lineHeight: hasContent ? '36px' : '52px',
                 letterSpacing: '-0.02em',
                 fontWeight: 680,
-                color: '#0B0F1A',
               }}
             >
               Describe the shot

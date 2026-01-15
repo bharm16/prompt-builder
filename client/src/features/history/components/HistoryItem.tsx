@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@components/Button';
 import type { PromptHistoryEntry } from '@hooks/types';
+import './HistoryItem.css';
 
 type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
 
@@ -15,6 +16,7 @@ export interface HistoryItemProps {
   meta: string;
   stage: PromptRowStage;
   processingLabel?: string | null;
+  versionLabel?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
   meta,
   stage,
   processingLabel = null,
+  versionLabel,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<boolean>(false);
 
@@ -74,15 +77,15 @@ export const HistoryItem = memo<HistoryItemProps>(({
 
   if (showDeleteConfirm) {
     return (
-      <li>
-        <div className="group w-full rounded-geist-lg p-geist-3 bg-red-50 border border-red-200">
-          <p className="text-label-12 text-red-900 mb-geist-2">Delete this prompt?</p>
-          <div className="flex gap-geist-2">
+      <li className="po-session-delete">
+        <div className="po-session-delete__card">
+          <p>Delete this session?</p>
+          <div className="po-session-delete__actions">
             <Button
               onClick={handleDelete}
               size="small"
               variant="primary"
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              className="po-session-delete__btn po-session-delete__btn--danger"
             >
               Delete
             </Button>
@@ -90,7 +93,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
               onClick={handleCancel}
               size="small"
               variant="secondary"
-              className="flex-1"
+              className="po-session-delete__btn"
             >
               Cancel
             </Button>
@@ -106,107 +109,63 @@ export const HistoryItem = memo<HistoryItemProps>(({
 
   return (
     <li>
-      <div 
-        className={`group relative w-full rounded-[8px] transition-colors ${
-          isSelected ? 'bg-[rgba(139,92,246,0.08)]' : 'bg-transparent hover:bg-[rgba(0,0,0,0.04)]'
-        }`}
-        data-external-hover={isHovering ? 'true' : 'false'}
+      <div
+        className={`po-session-item${isSelected ? ' is-selected' : ''}${isHovering ? ' is-hovered' : ''}`}
+        data-stage={stage}
       >
         <span
-          className={`absolute left-0 top-[6px] bottom-[6px] w-[2px] rounded-full transition-opacity ${
-            showAccentBar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-          }`}
+          className={`po-session-item__accent${showAccentBar ? ' is-visible' : ''}`}
           style={{ backgroundColor: stageColor }}
           aria-hidden="true"
         />
         <button
           onClick={handleLoad}
-          className="w-full h-12 text-left flex items-center rounded-[8px] cursor-pointer"
-          style={{ paddingLeft: 12, paddingRight: 10 }}
+          className="po-session-item__button"
           aria-label={`Load prompt: ${title}`}
           title={title}
         >
-          <div className="flex items-center gap-3 w-full">
-            <span
-              className="h-[6px] w-[6px] rounded-full flex-shrink-0"
-              style={{ backgroundColor: stageColor }}
-              aria-hidden="true"
-            />
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <p 
-                className="text-[13px] font-medium leading-tight text-[#111827]"
-                style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  width: '100%',
-                  opacity: isProcessing ? 0.6 : 1,
-                }}
-                title={title}
-              >
-                {title}
-              </p>
-              {isProcessing ? (
-                <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[#6B7280]">
-                  <span className="truncate">{processingLabel}</span>
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    className="animate-spin"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      fill="none"
-                      stroke={stageColor}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeDasharray="42"
-                      strokeDashoffset="14"
-                    />
-                  </svg>
-                </div>
+          <span className="po-session-item__dot" style={{ backgroundColor: stageColor }} />
+          <div className="po-session-item__body">
+            <div className="po-session-item__row">
+              {versionLabel ? <span className="po-session-item__version">{versionLabel}</span> : <span />}
+              {processingLabel ? (
+                <span className="po-session-item__status" data-state="processing">
+                  {processingLabel}
+                </span>
               ) : (
-                <div
-                  className="mt-0.5 text-[12px] text-[#6B7280]"
-                  style={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    opacity: isSelected ? 1 : 1,
-                  }}
-                  title={meta}
-                >
-                  {meta}
-                </div>
+                <span className="po-session-item__status" data-state={stage}>
+                  {stage === 'generated'
+                    ? 'Ready'
+                    : stage === 'optimized'
+                      ? 'Optimized'
+                      : stage === 'draft'
+                        ? 'Draft'
+                        : 'Failed'}
+                </span>
               )}
             </div>
+            <div className="po-session-item__meta">{processingLabel ?? meta}</div>
           </div>
         </button>
 
         {stage === 'error' && (
           <button
             onClick={handleRetry}
-            className="absolute right-[36px] top-[9px] px-2 py-1 opacity-0 group-hover:opacity-100 rounded-[6px] hover:bg-[rgba(0,0,0,0.04)] transition-all flex items-center gap-1"
+            className="po-session-item__retry"
             aria-label="Retry"
             title="Retry"
           >
             <RotateCcw className="h-3.5 w-3.5" style={{ color: stageColor }} />
-            <span className="text-[12px] text-[#111827]">Retry</span>
           </button>
         )}
 
-        {/* Delete button - shows on hover */}
         <button
           onClick={handleDelete}
-          className="absolute right-geist-2 top-geist-2 p-geist-2 opacity-0 group-hover:opacity-100 rounded-geist hover:bg-red-50 transition-all"
+          className="po-session-item__delete"
           aria-label="Delete prompt"
           title="Delete prompt"
         >
-          <Trash2 className="h-3.5 w-3.5 text-geist-accents-4 hover:text-red-600" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </li>
@@ -220,7 +179,8 @@ export const HistoryItem = memo<HistoryItemProps>(({
     prevProps.title === nextProps.title &&
     prevProps.meta === nextProps.meta &&
     prevProps.stage === nextProps.stage &&
-    prevProps.processingLabel === nextProps.processingLabel;
+    prevProps.processingLabel === nextProps.processingLabel &&
+    prevProps.versionLabel === nextProps.versionLabel;
 });
 
 HistoryItem.displayName = 'HistoryItem';

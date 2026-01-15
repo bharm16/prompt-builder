@@ -1,6 +1,10 @@
 import React from 'react';
-import { PanelLeft, Plus, Settings2, Command } from 'lucide-react';
+import { PanelLeft, Plus, Settings2, Command, Share2, Download } from 'lucide-react';
 import { usePromptState } from '../context/PromptStateContext';
+import { useShareLink } from '../hooks/useShareLink';
+import { usePromptExport } from '../PromptCanvas/hooks/usePromptExport';
+import { useToast } from '@components/Toast';
+import { useDebugLogger } from '@hooks/useDebugLogger';
 import './PromptTopBar.css';
 
 /**
@@ -19,8 +23,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
     showShortcuts,
     setShowShortcuts,
     handleCreateNew,
-    currentMode,
-    selectedModel,
+    showResults,
     promptOptimizer,
     currentPromptUuid,
     outputSaveState,
@@ -32,13 +35,33 @@ export const PromptTopBar = (): React.ReactElement | null => {
     return null;
   }
 
+  const debug = useDebugLogger('PromptTopBar');
+  const toast = useToast();
+  const { shared, share } = useShareLink();
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const [showExportMenu, setShowExportMenu] = React.useState(false);
+  const [isTitleDirty, setIsTitleDirty] = React.useState(false);
+
   const titleSource = (promptOptimizer.inputPrompt || promptOptimizer.displayedPrompt || '').trim();
-  const title =
+  const derivedTitle =
     titleSource.length > 0
       ? titleSource.split('\n')[0]!.slice(0, 64)
       : currentPromptUuid
         ? `Prompt ${currentPromptUuid.slice(0, 8)}`
         : 'Untitled prompt';
+
+  const [titleValue, setTitleValue] = React.useState<string>(derivedTitle);
+
+  React.useEffect(() => {
+    if (!isTitleDirty) {
+      setTitleValue(derivedTitle);
+    }
+  }, [derivedTitle, isTitleDirty]);
+
+  React.useEffect(() => {
+    setIsTitleDirty(false);
+    setTitleValue(derivedTitle);
+  }, [currentPromptUuid, derivedTitle]);
 
   const timeLabel =
     typeof outputLastSavedAt === 'number'
@@ -56,6 +79,39 @@ export const PromptTopBar = (): React.ReactElement | null => {
             : 'Saved'
           : '';
 
+  const handleExport = usePromptExport({
+    inputPrompt: promptOptimizer.inputPrompt,
+    displayedPrompt: promptOptimizer.displayedPrompt ?? null,
+    qualityScore: promptOptimizer.qualityScore ?? null,
+    selectedMode: 'video',
+    setShowExportMenu,
+    toast,
+    debug,
+  });
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return undefined;
+  }, [showExportMenu]);
+
+  const isOptimizing = Boolean(promptOptimizer.isProcessing || promptOptimizer.isRefining);
+  const activeStep = !showResults ? 'compose' : isOptimizing ? 'optimize' : 'preview';
+
+  const steps = [
+    { id: 'compose', label: 'Compose' },
+    { id: 'optimize', label: 'Optimize' },
+    { id: 'preview', label: 'Preview' },
+    { id: 'render', label: 'Render' },
+  ] as const;
+
   return (
     <header className="po-topbar" role="banner">
       <div className="po-topbar__inner">
@@ -70,17 +126,50 @@ export const PromptTopBar = (): React.ReactElement | null => {
             <PanelLeft size={16} />
           </button>
 
-          <div className="po-topbar__title">
-            <div className="po-topbar__product">Vidra</div>
-            <div className="po-topbar__subtitle" title={title}>
-              {title}
-            </div>
+          <div className="po-topbar__brand">
+            <div className="po-topbar__product">VIDRA</div>
+            <div className="po-topbar__subtitle">Prompt Studio</div>
+          </div>
+
+          <div className="po-topbar__title-field">
+            <span className="po-topbar__title-accent" aria-hidden="true" />
+            <input
+              type="text"
+              value={titleValue}
+              onChange={(event) => {
+                const next = event.target.value;
+                setTitleValue(next);
+                setIsTitleDirty(next.trim().length > 0 && next !== derivedTitle);
+              }}
+              onBlur={() => {
+                if (!titleValue.trim()) {
+                  setIsTitleDirty(false);
+                  setTitleValue(derivedTitle);
+                }
+              }}
+              className="po-topbar__title-input"
+              aria-label="Prompt title"
+            />
           </div>
         </div>
 
-        <div className="po-topbar__center" aria-label="Session configuration">
-          <span className="po-topbar__chip">{currentMode?.name ?? 'Video'}</span>
-          <span className="po-topbar__chip">{selectedModel?.trim() ? selectedModel.trim() : 'Auto model'}</span>
+        <div className="po-topbar__center" aria-label="Workflow steps">
+          <div className="po-topbar__stepper">
+            {steps.map((step) => {
+              const isActive = step.id === activeStep;
+              return (
+                <div
+                  key={step.id}
+                  className="po-topbar__step"
+                  data-active={isActive ? 'true' : 'false'}
+                  aria-current={isActive ? 'step' : undefined}
+                >
+                  <span className="po-topbar__step-pill">{step.label}</span>
+                  <span className="po-topbar__step-underline" aria-hidden="true" />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="po-topbar__right">
@@ -94,7 +183,18 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__btn"
+            className="po-topbar__command"
+            aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
+            aria-pressed={showShortcuts}
+            onClick={() => setShowShortcuts(!showShortcuts)}
+          >
+            <Command size={14} />
+            <span>⌘K</span>
+          </button>
+
+          <button
+            type="button"
+            className="po-topbar__btn po-topbar__btn--primary"
             onClick={handleCreateNew}
             aria-label="Create new prompt"
           >
@@ -105,12 +205,45 @@ export const PromptTopBar = (): React.ReactElement | null => {
           <button
             type="button"
             className="po-topbar__iconbtn"
-            aria-label={showShortcuts ? 'Close shortcuts' : 'Open shortcuts'}
-            aria-pressed={showShortcuts}
-            onClick={() => setShowShortcuts(!showShortcuts)}
+            aria-label={shared ? 'Share link copied' : 'Share prompt'}
+            onClick={() => {
+              if (currentPromptUuid) {
+                share(currentPromptUuid);
+              } else {
+                toast.error('Save the prompt first to generate a share link');
+              }
+            }}
           >
-            <Command size={16} />
+            <Share2 size={16} />
           </button>
+
+          <div className="po-topbar__menu" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="po-topbar__iconbtn"
+              aria-label="Export prompt"
+              aria-expanded={showExportMenu}
+              onClick={() => setShowExportMenu(!showExportMenu)}
+            >
+              <Download size={16} />
+            </button>
+            {showExportMenu && (
+              <div
+                className="po-topbar__menu-popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                role="menu"
+              >
+                <button type="button" onClick={() => handleExport('text')} role="menuitem">
+                  Export .txt
+                </button>
+                <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
+                  Export .md
+                </button>
+                <button type="button" onClick={() => handleExport('json')} role="menuitem">
+                  Export .json
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -126,4 +259,3 @@ export const PromptTopBar = (): React.ReactElement | null => {
     </header>
   );
 };
-

@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { Pencil, X, Check, Lock, Unlock, LayoutGrid } from 'lucide-react';
+import { Pencil, X, Check, Lock, Unlock, LayoutGrid, Share2, RotateCcw, RotateCw } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
 
 // External libraries
@@ -42,7 +42,6 @@ import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 
 // Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
-import { PromptActions } from './components/PromptActions';
 import { PromptEditor } from './components/PromptEditor';
 import { PromptSidebar } from './components/PromptSidebar';
 import { VersionsPanel } from './components/VersionsPanel';
@@ -77,14 +76,12 @@ export function PromptCanvas({
   previewAspectRatio = null,
   qualityScore,
   selectedMode,
-  currentMode,
   promptUuid,
   promptContext,
   onDisplayedPromptChange,
   suggestionsData,
   onFetchSuggestions,
   onSuggestionClick,
-  onCreateNew,
   initialHighlights = null,
   initialHighlightsVersion = 0,
   onHighlightsPersist,
@@ -110,7 +107,6 @@ export function PromptCanvas({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const editorColumnRef = useRef<HTMLDivElement>(null);
-  const videoPanelRef = useRef<HTMLDivElement>(null);
   const outputLocklineRef = useRef<HTMLDivElement>(null);
   const lockButtonRef = useRef<HTMLButtonElement>(null);
   const tokenPopoverRef = useRef<HTMLDivElement>(null);
@@ -118,7 +114,6 @@ export function PromptCanvas({
   const outlineOverlayRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const [isOutputFocused, setIsOutputFocused] = useState(false);
-  const [isOutputHovered, setIsOutputHovered] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [customRequestError, setCustomRequestError] = useState('');
   const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
@@ -129,15 +124,16 @@ export function PromptCanvas({
     arrowLeft: number;
   } | null>(null);
   const [videoInputReference, setVideoInputReference] = useState('');
+  const [stageTab, setStageTab] = useState<'preview' | 'final'>('preview');
+  const [showDiff, setShowDiff] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const {
     previewLoading,
     setVisualPreviewGenerating,
-    setVideoPreviewGenerating,
     setRailVideoPreviewGenerating,
   } = usePreviewGenerationState();
   const {
     visual: isVisualPreviewGenerating,
-    video: isVideoPreviewGenerating,
     railVideo: isRailVideoPreviewGenerating,
   } = previewLoading;
   const [railVideoGenerateRequestId, setRailVideoGenerateRequestId] = useState(0);
@@ -248,7 +244,7 @@ export function PromptCanvas({
               handleParamChange(key, val);
             }}
             disabled={disabled}
-            className="pc-video-advanced-select"
+            className="po-chip-select"
             aria-label={label}
           >
             {info.allowedValues.map((value) => (
@@ -263,51 +259,6 @@ export function PromptCanvas({
     [generationParams, getFieldInfo, handleParamChange]
   );
 
-  const renderPills = useCallback(
-    (
-      info: ReturnType<typeof getFieldInfo>,
-      key: string,
-      label: string,
-      disabled: boolean
-    ): React.ReactNode => {
-      if (!info) return null;
-
-      const selected = generationParams?.[key] ?? info.field.default ?? '';
-      const allowed = info.allowedValues;
-      const formatDisplay = (val: unknown) => {
-        if (key === 'duration_s') return `${val}s`;
-        if (key === 'fps') return `${val} fps`;
-        return String(val);
-      };
-
-      if (allowed.length > 6) {
-        return renderDropdown(info, key, label, disabled);
-      }
-
-      return (
-        <div className="pc-video-pill-row" role="radiogroup" aria-label={label}>
-          {allowed.map((value) => {
-            const isSelected = String(value) === String(selected);
-            return (
-              <button
-                key={String(value)}
-                type="button"
-                onClick={() => handleParamChange(key, value as CapabilityValue)}
-                disabled={disabled}
-                aria-pressed={isSelected}
-                className={`pc-video-pill${isSelected ? ' pc-video-pill--active' : ''}`}
-              >
-                {formatDisplay(value)}
-              </button>
-            );
-          })}
-        </div>
-      );
-    },
-    [generationParams, handleParamChange, renderDropdown]
-  );
-
-
   // Custom hooks for clipboard and sharing
   const { copied, copy } = useClipboard();
   const { shared, share } = useShareLink();
@@ -320,16 +271,12 @@ export function PromptCanvas({
   >('closed');
   const outlineOverlayActive = outlineOverlayState !== 'closed';
 
-  const { state, setState, incrementVisualRequestId, incrementVideoRequestId } =
-    usePromptCanvasState();
+  const { state, setState, incrementVisualRequestId } = usePromptCanvasState();
   const {
     showExportMenu,
     showLegend,
-    rightPaneMode,
     visualLastGeneratedAt,
-    videoLastGeneratedAt,
     visualGenerateRequestId,
-    videoGenerateRequestId,
     isEditing,
     originalInputPrompt,
     originalSelectedModel,
@@ -338,8 +285,6 @@ export function PromptCanvas({
     hasInteracted,
     hoveredSpanId,
     showHighlights,
-    lastSwapTime,
-    promptState,
     generatedTimestamp,
   } = state;
 
@@ -351,10 +296,8 @@ export function PromptCanvas({
 
   const previewSource = previewPrompt ?? normalizedDisplayedPrompt ?? '';
   const hasPreviewSource = Boolean(previewSource.trim());
-  const showPreviewMeta = Boolean(effectiveAspectRatio);
-  const isAnyVideoPreviewGenerating = isVideoPreviewGenerating || isRailVideoPreviewGenerating;
-  const isPreviewGenerating =
-    selectedMode === 'video' ? isAnyVideoPreviewGenerating : isVisualPreviewGenerating;
+  const isAnyVideoPreviewGenerating = isRailVideoPreviewGenerating;
+  const isPreviewGenerating = isVisualPreviewGenerating || isAnyVideoPreviewGenerating;
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
 
@@ -374,11 +317,6 @@ export function PromptCanvas({
 
     return normalizedDisplayedPrompt ?? '';
   }, [promptOptimizer.genericOptimizedPrompt, normalizedDisplayedPrompt]);
-  const promptEcho = useMemo(
-    () => (videoPreviewPrompt ? videoPreviewPrompt.replace(/\s+/g, ' ').trim() : ''),
-    [videoPreviewPrompt]
-  );
-  const showVideoPanel = Boolean(showVideoPreview && videoPreviewPrompt.trim());
 
   const activeVersion = useMemo(() => {
     const entry =
@@ -409,6 +347,28 @@ export function PromptCanvas({
     (value: boolean) => setState({ showExportMenu: value }),
     [setState]
   );
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExportMenu, setShowExportMenu]);
+
+  useEffect(() => {
+    if (!showDiff) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setShowDiff(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDiff]);
   const setShowLegend = useCallback(
     (value: boolean) => setState({ showLegend: value }),
     [setState]
@@ -437,10 +397,6 @@ export function PromptCanvas({
   );
   const setHoveredSpanId = useCallback(
     (value: string | null) => setState({ hoveredSpanId: value }),
-    [setState]
-  );
-  const setShowHighlights = useCallback(
-    (value: boolean) => setState({ showHighlights: value }),
     [setState]
   );
   const setIsEditing = useCallback(
@@ -621,6 +577,29 @@ export function PromptCanvas({
     [parseResult.spans]
   );
 
+  const tokenHighlights = useMemo(() => {
+    const seen = new Set<string>();
+    const variants = ['a', 'b', 'c'] as const;
+    const tokens: Array<{ id: string; label: string; variant: typeof variants[number] }> = [];
+
+    for (const span of bentoSpans) {
+      const raw = typeof span.quote === 'string' ? span.quote : '';
+      const label = raw.replace(/\s+/g, ' ').trim();
+      if (!label || label.length < 3) continue;
+      const key = label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push({
+        id: span.id ?? `token_${span.start}_${span.end}`,
+        label: label.length > 28 ? `${label.slice(0, 28).trim()}…` : label,
+        variant: variants[tokens.length % variants.length],
+      });
+      if (tokens.length >= 6) break;
+    }
+
+    return tokens;
+  }, [bentoSpans]);
+
   // Highlight rendering using extracted hook
   const highlightFingerprint = useHighlightFingerprint(enableMLHighlighting, {
     spans: parseResult.spans,
@@ -663,10 +642,6 @@ export function PromptCanvas({
   const isOptimizing = Boolean(isProcessing || isRefining);
   const isOutputLoading = Boolean(isProcessing || isRefining);
   const isInputLocked = !isEditing || isOptimizing;
-
-  const hasSuggestionSelection = Boolean(selectedSpanId) || Boolean(suggestionsData?.selectedText.trim());
-
-  const showPrimaryActions = isOutputHovered || isOutputFocused || hasSuggestionSelection;
 
   const escapeAttr = (value: string): string => {
     if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
@@ -1105,7 +1080,33 @@ export function PromptCanvas({
   const hasInputPrompt = Boolean(inputPrompt.trim());
   const isReoptimizeDisabled = !hasInputPrompt || isProcessing || isRefining;
   const previewMetaDetail = 'ETA ~6s';
+  const finalMetaDetail = 'ETA ~45s';
   const hasVideoPreviewSource = Boolean(videoPreviewPrompt.trim());
+  const durationValue = generationParams?.duration_s;
+  const fpsValue = generationParams?.fps;
+  const durationLabel = typeof durationValue === 'number' ? `${durationValue}s` : '—';
+  const fpsLabel = typeof fpsValue === 'number' ? `${fpsValue} fps` : '—';
+  const aspectLabel = effectiveAspectRatio ? `AR ${effectiveAspectRatio}` : 'AR —';
+  const previewStatus = isVisualPreviewGenerating
+    ? 'Generating'
+    : visualLastGeneratedAt || seedImageUrl
+      ? 'Ready'
+      : 'Idle';
+  const finalStatus = isRailVideoPreviewGenerating
+    ? 'Generating'
+    : railVideoLastGeneratedAt || seedVideoUrl
+      ? 'Ready'
+      : 'Idle';
+  const canCompareRuns = previewStatus === 'Ready' && finalStatus === 'Ready';
+  const stageIsPreview = stageTab === 'preview';
+  const stageIsGenerating = stageIsPreview ? isVisualPreviewGenerating : isRailVideoPreviewGenerating;
+  const stageHasOutput = stageIsPreview
+    ? Boolean(seedImageUrl || visualLastGeneratedAt)
+    : Boolean(seedVideoUrl || railVideoLastGeneratedAt);
+  const stageCtaLabel = stageIsPreview ? 'Generate Preview' : 'Generate Final';
+  const stageCtaDisabled = stageIsPreview
+    ? !hasPreviewSource || isVisualPreviewGenerating
+    : !hasVideoPreviewSource || isRailVideoPreviewGenerating;
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -1497,64 +1498,30 @@ export function PromptCanvas({
   }, [focusSpan, lastAppliedSpanId, selectedSpanId, setRightPaneMode]);
 
   const handleGenerateVisualPreview = useCallback((): void => {
+    setStageTab('preview');
     incrementVisualRequestId();
-  }, [incrementVisualRequestId]);
-
-  const handleGenerateVideoPreview = useCallback((): void => {
-    incrementVideoRequestId();
-  }, [incrementVideoRequestId]);
+  }, [incrementVisualRequestId, setStageTab]);
 
   const handleGenerateRailVideoPreview = useCallback((): void => {
+    setStageTab('final');
     setRailVideoGenerateRequestId((current) => current + 1);
-  }, []);
-
-  const animateScroll = useCallback((element: HTMLElement, target: number): void => {
-    const start = element.scrollTop;
-    const delta = target - start;
-    if (delta === 0) return;
-
-    const duration = 300;
-    const startTime = performance.now();
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-
-    const step = (now: number): void => {
-      const progress = Math.min(1, (now - startTime) / duration);
-      element.scrollTop = start + delta * easeOut(progress);
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      }
-    };
-
-    requestAnimationFrame(step);
-  }, []);
-
-  const handleJumpToPromptEditor = useCallback((): void => {
-    const container = editorColumnRef.current;
-    if (container) {
-      animateScroll(container, 0);
-    }
-    if (isEditing) {
-      setTimeout(() => textareaRef.current?.focus(), 0);
-      return;
-    }
-    handleEditClick();
-  }, [animateScroll, handleEditClick, isEditing]);
+  }, [setStageTab]);
 
   // Render the component
-	  return (
-	    <div
-	      className="prompt-canvas-root relative flex flex-col min-h-0 flex-1"
-	      data-mode={selectedMode}
-	      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
-	      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
-	      aria-busy={isPreviewGenerating ? 'true' : 'false'}
-	      style={
-	        {
-	          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
-	          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
-	        } as React.CSSProperties
-	      }
-	    >
+  return (
+    <div
+      className="prompt-canvas-root relative flex flex-col min-h-0 flex-1"
+      data-mode={selectedMode}
+      data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
+      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
+      aria-busy={isPreviewGenerating ? 'true' : 'false'}
+      style={
+        {
+          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
+          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
+        } as React.CSSProperties
+      }
+    >
       {/* Category Legend */}
 	      <CategoryLegend
 	        show={showLegend}
@@ -1563,14 +1530,14 @@ export function PromptCanvas({
 	        isSuggestionsOpen={isSuggestionsOpen}
 	      />
 
-	      {outlineOverlayActive && (
-	        <div
-	          ref={outlineOverlayRef}
-	          className="pc-outline-overlay"
-	          data-state={outlineOverlayState}
-	          role="dialog"
-	          aria-label="Prompt structure"
-	        >
+      {outlineOverlayActive && (
+        <div
+          ref={outlineOverlayRef}
+          className="pc-outline-overlay po-surface po-surface--grad po-animate-pop-in"
+          data-state={outlineOverlayState}
+          role="dialog"
+          aria-label="Prompt structure"
+        >
 	          <div className="pc-outline-overlay__header">
 	            <div className="pc-outline-overlay__title">Prompt Structure</div>
 	            <div className="pc-outline-overlay__subtitle">
@@ -1625,672 +1592,726 @@ export function PromptCanvas({
         <div
           ref={editorColumnRef}
           id="main-content"
-          className="prompt-canvas-editor flex flex-col overflow-y-auto scrollbar-auto-hide min-w-0"
+          className="prompt-canvas-editor flex flex-col overflow-hidden min-h-0 min-w-0"
         >
           <div className="prompt-canvas-editor-frame">
-            {/* Original Prompt Band */}
-            <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
-              <div className="prompt-band__content prompt-canvas-content-wrapper">
-              <div className="prompt-card prompt-card--original">
-                <div
-                  className="prompt-card__header"
-                  data-has-video-controls={showVideoPreview ? 'true' : 'false'}
-                >
-                  <div className="prompt-card__header-row prompt-card__header-row--top">
-                    <div className="prompt-card__header-left">
-                      <span className="prompt-card__label">Input</span>
-                    </div>
-
-                    <div className="prompt-card__header-actions">
-                      {!isEditing ? (
-                        <button
-                          type="button"
-                          onClick={handleEditClick}
-                          disabled={isOptimizing}
-                          className="prompt-card__action-button"
-                          aria-label="Edit prompt"
-                          title="Edit prompt"
-                        >
-                          <Pencil className="h-3.5 w-3.5 text-geist-accents-5" />
-                          <span>Edit</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-geist-2">
-                          <button
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={isOptimizing}
-                            className="prompt-card__action-button"
-                            aria-label="Cancel editing"
-                            title="Cancel editing"
-                          >
-                            <X className="h-3.5 w-3.5 text-geist-accents-5" />
-                            <span>Cancel</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleUpdate}
-                            disabled={isReoptimizeDisabled}
-                            className="inline-flex items-center gap-geist-2 px-geist-3 py-geist-1.5 text-button-14 text-white bg-geist-foreground rounded-geist hover:bg-geist-accents-8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            aria-label="Update prompt"
-                            title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                          >
-                            <Check className="h-3.5 w-3.5 text-white" />
-                            <span>Update</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {showVideoPreview && (
-                    <div className="prompt-card__header-row prompt-card__header-row--controls">
+            <div className="po-editor-stack">
+              <div className="po-editor-grid">
+                <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
+                  <div className="prompt-band__content prompt-canvas-content-wrapper">
+                    <div className="prompt-card prompt-card--original">
                       <div
-                        className="pc-video-toolbar pc-video-toolbar--light"
-                        aria-label="Video generation controls"
+                        className="prompt-card__header"
+                        data-has-video-controls={showVideoPreview ? 'true' : undefined}
                       >
-                        <div className="pc-video-toolbar__item">
-                          <div className="pc-video-toolbar__label">Model</div>
-                          <ModelSelectorDropdown
-                            selectedModel={selectedModel}
-                            onModelChange={handleModelChange}
-                            disabled={isOptimizing}
-                            variant="pill"
-                          />
-                        </div>
-
-                        {aspectRatioInfo && (
-                          <div className="pc-video-toolbar__item">
-                            <div className="pc-video-toolbar__label">Aspect</div>
-                            {renderDropdown(
-                              aspectRatioInfo,
-                              'aspect_ratio',
-                              'Aspect Ratio',
-                              isOptimizing
-                            )}
-                          </div>
-                        )}
-
-                        {durationInfo && (
-                          <div className="pc-video-toolbar__item">
-                            <div className="pc-video-toolbar__label">Duration</div>
-                            {renderDropdown(
-                              durationInfo,
-                              'duration_s',
-                              'Duration',
-                              isOptimizing
-                            )}
-                          </div>
-                        )}
-
-                        {fpsInfo && (
-                          <div className="pc-video-toolbar__item">
-                            <div className="pc-video-toolbar__label">FPS</div>
-                            {renderDropdown(
-                              fpsInfo,
-                              'fps',
-                              'Frame Rate',
-                              isOptimizing
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="prompt-card__body">
-                  <label htmlFor="original-prompt-input" className="sr-only">
-                    Input prompt
-                  </label>
-                  <textarea
-                    ref={textareaRef}
-                    id="original-prompt-input"
-                    value={inputPrompt}
-                    onChange={handleInputPromptChange}
-                    onKeyDown={handleInputPromptKeyDown}
-                    placeholder="Enter your prompt..."
-                    rows={3}
-                    readOnly={isInputLocked}
-                    className="prompt-input prompt-input--original"
-                    style={{
-                      paddingRight: '14rem',
-                      paddingBottom: '1rem',
-                    }}
-                    aria-label="Original prompt input"
-                    aria-readonly={isInputLocked}
-                    aria-busy={isOptimizing}
-                  />
-                </div>
-              </div>
-              </div>
-            </div>
-
-          {/* Optimized Prompt Band */}
-          <div 
-            className="prompt-band prompt-band--optimized"
-            data-loading={isOutputLoading}
-            data-has-content={!!normalizedDisplayedPrompt}
-          >
-            <div className="prompt-band__content prompt-canvas-content-wrapper">
-              <div
-                className="prompt-card prompt-card--optimized"
-                data-settled={showVideoPanel ? 'true' : 'false'}
-              >
-                <div className="prompt-output-header">
-                  <div className="prompt-output-label">Optimized output</div>
-                  <div className="prompt-output-status" data-editing={isOutputFocused ? 'true' : 'false'}>
-                    {isOutputFocused ? 'Editing' : 'Live'}
-                  </div>
-                </div>
-
-                <div
-                  className="prompt-editor-wrapper"
-                  aria-busy={isOutputLoading}
-                  ref={editorWrapperRef}
-                  onMouseEnter={() => setIsOutputHovered(true)}
-                  onMouseLeave={() => setIsOutputHovered(false)}
-                >
-                    <PromptEditor
-                      ref={editorRef as React.RefObject<HTMLDivElement>}
-                      onTextSelection={handleTextSelection}
-                      onHighlightClick={handleHighlightClick}
-                      onHighlightMouseDown={handleHighlightMouseDown}
-                      onHighlightMouseEnter={handleHighlightMouseEnter}
-                      onHighlightMouseLeave={handleHighlightMouseLeave}
-                      onCopyEvent={handleCopyEvent}
-                      onInput={handleInput}
-                      onFocus={handleOutputFocus}
-                      onBlur={handleOutputBlur}
-                    />
-                    <div
-                      ref={outputLocklineRef}
-                      className="prompt-output-lockline"
-                      data-active={showVideoPanel ? 'true' : 'false'}
-                      aria-hidden="true"
-                    />
-                    {/* Inline suggestions popover (anchored to selected span) */}
-                    {tokenPopover && (
-                      <>
-                        <div className="inline-suggest-backdrop" aria-hidden="true" />
-                        <div
-                          ref={tokenPopoverRef}
-                          className="inline-suggest-popover"
-                          data-open="true"
-                          data-placement={tokenPopover.placement}
-                          style={
-                            {
-                              left: tokenPopover.left,
-                              top: tokenPopover.top,
-                              '--arrow-x': `${tokenPopover.arrowLeft}px`,
-                            } as React.CSSProperties
-                          }
-                          role="dialog"
-                          aria-label="Suggestions"
-                        >
-                          <div className="inline-suggest-arrow" aria-hidden="true" />
-
-                          <div className="inline-suggest-header">
-                            <div className="inline-suggest-title">
-                              Suggestions
-                              <span className="inline-suggest-pill">{suggestionCount}</span>
-                            </div>
-                            <div className="inline-suggest-keys" aria-hidden="true">
-                              <span className="kbd">Up</span>
-                              <span className="kbd">Down</span>
-                              <span className="kbd">Enter</span>
-                              <span className="kbd">Esc</span>
-                            </div>
+                        <div className="prompt-card__header-row">
+                          <div className="prompt-card__header-left">
+                            <div className="prompt-card__title">Prompt</div>
+                            <div className="prompt-card__subtitle">Compose your input</div>
                           </div>
 
-                          <div className="inline-suggest-divider" />
-
-                          <div className="inline-suggest-custom">
-                            <form
-                              className="inline-suggest-custom-form"
-                              onSubmit={handleCustomRequestSubmit}
-                            >
-                              <textarea
-                                id="inline-custom-request"
-                                value={customRequest}
-                                onChange={(event) => {
-                                  setCustomRequest(event.target.value);
-                                  if (customRequestError) {
-                                    setCustomRequestError('');
-                                  }
-                                }}
-                                placeholder="Add a specific change (e.g. football field)"
-                                className="inline-suggest-custom-input"
-                                maxLength={MAX_REQUEST_LENGTH}
-                                rows={1}
-                                aria-label="Custom suggestion request"
-                              />
+                          <div className="prompt-card__header-actions">
+                            {!isEditing ? (
                               <button
-                                type="submit"
-                                className="inline-suggest-cta"
-                                disabled={isCustomRequestDisabled}
-                                aria-busy={isCustomLoading}
+                                type="button"
+                                onClick={handleEditClick}
+                                disabled={isOptimizing}
+                                className="prompt-card__action-button"
+                                aria-label="Edit prompt"
+                                title="Edit prompt"
                               >
-                                {isCustomLoading ? 'Applying...' : 'Apply'}
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span>Edit</span>
                               </button>
-                            </form>
-                            {customRequestError && (
-                              <div className="inline-suggest-custom-error" role="alert">
-                                {customRequestError}
+                            ) : (
+                              <div className="prompt-card__action-group">
+                                <button
+                                  type="button"
+                                  onClick={handleCancel}
+                                  disabled={isOptimizing}
+                                  className="prompt-card__action-button"
+                                  aria-label="Cancel editing"
+                                  title="Cancel editing"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                  <span>Cancel</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleUpdate}
+                                  disabled={isReoptimizeDisabled}
+                                  className="prompt-card__action-primary"
+                                  aria-label="Update prompt"
+                                  title="Update and re-optimize (Cmd/Ctrl+Enter)"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  <span>Update</span>
+                                </button>
                               </div>
                             )}
                           </div>
-
-                          {isInlineError && (
-                            <div className="inline-suggest-error" role="alert">
-                              {inlineErrorMessage}
-                            </div>
-                          )}
-
-                          {isInlineLoading && (
-                            <div className="inline-suggest-list">
-                              <div className="skeleton-row" />
-                              <div className="skeleton-row" />
-                              <div className="skeleton-row" />
-                            </div>
-                          )}
-
-                          {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
-                            <div className="inline-suggest-list" ref={suggestionsListRef}>
-                              {inlineSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={suggestion.key}
-                                  data-index={index}
-                                  data-selected={
-                                    activeSuggestionIndex === index ? 'true' : 'false'
-                                  }
-                                  className="inline-suggest-item"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onMouseEnter={() => {
-                                    interactionSourceRef.current = 'mouse';
-                                    setActiveSuggestionIndex(index);
-                                  }}
-                                  onClick={() => {
-                                    handleSuggestionClickWithFeedback(suggestion.item);
-                                    closeInlinePopover();
-                                  }}
-                                  role="button"
-                                  tabIndex={0}
-                                >
-                                  <div className="inline-suggest-text">{suggestion.text}</div>
-                                  {index === 0 ? (
-                                    <span className="inline-suggest-badge" data-accent="true">
-                                      Best match
-                                    </span>
-                                  ) : suggestion.meta ? (
-                                    <div className="inline-suggest-meta">{suggestion.meta}</div>
-                                  ) : null}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {isInlineEmpty && (
-                            <div className="inline-suggest-empty">No suggestions yet.</div>
-                          )}
-
-                          <div className="inline-suggest-footer">
-                            <div className="inline-suggest-footnote">
-                              {selectionLabel
-                                ? `Replace "${selectionLabel}"`
-                                : 'Replace selection'}
-                            </div>
-                            <div className="inline-suggest-actions">
-                              <button
-                                type="button"
-                                className="inline-suggest-cta"
-                                onClick={closeInlinePopover}
-                              >
-                                Close
-                              </button>
-                              <button
-                                type="button"
-                                className="inline-suggest-cta"
-                                data-primary="true"
-                                onClick={() => {
-                                  handleApplyActiveSuggestion();
-                                  closeInlinePopover();
-                                }}
-                                disabled={!suggestionCount}
-                              >
-                                Apply
-                              </button>
-                            </div>
-                          </div>
                         </div>
-                      </>
-                    )}
-                    {enableMLHighlighting &&
-                      !outlineOverlayActive &&
-                      hoveredSpanId &&
-                      lockButtonPosition &&
-                      !isOutputLoading && (
-                      <button
-                        ref={lockButtonRef}
-                        type="button"
-                        onClick={handleToggleLock}
-                        onMouseEnter={cancelHideLockButton}
-                        onMouseLeave={handleLockButtonMouseLeave}
-                        onMouseDown={(e) => e.preventDefault()}
-                        className="prompt-lock-button"
-                        style={{
-                          top: `${lockButtonPosition.top}px`,
-                          left: `${lockButtonPosition.left}px`,
-                        }}
-                        data-locked={isHoveredLocked ? 'true' : 'false'}
-                        aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                        title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                        aria-pressed={isHoveredLocked}
-                      >
-                        {isHoveredLocked ? (
-                          <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
-                        ) : (
-                          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+
+                        {showVideoPreview && (
+                          <div className="prompt-card__chips" aria-label="Prompt controls">
+                            <div className="prompt-chip">
+                              <span className="prompt-chip__label">Model</span>
+                              <ModelSelectorDropdown
+                                selectedModel={selectedModel}
+                                onModelChange={handleModelChange}
+                                disabled={isOptimizing}
+                                variant="pillDark"
+                              />
+                            </div>
+
+                            {aspectRatioInfo && (
+                              <div className="prompt-chip">
+                                <span className="prompt-chip__label">Aspect</span>
+                                {renderDropdown(
+                                  aspectRatioInfo,
+                                  'aspect_ratio',
+                                  'Aspect Ratio',
+                                  isOptimizing
+                                )}
+                              </div>
+                            )}
+
+                            {durationInfo && (
+                              <div className="prompt-chip">
+                                <span className="prompt-chip__label">Duration</span>
+                                {renderDropdown(
+                                  durationInfo,
+                                  'duration_s',
+                                  'Duration',
+                                  isOptimizing
+                                )}
+                              </div>
+                            )}
+
+                            {fpsInfo && (
+                              <div className="prompt-chip">
+                                <span className="prompt-chip__label">FPS</span>
+                                {renderDropdown(
+                                  fpsInfo,
+                                  'fps',
+                                  'Frame Rate',
+                                  isOptimizing
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
-                      </button>
-                    )}
-                    {isOutputLoading && (
-                      <div
-                        className="prompt-editor-loading"
-                        role="status"
-                        aria-live="polite"
-                        aria-label="Optimizing prompt"
-                      >
-                        <LoadingDots size={3} color="rgb(163, 163, 163)" />
                       </div>
-                    )}
-                  </div>
-              </div>
-
-              {/* Action buttons floating below prompt content, aligned right */}
-              {normalizedDisplayedPrompt && (
-                <PromptActions
-                  onCopy={handleCopy}
-                  onExport={handleExport}
-                  onCreateNew={onCreateNew}
-                  onShare={handleShare}
-                  copied={copied}
-                  shared={shared}
-                  showExportMenu={showExportMenu}
-                  onToggleExportMenu={setShowExportMenu}
-                  showLegend={showLegend}
-                  onToggleLegend={setShowLegend}
-                  onUndo={onUndo}
-                  onRedo={onRedo}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  primaryVisible={showPrimaryActions}
-                />
-              )}
-            </div>
-          </div>
-
-          {showVideoPanel && (
-            <div className="prompt-band prompt-band--video">
-              <div className="prompt-band__content prompt-canvas-content-wrapper">
-                <div
-                  ref={videoPanelRef}
-                  className="prompt-card prompt-card--video video-generation-panel"
-                >
-                  <div className="pc-video-panel">
-                    <div className="pc-video-panel__eyebrow">Video Generation</div>
-                    <button
-                      type="button"
-                      onClick={handleJumpToPromptEditor}
-                      disabled={isOptimizing}
-                      className="pc-video-panel__prompt"
-                      title={promptEcho}
-                      aria-label="Jump to prompt editor"
-                    >
-                      {promptEcho || '—'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleGenerateVideoPreview}
-                      disabled={!videoPreviewPrompt.trim() || isVideoPreviewGenerating}
-                      className="pc-video-panel__cta"
-                      aria-label="Generate preview"
-                    >
-                      <span className="pc-video-panel__cta-label">Generate Preview</span>
-                      <span className="pc-video-panel__cta-sub">
-                        Validates framing, lighting, and motion
-                      </span>
-                    </button>
-
-                    <div className="pc-video-panel__stage-label">Preview Stage</div>
-                    <div className="pc-video-panel__stage">
-                      <VideoPreview
-                        prompt={videoPreviewPrompt}
-                        aspectRatio={effectiveAspectRatio}
-                        model={selectedModel}
-                        generationParams={generationParams}
-                        {...(resolvedVideoInputReference
-                          ? { inputReference: resolvedVideoInputReference }
-                          : {})}
-                        isVisible={true}
-                        seedVideoUrl={seedVideoUrl}
-                        generateRequestId={videoGenerateRequestId}
-                        lastGeneratedAt={videoLastGeneratedAt}
-                        onPreviewGenerated={handleVideoPreviewGenerated}
-                        onLoadingChange={setVideoPreviewGenerating}
-                        onKeepRefining={handleKeepRefiningFromPreview}
-                        onRefinePrompt={handleSomethingOffFromPreview}
-                      />
+                      <div className="prompt-card__body">
+                        <label htmlFor="original-prompt-input" className="sr-only">
+                          Input prompt
+                        </label>
+                        <textarea
+                          ref={textareaRef}
+                          id="original-prompt-input"
+                          value={inputPrompt}
+                          onChange={handleInputPromptChange}
+                          onKeyDown={handleInputPromptKeyDown}
+                          placeholder="Describe your shot..."
+                          rows={3}
+                          readOnly={isInputLocked}
+                          className="prompt-input prompt-input--original"
+                          aria-label="Original prompt input"
+                          aria-readonly={isInputLocked}
+                          aria-busy={isOptimizing}
+                        />
+                      </div>
                     </div>
+                  </div>
+                </div>
 
-                    <details
-                      className="pc-video-panel__advanced"
-                      data-disabled={isOptimizing ? 'true' : 'false'}
+                <div
+                  className="prompt-band prompt-band--optimized"
+                  data-loading={isOutputLoading}
+                  data-has-content={!!normalizedDisplayedPrompt}
+                >
+                  <div className="prompt-band__content prompt-canvas-content-wrapper">
+                    <div
+                      className="prompt-card prompt-card--optimized"
+                      data-settled={normalizedDisplayedPrompt ? 'true' : 'false'}
                     >
-                      <summary className="pc-video-panel__advanced-summary">
-                        Advanced Controls
-                      </summary>
-                      <div className="pc-video-panel__advanced-inner">
-                        <div className="pc-video-advanced-row">
-                          <div className="pc-video-advanced-label">Model</div>
-                          <ModelSelectorDropdown
-                            selectedModel={selectedModel}
-                            onModelChange={handleModelChange}
-                            disabled={isOptimizing}
-                            variant="pillDark"
-                          />
+                      <div className="prompt-output-header">
+                        <div className="prompt-output-title">
+                          <div className="prompt-output-label">Optimized</div>
+                          <div className="prompt-output-subtitle">Live rewrite + highlights</div>
                         </div>
-
-                        {aspectRatioInfo && (
-                          <div className="pc-video-advanced-row">
-                            <div className="pc-video-advanced-label">Aspect</div>
-                            {renderPills(
-                              aspectRatioInfo,
-                              'aspect_ratio',
-                              'Aspect Ratio',
-                              isOptimizing
+                        <div className="prompt-output-actions">
+                          <span
+                            className="prompt-output-live"
+                            data-state={isOutputFocused ? 'editing' : 'live'}
+                          >
+                            {isOutputFocused ? 'Editing' : 'LIVE'}
+                          </span>
+                          <button
+                            type="button"
+                            className="po-action-btn"
+                            onClick={handleCopy}
+                          >
+                            {copied ? 'Copied' : 'Copy'}
+                          </button>
+                          <button
+                            type="button"
+                            className="po-action-btn"
+                            onClick={() => setShowDiff(true)}
+                          >
+                            Diff
+                          </button>
+                          <div className="po-action-menu" ref={exportMenuRef}>
+                            <button
+                              type="button"
+                              className="po-action-btn"
+                              onClick={() => setShowExportMenu(!showExportMenu)}
+                              aria-expanded={showExportMenu}
+                            >
+                              Export
+                            </button>
+                            {showExportMenu && (
+                              <div
+                                className="po-action-menu__popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                                role="menu"
+                              >
+                                <button type="button" onClick={() => handleExport('text')} role="menuitem">
+                                  Export .txt
+                                </button>
+                                <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
+                                  Export .md
+                                </button>
+                                <button type="button" onClick={() => handleExport('json')} role="menuitem">
+                                  Export .json
+                                </button>
+                              </div>
                             )}
                           </div>
-                        )}
+                          <button
+                            type="button"
+                            className="po-action-icon"
+                            onClick={handleShare}
+                            aria-label="Share prompt"
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="po-action-icon"
+                            onClick={onUndo}
+                            disabled={!canUndo}
+                            aria-label="Undo"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="po-action-icon"
+                            onClick={onRedo}
+                            disabled={!canRedo}
+                            aria-label="Redo"
+                          >
+                            <RotateCw className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
 
-                        {durationInfo && (
-                          <div className="pc-video-advanced-row">
-                            <div className="pc-video-advanced-label">Duration</div>
-                            {renderPills(
-                              durationInfo,
-                              'duration_s',
-                              'Duration',
-                              isOptimizing
-                            )}
-                          </div>
-                        )}
-
-                        {fpsInfo && (
-                          <div className="pc-video-advanced-row">
-                            <div className="pc-video-advanced-label">FPS</div>
-                            {renderPills(
-                              fpsInfo,
-                              'fps',
-                              'Frame Rate',
-                              isOptimizing
-                            )}
-                          </div>
-                        )}
-
-                        {allowsVideoInputReference && (
-                          <div className="pc-video-advanced-row">
-                            <div className="pc-video-advanced-label">Reference</div>
-                            <input
-                              type="url"
-                              value={videoInputReference}
-                              onChange={(event) => setVideoInputReference(event.target.value)}
-                              placeholder="Reference image URL (optional)"
-                              className="pc-video-advanced-input"
-                              disabled={isOptimizing}
-                              aria-label="Reference image URL (optional)"
+                      <div
+                        className="prompt-editor-wrapper"
+                        aria-busy={isOutputLoading}
+                        ref={editorWrapperRef}
+                      >
+                        <PromptEditor
+                          ref={editorRef as React.RefObject<HTMLDivElement>}
+                          onTextSelection={handleTextSelection}
+                          onHighlightClick={handleHighlightClick}
+                          onHighlightMouseDown={handleHighlightMouseDown}
+                          onHighlightMouseEnter={handleHighlightMouseEnter}
+                          onHighlightMouseLeave={handleHighlightMouseLeave}
+                          onCopyEvent={handleCopyEvent}
+                          onInput={handleInput}
+                          onFocus={handleOutputFocus}
+                          onBlur={handleOutputBlur}
+                        />
+                        <div
+                          ref={outputLocklineRef}
+                          className="prompt-output-lockline"
+                          data-active={stageIsGenerating ? 'true' : 'false'}
+                          aria-hidden="true"
+                        />
+                        {/* Inline suggestions popover (anchored to selected span) */}
+                        {tokenPopover && (
+                          <>
+                            <div
+                              className="inline-suggest-backdrop po-backdrop--local po-animate-fade-in"
+                              aria-hidden="true"
                             />
+                            <div
+                              ref={tokenPopoverRef}
+                              className="inline-suggest-popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                              data-open="true"
+                              data-placement={tokenPopover.placement}
+                              style={
+                                {
+                                  left: tokenPopover.left,
+                                  top: tokenPopover.top,
+                                  '--arrow-x': `${tokenPopover.arrowLeft}px`,
+                                } as React.CSSProperties
+                              }
+                              role="dialog"
+                              aria-label="Suggestions"
+                            >
+                              <div className="inline-suggest-arrow" aria-hidden="true" />
+
+                              <div className="inline-suggest-header">
+                                <div className="inline-suggest-title">
+                                  Suggestions
+                                  <span className="inline-suggest-pill">{suggestionCount}</span>
+                                </div>
+                                <div className="inline-suggest-keys" aria-hidden="true">
+                                  <span className="kbd">Up</span>
+                                  <span className="kbd">Down</span>
+                                  <span className="kbd">Enter</span>
+                                  <span className="kbd">Esc</span>
+                                </div>
+                              </div>
+
+                              <div className="inline-suggest-divider" />
+
+                              <div className="inline-suggest-custom">
+                                <form
+                                  className="inline-suggest-custom-form"
+                                  onSubmit={handleCustomRequestSubmit}
+                                >
+                                  <textarea
+                                    id="inline-custom-request"
+                                    value={customRequest}
+                                    onChange={(event) => {
+                                      setCustomRequest(event.target.value);
+                                      if (customRequestError) {
+                                        setCustomRequestError('');
+                                      }
+                                    }}
+                                    placeholder="Add a specific change (e.g. football field)"
+                                    className="inline-suggest-custom-input"
+                                    maxLength={MAX_REQUEST_LENGTH}
+                                    rows={1}
+                                    aria-label="Custom suggestion request"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="inline-suggest-cta"
+                                    disabled={isCustomRequestDisabled}
+                                    aria-busy={isCustomLoading}
+                                  >
+                                    {isCustomLoading ? 'Applying...' : 'Apply'}
+                                  </button>
+                                </form>
+                                {customRequestError && (
+                                  <div className="inline-suggest-custom-error" role="alert">
+                                    {customRequestError}
+                                  </div>
+                                )}
+                              </div>
+
+                              {isInlineError && (
+                                <div className="inline-suggest-error" role="alert">
+                                  {inlineErrorMessage}
+                                </div>
+                              )}
+
+                              {isInlineLoading && (
+                                <div className="inline-suggest-list">
+                                  <div className="skeleton-row" />
+                                  <div className="skeleton-row" />
+                                  <div className="skeleton-row" />
+                                </div>
+                              )}
+
+                              {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
+                                <div className="inline-suggest-list" ref={suggestionsListRef}>
+                                  {inlineSuggestions.map((suggestion, index) => (
+                                    <div
+                                      key={suggestion.key}
+                                      data-index={index}
+                                      data-selected={
+                                        activeSuggestionIndex === index ? 'true' : 'false'
+                                      }
+                                      className="inline-suggest-item po-row po-row--interactive"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onMouseEnter={() => {
+                                        interactionSourceRef.current = 'mouse';
+                                        setActiveSuggestionIndex(index);
+                                      }}
+                                      onClick={() => {
+                                        handleSuggestionClickWithFeedback(suggestion.item);
+                                        closeInlinePopover();
+                                      }}
+                                      role="button"
+                                      tabIndex={0}
+                                    >
+                                      <div className="inline-suggest-text">{suggestion.text}</div>
+                                      {index === 0 ? (
+                                        <span
+                                          className="inline-suggest-badge po-badge po-badge--best"
+                                          data-accent="true"
+                                        >
+                                          Best match
+                                        </span>
+                                      ) : suggestion.meta ? (
+                                        <div className="inline-suggest-meta">{suggestion.meta}</div>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {isInlineEmpty && (
+                                <div className="inline-suggest-empty">No suggestions yet.</div>
+                              )}
+
+                              <div className="inline-suggest-footer">
+                                <div className="inline-suggest-footnote">
+                                  {selectionLabel
+                                    ? `Replace "${selectionLabel}"`
+                                    : 'Replace selection'}
+                                </div>
+                                <div className="inline-suggest-actions">
+                                  <button
+                                    type="button"
+                                    className="inline-suggest-cta"
+                                    onClick={closeInlinePopover}
+                                  >
+                                    Close
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inline-suggest-cta"
+                                    data-primary="true"
+                                    onClick={() => {
+                                      handleApplyActiveSuggestion();
+                                      closeInlinePopover();
+                                    }}
+                                    disabled={!suggestionCount}
+                                  >
+                                    Apply
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {enableMLHighlighting &&
+                          !outlineOverlayActive &&
+                          hoveredSpanId &&
+                          lockButtonPosition &&
+                          !isOutputLoading && (
+                          <button
+                            ref={lockButtonRef}
+                            type="button"
+                            onClick={handleToggleLock}
+                            onMouseEnter={cancelHideLockButton}
+                            onMouseLeave={handleLockButtonMouseLeave}
+                            onMouseDown={(e) => e.preventDefault()}
+                            className="prompt-lock-button po-fab po-animate-pop-in"
+                            style={{
+                              top: `${lockButtonPosition.top}px`,
+                              left: `${lockButtonPosition.left}px`,
+                            }}
+                            data-locked={isHoveredLocked ? 'true' : 'false'}
+                            aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                            title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                            aria-pressed={isHoveredLocked}
+                          >
+                            {isHoveredLocked ? (
+                              <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                            ) : (
+                              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
+                          </button>
+                        )}
+                        {isOutputLoading && (
+                          <div
+                            className="prompt-editor-loading"
+                            role="status"
+                            aria-live="polite"
+                            aria-label="Optimizing prompt"
+                          >
+                            <LoadingDots size={3} color="rgb(163, 163, 163)" />
                           </div>
                         )}
                       </div>
-                    </details>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <section className="po-runs">
+                <div className="po-runs__header">
+                  <div>
+                    <div className="po-runs__title">Runs</div>
+                    <div className="po-runs__subtitle">
+                      Preview + final generations (history, status, ETA)
+                    </div>
+                  </div>
+                  <span className="po-runs__badge">Queue</span>
+                </div>
+
+                <div className="po-runs__list">
+                  <div
+                    className="po-run-card"
+                    data-status={previewStatus.toLowerCase()}
+                    data-variant="preview"
+                  >
+                    <div className="po-run-card__main">
+                      <div className="po-run-card__title">Preview Run</div>
+                      <div className="po-run-card__meta">
+                        Draft model: {target.label} · {aspectLabel} · {durationLabel} · {fpsLabel}
+                      </div>
+                    </div>
+                    <div className="po-run-card__status">
+                      <span className="po-status-pill" data-status={previewStatus.toLowerCase()}>
+                        {previewStatus}
+                      </span>
+                      <span className="po-run-card__eta">{previewMetaDetail}</span>
+                    </div>
+                    <div className="po-run-card__actions">
+                      <div className="po-run-card__links">
+                        <button type="button" disabled={previewStatus !== 'Ready'}>
+                          Retry
+                        </button>
+                        <button type="button" disabled={!canCompareRuns}>
+                          Compare
+                        </button>
+                        <button type="button" disabled={previewStatus === 'Idle'}>
+                          Logs
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateVisualPreview}
+                        disabled={!hasPreviewSource || isVisualPreviewGenerating}
+                        className="po-run-card__cta"
+                      >
+                        Generate Preview
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="po-run-card" data-status={finalStatus.toLowerCase()}>
+                    <div className="po-run-card__main">
+                      <div className="po-run-card__title">Final Render</div>
+                      <div className="po-run-card__meta">
+                        Quality: High · {aspectLabel} · {durationLabel} · {fpsLabel}
+                      </div>
+                    </div>
+                    <div className="po-run-card__status">
+                      <span className="po-status-pill" data-status={finalStatus.toLowerCase()}>
+                        {finalStatus}
+                      </span>
+                      <span className="po-run-card__eta">{finalMetaDetail}</span>
+                    </div>
+                    <div className="po-run-card__actions">
+                      <div className="po-run-card__links">
+                        <button type="button" disabled={finalStatus !== 'Ready'}>
+                          Retry
+                        </button>
+                        <button type="button" disabled={!canCompareRuns}>
+                          Compare
+                        </button>
+                        <button type="button" disabled={finalStatus === 'Idle'}>
+                          Logs
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateRailVideoPreview}
+                        disabled={!hasVideoPreviewSource || isRailVideoPreviewGenerating}
+                        className="po-run-card__cta"
+                      >
+                        Generate Final
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
-          )}
           </div>
         </div>
 
-        {/* Right Rail - Drafting & Refinement */}
-        <div
-          className="prompt-canvas-right-rail flex flex-col overflow-hidden"
-          style={
-            {
-              background:
-                'radial-gradient(120% 80% at 18% 0%, rgba(109, 94, 243, 0.22), transparent 58%), radial-gradient(120% 80% at 88% 0%, rgba(255, 176, 32, 0.14), transparent 62%), linear-gradient(180deg, #0E0F11 0%, #0B0C0E 100%)',
-              // Local Geist token overrides so existing components render correctly in this dark panel.
-              '--geist-background': '#0E0F11',
-              '--geist-foreground': '#F5F6F7',
-              '--accents-1': '#111318',
-              '--accents-2': '#1C1F24',
-              '--accents-3': '#2A2F36',
-              '--accents-4': '#5C616A',
-              '--accents-5': '#7C818A',
-              '--accents-6': '#8B9098',
-              '--accents-7': '#C9CDD3',
-              '--accents-8': '#F5F6F7',
-            } as React.CSSProperties
-          }
-        >
-          {/* Header */}
-          <div className="prompt-right-rail__header">
-            <div className="prompt-right-rail__eyebrow">Preview &amp; Refine</div>
-          </div>
-
-          {/* Preview Module */}
-          <div className="prompt-right-rail__preview-module">
-            <div className="prompt-right-rail__preview-top">
-              <div className="prompt-right-rail__section-label">Preview</div>
-            </div>
-
-            <div className="prompt-right-rail__preview-frame">
-              <VisualPreview
-                prompt={previewSource}
-                aspectRatio={effectiveAspectRatio}
-                isVisible={true}
-                seedImageUrl={seedImageUrl}
-                generateRequestId={visualGenerateRequestId}
-                lastGeneratedAt={visualLastGeneratedAt}
-                onPreviewGenerated={handleVisualPreviewGenerated}
-                onLoadingChange={setVisualPreviewGenerating}
-                onKeepRefining={handleKeepRefiningFromPreview}
-                onRefinePrompt={handleSomethingOffFromPreview}
-                showActions={false}
-                variant="rail"
-              />
-            </div>
-
-            <div
-              className={`prompt-right-rail__preview-cta${
-                showPreviewMeta ? '' : ' prompt-right-rail__preview-cta--solo'
-              }`}
-            >
-              {showPreviewMeta && (
-                <div className="prompt-right-rail__preview-meta">
-                  {`AR ${effectiveAspectRatio}`}
-                </div>
-              )}
-              <div className="prompt-right-rail__preview-actions">
+        {/* Right Rail - Stage + Inspector */}
+        <div className="prompt-canvas-right-rail">
+          <section className="po-stage">
+            <div className="po-stage__header">
+              <div>
+                <div className="po-stage__title">Stage</div>
+                <div className="po-stage__subtitle">Preview &amp; refine output</div>
+              </div>
+              <div className="po-stage__tabs">
                 <button
                   type="button"
-                  onClick={handleGenerateVisualPreview}
-                  disabled={!hasPreviewSource || isVisualPreviewGenerating}
-                  className="prompt-right-rail__preview-button"
+                  onClick={() => setStageTab('preview')}
+                  data-active={stageTab === 'preview' ? 'true' : 'false'}
                 >
-                  Generate
+                  Preview
                 </button>
-                <div className="prompt-right-rail__preview-meta-secondary">
-                  {previewMetaDetail}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setStageTab('final')}
+                  data-active={stageTab === 'final' ? 'true' : 'false'}
+                >
+                  Final
+                </button>
               </div>
             </div>
-          </div>
 
-          {showVideoPreview && (
-            <div className="prompt-right-rail__preview-module">
-              <div className="prompt-right-rail__preview-top">
-                <div className="prompt-right-rail__section-label">Video Preview</div>
+            <div className="po-stage__frame">
+              <div className="po-stage__media">
+                {stageTab === 'preview' ? (
+                  <VisualPreview
+                    prompt={previewSource}
+                    aspectRatio={effectiveAspectRatio}
+                    isVisible={true}
+                    seedImageUrl={seedImageUrl}
+                    generateRequestId={visualGenerateRequestId}
+                    lastGeneratedAt={visualLastGeneratedAt}
+                    onPreviewGenerated={handleVisualPreviewGenerated}
+                    onLoadingChange={setVisualPreviewGenerating}
+                    onKeepRefining={handleKeepRefiningFromPreview}
+                    onRefinePrompt={handleSomethingOffFromPreview}
+                    showActions={false}
+                    variant="rail"
+                  />
+                ) : (
+                  <VideoPreview
+                    prompt={videoPreviewPrompt}
+                    aspectRatio={effectiveAspectRatio}
+                    model={RAIL_VIDEO_PREVIEW_MODEL}
+                    generationParams={generationParams}
+                    {...(resolvedVideoInputReference
+                      ? { inputReference: resolvedVideoInputReference }
+                      : {})}
+                    isVisible={showVideoPreview}
+                    seedVideoUrl={seedVideoUrl}
+                    generateRequestId={railVideoGenerateRequestId}
+                    lastGeneratedAt={railVideoLastGeneratedAt}
+                    onPreviewGenerated={handleRailVideoPreviewGenerated}
+                    onLoadingChange={setRailVideoPreviewGenerating}
+                    onKeepRefining={handleKeepRefiningFromPreview}
+                    onRefinePrompt={handleSomethingOffFromPreview}
+                  />
+                )}
               </div>
 
-              <div className="prompt-right-rail__preview-frame">
-                <VideoPreview
-                  prompt={videoPreviewPrompt}
-                  aspectRatio={effectiveAspectRatio}
-                  model={RAIL_VIDEO_PREVIEW_MODEL}
-                  generationParams={generationParams}
-                  {...(resolvedVideoInputReference
-                    ? { inputReference: resolvedVideoInputReference }
-                    : {})}
-                  isVisible={showVideoPreview}
-                  seedVideoUrl={seedVideoUrl}
-                  generateRequestId={railVideoGenerateRequestId}
-                  lastGeneratedAt={railVideoLastGeneratedAt}
-                  onPreviewGenerated={handleRailVideoPreviewGenerated}
-                  onLoadingChange={setRailVideoPreviewGenerating}
-                  onKeepRefining={handleKeepRefiningFromPreview}
-                  onRefinePrompt={handleSomethingOffFromPreview}
+              {!stageHasOutput && !stageIsGenerating && (
+                <div className="po-stage__empty">
+                  <div className="po-stage__empty-title">Stage is set</div>
+                  <div className="po-stage__empty-sub">
+                    {stageTab === 'preview'
+                      ? 'Generate a preview to validate framing, lighting, and mood.'
+                      : 'Generate the final render when you are ready.'}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="po-stage__footer">
+              <div className="po-stage__meta">
+                {aspectLabel} · {target.label}
+              </div>
+              <button
+                type="button"
+                onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
+                disabled={stageCtaDisabled}
+                className="po-stage__cta"
+              >
+                {stageCtaLabel}
+              </button>
+            </div>
+          </section>
+
+          <section className="po-inspector">
+            <div className="po-inspector__header">
+              <div className="po-inspector__title">Controls</div>
+              <div className="po-inspector__subtitle">Draft model &amp; settings</div>
+            </div>
+
+            <div className="po-inspector__body">
+              <div className="po-inspector__group">
+                <label>Draft model</label>
+                <ModelSelectorDropdown
+                  selectedModel={selectedModel}
+                  onModelChange={handleModelChange}
+                  disabled={isOptimizing}
+                  variant="pillDark"
                 />
               </div>
 
-              <div
-                className={`prompt-right-rail__preview-cta${
-                  showPreviewMeta ? '' : ' prompt-right-rail__preview-cta--solo'
-                }`}
-              >
-                {showPreviewMeta && (
-                  <div className="prompt-right-rail__preview-meta">
-                    {`AR ${effectiveAspectRatio}`}
-                  </div>
-                )}
-                <div className="prompt-right-rail__preview-actions">
-                  <button
-                    type="button"
-                    onClick={handleGenerateRailVideoPreview}
-                    disabled={!hasVideoPreviewSource || isRailVideoPreviewGenerating}
-                    className="prompt-right-rail__preview-button"
-                  >
-                    Generate
-                  </button>
-                  <div className="prompt-right-rail__preview-meta-secondary">
-                    {previewMetaDetail}
-                  </div>
+              <div className="po-inspector__group">
+                <label>Aspect</label>
+                {aspectRatioInfo
+                  ? renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect Ratio', isOptimizing)
+                  : <span className="po-inspector__hint">Auto</span>}
+              </div>
+
+              <div className="po-inspector__row">
+                <div className="po-inspector__group">
+                  <label>Duration</label>
+                  {durationInfo
+                    ? renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)
+                    : <span className="po-inspector__hint">Auto</span>}
+                </div>
+
+                <div className="po-inspector__group">
+                  <label>FPS</label>
+                  {fpsInfo
+                    ? renderDropdown(fpsInfo, 'fps', 'Frame Rate', isOptimizing)
+                    : <span className="po-inspector__hint">Auto</span>}
                 </div>
               </div>
             </div>
-          )}
-
+          </section>
         </div>
       </div>
+      {showDiff && (
+        <div
+          className="po-diff po-backdrop po-animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Prompt diff"
+          onClick={() => setShowDiff(false)}
+        >
+          <div
+            className="po-diff__card po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="po-diff__header">
+              <div>
+                <div className="po-diff__title">Diff</div>
+                <div className="po-diff__subtitle">Input vs optimized output</div>
+              </div>
+              <button
+                type="button"
+                className="po-diff__close"
+                onClick={() => setShowDiff(false)}
+                aria-label="Close diff"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="po-diff__body">
+              <div className="po-diff__panel">
+                <div className="po-diff__label">Input</div>
+                <pre>{inputPrompt || '—'}</pre>
+              </div>
+              <div className="po-diff__panel">
+                <div className="po-diff__label">Optimized</div>
+                <pre>{normalizedDisplayedPrompt || '—'}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

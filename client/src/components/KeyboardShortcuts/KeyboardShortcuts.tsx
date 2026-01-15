@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { X, Command, Keyboard } from 'lucide-react';
-import { Button } from '../Button';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { X, Command, Search } from 'lucide-react';
 import { SHORTCUTS, formatShortcut, isMac } from './shortcuts.config';
+import './KeyboardShortcuts.css';
 
 interface KeyboardShortcutsProps {
   isOpen: boolean;
@@ -17,6 +17,9 @@ export default function KeyboardShortcuts({
   isOpen,
   onClose,
 }: KeyboardShortcutsProps): React.ReactElement | null {
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent): void => {
@@ -32,94 +35,115 @@ export default function KeyboardShortcuts({
     return undefined;
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setQuery('');
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }, [isOpen]);
+
+  const filteredShortcuts = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return SHORTCUTS;
+    return SHORTCUTS
+      .map((category) => {
+        const items = category.items.filter((shortcut) => {
+          const haystack = `${shortcut.description} ${shortcut.keys.join(' ')}`.toLowerCase();
+          return haystack.includes(trimmed);
+        });
+        return { ...category, items };
+      })
+      .filter((category) => category.items.length > 0);
+  }, [query]);
+
+  const totalMatches = useMemo(
+    () => filteredShortcuts.reduce((sum, category) => sum + category.items.length, 0),
+    [filteredShortcuts]
+  );
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="modal-backdrop"
+      className="po-command modal-backdrop po-backdrop po-animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="shortcuts-title"
+      aria-labelledby="command-title"
     >
-      <div className="modal-content-lg animate-scale-in" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="card-header flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
-          <div className="flex items-center gap-3">
-            <Keyboard className="h-6 w-6 text-primary-600" aria-hidden="true" />
-            <h2 id="shortcuts-title" className="text-xl font-bold text-neutral-900">
-              Keyboard Shortcuts
-            </h2>
+      <div
+        className="po-command__card po-modal po-surface po-surface--grad po-animate-pop-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="po-command__accent" aria-hidden="true" />
+        <div className="po-command__header">
+          <div className="po-command__title">
+            <Command className="h-4 w-4" aria-hidden="true" />
+            <span id="command-title">Command Palette</span>
           </div>
-          <Button
-            onClick={onClose}
-            svgOnly
-            variant="secondary"
-            size="small"
-            prefix={<X className="h-5 w-5" />}
-            aria-label="Close keyboard shortcuts"
+          <button type="button" className="po-command__close" onClick={onClose} aria-label="Close command palette">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="po-command__search" role="search">
+          <Search className="h-4 w-4" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search actions"
+            aria-label="Search actions"
           />
         </div>
 
-        {/* Content */}
-        <div className="card-body max-h-[70vh] overflow-y-auto">
-          <div className="space-y-8">
-            {SHORTCUTS.map((category, idx) => (
-              <section key={idx}>
-                <h3 className="text-sm font-bold text-neutral-600 uppercase tracking-wider mb-4">
-                  {category.category}
-                </h3>
-                <div className="space-y-2">
-                  {category.items.map((shortcut, itemIdx) => (
-                    <div
-                      key={itemIdx}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50 transition-colors duration-150"
-                    >
-                      <span className="text-sm text-neutral-700">{shortcut.description}</span>
-                      <div className="flex items-center gap-1">
-                        {formatShortcut(shortcut.keys).map((key, keyIdx) => (
-                          <React.Fragment key={keyIdx}>
-                            <kbd
-                              className="
-                                inline-flex items-center justify-center
-                                min-w-[2rem] h-8 px-2
-                                text-xs font-semibold
-                                bg-white
-                                border-2 border-neutral-300
-                                rounded-md shadow-sm
-                                text-neutral-700
-                              "
-                            >
-                              {key === 'Cmd' || key === 'Ctrl' ? (
-                                <Command className="h-3.5 w-3.5" aria-label={key} />
-                              ) : (
-                                key
+        <div className="po-command__list" role="list">
+          {totalMatches === 0 ? (
+            <div className="po-command__empty">No matches for "{query.trim()}".</div>
+          ) : (
+            filteredShortcuts.map((category) => (
+              <section key={category.category} className="po-command__section" aria-label={category.category}>
+                <div className="po-command__section-title">{category.category}</div>
+                <div className="po-command__items">
+                  {category.items.map((shortcut) => {
+                    const formattedKeys = formatShortcut(shortcut.keys);
+                    return (
+                      <div
+                        key={shortcut.id}
+                        className="po-command__item po-row po-row--interactive"
+                        role="listitem"
+                      >
+                        <span>{shortcut.description}</span>
+                        <div className="po-command__keys" aria-label={`Shortcut: ${shortcut.keys.join(' + ')}`}>
+                          {formattedKeys.map((key, keyIdx) => (
+                            <React.Fragment key={`${shortcut.id}-${key}`}>
+                              <kbd className="po-command__key po-kbd">
+                                {key === 'Cmd' || key === 'Ctrl' ? (
+                                  <Command className="h-3 w-3" aria-label={key} />
+                                ) : (
+                                  key
+                                )}
+                              </kbd>
+                              {keyIdx < formattedKeys.length - 1 && (
+                                <span className="po-command__plus" aria-hidden="true">
+                                  +
+                                </span>
                               )}
-                            </kbd>
-                            {keyIdx < formatShortcut(shortcut.keys).length - 1 && (
-                              <span className="text-neutral-400 mx-1" aria-hidden="true">
-                                +
-                              </span>
-                            )}
-                          </React.Fragment>
-                        ))}
+                            </React.Fragment>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
-            ))}
-          </div>
+            ))
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="card-footer flex items-center justify-between">
-          <p className="text-xs text-neutral-600">
-            {isMac ? 'Using Mac keyboard layout' : 'Using Windows/Linux keyboard layout'}
-          </p>
-          <Button onClick={onClose} variant="primary">
-            Close
-          </Button>
+        <div className="po-command__footer">
+          <span>{isMac ? 'Mac layout' : 'Windows/Linux layout'}</span>
+          <span>{totalMatches} actions</span>
         </div>
       </div>
     </div>
