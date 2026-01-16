@@ -213,7 +213,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     return (
       <div className="pc-preview-bare-grid" aria-label="Preview frames">
         {imageUrls.map((url, index) => (
-          <div key={`${index}-${url ?? 'empty'}`} className="pc-preview-bare-grid__cell">
+          <div key={url ?? `empty-${index}`} className="pc-preview-bare-grid__cell">
             {url ? <img src={url} alt={`Frame ${index + 1}`} /> : null}
           </div>
         ))}

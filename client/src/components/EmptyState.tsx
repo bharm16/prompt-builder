@@ -159,7 +159,7 @@ export default function EmptyState({
             </div>
             <ul className="space-y-2">
               {displayTips.map((tip, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-neutral-600">
+                <li key={tip} className="flex items-start gap-2 text-sm text-neutral-600">
                   <span
                     className="flex-shrink-0 w-5 h-5 flex items-center justify-center bg-primary-100 text-primary-600 rounded-full text-xs font-semibold mt-0.5"
                     aria-hidden="true"
