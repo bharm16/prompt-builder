@@ -3,6 +3,8 @@ import {
   Pencil,
   X,
   Check,
+  Copy,
+  Diff,
   Lock,
   Unlock,
   LayoutGrid,
@@ -64,7 +66,8 @@ import { VersionsPanel } from './components/VersionsPanel';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
 import { VisualPreview, VideoPreview, type PreviewProvider } from '@/features/preview';
-import { ModelSelectorDropdown } from './components/ModelSelectorDropdown';
+import { useModelRegistry } from './hooks/useModelRegistry';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './components/constants';
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
 import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
@@ -218,6 +221,18 @@ export function PromptCanvas({
 
   // Load capabilities schema to access generation controls
   const { schema, target } = useCapabilities(selectedModel);
+  const { models: registryModels } = useModelRegistry();
+
+  const modelOptions = useMemo(() => {
+    if (registryModels.length) return registryModels;
+    return [...AI_MODEL_IDS]
+      .map((id) => ({
+        id,
+        label: AI_MODEL_LABELS[id],
+        provider: AI_MODEL_PROVIDERS[id],
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [registryModels]);
 
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
@@ -278,7 +293,7 @@ export function PromptCanvas({
     (
       info: ReturnType<typeof getFieldInfo>,
       key: string,
-      label: string,
+      ariaLabel: string,
       disabled: boolean
     ) => {
       if (!info) return null;
@@ -289,17 +304,21 @@ export function PromptCanvas({
         return String(val);
       };
 
+      const currentRaw = generationParams?.[key] ?? info.field.default ?? '';
+      const currentDisplay = formatDisplay(currentRaw);
+
       return (
-        <div className="flex items-center">
+        <div className="po-inline-dropdown" data-disabled={disabled ? 'true' : 'false'}>
+          <span className="po-inline-dropdown__value">{currentDisplay}</span>
           <select
-            value={String(generationParams?.[key] ?? info.field.default ?? '')}
+            value={String(currentRaw)}
             onChange={(e) => {
               const val = info.field.type === 'int' ? Number(e.target.value) : e.target.value;
               handleParamChange(key, val);
             }}
             disabled={disabled}
-            className="po-chip-select"
-            aria-label={label}
+            className="po-inline-dropdown__select"
+            aria-label={ariaLabel}
           >
             {info.allowedValues.map((value) => (
               <option key={String(value)} value={String(value)}>
@@ -1658,7 +1677,6 @@ export function PromptCanvas({
                         <div className="prompt-card__header-row">
                           <div className="prompt-card__header-left">
                             <div className="prompt-card__title">Prompt</div>
-                            <div className="prompt-card__subtitle">Input + settings (compact)</div>
                           </div>
 
                           <div className="prompt-card__header-actions">
@@ -1705,55 +1723,35 @@ export function PromptCanvas({
 
                         {showVideoPreview && (
                           <div className="prompt-card__chips chip-row" aria-label="Prompt controls">
-                            <div className="prompt-chip chip">
-                              <span className="chip__dot" aria-hidden="true" />
-                              <span className="prompt-chip__label">Model</span>
-                              <ModelSelectorDropdown
-                                selectedModel={selectedModel}
-                                onModelChange={handleModelChange}
+                            <div className="po-inline-dropdown" data-disabled={isOptimizing ? 'true' : 'false'}>
+                              <span className="po-inline-dropdown__value">
+                                {selectedModel
+                                  ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] ?? selectedModel
+                                  : 'Auto'}
+                              </span>
+                              <select
+                                value={selectedModel ?? ''}
+                                onChange={(e) => handleModelChange(e.target.value)}
                                 disabled={isOptimizing}
-                                variant="pillDark"
-                              />
+                                className="po-inline-dropdown__select"
+                                aria-label="Model"
+                              >
+                                <option value="">Auto (Recommended)</option>
+                                {modelOptions.map((opt) => (
+                                  <option key={opt.id} value={opt.id}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
 
-                            {aspectRatioInfo && (
-                              <div className="prompt-chip chip">
-                                <span className="chip__dot" aria-hidden="true" />
-                                <span className="prompt-chip__label">Aspect</span>
-                                {renderDropdown(
-                                  aspectRatioInfo,
-                                  'aspect_ratio',
-                                  'Aspect Ratio',
-                                  isOptimizing
-                                )}
-                              </div>
-                            )}
+                            {aspectRatioInfo &&
+                              renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', isOptimizing)}
 
-                            {durationInfo && (
-                              <div className="prompt-chip chip">
-                                <span className="chip__dot" aria-hidden="true" />
-                                <span className="prompt-chip__label">Duration</span>
-                                {renderDropdown(
-                                  durationInfo,
-                                  'duration_s',
-                                  'Duration',
-                                  isOptimizing
-                                )}
-                              </div>
-                            )}
+                            {durationInfo &&
+                              renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
 
-                            {fpsInfo && (
-                              <div className="prompt-chip chip">
-                                <span className="chip__dot" aria-hidden="true" />
-                                <span className="prompt-chip__label">FPS</span>
-                                {renderDropdown(
-                                  fpsInfo,
-                                  'fps',
-                                  'Frame Rate',
-                                  isOptimizing
-                                )}
-                              </div>
-                            )}
+                            {fpsInfo && renderDropdown(fpsInfo, 'fps', 'Frame rate', isOptimizing)}
                           </div>
                         )}
                       </div>
@@ -1810,15 +1808,23 @@ export function PromptCanvas({
                               type="button"
                               className="po-action-btn"
                               onClick={handleCopy}
+                              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+                              title={copied ? 'Copied' : 'Copy'}
                             >
-                              {copied ? 'Copied' : 'Copy'}
+                              {copied ? (
+                                <Check className="h-4 w-4" aria-hidden="true" />
+                              ) : (
+                                <Copy className="h-4 w-4" aria-hidden="true" />
+                              )}
                             </button>
                             <button
                               type="button"
                               className="po-action-btn"
                               onClick={() => setShowDiff(true)}
+                              aria-label="Open diff"
+                              title="Diff"
                             >
-                              Diff
+                              <Diff className="h-4 w-4" aria-hidden="true" />
                             </button>
                             <div className="po-action-menu" ref={exportMenuRef}>
                               <button
@@ -1826,8 +1832,10 @@ export function PromptCanvas({
                                 className="po-action-btn"
                                 onClick={() => setShowExportMenu(!showExportMenu)}
                                 aria-expanded={showExportMenu}
+                                aria-label="Export"
+                                title="Export"
                               >
-                                Export
+                                <Download className="h-4 w-4" aria-hidden="true" />
                               </button>
                               {showExportMenu && (
                                 <div

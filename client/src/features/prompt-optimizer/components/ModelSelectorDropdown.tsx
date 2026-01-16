@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Video } from 'lucide-react';
-import { AI_MODEL_LABELS } from './constants';
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
 import { useModelRegistry } from '../hooks/useModelRegistry';
 
 /**
@@ -12,7 +12,8 @@ export const ModelSelectorDropdown = memo<{
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
   variant?: 'default' | 'pill' | 'pillDark';
-}>(({ selectedModel, onModelChange, disabled = false, variant = 'default' }): React.ReactElement => {
+  prefixLabel?: string;
+}>(({ selectedModel, onModelChange, disabled = false, variant = 'default', prefixLabel }): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const { models: availableModels, isLoading } = useModelRegistry();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,19 @@ export const ModelSelectorDropdown = memo<{
   const accentBadgeClass = 'po-badge po-badge--best';
   
   // Find label for current selection
-  const selectedOption = availableModels.find(m => m.id === selectedModel);
+  const fallbackModelOptions = useMemo(() => {
+    return [...AI_MODEL_IDS]
+      .map((id) => ({
+        id,
+        label: AI_MODEL_LABELS[id as keyof typeof AI_MODEL_LABELS] ?? id,
+        provider: AI_MODEL_PROVIDERS[id as keyof typeof AI_MODEL_PROVIDERS] ?? 'unknown',
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, []);
+
+  const effectiveModels = availableModels.length ? availableModels : fallbackModelOptions;
+
+  const selectedOption = effectiveModels.find(m => m.id === selectedModel);
   const currentLabel =
     selectedOption?.label ??
     (selectedModel
@@ -143,22 +156,22 @@ export const ModelSelectorDropdown = memo<{
       <button
         type="button"
         onClick={() => {
-          if (!disabled && !isLoading) {
+          if (!disabled) {
             setIsOpen(!isOpen);
           }
         }}
         ref={buttonRef}
-        disabled={disabled || isLoading}
+        disabled={disabled}
         className="po-model-select"
         data-open={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-label={`Current model: ${currentLabel}`}
-        aria-disabled={disabled || isLoading}
+        aria-label={`${prefixLabel ? `${prefixLabel}. ` : ''}Current model: ${currentLabel}`}
+        aria-disabled={disabled}
+        aria-busy={isLoading}
       >
-        <Video
-          className="po-model-select__icon h-3.5 w-3.5"
-        />
+        {prefixLabel && <span className="po-model-select__prefix">{prefixLabel}</span>}
+        <Video className="po-model-select__icon h-3.5 w-3.5" />
         <span className="po-model-select__label">{isLoading ? 'Loading…' : displayLabel}</span>
         <ChevronDown
           className="po-model-select__chev h-3.5 w-3.5"
@@ -203,7 +216,7 @@ export const ModelSelectorDropdown = memo<{
             </button>
 
             {/* Model Options */}
-            {availableModels.map((option) => {
+            {effectiveModels.map((option) => {
               const isSelected = option.id === selectedModel;
               const meta = resolveModelMeta(option.id);
 
