@@ -118,7 +118,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
         <div className="po-topbar__left">
           <button
             type="button"
-            className="po-topbar__iconbtn icon-btn"
+            className="po-topbar__iconbtn"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
@@ -186,18 +186,18 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__command btn-ghost"
+            className="po-topbar__command"
             aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
             aria-pressed={showShortcuts}
             onClick={() => setShowShortcuts(!showShortcuts)}
           >
             <Command size={14} />
-            <span className="kbd">⌘K</span>
+            <span className="po-kbd">⌘K</span>
           </button>
 
           <button
             type="button"
-            className="po-topbar__btn po-topbar__btn--primary btn-primary"
+            className="po-topbar__btn po-topbar__btn--primary"
             onClick={handleCreateNew}
             aria-label="Create new prompt"
           >
@@ -207,7 +207,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__iconbtn icon-btn"
+            className="po-topbar__iconbtn"
             aria-label={shared ? 'Share link copied' : 'Share prompt'}
             onClick={() => {
               if (currentPromptUuid) {
@@ -223,7 +223,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
           <div className="po-topbar__menu" ref={exportMenuRef}>
             <button
               type="button"
-              className="po-topbar__iconbtn icon-btn"
+              className="po-topbar__iconbtn"
               aria-label="Export prompt"
               aria-expanded={showExportMenu}
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -250,7 +250,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <button
             type="button"
-            className="po-topbar__iconbtn icon-btn"
+            className="po-topbar__iconbtn"
             aria-label={showSettings ? 'Close settings' : 'Open settings'}
             aria-pressed={showSettings}
             onClick={() => setShowSettings(!showSettings)}

@@ -71,7 +71,7 @@ export function useEditorContent({
       }
     } else if (editorRef.current && !displayedPrompt) {
       editorRef.current.innerHTML =
-        '<p style="color: rgb(163, 163, 163); font-size: 0.875rem; font-family: var(--font-geist-sans);">Your optimized prompt will appear here...</p>';
+        '<p style="color: var(--text-muted); font-size: var(--fs-14); line-height: var(--lh-relaxed); font-family: var(--font-sans);">Your optimized prompt will appear here…</p>';
     }
   }, [editorRef, displayedPrompt, formattedHTML]);
 }

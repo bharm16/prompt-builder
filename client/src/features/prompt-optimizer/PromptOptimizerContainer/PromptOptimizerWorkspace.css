@@ -26,10 +26,12 @@
   --shadow-md: 0 12px 32px rgba(0,0,0,0.45);
   --shadow-inset: inset 0 1px 0 rgba(255,255,255,0.06);
 
-  --r-card: 16px;
+  --r-card: 20px;
   --r-input: 14px;
   --r-pill: 999px;
-  --r-chip: 14px;
+  --r-chip: var(--r-pill);
+  --r-kbd: 12px;
+  --r-badge: 12px;
 
   --s-1: 4px;
   --s-2: 8px;
@@ -37,6 +39,10 @@
   --s-4: 16px;
   --s-5: 20px;
   --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 48px;
+  --s-10: 56px;
 
   --fs-12: 12px;
   --fs-13: 13px;
@@ -48,8 +54,8 @@
   --lh-normal: 1.4;
   --lh-relaxed: 1.55;
 
-  --t-fast: 120ms;
-  --t-med: 180ms;
+  --t-fast: var(--dur-2);
+  --t-med: var(--dur-3);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 
@@ -106,35 +112,15 @@
   --font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --fs-00: var(--fs-12);  --lh-00: 16px;
-  --fs-0: var(--fs-13);   --lh-0: 18px;
-  --fs-1: var(--fs-14);   --lh-1: 20px;
-  --fs-2: var(--fs-16);   --lh-2: 22px;
-  --fs-3: var(--fs-18);   --lh-3: 24px;
-  --fs-4: 20px;           --lh-4: 26px;
-  --fs-5: 24px;           --lh-5: 30px;
-
-  /* Spacing + layout */
-  --space-1: var(--s-1);
-  --space-2: var(--s-2);
-  --space-3: var(--s-3);
-  --space-4: var(--s-4);
-  --space-5: var(--s-5);
-  --space-6: var(--s-6);
-  --space-7: 28px;
-  --space-8: 32px;
-  --space-9: 36px;
-  --space-10: 40px;
-
-  --radius-1: 10px;
+  --radius-1: 12px;
   --radius-2: 14px;
-  --radius-3: 16px;
-  --radius-4: 18px;
+  --radius-3: 20px;
+  --radius-4: 20px;
 
-  --topbar-h: 64px;
-  --sidebar-w: 288px;
-  --stage-w: 360px;
-  --gutter: 16px;
+  --topbar-h: 56px;
+  --sidebar-w: calc(var(--pc-rail-w, 72px) + var(--pc-sessions-w, 320px));
+  --stage-w: 380px;
+  --gutter: 12px;
   --page-pad: 20px;
 
   /* Shadows + blur */
@@ -143,43 +129,27 @@
   --blur-glass: 10px;
 
   /* Motion */
-  --dur-1: var(--t-fast);
-  --dur-2: var(--t-med);
-  --dur-3: 240ms;
+  --dur-1: 90ms;
+  --dur-2: 140ms;
+  --dur-3: 200ms;
   --dur-4: 320ms;
 
   --ease-inout: cubic-bezier(.65,0,.35,1);
   --ease-linear: linear;
 
-  /* Geist token overrides for legacy UI pieces */
-  --geist-background: var(--bg-app);
-  --geist-foreground: var(--text-primary);
-  --accents-1: var(--bg-surface);
-  --accents-2: var(--border-subtle);
-  --accents-3: var(--border-default);
-  --accents-4: var(--border-strong);
-  --accents-5: var(--text-tertiary);
-  --accents-6: var(--text-secondary);
-  --accents-7: var(--text-primary);
-  --accents-8: var(--text-primary);
-
-  --shadow-small: var(--shadow-sm);
-  --shadow-medium: var(--shadow-md);
-  --shadow-large: var(--shadow-lg);
-
   --layout-sidebar-width-expanded: var(--sidebar-w);
-  --layout-sidebar-width-collapsed: 56px;
+  --layout-sidebar-width-collapsed: var(--pc-rail-w, 72px);
   --sidebar-width: var(--layout-sidebar-width-collapsed);
 
   color-scheme: dark;
-  color: var(--text-primary);
+  color: var(--text);
   font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--bg-app);
+  background: var(--bg);
   transition: background-color var(--dur-3) var(--ease-out);
 }
 
@@ -192,7 +162,7 @@
 
 .prompt-optimizer-workspace ::selection {
   background: rgba(104,134,255,0.25);
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .prompt-optimizer-workspace .topbar {
@@ -253,20 +223,20 @@
 }
 
 .prompt-optimizer-workspace .segmented {
-  height: 40px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
-  padding: 3px;
-  border-radius: 16px;
+  padding: 0;
+  border-radius: var(--r-lg);
   background: var(--surface-2);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-inset);
 }
 
 .prompt-optimizer-workspace .segmented__tab {
-  height: 34px;
+  height: var(--h-btn-md);
   padding: 0 14px;
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   font-size: var(--fs-13);
   color: var(--text-muted);
   border: 1px solid transparent;
@@ -310,88 +280,24 @@
   box-shadow: 0 0 0 3px rgba(78,199,162,0.12);
 }
 
-.prompt-optimizer-workspace .btn-primary {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.14);
-  color: #0B0F17;
-  font-weight: 600;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  box-shadow: 0 10px 24px rgba(104,134,255,0.18);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: transform var(--t-fast) var(--ease-out),
-              filter var(--t-med) var(--ease-out);
-}
-
-.prompt-optimizer-workspace .btn-primary:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-}
-
-.prompt-optimizer-workspace .btn-primary:active {
-  transform: translateY(0px);
-  filter: brightness(0.98);
-}
-
-.prompt-optimizer-workspace .btn-ghost {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 14px;
-  background: transparent;
-  border: 1px solid rgba(36,49,74,0.9);
-  color: var(--text-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
-}
-
-.prompt-optimizer-workspace .btn-ghost:hover {
-  background: rgba(18,26,40,0.9);
-  color: var(--text);
-}
-
-.prompt-optimizer-workspace .icon-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid rgba(36,49,74,0.9);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
-}
-
-.prompt-optimizer-workspace .icon-btn:hover {
-  background: rgba(18,26,40,0.9);
-  color: var(--text);
-}
-
 .prompt-optimizer-workspace .status-pill {
   height: 24px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid rgba(36,49,74,0.95);
+  padding: 0 var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--fs-12);
+  font-weight: 600;
 }
 
 .prompt-optimizer-workspace .status-pill__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
   background: var(--text-faint);
 }
 
@@ -429,9 +335,9 @@
 
 .prompt-optimizer-workspace .input {
   width: 100%;
-  border-radius: var(--r-input);
-  background: rgba(11,15,23,0.65);
-  border: 1px solid rgba(36,49,74,0.95);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--text);
   padding: 12px 12px;
   box-shadow: var(--shadow-inset);
@@ -443,17 +349,11 @@
   box-shadow: 0 0 0 3px rgba(104,134,255,0.14), var(--shadow-inset);
 }
 
-.prompt-optimizer-workspace .label {
-  font-size: var(--fs-12);
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
 .prompt-optimizer-workspace .editor-well {
-  border-radius: 14px;
-  background: rgba(11,15,23,0.65);
-  border: 1px solid rgba(36,49,74,0.95);
-  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  padding: var(--s-3);
   box-shadow: var(--shadow-inset);
   min-height: 220px;
 }
@@ -473,31 +373,6 @@
 .prompt-optimizer-workspace .editor-well .input:focus {
   border: none;
   box-shadow: none;
-}
-
-.prompt-optimizer-workspace .ui-title {
-  font-size: var(--fs-16);
-  font-weight: 600;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.01em;
-}
-
-.prompt-optimizer-workspace .ui-subtitle {
-  font-size: var(--fs-12);
-  color: var(--text-muted);
-  line-height: var(--lh-normal);
-}
-
-.prompt-optimizer-workspace .ui-body {
-  font-size: var(--fs-14);
-  line-height: var(--lh-relaxed);
-  color: var(--text);
-}
-
-.prompt-optimizer-workspace .ui-mono {
-  font-family: var(--font-mono);
-  font-size: var(--fs-14);
-  line-height: 1.55;
 }
 
 .prompt-optimizer-workspace .stack-16 {

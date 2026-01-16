@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import './styles/PromptStudioSystem.css';
 import { initSentry } from './config/sentry';
 import { loadGeistFonts } from './utils/loadGeistFonts';
 
@@ -21,4 +22,3 @@ ReactDOM.createRoot(rootElement).render(
     <App />
   </React.StrictMode>
 );
-

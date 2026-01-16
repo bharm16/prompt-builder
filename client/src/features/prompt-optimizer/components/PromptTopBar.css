@@ -14,10 +14,10 @@
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  padding: 10px 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(36,49,74,0.9);
-  background: rgba(16, 22, 34, 0.86);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -26,7 +26,7 @@
 .po-topbar__left {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--s-5);
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -54,13 +54,13 @@
 .po-topbar__title-field {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-2);
   height: 40px;
   min-width: 420px;
   max-width: 520px;
   flex: 1 1 auto;
   padding: 0 12px;
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   background: var(--surface-2);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-inset);
@@ -69,7 +69,7 @@
 .po-topbar__title-accent {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--accent);
   box-shadow: 0 0 0 3px rgba(104,134,255,0.10);
 }
@@ -94,11 +94,11 @@
 }
 
 .po-topbar__stepper {
-  height: 40px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
-  padding: 3px;
-  border-radius: 16px;
+  padding: 0;
+  border-radius: var(--r-lg);
   background: var(--surface-2);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-inset);
@@ -113,11 +113,11 @@
 }
 
 .po-topbar__step-pill {
-  height: 34px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
   padding: 0 14px;
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   font-size: var(--fs-13);
   color: var(--text-muted);
   border: 1px solid transparent;
@@ -151,12 +151,12 @@
 }
 
 .po-topbar__status {
-  height: 40px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  border-radius: 16px;
+  gap: var(--s-2);
+  padding: 0 var(--px-btn);
+  border-radius: var(--r-lg);
   font-size: var(--fs-12);
   color: var(--text-muted);
   background: var(--surface-2);
@@ -190,15 +190,15 @@
 }
 
 .po-topbar__iconbtn {
-  height: 34px;
-  width: 34px;
+  height: var(--h-btn-md);
+  width: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   color: var(--text-muted);
   background: transparent;
-  border: 1px solid rgba(36,49,74,0.9);
+  border: 1px solid var(--border);
   transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
 }
 
@@ -208,17 +208,17 @@
 }
 
 .po-topbar__command {
-  height: 40px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  border-radius: 14px;
+  gap: var(--s-2);
+  padding: 0 var(--px-btn);
+  border-radius: var(--r-lg);
   font-size: var(--fs-13);
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-muted);
   background: transparent;
-  border: 1px solid rgba(36,49,74,0.9);
+  border: 1px solid var(--border);
   transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
 }
 
@@ -228,17 +228,17 @@
 }
 
 .po-topbar__btn {
-  height: 40px;
+  height: var(--h-btn-md);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  border-radius: 16px;
+  gap: var(--s-2);
+  padding: 0 var(--px-btn);
+  border-radius: var(--r-lg);
   font-size: var(--fs-13);
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text);
   background: transparent;
-  border: 1px solid rgba(36,49,74,0.9);
+  border: 1px solid var(--border);
   transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
 }
 
@@ -263,20 +263,20 @@
   top: calc(100% + 10px);
   right: 0;
   min-width: 160px;
-  background: rgba(16, 22, 34, 0.92);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 10px;
+  border-radius: var(--r-lg);
+  padding: var(--s-2);
   box-shadow: var(--shadow-md);
-  backdrop-filter: blur(10px);
   z-index: 10;
 }
 
 .po-topbar__menu-popover button {
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
-  border-radius: 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--r-lg);
   font-size: var(--fs-13);
   color: var(--text-muted);
   transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);

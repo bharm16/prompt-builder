@@ -9,6 +9,7 @@ import {
   Share2,
   RotateCcw,
   RotateCw,
+  Sparkles,
   Play,
   Pause,
   Download,
@@ -1807,14 +1808,14 @@ export function PromptCanvas({
                             </span>
                             <button
                               type="button"
-                              className="po-action-btn btn-ghost"
+                              className="po-action-btn"
                               onClick={handleCopy}
                             >
                               {copied ? 'Copied' : 'Copy'}
                             </button>
                             <button
                               type="button"
-                              className="po-action-btn btn-ghost"
+                              className="po-action-btn"
                               onClick={() => setShowDiff(true)}
                             >
                               Diff
@@ -1822,7 +1823,7 @@ export function PromptCanvas({
                             <div className="po-action-menu" ref={exportMenuRef}>
                               <button
                                 type="button"
-                                className="po-action-btn btn-ghost"
+                                className="po-action-btn"
                                 onClick={() => setShowExportMenu(!showExportMenu)}
                                 aria-expanded={showExportMenu}
                               >
@@ -1847,7 +1848,7 @@ export function PromptCanvas({
                             </div>
                             <button
                               type="button"
-                              className="po-action-icon icon-btn"
+                              className="po-action-icon"
                               onClick={handleShare}
                               aria-label="Share prompt"
                             >
@@ -1855,7 +1856,7 @@ export function PromptCanvas({
                             </button>
                             <button
                               type="button"
-                              className="po-action-icon icon-btn"
+                              className="po-action-icon"
                               onClick={onUndo}
                               disabled={!canUndo}
                               aria-label="Undo"
@@ -1864,7 +1865,7 @@ export function PromptCanvas({
                             </button>
                             <button
                               type="button"
-                              className="po-action-icon icon-btn"
+                              className="po-action-icon"
                               onClick={onRedo}
                               disabled={!canRedo}
                               aria-label="Redo"
@@ -1954,16 +1955,22 @@ export function PromptCanvas({
                                 <span className="inline-suggest-pill">{selectedSpanId ? suggestionCount : 0}</span>
                               </div>
                               <div className="inline-suggest-keys" aria-hidden="true">
-                                <span className="kbd">Up</span>
-                                <span className="kbd">Down</span>
-                                <span className="kbd">Enter</span>
-                                <span className="kbd">Esc</span>
+                                <span className="po-kbd">Up</span>
+                                <span className="po-kbd">Down</span>
+                                <span className="po-kbd">Enter</span>
+                                <span className="po-kbd">Esc</span>
                               </div>
                             </div>
 
                             {!selectedSpanId ? (
-                              <div className="po-suggest-empty-state">
-                                Click a highlighted token to see suggestions.
+                              <div className="po-surface-empty po-surface-empty--inline" aria-live="polite">
+                                <div className="po-surface-empty__icon" aria-hidden="true">
+                                  <Sparkles className="h-5 w-5" />
+                                </div>
+                                <div className="po-surface-empty__title">Select a highlight</div>
+                                <div className="po-surface-empty__sub">
+                                  Click a highlighted token to see suggestions.
+                                </div>
                               </div>
                             ) : (
                               <>

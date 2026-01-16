@@ -7,8 +7,8 @@
   position: relative; /* Anchor for the floating panel */
   height: 100%;
   overflow: hidden;
-  background: var(--geist-background);
-  transition: background-color 0.3s ease;
+  background: var(--bg);
+  transition: background-color var(--dur-4) var(--ease-out);
   display: block;
 }
 
@@ -19,15 +19,15 @@
   right: 0;
   bottom: 0;
   width: var(--pc-right-rail, var(--po-suggestions-width, 420px));
-  background: var(--geist-background);
-  border-left: 1px solid var(--geist-accents-2);
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
   z-index: 50; /* Ensure it floats above the editor */
   overflow-y: auto;
   
   /* Slide Animation */
   transform: translateX(100%); /* Start hidden off-screen */
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: -5px 0 25px rgba(0,0,0,0.05); /* Depth shadow */
+  transition: transform var(--dur-4) var(--ease-out);
+  box-shadow: var(--shadow-md);
 }
 
 /* Toggle Class for Visibility */

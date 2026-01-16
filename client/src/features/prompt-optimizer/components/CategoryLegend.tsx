@@ -48,91 +48,85 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
   const rightOffset = isSuggestionsOpen ? `calc(${gapVar} + ${railVar} + ${gapVar})` : gapVar;
 
   return (
-    <div 
-      className="absolute top-12 z-30 glass-card rounded-geist-lg"
-      style={{
-        right: rightOffset,
-        width: 'var(--pc-legend-width, 320px)',
-      }}
+    <div
+      className="po-category-legend po-popover po-surface po-surface--grad po-animate-pop-in"
+      style={{ right: rightOffset }}
+      role="dialog"
+      aria-label="Highlight categories"
     >
-      <div className="flex flex-col gap-geist-2 px-geist-3 py-geist-2 border-b border-white/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-geist-2">
-            <Info className="h-3.5 w-3.5 text-geist-accents-5" />
-            <h3 className="text-label-12 text-geist-foreground">Highlight Categories</h3>
+      <div className="po-category-legend__header">
+        <div className="po-category-legend__header-left">
+          <div className="po-category-legend__title">
+            <Info className="h-3.5 w-3.5" aria-hidden="true" />
+            Highlight categories
           </div>
-          <button
-            onClick={onClose}
-            className="text-geist-accents-4 hover:text-geist-accents-6 transition-colors"
-            aria-label="Close legend"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <div className="po-category-legend__subtitle">
+            {hasContext ? (
+              <span className="status-pill" data-status="ready">
+                <span className="status-pill__dot" aria-hidden="true" />
+                Brainstorm context active
+              </span>
+            ) : (
+              'Showing all span labeling categories'
+            )}
+          </div>
         </div>
-        <div className="text-label-12 text-geist-accents-5">
-          {hasContext ? (
-            <div className="inline-flex items-center gap-geist-1 px-geist-2 py-geist-1 bg-emerald-50 border border-emerald-200 rounded-geist text-label-12 text-emerald-700" title="Using context from Creative Brainstorm for intelligent highlighting">
-              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>Brainstorm Context Active</span>
-            </div>
-          ) : (
-            <span>Showing all span labeling categories</span>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="po-action-icon"
+          aria-label="Close legend"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
-      <div className="p-geist-3 max-h-80 overflow-y-auto scrollbar-auto-hide">
-        <div className="space-y-geist-2">
+
+      <div className="po-category-legend__body">
+        <div className="po-category-legend__list" role="list">
           {categories.map((cat) => (
-            <div key={cat.name} className="flex items-start gap-geist-2">
+            <div key={cat.name} className="po-category-legend__item" role="listitem">
               <div
-                className="flex-shrink-0 w-14 h-5 rounded-geist border mt-0.5"
-                style={{
-                  backgroundColor: cat.color,
-                  borderColor: cat.border,
-                }}
+                className="po-category-legend__swatch"
+                aria-hidden="true"
+                style={{ backgroundColor: cat.color, borderColor: cat.border }}
               />
-              <div className="flex-1 min-w-0">
-                <div className="text-label-12 text-geist-foreground">{cat.name}</div>
-                <div className="text-label-12 text-geist-accents-5 truncate">{cat.example}</div>
+              <div style={{ minWidth: 0 }}>
+                <div className="po-category-legend__item-title">{cat.name}</div>
+                <div className="po-category-legend__item-example" title={cat.example}>
+                  {cat.example}
+                </div>
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-geist-2 pt-geist-2 border-t border-geist-accents-2">
-          <p className="text-label-12 text-geist-accents-7 mb-geist-2">
-            How It Works
-          </p>
-          {hasContext ? (
-            <>
-              <p className="text-label-12 text-geist-accents-5 leading-relaxed mb-geist-2">
-                Your Creative Brainstorm selections are prioritized and highlighted first,
-                followed by additional details detected by LLM analysis.
-              </p>
-              <ul className="text-label-12 text-geist-accents-5 space-y-geist-1 ml-geist-3">
-                <li>• Your input gets highest priority (100% confidence)</li>
-                <li>• Semantic matches detected (related terms)</li>
-                <li>• Additional LLM analysis for new details</li>
-                <li>• Smart deduplication prevents overlaps</li>
-              </ul>
-            </>
-          ) : (
-            <>
-              <p className="text-[10px] text-neutral-500 leading-relaxed mb-1.5">
-                Categories are automatically detected using LLM analysis based on video production standards.
-              </p>
-              <ul className="text-label-12 text-geist-accents-5 space-y-geist-1 ml-geist-3">
-                <li>• Intelligent semantic understanding</li>
-                <li>• Context-aware categorization</li>
-                <li>• Aligned with video generation models</li>
-                <li>• Confidence-based highlighting</li>
-              </ul>
-            </>
-          )}
-          <p className="text-label-12 text-geist-accents-5 leading-relaxed mt-geist-2">
+
+        <div className="po-category-legend__footer">
+          <div className="po-category-legend__footer-title">How it works</div>
+          <div className="po-category-legend__footer-text">
+            {hasContext
+              ? 'Your Creative Brainstorm selections are prioritized first, followed by additional details detected by analysis.'
+              : 'Categories are automatically detected based on video production standards.'}
+          </div>
+          <ul className="po-category-legend__footer-list">
+            {hasContext ? (
+              <>
+                <li>Your input gets highest priority</li>
+                <li>Semantic matches detected</li>
+                <li>Additional analysis for new details</li>
+                <li>Smart deduplication prevents overlaps</li>
+              </>
+            ) : (
+              <>
+                <li>Intelligent semantic understanding</li>
+                <li>Context-aware categorization</li>
+                <li>Aligned with video generation models</li>
+                <li>Confidence-based highlighting</li>
+              </>
+            )}
+          </ul>
+          <div className="po-category-legend__footer-text" style={{ marginTop: 'var(--s-3)' }}>
             Click any highlight to get AI-powered alternatives.
-          </p>
+          </div>
         </div>
       </div>
     </div>

@@ -30,28 +30,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-9) var(--space-6);
+  padding: var(--s-9) var(--s-6);
   /* Don't set overflow here - let main handle scrolling */
 }
 
 @media (min-width: 640px) {
   .prompt-input-layout__content {
-    padding: var(--space-10) var(--space-8);
+    padding: var(--s-10) var(--s-8);
   }
 }
 
 .prompt-input-layout__footer {
   flex-shrink: 0;
-  padding: var(--geist-gap-half) 0;
+  padding: var(--s-2) 0;
   text-align: center;
 }
 
 .prompt-input-layout__footer-link {
   font-size: 0.875rem;
-  color: var(--text-tertiary);
+  color: var(--text-faint);
   transition: color 0.2s;
 }
 
 .prompt-input-layout__footer-link:hover {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }

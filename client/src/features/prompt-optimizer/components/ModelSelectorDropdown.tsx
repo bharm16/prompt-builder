@@ -45,10 +45,9 @@ export const ModelSelectorDropdown = memo<{
     return { strength: 'Balanced preview defaults', badges: ['Balanced'] };
   };
 
-  const badgeClass =
-    variant === 'pillDark'
-      ? 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/8 border border-white/10 text-white/70'
-      : 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 border border-neutral-200 text-neutral-600';
+  // Use Prompt Studio system badges (keeps menu consistent with the rest of PromptCanvas).
+  const badgeClass = 'po-badge';
+  const accentBadgeClass = 'po-badge po-badge--best';
   
   // Find label for current selection
   const selectedOption = availableModels.find(m => m.id === selectedModel);
@@ -140,7 +139,7 @@ export const ModelSelectorDropdown = memo<{
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} data-variant={variant}>
       <button
         type="button"
         onClick={() => {
@@ -150,38 +149,19 @@ export const ModelSelectorDropdown = memo<{
         }}
         ref={buttonRef}
         disabled={disabled || isLoading}
-        className={
-          variant === 'pillDark'
-            ? [
-                'inline-flex items-center gap-2 h-8 px-[10px] text-[13px] font-medium rounded-[10px] transition-colors',
-                'disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none',
-                isOpen
-                  ? 'bg-[rgba(139,92,246,0.22)] border border-[rgba(139,92,246,0.28)] shadow-[0_0_0_3px_rgba(139,92,246,0.16)]'
-                  : 'bg-[rgba(255,255,255,0.06)] text-white/90 hover:bg-[rgba(255,255,255,0.10)] border border-[rgba(255,255,255,0.08)]',
-              ].join(' ')
-            : variant === 'pill'
-              ? 'inline-flex items-center gap-2 h-8 px-3 text-[13px] font-medium rounded-[8px] bg-[#F4F5F7] text-[#222] hover:bg-[#E8EAED] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10'
-              : 'inline-flex items-center gap-geist-2 px-geist-3 py-1.5 text-button-14 text-geist-accents-7 rounded-geist border border-geist-accents-2 bg-geist-accents-1 hover:bg-geist-accents-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4 focus-visible:ring-offset-2 focus-visible:ring-offset-geist-background'
-        }
+        className="po-model-select"
+        data-open={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current model: ${currentLabel}`}
         aria-disabled={disabled || isLoading}
       >
         <Video
-          className={`h-3.5 w-3.5 ${
-            variant === 'pillDark' ? 'text-white/80' : variant === 'pill' ? 'text-[#222]' : 'text-geist-accents-5'
-          }`}
+          className="po-model-select__icon h-3.5 w-3.5"
         />
-        <span className="truncate max-w-[220px]">{isLoading ? 'Loading...' : displayLabel}</span>
+        <span className="po-model-select__label">{isLoading ? 'Loading…' : displayLabel}</span>
         <ChevronDown
-          className={`h-3.5 w-3.5 ${
-            variant === 'pillDark'
-              ? 'text-white/80'
-              : variant === 'pill'
-                ? 'text-[#222]'
-                : 'text-geist-accents-5'
-          } transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className="po-model-select__chev h-3.5 w-3.5"
           aria-hidden="true"
         />
       </button>
@@ -191,11 +171,7 @@ export const ModelSelectorDropdown = memo<{
         createPortal(
           <div
             ref={menuRef}
-            className={
-              variant === 'pillDark'
-                ? 'fixed min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-[#111] rounded-[10px] border border-white/10 shadow-2xl animate-slide-down'
-                : 'fixed min-w-[240px] max-h-[300px] overflow-y-auto z-[9999] bg-white rounded-[10px] border border-neutral-200 shadow-lg animate-slide-down'
-            }
+            className="po-model-menu po-popover po-surface po-surface--grad po-animate-pop-in"
             style={{
               top: `${menuPosition?.top ?? 0}px`,
               left: `${menuPosition?.left ?? 0}px`,
@@ -208,50 +184,21 @@ export const ModelSelectorDropdown = memo<{
             {/* Auto-detect Option */}
             <button
               onClick={() => handleModelSelect('')}
-              className={`
-                w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
-                transition-colors duration-150
-                ${
-                  variant === 'pillDark'
-                    ? !selectedModel
-                      ? 'bg-white/10'
-                      : 'hover:bg-white/8'
-                    : !selectedModel
-                      ? 'bg-neutral-100'
-                      : 'hover:bg-neutral-100'
-                }
-                ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'}
-              `}
+              className="po-model-menu__item"
+              data-selected={!selectedModel ? 'true' : 'false'}
               role="option"
               aria-selected={!selectedModel}
             >
-              <div className="flex flex-col flex-1 min-w-0">
-                <span
-                  className={`truncate ${
-                    variant === 'pillDark'
-                      ? !selectedModel
-                        ? 'font-semibold text-white'
-                        : 'text-white/80'
-                      : !selectedModel
-                        ? 'font-semibold text-neutral-900'
-                        : 'text-neutral-700'
-                  }`}
-                >
-                  Auto (Recommended)
-                </span>
-                <span className={`text-[11px] ${variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'}`}>
-                  Picks the best model for the prompt
-                </span>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  <span className={badgeClass}>Recommended</span>
+              <div className="po-model-menu__text">
+                <div className="po-model-menu__name">Auto (Recommended)</div>
+                <div className="po-model-menu__meta">Picks the best model for the prompt</div>
+                <div className="po-model-menu__badges">
+                  <span className={accentBadgeClass}>Recommended</span>
                   <span className={badgeClass}>Balanced</span>
                 </div>
               </div>
               {!selectedModel && (
-                <Check
-                  className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
-                  aria-hidden="true"
-                />
+                <Check className="h-4 w-4" aria-hidden="true" />
               )}
             </button>
 
@@ -264,52 +211,16 @@ export const ModelSelectorDropdown = memo<{
                 <button
                   key={option.id}
                   onClick={() => handleModelSelect(option.id)}
-                  className={`
-                    w-full flex items-center gap-2 px-3 py-2 text-left text-[13px]
-                    transition-colors duration-150
-                    ${
-                      variant === 'pillDark'
-                        ? isSelected
-                          ? 'bg-white/10'
-                          : 'hover:bg-white/8'
-                        : isSelected
-                          ? 'bg-neutral-100'
-                          : 'hover:bg-neutral-100'
-                    }
-                    ${variant === 'pillDark' ? 'border-b border-white/10' : 'border-b border-neutral-200'} last:border-b-0
-                  `}
+                  className="po-model-menu__item"
+                  data-selected={isSelected ? 'true' : 'false'}
                   role="option"
                   aria-selected={isSelected}
                 >
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span
-                      className={`truncate ${
-                        variant === 'pillDark'
-                          ? isSelected
-                            ? 'font-semibold text-white'
-                            : 'text-white/80'
-                          : isSelected
-                            ? 'font-semibold text-neutral-900'
-                            : 'text-neutral-700'
-                      }`}
-                    >
-                      {option.label}
-                    </span>
-                    <span
-                      className={`text-[10px] uppercase tracking-wider ${
-                        variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
-                      }`}
-                    >
-                      {option.provider}
-                    </span>
-                    <span
-                      className={`text-[11px] mt-0.5 ${
-                        variant === 'pillDark' ? 'text-white/55' : 'text-neutral-500'
-                      }`}
-                    >
-                      {meta.strength}
-                    </span>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
+                  <div className="po-model-menu__text">
+                    <div className="po-model-menu__name">{option.label}</div>
+                    <div className="po-model-menu__provider">{option.provider}</div>
+                    <div className="po-model-menu__meta">{meta.strength}</div>
+                    <div className="po-model-menu__badges">
                       {meta.badges.map((badge) => (
                         <span key={badge} className={badgeClass}>
                           {badge}
@@ -318,10 +229,7 @@ export const ModelSelectorDropdown = memo<{
                     </div>
                   </div>
                   {isSelected && (
-                    <Check
-                      className={`h-4 w-4 ${variant === 'pillDark' ? 'text-white' : 'text-neutral-900'}`}
-                      aria-hidden="true"
-                    />
+                    <Check className="h-4 w-4" aria-hidden="true" />
                   )}
                 </button>
               );

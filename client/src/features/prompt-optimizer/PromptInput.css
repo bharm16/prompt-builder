@@ -19,9 +19,9 @@
   --pi-radius-12: 12px;
   --pi-radius-10: 10px;
   --pi-radius-full: 9999px;
-  --pi-pad-top-min: calc(var(--geist-gap) * 1.5);
+  --pi-pad-top-min: calc(var(--s-4) * 1.5);
   --pi-pad-top-max: var(--pi-space-72);
-  --pi-pad-bottom-min: var(--geist-gap);
+  --pi-pad-bottom-min: var(--s-4);
   --pi-pad-bottom-max: var(--pi-space-64);
   --pi-stack-gap-min: var(--pi-space-12);
   --pi-stack-gap-max: var(--pi-space-20);
