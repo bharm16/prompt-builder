@@ -4,7 +4,7 @@
  * Manages keyboard shortcuts for the Video Concept Builder.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ElementKey } from './types';
 
 interface UseKeyboardShortcutsOptions {
@@ -25,35 +25,49 @@ export function useKeyboardShortcuts({
   activeElement,
   suggestions,
 }: UseKeyboardShortcutsOptions): void {
+  const optionsRef = useRef({ onSuggestionSelect, onEscape, onRefresh, activeElement, suggestions });
+
+  useEffect(() => {
+    optionsRef.current = { onSuggestionSelect, onEscape, onRefresh, activeElement, suggestions };
+  }, [onSuggestionSelect, onEscape, onRefresh, activeElement, suggestions]);
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent): void => {
+      const {
+        onSuggestionSelect: onSuggestionSelectCurrent,
+        onEscape: onEscapeCurrent,
+        onRefresh: onRefreshCurrent,
+        activeElement: activeElementCurrent,
+        suggestions: suggestionsCurrent,
+      } = optionsRef.current;
+
       // Only handle number keys when suggestions are visible
-      if (!activeElement || suggestions.length === 0) return;
+      if (!activeElementCurrent || suggestionsCurrent.length === 0) return;
 
       // Number keys (1-8) for suggestion selection
       const key = parseInt(e.key, 10);
-      if (!Number.isNaN(key) && key >= 1 && key <= Math.min(suggestions.length, 8)) {
+      if (!Number.isNaN(key) && key >= 1 && key <= Math.min(suggestionsCurrent.length, 8)) {
         e.preventDefault();
-        const suggestion = suggestions[key - 1];
+        const suggestion = suggestionsCurrent[key - 1];
         if (suggestion) {
-          onSuggestionSelect(suggestion);
+          onSuggestionSelectCurrent(suggestion);
         }
       }
 
       // Escape to close suggestions
-      if (e.key === 'Escape' && activeElement) {
-        onEscape();
+      if (e.key === 'Escape' && activeElementCurrent) {
+        onEscapeCurrent();
       }
 
       // 'r' to refresh suggestions
-      if (e.key === 'r' && activeElement && !e.ctrlKey && !e.metaKey) {
+      if (e.key === 'r' && activeElementCurrent && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        onRefresh();
+        onRefreshCurrent();
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [activeElement, suggestions, onSuggestionSelect, onEscape, onRefresh]);
+  }, []);
 }
 

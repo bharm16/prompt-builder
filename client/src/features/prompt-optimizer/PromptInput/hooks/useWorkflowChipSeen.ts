@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { z } from 'zod';
 import { WORKFLOW_CHIP_STORAGE_KEY } from '../constants';
 
@@ -28,11 +28,7 @@ export const useWorkflowChipSeen = (): {
   hasSeenWorkflowChip: boolean;
   markWorkflowChipSeen: () => void;
 } => {
-  const [hasSeenWorkflowChip, setHasSeenWorkflowChip] = useState(false);
-
-  useEffect(() => {
-    setHasSeenWorkflowChip(readSeenFlag());
-  }, []);
+  const [hasSeenWorkflowChip, setHasSeenWorkflowChip] = useState(() => readSeenFlag());
 
   const markWorkflowChipSeen = useCallback(() => {
     writeSeenFlag();
