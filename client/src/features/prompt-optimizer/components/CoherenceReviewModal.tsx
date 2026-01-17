@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { AlertTriangle, Sparkles, X } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Checkbox } from '@promptstudio/system/components/ui/checkbox';
+import { Dialog, DialogContent, DialogTitle } from '@promptstudio/system/components/ui/dialog';
 import type { CoherenceFinding, CoherenceRecommendation, CoherenceReviewData } from '../types/coherence';
 import './CoherenceReviewModal.css';
 
@@ -77,14 +79,14 @@ export function CoherenceReviewModal({
 
   const selectedCount = selectedIds.size;
 
-  const handleToggleSelect = (id?: string): void => {
+  const setRecommendationSelected = (id: string | undefined, selected: boolean): void => {
     if (!id) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
+      if (selected) {
         next.add(id);
+      } else {
+        next.delete(id);
       }
       return next;
     });
@@ -113,10 +115,10 @@ export function CoherenceReviewModal({
     return (
       <div key={rec.id || rec.title} className="coherence-review-rec">
         <label className="coherence-review-rec__header">
-          <input
-            type="checkbox"
+          <Checkbox
+            className="coherence-review-rec__checkbox"
             checked={isSelected}
-            onChange={() => handleToggleSelect(rec.id)}
+            onCheckedChange={(checked) => setRecommendationSelected(rec.id, Boolean(checked))}
             aria-label={`Select ${rec.title}`}
           />
           <div className="coherence-review-rec__content">
@@ -124,13 +126,14 @@ export function CoherenceReviewModal({
             <div className="coherence-review-rec__rationale">{rec.rationale}</div>
           </div>
         </label>
-        <button
+        <Button
           type="button"
           className="coherence-review-rec__preview"
           onClick={() => handleTogglePreview(rec.id)}
+          variant="ghost"
         >
           {isExpanded ? 'Hide diff' : 'Preview diff'}
-        </button>
+        </Button>
         {isExpanded && (
           <div className="coherence-review-rec__diff">
             {rec.edits.map((edit, index) => {
@@ -211,94 +214,91 @@ export function CoherenceReviewModal({
     return null;
   }
 
-  const modal = (
-    <div className="modal-backdrop po-backdrop po-animate-fade-in" onClick={onDismiss}>
-      <div className="app-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="modal-content-lg coherence-review-modal po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in">
-          <header className="coherence-review-header">
-            <div>
-              <h2>Review coherence updates</h2>
-              <p>
-                Conflicts require attention. Harmonizations are optional tweaks.
-                {isChecking && <span className="coherence-review-header__status">Checking…</span>}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="coherence-review-close"
-              onClick={onDismiss}
-              aria-label="Close coherence review"
-            >
-              <X size={18} />
-            </button>
-          </header>
-
-          <div className="coherence-review-body">
-            <section>
-              <div className="coherence-review-section__header">
-                <h3>Conflicts (action needed)</h3>
-                <span>{conflictRecommendations.length}</span>
-              </div>
-              {conflictRecommendations.length === 0 ? (
-                <div className="coherence-review-empty">No conflicts detected.</div>
-              ) : (
-                conflictRecommendations.map((finding) =>
-                  renderFinding(finding, review, 'conflict')
-                )
-              )}
-            </section>
-
-            <section>
-              <div className="coherence-review-section__header">
-                <h3>Harmonizations (optional)</h3>
-                <span>{harmonizationRecommendations.length}</span>
-              </div>
-              {harmonizationRecommendations.length === 0 ? (
-                <div className="coherence-review-empty">No harmonizations suggested.</div>
-              ) : (
-                harmonizationRecommendations.map((finding) =>
-                  renderFinding(finding, review, 'harmonization')
-                )
-              )}
-            </section>
+  return (
+    <Dialog open={Boolean(review)} onOpenChange={(open) => (!open ? onDismiss() : undefined)}>
+      <DialogContent className="coherence-review-modal po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in p-0 gap-0 max-w-none [&>button]:hidden">
+        <header className="coherence-review-header">
+          <div>
+            <DialogTitle>Review coherence updates</DialogTitle>
+            <p>
+              Conflicts require attention. Harmonizations are optional tweaks.
+              {isChecking && <span className="coherence-review-header__status">Checking…</span>}
+            </p>
           </div>
+          <Button
+            type="button"
+            className="coherence-review-close"
+            onClick={onDismiss}
+            aria-label="Close coherence review"
+            variant="ghost"
+            size="icon"
+          >
+            <X size={18} />
+          </Button>
+        </header>
 
-          <footer className="coherence-review-footer">
-            <button
+        <div className="coherence-review-body">
+          <section>
+            <div className="coherence-review-section__header">
+              <h3>Conflicts (action needed)</h3>
+              <span>{conflictRecommendations.length}</span>
+            </div>
+            {conflictRecommendations.length === 0 ? (
+              <div className="coherence-review-empty">No conflicts detected.</div>
+            ) : (
+              conflictRecommendations.map((finding) =>
+                renderFinding(finding, review, 'conflict')
+              )
+            )}
+          </section>
+
+          <section>
+            <div className="coherence-review-section__header">
+              <h3>Harmonizations (optional)</h3>
+              <span>{harmonizationRecommendations.length}</span>
+            </div>
+            {harmonizationRecommendations.length === 0 ? (
+              <div className="coherence-review-empty">No harmonizations suggested.</div>
+            ) : (
+              harmonizationRecommendations.map((finding) =>
+                renderFinding(finding, review, 'harmonization')
+              )
+            )}
+          </section>
+        </div>
+
+        <footer className="coherence-review-footer">
+          <Button
+            type="button"
+            className="coherence-review-footer__secondary"
+            onClick={onUndoOriginal}
+            disabled={isApplying}
+            variant="ghost"
+          >
+            Undo original suggestion
+          </Button>
+          <div className="coherence-review-footer__actions">
+            <Button
               type="button"
               className="coherence-review-footer__secondary"
-              onClick={onUndoOriginal}
+              onClick={onDismiss}
               disabled={isApplying}
+              variant="ghost"
             >
-              Undo original suggestion
-            </button>
-            <div className="coherence-review-footer__actions">
-              <button
-                type="button"
-                className="coherence-review-footer__secondary"
-                onClick={onDismiss}
-                disabled={isApplying}
-              >
-                Dismiss
-              </button>
-              <button
-                type="button"
-                className="coherence-review-footer__primary"
-                onClick={() => onApplySelected(Array.from(selectedIds))}
-                disabled={selectedCount === 0 || isApplying}
-              >
-                Apply selected{selectedCount > 0 ? ` (${selectedCount})` : ''}
-              </button>
-            </div>
-          </footer>
-        </div>
-      </div>
-    </div>
+              Dismiss
+            </Button>
+            <Button
+              type="button"
+              className="coherence-review-footer__primary"
+              onClick={() => onApplySelected(Array.from(selectedIds))}
+              disabled={selectedCount === 0 || isApplying}
+              variant="ghost"
+            >
+              Apply selected{selectedCount > 0 ? ` (${selectedCount})` : ''}
+            </Button>
+          </div>
+        </footer>
+      </DialogContent>
+    </Dialog>
   );
-
-  if (typeof document === 'undefined') {
-    return modal;
-  }
-
-  return createPortal(modal, document.body);
 }

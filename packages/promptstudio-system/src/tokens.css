@@ -1,0 +1,503 @@
+@layer ps.tokens {
+  :root {
+    /* =========================
+       Typography (dark-first, 14px base)
+       ========================= */
+    --ps-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+      "Segoe UI", sans-serif;
+    --ps-font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui,
+      sans-serif;
+    --ps-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+      monospace;
+    --ps-font-serif: ui-serif, "Iowan Old Style", "Palatino", "Times New Roman", serif;
+
+    --ps-fw-regular: 400;
+    --ps-fw-medium: 500;
+    --ps-fw-semibold: 600;
+    --ps-fw-bold: 700;
+
+    --ps-lh-tight: 1.15;
+    --ps-lh-snug: 1.25;
+    --ps-lh-normal: 1.45;
+    --ps-lh-relaxed: 1.65;
+
+    --ps-ls-tight: -0.01em;
+    --ps-ls-normal: 0em;
+    --ps-ls-label: 0.14em;
+
+    --ps-fs-10: 10px;
+    --ps-fs-11: 11px;
+    --ps-fs-12: 12px;
+    --ps-fs-13: 13px;
+    --ps-fs-14: 14px;
+    --ps-fs-16: 16px;
+    --ps-fs-18: 18px;
+    --ps-fs-20: 20px;
+    --ps-fs-24: 24px;
+    --ps-fs-32: 32px;
+    --ps-fs-40: 40px;
+    --ps-fs-56: 56px;
+
+    /* =========================
+       Spacing (4px grid)
+       ========================= */
+    --ps-s-0: 0px;
+    --ps-s-1: 4px;
+    --ps-s-2: 8px;
+    --ps-s-3: 12px;
+    --ps-s-4: 16px;
+    --ps-s-5: 20px;
+    --ps-s-6: 24px;
+    --ps-s-7: 32px;
+    --ps-s-8: 40px;
+    --ps-s-9: 48px;
+    --ps-s-10: 56px;
+    --ps-s-11: 64px;
+
+    /* Semantic spacing aliases (preferred for long-term stability) */
+    --ps-space-0: 0px;
+    --ps-space-1: var(--ps-s-1);
+    --ps-space-2: var(--ps-s-2);
+    --ps-space-3: var(--ps-s-3);
+    --ps-space-4: var(--ps-s-4);
+    --ps-space-5: var(--ps-s-5);
+    --ps-space-6: var(--ps-s-6);
+    --ps-space-7: var(--ps-s-7);
+    --ps-space-8: var(--ps-s-8);
+    --ps-space-9: var(--ps-s-9);
+    --ps-space-10: var(--ps-s-10);
+    --ps-space-11: var(--ps-s-11);
+
+    /* Common semantic names */
+    --ps-space-page: var(--ps-s-6); /* default page padding / section rhythm */
+    --ps-space-card: var(--ps-s-4);
+
+    /* =========================
+       Radius
+       ========================= */
+    --ps-r-none: 0px;
+    --ps-r-xs: 8px;
+    --ps-r-sm: 10px;
+    --ps-r-md: 12px;
+    --ps-r-lg: 14px;
+    --ps-r-xl: 16px;
+    --ps-r-2xl: 20px;
+    --ps-r-pill: 999px;
+
+    /* =========================
+       Border width
+       ========================= */
+    --ps-bw-0: 0px;
+    --ps-bw-1: 1px;
+    --ps-bw-2: 2px;
+    --ps-bw-3: 3px;
+    --ps-bw-4: 4px;
+
+    /* =========================
+       Icon sizing
+       ========================= */
+    --ps-icon-xs: 12px;
+    --ps-icon-sm: 16px;
+    --ps-icon-md: 20px;
+    --ps-icon-lg: 24px;
+    --ps-icon-xl: 32px;
+    --ps-icon-2xl: 48px;
+
+    /* =========================
+       Layout sizing
+       ========================= */
+    --ps-container-sm: 640px;
+    --ps-container-md: 768px;
+    --ps-container-lg: 1024px;
+    --ps-container-xl: 1280px;
+    --ps-container-2xl: 1536px;
+
+    /* =========================
+       Motion
+       ========================= */
+    --ps-dur-1: 90ms;
+    --ps-dur-2: 140ms;
+    --ps-dur-3: 200ms;
+    --ps-dur-4: 320ms;
+    --ps-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+    --ps-ease-linear: linear;
+
+    /* =========================
+       Color (dark-first)
+       ========================= */
+    --ps-bg: #0b0f17;
+    --ps-surface-1: #101622;
+    --ps-surface-2: #121a28;
+    --ps-surface-3: #152033;
+
+    --ps-border: #24314a;
+    --ps-border-strong: #314163;
+
+    --ps-text: #e7ebf3;
+    --ps-text-muted: #a1aabc;
+    --ps-text-faint: #7f8aa6;
+
+    --ps-accent: #6886ff;
+    --ps-accent-2: #8b66ff;
+
+    --ps-success: #4ec7a2;
+    --ps-warning: #f5c05c;
+    --ps-danger: #fa6e7c;
+    --ps-info: var(--ps-accent);
+
+    --ps-overlay: rgba(5, 8, 12, 0.68);
+
+    /* Brand palette (light UI) */
+    --ps-brand-primary-50: #fafafa;
+    --ps-brand-primary-100: #f5f5f5;
+    --ps-brand-primary-200: #e6e6e6;
+    --ps-brand-primary-300: #d4d4d4;
+    --ps-brand-primary-400: #a8a8a8;
+    --ps-brand-primary-500: #7a7a7a;
+    --ps-brand-primary-600: #484848;
+    --ps-brand-primary-700: #363636;
+    --ps-brand-primary-800: #222222;
+    --ps-brand-primary-900: #161616;
+    --ps-brand-primary-950: #0b0b0b;
+
+    --ps-brand-accent-50: #fff5f7;
+    --ps-brand-accent-100: #ffe3ea;
+    --ps-brand-accent-200: #ffc0cc;
+    --ps-brand-accent-300: #ff98af;
+    --ps-brand-accent-400: #ff6d8c;
+    --ps-brand-accent-500: #ff385c;
+    --ps-brand-accent-600: #e03252;
+    --ps-brand-accent-700: #c12745;
+    --ps-brand-accent-800: #971e36;
+    --ps-brand-accent-900: #711628;
+    --ps-brand-accent-950: #4c0e1c;
+
+    --ps-brand-secondary-50: #e5fffa;
+    --ps-brand-secondary-100: #c0fff1;
+    --ps-brand-secondary-200: #8effe6;
+    --ps-brand-secondary-300: #5af6d8;
+    --ps-brand-secondary-400: #2de8c6;
+    --ps-brand-secondary-500: #00a699;
+    --ps-brand-secondary-600: #008c82;
+    --ps-brand-secondary-700: #00736a;
+    --ps-brand-secondary-800: #005953;
+    --ps-brand-secondary-900: #00433f;
+    --ps-brand-secondary-950: #012e2b;
+
+    --ps-brand-neutral-50: #ffffff;
+    --ps-brand-neutral-100: #f7f7f7;
+    --ps-brand-neutral-200: #efefef;
+    --ps-brand-neutral-300: #e3e3e3;
+    --ps-brand-neutral-400: #cfcfcf;
+    --ps-brand-neutral-500: #b9b9b9;
+    --ps-brand-neutral-600: #989898;
+    --ps-brand-neutral-700: #787878;
+    --ps-brand-neutral-800: #575757;
+    --ps-brand-neutral-900: #373737;
+    --ps-brand-neutral-950: #1b1b1b;
+
+    --ps-brand-success-50: #e8fff8;
+    --ps-brand-success-100: #c5fceb;
+    --ps-brand-success-200: #8ff8d7;
+    --ps-brand-success-300: #59edc0;
+    --ps-brand-success-400: #2fdaab;
+    --ps-brand-success-500: #00b88f;
+    --ps-brand-success-600: #009c79;
+    --ps-brand-success-700: #007d62;
+    --ps-brand-success-800: #005f4a;
+    --ps-brand-success-900: #004838;
+    --ps-brand-success-950: #002f25;
+
+    --ps-brand-warning-50: #fff8eb;
+    --ps-brand-warning-100: #ffecca;
+    --ps-brand-warning-200: #ffd79a;
+    --ps-brand-warning-300: #ffc066;
+    --ps-brand-warning-400: #ffaa3d;
+    --ps-brand-warning-500: #f7931e;
+    --ps-brand-warning-600: #d77c16;
+    --ps-brand-warning-700: #b1650f;
+    --ps-brand-warning-800: #8c4e0b;
+    --ps-brand-warning-900: #6a3a08;
+    --ps-brand-warning-950: #422206;
+
+    --ps-brand-error-50: #fff2f4;
+    --ps-brand-error-100: #ffe3e7;
+    --ps-brand-error-200: #ffbfc8;
+    --ps-brand-error-300: #ff92a3;
+    --ps-brand-error-400: #ff627c;
+    --ps-brand-error-500: #f44366;
+    --ps-brand-error-600: #db2c53;
+    --ps-brand-error-700: #b71f3d;
+    --ps-brand-error-800: #901832;
+    --ps-brand-error-900: #6b1125;
+    --ps-brand-error-950: #420916;
+
+    --ps-brand-info-50: #edf7ff;
+    --ps-brand-info-100: #d6ecff;
+    --ps-brand-info-200: #add6ff;
+    --ps-brand-info-300: #7ab8ff;
+    --ps-brand-info-400: #4f9fff;
+    --ps-brand-info-500: #1f82ff;
+    --ps-brand-info-600: #1664d6;
+    --ps-brand-info-700: #114caa;
+    --ps-brand-info-800: #0b347a;
+    --ps-brand-info-900: #072352;
+    --ps-brand-info-950: #041633;
+
+    --ps-brand-surface-base: #ffffff;
+    --ps-brand-surface-subtle: #f7f7f7;
+    --ps-brand-surface-elevated: #ffffff;
+    --ps-brand-surface-overlay: rgba(255, 255, 255, 0.85);
+    --ps-brand-text-ink: #222222;
+    --ps-brand-text-charcoal: #484848;
+    --ps-brand-text-muted: #6f6f6f;
+    --ps-brand-text-subtle: #949494;
+    --ps-brand-border-default: #e3e3e3;
+    --ps-brand-border-strong: #cfcfcf;
+    --ps-brand-border-accent: #ff385c;
+    --ps-brand-ui-background: #f7f7f7;
+    --ps-brand-ui-surface: #ffffff;
+    --ps-brand-text-primary: #222222;
+    --ps-brand-text-secondary: #484848;
+    --ps-brand-borders-lines: #e3e3e3;
+
+    /* Component tokens */
+    --ps-input-padding-y: 12px;
+    --ps-input-padding-x: 16px;
+    --ps-input-font-size: var(--ps-fs-14);
+    --ps-input-line-height: 1.5;
+    --ps-input-border-width: var(--ps-bw-2);
+    --ps-input-radius: var(--ps-r-xs);
+    --ps-input-bg: #ffffff;
+    --ps-input-border: #d1d5db;
+    --ps-input-text: #111827;
+    --ps-input-focus-border: #3b82f6;
+    --ps-input-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    --ps-input-success-border: #10b981;
+    --ps-input-success-bg: #ecfdf3;
+    --ps-input-success-ring: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    --ps-input-error-border: #ef4444;
+    --ps-input-error-bg: #fef2f2;
+    --ps-input-error-ring: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    --ps-input-disabled-border: #e5e7eb;
+    --ps-input-disabled-bg: #f9fafb;
+    --ps-input-disabled-text: #9ca3af;
+
+    /* =========================
+       Shadows (dark-tuned)
+       ========================= */
+    --ps-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.35);
+    --ps-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --ps-shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.55);
+    --ps-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    /* =========================
+       Opacity
+       ========================= */
+    --ps-opacity-0: 0;
+    --ps-opacity-5: 0.05;
+    --ps-opacity-10: 0.1;
+    --ps-opacity-15: 0.15;
+    --ps-opacity-20: 0.2;
+    --ps-opacity-25: 0.25;
+    --ps-opacity-30: 0.3;
+    --ps-opacity-40: 0.4;
+    --ps-opacity-50: 0.5;
+    --ps-opacity-60: 0.6;
+    --ps-opacity-70: 0.7;
+    --ps-opacity-75: 0.75;
+    --ps-opacity-80: 0.8;
+    --ps-opacity-90: 0.9;
+    --ps-opacity-95: 0.95;
+    --ps-opacity-100: 1;
+
+    /* =========================
+       Z-index
+       ========================= */
+    --ps-z-base: 0;
+    --ps-z-dropdown: 1000;
+    --ps-z-sticky: 1020;
+    --ps-z-fixed: 1030;
+    --ps-z-modal-backdrop: 1040;
+    --ps-z-modal: 1050;
+    --ps-z-popover: 1060;
+    --ps-z-tooltip: 1070;
+    --ps-z-toast: 1080;
+
+    /* =========================
+       Blur
+       ========================= */
+    --ps-blur-sm: 4px;
+    --ps-blur-md: 10px;
+    --ps-blur-lg: 20px;
+
+    /* Focus */
+    --ps-focus-ring: rgba(104, 134, 255, 0.75);
+
+    /* Compatibility aliases */
+    --bg: var(--ps-bg);
+    --surface-1: var(--ps-surface-1);
+    --surface-2: var(--ps-surface-2);
+    --surface-3: var(--ps-surface-3);
+    --bg-app: var(--ps-bg);
+    --bg-sidebar: var(--ps-surface-1);
+    --bg-surface: var(--ps-surface-1);
+    --bg-surface-2: var(--ps-surface-2);
+    --bg-elevated: var(--ps-surface-3);
+
+    --border: var(--ps-border);
+    --border-default: var(--ps-border);
+    --border-subtle: var(--ps-border);
+    --border-strong: var(--ps-border-strong);
+
+    --text: var(--ps-text);
+    --text-primary: var(--ps-text);
+    --text-muted: var(--ps-text-muted);
+    --text-secondary: var(--ps-text-muted);
+    --text-faint: var(--ps-text-faint);
+    --text-tertiary: var(--ps-text-faint);
+
+    --accent: var(--ps-accent);
+    --accent-2: var(--ps-accent-2);
+    --accent-cyan: var(--ps-accent);
+    --accent-purple: var(--ps-accent-2);
+    --accent-orange: var(--ps-accent);
+
+    --success: var(--ps-success);
+    --warning: var(--ps-warning);
+    --danger: var(--ps-danger);
+    --info: var(--ps-info);
+
+    --shadow-sm: var(--ps-shadow-sm);
+    --shadow-md: var(--ps-shadow-md);
+    --shadow-lg: var(--ps-shadow-lg);
+    --shadow-inset: var(--ps-shadow-inset);
+
+    --focus-ring: var(--ps-focus-ring);
+
+    --s-1: var(--ps-space-1);
+    --s-2: var(--ps-space-2);
+    --s-3: var(--ps-space-3);
+    --s-4: var(--ps-space-4);
+    --s-5: var(--ps-space-5);
+    --s-6: var(--ps-space-6);
+    --s-7: var(--ps-space-7);
+    --s-8: var(--ps-space-8);
+    --s-9: var(--ps-space-9);
+    --s-10: var(--ps-space-10);
+
+    --space-0: var(--ps-space-0);
+    --space-1: var(--ps-space-1);
+    --space-2: var(--ps-space-2);
+    --space-3: var(--ps-space-3);
+    --space-4: var(--ps-space-4);
+    --space-5: var(--ps-space-5);
+    --space-6: var(--ps-space-6);
+    --space-7: var(--ps-space-7);
+    --space-8: var(--ps-space-8);
+    --space-9: var(--ps-space-9);
+    --space-10: var(--ps-space-10);
+    --space-11: var(--ps-space-11);
+    --space-page: var(--ps-space-page);
+    --space-card: var(--ps-space-card);
+
+    --spacing-unit: var(--ps-space-1);
+    --spacing-xxs: var(--ps-space-1);
+    --spacing-xs: var(--ps-space-2);
+    --spacing-sm: var(--ps-space-3);
+    --spacing-md: var(--ps-space-4);
+    --spacing-lg: var(--ps-space-6);
+    --spacing-xl: var(--ps-space-7);
+    --spacing-xxl: var(--ps-space-9);
+    --spacing-xxxl: var(--ps-space-11);
+
+    --r-none: var(--ps-r-none);
+    --r-xs: var(--ps-r-xs);
+    --r-sm: var(--ps-r-sm);
+    --r-md: var(--ps-r-md);
+    --r-lg: var(--ps-r-lg);
+    --r-xl: var(--ps-r-xl);
+    --r-2xl: var(--ps-r-2xl);
+    --r-pill: var(--ps-r-pill);
+    --r-card: var(--ps-r-2xl);
+    --r-input: var(--ps-r-lg);
+    --r-chip: var(--ps-r-pill);
+    --r-badge: var(--ps-r-md);
+    --r-kbd: var(--ps-r-md);
+
+    --radius-1: var(--ps-r-md);
+    --radius-2: var(--ps-r-lg);
+    --radius-3: var(--ps-r-2xl);
+    --radius-4: var(--ps-r-2xl);
+
+    --font-sans: var(--ps-font-sans);
+    --font-display: var(--ps-font-display);
+    --font-mono: var(--ps-font-mono);
+
+    --fs-10: var(--ps-fs-10);
+    --fs-11: var(--ps-fs-11);
+    --fs-12: var(--ps-fs-12);
+    --fs-13: var(--ps-fs-13);
+    --fs-14: var(--ps-fs-14);
+    --fs-16: var(--ps-fs-16);
+    --fs-18: var(--ps-fs-18);
+    --fs-20: var(--ps-fs-20);
+    --fs-24: var(--ps-fs-24);
+    --fs-32: var(--ps-fs-32);
+    --fs-40: var(--ps-fs-40);
+    --fs-56: var(--ps-fs-56);
+
+    --fs-00: var(--ps-fs-11);
+    --fs-0: var(--ps-fs-12);
+    --fs-1: var(--ps-fs-14);
+    --fs-2: var(--ps-fs-18);
+
+    --lh-tight: var(--ps-lh-tight);
+    --lh-snug: var(--ps-lh-snug);
+    --lh-normal: var(--ps-lh-normal);
+    --lh-relaxed: var(--ps-lh-relaxed);
+    --lh-1: var(--ps-lh-normal);
+
+    --ls-tight: var(--ps-ls-tight);
+    --ls-normal: var(--ps-ls-normal);
+    --ls-label: var(--ps-ls-label);
+    --ls-chip: var(--ps-ls-label);
+
+    --dur-1: var(--ps-dur-1);
+    --dur-2: var(--ps-dur-2);
+    --dur-3: var(--ps-dur-3);
+    --dur-4: var(--ps-dur-4);
+    --duration-fast: var(--ps-dur-2);
+    --duration-normal: var(--ps-dur-3);
+    --duration-slow: var(--ps-dur-4);
+
+    --ease-out: var(--ps-ease-out);
+    --ease-in: var(--ps-ease-in);
+    --ease-inout: var(--ps-ease-inout);
+    --ease-linear: var(--ps-ease-linear);
+
+    --grad-1: var(--ps-accent);
+    --grad-2: var(--ps-accent-2);
+    --grad-3: transparent;
+
+    --hl-a: rgba(104, 134, 255, 0.12);
+    --hl-b: rgba(139, 102, 255, 0.12);
+    --hl-c: rgba(104, 134, 255, 0.12);
+
+    --blur-glass: var(--ps-blur-md);
+
+    --ring-width: var(--ps-bw-3);
+    --ring-offset-width: var(--ps-bw-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --ps-dur-1: 0ms;
+      --ps-dur-2: 0ms;
+      --ps-dur-3: 0ms;
+      --ps-dur-4: 0ms;
+    }
+  }
+}

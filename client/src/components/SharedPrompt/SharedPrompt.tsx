@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, Copy, Check } from 'lucide-react';
-import { Button } from '../Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { useSharedPrompt } from './hooks/useSharedPrompt';
 import { getModeLabel } from './utils/promptUtils';
 import '../../features/prompt-optimizer/PromptCanvas.css';
@@ -27,7 +27,7 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (loading) {
     return (
-      <div className="min-h-full h-full gradient-neutral flex items-center justify-center">
+      <div className="min-h-full h-full bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-neutral-600 border-r-transparent"></div>
           <p className="mt-4 text-neutral-600">Loading prompt...</p>
@@ -38,7 +38,7 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (error || !prompt) {
     return (
-      <div className="min-h-full h-full gradient-neutral flex items-center justify-center">
+      <div className="min-h-full h-full bg-white flex items-center justify-center">
         <div className="text-center max-w-md p-8">
           <h1 className="text-3xl font-bold text-neutral-800 mb-4">{error || 'Prompt Not Found'}</h1>
           <p className="text-neutral-600 mb-6">
@@ -46,9 +46,9 @@ const SharedPrompt = (): React.ReactElement => {
           </p>
           <Button
             onClick={() => navigate('/')}
-            variant="primary"
-            prefix={<Home className="h-4 w-4" />}
+            variant="default"
           >
+            <Home className="h-4 w-4" />
             Go to Home
           </Button>
         </div>
@@ -57,7 +57,7 @@ const SharedPrompt = (): React.ReactElement => {
   }
 
   return (
-    <div className="min-h-full h-full gradient-neutral overflow-y-auto">
+    <div className="min-h-full h-full bg-white overflow-y-auto">
       {/* Header */}
       <div
         className="border-b border-neutral-200 bg-white/50 backdrop-blur-sm sticky z-10"
@@ -73,8 +73,8 @@ const SharedPrompt = (): React.ReactElement => {
           <Button
             onClick={() => navigate('/')}
             variant="ghost"
-            prefix={<Home className="h-4 w-4" />}
           >
+            <Home className="h-4 w-4" />
             Home
           </Button>
         </div>
@@ -101,9 +101,9 @@ const SharedPrompt = (): React.ReactElement => {
             <Button
               onClick={handleCopy}
               variant="ghost"
-              size="small"
-              prefix={copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              size="sm"
             >
+              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               {copied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
@@ -127,12 +127,13 @@ const SharedPrompt = (): React.ReactElement => {
         <div className="mt-12 pt-6 border-t border-neutral-200 text-center">
           <p className="text-sm text-neutral-500">
             Create your own optimized prompts at{' '}
-            <button
+            <Button
               onClick={() => navigate('/')}
-              className="text-neutral-700 hover:text-neutral-900 font-medium underline"
+              variant="link"
+              className="h-auto p-0 text-neutral-700 font-medium underline hover:text-neutral-900"
             >
               Prompt Builder
-            </button>
+            </Button>
           </p>
         </div>
       </div>

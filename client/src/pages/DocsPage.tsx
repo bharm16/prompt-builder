@@ -1,5 +1,6 @@
 import React from 'react';
 import { MarketingPage } from './MarketingPage';
+import { Card } from '@promptstudio/system/components/ui/card';
 
 export function DocsPage(): React.ReactElement {
   return (
@@ -7,13 +8,12 @@ export function DocsPage(): React.ReactElement {
       title="Docs"
       subtitle="Link out to your API docs or embed documentation content here."
     >
-      <div className="mt-8 card p-6">
-        <p className="text-geist-accents-6">
+      <Card className="mt-8 p-6">
+        <p className="text-muted">
           If you have an external docs site, you can point this nav item there later.
         </p>
-      </div>
+      </Card>
     </MarketingPage>
   );
 }
-
 

@@ -19,6 +19,12 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { LoadingDots } from '@components/LoadingDots';
+import { Button, type ButtonProps } from '@promptstudio/system/components/ui/button';
+import { Checkbox } from '@promptstudio/system/components/ui/checkbox';
+import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@promptstudio/system/components/ui/select';
+import { Slider } from '@promptstudio/system/components/ui/slider';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
 
 // External libraries
 import { useToast } from '@components/Toast';
@@ -99,6 +105,14 @@ const RUN_METRICS = {
   preview: { tokens: '1.2k', cost: '$0.08', quality: 'Pass', safety: 'Clear' },
   final: { tokens: '3.6k', cost: '$1.92', quality: 'Pass', safety: 'Clear' },
 } as const;
+
+const CanvasButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant, ...props }, ref) => (
+    <Button ref={ref} variant={variant ?? 'ghost'} {...props} />
+  )
+);
+
+CanvasButton.displayName = 'CanvasButton';
 
 type InlineSuggestion = {
   key: string;
@@ -281,6 +295,9 @@ export function PromptCanvas({
 
   const handleParamChange = useCallback(
     (key: string, value: CapabilityValue) => {
+      if (Object.is(generationParams?.[key], value)) {
+        return;
+      }
       setGenerationParams({
         ...(generationParams ?? {}),
         [key]: value,
@@ -305,31 +322,36 @@ export function PromptCanvas({
       };
 
       const currentRaw = generationParams?.[key] ?? info.field.default ?? '';
-      const currentDisplay = formatDisplay(currentRaw);
 
       return (
-        <div className="po-inline-dropdown" data-disabled={disabled ? 'true' : 'false'}>
-          <span className="po-inline-dropdown__value">{currentDisplay}</span>
-          <select
-            value={String(currentRaw)}
-            onChange={(e) => {
-              const val = info.field.type === 'int' ? Number(e.target.value) : e.target.value;
-              handleParamChange(key, val);
-            }}
-            disabled={disabled}
-            className="po-inline-dropdown__select"
+        <Select
+          value={String(currentRaw)}
+          onValueChange={(value) => {
+            const val = info.field.type === 'int' ? Number(value) : value;
+            handleParamChange(key, val);
+          }}
+          disabled={disabled}
+        >
+          <SelectTrigger
+            className="po-inline-dropdown [&>svg]:hidden"
+            data-disabled={disabled ? 'true' : 'false'}
             aria-label={ariaLabel}
           >
+            <span className="po-inline-dropdown__value">
+              <SelectValue />
+            </span>
+          </SelectTrigger>
+          <SelectContent>
             {info.allowedValues.map((value) => (
-              <option key={String(value)} value={String(value)}>
+              <SelectItem key={String(value)} value={String(value)}>
                 {formatDisplay(value)}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-        </div>
+          </SelectContent>
+        </Select>
       );
     },
-    [generationParams, getFieldInfo, handleParamChange]
+    [generationParams, handleParamChange]
   );
 
   // Custom hooks for clipboard and sharing
@@ -519,13 +541,17 @@ export function PromptCanvas({
   useEffect(() => {
     const toMs = (iso?: string | null): number | null =>
       iso ? Date.parse(iso) : null;
-    setVisualLastGeneratedAt(toMs(activeVersion?.preview?.generatedAt ?? null));
-    setVideoLastGeneratedAt(toMs(activeVersion?.video?.generatedAt ?? null));
+    const nextVisual = toMs(activeVersion?.preview?.generatedAt ?? null);
+    const nextVideo = toMs(activeVersion?.video?.generatedAt ?? null);
+    // Use setState directly to batch updates and avoid dependency on wrapper callbacks
+    setState({
+      visualLastGeneratedAt: nextVisual,
+      videoLastGeneratedAt: nextVideo,
+    });
   }, [
     activeVersion?.preview?.generatedAt,
     activeVersion?.video?.generatedAt,
-    setVisualLastGeneratedAt,
-    setVideoLastGeneratedAt,
+    setState,
   ]);
 
   const closeOutlineOverlay = useCallback((): void => {
@@ -959,9 +985,13 @@ export function PromptCanvas({
     if (isOptimizing) {
       return;
     }
+    const nextModel = modelId.trim();
     // Only enter edit mode if model actually changed
-    const modelChanged = modelId !== selectedModel;
-    setSelectedModel(modelId);
+    const modelChanged = nextModel !== selectedModel;
+    if (!modelChanged) {
+      return;
+    }
+    setSelectedModel(nextModel);
     // Automatically enter edit mode when model changes
     if (modelChanged && !isEditing) {
       setOriginalInputPrompt(inputPrompt);
@@ -1336,7 +1366,8 @@ export function PromptCanvas({
   useEffect(() => {
     setCustomRequest('');
     setCustomRequestError('');
-  }, [selectedSpanId, setCustomRequest]);
+    // Note: setCustomRequest is stable (from useState) so not needed in deps
+  }, [selectedSpanId]);
 
   useEffect(() => {
     const justOpened = previousSelectedSpanIdRef.current !== selectedSpanId && selectedSpanId;
@@ -1472,6 +1503,51 @@ export function PromptCanvas({
       });
     },
     [setVideoLastGeneratedAt, upsertVersionOutput]
+  );
+
+  const handleVisualPreviewStateChange = useCallback(
+    (nextState: {
+      provider: PreviewProvider;
+      useReferenceImage: boolean;
+      loading: boolean;
+      error: string | null;
+      imageUrl: string | null;
+      imageUrls: Array<string | null>;
+    }) => {
+      setVisualPreviewState((prev) => {
+        if (
+          prev &&
+          prev.provider === nextState.provider &&
+          prev.useReferenceImage === nextState.useReferenceImage &&
+          prev.loading === nextState.loading &&
+          prev.error === nextState.error &&
+          prev.imageUrl === nextState.imageUrl &&
+          prev.imageUrls.length === nextState.imageUrls.length &&
+          prev.imageUrls.every((url, index) => url === nextState.imageUrls[index])
+        ) {
+          return prev;
+        }
+        return nextState;
+      });
+    },
+    [setVisualPreviewState]
+  );
+
+  const handleVideoPreviewStateChange = useCallback(
+    (nextState: { loading: boolean; error: string | null; videoUrl: string | null }) => {
+      setVideoPreviewState((prev) => {
+        if (
+          prev &&
+          prev.loading === nextState.loading &&
+          prev.error === nextState.error &&
+          prev.videoUrl === nextState.videoUrl
+        ) {
+          return prev;
+        }
+        return nextState;
+      });
+    },
+    [setVideoPreviewState]
   );
 
   const handleRailVideoPreviewGenerated = useCallback(
@@ -1647,7 +1723,7 @@ export function PromptCanvas({
 
 	        {/* Outline toggle when collapsed (overlay drawer default) */}
 	        {!outlineOverlayActive && (
-	          <button
+	          <CanvasButton
 	            type="button"
 	            onClick={openOutlineOverlay}
 	            className="prompt-outline-open-fab"
@@ -1655,7 +1731,7 @@ export function PromptCanvas({
 	            title="Open outline"
 	          >
 	            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-	          </button>
+	          </CanvasButton>
 	        )}
 
         {/* Main Editor Area - Optimized Prompt */}
@@ -1681,7 +1757,7 @@ export function PromptCanvas({
 
                           <div className="prompt-card__header-actions">
                             {!isEditing ? (
-                              <button
+                              <CanvasButton
                                 type="button"
                                 onClick={handleEditClick}
                                 disabled={isOptimizing}
@@ -1691,10 +1767,10 @@ export function PromptCanvas({
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                                 <span>Edit</span>
-                              </button>
+                              </CanvasButton>
                             ) : (
                               <div className="prompt-card__action-group">
-                                <button
+                                <CanvasButton
                                   type="button"
                                   onClick={handleCancel}
                                   disabled={isOptimizing}
@@ -1704,8 +1780,8 @@ export function PromptCanvas({
                                 >
                                   <X className="h-3.5 w-3.5" />
                                   <span>Cancel</span>
-                                </button>
-                                <button
+                                </CanvasButton>
+                                <CanvasButton
                                   type="button"
                                   onClick={handleUpdate}
                                   disabled={isReoptimizeDisabled}
@@ -1715,7 +1791,7 @@ export function PromptCanvas({
                                 >
                                   <Check className="h-3.5 w-3.5" />
                                   <span>Update</span>
-                                </button>
+                                </CanvasButton>
                               </div>
                             )}
                           </div>
@@ -1723,27 +1799,29 @@ export function PromptCanvas({
 
                         {showVideoPreview && (
                           <div className="prompt-card__chips chip-row" aria-label="Prompt controls">
-                            <div className="po-inline-dropdown" data-disabled={isOptimizing ? 'true' : 'false'}>
-                              <span className="po-inline-dropdown__value">
-                                {selectedModel
-                                  ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] ?? selectedModel
-                                  : 'Auto'}
-                              </span>
-                              <select
-                                value={selectedModel ?? ''}
-                                onChange={(e) => handleModelChange(e.target.value)}
-                                disabled={isOptimizing}
-                                className="po-inline-dropdown__select"
+                            <Select
+                              value={selectedModel && selectedModel.trim() ? selectedModel : 'auto'}
+                              onValueChange={(value) => handleModelChange(value === 'auto' ? '' : value)}
+                              disabled={isOptimizing}
+                            >
+                              <SelectTrigger
+                                className="po-inline-dropdown [&>svg]:hidden"
+                                data-disabled={isOptimizing ? 'true' : 'false'}
                                 aria-label="Model"
                               >
-                                <option value="">Auto (Recommended)</option>
+                                <span className="po-inline-dropdown__value">
+                                  <SelectValue />
+                                </span>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="auto">Auto (Recommended)</SelectItem>
                                 {modelOptions.map((opt) => (
-                                  <option key={opt.id} value={opt.id}>
+                                  <SelectItem key={opt.id} value={opt.id}>
                                     {opt.label}
-                                  </option>
+                                  </SelectItem>
                                 ))}
-                              </select>
-                            </div>
+                              </SelectContent>
+                            </Select>
 
                             {aspectRatioInfo &&
                               renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', isOptimizing)}
@@ -1756,11 +1834,11 @@ export function PromptCanvas({
                         )}
                       </div>
                       <div className="prompt-card__body card__body">
-                        <label htmlFor="original-prompt-input" className="sr-only">
+                        <label htmlFor="original-prompt-input" className="ps-sr-only">
                           Input prompt
                         </label>
                         <div className="editor-well">
-                          <textarea
+                          <Textarea
                             ref={textareaRef}
                             id="original-prompt-input"
                             value={inputPrompt}
@@ -1769,7 +1847,7 @@ export function PromptCanvas({
                             placeholder="Describe your shot..."
                             rows={3}
                             readOnly={isInputLocked}
-                            className="prompt-input prompt-input--original input"
+                            className="prompt-input prompt-input--original"
                             aria-label="Original prompt input"
                             aria-readonly={isInputLocked}
                             aria-busy={isOptimizing}
@@ -1804,7 +1882,7 @@ export function PromptCanvas({
                               <span className="status-pill__dot" aria-hidden="true" />
                               {isOutputFocused ? 'Editing' : 'LIVE'}
                             </span>
-                            <button
+                            <CanvasButton
                               type="button"
                               className="po-action-btn"
                               onClick={handleCopy}
@@ -1816,8 +1894,8 @@ export function PromptCanvas({
                               ) : (
                                 <Copy className="h-4 w-4" aria-hidden="true" />
                               )}
-                            </button>
-                            <button
+                            </CanvasButton>
+                            <CanvasButton
                               type="button"
                               className="po-action-btn"
                               onClick={() => setShowDiff(true)}
@@ -1825,9 +1903,9 @@ export function PromptCanvas({
                               title="Diff"
                             >
                               <Diff className="h-4 w-4" aria-hidden="true" />
-                            </button>
+                            </CanvasButton>
                             <div className="po-action-menu" ref={exportMenuRef}>
-                              <button
+                              <CanvasButton
                                 type="button"
                                 className="po-action-btn"
                                 onClick={() => setShowExportMenu(!showExportMenu)}
@@ -1836,33 +1914,33 @@ export function PromptCanvas({
                                 title="Export"
                               >
                                 <Download className="h-4 w-4" aria-hidden="true" />
-                              </button>
+                              </CanvasButton>
                               {showExportMenu && (
                                 <div
                                   className="po-action-menu__popover po-popover po-surface po-surface--grad po-animate-pop-in"
                                   role="menu"
                                 >
-                                  <button type="button" onClick={() => handleExport('text')} role="menuitem">
+                                  <CanvasButton type="button" onClick={() => handleExport('text')} role="menuitem">
                                     Export .txt
-                                  </button>
-                                  <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
+                                  </CanvasButton>
+                                  <CanvasButton type="button" onClick={() => handleExport('markdown')} role="menuitem">
                                     Export .md
-                                  </button>
-                                  <button type="button" onClick={() => handleExport('json')} role="menuitem">
+                                  </CanvasButton>
+                                  <CanvasButton type="button" onClick={() => handleExport('json')} role="menuitem">
                                     Export .json
-                                  </button>
+                                  </CanvasButton>
                                 </div>
                               )}
                             </div>
-                            <button
+                            <CanvasButton
                               type="button"
                               className="po-action-icon"
                               onClick={handleShare}
                               aria-label="Share prompt"
                             >
                               <Share2 className="h-4 w-4" />
-                            </button>
-                            <button
+                            </CanvasButton>
+                            <CanvasButton
                               type="button"
                               className="po-action-icon"
                               onClick={onUndo}
@@ -1870,8 +1948,8 @@ export function PromptCanvas({
                               aria-label="Undo"
                             >
                               <RotateCcw className="h-4 w-4" />
-                            </button>
-                            <button
+                            </CanvasButton>
+                            <CanvasButton
                               type="button"
                               className="po-action-icon"
                               onClick={onRedo}
@@ -1879,7 +1957,7 @@ export function PromptCanvas({
                               aria-label="Redo"
                             >
                               <RotateCw className="h-4 w-4" />
-                            </button>
+                            </CanvasButton>
                           </div>
                         </div>
                       </div>
@@ -1915,7 +1993,7 @@ export function PromptCanvas({
                           hoveredSpanId &&
                           lockButtonPosition &&
                           !isOutputLoading && (
-                            <button
+                            <CanvasButton
                               ref={lockButtonRef}
                               type="button"
                               onClick={handleToggleLock}
@@ -1937,7 +2015,7 @@ export function PromptCanvas({
                               ) : (
                                 <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                               )}
-                            </button>
+                            </CanvasButton>
                           )}
                               {isOutputLoading && (
                                 <div
@@ -1987,7 +2065,7 @@ export function PromptCanvas({
                                     className="inline-suggest-custom-form"
                                     onSubmit={handleCustomRequestSubmit}
                                   >
-                                    <textarea
+                                    <Textarea
                                       id="inline-custom-request"
                                       value={customRequest}
                                       onChange={(event) => {
@@ -2002,14 +2080,14 @@ export function PromptCanvas({
                                       rows={1}
                                       aria-label="Custom suggestion request"
                                     />
-                                    <button
+                                    <CanvasButton
                                       type="submit"
                                       className="inline-suggest-cta"
                                       disabled={isCustomRequestDisabled}
                                       aria-busy={isCustomLoading}
                                     >
                                       {isCustomLoading ? 'Applying...' : 'Apply'}
-                                    </button>
+                                    </CanvasButton>
                                   </form>
                                   {customRequestError && (
                                     <div className="inline-suggest-custom-error" role="alert">
@@ -2077,14 +2155,14 @@ export function PromptCanvas({
                                     {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                                   </div>
                                   <div className="inline-suggest-actions">
-                                    <button
+                                    <CanvasButton
                                       type="button"
                                       className="inline-suggest-cta"
                                       onClick={closeInlinePopover}
                                     >
                                       Clear
-                                    </button>
-                                    <button
+                                    </CanvasButton>
+                                    <CanvasButton
                                       type="button"
                                       className="inline-suggest-cta"
                                       data-primary="true"
@@ -2095,7 +2173,7 @@ export function PromptCanvas({
                                       disabled={!suggestionCount}
                                     >
                                       Apply
-                                    </button>
+                                    </CanvasButton>
                                   </div>
                                 </div>
                               </>
@@ -2139,7 +2217,7 @@ export function PromptCanvas({
                         </span>
                         {previewEta && <span className="po-run-card__eta">{previewEta}</span>}
                         <div className="po-run-card__menu po-action-menu" ref={previewRunMenuRef}>
-                          <button
+                          <CanvasButton
                             type="button"
                             className="po-run-card__menu-btn"
                             onClick={() =>
@@ -2150,18 +2228,18 @@ export function PromptCanvas({
                             aria-expanded={openRunMenu === 'preview'}
                           >
                             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                          </button>
+                          </CanvasButton>
                           {openRunMenu === 'preview' && (
                             <div className="po-action-menu__popover" role="menu">
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 View logs
-                              </button>
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              </CanvasButton>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 Duplicate settings
-                              </button>
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              </CanvasButton>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 Share artifact link
-                              </button>
+                              </CanvasButton>
                             </div>
                           )}
                         </div>
@@ -2191,7 +2269,7 @@ export function PromptCanvas({
                       <div className="po-run-card__artifacts-label">Artifacts</div>
                       <div className="po-run-card__artifact-strip">
                         {RUN_ARTIFACTS.preview.map((artifact) => (
-                          <button
+                          <CanvasButton
                             key={artifact.id}
                             type="button"
                             className="po-run-card__artifact"
@@ -2199,25 +2277,25 @@ export function PromptCanvas({
                             aria-label={artifact.label}
                           />
                         ))}
-                        <button type="button" className="po-run-card__view-all">
+                        <CanvasButton type="button" className="po-run-card__view-all">
                           View all <span aria-hidden="true">&rarr;</span>
-                        </button>
+                        </CanvasButton>
                       </div>
                     </div>
                     <div className="po-run-card__section po-run-card__actions">
                       <div className="po-run-card__links">
-                        <button type="button" disabled={previewStatusState !== 'ready'}>
+                        <CanvasButton type="button" disabled={previewStatusState !== 'ready'}>
                           Retry
-                        </button>
-                        <button type="button" disabled={!canCompareRuns}>
+                        </CanvasButton>
+                        <CanvasButton type="button" disabled={!canCompareRuns}>
                           Compare
-                        </button>
-                        <button type="button" disabled={previewStatusState === 'idle'}>
+                        </CanvasButton>
+                        <CanvasButton type="button" disabled={previewStatusState === 'idle'}>
                           Logs
-                        </button>
-                        <button type="button">Copy settings</button>
+                        </CanvasButton>
+                        <CanvasButton type="button">Copy settings</CanvasButton>
                       </div>
-                      <button
+                      <CanvasButton
                         type="button"
                         onClick={
                           previewStatusState === 'ready'
@@ -2228,7 +2306,7 @@ export function PromptCanvas({
                         className="po-run-card__cta"
                       >
                         {previewCtaLabel}
-                      </button>
+                      </CanvasButton>
                     </div>
                   </div>
 
@@ -2248,7 +2326,7 @@ export function PromptCanvas({
                         </span>
                         {finalEta && <span className="po-run-card__eta">{finalEta}</span>}
                         <div className="po-run-card__menu po-action-menu" ref={finalRunMenuRef}>
-                          <button
+                          <CanvasButton
                             type="button"
                             className="po-run-card__menu-btn"
                             onClick={() =>
@@ -2259,18 +2337,18 @@ export function PromptCanvas({
                             aria-expanded={openRunMenu === 'final'}
                           >
                             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                          </button>
+                          </CanvasButton>
                           {openRunMenu === 'final' && (
                             <div className="po-action-menu__popover" role="menu">
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 View logs
-                              </button>
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              </CanvasButton>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 Duplicate settings
-                              </button>
-                              <button type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
+                              </CanvasButton>
+                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
                                 Share artifact link
-                              </button>
+                              </CanvasButton>
                             </div>
                           )}
                         </div>
@@ -2300,7 +2378,7 @@ export function PromptCanvas({
                       <div className="po-run-card__artifacts-label">Artifacts</div>
                       <div className="po-run-card__artifact-strip">
                         {RUN_ARTIFACTS.final.map((artifact) => (
-                          <button
+                          <CanvasButton
                             key={artifact.id}
                             type="button"
                             className="po-run-card__artifact"
@@ -2308,25 +2386,25 @@ export function PromptCanvas({
                             aria-label={artifact.label}
                           />
                         ))}
-                        <button type="button" className="po-run-card__view-all">
+                        <CanvasButton type="button" className="po-run-card__view-all">
                           View all <span aria-hidden="true">&rarr;</span>
-                        </button>
+                        </CanvasButton>
                       </div>
                     </div>
                     <div className="po-run-card__section po-run-card__actions">
                       <div className="po-run-card__links">
-                        <button type="button" disabled={finalStatusState !== 'ready'}>
+                        <CanvasButton type="button" disabled={finalStatusState !== 'ready'}>
                           Retry
-                        </button>
-                        <button type="button" disabled={!canCompareRuns}>
+                        </CanvasButton>
+                        <CanvasButton type="button" disabled={!canCompareRuns}>
                           Compare
-                        </button>
-                        <button type="button" disabled={finalStatusState === 'idle'}>
+                        </CanvasButton>
+                        <CanvasButton type="button" disabled={finalStatusState === 'idle'}>
                           Logs
-                        </button>
-                        <button type="button">Copy settings</button>
+                        </CanvasButton>
+                        <CanvasButton type="button">Copy settings</CanvasButton>
                       </div>
-                      <button
+                      <CanvasButton
                         type="button"
                         onClick={
                           finalStatusState === 'ready'
@@ -2337,7 +2415,7 @@ export function PromptCanvas({
                         className="po-run-card__cta"
                       >
                         {finalCtaLabel}
-                      </button>
+                      </CanvasButton>
                     </div>
                   </div>
                 </div>
@@ -2357,7 +2435,7 @@ export function PromptCanvas({
                 <div className="po-stage__subtitle">Preview &amp; refine output</div>
               </div>
               <div className="po-stage__tabs segmented">
-                <button
+                <CanvasButton
                   type="button"
                   onClick={() => setStageTab('preview')}
                   data-active={stageTab === 'preview' ? 'true' : 'false'}
@@ -2365,8 +2443,8 @@ export function PromptCanvas({
                   aria-selected={stageTab === 'preview'}
                 >
                   Preview
-                </button>
-                <button
+                </CanvasButton>
+                <CanvasButton
                   type="button"
                   onClick={() => setStageTab('final')}
                   data-active={stageTab === 'final' ? 'true' : 'false'}
@@ -2374,7 +2452,7 @@ export function PromptCanvas({
                   aria-selected={stageTab === 'final'}
                 >
                   Final
-                </button>
+                </CanvasButton>
               </div>
             </div>
 
@@ -2384,24 +2462,29 @@ export function PromptCanvas({
                   <div className="po-stagebar" aria-label="Preview controls">
                     <div className="po-stagebar__left">
                       <span className="po-stagebar__label">Provider</span>
-                      <select
-                        className="po-stagebar__select"
+                      <Select
                         value={visualProvider}
-                        onChange={(event) => setVisualProvider(event.target.value as PreviewProvider)}
-                        aria-label="Preview provider"
+                        onValueChange={(value) => setVisualProvider(value as PreviewProvider)}
                       >
-                        <option value="replicate-flux-kontext-fast">Kontext</option>
-                        <option value="replicate-flux-schnell">Schnell</option>
-                      </select>
+                        <SelectTrigger
+                          className="po-stagebar__select [&>svg]:hidden"
+                          aria-label="Preview provider"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="replicate-flux-kontext-fast">Kontext</SelectItem>
+                          <SelectItem value="replicate-flux-schnell">Schnell</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="po-stagebar__right">
                       {visualProvider === 'replicate-flux-kontext-fast' && hasStoryboardFrames && (
                         <label className="po-stagebar__toggle">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={useSelectedFrameAsBase}
-                            onChange={(event) => setUseSelectedFrameAsBase(event.target.checked)}
+                            onCheckedChange={(checked) => setUseSelectedFrameAsBase(Boolean(checked))}
                           />
                           <span>Use selected frame as base</span>
                         </label>
@@ -2431,7 +2514,7 @@ export function PromptCanvas({
                               <div className="po-stage-surface__blank" />
                             )}
                             {hasStoryboardFrames && (
-                              <button
+                              <CanvasButton
                                 type="button"
                                 className="po-storyboard__play"
                                 onClick={() => setStoryboardPlaying((prev) => !prev)}
@@ -2442,7 +2525,7 @@ export function PromptCanvas({
                                 ) : (
                                   <Play className="h-4 w-4" aria-hidden="true" />
                                 )}
-                              </button>
+                              </CanvasButton>
                             )}
                             {!isVisualPreviewGenerating && !hasStoryboardFrames && (
                               <div className="po-surface-empty" aria-live="polite">
@@ -2473,7 +2556,7 @@ export function PromptCanvas({
                             const thumb = storyboardFrames[index];
                             const isSelected = storyboardSelectedIndex === index;
                             return (
-                              <button
+                              <CanvasButton
                                 key={step.title}
                                 type="button"
                                 className="po-timeline-item"
@@ -2496,7 +2579,7 @@ export function PromptCanvas({
                                   <span className="po-timeline-item__title">{step.title}</span>
                                   <span className="po-timeline-item__delta">{step.delta}</span>
                                 </span>
-                              </button>
+                              </CanvasButton>
                             );
                           })}
                         </div>
@@ -2515,7 +2598,7 @@ export function PromptCanvas({
                           lastGeneratedAt={visualLastGeneratedAt}
                           onPreviewGenerated={handleVisualPreviewGenerated}
                           onLoadingChange={setVisualPreviewGenerating}
-                          onPreviewStateChange={(state) => setVisualPreviewState(state)}
+                          onPreviewStateChange={handleVisualPreviewStateChange}
                         />
                       </div>
                     </div>
@@ -2532,7 +2615,7 @@ export function PromptCanvas({
                           lastGeneratedAt={visualLastGeneratedAt}
                           onPreviewGenerated={handleVisualPreviewGenerated}
                           onLoadingChange={setVisualPreviewGenerating}
-                          onPreviewStateChange={(state) => setVisualPreviewState(state)}
+                          onPreviewStateChange={handleVisualPreviewStateChange}
                         />
                       </div>
                       {!isVisualPreviewGenerating && !stageHasOutput && (
@@ -2564,22 +2647,22 @@ export function PromptCanvas({
                     <span className="po-stagebar__spacer" aria-hidden="true" />
                     {finalStatusState === 'ready' && stageFinalVideoUrl && (
                       <div className="po-stagebar__actions" role="group" aria-label="Final quick actions">
-                        <button
+                        <CanvasButton
                           type="button"
                           className="po-stagebar__action"
                           onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
                         >
                           <Download className="h-4 w-4" aria-hidden="true" />
                           Download
-                        </button>
-                        <button
+                        </CanvasButton>
+                        <CanvasButton
                           type="button"
                           className="po-stagebar__action"
                           onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
                         >
                           <ExternalLink className="h-4 w-4" aria-hidden="true" />
                           Open
-                        </button>
+                        </CanvasButton>
                       </div>
                     )}
                   </div>
@@ -2620,7 +2703,7 @@ export function PromptCanvas({
                         videoRef={finalVideoElRef}
                         onPreviewGenerated={handleRailVideoPreviewGenerated}
                         onLoadingChange={setRailVideoPreviewGenerating}
-                        onPreviewStateChange={(state) => setVideoPreviewState(state)}
+                        onPreviewStateChange={handleVideoPreviewStateChange}
                       />
                       {!stageFinalVideoUrl && <div className="po-stage-surface__blank" />}
                       <div className="po-final-surface__overlay" aria-hidden="true">
@@ -2642,7 +2725,7 @@ export function PromptCanvas({
                     </div>
 
                     <div className="po-final-surface__scrub" aria-label="Timeline scrub">
-                      <input type="range" min={0} max={100} defaultValue={0} disabled={!stageFinalVideoUrl} />
+                      <Slider min={0} max={100} defaultValue={[0]} disabled={!stageFinalVideoUrl} />
                     </div>
                   </div>
                 </>
@@ -2673,22 +2756,22 @@ export function PromptCanvas({
                 {stageFooterMeta}
               </div>
               {stageTab === 'final' && (
-                <button
+                <CanvasButton
                   type="button"
                   className="po-stage__link"
                   onClick={() => setShowSettings(true)}
                 >
                   Edit settings
-                </button>
+                </CanvasButton>
               )}
-              <button
+              <CanvasButton
                 type="button"
                 onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
                 disabled={stageCtaDisabled}
                 className="po-stage__cta"
               >
                 {stageCtaLabel}
-              </button>
+              </CanvasButton>
             </div>
           </section>
 
@@ -2696,30 +2779,21 @@ export function PromptCanvas({
         </div>
       </div>
       {showDiff && (
-        <div
-          className="po-diff po-backdrop po-animate-fade-in"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Prompt diff"
-          onClick={() => setShowDiff(false)}
-        >
-          <div
-            className="po-diff__card po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <Dialog open={showDiff} onOpenChange={setShowDiff}>
+          <DialogContent className="po-diff__card po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in p-0 gap-0 max-w-none [&>button]:hidden">
             <div className="po-diff__header">
               <div>
                 <div className="po-diff__title">Diff</div>
                 <div className="po-diff__subtitle">Input vs optimized output</div>
               </div>
-              <button
+              <CanvasButton
                 type="button"
                 className="po-diff__close"
                 onClick={() => setShowDiff(false)}
                 aria-label="Close diff"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </CanvasButton>
             </div>
             <div className="po-diff__body">
               <div className="po-diff__panel">
@@ -2731,8 +2805,8 @@ export function PromptCanvas({
                 <pre>{normalizedDisplayedPrompt || '—'}</pre>
               </div>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

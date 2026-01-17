@@ -9,7 +9,7 @@ import {
   RotateCcw,
   RotateCw,
 } from 'lucide-react';
-import { Button } from '@components/Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { FloatingToolbarProps } from '../types';
 import { usePromptState } from '../context/PromptStateContext';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
@@ -78,26 +78,24 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         <>
           <Button
             onClick={onCopy}
-            svgOnly={false}
             variant="ghost"
-            prefix={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             className={copied ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
             aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
             title="Copy"
           >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             <span className="text-[13px] font-medium">{copied ? 'Copied' : 'Copy'}</span>
           </Button>
 
           <Button
             onClick={handleGenerateWithSelectedModel}
-            svgOnly={false}
             variant="ghost"
-            prefix={<ExternalLink className="h-4 w-4" />}
             className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
             aria-label={generateButtonLabel}
             title={generateButtonTitle}
             disabled={!selectedModelId}
           >
+            <ExternalLink className="h-4 w-4" />
             <span className="text-[13px] font-medium">{generateButtonLabel}</span>
           </Button>
         </>
@@ -105,47 +103,52 @@ export const PromptActions = memo<FloatingToolbarProps>(({
 
       <Button
         onClick={onShare}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
         className={shared ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
-      />
+      >
+        {shared ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+      </Button>
 
       <div className="relative" ref={exportMenuRef}>
         <Button
           onClick={() => onToggleExportMenu(!showExportMenu)}
-          svgOnly
+          size="icon"
           variant="ghost"
-          prefix={<Download className="h-3 w-3" />}
           className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
           aria-expanded={showExportMenu}
           title="Export"
-        />
+        >
+          <Download className="h-3 w-3" />
+        </Button>
         {showExportMenu && (
-          <div className="absolute bottom-full right-0 mb-geist-2 w-36 bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1 z-30">
-            <button
+          <div className="absolute bottom-full right-0 mb-2 w-36 bg-app border border-border rounded-lg shadow-md py-1 z-30">
+            <Button
               onClick={() => onExport('text')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
               <FileText className="h-3.5 w-3.5" />
               Text (.txt)
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onExport('markdown')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
               <FileText className="h-3.5 w-3.5" />
               Markdown (.md)
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onExport('json')}
-              className="w-full flex items-center gap-geist-2 px-geist-3 py-geist-2 text-label-12 text-geist-accents-7 hover:bg-geist-accents-1 transition-colors"
+              variant="ghost"
+              className="w-full justify-start gap-2 px-3 py-2 text-label-12 text-foreground transition-colors hover:bg-surface-1"
             >
               <FileText className="h-3.5 w-3.5" />
               JSON (.json)
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -155,21 +158,23 @@ export const PromptActions = memo<FloatingToolbarProps>(({
       <Button
         onClick={onUndo}
         disabled={!canUndo}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={<RotateCcw className="h-3 w-3" />}
         className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
         title="Undo"
-      />
+      >
+        <RotateCcw className="h-3 w-3" />
+      </Button>
       <Button
         onClick={onRedo}
         disabled={!canRedo}
-        svgOnly
+        size="icon"
         variant="ghost"
-        prefix={<RotateCw className="h-3 w-3" />}
         className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
         title="Redo"
-      />
+      >
+        <RotateCw className="h-3 w-3" />
+      </Button>
     </div>
   );
 });

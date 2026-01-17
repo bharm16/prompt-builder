@@ -5,8 +5,9 @@
  * For the 'subject' element, also displays subject descriptor cards.
  */
 
-import { Star as Sparkles, CheckCircle, AlertCircle, Tag } from '@geist-ui/icons';
-import { Button } from '@components/Button';
+import { Sparkles, CheckCircle, AlertCircle, Tag } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { SUBJECT_DESCRIPTOR_KEYS } from '../config/constants';
 import type { ElementKey, Elements } from '../hooks/types';
 import type { ElementConfig, CategoryDetection } from './types';
@@ -38,13 +39,13 @@ function SubjectDescriptorCard({
     <div className="rounded-2xl border border-neutral-200 bg-white/80 p-3 relative">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Tag size={14} color="#737373" />
-        <span className="text-label-12 text-geist-accents-7">
+        <span className="text-label-12 text-foreground">
           Descriptor {descriptorIndex + 1}
         </span>
-        <span className="text-label-12 text-geist-accents-4">Optional</span>
+        <span className="text-label-12 text-faint">Optional</span>
         {categoryDetection && (
           <span
-            className="inline-flex items-center gap-geist-1 rounded-full px-geist-2 py-geist-1 text-label-12 uppercase tracking-wide"
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-label-12 uppercase tracking-wide"
             style={{
               backgroundColor: categoryDetection.colors.bg,
               color: categoryDetection.colors.text,
@@ -72,34 +73,35 @@ function SubjectDescriptorCard({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <input
+        <Input
           type="text"
           value={value}
           onChange={(e) => onValueChange(descriptorKey, e.target.value)}
           onFocus={() => onFetchSuggestions(descriptorKey)}
           placeholder={descriptorConfig.placeholder}
-          className="input text-copy-14 focus:border-geist-accents-5 focus:ring-geist-accents-5/30"
+          className="text-copy-14 focus:border-accent focus:ring-accent/30"
         />
         <Button
           onClick={() => onFetchSuggestions(descriptorKey)}
-          variant="primary"
-          size="small"
-          prefix={<Sparkles size={12} />}
-          className="shadow-geist-small active:scale-95"
+          variant="default"
+          size="sm"
+          className="shadow-sm active:scale-95"
           title="Get AI descriptor ideas"
         >
+          <Sparkles size={12} />
           AI fill
         </Button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {descriptorConfig.examples.map((example, exampleIdx) => (
-          <button
+          <Button
             key={`${descriptorKey}-example-${exampleIdx}`}
             onClick={() => onValueChange(descriptorKey, example)}
-            className="rounded-full border border-geist-accents-2 bg-geist-background px-geist-3 py-geist-2 text-button-12 text-geist-accents-7 transition-all duration-150 hover:border-geist-accents-3 hover:bg-geist-accents-1 active:scale-95"
+            variant="ghost"
+            className="rounded-full border border-border bg-app px-3 py-2 text-button-12 text-foreground transition-all duration-150 hover:border-border-strong hover:bg-surface-1 active:scale-95"
           >
             {example}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -152,11 +154,12 @@ export function ElementCard({
           <Icon size={16} color="#404040" />
         </div>
         <div className="flex-1">
-          <h3 className="text-label-14 text-geist-foreground">{config.label}</h3>
+          <h3 className="text-label-14 text-foreground">{config.label}</h3>
         </div>
         {/* AI Button */}
-        <button
+        <Button
           onClick={() => onFetchSuggestions(elementKey)}
+          variant="ghost"
           className="group relative overflow-hidden px-2.5 py-1 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
           title="Get AI suggestions"
         >
@@ -165,7 +168,7 @@ export function ElementCard({
             <Sparkles size={12} />
             <span>AI</span>
           </div>
-        </button>
+        </Button>
         {isFilled && compatibility !== undefined && (
           <div className="flex items-center gap-1">
             {compatibility >= 0.8 ? (
@@ -178,25 +181,26 @@ export function ElementCard({
       </div>
 
       {/* Input Field */}
-      <input
+      <Input
         type="text"
         value={value}
         onChange={(e) => onValueChange(elementKey, e.target.value)}
         onFocus={() => onFetchSuggestions(elementKey)}
         placeholder={config.placeholder}
-        className="input text-sm transition-shadow focus:border-neutral-500 focus:ring-neutral-500/30"
+        className="text-sm transition-shadow focus:border-neutral-500 focus:ring-neutral-500/30"
       />
 
       {/* Quick Examples */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {config.examples.map((example, idx) => (
-          <button
+          <Button
             key={idx}
             onClick={() => onValueChange(elementKey, example)}
+            variant="ghost"
             className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm active:scale-95"
           >
             {example}
-          </button>
+          </Button>
         ))}
       </div>
 

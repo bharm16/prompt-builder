@@ -182,14 +182,14 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
   });
 
   // Context value
-  const value: PromptStateContextValue = {
+  const value: PromptStateContextValue = useMemo(() => ({
     // Mode
     modes,
     selectedMode,
     setSelectedMode,
     currentMode,
-    selectedModel, // New
-    setSelectedModel, // New
+    selectedModel,
+    setSelectedModel,
     generationParams,
     setGenerationParams,
 
@@ -263,7 +263,43 @@ export function PromptStateProvider({ children, user }: PromptStateProviderProps
     // Navigation
     navigate,
     uuid,
-  };
+  }), [
+    modes,
+    selectedMode,
+    currentMode,
+    selectedModel,
+    generationParams,
+    showHistory,
+    showResults,
+    showSettings,
+    showShortcuts,
+    showImprover,
+    showBrainstorm,
+    currentAIIndex,
+    outputSaveState,
+    outputLastSavedAt,
+    suggestionsData,
+    conceptElements,
+    promptContext,
+    currentPromptUuid,
+    currentPromptDocId,
+    activeVersionId,
+    initialHighlights,
+    initialHighlightsVersion,
+    canUndo,
+    canRedo,
+    promptOptimizer,
+    promptHistory,
+    applyInitialHighlightSnapshot,
+    resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
+    setDisplayedPromptSilently,
+    handleCreateNew,
+    loadFromHistory,
+    navigate,
+    uuid,
+  ]);
 
   usePromptStatePersistence({ selectedModel, generationParams });
   useDraftHistorySync({

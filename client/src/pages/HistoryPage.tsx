@@ -5,6 +5,9 @@ import { Container, Section } from '@components/layout';
 import { getAuthRepository } from '@repositories/index';
 import { usePromptHistory } from '@hooks/usePromptHistory';
 import type { PromptHistoryEntry, User } from '@hooks/types';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Card } from '@promptstudio/system/components/ui/card';
+import { Input } from '@promptstudio/system/components/ui/input';
 
 function formatRelativeOrDate(iso: string | undefined): string {
   if (!iso) return '—';
@@ -53,10 +56,10 @@ export function HistoryPage(): React.ReactElement {
   }, [promptHistory.history, promptHistory.searchQuery]);
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-b from-neutral-50 via-white to-neutral-50">
-      <Section spacing="geist-base">
+    <div className="h-full overflow-y-auto bg-app">
+      <Section spacing="ps-6">
         <Container size="lg">
-          <div className="relative overflow-hidden rounded-geist-lg border border-geist-accents-2 bg-white p-6">
+          <div className="relative overflow-hidden rounded-lg border border-border bg-surface-1 p-6">
             <div
               className="pointer-events-none absolute inset-0 opacity-60"
               aria-hidden="true"
@@ -68,10 +71,10 @@ export function HistoryPage(): React.ReactElement {
 
             <div className="relative flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-semibold text-geist-foreground tracking-tight">
+                <h1 className="text-3xl font-semibold text-foreground tracking-tight">
                   History
                 </h1>
-                <p className="text-geist-accents-6 max-w-2xl">
+                <p className="text-muted max-w-2xl">
                   Search across every optimized output you’ve saved.
                 </p>
               </div>
@@ -79,11 +82,11 @@ export function HistoryPage(): React.ReactElement {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="relative flex-1">
                   <Search
-                    className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-geist-accents-4"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-faint"
                     aria-hidden="true"
                   />
-                  <input
-                    className="input input-search pr-10"
+                  <Input
+                    className="pl-11 pr-10"
                     type="search"
                     value={promptHistory.searchQuery}
                     onChange={(e) => promptHistory.setSearchQuery(e.target.value)}
@@ -91,41 +94,45 @@ export function HistoryPage(): React.ReactElement {
                     aria-label="Search prompt history"
                   />
                   {promptHistory.searchQuery ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => promptHistory.setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-geist hover:bg-geist-accents-1 transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-md p-0 transition-colors hover:bg-surface-1"
                       aria-label="Clear search"
                       title="Clear"
                     >
-                      <X className="h-4 w-4 text-geist-accents-5" aria-hidden="true" />
-                    </button>
+                      <X className="h-4 w-4 text-muted" aria-hidden="true" />
+                    </Button>
                   ) : null}
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 text-sm text-geist-accents-6">
+                <div className="flex items-center justify-between sm:justify-end gap-3 text-sm text-muted">
                   <span className="tabular-nums">
                     {filteredOutputs.length}
                     {promptHistory.searchQuery ? ' results' : ' prompts'}
                   </span>
                   {user ? (
-                    <span className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1 text-xs text-geist-accents-6">
+                    <span className="px-2 py-0.5 rounded-full border border-border bg-surface-1 text-xs text-muted">
                       Synced
                     </span>
                   ) : (
-                    <Link
-                      to="/signin?redirect=/history"
-                      className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1 text-xs text-geist-accents-6 hover:text-geist-foreground"
+                    <Button
+                      asChild
+                      variant="ghost"
+                      className="h-auto px-2 py-0.5 rounded-full border border-border bg-surface-1 text-xs text-muted hover:text-foreground"
                     >
-                      Sign in to sync
-                    </Link>
+                      <Link to="/signin?redirect=/history">Sign in to sync</Link>
+                    </Button>
                   )}
-                  <Link
-                    to="/"
-                    className="text-geist-foreground hover:underline font-medium"
+                  <Button
+                    asChild
+                    variant="link"
+                    className="h-auto p-0 font-medium text-foreground hover:underline"
                   >
-                    Back to app
-                  </Link>
+                    <Link to="/">Back to app</Link>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -136,12 +143,12 @@ export function HistoryPage(): React.ReactElement {
       <Container size="lg">
         {promptHistory.isLoadingHistory ? (
           <div className="py-12 text-center">
-            <div className="spinner-sm mx-auto mb-3" />
-            <p className="text-sm text-geist-accents-6">Loading history…</p>
+            <div className="ps-spinner-sm mx-auto mb-3" />
+            <p className="text-sm text-muted">Loading history…</p>
           </div>
         ) : filteredOutputs.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-sm text-geist-accents-6">
+            <p className="text-sm text-muted">
               {promptHistory.searchQuery
                 ? `No results for “${promptHistory.searchQuery}”.`
                 : 'No prompts saved yet.'}
@@ -162,28 +169,28 @@ export function HistoryPage(): React.ReactElement {
               return (
                 <article
                   key={entry.id ?? entry.uuid ?? `${entry.timestamp ?? 'no-ts'}-${index}`}
-                  className="border-gradient rounded-geist-lg"
+                  className="ps-border-gradient rounded-lg"
                 >
-                  <div className="card p-5">
+                  <Card className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-geist-foreground truncate" title={title}>
+                        <h2 className="text-base font-semibold text-foreground truncate" title={title}>
                           {title}
                         </h2>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-geist-accents-5">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                           <span className="tabular-nums">{when}</span>
                           {mode ? (
-                            <span className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1">
+                            <span className="px-2 py-0.5 rounded-full border border-border bg-surface-1">
                               {mode}
                             </span>
                           ) : null}
                           {model ? (
-                            <span className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1">
+                            <span className="px-2 py-0.5 rounded-full border border-border bg-surface-1">
                               {model}
                             </span>
                           ) : null}
                           {typeof entry.score === 'number' ? (
-                            <span className="px-2 py-0.5 rounded-full border border-geist-accents-2 bg-geist-accents-1 tabular-nums">
+                            <span className="px-2 py-0.5 rounded-full border border-border bg-surface-1 tabular-nums">
                               Score {Math.round(entry.score)}
                             </span>
                           ) : null}
@@ -193,7 +200,7 @@ export function HistoryPage(): React.ReactElement {
                       {uuid ? (
                         <Link
                           to={`/prompt/${uuid}`}
-                          className="shrink-0 text-sm font-medium text-geist-foreground hover:underline"
+                          className="shrink-0 text-sm font-medium text-foreground hover:underline"
                           aria-label="Open prompt"
                         >
                           Open
@@ -201,24 +208,24 @@ export function HistoryPage(): React.ReactElement {
                       ) : null}
                     </div>
 
-                    <div className="mt-4 rounded-geist-lg border border-geist-accents-2 bg-geist-accents-1 p-4">
+                    <div className="mt-4 rounded-lg border border-border bg-surface-1 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-semibold tracking-wide text-geist-accents-6">
+                        <span className="text-[11px] font-semibold tracking-wide text-muted">
                           OUTPUT
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-geist-foreground line-clamp-3 whitespace-pre-wrap break-words">
+                      <p className="mt-2 text-sm text-foreground ps-line-clamp-3 whitespace-pre-wrap break-words">
                         {deriveSnippet(entry.output)}
                       </p>
                     </div>
 
                     {uuid ? (
-                      <div className="mt-4 text-xs text-geist-accents-5">
-                        <span className="font-medium text-geist-accents-6">UUID:</span>{' '}
+                      <div className="mt-4 text-xs text-muted">
+                        <span className="font-medium text-muted">UUID:</span>{' '}
                         <span className="font-mono">{uuid}</span>
                       </div>
                     ) : null}
-                  </div>
+                  </Card>
                 </article>
               );
             })}

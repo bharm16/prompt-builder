@@ -3,11 +3,12 @@ import {
   ArrowRight as LogIn,
   ChevronLeft as PanelLeft,
   User as UserIcon,
-} from '@geist-ui/icons';
+} from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { HistoryEmptyState } from '@components/EmptyState';
 import { useToast } from '@components/Toast';
-import { Button } from '@components/Button';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import { HistoryItem } from './components/HistoryItem';
@@ -359,18 +360,20 @@ export function HistorySidebar({
     >
       {isCollapsed ? (
         <div className="po-sidebar__collapsed">
-          <button
+          <Button
             type="button"
             onClick={() => {
               hoverExpandedRef.current = false;
               setShowHistory(true);
             }}
+            variant="ghost"
+            size="icon"
             className="po-sidebar__logo-btn"
             aria-label="Expand sidebar"
             title="Vidra"
           >
             <span className="po-sidebar__logo-text">V</span>
-          </button>
+          </Button>
 
           <div className="po-sidebar__divider" aria-hidden="true" />
 
@@ -389,9 +392,11 @@ export function HistorySidebar({
               const key = (entry.id || entry.uuid) as string | undefined;
               const color = stageColor(resolveEntryStage(entry));
               return (
-                <button
+                <Button
                   key={key ?? `${entry.timestamp ?? ''}-${entry.input.slice(0, 8)}`}
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   className="po-sidebar__timeline-dot"
                   style={{ backgroundColor: color }}
                   aria-label="Prompt"
@@ -415,36 +420,42 @@ export function HistorySidebar({
 
           <div className="po-sidebar__divider" aria-hidden="true" />
 
-          <button
+          <Button
             type="button"
             onClick={onCreateNew}
+            variant="ghost"
+            size="icon"
             className="po-sidebar__icon-btn"
             aria-label="New prompt"
             title="New prompt"
           >
             <span>+</span>
-          </button>
+          </Button>
 
           <div className="po-sidebar__divider" aria-hidden="true" />
 
           <div className="po-sidebar__collapsed-footer">
             {!user ? (
-              <button
+              <Button
                 type="button"
                 onClick={handleSignIn}
+                variant="ghost"
+                size="icon"
                 className="po-sidebar__icon-btn"
                 aria-label="Sign in"
                 title="Sign in"
               >
                 <LogIn size={18} />
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   hoverExpandedRef.current = false;
                   setShowHistory(true);
                 }}
+                variant="ghost"
+                size="icon"
                 className="po-sidebar__avatar-btn"
                 aria-label="User menu"
                 title={typeof user.displayName === 'string' ? user.displayName : 'User'}
@@ -454,7 +465,7 @@ export function HistorySidebar({
                 ) : (
                   <UserIcon size={18} />
                 )}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -468,11 +479,12 @@ export function HistorySidebar({
                   hoverExpandedRef.current = false;
                   setShowHistory(false);
                 }}
-                svgOnly
                 variant="ghost"
-                prefix={<PanelLeft size={20} />}
+                size="icon"
                 aria-label="Collapse sidebar"
-              />
+              >
+                <PanelLeft size={20} />
+              </Button>
             </div>
           </header>
 
@@ -509,13 +521,13 @@ export function HistorySidebar({
           <section className="po-sidebar__section po-sidebar__section--sessions">
             <div className="po-sidebar__section-head">
               <h2>Prompts</h2>
-              <button type="button" className="po-sidebar__ghost" onClick={onCreateNew}>
+              <Button type="button" variant="ghost" className="po-sidebar__ghost" onClick={onCreateNew}>
                 + New
-              </button>
+              </Button>
             </div>
 
             <div className="po-sidebar__search">
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
@@ -526,7 +538,7 @@ export function HistorySidebar({
 
             {isLoadingHistory ? (
               <div className="po-sidebar__empty">
-                <div className="spinner-sm" />
+                <div className="ps-spinner-sm" />
                 <p>Loading...</p>
               </div>
             ) : filteredHistory.length === 0 && searchQuery ? (
@@ -565,7 +577,7 @@ export function HistorySidebar({
                   <Button
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     variant="ghost"
-                    size="small"
+                    size="sm"
                     className="po-sidebar__see-more"
                   >
                     {showAllHistory ? 'See less' : 'See more...'}

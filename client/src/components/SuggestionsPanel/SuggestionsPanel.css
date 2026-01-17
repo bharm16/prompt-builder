@@ -26,7 +26,7 @@
 .suggestions-panel__divider {
   height: 1px;
   margin: 12px 0;
-  background: var(--rail-divider, var(--geist-accents-2));
+  background: var(--rail-divider, var(--ps-border));
 }
 
 .suggestions-panel__token-list {

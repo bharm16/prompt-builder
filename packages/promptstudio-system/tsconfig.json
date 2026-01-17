@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "paths": {
+      "@promptstudio/system/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

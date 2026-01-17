@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { RotateCcw, Trash2 } from 'lucide-react';
-import { Button } from '@components/Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { PromptHistoryEntry } from '@hooks/types';
 import './HistoryItem.css';
 
@@ -83,15 +83,15 @@ export const HistoryItem = memo<HistoryItemProps>(({
           <div className="po-session-delete__actions">
             <Button
               onClick={handleDelete}
-              size="small"
-              variant="primary"
+              size="sm"
+              variant="destructive"
               className="po-session-delete__btn po-session-delete__btn--danger"
             >
               Delete
             </Button>
             <Button
               onClick={handleCancel}
-              size="small"
+              size="sm"
               variant="secondary"
               className="po-session-delete__btn"
             >
@@ -118,8 +118,10 @@ export const HistoryItem = memo<HistoryItemProps>(({
           style={{ backgroundColor: stageColor }}
           aria-hidden="true"
         />
-        <button
+        <Button
+          type="button"
           onClick={handleLoad}
+          variant="ghost"
           className="po-session-item__button"
           aria-label={`Load prompt: ${title}`}
           title={title}
@@ -146,27 +148,33 @@ export const HistoryItem = memo<HistoryItemProps>(({
             </div>
             <div className="po-session-item__meta">{processingLabel ?? meta}</div>
           </div>
-        </button>
+        </Button>
 
         {stage === 'error' && (
-          <button
+          <Button
+            type="button"
             onClick={handleRetry}
+            variant="ghost"
+            size="icon"
             className="po-session-item__retry"
             aria-label="Retry"
             title="Retry"
           >
             <RotateCcw className="h-3.5 w-3.5" style={{ color: stageColor }} />
-          </button>
+          </Button>
         )}
 
-        <button
+        <Button
+          type="button"
           onClick={handleDelete}
+          variant="ghost"
+          size="icon"
           className="po-session-item__delete"
           aria-label="Delete prompt"
           title="Delete prompt"
         >
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
     </li>
   );

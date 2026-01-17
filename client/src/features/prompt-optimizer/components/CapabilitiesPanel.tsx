@@ -7,6 +7,10 @@ import {
   type CapabilityValue,
   type CapabilityValues,
 } from '@shared/capabilities';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@promptstudio/system/components/ui/select';
+import { Switch } from '@promptstudio/system/components/ui/switch';
 import { useCapabilities } from '../hooks/useCapabilities';
 import { useNormalizedCapabilityValues } from '../hooks/useNormalizedCapabilityValues';
 
@@ -106,13 +110,13 @@ export const CapabilitiesPanel = ({
 
   if (!schema && isLoading) {
     return (
-      <div className="text-xs text-geist-accents-6">Loading model settings...</div>
+      <div className="text-xs text-muted">Loading model settings...</div>
     );
   }
 
   if (!schema) {
     return (
-      <div className="text-xs text-geist-accents-6">
+      <div className="text-xs text-muted">
         {error ? `Settings unavailable: ${error}` : 'Model settings unavailable.'}
       </div>
     );
@@ -121,17 +125,17 @@ export const CapabilitiesPanel = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-geist-accents-6">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted">
           Model settings
         </span>
-        <span className="text-xs text-geist-accents-5">
+        <span className="text-xs text-muted">
           {label} - {provider}/{model}
         </span>
       </div>
 
       {groupedFields.map((group) => (
         <div key={group.group} className="space-y-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-geist-accents-6">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
             {group.group}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -146,35 +150,24 @@ export const CapabilitiesPanel = ({
               return (
                 <div
                   key={id}
-                  className={`rounded-geist border border-geist-accents-2 bg-geist-background px-3 py-2.5 ${
+                  className={`rounded-md border border-border bg-app px-3 py-2.5 ${
                     isDisabled ? 'opacity-60' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <label
                       htmlFor={`cap-${id}`}
-                      className="text-xs font-medium text-geist-foreground"
+                      className="text-xs font-medium text-foreground"
                     >
                       {labelText}
                     </label>
                     {field.type === 'bool' && (
-                      <button
+                      <Switch
                         id={`cap-${id}`}
-                        type="button"
-                        role="switch"
-                        aria-checked={Boolean(value)}
-                        onClick={() => handleValueChange(id, !value)}
+                        checked={Boolean(value)}
+                        onCheckedChange={(checked) => handleValueChange(id, checked)}
                         disabled={isDisabled}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                          value ? 'bg-geist-foreground' : 'bg-geist-accents-3'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-geist-background transition-transform ${
-                            value ? 'translate-x-4' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
+                      />
                     )}
                   </div>
 
@@ -183,50 +176,57 @@ export const CapabilitiesPanel = ({
                       {allowedValues.map((option) => {
                         const isSelected = Object.is(option, value);
                         return (
-                          <button
+                          <Button
                             key={`${id}-${String(option)}`}
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleValueChange(id, option)}
                             aria-pressed={isSelected}
-                            className={`px-2.5 py-1 text-xs font-medium rounded-geist border transition-colors ${
+                            variant="ghost"
+                            className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
                               isSelected
-                                ? 'bg-geist-foreground text-geist-background border-geist-foreground'
-                                : 'bg-geist-background text-geist-accents-6 border-geist-accents-2 hover:bg-geist-accents-1'
+                                ? 'bg-foreground text-app border-foreground'
+                                : 'bg-app text-muted border-border hover:bg-surface-1'
                             }`}
                           >
                             {valueToLabel(option)}
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
                   )}
 
                   {field.type === 'enum' && field.ui?.control !== 'segmented' && (
-                    <select
-                      id={`cap-${id}`}
+                    <Select
                       value={value !== undefined ? String(value) : ''}
-                      onChange={(event) => {
+                      onValueChange={(selectedValue) => {
                         const selected = allowedValues.find(
-                          (option) => String(option) === event.target.value
+                          (option) => String(option) === selectedValue
                         );
                         if (typeof selected !== 'undefined') {
                           handleValueChange(id, selected);
                         }
                       }}
                       disabled={isDisabled}
-                      className="mt-2 w-full rounded-geist border border-geist-accents-2 bg-geist-background px-2 py-1.5 text-xs text-geist-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
                     >
-                      {allowedValues.map((option) => (
-                        <option key={`${id}-${String(option)}`} value={String(option)}>
-                          {valueToLabel(option)}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id={`cap-${id}`}
+                        className="mt-2 w-full rounded-md border border-border bg-app px-2 py-1.5 text-xs text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allowedValues.map((option) => (
+                          <SelectItem key={`${id}-${String(option)}`} value={String(option)}>
+                            {valueToLabel(option)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
 
                   {field.type === 'int' && (
-                    <input
+                    <Input
                       id={`cap-${id}`}
                       type="number"
                       value={typeof value === 'number' ? value : ''}
@@ -248,24 +248,24 @@ export const CapabilitiesPanel = ({
                       min={field.constraints?.min}
                       max={field.constraints?.max}
                       step={field.constraints?.step}
-                      className="mt-2 w-full rounded-geist border border-geist-accents-2 bg-geist-background px-2 py-1.5 text-xs text-geist-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
+                      className="mt-2 w-full rounded-md border border-border bg-app px-2 py-1.5 text-xs text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                     />
                   )}
 
                   {field.type === 'string' && (
-                    <input
+                    <Input
                       id={`cap-${id}`}
                       type="text"
                       value={typeof value === 'string' ? value : ''}
                       onChange={(event) => handleValueChange(id, event.target.value)}
                       disabled={isDisabled}
                       placeholder={field.ui?.placeholder}
-                      className="mt-2 w-full rounded-geist border border-geist-accents-2 bg-geist-background px-2 py-1.5 text-xs text-geist-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-4"
+                      className="mt-2 w-full rounded-md border border-border bg-app px-2 py-1.5 text-xs text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                     />
                   )}
 
                   {description && (
-                    <p className="mt-2 text-[11px] text-geist-accents-6">{description}</p>
+                    <p className="mt-2 text-[11px] text-muted">{description}</p>
                   )}
                 </div>
               );

@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Chrome, Eye, EyeOff, Mail, User as UserIcon } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import type { User } from '@hooks/types';
 import { AuthShell } from './auth/AuthShell';
 
@@ -172,15 +174,16 @@ export function SignUpPage(): React.ReactElement {
           </div>
         ) : null}
 
-        <button
+        <Button
           type="button"
           onClick={handleGoogleSignUp}
           disabled={isBusy}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white text-[14px] font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:-translate-y-px hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)] active:translate-y-0 active:shadow-[0_10px_30px_rgba(0,0,0,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+          variant="ghost"
+          className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-white text-[14px] font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:-translate-y-px hover:bg-white hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)] active:translate-y-0 active:shadow-[0_10px_30px_rgba(0,0,0,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isBusy ? <Spinner /> : <Chrome className="h-4 w-4" aria-hidden="true" />}
           Continue with Google
-        </button>
+        </Button>
 
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
@@ -195,7 +198,7 @@ export function SignUpPage(): React.ReactElement {
             </label>
             <div className="relative">
               <UserIcon className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
-              <input
+              <Input
                 className={`${inputClassName} pl-11`}
                 type="text"
                 value={displayName}
@@ -212,7 +215,7 @@ export function SignUpPage(): React.ReactElement {
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
-              <input
+              <Input
                 className={`${inputClassName} pl-11`}
                 type="email"
                 value={email}
@@ -229,7 +232,7 @@ export function SignUpPage(): React.ReactElement {
               PASSWORD
             </label>
             <div className="relative">
-              <input
+              <Input
                 className={`${inputClassName} pr-11`}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -237,15 +240,17 @@ export function SignUpPage(): React.ReactElement {
                 autoComplete="new-password"
                 placeholder="At least 6 characters"
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                variant="ghost"
+                size="icon"
+                className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isBusy}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -253,7 +258,7 @@ export function SignUpPage(): React.ReactElement {
             <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
               CONFIRM PASSWORD
             </label>
-            <input
+            <Input
               className={inputClassName}
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
@@ -275,14 +280,15 @@ export function SignUpPage(): React.ReactElement {
             .
           </p>
 
-          <button
+          <Button
             type="submit"
             disabled={isBusy}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="ghost"
+            className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isBusy ? <Spinner /> : null}
             Create account
-          </button>
+          </Button>
         </form>
       </div>
     </AuthShell>

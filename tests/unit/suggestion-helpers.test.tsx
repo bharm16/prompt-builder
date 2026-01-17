@@ -41,7 +41,7 @@ describe('suggestionHelpers', () => {
       const styles = getCompatibilityStyles(0.7);
 
       expect(styles?.IconComponent).toBeNull();
-      expect(styles?.tone).toContain('text-geist-accents-5');
+      expect(styles?.tone).toContain('text-muted');
     });
   });
 

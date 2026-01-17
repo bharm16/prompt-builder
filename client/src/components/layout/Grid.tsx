@@ -1,13 +1,8 @@
 /**
- * Grid Component (Geist Design System)
- * 
- * Grid is used to organize the content in columns and rows. Like Box and Flex,
- * it's made to provide convenient access to the underlying CSS grid properties
- * without any magic of its own. Supports Geist spacing tokens for gaps.
- * 
- * Supports Geist gap tokens: geist-quarter, geist-half, geist-base
- * 
- * Based on: https://vercel.com/geist
+ * Grid Component (PromptStudio System)
+ *
+ * Grid is used to organize content in columns and rows. It provides convenient
+ * access to CSS grid properties, with optional system spacing token support.
  */
 
 import React from 'react';
@@ -74,6 +69,14 @@ function getGridClasses(prop: string | { [key: string]: string } | undefined, pr
   return classes.join(' ');
 }
 
+function psTokenToCssVar(token: string): string | undefined {
+  if (token === 'ps-page') return 'var(--ps-space-page)';
+  if (token === 'ps-card') return 'var(--ps-space-card)';
+  const m = /^ps-(\d+)$/.exec(token);
+  if (!m) return undefined;
+  return `var(--ps-space-${m[1]})`;
+}
+
 export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
   (
     {
@@ -91,11 +94,15 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
     },
     ref
   ): React.ReactElement => {
+    const gapToken = typeof gap === 'string' ? psTokenToCssVar(gap) : undefined;
+    const colGapToken = typeof columnGap === 'string' ? psTokenToCssVar(columnGap) : undefined;
+    const rowGapToken = typeof rowGap === 'string' ? psTokenToCssVar(rowGap) : undefined;
+
     const gridClasses = [
       'grid',
-      getGridClasses(gap, 'gap'),
-      getGridClasses(columnGap, 'gap-x'),
-      getGridClasses(rowGap, 'gap-y'),
+      gapToken ? '' : getGridClasses(gap, 'gap'),
+      colGapToken ? '' : getGridClasses(columnGap, 'gap-x'),
+      rowGapToken ? '' : getGridClasses(rowGap, 'gap-y'),
       className,
     ]
       .filter(Boolean)
@@ -103,6 +110,9 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
 
     const inlineStyles: React.CSSProperties = {
       ...style,
+      ...(gapToken ? { gap: gapToken } : {}),
+      ...(colGapToken ? { columnGap: colGapToken } : {}),
+      ...(rowGapToken ? { rowGap: rowGapToken } : {}),
       ...(columns && typeof columns === 'string' ? { gridTemplateColumns: columns } : {}),
       ...(rows && typeof rows === 'string' ? { gridTemplateRows: rows } : {}),
       ...(area && typeof area === 'string' ? { gridArea: area } : {}),
@@ -125,4 +135,3 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
 Grid.displayName = 'Grid';
 
 export default Grid;
-

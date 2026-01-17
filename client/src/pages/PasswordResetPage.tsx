@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldAlert } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { AuthShell } from './auth/AuthShell';
 
 function getSafeRedirect(search: string): string | null {
@@ -206,12 +208,13 @@ export function PasswordResetPage(): React.ReactElement {
                   This page needs a secure code from your email. Use the link we sent you.
                 </p>
                 <div className="mt-3">
-                  <Link
-                    to={forgotPasswordLink}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="h-11 w-full rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
                   >
-                    Request a new reset email
-                  </Link>
+                    <Link to={forgotPasswordLink}>Request a new reset email</Link>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -246,18 +249,20 @@ export function PasswordResetPage(): React.ReactElement {
                   If this link expired or was already used, request a new reset email.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link
-                    to={forgotPasswordLink}
-                    className="inline-flex h-11 items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="h-11 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
                   >
-                    Request new email
-                  </Link>
-                  <Link
-                    to={signInLink}
-                    className="inline-flex h-11 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+                    <Link to={forgotPasswordLink}>Request new email</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="h-11 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
                   >
-                    Back to sign in
-                  </Link>
+                    <Link to={signInLink}>Back to sign in</Link>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -292,7 +297,7 @@ export function PasswordResetPage(): React.ReactElement {
                 NEW PASSWORD
               </label>
               <div className="relative">
-                <input
+                <Input
                   className={`${inputClassName} pr-11`}
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -301,15 +306,17 @@ export function PasswordResetPage(): React.ReactElement {
                   placeholder="At least 6 characters"
                   disabled={isBusy}
                 />
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-white/50 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isBusy}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -317,7 +324,7 @@ export function PasswordResetPage(): React.ReactElement {
               <label className="text-[11px] font-semibold tracking-[0.22em] text-white/50">
                 CONFIRM PASSWORD
               </label>
-              <input
+              <Input
                 className={inputClassName}
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
@@ -328,14 +335,15 @@ export function PasswordResetPage(): React.ReactElement {
               />
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={isBusy}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+              variant="ghost"
+              className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy ? <Spinner /> : null}
               Update password
-            </button>
+            </Button>
 
             <div className="flex items-center justify-between gap-3">
               <Link
@@ -355,13 +363,14 @@ export function PasswordResetPage(): React.ReactElement {
         ) : null}
 
         {resetState === 'success' ? (
-          <button
+          <Button
             type="button"
             onClick={handleContinue}
-            className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            variant="ghost"
+            className="h-11 w-full rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
           >
             Continue to sign in
-          </button>
+          </Button>
         ) : null}
       </div>
     </AuthShell>

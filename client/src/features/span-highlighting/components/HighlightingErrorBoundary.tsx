@@ -8,6 +8,7 @@
 
 import React, { type ReactNode } from 'react';
 import { ErrorBoundary, type FallbackProps } from '@components/ErrorBoundary/ErrorBoundary';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { spanLabelingCache } from '../services/index.ts';
 import { logger } from '@/services/LoggingService';
 import { sanitizeError } from '@/utils/logging';
@@ -76,15 +77,16 @@ export function HighlightingErrorBoundary({ children }: HighlightingErrorBoundar
                 </details>
               )}
               
-              <button
+              <Button
                 onClick={() => {
                   handleReset();
                   resetError();
                 }}
-                className="mt-2 text-sm text-yellow-700 underline hover:text-yellow-800 hover:no-underline"
+                variant="link"
+                className="mt-2 h-auto p-0 text-sm text-yellow-700 underline hover:text-yellow-800 hover:no-underline"
               >
                 Re-enable highlighting
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { User } from '@hooks/types';
 import { AuthShell } from './auth/AuthShell';
 
@@ -276,22 +277,26 @@ export function EmailVerificationPage(): React.ReactElement {
                   )}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleResend}
                     disabled={!user || isResending || resendCooldown > 0}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                    variant="ghost"
+                    className="h-11 gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isResending ? <Spinner /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                     {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend email'}
-                  </button>
+                  </Button>
 
-                  <Link
-                    to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
-                    className="inline-flex h-11 items-center justify-center rounded-[12px] border border-white/10 bg-black/30 px-4 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="h-11 rounded-[12px] border border-white/10 bg-black/30 px-4 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
                   >
-                    Password help
-                  </Link>
+                    <Link to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}>
+                      Password help
+                    </Link>
+                  </Button>
                 </div>
 
                 {!user ? (
@@ -304,13 +309,14 @@ export function EmailVerificationPage(): React.ReactElement {
           </div>
         ) : null}
 
-        <button
+        <Button
           type="button"
           onClick={handleContinue}
-          className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+          variant="ghost"
+          className="h-11 w-full rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
         >
           Continue
-        </button>
+        </Button>
       </div>
     </AuthShell>
   );

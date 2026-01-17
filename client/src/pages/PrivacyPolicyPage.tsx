@@ -1,5 +1,6 @@
 import React from 'react';
 import { MarketingPage } from './MarketingPage';
+import { Card } from '@promptstudio/system/components/ui/card';
 
 export function PrivacyPolicyPage(): React.ReactElement {
   const updatedAt = 'January 13, 2026';
@@ -16,72 +17,72 @@ export function PrivacyPolicyPage(): React.ReactElement {
     >
       <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="lg:sticky lg:top-[calc(var(--global-top-nav-height)+24px)] lg:self-start">
-          <div className="card p-5">
+          <Card className="p-5">
             <nav aria-label="On this page" className="text-[13px]">
-              <p className="text-[11px] font-semibold tracking-[0.22em] text-geist-accents-5">
+              <p className="text-[11px] font-semibold tracking-[0.22em] text-muted">
                 ON THIS PAGE
               </p>
               <ul className="mt-3 space-y-2">
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#overview">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#overview">
                     Overview
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#data">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#data">
                     Information we collect
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#use">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#use">
                     How we use data
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#sharing">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#sharing">
                     Sharing
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#retention">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#retention">
                     Retention
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#choices">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#choices">
                     Your choices & rights
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#security">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#security">
                     Security
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#transfers">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#transfers">
                     International transfers
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#changes">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#changes">
                     Changes
                   </a>
                 </li>
                 <li>
-                  <a className="text-geist-accents-6 hover:text-geist-foreground hover:underline" href="#contact">
+                  <a className="text-muted hover:text-foreground hover:underline" href="#contact">
                     Contact
                   </a>
                 </li>
               </ul>
             </nav>
-          </div>
+          </Card>
         </aside>
 
-        <div className="border-gradient rounded-geist-lg">
-          <div className="card p-6">
-            <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-geist-accents-6">
+        <div className="ps-border-gradient rounded-lg">
+          <Card className="p-6">
+            <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-muted">
               <section>
-                <h2 id="overview" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="overview" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Overview
                 </h2>
                 <p className="mt-2">
@@ -90,39 +91,39 @@ export function PrivacyPolicyPage(): React.ReactElement {
                 </p>
                 <p className="mt-2">
                   If you have questions about this policy or want to exercise a privacy right, contact us at{' '}
-                  <span className="font-medium text-geist-foreground">{supportEmail}</span>.
+                  <span className="font-medium text-foreground">{supportEmail}</span>.
                 </p>
               </section>
 
               <section>
-                <h2 id="data" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="data" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Information we collect
                 </h2>
                 <ul className="mt-2 list-disc pl-5 space-y-2">
                   <li>
-                    <span className="font-medium text-geist-foreground">Account information</span>: email address, display name, and authentication identifiers from our auth provider.
+                    <span className="font-medium text-foreground">Account information</span>: email address, display name, and authentication identifiers from our auth provider.
                   </li>
                   <li>
-                    <span className="font-medium text-geist-foreground">Content you submit</span>: prompts, generated outputs, and any text or assets you choose to save. If you create a share link, shared content may be accessible to anyone with the link.
+                    <span className="font-medium text-foreground">Content you submit</span>: prompts, generated outputs, and any text or assets you choose to save. If you create a share link, shared content may be accessible to anyone with the link.
                   </li>
                   <li>
-                    <span className="font-medium text-geist-foreground">Usage and device information</span>: interactions with the Service, pages/screens viewed, diagnostic logs, and performance metrics (including via analytics tooling).
+                    <span className="font-medium text-foreground">Usage and device information</span>: interactions with the Service, pages/screens viewed, diagnostic logs, and performance metrics (including via analytics tooling).
                   </li>
                   <li>
-                    <span className="font-medium text-geist-foreground">Billing information</span>: payments are processed by Stripe. We receive limited billing metadata such as subscription status and invoice details; we do not receive full card numbers.
+                    <span className="font-medium text-foreground">Billing information</span>: payments are processed by Stripe. We receive limited billing metadata such as subscription status and invoice details; we do not receive full card numbers.
                   </li>
                   <li>
-                    <span className="font-medium text-geist-foreground">Support communications</span>: information you include when contacting support (e.g., email, message content, attachments).
+                    <span className="font-medium text-foreground">Support communications</span>: information you include when contacting support (e.g., email, message content, attachments).
                   </li>
                 </ul>
                 <p className="mt-3">
-                  <span className="font-medium text-geist-foreground">AI processing.</span> When you use features that call an AI model (for example,
+                  <span className="font-medium text-foreground">AI processing.</span> When you use features that call an AI model (for example,
                   generating suggestions or previews), we send the inputs you provide to the relevant AI provider to process your request and return results.
                 </p>
               </section>
 
               <section>
-                <h2 id="use" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="use" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   How we use data
                 </h2>
                 <ul className="mt-2 list-disc pl-5 space-y-2">
@@ -135,7 +136,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="sharing" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="sharing" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Sharing
                 </h2>
                 <p className="mt-2">
@@ -146,7 +147,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="retention" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="retention" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Retention
                 </h2>
                 <p className="mt-2">
@@ -156,7 +157,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="choices" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="choices" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Your choices & rights
                 </h2>
                 <ul className="mt-2 list-disc pl-5 space-y-2">
@@ -168,7 +169,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="security" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="security" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Security
                 </h2>
                 <p className="mt-2">
@@ -178,7 +179,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="transfers" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="transfers" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   International transfers
                 </h2>
                 <p className="mt-2">
@@ -188,7 +189,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="changes" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="changes" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Changes
                 </h2>
                 <p className="mt-2">
@@ -198,15 +199,15 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="contact" className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground">
+                <h2 id="contact" className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground">
                   Contact
                 </h2>
                 <p className="mt-2">
-                  Questions about this policy? Email <span className="font-medium text-geist-foreground">{supportEmail}</span>.
+                  Questions about this policy? Email <span className="font-medium text-foreground">{supportEmail}</span>.
                 </p>
               </section>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </MarketingPage>

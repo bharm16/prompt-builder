@@ -4,6 +4,8 @@ import { usePromptState } from '../context/PromptStateContext';
 import { useShareLink } from '../hooks/useShareLink';
 import { usePromptExport } from '../PromptCanvas/hooks/usePromptExport';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { useDebugLogger } from '@hooks/useDebugLogger';
 import './PromptTopBar.css';
 
@@ -116,15 +118,17 @@ export const PromptTopBar = (): React.ReactElement | null => {
     <header className="po-topbar" role="banner">
       <div className="po-topbar__inner topbar">
         <div className="po-topbar__left">
-          <button
+          <Button
             type="button"
             className="po-topbar__iconbtn"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
+            variant="ghost"
+            size="icon"
           >
             <PanelLeft size={16} />
-          </button>
+          </Button>
 
           <div className="po-topbar__brand brand">
             <div className="po-topbar__product brand__name">VIDRA</div>
@@ -133,7 +137,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <div className="po-topbar__title-field command-field">
             <span className="po-topbar__title-accent" aria-hidden="true" />
-            <input
+            <Input
               type="text"
               value={titleValue}
               onChange={(event) => {
@@ -184,28 +188,30 @@ export const PromptTopBar = (): React.ReactElement | null => {
             <div className="po-topbar__status po-topbar__status--idle" aria-hidden="true" />
           )}
 
-          <button
+          <Button
             type="button"
             className="po-topbar__command"
             aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
             aria-pressed={showShortcuts}
             onClick={() => setShowShortcuts(!showShortcuts)}
+            variant="ghost"
           >
             <Command size={14} />
             <span className="po-kbd">⌘K</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             className="po-topbar__btn po-topbar__btn--primary"
             onClick={handleCreateNew}
             aria-label="Create new prompt"
+            variant="ghost"
           >
             <Plus size={16} />
             New
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             className="po-topbar__iconbtn"
             aria-label={shared ? 'Share link copied' : 'Share prompt'}
@@ -216,47 +222,53 @@ export const PromptTopBar = (): React.ReactElement | null => {
                 toast.error('Save the prompt first to generate a share link');
               }
             }}
+            variant="ghost"
+            size="icon"
           >
             <Share2 size={16} />
-          </button>
+          </Button>
 
           <div className="po-topbar__menu" ref={exportMenuRef}>
-            <button
+            <Button
               type="button"
               className="po-topbar__iconbtn"
               aria-label="Export prompt"
               aria-expanded={showExportMenu}
               onClick={() => setShowExportMenu(!showExportMenu)}
+              variant="ghost"
+              size="icon"
             >
               <Download size={16} />
-            </button>
+            </Button>
             {showExportMenu && (
               <div
                 className="po-topbar__menu-popover po-popover po-surface po-surface--grad po-animate-pop-in"
                 role="menu"
               >
-                <button type="button" onClick={() => handleExport('text')} role="menuitem">
+                <Button type="button" variant="ghost" onClick={() => handleExport('text')} role="menuitem">
                   Export .txt
-                </button>
-                <button type="button" onClick={() => handleExport('markdown')} role="menuitem">
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => handleExport('markdown')} role="menuitem">
                   Export .md
-                </button>
-                <button type="button" onClick={() => handleExport('json')} role="menuitem">
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => handleExport('json')} role="menuitem">
                   Export .json
-                </button>
+                </Button>
               </div>
             )}
           </div>
 
-          <button
+          <Button
             type="button"
             className="po-topbar__iconbtn"
             aria-label={showSettings ? 'Close settings' : 'Open settings'}
             aria-pressed={showSettings}
             onClick={() => setShowSettings(!showSettings)}
+            variant="ghost"
+            size="icon"
           >
             <Settings2 size={16} />
-          </button>
+          </Button>
         </div>
       </div>
     </header>

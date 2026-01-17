@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Command, Search } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { SHORTCUTS, formatShortcut, isMac } from './shortcuts.config';
 import './KeyboardShortcuts.css';
 
@@ -19,21 +22,6 @@ export default function KeyboardShortcuts({
 }: KeyboardShortcutsProps): React.ReactElement | null {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-    return undefined;
-  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -63,37 +51,41 @@ export default function KeyboardShortcuts({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="po-command modal-backdrop po-backdrop po-animate-fade-in"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="command-title"
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        className="po-command__card po-modal po-surface po-surface--grad po-animate-pop-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <DialogContent className="po-command__card po-modal po-surface po-surface--grad p-0 max-w-[720px] [&>button]:hidden">
         <div className="po-command__accent" aria-hidden="true" />
         <div className="po-command__header">
           <div className="po-command__title">
             <Command className="h-4 w-4" aria-hidden="true" />
             <span id="command-title">Command Palette</span>
           </div>
-          <button type="button" className="po-command__close" onClick={onClose} aria-label="Close command palette">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="po-command__close"
+            onClick={onClose}
+            aria-label="Close command palette"
+          >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="po-command__search" role="search">
           <Search className="h-4 w-4" aria-hidden="true" />
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search actions"
             aria-label="Search actions"
+            className="h-auto border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
 
@@ -145,7 +137,7 @@ export default function KeyboardShortcuts({
           <span>{isMac ? 'Mac layout' : 'Windows/Linux layout'}</span>
           <span>{totalMatches} actions</span>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

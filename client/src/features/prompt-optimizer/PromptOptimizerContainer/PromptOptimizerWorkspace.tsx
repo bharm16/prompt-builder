@@ -400,7 +400,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       } as React.CSSProperties}
     >
       {/* Skip to main content */}
-      <a href="#main-content" className="sr-only-focusable top-4 left-4">
+      <a href="#main-content" className="ps-skip-link">
         Skip to main content
       </a>
 

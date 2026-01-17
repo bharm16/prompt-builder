@@ -1,0 +1,33 @@
+@layer ps.base {
+  html {
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--ps-font-sans);
+    font-size: var(--ps-fs-14);
+    line-height: var(--ps-lh-normal);
+    color: var(--ps-text);
+    background: var(--ps-bg);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--ps-focus-ring);
+    outline-offset: 2px;
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

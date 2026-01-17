@@ -178,7 +178,7 @@ export function AuthShell({
                     <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">
                       BEFORE
                     </p>
-                    <p className="mt-2 text-[13px] leading-snug text-white/70 line-clamp-3">
+                    <p className="mt-2 text-[13px] leading-snug text-white/70 ps-line-clamp-3">
                       “Write a prompt for a cinematic product shot.”
                     </p>
                   </div>
@@ -186,7 +186,7 @@ export function AuthShell({
                     <p className="text-[10px] font-semibold tracking-[0.18em] text-white/50">
                       AFTER
                     </p>
-                    <p className="mt-2 text-[13px] leading-snug text-white/80 line-clamp-3">
+                    <p className="mt-2 text-[13px] leading-snug text-white/80 ps-line-clamp-3">
                       “You are a director of photography. Generate a cinematic product shot with lighting, lens, mood, and composition…”
                     </p>
                   </div>

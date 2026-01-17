@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { SpanItemProps } from './types';
 
 /**
@@ -62,7 +63,7 @@ export const SpanItem = memo<SpanItemProps>(
     const bg = mutedCategoryColor(backgroundColor);
 
     return (
-      <button
+      <Button
         type="button"
         className="pc-outline-token"
         style={bg ? { background: bg } : undefined}
@@ -70,9 +71,10 @@ export const SpanItem = memo<SpanItemProps>(
         onMouseLeave={() => onHoverChange?.(null)}
         onClick={handleClick}
         title={span.quote}
+        variant="ghost"
       >
         {span.quote}
-      </button>
+      </Button>
     );
   }
 );

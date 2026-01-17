@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Input } from '@promptstudio/system/components/ui/input';
 import { AuthShell } from './auth/AuthShell';
 
 function getSafeRedirect(search: string): string | null {
@@ -147,7 +149,7 @@ export function ForgotPasswordPage(): React.ReactElement {
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-4 top-[18px] h-4 w-4 text-white/30" aria-hidden="true" />
-              <input
+              <Input
                 className={`${inputClassName} pl-11`}
                 type="email"
                 value={email}
@@ -160,14 +162,15 @@ export function ForgotPasswordPage(): React.ReactElement {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={isBusy}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="ghost"
+            className="h-11 w-full gap-2 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isBusy ? <Spinner /> : null}
             Send reset email
-          </button>
+          </Button>
 
           <div className="flex items-center justify-between gap-3">
             <Link

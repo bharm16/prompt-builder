@@ -1,8 +1,7 @@
 import React from 'react';
-import { X } from 'lucide-react';
 import Settings, { useSettings } from '@components/Settings';
 import KeyboardShortcuts from '@components/KeyboardShortcuts';
-import { Button } from '@components/Button';
+import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
 import PromptImprovementForm from '@/PromptImprovementForm';
 import { usePromptState } from '../context/PromptStateContext';
 import type { PromptModalsProps } from '../types';
@@ -54,33 +53,14 @@ export const PromptModals = ({
       />
 
       {/* Improvement Form Modal */}
-      {showImprover && (
-        <div className="modal-backdrop po-backdrop po-animate-fade-in" onClick={() => setShowImprover(false)}>
-          <div
-            className="app-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="improvement-title"
-          >
-            <div className="my-8 w-full max-w-3xl po-surface po-surface--grad po-animate-pop-in">
-              <Button
-                onClick={() => setShowImprover(false)}
-                variant="ghost"
-                prefix={<X className="h-5 w-5" />}
-                className="mb-4 text-white hover:text-neutral-200"
-                aria-label="Close improvement form"
-              >
-                Close
-              </Button>
-              <PromptImprovementForm
-                initialPrompt={promptOptimizer.inputPrompt}
-                onComplete={handleImprovementComplete}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showImprover} onOpenChange={setShowImprover}>
+        <DialogContent className="max-w-3xl po-surface po-surface--grad">
+          <PromptImprovementForm
+            initialPrompt={promptOptimizer.inputPrompt}
+            onComplete={handleImprovementComplete}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

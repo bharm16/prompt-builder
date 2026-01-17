@@ -16,6 +16,7 @@
 
 import React, { useState, useEffect, memo } from 'react';
 import { useDebugLogger } from '@hooks/useDebugLogger';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 // Hooks
 import { useSuggestionsState } from './hooks/useSuggestionsState';
@@ -234,26 +235,27 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
         >
           <div className="flex flex-col">
             {hasActiveSuggestions && isLoading && (
-              <div className="text-label-12 text-geist-accents-5" role="status" aria-live="polite">
+              <div className="text-label-12 text-muted" role="status" aria-live="polite">
                 Loading alternatives…
               </div>
             )}
 
             {hasActiveSuggestions && !isLoading && isError && (
               <div className="space-y-2">
-                <div className="text-label-12 text-geist-accents-5">
+                <div className="text-label-12 text-muted">
                   {typeof errorMessage === 'string' && errorMessage.trim()
                     ? errorMessage
                     : 'Failed to load alternatives.'}
                 </div>
                 {onRetry && (
-                  <button
+                  <Button
                     type="button"
                     onClick={onRetry}
-                    className="inline-flex items-center justify-center px-geist-3 py-geist-1.5 text-label-12 rounded-geist border border-geist-accents-2 bg-geist-background text-geist-foreground hover:bg-geist-accents-1 transition-colors"
+                    variant="ghost"
+                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
                   >
                     Retry
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -269,7 +271,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
             )}
 
             {hasActiveSuggestions && !isLoading && !isError && currentSuggestions.length === 0 && (
-              <div className="text-label-12 text-geist-accents-5">No alternatives yet.</div>
+              <div className="text-label-12 text-muted">No alternatives yet.</div>
             )}
 
             {hasActiveSuggestions && enableCustomRequest && (
@@ -300,8 +302,8 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {showTokenEditorHeader ? (
-            <div className="px-geist-4 pt-geist-3 pb-geist-2">
-              <div className="text-[12px] font-medium text-geist-accents-5 uppercase tracking-[0.08em]">
+            <div className="px-4 pt-3 pb-2">
+              <div className="text-[12px] font-medium text-muted uppercase tracking-[0.08em]">
                 Suggestions
               </div>
             </div>
@@ -309,32 +311,33 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
           <div className="flex-1 min-h-0 overflow-hidden">
             {!hasActiveSuggestions ? (
-              <div className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5">
+              <div className="px-4 pb-4 text-label-12 text-muted">
                 Select a token to load alternatives.
               </div>
             ) : isLoading ? (
               <div
-                className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5"
+                className="px-4 pb-4 text-label-12 text-muted"
                 role="status"
                 aria-live="polite"
               >
                 Loading alternatives…
               </div>
             ) : isError ? (
-              <div className="px-geist-4 pb-geist-4 space-y-2">
-                <div className="text-label-12 text-geist-accents-5">
+              <div className="px-4 pb-4 space-y-2">
+                <div className="text-label-12 text-muted">
                   {typeof errorMessage === 'string' && errorMessage.trim()
                     ? errorMessage
                     : 'Failed to load alternatives.'}
                 </div>
                 {onRetry && (
-                  <button
+                  <Button
                     type="button"
                     onClick={onRetry}
-                    className="inline-flex items-center justify-center px-geist-3 py-geist-1.5 text-label-12 rounded-geist border border-geist-accents-2 bg-geist-background text-geist-foreground hover:bg-geist-accents-1 transition-colors"
+                    variant="ghost"
+                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
                   >
                     Retry
-                  </button>
+                  </Button>
                 )}
               </div>
             ) : currentSuggestions.length > 0 ? (
@@ -346,7 +349,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
                 variant="tokenEditor"
               />
             ) : (
-              <div className="px-geist-4 pb-geist-4 text-label-12 text-geist-accents-5">
+              <div className="px-4 pb-4 text-label-12 text-muted">
                 No alternatives yet.
               </div>
             )}

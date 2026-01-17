@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, Loader2 } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
 
 import type { FormData, PromptImprovementFormProps, Question } from './types';
 
@@ -75,8 +77,10 @@ export const PromptImprovementForm = ({
                 key={question.id}
                 className="overflow-hidden rounded-lg border-2 border-gray-800"
               >
-                <button
+                <Button
+                  type="button"
                   onClick={() => toggleSection(question.id)}
+                  variant="ghost"
                   className="flex w-full items-start gap-3 p-4 transition-colors hover:bg-gray-50"
                 >
                   <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-800 font-bold text-white">
@@ -90,7 +94,7 @@ export const PromptImprovementForm = ({
                   ) : (
                     <ChevronDown className="mt-1 h-5 w-5 flex-shrink-0" />
                   )}
-                </button>
+                </Button>
 
                 {expandedSection === question.id && (
                   <div className="border-t border-gray-200 p-4 pt-0">
@@ -99,7 +103,7 @@ export const PromptImprovementForm = ({
                     </p>
 
                     <div className="ml-10">
-                      <textarea
+                      <Textarea
                         value={formData[question.field]}
                         onChange={(e) =>
                           handleInputChange(question.field, e.target.value)
@@ -115,16 +119,17 @@ export const PromptImprovementForm = ({
                         </p>
                         <div className="space-y-2">
                           {question.examples.map((example, idx) => (
-                            <button
+                            <Button
                               key={idx}
                               onClick={() =>
                                 handleExampleClick(question.field, example)
                               }
+                              variant="ghost"
                               className="group flex w-full items-center justify-between rounded-lg border-2 border-gray-300 p-3 text-left text-sm transition-colors hover:border-gray-400 hover:bg-gray-50"
                             >
                               <span className="flex-1">{example}</span>
                               <Plus className="h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-gray-600" />
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -138,9 +143,10 @@ export const PromptImprovementForm = ({
 
         {!isLoading && (
           <div className="pt-4">
-            <button
+            <Button
               onClick={handleSubmit}
               disabled={!isComplete}
+              variant="ghost"
               className={`w-full rounded-lg px-6 py-3 font-semibold transition-colors ${
                 isComplete
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -150,9 +156,9 @@ export const PromptImprovementForm = ({
               {isComplete
                 ? 'Optimize with Context'
                 : 'Answer at least one question to continue'}
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={() =>
                 onComplete(initialPrompt, {
                   specificAspects: '',
@@ -160,10 +166,11 @@ export const PromptImprovementForm = ({
                   intendedUse: '',
                 })
               }
+              variant="ghost"
               className="mt-2 w-full py-2 text-sm text-gray-600 hover:text-gray-800"
             >
               Skip and optimize without context
-            </button>
+            </Button>
           </div>
         )}
       </div>

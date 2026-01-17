@@ -321,7 +321,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // ============================================================================
   return (
     <div
-      className="prompt-optimizer-shell relative h-full min-h-0 overflow-hidden gradient-neutral transition-colors duration-300"
+      className="prompt-optimizer-shell relative h-full min-h-0 overflow-hidden bg-white transition-colors duration-300"
       style={{
         '--sidebar-width': showHistory 
           ? 'var(--layout-sidebar-width-expanded)' 
@@ -335,7 +335,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       } as React.CSSProperties}
     >
       {/* Skip to main content - positioned absolute so it doesn't affect grid layout */}
-      <a href="#main-content" className="sr-only-focusable absolute top-4 left-4 z-50">
+      <a href="#main-content" className="ps-skip-link">
         Skip to main content
       </a>
 

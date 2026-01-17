@@ -39,7 +39,7 @@ function AppShell(): React.ReactElement {
   ].includes(location.pathname);
 
   return (
-    <div className="min-h-full h-full flex flex-col bg-geist-background">
+    <div className="min-h-full h-full flex flex-col bg-app">
       {!isPromptCanvasRoute && !isAuthRoute && <TopNavbar />}
       <div className="flex-1 min-h-0">
         <Routes>

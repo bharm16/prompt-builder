@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { PromptCanvasState } from '../types';
 
@@ -21,8 +21,12 @@ export function usePromptStatus({
   generatedTimestamp,
   setState,
 }: UsePromptStatusOptions): void {
+  // Track if we've already set the timestamp for the current draft to avoid re-renders
+  const hasSetTimestampRef = useRef(false);
+
   useEffect(() => {
     if (!displayedPrompt) {
+      hasSetTimestampRef.current = false;
       setState({ promptState: 'generated', generatedTimestamp: null });
       return;
     }
@@ -33,13 +37,20 @@ export function usePromptStatus({
     }
 
     if (isDraftReady && !isRefining && !isProcessing) {
-      setState({
-        promptState: 'generated',
-        ...(generatedTimestamp ? {} : { generatedTimestamp: Date.now() }),
-      });
+      // Only set timestamp once per draft to prevent loops
+      if (!generatedTimestamp && !hasSetTimestampRef.current) {
+        hasSetTimestampRef.current = true;
+        setState({
+          promptState: 'generated',
+          generatedTimestamp: Date.now(),
+        });
+      } else {
+        setState({ promptState: 'generated' });
+      }
       return;
     }
 
+    hasSetTimestampRef.current = false;
     setState({ promptState: 'edited' });
   }, [
     displayedPrompt,
@@ -47,7 +58,7 @@ export function usePromptStatus({
     isDraftReady,
     isRefining,
     isProcessing,
-    generatedTimestamp,
+    // Removed generatedTimestamp from deps - we use ref to track if we've set it
     setState,
   ]);
 }

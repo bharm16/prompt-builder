@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Info, X } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../SpanBentoGrid/config/bentoConfig';
 import type { CategoryLegendProps } from '../types';
 
@@ -71,14 +72,16 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
             )}
           </div>
         </div>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="po-action-icon"
           aria-label="Close legend"
+          variant="ghost"
+          size="icon"
         >
           <X className="h-4 w-4" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
 
       <div className="po-category-legend__body">

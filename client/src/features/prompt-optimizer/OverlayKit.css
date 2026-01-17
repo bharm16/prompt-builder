@@ -1,2 +1,1 @@
-/* OverlayKit.css - legacy wrapper for Prompt Studio system */
-@import "../../styles/PromptStudioSystem.css";
+/* OverlayKit.css - legacy wrapper (system CSS is imported globally in main.tsx) */

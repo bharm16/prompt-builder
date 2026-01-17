@@ -1,0 +1,172 @@
+@layer ps.utilities {
+  /* ===== ACCESSIBILITY ===== */
+  .ps-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .ps-sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .ps-skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    padding: var(--ps-space-2) var(--ps-space-4);
+    background: var(--ps-accent);
+    color: white;
+    z-index: var(--ps-z-tooltip);
+  }
+  .ps-skip-link:focus { top: 0; }
+
+  .ps-focus-ring:focus-visible {
+    outline: 2px solid var(--ps-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  .ps-scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .ps-scrollbar-hide::-webkit-scrollbar { display: none; }
+
+  .ps-scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ps-border) transparent;
+  }
+  .ps-scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .ps-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .ps-scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--ps-border);
+    border-radius: var(--ps-r-pill);
+  }
+
+  /* ===== GLASS MORPHISM ===== */
+  .ps-glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(var(--ps-blur-md));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .ps-glass-subtle {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(var(--ps-blur-sm));
+  }
+
+  .ps-glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(var(--ps-blur-lg));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ===== TEXT UTILITIES ===== */
+  .ps-text {
+    color: var(--ps-text);
+  }
+  .ps-text-muted {
+    color: var(--ps-text-muted);
+  }
+  .ps-text-faint {
+    color: var(--ps-text-faint);
+  }
+
+  .ps-text-balance { text-wrap: balance; }
+  .ps-font-tabular { font-variant-numeric: tabular-nums; }
+
+  .ps-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ps-line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .ps-line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ps-line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* ===== LOADING ===== */
+  .ps-spinner {
+    display: inline-block;
+    box-sizing: border-box;
+    width: var(--ps-icon-md);
+    height: var(--ps-icon-md);
+    border: var(--ps-bw-4) solid var(--ps-border);
+    border-top-color: var(--ps-accent);
+    border-radius: var(--ps-r-pill);
+    animation: ps-spin 1s linear infinite;
+  }
+
+  .ps-spinner-sm {
+    width: var(--ps-icon-sm);
+    height: var(--ps-icon-sm);
+    border-width: var(--ps-bw-2);
+  }
+
+  .ps-spinner-lg {
+    width: var(--ps-icon-xl);
+    height: var(--ps-icon-xl);
+    border-width: var(--ps-bw-4);
+  }
+
+  .ps-skeleton {
+    background: var(--ps-border);
+    border-radius: var(--ps-r-sm);
+    animation: ps-pulse 2s var(--ps-ease-inout) infinite;
+  }
+
+  /* ===== DECORATION ===== */
+  .ps-border-gradient {
+    position: relative;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  .ps-border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    margin: -2px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2));
+  }
+
+  /* ===== INTERACTION ===== */
+  .ps-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .ps-hover-lift {
+    transition: transform var(--ps-dur-2) var(--ps-ease-out);
+  }
+  .ps-hover-lift:hover { transform: translateY(-2px); }
+
+  .ps-press {
+    transition: transform var(--ps-dur-1) var(--ps-ease-out);
+  }
+  .ps-press:active { transform: scale(0.98); }
+
+  /* ===== SAFE AREA (Mobile) ===== */
+  .ps-safe-top { padding-top: env(safe-area-inset-top); }
+  .ps-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .ps-safe-left { padding-left: env(safe-area-inset-left); }
+  .ps-safe-right { padding-right: env(safe-area-inset-right); }
+}

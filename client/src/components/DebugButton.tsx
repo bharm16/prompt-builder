@@ -1,4 +1,5 @@
 import React, { type CSSProperties } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { usePromptDebugger } from '../hooks/usePromptDebugger';
 import { logger } from '../services/LoggingService';
 import type { PromptDebuggerState } from '../hooks/types';
@@ -85,9 +86,11 @@ export default function DebugButton({
         ...style,
       }}
     >
-      <button
+      <Button
+        type="button"
         onClick={handleCapture}
         disabled={isCapturing}
+        variant="ghost"
         style={{
           padding: '10px 16px',
           backgroundColor: isCapturing ? '#6b7280' : '#3b82f6',
@@ -123,7 +126,7 @@ export default function DebugButton({
       >
         {isCapturing ? (
           <>
-            <span className="spinner">⏳</span>
+            <span className="ps-spinner">⏳</span>
             <span>Capturing...</span>
           </>
         ) : (
@@ -132,10 +135,12 @@ export default function DebugButton({
             <span>Debug Capture</span>
           </>
         )}
-      </button>
+      </Button>
 
-      <button
+      <Button
+        type="button"
         onClick={handleExport}
+        variant="ghost"
         style={{
           padding: '10px 16px',
           backgroundColor: '#10b981',
@@ -167,7 +172,7 @@ export default function DebugButton({
       >
         <span>💾</span>
         <span>Export JSON</span>
-      </button>
+      </Button>
     </div>
   );
 }

@@ -13,12 +13,12 @@ import {
   Zap,
   MapPin,
   Calendar,
-  Grid as Palette,
-  Star as Sparkles,
-  Zap as Lightbulb,
+  Palette,
+  Sparkles,
+  Lightbulb,
   Tag,
   Video,
-} from '@geist-ui/icons';
+} from 'lucide-react';
 import type React from 'react';
 import { TAXONOMY } from '@shared/taxonomy';
 

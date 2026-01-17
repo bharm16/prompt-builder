@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { SpanItem } from './SpanItem';
 import { EMPTY_STATE_MESSAGE } from '../config/bentoConfig';
 import type { BentoBoxProps } from './types';
@@ -25,18 +26,19 @@ export const BentoBox = memo<BentoBoxProps>(({
       data-category={category}
       data-expanded={isExpanded ? 'true' : 'false'}
     >
-      <button
+      <Button
         type="button"
         className="pc-outline-section__header"
         onClick={() => setIsExpanded((prev) => !prev)}
         aria-expanded={isExpanded}
+        variant="ghost"
       >
         <IconComponent size={14} className="pc-outline-section__icon" />
         <span className="pc-outline-section__title">{config.label}</span>
         <span className="pc-outline-section__count" aria-label={`${spans.length} items`}>
           {spans.length}
         </span>
-      </button>
+      </Button>
 
       <div className={`pc-outline-section__body${isExpanded ? ' is-open' : ''}`}>
         <div className="pc-outline-section__body-inner">

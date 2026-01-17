@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
-import { Button } from '@components/Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { User } from '@hooks/types';
 
 export interface AuthMenuProps {
@@ -31,12 +31,12 @@ export function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.Re
     return (
       <Button
         onClick={onSignIn}
-        size="small"
-        variant="primary"
-        prefix={<LogIn className="h-3.5 w-3.5" />}
+        size="sm"
+        variant="default"
         className="w-full"
         aria-label="Sign in with Google"
       >
+        <LogIn className="h-3.5 w-3.5" />
         Sign in
       </Button>
     );
@@ -48,9 +48,11 @@ export function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.Re
 
   return (
     <div className="relative" ref={authMenuRef}>
-      <button
+      <Button
+        type="button"
         onClick={() => setShowAuthMenu(!showAuthMenu)}
-        className="flex w-full items-center gap-geist-2 rounded-geist-lg p-geist-2 transition-colors hover:bg-geist-accents-1"
+        variant="ghost"
+        className="w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-surface-1"
         aria-expanded={showAuthMenu}
         aria-label="User menu"
       >
@@ -62,24 +64,24 @@ export function AuthMenu({ user, onSignIn, onSignOut }: AuthMenuProps): React.Re
           />
         )}
         <div className="min-w-0 flex-1 text-left">
-          <p className="truncate text-label-12 text-geist-foreground">
+          <p className="truncate text-label-12 text-foreground">
             {displayName}
           </p>
-          <p className="truncate text-label-12 text-geist-accents-5">
+          <p className="truncate text-label-12 text-muted">
             {email}
           </p>
         </div>
-      </button>
+      </Button>
 
       {showAuthMenu && (
-        <div className="absolute bottom-full mb-geist-2 left-0 w-full bg-geist-background border border-geist-accents-2 rounded-geist-lg shadow-geist-medium py-geist-1">
+        <div className="absolute bottom-full mb-2 left-0 w-full bg-app border border-border rounded-lg shadow-md py-1">
           <Button
             onClick={onSignOut}
-            size="small"
+            size="sm"
             variant="ghost"
-            prefix={<LogOut className="h-3.5 w-3.5" />}
             className="w-full"
           >
+            <LogOut className="h-3.5 w-3.5" />
             Sign out
           </Button>
         </div>

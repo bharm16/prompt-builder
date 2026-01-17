@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Video } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
 import { useModelRegistry } from '../hooks/useModelRegistry';
 
@@ -124,10 +125,18 @@ export const ModelSelectorDropdown = memo<{
     };
   }, [isOpen, computeMenuPosition]);
 
+  // Track if we've already flipped to prevent re-render loops
+  const hasFlippedRef = useRef(false);
+
   // If the menu would run offscreen, flip it upward.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasFlippedRef.current = false;
+      return;
+    }
     if (!menuPosition) return;
+    // Already flipped for this open state, skip
+    if (hasFlippedRef.current) return;
     const el = menuRef.current;
     const button = buttonRef.current;
     if (!el || !button) return;
@@ -137,6 +146,7 @@ export const ModelSelectorDropdown = memo<{
     const wouldOverflowBottom = menuPosition.top + menuHeight + viewportMargin > window.innerHeight;
     if (!wouldOverflowBottom) return;
     const nextTop = Math.max(viewportMargin, rect.top - menuHeight - 8);
+    hasFlippedRef.current = true;
     setMenuPosition({ top: nextTop, left: menuPosition.left, placement: 'top' });
   }, [isOpen, menuPosition]);
 
@@ -153,7 +163,7 @@ export const ModelSelectorDropdown = memo<{
 
   return (
     <div className="relative" ref={dropdownRef} data-variant={variant}>
-      <button
+      <Button
         type="button"
         onClick={() => {
           if (!disabled) {
@@ -169,6 +179,7 @@ export const ModelSelectorDropdown = memo<{
         aria-label={`${prefixLabel ? `${prefixLabel}. ` : ''}Current model: ${currentLabel}`}
         aria-disabled={disabled}
         aria-busy={isLoading}
+        variant="ghost"
       >
         {prefixLabel && <span className="po-model-select__prefix">{prefixLabel}</span>}
         <Video className="po-model-select__icon h-3.5 w-3.5" />
@@ -177,7 +188,7 @@ export const ModelSelectorDropdown = memo<{
           className="po-model-select__chev h-3.5 w-3.5"
           aria-hidden="true"
         />
-      </button>
+      </Button>
 
       {isOpen &&
         typeof document !== 'undefined' &&
@@ -195,12 +206,14 @@ export const ModelSelectorDropdown = memo<{
             data-placement={menuPosition?.placement ?? 'bottom'}
           >
             {/* Auto-detect Option */}
-            <button
+            <Button
+              type="button"
               onClick={() => handleModelSelect('')}
               className="po-model-menu__item"
               data-selected={!selectedModel ? 'true' : 'false'}
               role="option"
               aria-selected={!selectedModel}
+              variant="ghost"
             >
               <div className="po-model-menu__text">
                 <div className="po-model-menu__name">Auto (Recommended)</div>
@@ -213,7 +226,7 @@ export const ModelSelectorDropdown = memo<{
               {!selectedModel && (
                 <Check className="h-4 w-4" aria-hidden="true" />
               )}
-            </button>
+            </Button>
 
             {/* Model Options */}
             {effectiveModels.map((option) => {
@@ -221,13 +234,15 @@ export const ModelSelectorDropdown = memo<{
               const meta = resolveModelMeta(option.id);
 
               return (
-                <button
+                <Button
                   key={option.id}
+                  type="button"
                   onClick={() => handleModelSelect(option.id)}
                   className="po-model-menu__item"
                   data-selected={isSelected ? 'true' : 'false'}
                   role="option"
                   aria-selected={isSelected}
+                  variant="ghost"
                 >
                   <div className="po-model-menu__text">
                     <div className="po-model-menu__name">{option.label}</div>
@@ -244,7 +259,7 @@ export const ModelSelectorDropdown = memo<{
                   {isSelected && (
                     <Check className="h-4 w-4" aria-hidden="true" />
                   )}
-                </button>
+                </Button>
               );
             })}
           </div>,

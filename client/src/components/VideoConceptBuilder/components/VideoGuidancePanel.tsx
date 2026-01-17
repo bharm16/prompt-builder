@@ -5,6 +5,7 @@
  */
 
 import { Lightbulb, X, CheckCircle, Sparkles } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 interface VideoGuidancePanelProps {
   showGuidance: boolean;
@@ -17,9 +18,10 @@ export function VideoGuidancePanel({
 }: VideoGuidancePanelProps): React.ReactElement {
   return (
     <div className="rounded-3xl border border-neutral-200/70 bg-white/90 shadow-sm">
-      <button
+      <Button
         onClick={onToggle}
-        className="group flex w-full items-center justify-between gap-4 rounded-3xl px-5 py-4 text-left transition-all duration-300 hover:bg-neutral-50"
+        variant="ghost"
+        className="group w-full items-center justify-between gap-4 rounded-3xl px-5 py-4 text-left transition-all duration-300 hover:bg-neutral-50"
       >
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-emerald-500/10 p-2 ring-1 ring-emerald-500/20 transition-all group-hover:ring-emerald-500/30">
@@ -40,7 +42,7 @@ export function VideoGuidancePanel({
             </svg>
           </div>
         </div>
-      </button>
+      </Button>
 
       {showGuidance && (
         <div className="border-t border-neutral-100 px-6 py-6 animate-[slideDown_0.3s_ease-out]">
@@ -164,4 +166,3 @@ export function VideoGuidancePanel({
     </div>
   );
 }
-

@@ -1,5 +1,6 @@
 import React from 'react';
 import { type LucideIcon } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 interface QuickAction {
   label: string;
@@ -85,14 +86,15 @@ export default function QuickActions({ actions, onActionClick }: QuickActionsPro
             const Icon = action.icon;
 
             return (
-              <button
+              <Button
                 key={`${categoryKey}-${idx}`}
                 onClick={() => onActionClick(action)}
+                variant="ghost"
                 className={`
                   group relative p-4 rounded-xl border-2 transition-all duration-200
                   hover:scale-105 hover:shadow-lg active:scale-100
                   ${category.bgColor} ${category.borderColor}
-                  focus-ring
+                  ps-focus-ring
                 `}
                 aria-label={`Use ${action.label} template`}
               >
@@ -125,7 +127,7 @@ export default function QuickActions({ actions, onActionClick }: QuickActionsPro
                       {action.label}
                     </h4>
                     {action.description && (
-                      <p className="text-xs text-neutral-600 mt-0.5 line-clamp-2">{action.description}</p>
+                      <p className="text-xs text-neutral-600 mt-0.5 ps-line-clamp-2">{action.description}</p>
                     )}
                   </div>
 
@@ -149,7 +151,7 @@ export default function QuickActions({ actions, onActionClick }: QuickActionsPro
                     </svg>
                   </div>
                 </div>
-              </button>
+              </Button>
             );
           });
         })}
@@ -157,4 +159,3 @@ export default function QuickActions({ actions, onActionClick }: QuickActionsPro
     </div>
   );
 }
-

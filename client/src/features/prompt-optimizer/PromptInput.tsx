@@ -6,6 +6,9 @@ import type { PromptInputProps } from './types';
 import { useCoverageMeters } from './PromptInput/hooks/useCoverageMeters';
 import { useWorkflowChipSeen } from './PromptInput/hooks/useWorkflowChipSeen';
 import { usePromptInputCapabilities, type PromptInputFieldInfo } from './PromptInput/hooks/usePromptInputCapabilities';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@promptstudio/system/components/ui/select';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import './PromptInput.css';
 
 /**
@@ -52,6 +55,9 @@ export const PromptInput = ({
   const isCtaDisabled = !inputPrompt.trim() || isProcessing;
 
   const handleParamChange = (key: string, value: CapabilityValue): void => {
+    if (Object.is(generationParams[key], value)) {
+      return;
+    }
     onGenerationParamsChange({
       ...generationParams,
       [key]: value,
@@ -146,22 +152,28 @@ export const PromptInput = ({
 
     return (
       <div className="flex items-center">
-        <select
-          value={String(generationParams[key] || info.field.default || '')}
-          onChange={(e) => {
+        <Select
+          value={String(generationParams[key] ?? info.field.default ?? '')}
+          onValueChange={(value) => {
             const nextValue: CapabilityValue =
-              info.field.type === 'int' ? Number(e.target.value) : e.target.value;
+              info.field.type === 'int' ? Number(value) : value;
             handleParamChange(key, nextValue);
           }}
-          className="prompt-input__control-pill prompt-input__control-select h-8 px-[10px] pr-[30px] text-[13px] font-medium rounded-[10px] cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%23FFF%22%20stroke-opacity%3D%220.78%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-          aria-label={label}
         >
-          {info.allowedValues.map((value) => (
-            <option key={String(value)} value={String(value)}>
-              {formatDisplay(value)}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            className="prompt-input__control-pill prompt-input__control-select h-8 px-[10px] pr-[30px] text-[13px] font-medium rounded-[10px]"
+            aria-label={label}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {info.allowedValues.map((value) => (
+              <SelectItem key={String(value)} value={String(value)}>
+                {formatDisplay(value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     );
   };
@@ -172,12 +184,13 @@ export const PromptInput = ({
     
     return (
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
           role="switch"
           aria-checked={isEnabled}
           onClick={() => handleParamChange('audio', !isEnabled)}
-          className="prompt-input__control-pill prompt-input__control-toggle group flex items-center gap-1.5 h-8 px-[10px] rounded-[10px] transition-colors"
+          variant="ghost"
+          className="prompt-input__control-pill prompt-input__control-toggle group flex h-8 items-center gap-1.5 rounded-[10px] px-[10px] transition-colors"
         >
            {isEnabled ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -194,7 +207,7 @@ export const PromptInput = ({
            <span className={`text-sm ${isEnabled ? 'text-white' : 'text-white/60'}`}>
              Audio
            </span>
-        </button>
+        </Button>
       </div>
     );
   };
@@ -251,10 +264,10 @@ export const PromptInput = ({
                 />
               )}
 
-              <label htmlFor="prompt-input" className="sr-only">
+              <label htmlFor="prompt-input" className="ps-sr-only">
                 Prompt
               </label>
-              <textarea
+              <Textarea
                 id="prompt-input"
                 ref={textareaRef}
                 value={inputPrompt}
@@ -283,16 +296,17 @@ export const PromptInput = ({
                 <span className="prompt-input__micro-dot" aria-hidden="true">
                   ·
                 </span>
-                <button
+                <Button
                   type="button"
                   className="prompt-input__micro-link"
                   ref={examplesButtonRef}
                   onClick={() => setIsExamplesOpen((v) => !v)}
                   aria-expanded={isExamplesOpen}
                   aria-haspopup="dialog"
+                  variant="ghost"
                 >
                   Examples
-                </button>
+                </Button>
               </div>
 
               {isExamplesOpen && (
@@ -303,7 +317,7 @@ export const PromptInput = ({
                     'Close-up of hands assembling a tiny robot, macro lens, soft studio light.',
                     'Tracking shot through a neon alley, rain, reflections, handheld energy.',
                   ].map((example) => (
-                    <button
+                    <Button
                       key={example}
                       type="button"
                       className="prompt-input__example-item"
@@ -312,16 +326,17 @@ export const PromptInput = ({
                         setIsExamplesOpen(false);
                         window.setTimeout(() => textareaRef.current?.focus(), 0);
                       }}
+                      variant="ghost"
                     >
                       {example}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
             </div>
 
             <div className="prompt-input__cta-row">
-              <button
+              <Button
                 type="button"
                 onClick={handleOptimizeClick}
                 disabled={isCtaDisabled}
@@ -334,6 +349,7 @@ export const PromptInput = ({
                   .filter(Boolean)
                   .join(' ')}
                 aria-label="Optimize prompt"
+                variant="ghost"
               >
                 {isProcessing ? (
                   <>
@@ -351,7 +367,7 @@ export const PromptInput = ({
                     </span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </section>
 

@@ -11,7 +11,7 @@ import {
   Inbox,
   type LucideIcon,
 } from 'lucide-react';
-import { Button } from './Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
 
@@ -178,11 +178,13 @@ export default function EmptyState({
       {action && (
         <Button
           onClick={action.onClick}
-          variant="primary"
-          prefix={action.icon ? <action.icon className="h-4 w-4" /> : undefined}
+          variant="default"
           className="animate-fade-in"
           aria-label={action.label}
         >
+          {action.icon ? (
+            <action.icon className="h-4 w-4" aria-hidden="true" />
+          ) : null}
           {action.label}
         </Button>
       )}
@@ -277,4 +279,3 @@ interface LoadingEmptyStateProps {
 export function LoadingEmptyState({ message = 'Loading...' }: LoadingEmptyStateProps): React.ReactElement {
   return <EmptyState variant="loading" description={message} tips={[]} />;
 }
-

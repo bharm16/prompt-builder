@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { apiClient } from '../../services/ApiClient';
-import { Button } from '../../components/Button';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { logger } from '../../services/LoggingService';
 import { sanitizeError } from '../../utils/logging';
 

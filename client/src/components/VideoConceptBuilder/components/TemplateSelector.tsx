@@ -5,6 +5,7 @@
  */
 
 import { TEMPLATE_LIBRARY } from '../config/templates';
+import { Button } from '@promptstudio/system/components/ui/button';
 
 interface TemplateSelectorProps {
   onLoadTemplate: (key: string) => void;
@@ -20,19 +21,19 @@ export function TemplateSelector({
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(TEMPLATE_LIBRARY).map(([key, template]) => (
-          <button
+          <Button
             key={key}
             onClick={() => onLoadTemplate(key)}
+            variant="ghost"
             className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 text-left transition-all duration-200 hover:border-neutral-300 hover:bg-white hover:shadow-sm"
           >
             <div className="text-sm font-medium text-neutral-900">{template.name}</div>
-            <div className="mt-1 text-xs text-neutral-600 line-clamp-1">
+            <div className="mt-1 text-xs text-neutral-600 ps-line-clamp-1">
               {Object.values(template.elements).slice(0, 2).join(' • ')}
             </div>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
   );
 }
-

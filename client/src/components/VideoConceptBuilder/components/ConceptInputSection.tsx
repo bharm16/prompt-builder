@@ -5,8 +5,9 @@
  */
 
 import React from 'react';
-import { Zap as Brain } from '@geist-ui/icons';
-import { Button } from '@components/Button';
+import { Zap as Brain } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
+import { Textarea } from '@promptstudio/system/components/ui/textarea';
 import type { ElementKey } from '../hooks/types';
 
 interface ConceptInputSectionProps {
@@ -22,27 +23,26 @@ export function ConceptInputSection({
 }: ConceptInputSectionProps): React.ReactElement {
   return (
     <div className="rounded-3xl border border-neutral-200/70 bg-white/90 px-6 py-6 shadow-sm">
-      <label className="mb-geist-3 block text-label-14 text-geist-foreground">
+      <label className="mb-3 block text-label-14 text-foreground">
         Describe your video concept
       </label>
-      <textarea
+      <Textarea
         value={concept}
         onChange={(e) => onConceptChange(e.target.value)}
         placeholder="Example: A sleek sports car drifting through a neon-lit Tokyo street at night, dramatic lighting, shot on anamorphic lenses..."
-        className="textarea min-h-[140px] rounded-geist-lg border-geist-accents-2 bg-geist-accents-1 text-copy-14"
+        className="min-h-[140px] rounded-lg border-border bg-surface-1 text-copy-14"
       />
       <div className="mt-4 flex justify-end">
         <Button
           onClick={onParseConcept}
           disabled={!concept}
-          variant="primary"
-          size="small"
-          prefix={<Brain size={16} />}
+          variant="default"
+          size="sm"
         >
+          <Brain size={16} />
           Parse into elements
         </Button>
       </div>
     </div>
   );
 }
-

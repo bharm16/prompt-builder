@@ -1,13 +1,9 @@
 /**
- * Flex Component (Geist Design System)
- * 
+ * Flex Component (PromptStudio System)
+ *
  * Flex component does everything that Box can do, but comes with an additional
  * set of props to organize items along an axis. It provides convenient access
- * to the CSS flexbox properties and supports Geist spacing tokens for gaps.
- * 
- * Supports Geist gap tokens: geist-quarter, geist-half, geist-base
- * 
- * Based on: https://vercel.com/geist
+ * to the CSS flexbox properties.
  */
 
 import React from 'react';
@@ -73,6 +69,14 @@ function getFlexClasses(prop: string | { [key: string]: string } | undefined, pr
   return classes.join(' ');
 }
 
+function psTokenToCssVar(token: string): string | undefined {
+  if (token === 'ps-page') return 'var(--ps-space-page)';
+  if (token === 'ps-card') return 'var(--ps-space-card)';
+  const m = /^ps-(\d+)$/.exec(token);
+  if (!m) return undefined;
+  return `var(--ps-space-${m[1]})`;
+}
+
 export const Flex = React.forwardRef<HTMLDivElement, FlexProps>(
   (
     {
@@ -85,6 +89,7 @@ export const Flex = React.forwardRef<HTMLDivElement, FlexProps>(
       shrink,
       basis,
       className = '',
+      style: boxStyle = {},
       ...boxProps
     },
     ref
@@ -123,13 +128,14 @@ export const Flex = React.forwardRef<HTMLDivElement, FlexProps>(
          wrap === 'wrap-reverse' ? 'flex-wrap-reverse' : '')
       : '';
     
+    const gapToken = typeof gap === 'string' ? psTokenToCssVar(gap) : undefined;
     const flexClasses = [
       'flex',
       directionClass,
       alignClass,
       justifyClass,
       wrapClass,
-      getFlexClasses(gap, 'gap'),
+      gapToken ? '' : getFlexClasses(gap, 'gap'),
       typeof grow === 'string' ? `grow-${grow}` : '',
       typeof shrink === 'string' ? `shrink-${shrink}` : '',
       typeof basis === 'string' ? `basis-${basis}` : '',
@@ -138,11 +144,14 @@ export const Flex = React.forwardRef<HTMLDivElement, FlexProps>(
       .filter(Boolean)
       .join(' ');
 
+    const mergedStyle: React.CSSProperties = gapToken ? { ...boxStyle, gap: gapToken } : boxStyle;
+
     return (
       <Box
         ref={ref}
         className={flexClasses}
         display="flex"
+        style={mergedStyle}
         {...boxProps}
       />
     );
@@ -152,4 +161,3 @@ export const Flex = React.forwardRef<HTMLDivElement, FlexProps>(
 Flex.displayName = 'Flex';
 
 export default Flex;
-

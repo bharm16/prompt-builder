@@ -7,6 +7,7 @@ import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { useUserCreditBalance } from '@hooks/useUserCreditBalance';
 import type { User } from '@hooks/types';
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@/features/billing/subscriptionTiers';
@@ -146,12 +147,13 @@ export function BillingPage(): React.ReactElement {
             <p className="mt-1 text-[13px] leading-snug text-white/60">
               Billing is tied to your account so credits sync everywhere you work.
             </p>
-            <Link
-              to={signInLink}
-              className="mt-4 inline-flex h-10 items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+            <Button
+              asChild
+              variant="ghost"
+              className="mt-4 h-10 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
             >
-              Sign in
-            </Link>
+              <Link to={signInLink}>Sign in</Link>
+            </Button>
           </div>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -179,12 +181,13 @@ export function BillingPage(): React.ReactElement {
 
         {user ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <button
+            <Button
               type="button"
               onClick={handleOpenPortal}
               disabled={isBusy !== null}
+              variant="ghost"
               className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'h-11 gap-2 rounded-[12px]',
                 'border border-white/10 bg-white/[0.04]',
                 'text-[14px] font-semibold text-white transition hover:bg-white/[0.06]',
                 'disabled:cursor-not-allowed disabled:opacity-60'
@@ -192,19 +195,22 @@ export function BillingPage(): React.ReactElement {
             >
               <CreditCard className="h-4 w-4" aria-hidden="true" />
               Manage billing
-            </button>
+            </Button>
 
-            <Link
-              to="/settings/billing/invoices"
+            <Button
+              asChild
+              variant="ghost"
               className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'h-11 gap-2 rounded-[12px]',
                 'border border-white/10 bg-black/30',
                 'text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white'
               )}
             >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              View invoices
-            </Link>
+              <Link to="/settings/billing/invoices">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                View invoices
+              </Link>
+            </Button>
           </div>
         ) : null}
 
@@ -267,12 +273,13 @@ export function BillingPage(): React.ReactElement {
                     </ul>
 
                     <div className="mt-5">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleSubscribe(tier)}
                         disabled={!user || isBusy !== null}
+                        variant="ghost"
                         className={cn(
-                          'inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px]',
+                          'h-11 w-full gap-2 rounded-[12px]',
                           'border border-white/10 bg-white/[0.04]',
                           'text-[14px] font-semibold text-white',
                           'transition hover:bg-white/[0.06]',
@@ -284,7 +291,7 @@ export function BillingPage(): React.ReactElement {
                       >
                         <CreditCard className="h-4 w-4" aria-hidden="true" />
                         {isBusy === tier.priceId ? 'Redirecting…' : 'Subscribe'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

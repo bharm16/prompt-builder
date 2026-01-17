@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { capabilitiesApi } from '@/services';
 import { AI_MODEL_LABELS, AI_MODEL_PROVIDERS, type AIModelId } from '../components/constants';
 import type { CapabilitiesSchema } from '@shared/capabilities';
@@ -86,5 +86,5 @@ export const useCapabilities = (
     };
   }, [selectedModel, enabled]);
 
-  return { schema, isLoading, error, target };
+  return useMemo(() => ({ schema, isLoading, error, target }), [schema, isLoading, error, target]);
 };

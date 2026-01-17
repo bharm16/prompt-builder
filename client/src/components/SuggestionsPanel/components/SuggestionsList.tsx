@@ -11,6 +11,7 @@ import { MAX_KEYBOARD_SHORTCUTS } from '../config/panelConfig';
 import { simpleHash } from '@/features/prompt-optimizer/utils/SuggestionCache';
 import { logger } from '@/services/LoggingService';
 import { useToast } from '@/components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { SuggestionItem } from '../hooks/types';
 
 /**
@@ -78,23 +79,25 @@ export function SuggestionsList({
               role="listitem"
               className="suggestions-panel__token-row"
             >
-              <button
+              <Button
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
-                className="suggestions-panel__token-text focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 rounded-geist"
+                variant="ghost"
+                className="suggestions-panel__token-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
                 aria-label={`Apply suggestion: ${suggestionText}`}
               >
                 {suggestionText}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
-                className="suggestions-panel__token-apply flex-shrink-0 inline-flex items-center justify-center text-label-12 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5"
+                variant="ghost"
+                className="suggestions-panel__token-apply flex-shrink-0 text-label-12 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 aria-label={`Apply ${suggestionText}`}
               >
                 Apply
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -148,7 +151,7 @@ export function SuggestionsList({
 
   return (
     <div
-      className="flex-1 min-h-0 space-y-geist-2 overflow-y-auto px-geist-3 py-geist-3 scrollbar-hide"
+      className="flex-1 min-h-0 space-y-2 overflow-y-auto px-3 py-3 ps-scrollbar-hide"
       role="list"
       aria-label="Suggestion options"
     >
@@ -167,28 +170,29 @@ export function SuggestionsList({
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <div
-              className="w-full text-left relative p-geist-3 rounded-geist-lg bg-geist-background border border-geist-accents-2 hover:bg-geist-accents-1 hover:border-geist-accents-3 hover:shadow-geist-small transition-all duration-150 group"
+              className="w-full text-left relative p-3 rounded-lg bg-app border border-border hover:bg-surface-1 hover:border-border-strong hover:shadow-sm transition-all duration-150 group"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >
               {/* Main clickable area for applying suggestion */}
-              <button
+              <Button
                 onClick={() => handleSuggestionSelect(suggestionObj)}
-                className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-geist-accents-5 rounded active:scale-[0.99] transition-transform"
+                variant="ghost"
+                className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded active:scale-[0.99] transition-transform"
                 aria-label={`Apply suggestion: ${suggestionText.substring(0, 50)}...`}
               >
                 {/* Keyboard Shortcut Badge */}
                 {index < MAX_KEYBOARD_SHORTCUTS && (
-                  <div className="absolute top-geist-2 right-geist-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <kbd className="px-1.5 py-0.5 bg-white border border-geist-accents-2 rounded-md text-[10px] font-mono text-geist-accents-5 shadow-sm">
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <kbd className="px-1.5 py-0.5 bg-white border border-border rounded-md text-[10px] font-mono text-muted shadow-sm">
                        {index + 1}
                      </kbd>
                   </div>
                 )}
 
-                <div className="space-y-geist-1">
-                  <div className="flex items-start justify-between gap-geist-2 pr-6">
-                    <span className="text-copy-13 text-geist-foreground font-medium">
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2 pr-6">
+                    <span className="text-copy-13 text-foreground font-medium">
                       {suggestionText}
                     </span>
                     {suggestionObj?.compatibility !== undefined &&
@@ -196,28 +200,29 @@ export function SuggestionsList({
                   </div>
                   
                   {suggestionObj?.explanation && (
-                    <p className="text-label-12 text-geist-accents-5 leading-relaxed">
+                    <p className="text-label-12 text-muted leading-relaxed">
                       {suggestionObj.explanation}
                     </p>
                   )}
                 </div>
-              </button>
+              </Button>
 
               {/* Action Footer - Only shows on hover, outside main button */}
               {showCopyAction && (
-                <div className="mt-geist-3 pt-geist-2 border-t border-geist-accents-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <span className="text-[11px] font-medium text-geist-accents-5 uppercase tracking-wide">
+                <div className="mt-3 pt-2 border-t border-border flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <span className="text-[11px] font-medium text-muted uppercase tracking-wide">
                      Click to Apply
                    </span>
-                   <button
+                   <Button
                      type="button"
                      onClick={(e) => handleCopy(suggestionText, index, e)}
                      onKeyDown={(e) => handleCopyKeyDown(suggestionText, index, e)}
-                     className="text-[11px] font-medium text-geist-accents-5 hover:text-geist-foreground uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-geist-accents-5 rounded px-1"
+                     variant="ghost"
+                     className="text-[11px] font-medium text-muted hover:text-foreground uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded px-1"
                      aria-label={`Copy suggestion ${index + 1}`}
                    >
                      {copiedIndex === index ? 'Copied!' : 'Copy'}
-                   </button>
+                   </Button>
                 </div>
               )}
             </div>

@@ -14,8 +14,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Star as Sparkles, ArrowRight, Zap as Brain, BookOpen, Zap as Wand2, Info } from '@geist-ui/icons';
-import { Button } from './Button';
+import { Sparkles, ArrowRight, Zap as Brain, BookOpen, Wand2, Info } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { logger } from '../services/LoggingService';
 import { useDebugLogger } from '../hooks/useDebugLogger';
 
@@ -417,7 +417,7 @@ export default function VideoConceptBuilder({
         <div className="rounded-3xl border border-neutral-200/80 bg-white/90 px-6 py-6 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur-sm sm:px-8 sm:py-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-geist-3 text-label-12 text-geist-accents-6">
+              <div className="flex flex-wrap items-center gap-3 text-label-12 text-muted">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
                   <Sparkles size={14} color="#737373" />
                   AI-guided workflow
@@ -428,10 +428,10 @@ export default function VideoConceptBuilder({
                 </span>
               </div>
               <div>
-                <h1 className="text-heading-32 sm:text-heading-40 text-geist-foreground">
+                <h1 className="text-heading-32 sm:text-heading-40 text-foreground">
                   Video Concept Builder
                 </h1>
-                <p className="mt-geist-1 text-copy-14 text-geist-accents-6">
+                <p className="mt-1 text-copy-14 text-muted">
                   Structure production-ready AI video prompts with contextual
                   guardrails and live guidance.
                 </p>
@@ -447,20 +447,18 @@ export default function VideoConceptBuilder({
               <div className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-100/80 p-1 text-sm font-medium text-neutral-600 shadow-inner">
                 <Button
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'element' })}
-                  variant={mode === 'element' ? 'tertiary' : 'ghost'}
-                  shape="rounded"
-                  prefix={<Sparkles size={16} />}
-                  className={mode === 'element' ? 'bg-white text-neutral-900 shadow-sm' : ''}
+                  variant={mode === 'element' ? 'secondary' : 'ghost'}
+                  className={`rounded-full ${mode === 'element' ? 'bg-white text-neutral-900 shadow-sm' : ''}`}
                 >
+                  <Sparkles size={16} />
                   Element Builder
                 </Button>
                 <Button
                   onClick={() => dispatch({ type: 'SET_MODE', payload: 'concept' })}
-                  variant={mode === 'concept' ? 'tertiary' : 'ghost'}
-                  shape="rounded"
-                  prefix={<Brain size={16} />}
-                  className={mode === 'concept' ? 'bg-white text-neutral-900 shadow-sm' : ''}
+                  variant={mode === 'concept' ? 'secondary' : 'ghost'}
+                  className={`rounded-full ${mode === 'concept' ? 'bg-white text-neutral-900 shadow-sm' : ''}`}
                 >
+                  <Brain size={16} />
                   Describe Concept
                 </Button>
               </div>
@@ -469,26 +467,25 @@ export default function VideoConceptBuilder({
                 <Button
                   onClick={() => dispatch({ type: 'TOGGLE_TEMPLATES' })}
                   variant="ghost"
-                  size="small"
-                  prefix={<BookOpen size={16} />}
+                  size="sm"
                 >
+                  <BookOpen size={16} />
                   Templates
                 </Button>
                 <Button
                   onClick={handleCompleteScene}
                   disabled={filledCount === 0}
                   variant="ghost"
-                  size="small"
-                  prefix={<Wand2 size={16} />}
+                  size="sm"
                 >
+                  <Wand2 size={16} />
                   Auto-complete
                 </Button>
                 <Button
                   onClick={() => handleGenerateTemplate('detailed')}
                   disabled={!isReadyToGenerate}
-                  variant="primary"
-                  size="small"
-                  suffix={<ArrowRight className="h-4 w-4" />}
+                  variant="default"
+                  size="sm"
                   title={
                     isReadyToGenerate
                       ? 'Generate optimized prompt'
@@ -496,6 +493,7 @@ export default function VideoConceptBuilder({
                   }
                 >
                   Generate Prompt
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>

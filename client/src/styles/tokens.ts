@@ -6,36 +6,36 @@
  */
 
 export const spacing = {
-  xxs: '4px',
-  xs: '8px',
-  sm: '12px',
-  md: '16px',
-  lg: '24px',
-  xl: '32px',
+  xxs: 'var(--ps-space-1)',
+  xs: 'var(--ps-space-2)',
+  sm: 'var(--ps-space-3)',
+  md: 'var(--ps-space-4)',
+  lg: 'var(--ps-space-6)',
+  xl: 'var(--ps-space-7)',
 } as const;
 
 export const colors = {
   text: {
-    primary: '#111827',
-    secondary: '#6b7280',
+    primary: 'var(--ps-input-text)',
+    secondary: 'var(--ps-brand-text-muted)',
   },
   feedback: {
-    error: '#ef4444',
-    success: '#10b981',
+    error: 'var(--ps-input-error-border)',
+    success: 'var(--ps-input-success-border)',
   },
 } as const;
 
 export const typography = {
   bodySmall: {
-    lineHeight: '1.4',
+    lineHeight: 'var(--ps-lh-normal)',
   },
   caption: {
-    lineHeight: '1.3',
+    lineHeight: 'var(--ps-lh-snug)',
   },
 } as const;
 
 export const transitions = {
-  base: '150ms ease',
+  base: 'var(--ps-dur-2) var(--ps-ease-out)',
 } as const;
 
 export const transitionProperties = {
@@ -44,37 +44,37 @@ export const transitionProperties = {
 
 export const inputPreset = {
   padding: {
-    vertical: '12px',
-    horizontal: '16px',
+    vertical: 'var(--ps-input-padding-y)',
+    horizontal: 'var(--ps-input-padding-x)',
   },
-  fontSize: '14px',
-  lineHeight: '1.5',
-  borderRadius: '8px',
-  borderWidth: '2px',
+  fontSize: 'var(--ps-input-font-size)',
+  lineHeight: 'var(--ps-input-line-height)',
+  borderRadius: 'var(--ps-input-radius)',
+  borderWidth: 'var(--ps-input-border-width)',
   default: {
-    border: '#d1d5db',
-    background: '#ffffff',
-    text: '#111827',
+    border: 'var(--ps-input-border)',
+    background: 'var(--ps-input-bg)',
+    text: 'var(--ps-input-text)',
   },
   focus: {
-    border: '#3b82f6',
-    background: '#ffffff',
-    ring: '0 0 0 3px rgba(59, 130, 246, 0.2)',
+    border: 'var(--ps-input-focus-border)',
+    background: 'var(--ps-input-bg)',
+    ring: 'var(--ps-input-focus-ring)',
   },
   success: {
-    border: '#10b981',
-    background: '#ecfdf3',
-    ring: '0 0 0 3px rgba(16, 185, 129, 0.2)',
+    border: 'var(--ps-input-success-border)',
+    background: 'var(--ps-input-success-bg)',
+    ring: 'var(--ps-input-success-ring)',
   },
   error: {
-    border: '#ef4444',
-    background: '#fef2f2',
-    ring: '0 0 0 3px rgba(239, 68, 68, 0.2)',
+    border: 'var(--ps-input-error-border)',
+    background: 'var(--ps-input-error-bg)',
+    ring: 'var(--ps-input-error-ring)',
   },
   disabled: {
-    border: '#e5e7eb',
-    background: '#f9fafb',
-    text: '#9ca3af',
+    border: 'var(--ps-input-disabled-border)',
+    background: 'var(--ps-input-disabled-bg)',
+    text: 'var(--ps-input-disabled-text)',
   },
 } as const;
 

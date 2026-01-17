@@ -1,5 +1,6 @@
 import React from 'react';
 import { MarketingPage } from './MarketingPage';
+import { Card } from '@promptstudio/system/components/ui/card';
 
 type TocItem = {
   id: string;
@@ -24,14 +25,14 @@ const TOC: TocItem[] = [
 function Toc(): React.ReactElement {
   return (
     <nav aria-label="On this page" className="text-[13px]">
-      <p className="text-[11px] font-semibold tracking-[0.22em] text-geist-accents-5">
+      <p className="text-[11px] font-semibold tracking-[0.22em] text-muted">
         ON THIS PAGE
       </p>
       <ul className="mt-3 space-y-2">
         {TOC.map((item) => (
           <li key={item.id}>
             <a
-              className="text-geist-accents-6 hover:text-geist-foreground hover:underline"
+              className="text-muted hover:text-foreground hover:underline"
               href={`#${item.id}`}
             >
               {item.label}
@@ -47,7 +48,7 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
   return (
     <h2
       id={id}
-      className="scroll-mt-24 text-lg font-semibold tracking-tight text-geist-foreground"
+      className="scroll-mt-24 text-lg font-semibold tracking-tight text-foreground"
     >
       {children}
     </h2>
@@ -69,14 +70,14 @@ export function TermsOfServicePage(): React.ReactElement {
     >
       <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="lg:sticky lg:top-[calc(var(--global-top-nav-height)+24px)] lg:self-start">
-          <div className="card p-5">
+          <Card className="p-5">
             <Toc />
-          </div>
+          </Card>
         </aside>
 
-        <div className="border-gradient rounded-geist-lg">
-          <div className="card p-6">
-            <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-geist-accents-6">
+        <div className="ps-border-gradient rounded-lg">
+          <Card className="p-6">
+            <div className="mt-6 space-y-8 text-[14px] leading-relaxed text-muted">
               <section>
                 <SectionHeading id="summary">Summary</SectionHeading>
                 <p className="mt-2">
@@ -88,7 +89,7 @@ export function TermsOfServicePage(): React.ReactElement {
                 <SectionHeading id="who">Who we are</SectionHeading>
                 <p className="mt-2">
                   The Service is provided by {companyName} (“we”, “us”, “our”). Contact:{' '}
-                  <span className="font-medium text-geist-foreground">{supportEmail}</span>.
+                  <span className="font-medium text-foreground">{supportEmail}</span>.
                 </p>
               </section>
 
@@ -177,11 +178,11 @@ export function TermsOfServicePage(): React.ReactElement {
               <section>
                 <SectionHeading id="contact">Contact</SectionHeading>
                 <p className="mt-2">
-                  Questions about these Terms? Email <span className="font-medium text-geist-foreground">{supportEmail}</span>.
+                  Questions about these Terms? Email <span className="font-medium text-foreground">{supportEmail}</span>.
                 </p>
               </section>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </MarketingPage>

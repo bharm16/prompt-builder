@@ -1,11 +1,8 @@
 /**
- * Container Component (Geist Design System)
- * 
+ * Container Component (PromptStudio System)
+ *
  * Container's sole responsibility is to provide a consistent max-width to the
- * content it wraps. Uses Geist's content width standards for optimal reading
- * and visual hierarchy.
- * 
- * Based on: https://vercel.com/geist
+ * content it wraps.
  */
 
 import React from 'react';
@@ -14,7 +11,6 @@ import { Box, type BoxProps } from './Box';
 export interface ContainerProps extends BoxProps {
   /**
    * Container size variant
-   * Geist uses narrower content widths for optimal readability
    */
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   
@@ -25,16 +21,15 @@ export interface ContainerProps extends BoxProps {
 }
 
 /**
- * Geist container sizes
- * Based on Vercel's content width standards
+ * Container sizes
  */
 const containerSizes = {
-  sm: '640px',      // Small content
-  md: '768px',      // Medium content
-  lg: '1024px',     // Large content (common)
-  xl: '1280px',     // Extra large
-  '2xl': '1536px',  // Maximum width
-  full: '100%',     // Full width
+  sm: 'var(--ps-container-sm)', // Small content
+  md: 'var(--ps-container-md)', // Medium content
+  lg: 'var(--ps-container-lg)', // Large content (common)
+  xl: 'var(--ps-container-xl)', // Extra large
+  '2xl': 'var(--ps-container-2xl)', // Maximum width
+  full: '100%', // Full width
 };
 
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
@@ -80,4 +75,3 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
 Container.displayName = 'Container';
 
 export default Container;
-

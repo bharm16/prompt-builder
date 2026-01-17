@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User as UserIcon } from 'lucide-react';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { User } from '@hooks/types';
 import { AuthShell } from './auth/AuthShell';
 
@@ -71,14 +72,15 @@ export function AccountPage(): React.ReactElement {
         user ? (
           <>
             Want to switch accounts?{' '}
-            <button
+            <Button
               type="button"
               onClick={handleSignOut}
-              className="text-white hover:underline"
+              variant="link"
+              className="h-auto p-0 text-white hover:underline"
               disabled={isBusy}
             >
               Sign out
-            </button>
+            </Button>
             .
           </>
         ) : (
@@ -136,14 +138,15 @@ export function AccountPage(): React.ReactElement {
                   </span>
 
                   {!isVerified ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={handleResendVerification}
                       disabled={isBusy}
-                      className="inline-flex h-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-3 text-[12px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+                      variant="ghost"
+                      className="h-8 rounded-full border border-white/10 bg-white/[0.04] px-3 text-[12px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Resend verification
-                    </button>
+                    </Button>
                   ) : null}
 
                   {!isVerified ? (
@@ -157,54 +160,66 @@ export function AccountPage(): React.ReactElement {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link
-              to="/history"
-              className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
             >
-              Open history
-            </Link>
+              <Link to="/history">Open history</Link>
+            </Button>
 
-            <Link
-              to={resetPasswordLink}
-              className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
             >
-              Reset password
-            </Link>
+              <Link to={resetPasswordLink}>Reset password</Link>
+            </Button>
 
-            <Link
-              to="/settings/billing"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
             >
-              <CreditCard className="h-4 w-4" aria-hidden="true" />
-              Billing
-            </Link>
+              <Link to="/settings/billing">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+                Billing
+              </Link>
+            </Button>
 
-            <Link
-              to="/settings/billing/invoices"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-black/30 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
             >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              Invoices
-            </Link>
+              <Link to="/settings/billing/invoices">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                Invoices
+              </Link>
+            </Button>
 
-            <Link
-              to="/?settings=1"
-              className="sm:col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+            <Button
+              asChild
+              variant="ghost"
+              className="sm:col-span-2 h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
             >
-              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-              Preferences
-            </Link>
+              <Link to="/?settings=1">
+                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                Preferences
+              </Link>
+            </Button>
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={handleSignOut}
             disabled={isBusy}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-red-500/10 text-[14px] font-semibold text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="ghost"
+            className="h-11 w-full gap-2 rounded-[12px] border border-white/10 bg-red-500/10 text-[14px] font-semibold text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -213,18 +228,20 @@ export function AccountPage(): React.ReactElement {
             Sign in to sync prompt history and use Firestore storage across devices.
           </p>
           <div className="flex flex-col gap-3">
-            <Link
-              to="/signin"
-              className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
             >
-              Sign in
-            </Link>
-            <Link
-              to="/signup"
-              className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
+              <Link to="/signin">Sign in</Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="h-11 w-full rounded-[12px] border border-white/10 bg-white/[0.04] text-[14px] font-semibold text-white transition hover:bg-white/[0.06]"
             >
-              Create account
-            </Link>
+              <Link to="/signup">Create account</Link>
+            </Button>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import { sanitizeError } from '@/utils/logging';
 import { cn } from '@/utils/cn';
 import { getAuthRepository } from '@repositories/index';
 import { useToast } from '@components/Toast';
+import { Button } from '@promptstudio/system/components/ui/button';
 import type { User } from '@hooks/types';
 import { AuthShell } from './auth/AuthShell';
 
@@ -174,12 +175,13 @@ export function BillingInvoicesPage(): React.ReactElement {
             <p className="mt-1 text-[13px] leading-snug text-white/60">
               Invoices are tied to your account so you can grab receipts anytime.
             </p>
-            <Link
-              to={signInLink}
-              className="mt-4 inline-flex h-10 items-center justify-center rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+            <Button
+              asChild
+              variant="ghost"
+              className="mt-4 h-10 rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
             >
-              Sign in
-            </Link>
+              <Link to={signInLink}>Sign in</Link>
+            </Button>
           </div>
         ) : null}
 
@@ -205,12 +207,13 @@ export function BillingInvoicesPage(): React.ReactElement {
 
         {user ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <button
+            <Button
               type="button"
               onClick={handleOpenPortal}
               disabled={isBusy}
+              variant="ghost"
               className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'h-11 gap-2 rounded-[12px]',
                 'border border-white/10 bg-white/[0.04]',
                 'text-[14px] font-semibold text-white transition hover:bg-white/[0.06]',
                 'disabled:cursor-not-allowed disabled:opacity-60'
@@ -218,14 +221,15 @@ export function BillingInvoicesPage(): React.ReactElement {
             >
               <CreditCard className="h-4 w-4" aria-hidden="true" />
               Manage billing
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={() => void loadInvoices()}
               disabled={isLoading || isBusy}
+              variant="ghost"
               className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-[12px]',
+                'h-11 gap-2 rounded-[12px]',
                 'border border-white/10 bg-black/30',
                 'text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white',
                 'disabled:cursor-not-allowed disabled:opacity-60'
@@ -233,7 +237,7 @@ export function BillingInvoicesPage(): React.ReactElement {
             >
               <RefreshCw className={cn('h-4 w-4', isLoading ? 'animate-spin' : null)} aria-hidden="true" />
               Refresh
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -294,30 +298,32 @@ export function BillingInvoicesPage(): React.ReactElement {
 
                       {primaryLink ? (
                         <div className="mt-4 flex flex-wrap gap-2">
-                          <a
-                            href={primaryLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex h-9 items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 text-[13px] font-semibold text-white transition hover:bg-white/[0.06]"
+                          <Button
+                            asChild
+                            variant="ghost"
+                            className="h-9 gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 text-[13px] font-semibold text-white transition hover:bg-white/[0.06]"
                           >
-                            {pdfUrl ? (
-                              <FileText className="h-4 w-4" aria-hidden="true" />
-                            ) : (
-                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                            )}
-                            {primaryLabel}
-                          </a>
+                            <a href={primaryLink} target="_blank" rel="noreferrer">
+                              {pdfUrl ? (
+                                <FileText className="h-4 w-4" aria-hidden="true" />
+                              ) : (
+                                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                              )}
+                              {primaryLabel}
+                            </a>
+                          </Button>
 
                           {pdfUrl && hostedUrl ? (
-                            <a
-                              href={hostedUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-9 items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-black/30 px-3 text-[13px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+                            <Button
+                              asChild
+                              variant="ghost"
+                              className="h-9 gap-2 rounded-[12px] border border-white/10 bg-black/30 px-3 text-[13px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
                             >
-                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                              Open hosted invoice
-                            </a>
+                              <a href={hostedUrl} target="_blank" rel="noreferrer">
+                                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                                Open hosted invoice
+                              </a>
+                            </Button>
                           ) : null}
                         </div>
                       ) : (

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { Image as ImageIcon, Play } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
@@ -182,13 +183,14 @@ export const VersionsPanel = (): React.ReactElement => {
             const key = versionId ?? entry.id ?? `${label}-${index}`;
 
             return (
-              <button
+              <Button
                 key={key}
                 type="button"
                 onClick={() => handleSelectVersion(entry)}
                 className="po-session-item"
                 data-active={isSelected ? 'true' : 'false'}
                 aria-pressed={isSelected}
+                variant="ghost"
               >
                 <div className="po-session-item__body">
                   <div className="po-session-item__title-row">
@@ -214,7 +216,7 @@ export const VersionsPanel = (): React.ReactElement => {
                     ) : null}
                   </div>
                 ) : null}
-              </button>
+              </Button>
             );
           })}
         </div>

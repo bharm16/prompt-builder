@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { capabilitiesApi } from '@/services';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from '../components/constants';
 import type { CapabilitiesSchema } from '@shared/capabilities';
@@ -122,5 +122,5 @@ export const useModelRegistry = (): UseModelRegistryResult => {
     };
   }, []);
 
-  return { models, isLoading, error };
+  return useMemo(() => ({ models, isLoading, error }), [models, isLoading, error]);
 };

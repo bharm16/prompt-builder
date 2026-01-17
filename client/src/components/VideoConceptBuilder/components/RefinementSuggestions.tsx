@@ -5,6 +5,7 @@
  */
 
 import { Lightbulb, Loader2 } from 'lucide-react';
+import { Button } from '@promptstudio/system/components/ui/button';
 import { formatLabel } from '../utils/formatting';
 import type { ElementKey } from '../hooks/types';
 import type { ElementConfig } from './types';
@@ -56,13 +57,14 @@ export function RefinementSuggestions({
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(options as string[]).map((option, idx) => (
-                    <button
+                    <Button
                       key={`${key}-${idx}`}
                       onClick={() => onApplyRefinement(key as ElementKey, option)}
-                      className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-100 transition-all duration-150"
+                      variant="ghost"
+                      className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg transition-all duration-150 hover:border-neutral-300 hover:bg-neutral-100"
                     >
                       {option}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -78,4 +80,3 @@ export function RefinementSuggestions({
     </div>
   );
 }
-

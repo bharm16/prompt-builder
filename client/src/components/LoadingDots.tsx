@@ -1,7 +1,7 @@
 /**
  * LoadingDots Component
  * 
- * Simple three-dot loading indicator matching Geist design system
+ * Simple three-dot loading indicator matching the app design system
  */
 
 import React from 'react';
