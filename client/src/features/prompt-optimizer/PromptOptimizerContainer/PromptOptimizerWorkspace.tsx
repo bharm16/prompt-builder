@@ -413,44 +413,48 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
         onApplySelected={applyRecommendations}
       />
 
-      {/* Top Action Buttons */}
-      <PromptTopBar />
-
-      {/* Conditionally render the appropriate layout */}
-      {showResults ? (
-        <PromptResultsLayout
-          user={user}
-          onDisplayedPromptChange={handleDisplayedPromptChangeWithAutosave}
-          onReoptimize={handleOptimize}
-          onFetchSuggestions={fetchEnhancementSuggestions}
-          onSuggestionClick={handleSuggestionClick}
-          onHighlightsPersist={handleHighlightsPersist}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          stablePromptContext={stablePromptContext}
-          suggestionsData={suggestionsData}
-          displayedPrompt={promptOptimizer.displayedPrompt}
-        />
-      ) : shouldShowLoading ? (
-        <div className="flex h-full min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex min-h-0 flex-shrink-0">
           <PromptSidebar user={user} />
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
-            <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
-              <div className="flex flex-col items-center gap-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
-                <p className="text-body-sm text-muted">Loading prompt...</p>
-              </div>
-            </div>
-          </main>
         </div>
-      ) : (
-        <PromptInputLayout
-          user={user}
-          aiNames={aiNames}
-          onOptimize={handleOptimize}
-          onShowBrainstorm={() => setShowBrainstorm(true)}
-        />
-      )}
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Top Action Buttons */}
+          <PromptTopBar />
+
+          {/* Conditionally render the appropriate layout */}
+          {showResults ? (
+            <PromptResultsLayout
+              user={user}
+              onDisplayedPromptChange={handleDisplayedPromptChangeWithAutosave}
+              onReoptimize={handleOptimize}
+              onFetchSuggestions={fetchEnhancementSuggestions}
+              onSuggestionClick={handleSuggestionClick}
+              onHighlightsPersist={handleHighlightsPersist}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              stablePromptContext={stablePromptContext}
+              suggestionsData={suggestionsData}
+              displayedPrompt={promptOptimizer.displayedPrompt}
+            />
+          ) : shouldShowLoading ? (
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
+              <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
+                  <p className="text-body-sm text-muted">Loading prompt...</p>
+                </div>
+              </div>
+            </main>
+          ) : (
+            <PromptInputLayout
+              aiNames={aiNames}
+              onOptimize={handleOptimize}
+              onShowBrainstorm={() => setShowBrainstorm(true)}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Debug Button - Hidden */}
       {false && (import.meta.env.DEV ||

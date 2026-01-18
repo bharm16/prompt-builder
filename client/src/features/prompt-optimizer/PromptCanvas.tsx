@@ -67,7 +67,6 @@ import { scrollToSpan } from './SpanBentoGrid/utils/spanFormatting';
 // Relative imports - components
 import { CategoryLegend } from './components/CategoryLegend';
 import { PromptEditor } from './components/PromptEditor';
-import { PromptSidebar } from './components/PromptSidebar';
 import { VersionsPanel } from './components/VersionsPanel';
 import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid';
 import { HighlightingErrorBoundary } from '../span-highlighting/components/HighlightingErrorBoundary';
@@ -1738,7 +1737,7 @@ export function PromptCanvas({
         </div>
       )}
 
-	      {/* Main Content Container */}
+      {/* Main Content Container */}
       <div
         className={cn(
           'relative flex min-h-0 flex-1 flex-col gap-6 p-6 xl:flex-row',
@@ -1752,11 +1751,6 @@ export function PromptCanvas({
           />
         )}
 
-	        {/* History Sidebar */}
-        <div className="flex min-h-0 flex-shrink-0">
-	          <PromptSidebar user={user} />
-	        </div>
-
         {/* Context gutter (xl+ only) */}
         <div className="hidden min-h-0 flex-shrink-0 xl:flex xl:w-80">
           <VersionsPanel />
@@ -1765,8 +1759,7 @@ export function PromptCanvas({
         {/* Main Editor Area - Optimized Prompt */}
         <div
           ref={editorColumnRef}
-          id="main-content"
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
           {!outlineOverlayActive && (
             <div className="mx-auto flex w-full max-w-5xl">
@@ -2602,7 +2595,7 @@ export function PromptCanvas({
         </div>
 
         {/* Right Rail - Stage + Inspector */}
-        <div className="flex min-h-0 flex-col gap-6 xl:w-96">
+        <div className="flex min-h-0 flex-col gap-6 xl:w-96 xl:flex-shrink-0">
           <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>

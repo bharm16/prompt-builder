@@ -8,12 +8,9 @@ import type { OptimizationOptions } from '../types';
 /**
  * PromptResultsLayout - Results/Canvas View Layout
  * 
- * Self-contained layout for the results/canvas view with:
- * - History Sidebar (left column)
- * - PromptCanvas in center (via PromptResultsSection)
- * - Suggestions Panel (right column)
- * 
- * Completely isolated from PromptInputLayout to prevent CSS/state conflicts
+ * Main content layout for the results/canvas view (PromptCanvas via PromptResultsSection).
+ *
+ * App shell (history sidebar + top bar) lives in PromptOptimizerWorkspace.
  */
 interface PromptResultsLayoutProps {
   user: User | null;
@@ -48,7 +45,10 @@ export const PromptResultsLayout = ({
   stablePromptContext,
 }: PromptResultsLayoutProps): React.ReactElement => {
   return (
-    <div className="relative h-full overflow-hidden bg-app transition-colors duration-300">
+    <main
+      id="main-content"
+      className="relative flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden bg-app transition-colors duration-300"
+    >
       <PromptResultsSection
         user={user}
         onDisplayedPromptChange={onDisplayedPromptChange}
@@ -60,6 +60,6 @@ export const PromptResultsLayout = ({
         onRedo={onRedo}
         stablePromptContext={stablePromptContext}
       />
-    </div>
+    </main>
   );
 };
