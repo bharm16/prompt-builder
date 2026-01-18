@@ -331,7 +331,7 @@ export function PromptCanvas({
         >
           <SelectTrigger
             className={cn(
-              'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+              'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
               'hover:border-border-strong hover:bg-surface-3'
             )}
             aria-label={ariaLabel}
@@ -1682,11 +1682,11 @@ export function PromptCanvas({
   const finalStatusStyles = runStatusStyles(finalStatusState);
 
   const actionButtonClass =
-    'inline-flex items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
+    'inline-flex h-9 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
   const iconButtonClass =
     'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
   const primaryButtonClass =
-    'inline-flex items-center gap-2 rounded-lg border border-border bg-gradient-to-r from-accent to-accent-2 px-4 py-2 text-label-sm font-semibold text-app shadow-md transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0';
+    'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-gradient-to-r from-accent to-accent-2 px-4 text-label-sm font-semibold text-app shadow-md transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0';
   const statusPillClass =
     'inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2 py-1 text-label-sm font-semibold uppercase tracking-wide';
 
@@ -1789,7 +1789,7 @@ export function PromptCanvas({
                     showVideoPreview && 'items-stretch'
                   )}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
                     <div className="text-body-lg font-semibold text-foreground">Prompt</div>
                     <div className="flex items-center gap-2">
                       {!isEditing ? (
@@ -1842,7 +1842,7 @@ export function PromptCanvas({
                       >
                         <SelectTrigger
                           className={cn(
-                            'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+                            'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
                             'hover:border-border-strong hover:bg-surface-3'
                           )}
                           aria-label="Model"
@@ -2227,7 +2227,7 @@ export function PromptCanvas({
                             <div className="mt-3 flex items-center gap-2">
                               <CanvasButton
                                 type="button"
-                                className="rounded-lg border border-border bg-surface-3 px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                                className="h-9 rounded-lg border border-border bg-surface-3 px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
                                 onClick={closeInlinePopover}
                               >
                                 Clear
@@ -2235,7 +2235,7 @@ export function PromptCanvas({
                               <CanvasButton
                                 type="button"
                                 className={cn(
-                                  'rounded-lg border border-accent bg-accent px-3 py-2 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
+                                  'h-9 rounded-lg border border-accent bg-accent px-3 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
                                   !suggestionCount && 'opacity-50'
                                 )}
                                 onClick={() => {
@@ -2256,7 +2256,7 @@ export function PromptCanvas({
               </div>
 
               <section className="flex min-h-0 flex-col gap-4 rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-body-lg font-semibold text-foreground">Runs</div>
                     <div className="mt-1 text-label-sm text-muted">
@@ -2390,27 +2390,27 @@ export function PromptCanvas({
                           <CanvasButton
                             type="button"
                             disabled={previewStatusState !== 'ready'}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Retry
                           </CanvasButton>
                           <CanvasButton
                             type="button"
                             disabled={!canCompareRuns}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Compare
                           </CanvasButton>
                           <CanvasButton
                             type="button"
                             disabled={previewStatusState === 'idle'}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Logs
                           </CanvasButton>
                           <CanvasButton
                             type="button"
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Copy settings
                           </CanvasButton>
@@ -2548,27 +2548,27 @@ export function PromptCanvas({
                           <CanvasButton
                             type="button"
                             disabled={finalStatusState !== 'ready'}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Retry
                           </CanvasButton>
                           <CanvasButton
                             type="button"
                             disabled={!canCompareRuns}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Compare
                           </CanvasButton>
                           <CanvasButton
                             type="button"
                             disabled={finalStatusState === 'idle'}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Logs
                           </CanvasButton>
                           <CanvasButton
                             type="button"
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            className="h-9 rounded-lg border border-border bg-surface-2 px-3 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                           >
                             Copy settings
                           </CanvasButton>
@@ -2597,18 +2597,18 @@ export function PromptCanvas({
         {/* Right Rail - Stage + Inspector */}
         <div className="flex min-h-0 flex-col gap-6 xl:w-96 xl:flex-shrink-0">
           <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-body-lg font-semibold text-foreground">Stage</div>
                 <div className="mt-1 text-label-sm text-muted">Preview &amp; refine output</div>
               </div>
-              <div className="flex items-center rounded-full border border-border bg-surface-1 p-1">
+              <div className="flex h-9 items-center rounded-full border border-border bg-surface-1 p-0.5">
                 <CanvasButton
                   type="button"
                   onClick={() => setStageTab('preview')}
                   aria-selected={stageTab === 'preview'}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-body-sm font-semibold transition-colors',
+                    'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
                     stageTab === 'preview'
                       ? 'bg-surface-2 text-foreground shadow-sm'
                       : 'text-muted hover:text-foreground'
@@ -2621,7 +2621,7 @@ export function PromptCanvas({
                   onClick={() => setStageTab('final')}
                   aria-selected={stageTab === 'final'}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-body-sm font-semibold transition-colors',
+                    'h-8 rounded-full px-3 text-body-sm font-semibold transition-colors',
                     stageTab === 'final'
                       ? 'bg-surface-2 text-foreground shadow-sm'
                       : 'text-muted hover:text-foreground'
@@ -2644,7 +2644,7 @@ export function PromptCanvas({
                       >
                         <SelectTrigger
                           className={cn(
-                            'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+                            'h-9 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
                             'hover:border-border-strong hover:bg-surface-3'
                           )}
                           aria-label="Preview provider"
@@ -2732,7 +2732,7 @@ export function PromptCanvas({
                               key={step.title}
                               type="button"
                               className={cn(
-                                'flex items-center gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
+                                'flex w-full items-start justify-start gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
                                 'hover:border-border-strong hover:bg-surface-3',
                                 isSelected && 'border-accent/60 bg-accent/10'
                               )}
@@ -2743,7 +2743,7 @@ export function PromptCanvas({
                               }}
                               role="listitem"
                             >
-                              <span className="h-11 w-11 overflow-hidden rounded-md border border-border bg-surface-3">
+                              <span className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-surface-3">
                                 {typeof thumb === 'string' && thumb ? (
                                   <img src={thumb} alt="" className="h-full w-full object-cover" />
                                 ) : (
@@ -2929,7 +2929,7 @@ export function PromptCanvas({
               {stageTab === 'final' && (
                 <CanvasButton
                   type="button"
-                  className="rounded-lg border border-border bg-transparent px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                  className="h-9 rounded-lg border border-border bg-transparent px-3 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                   onClick={() => setShowSettings(true)}
                 >
                   Edit settings
