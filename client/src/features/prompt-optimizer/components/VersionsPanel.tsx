@@ -4,6 +4,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { createHighlightSignature } from '@/features/span-highlighting';
 import { usePromptState } from '../context/PromptStateContext';
 import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
+import { cn } from '@/utils/cn';
 import type { PromptVersionEdit } from '@hooks/types';
 import type { HighlightSnapshot } from '../PromptCanvas/types';
 
@@ -159,15 +160,17 @@ export const VersionsPanel = (): React.ReactElement => {
   );
 
   return (
-    <aside className="po-sessions-panel">
-      <div className="po-sessions-panel__header">
-        <div className="po-sessions-panel__title">Sessions</div>
-        <div className="po-sessions-panel__subtitle">Versions &amp; runs</div>
+    <aside className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface-2">
+      <div className="px-4 pb-3 pt-4">
+        <div className="text-body-lg font-semibold text-foreground">Sessions</div>
+        <div className="mt-1 text-label-12 text-muted">Versions &amp; runs</div>
       </div>
       {orderedVersions.length === 0 ? (
-        <div className="po-sessions-panel__empty">No sessions yet</div>
+        <div className="flex flex-1 items-center justify-center text-label-12 text-muted">
+          No sessions yet
+        </div>
       ) : (
-        <div className="po-sessions-panel__list">
+        <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 pb-3">
           {orderedVersions.map((entry, index) => {
             const isDirty = hasEditsSinceLastVersion && index === 0
               ? true
@@ -187,29 +190,35 @@ export const VersionsPanel = (): React.ReactElement => {
                 key={key}
                 type="button"
                 onClick={() => handleSelectVersion(entry)}
-                className="po-session-item"
+                className={cn(
+                  'relative flex h-14 w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 text-left transition-colors hover:border-border-strong',
+                  isSelected && 'border-accent/50 ring-2 ring-accent/10'
+                )}
                 data-active={isSelected ? 'true' : 'false'}
                 aria-pressed={isSelected}
                 variant="ghost"
               >
-                <div className="po-session-item__body">
-                  <div className="po-session-item__title-row">
+                {isSelected && (
+                  <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-accent" aria-hidden="true" />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex min-w-0 items-center gap-2">
                     {isDirty ? (
-                      <span className="po-session-item__dirty" aria-hidden="true" />
+                      <span className="h-2 w-2 rounded-full bg-warning ring-2 ring-warning/40" aria-hidden="true" />
                     ) : null}
-                    <div className="po-session-item__title">{label}</div>
+                    <div className="truncate text-body-sm font-semibold text-foreground">{label}</div>
                   </div>
-                  <div className="po-session-item__meta">{meta}</div>
+                  <div className="text-label-12 text-muted">{meta}</div>
                 </div>
                 {(hasPreview || hasVideo) ? (
-                  <div className="po-session-item__media">
+                  <div className="inline-flex flex-shrink-0 items-center gap-2">
                     {hasPreview ? (
-                      <div className="po-session-item__thumb">
+                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-3 text-faint">
                         <ImageIcon className="h-4 w-4" aria-hidden="true" />
                       </div>
                     ) : null}
                     {hasVideo ? (
-                      <div className="po-session-item__video">
+                      <div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-3 px-2 text-label-sm font-semibold text-muted">
                         <Play className="w-4 h-4" aria-hidden="true" />
                         <span>Video</span>
                       </div>

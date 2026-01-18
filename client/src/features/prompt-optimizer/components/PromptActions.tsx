@@ -13,6 +13,7 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import type { FloatingToolbarProps } from '../types';
 import { usePromptState } from '../context/PromptStateContext';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_URLS } from './constants';
+import { cn } from '@/utils/cn';
 
 /**
  * Prompt Actions Component
@@ -79,24 +80,27 @@ export const PromptActions = memo<FloatingToolbarProps>(({
           <Button
             onClick={onCopy}
             variant="ghost"
-            className={copied ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
+            className={cn(
+              'gap-2 bg-surface-2 text-muted transition-colors hover:bg-surface-3',
+              copied && 'bg-info-50 text-accent hover:bg-info-100'
+            )}
             aria-label={copied ? 'Prompt copied' : 'Copy prompt'}
             title="Copy"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            <span className="text-[13px] font-medium">{copied ? 'Copied' : 'Copy'}</span>
+            <span className="text-body-sm font-medium">{copied ? 'Copied' : 'Copy'}</span>
           </Button>
 
           <Button
             onClick={handleGenerateWithSelectedModel}
             variant="ghost"
-            className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
+            className="gap-2 bg-surface-2 text-muted transition-colors hover:bg-surface-3"
             aria-label={generateButtonLabel}
             title={generateButtonTitle}
             disabled={!selectedModelId}
           >
             <ExternalLink className="h-4 w-4" />
-            <span className="text-[13px] font-medium">{generateButtonLabel}</span>
+            <span className="text-body-sm font-medium">{generateButtonLabel}</span>
           </Button>
         </>
       )}
@@ -105,7 +109,10 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         onClick={onShare}
         size="icon"
         variant="ghost"
-        className={shared ? 'bg-[#E6F0FF] text-[#245BDB]' : 'bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]'}
+        className={cn(
+          'bg-surface-2 text-muted transition-colors hover:bg-surface-3',
+          shared && 'bg-info-50 text-accent hover:bg-info-100'
+        )}
         aria-label={shared ? 'Link copied' : 'Share prompt'}
         title="Share"
       >
@@ -117,7 +124,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
           onClick={() => onToggleExportMenu(!showExportMenu)}
           size="icon"
           variant="ghost"
-          className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
+          className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
           aria-expanded={showExportMenu}
           title="Export"
         >
@@ -153,14 +160,14 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         )}
       </div>
 
-      <div className="w-px h-5 bg-black/10 mx-1" />
+      <div className="mx-1 h-5 w-px bg-border" />
 
       <Button
         onClick={onUndo}
         disabled={!canUndo}
         size="icon"
         variant="ghost"
-        className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
+        className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Undo"
       >
         <RotateCcw className="h-3 w-3" />
@@ -170,7 +177,7 @@ export const PromptActions = memo<FloatingToolbarProps>(({
         disabled={!canRedo}
         size="icon"
         variant="ghost"
-        className="bg-[#EEF0F3] text-[#5F6368] hover:bg-[#E8EAED]"
+        className="bg-surface-2 text-muted transition-colors hover:bg-surface-3"
         title="Redo"
       >
         <RotateCw className="h-3 w-3" />

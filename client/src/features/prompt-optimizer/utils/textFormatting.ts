@@ -26,7 +26,7 @@ const escapeHtml = (str: string | null | undefined = ''): string =>
 export function escapeHTMLForMLHighlighting(text: string): string {
   const escaped = escapeHtml(text || '');
 
-  return `<div style="white-space: pre-wrap; line-height: var(--lh-relaxed); font-size: var(--fs-14); font-family: var(--font-sans); color: var(--text);">${escaped}</div>`;
+  return `<div class="whitespace-pre-wrap break-words font-sans text-body text-foreground">${escaped}</div>`;
 }
 
 /**

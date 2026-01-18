@@ -4,6 +4,7 @@ import { ChevronDown, Check, Video } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
 import { useModelRegistry } from '../hooks/useModelRegistry';
+import { cn } from '@/utils/cn';
 
 /**
  * Model selector dropdown for selecting specific video models
@@ -48,8 +49,10 @@ export const ModelSelectorDropdown = memo<{
   };
 
   // Use Prompt Studio system badges (keeps menu consistent with the rest of PromptCanvas).
-  const badgeClass = 'po-badge';
-  const accentBadgeClass = 'po-badge po-badge--best';
+  const badgeClass =
+    'inline-flex items-center rounded-full border border-border bg-surface-3 px-2 py-0.5 text-label-sm text-muted';
+  const accentBadgeClass =
+    'inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-label-sm text-accent';
   
   // Find label for current selection
   const fallbackModelOptions = useMemo(() => {
@@ -172,7 +175,12 @@ export const ModelSelectorDropdown = memo<{
         }}
         ref={buttonRef}
         disabled={disabled}
-        className="po-model-select"
+        className={cn(
+          'inline-flex h-8 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-label-12 font-semibold text-foreground transition-colors',
+          'hover:bg-surface-3 hover:border-border-strong',
+          'data-[open=true]:border-accent/70 data-[open=true]:ring-2 data-[open=true]:ring-accent/10',
+          'disabled:cursor-not-allowed disabled:opacity-60'
+        )}
         data-open={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -181,11 +189,18 @@ export const ModelSelectorDropdown = memo<{
         aria-busy={isLoading}
         variant="ghost"
       >
-        {prefixLabel && <span className="po-model-select__prefix">{prefixLabel}</span>}
-        <Video className="po-model-select__icon h-3.5 w-3.5" />
-        <span className="po-model-select__label">{isLoading ? 'Loading…' : displayLabel}</span>
+        {prefixLabel && (
+          <span className="text-label-sm font-semibold uppercase tracking-widest text-muted">
+            {prefixLabel}
+          </span>
+        )}
+        <Video className="h-3.5 w-3.5 text-muted" />
+        <span className="max-w-56 truncate">{isLoading ? 'Loading…' : displayLabel}</span>
         <ChevronDown
-          className="po-model-select__chev h-3.5 w-3.5"
+          className={cn(
+            'h-3.5 w-3.5 text-muted transition-transform',
+            isOpen && 'rotate-180'
+          )}
           aria-hidden="true"
         />
       </Button>
@@ -195,7 +210,7 @@ export const ModelSelectorDropdown = memo<{
         createPortal(
           <div
             ref={menuRef}
-            className="po-model-menu po-popover po-surface po-surface--grad po-animate-pop-in"
+            className="max-h-72 min-w-60 max-w-80 overflow-auto rounded-xl border border-border bg-surface-2 shadow-md"
             style={{
               top: `${menuPosition?.top ?? 0}px`,
               left: `${menuPosition?.left ?? 0}px`,
@@ -209,16 +224,16 @@ export const ModelSelectorDropdown = memo<{
             <Button
               type="button"
               onClick={() => handleModelSelect('')}
-              className="po-model-menu__item"
+              className="flex w-full items-start justify-between gap-2 border-b border-border px-3 py-3 text-left text-foreground transition-colors hover:bg-surface-3 data-[selected=true]:bg-accent/10 last:border-b-0"
               data-selected={!selectedModel ? 'true' : 'false'}
               role="option"
               aria-selected={!selectedModel}
               variant="ghost"
             >
-              <div className="po-model-menu__text">
-                <div className="po-model-menu__name">Auto (Recommended)</div>
-                <div className="po-model-menu__meta">Picks the best model for the prompt</div>
-                <div className="po-model-menu__badges">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="text-body-sm font-semibold text-foreground">Auto (Recommended)</div>
+                <div className="text-label-sm text-muted">Picks the best model for the prompt</div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <span className={accentBadgeClass}>Recommended</span>
                   <span className={badgeClass}>Balanced</span>
                 </div>
@@ -238,17 +253,17 @@ export const ModelSelectorDropdown = memo<{
                   key={option.id}
                   type="button"
                   onClick={() => handleModelSelect(option.id)}
-                  className="po-model-menu__item"
+                  className="flex w-full items-start justify-between gap-2 border-b border-border px-3 py-3 text-left text-foreground transition-colors hover:bg-surface-3 data-[selected=true]:bg-accent/10 last:border-b-0"
                   data-selected={isSelected ? 'true' : 'false'}
                   role="option"
                   aria-selected={isSelected}
                   variant="ghost"
                 >
-                  <div className="po-model-menu__text">
-                    <div className="po-model-menu__name">{option.label}</div>
-                    <div className="po-model-menu__provider">{option.provider}</div>
-                    <div className="po-model-menu__meta">{meta.strength}</div>
-                    <div className="po-model-menu__badges">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="text-body-sm font-semibold text-foreground">{option.label}</div>
+                    <div className="text-label-sm uppercase tracking-widest text-faint">{option.provider}</div>
+                    <div className="text-label-sm text-muted">{meta.strength}</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {meta.badges.map((badge) => (
                         <span key={badge} className={badgeClass}>
                           {badge}

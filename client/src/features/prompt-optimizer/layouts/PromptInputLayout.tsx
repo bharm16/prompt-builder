@@ -2,7 +2,6 @@ import React from 'react';
 import { PromptInputSection } from '../components/PromptInputSection';
 import { PromptSidebar } from '../components/PromptSidebar';
 import type { User } from '../context/types';
-import './PromptInputLayout.css';
 
 /**
  * PromptInputLayout - Input View Layout
@@ -28,13 +27,13 @@ export const PromptInputLayout = ({
   onShowBrainstorm,
 }: PromptInputLayoutProps): React.ReactElement => {
   return (
-    <div className="prompt-input-layout">
+    <div className="flex h-full min-h-0 overflow-hidden">
       {/* History Sidebar */}
       <PromptSidebar user={user} />
 
       {/* Main Content - Centered Input */}
-      <main className="prompt-input-layout__main" id="main-content">
-        <div className="prompt-input-layout__content">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
+        <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
           <PromptInputSection
             aiNames={aiNames}
             onOptimize={onOptimize}
@@ -43,10 +42,10 @@ export const PromptInputLayout = ({
         </div>
 
         {/* Privacy Policy Footer */}
-        <footer className="prompt-input-layout__footer">
+        <footer className="py-2 text-center">
           <a
             href="/privacy-policy"
-            className="prompt-input-layout__footer-link"
+            className="text-body-sm text-faint transition-colors hover:text-muted"
           >
             Privacy Policy
           </a>
@@ -55,7 +54,6 @@ export const PromptInputLayout = ({
     </div>
   );
 };
-
 
 
 

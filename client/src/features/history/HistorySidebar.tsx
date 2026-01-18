@@ -13,7 +13,7 @@ import { useDebugLogger } from '@hooks/useDebugLogger';
 import type { User, PromptHistoryEntry } from '@hooks/types';
 import { HistoryItem } from './components/HistoryItem';
 import { AuthMenu } from './components/AuthMenu';
-import './HistorySidebar.css';
+import { cn } from '@/utils/cn';
 
 type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
 
@@ -54,11 +54,15 @@ function clampTitle(value: string): string {
   return v.length > 48 ? `${v.slice(0, 48).trim()}…` : v;
 }
 
-function stageColor(stage: PromptRowStage): string {
-  if (stage === 'generated') return '#22C55E';
-  if (stage === 'optimized') return '#8B5CF6';
-  if (stage === 'error') return '#F59E0B';
-  return '#A1A1AA';
+const STAGE_COLOR_CLASSES: Record<PromptRowStage, { bg: string; ring: string }> = {
+  generated: { bg: 'bg-success', ring: 'ring-success/40' },
+  optimized: { bg: 'bg-accent-2', ring: 'ring-accent-2/40' },
+  error: { bg: 'bg-warning', ring: 'ring-warning/40' },
+  draft: { bg: 'bg-muted', ring: 'ring-muted/40' },
+};
+
+function stageColorClasses(stage: PromptRowStage): { bg: string; ring: string } {
+  return STAGE_COLOR_CLASSES[stage] ?? STAGE_COLOR_CLASSES.draft;
 }
 
 function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {
@@ -71,14 +75,6 @@ function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {
   return 'optimized';
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const cleaned = hex.replace('#', '').trim();
-  if (cleaned.length !== 6) return `rgba(0,0,0,${alpha})`;
-  const r = parseInt(cleaned.slice(0, 2), 16);
-  const g = parseInt(cleaned.slice(2, 4), 16);
-  const b = parseInt(cleaned.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function formatRelativeOrDate(iso: string | undefined): string {
   if (!iso) return 'No date';
@@ -275,8 +271,7 @@ export function HistorySidebar({
     setShowHistory(false);
   }, [setShowHistory]);
 
-  const activeDotColor = stageColor(activeStage);
-  const activeDotGlow = hexToRgba(activeDotColor, 0.4);
+  const activeDotClasses = stageColorClasses(activeStage);
 
   const promptRows = React.useMemo(() => {
     const baseTitles = displayedHistory.map((entry) => clampTitle(deriveBaseTitle(entry.input)));
@@ -353,13 +348,16 @@ export function HistorySidebar({
   return (
     <aside
       id="history-sidebar"
-      className={`po-sidebar ${isCollapsed ? 'po-sidebar--collapsed' : 'po-sidebar--expanded'}`}
+      className={cn(
+        'flex h-full min-h-0 flex-col overflow-hidden border-r border-border bg-surface-1 transition-all duration-150',
+        isCollapsed ? 'w-20' : 'w-96'
+      )}
       aria-label="Prompt history"
       onMouseEnter={handleSidebarMouseEnter}
       onMouseLeave={handleSidebarMouseLeave}
     >
       {isCollapsed ? (
-        <div className="po-sidebar__collapsed">
+        <div className="flex h-full flex-col items-center gap-4 py-4">
           <Button
             type="button"
             onClick={() => {
@@ -368,37 +366,39 @@ export function HistorySidebar({
             }}
             variant="ghost"
             size="icon"
-            className="po-sidebar__logo-btn"
+            className="h-10 w-10 rounded-lg border border-border bg-surface-2 text-muted transition-all duration-150 hover:-translate-y-px hover:border-border-strong"
             aria-label="Expand sidebar"
             title="Vidra"
           >
-            <span className="po-sidebar__logo-text">V</span>
+            <span className="text-body font-bold text-foreground">V</span>
           </Button>
 
-          <div className="po-sidebar__divider" aria-hidden="true" />
+          <div className="h-px w-full bg-border" aria-hidden="true" />
 
-          <div className="po-sidebar__collapsed-timeline">
+          <div className="flex flex-col items-center gap-3 py-3">
             <div
-              className="po-sidebar__collapsed-active"
-              style={{
-                backgroundColor: activeDotColor,
-                boxShadow: `0 0 0 2px ${activeDotGlow}`,
-              }}
+              className={cn(
+                'h-2 w-2 rounded-full ring-2 ps-animate-active-dot-pulse',
+                activeDotClasses.bg,
+                activeDotClasses.ring
+              )}
               aria-label="Active prompt"
               role="img"
             />
 
             {collapsedTimeline.entries.map((entry) => {
               const key = (entry.id || entry.uuid) as string | undefined;
-              const color = stageColor(resolveEntryStage(entry));
+              const stageClasses = stageColorClasses(resolveEntryStage(entry));
               return (
                 <Button
                   key={key ?? `${entry.timestamp ?? ''}-${entry.input.slice(0, 8)}`}
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="po-sidebar__timeline-dot"
-                  style={{ backgroundColor: color }}
+                  className={cn(
+                    'h-6 w-6 rounded-full transition-transform hover:scale-110',
+                    stageClasses.bg
+                  )}
                   aria-label="Prompt"
                   onMouseEnter={() => setHoveredEntryKey(key ?? null)}
                   onMouseLeave={() => setHoveredEntryKey(null)}
@@ -412,36 +412,39 @@ export function HistorySidebar({
             })}
 
             {collapsedTimeline.overflow > 0 && (
-              <div className="po-sidebar__timeline-overflow" aria-label={`+${collapsedTimeline.overflow} more prompts`}>
+              <div
+                className="mt-2 rounded-full bg-surface-3 px-1.5 py-0.5 text-label-sm text-muted"
+                aria-label={`+${collapsedTimeline.overflow} more prompts`}
+              >
                 +{collapsedTimeline.overflow}
               </div>
             )}
           </div>
 
-          <div className="po-sidebar__divider" aria-hidden="true" />
+          <div className="h-px w-full bg-border" aria-hidden="true" />
 
           <Button
             type="button"
             onClick={onCreateNew}
             variant="ghost"
             size="icon"
-            className="po-sidebar__icon-btn"
+            className="h-10 w-10 rounded-lg border border-border bg-surface-2 text-muted transition-all duration-150 hover:-translate-y-px hover:border-border-strong"
             aria-label="New prompt"
             title="New prompt"
           >
             <span>+</span>
           </Button>
 
-          <div className="po-sidebar__divider" aria-hidden="true" />
+          <div className="h-px w-full bg-border" aria-hidden="true" />
 
-          <div className="po-sidebar__collapsed-footer">
+          <div className="mt-auto">
             {!user ? (
               <Button
                 type="button"
                 onClick={handleSignIn}
                 variant="ghost"
                 size="icon"
-                className="po-sidebar__icon-btn"
+                className="h-10 w-10 rounded-lg border border-border bg-surface-2 text-muted transition-all duration-150 hover:-translate-y-px hover:border-border-strong"
                 aria-label="Sign in"
                 title="Sign in"
               >
@@ -456,12 +459,12 @@ export function HistorySidebar({
                 }}
                 variant="ghost"
                 size="icon"
-                className="po-sidebar__avatar-btn"
+                className="h-10 w-10 rounded-lg border border-border bg-surface-2 text-muted transition-all duration-150 hover:-translate-y-px hover:border-border-strong"
                 aria-label="User menu"
                 title={typeof user.displayName === 'string' ? user.displayName : 'User'}
               >
                 {typeof user.photoURL === 'string' && user.photoURL ? (
-                  <img src={user.photoURL} alt="" />
+                  <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
                 ) : (
                   <UserIcon size={18} />
                 )}
@@ -470,10 +473,10 @@ export function HistorySidebar({
           </div>
         </div>
       ) : (
-        <div className="po-sidebar__expanded">
-          <header className="po-sidebar__header">
-            <div className="po-sidebar__header-row">
-              <h1>Vidra</h1>
+        <div className="flex h-full flex-col">
+          <header className="border-b border-border px-6 py-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h1 className="text-h3 font-bold tracking-tight text-foreground">Vidra</h1>
               <Button
                 onClick={() => {
                   hoverExpandedRef.current = false;
@@ -482,35 +485,38 @@ export function HistorySidebar({
                 variant="ghost"
                 size="icon"
                 aria-label="Collapse sidebar"
+                className="h-9 w-9 rounded-lg border border-border bg-surface-2 text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
               >
                 <PanelLeft size={20} />
               </Button>
             </div>
           </header>
 
-          <section className="po-sidebar__active" aria-label="Active prompt">
-            <div className="po-sidebar__active-head">
-              <span>ACTIVE PROMPT</span>
-              <span className="po-sidebar__active-rule" aria-hidden="true" />
+          <section className="mt-4 px-4" aria-label="Active prompt">
+            <div className="flex items-center gap-3 text-label-sm uppercase tracking-widest text-faint">
+              <span>Active Prompt</span>
+              <span className="h-px flex-1 bg-border" aria-hidden="true" />
             </div>
-            <div className="po-sidebar__active-card">
+            <div className="mt-3 flex items-start gap-4 rounded-lg border border-border bg-surface-1 p-4 shadow-sm">
               <span
-                className="po-sidebar__active-dot"
-                style={{ backgroundColor: activeDotColor }}
+                className={cn(
+                  'mt-2 h-4 w-4 flex-shrink-0 rounded-full ring-2 ring-surface-1/60',
+                  activeDotClasses.bg
+                )}
                 aria-hidden="true"
               />
-              <div className="po-sidebar__active-body">
-                <div className="po-sidebar__active-title" title={activeTitle}>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-body-sm font-semibold text-foreground" title={activeTitle}>
                   {activeTitle}
                 </div>
-                <div className="po-sidebar__active-meta">
-                  <span className="po-sidebar__active-label">Status:</span> {activeStatusLabel}
-                  <span className="po-sidebar__active-sep" aria-hidden="true">·</span>
-                  <span className="po-sidebar__active-label">Model:</span> {activeModelLabel}
+                <div className="mt-3 text-label-sm text-faint">
+                  <span className="font-semibold text-muted">Status:</span> {activeStatusLabel}
+                  <span className="mx-4 text-faint/80" aria-hidden="true">·</span>
+                  <span className="font-semibold text-muted">Model:</span> {activeModelLabel}
                   {typeof activeDurationS === 'number' ? (
                     <>
-                      <span className="po-sidebar__active-sep" aria-hidden="true">·</span>
-                      <span className="po-sidebar__active-label">Duration:</span> {activeDurationS}s
+                      <span className="mx-4 text-faint/80" aria-hidden="true">·</span>
+                      <span className="font-semibold text-muted">Duration:</span> {activeDurationS}s
                     </>
                   ) : null}
                 </div>
@@ -518,39 +524,45 @@ export function HistorySidebar({
             </div>
           </section>
 
-          <section className="po-sidebar__section po-sidebar__section--sessions">
-            <div className="po-sidebar__section-head">
-              <h2>Prompts</h2>
-              <Button type="button" variant="ghost" className="po-sidebar__ghost" onClick={onCreateNew}>
+          <section className="flex min-h-0 flex-1 flex-col gap-4 px-4 py-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-label-sm uppercase tracking-widest text-faint">Prompts</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-full border border-border px-2 py-1 text-label-sm text-muted transition-colors hover:border-border-strong"
+                onClick={onCreateNew}
+              >
                 + New
               </Button>
             </div>
 
-            <div className="po-sidebar__search">
+            <div>
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search prompts..."
                 aria-label="Search prompts"
+                className="h-9 rounded-lg border border-border bg-surface-1 px-4 text-body-sm text-muted focus-visible:border-border-strong focus-visible:ring-2 focus-visible:ring-accent/20"
               />
             </div>
 
             {isLoadingHistory ? (
-              <div className="po-sidebar__empty">
+              <div className="flex flex-col items-center gap-2 py-6 text-center text-label-sm text-faint">
                 <div className="ps-spinner-sm" />
                 <p>Loading...</p>
               </div>
             ) : filteredHistory.length === 0 && searchQuery ? (
-              <div className="po-sidebar__empty">
+              <div className="py-6 text-center text-label-sm text-faint">
                 <p>No results for &quot;{searchQuery}&quot;.</p>
               </div>
             ) : filteredHistory.length === 0 ? (
               <HistoryEmptyState onCreateNew={onCreateNew} />
             ) : (
               <>
-                <nav aria-label="Prompts list" className="po-sidebar__sessions">
-                  <ul>
+                <nav aria-label="Prompts list" className="flex-1 overflow-y-auto">
+                  <ul className="flex flex-col gap-3">
                     {promptRows.map(({ entry, title, meta, stage, isSelected, processingLabel, key }) => {
                       const externalHover = Boolean(
                         hoveredEntryKey &&
@@ -578,7 +590,7 @@ export function HistorySidebar({
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     variant="ghost"
                     size="sm"
-                    className="po-sidebar__see-more"
+                    className="w-full justify-start text-label-sm text-faint"
                   >
                     {showAllHistory ? 'See less' : 'See more...'}
                   </Button>
@@ -587,7 +599,7 @@ export function HistorySidebar({
             )}
           </section>
 
-          <footer className="po-sidebar__auth">
+          <footer className="border-t border-border p-4">
             <AuthMenu user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
           </footer>
         </div>

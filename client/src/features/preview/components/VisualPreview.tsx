@@ -211,10 +211,13 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   // Stage owns the CTA button and any empty/loading visuals.
   if (shouldShowGrid) {
     return (
-      <div className="pc-preview-bare-grid" aria-label="Preview frames">
+      <div className="grid grid-cols-2 gap-2 bg-surface-2 p-2" aria-label="Preview frames">
         {imageUrls.map((url, index) => (
-          <div key={`${index}-${url ?? 'empty'}`} className="pc-preview-bare-grid__cell">
-            {url ? <img src={url} alt={`Frame ${index + 1}`} /> : null}
+          <div
+            key={`${index}-${url ?? 'empty'}`}
+            className="overflow-hidden rounded-md bg-surface-3"
+          >
+            {url ? <img src={url} alt={`Frame ${index + 1}`} className="h-full w-full object-cover" /> : null}
           </div>
         ))}
       </div>
@@ -222,7 +225,7 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   }
 
   if (displayUrl) {
-    return <img src={displayUrl} alt="Preview" className="pc-preview-bare-image" />;
+    return <img src={displayUrl} alt="Preview" className="h-full w-full object-cover" />;
   }
 
   return null;

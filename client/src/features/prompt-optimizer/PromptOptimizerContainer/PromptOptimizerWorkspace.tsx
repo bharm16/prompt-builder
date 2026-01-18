@@ -24,8 +24,6 @@ import DebugButton from '@components/DebugButton';
 import { useToast } from '@components/Toast';
 import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
 import { getAuthRepository } from '@/repositories';
-import './PromptOptimizerWorkspace.css';
-import '../OverlayKit.css';
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -390,15 +388,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   const shouldShowLoading = isLoading || (isPromptRoute && !showResults);
 
   return (
-    <div
-      className="prompt-optimizer-workspace"
-      style={{
-        '--sidebar-width': showHistory
-          ? 'var(--layout-sidebar-width-expanded)'
-          : 'var(--layout-sidebar-width-collapsed)',
-        transition: 'grid-template-columns 120ms cubic-bezier(0.2, 0, 0, 1)',
-      } as React.CSSProperties}
-    >
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-app font-sans text-foreground">
       {/* Skip to main content */}
       <a href="#main-content" className="ps-skip-link">
         Skip to main content
@@ -442,13 +432,13 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           displayedPrompt={promptOptimizer.displayedPrompt}
         />
       ) : shouldShowLoading ? (
-        <div className="prompt-input-layout">
+        <div className="flex h-full min-h-0 overflow-hidden">
           <PromptSidebar user={user} />
-          <main className="prompt-input-layout__main" id="main-content">
-            <div className="prompt-input-layout__content">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
+            <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
               <div className="flex flex-col items-center gap-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
-                <p className="text-neutral-500 text-sm">Loading prompt...</p>
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
+                <p className="text-body-sm text-muted">Loading prompt...</p>
               </div>
             </div>
           </main>

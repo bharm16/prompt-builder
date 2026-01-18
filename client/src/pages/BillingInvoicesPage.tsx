@@ -268,7 +268,7 @@ export function BillingInvoicesPage(): React.ReactElement {
                   const primaryLink = pdfUrl || hostedUrl;
                   const primaryLabel = pdfUrl ? 'Download PDF' : 'Open invoice';
                   return (
-                    <div key={invoice.id} className="rounded-2xl border border-white/10 bg-[#07070D]/50 p-4">
+                    <div key={invoice.id} className="rounded-2xl border border-border bg-surface-1/50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[13px] font-semibold text-white">

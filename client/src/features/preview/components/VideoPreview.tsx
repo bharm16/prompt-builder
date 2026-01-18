@@ -136,7 +136,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       muted
       loop
       playsInline
-      className="pc-video-bare"
+      className="h-full w-full object-cover pointer-events-none"
     />
   );
 };

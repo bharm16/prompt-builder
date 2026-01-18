@@ -54,7 +54,7 @@ export const PromptModals = ({
 
       {/* Improvement Form Modal */}
       <Dialog open={showImprover} onOpenChange={setShowImprover}>
-        <DialogContent className="max-w-3xl po-surface po-surface--grad">
+        <DialogContent className="max-w-3xl rounded-2xl border border-border bg-surface-1 shadow-lg">
           <PromptImprovementForm
             initialPrompt={promptOptimizer.inputPrompt}
             onComplete={handleImprovementComplete}

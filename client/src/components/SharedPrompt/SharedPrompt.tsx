@@ -4,7 +4,6 @@ import { Home, Copy, Check } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { useSharedPrompt } from './hooks/useSharedPrompt';
 import { getModeLabel } from './utils/promptUtils';
-import '../../features/prompt-optimizer/PromptCanvas.css';
 
 /**
  * SharedPrompt - Displays a shared prompt by UUID
@@ -27,10 +26,10 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (loading) {
     return (
-      <div className="min-h-full h-full bg-white flex items-center justify-center">
+      <div className="flex h-full min-h-full items-center justify-center bg-app text-foreground">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-neutral-600 border-r-transparent"></div>
-          <p className="mt-4 text-neutral-600">Loading prompt...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-border border-r-transparent"></div>
+          <p className="mt-4 text-label-sm text-muted">Loading prompt...</p>
         </div>
       </div>
     );
@@ -38,10 +37,10 @@ const SharedPrompt = (): React.ReactElement => {
 
   if (error || !prompt) {
     return (
-      <div className="min-h-full h-full bg-white flex items-center justify-center">
-        <div className="text-center max-w-md p-8">
-          <h1 className="text-3xl font-bold text-neutral-800 mb-4">{error || 'Prompt Not Found'}</h1>
-          <p className="text-neutral-600 mb-6">
+      <div className="flex h-full min-h-full items-center justify-center bg-app text-foreground">
+        <div className="max-w-md p-8 text-center">
+          <h1 className="mb-4 text-h2 font-semibold">{error || 'Prompt Not Found'}</h1>
+          <p className="mb-6 text-body-sm text-muted">
             The prompt you're looking for doesn't exist or has been removed.
           </p>
           <Button
@@ -57,16 +56,16 @@ const SharedPrompt = (): React.ReactElement => {
   }
 
   return (
-    <div className="min-h-full h-full bg-white overflow-y-auto">
+    <div className="h-full min-h-full overflow-y-auto bg-app text-foreground">
       {/* Header */}
       <div
-        className="border-b border-neutral-200 bg-white/50 backdrop-blur-sm sticky z-10"
+        className="sticky z-10 border-b border-border bg-surface-1/70 backdrop-blur-sm"
         style={{ top: 'var(--global-top-nav-height)' }}
       >
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-800">Shared Prompt</h1>
-            <p className="text-sm text-neutral-500">
+            <h1 className="text-h4 font-semibold text-foreground">Shared Prompt</h1>
+            <p className="text-label-sm text-muted">
               {getModeLabel(prompt.mode)} · {new Date(prompt.timestamp).toLocaleDateString()}
             </p>
           </div>
@@ -81,21 +80,21 @@ const SharedPrompt = (): React.ReactElement => {
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-5xl px-6 py-8">
         {/* Original Input */}
         <div className="mb-8">
-          <h2 className="text-sm font-medium text-neutral-500 mb-2 uppercase tracking-wide">
+          <h2 className="mb-2 text-label-sm font-semibold uppercase tracking-wide text-muted">
             Original Input
           </h2>
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
-            <p className="text-neutral-700 whitespace-pre-wrap">{prompt.input}</p>
+          <div className="rounded-lg border border-border bg-surface-1 p-6">
+            <p className="whitespace-pre-wrap text-body text-foreground">{prompt.input}</p>
           </div>
         </div>
 
         {/* Optimized Output */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wide">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-label-sm font-semibold uppercase tracking-wide text-muted">
               Optimized Output
             </h2>
             <Button
@@ -103,13 +102,13 @@ const SharedPrompt = (): React.ReactElement => {
               variant="ghost"
               size="sm"
             >
-              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
               {copied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
-          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="rounded-lg border border-border bg-surface-1 p-6">
             <div
-              className="text-neutral-700 font-medium"
+              className="text-body font-medium text-foreground"
               dangerouslySetInnerHTML={{ __html: formattedOutput.html || '' }}
             />
           </div>
@@ -117,20 +116,20 @@ const SharedPrompt = (): React.ReactElement => {
 
         {/* Quality Score */}
         {prompt.score && (
-          <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-neutral-200">
-            <span className="text-sm text-neutral-500">Quality Score:</span>
-            <span className="text-sm font-semibold text-neutral-800">{prompt.score}/100</span>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface-1 px-4 py-2">
+            <span className="text-label-sm text-muted">Quality Score:</span>
+            <span className="text-label-sm font-semibold text-foreground">{prompt.score}/100</span>
           </div>
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-neutral-200 text-center">
-          <p className="text-sm text-neutral-500">
+        <div className="mt-12 border-t border-border pt-6 text-center">
+          <p className="text-label-sm text-muted">
             Create your own optimized prompts at{' '}
             <Button
               onClick={() => navigate('/')}
               variant="link"
-              className="h-auto p-0 text-neutral-700 font-medium underline hover:text-neutral-900"
+              className="h-auto p-0 text-foreground underline transition-colors hover:text-accent"
             >
               Prompt Builder
             </Button>

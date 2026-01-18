@@ -20,6 +20,11 @@
     --border: var(--ps-border);
     --input: var(--ps-border);
     --ring: var(--ps-focus-ring);
+    --shadow-elevated: var(--ps-shadow-elevated);
+    --shadow-floating: var(--ps-shadow-floating);
+    --motion-fast: var(--ps-motion-fast);
+    --motion-base: var(--ps-motion-base);
+    --motion-slow: var(--ps-motion-slow);
     --radius: var(--ps-r-md);
   }
 }

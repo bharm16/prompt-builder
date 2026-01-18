@@ -1,8 +1,10 @@
 import { memo } from 'react';
+import type { CSSProperties } from 'react';
 import { Info, X } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../SpanBentoGrid/config/bentoConfig';
 import type { CategoryLegendProps } from '../types';
+import { cn } from '@/utils/cn';
 
 type CategoryKey = keyof typeof CATEGORY_CONFIG;
 
@@ -50,21 +52,21 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
 
   return (
     <div
-      className="po-category-legend po-popover po-surface po-surface--grad po-animate-pop-in"
+      className="absolute z-30 w-80 overflow-hidden rounded-lg border border-border bg-surface-2 shadow-md"
       style={{ right: rightOffset }}
       role="dialog"
       aria-label="Highlight categories"
     >
-      <div className="po-category-legend__header">
-        <div className="po-category-legend__header-left">
-          <div className="po-category-legend__title">
+      <div className="flex items-start justify-between gap-3 border-b border-border p-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
             <Info className="h-3.5 w-3.5" aria-hidden="true" />
             Highlight categories
           </div>
-          <div className="po-category-legend__subtitle">
+          <div className="mt-1 text-label-12 text-muted">
             {hasContext ? (
-              <span className="status-pill" data-status="ready">
-                <span className="status-pill__dot" aria-hidden="true" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
                 Brainstorm context active
               </span>
             ) : (
@@ -75,7 +77,7 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
         <Button
           type="button"
           onClick={onClose}
-          className="po-action-icon"
+          className="h-8 w-8 rounded-md border border-border bg-surface-3 text-muted transition-colors hover:border-border-strong hover:text-foreground"
           aria-label="Close legend"
           variant="ghost"
           size="icon"
@@ -84,18 +86,26 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
         </Button>
       </div>
 
-      <div className="po-category-legend__body">
-        <div className="po-category-legend__list" role="list">
+      <div className="max-h-screen overflow-auto p-4">
+        <div className="flex flex-col gap-3" role="list">
           {categories.map((cat) => (
-            <div key={cat.name} className="po-category-legend__item" role="listitem">
+            <div key={cat.name} className="flex items-start gap-3" role="listitem">
               <div
-                className="po-category-legend__swatch"
+                className={cn(
+                  'mt-0.5 h-5 w-14 flex-shrink-0 rounded-md border border-[var(--swatch-border)]',
+                  'bg-[var(--swatch-bg)]'
+                )}
+                style={
+                  {
+                    '--swatch-bg': cat.color,
+                    '--swatch-border': cat.border,
+                  } as CSSProperties
+                }
                 aria-hidden="true"
-                style={{ backgroundColor: cat.color, borderColor: cat.border }}
               />
               <div style={{ minWidth: 0 }}>
-                <div className="po-category-legend__item-title">{cat.name}</div>
-                <div className="po-category-legend__item-example" title={cat.example}>
+                <div className="text-label-12 font-semibold text-foreground">{cat.name}</div>
+                <div className="mt-0.5 truncate text-label-12 text-muted" title={cat.example}>
                   {cat.example}
                 </div>
               </div>
@@ -103,14 +113,14 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
           ))}
         </div>
 
-        <div className="po-category-legend__footer">
-          <div className="po-category-legend__footer-title">How it works</div>
-          <div className="po-category-legend__footer-text">
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="mb-2 text-label-sm font-semibold uppercase tracking-widest text-faint">How it works</div>
+          <div className="text-label-12 text-muted leading-relaxed">
             {hasContext
               ? 'Your Creative Brainstorm selections are prioritized first, followed by additional details detected by analysis.'
               : 'Categories are automatically detected based on video production standards.'}
           </div>
-          <ul className="po-category-legend__footer-list">
+          <ul className="mt-2 grid gap-1 pl-4 text-label-12 text-muted leading-relaxed">
             {hasContext ? (
               <>
                 <li>Your input gets highest priority</li>
@@ -127,7 +137,7 @@ export const CategoryLegend = memo<CategoryLegendProps>(({ show, onClose, hasCon
               </>
             )}
           </ul>
-          <div className="po-category-legend__footer-text" style={{ marginTop: 'var(--s-3)' }}>
+          <div className="mt-3 text-label-12 text-muted leading-relaxed">
             Click any highlight to get AI-powered alternatives.
           </div>
         </div>

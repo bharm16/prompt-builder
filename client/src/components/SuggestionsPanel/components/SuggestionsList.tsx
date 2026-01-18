@@ -63,7 +63,7 @@ export function SuggestionsList({
   if (variant === 'tokenEditor') {
     return (
       <div
-        className="suggestions-panel__token-list"
+        className="flex flex-col gap-1.5"
         role="list"
         aria-label="Suggestion options"
       >
@@ -77,13 +77,13 @@ export function SuggestionsList({
             <div
               key={key}
               role="listitem"
-              className="suggestions-panel__token-row"
+              className="flex items-start justify-between gap-3 rounded-md border border-transparent bg-transparent px-2.5 py-2 transition-all duration-150 hover:-translate-y-px hover:bg-white/5 hover:border-white/10"
             >
               <Button
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
                 variant="ghost"
-                className="suggestions-panel__token-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
+                className="min-w-0 flex-1 text-left text-body-sm font-medium leading-snug text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
                 aria-label={`Apply suggestion: ${suggestionText}`}
               >
                 {suggestionText}
@@ -93,7 +93,7 @@ export function SuggestionsList({
                 type="button"
                 onClick={() => handleSuggestionSelect(suggestionObj)}
                 variant="ghost"
-                className="suggestions-panel__token-apply flex-shrink-0 text-label-12 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="mt-0.5 h-6 flex-shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 text-label-12 font-medium text-muted transition-all duration-150 hover:-translate-y-px hover:border-white/20 hover:bg-white/10 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 aria-label={`Apply ${suggestionText}`}
               >
                 Apply
@@ -166,11 +166,11 @@ export function SuggestionsList({
         return (
           <div
             key={key}
-            className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
+            className="group relative opacity-0 animate-in fade-in slide-in-from-bottom-2 duration-200"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <div
-              className="w-full text-left relative p-3 rounded-lg bg-app border border-border hover:bg-surface-1 hover:border-border-strong hover:shadow-sm transition-all duration-150 group"
+              className="relative w-full rounded-lg border border-border bg-app p-3 text-left transition-all duration-150 hover:border-border-strong hover:bg-surface-1 hover:shadow-sm"
               role="listitem"
               aria-label={`Suggestion ${index + 1}: ${suggestionText.substring(0, 50)}...`}
             >
@@ -178,13 +178,13 @@ export function SuggestionsList({
               <Button
                 onClick={() => handleSuggestionSelect(suggestionObj)}
                 variant="ghost"
-                className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded active:scale-[0.99] transition-transform"
+                className="w-full text-left cursor-pointer rounded transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-95"
                 aria-label={`Apply suggestion: ${suggestionText.substring(0, 50)}...`}
               >
                 {/* Keyboard Shortcut Badge */}
                 {index < MAX_KEYBOARD_SHORTCUTS && (
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <kbd className="px-1.5 py-0.5 bg-white border border-border rounded-md text-[10px] font-mono text-muted shadow-sm">
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <kbd className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted shadow-sm">
                        {index + 1}
                      </kbd>
                   </div>
@@ -192,7 +192,7 @@ export function SuggestionsList({
 
                 <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2 pr-6">
-                    <span className="text-copy-13 text-foreground font-medium">
+                    <span className="text-copy-13 font-medium text-foreground">
                       {suggestionText}
                     </span>
                     {suggestionObj?.compatibility !== undefined &&
@@ -200,7 +200,7 @@ export function SuggestionsList({
                   </div>
                   
                   {suggestionObj?.explanation && (
-                    <p className="text-label-12 text-muted leading-relaxed">
+                    <p className="text-label-12 leading-relaxed text-muted">
                       {suggestionObj.explanation}
                     </p>
                   )}
@@ -209,8 +209,8 @@ export function SuggestionsList({
 
               {/* Action Footer - Only shows on hover, outside main button */}
               {showCopyAction && (
-                <div className="mt-3 pt-2 border-t border-border flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <span className="text-[11px] font-medium text-muted uppercase tracking-wide">
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 opacity-0 transition-opacity group-hover:opacity-100">
+                   <span className="text-label-sm font-medium uppercase tracking-widest text-muted">
                      Click to Apply
                    </span>
                    <Button
@@ -218,7 +218,7 @@ export function SuggestionsList({
                      onClick={(e) => handleCopy(suggestionText, index, e)}
                      onKeyDown={(e) => handleCopyKeyDown(suggestionText, index, e)}
                      variant="ghost"
-                     className="text-[11px] font-medium text-muted hover:text-foreground uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded px-1"
+                     className="rounded px-1 text-label-sm font-medium uppercase tracking-widest text-muted transition-colors hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                      aria-label={`Copy suggestion ${index + 1}`}
                    >
                      {copiedIndex === index ? 'Copied!' : 'Copy'}

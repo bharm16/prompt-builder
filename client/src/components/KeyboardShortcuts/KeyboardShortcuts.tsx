@@ -4,7 +4,6 @@ import { Button } from '@promptstudio/system/components/ui/button';
 import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { SHORTCUTS, formatShortcut, isMac } from './shortcuts.config';
-import './KeyboardShortcuts.css';
 
 interface KeyboardShortcutsProps {
   isOpen: boolean;
@@ -57,10 +56,10 @@ export default function KeyboardShortcuts({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="po-command__card po-modal po-surface po-surface--grad p-0 max-w-[720px] [&>button]:hidden">
-        <div className="po-command__accent" aria-hidden="true" />
-        <div className="po-command__header">
-          <div className="po-command__title">
+      <DialogContent className="w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
+        <div className="h-1 bg-gradient-to-r from-accent to-accent-2" aria-hidden="true" />
+        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+          <div className="flex items-center gap-3 text-h4 font-semibold tracking-tight text-foreground">
             <Command className="h-4 w-4" aria-hidden="true" />
             <span id="command-title">Command Palette</span>
           </div>
@@ -68,7 +67,7 @@ export default function KeyboardShortcuts({
             type="button"
             variant="ghost"
             size="icon"
-            className="po-command__close"
+            className="h-8 w-8 rounded-md border border-border bg-surface-3 text-muted transition-all duration-150 hover:-translate-y-px hover:border-border-strong"
             onClick={onClose}
             aria-label="Close command palette"
           >
@@ -76,7 +75,7 @@ export default function KeyboardShortcuts({
           </Button>
         </div>
 
-        <div className="po-command__search" role="search">
+        <div className="mx-6 mb-5 flex items-center gap-3 rounded-lg border border-border bg-surface-3 px-3 py-2.5 text-faint" role="search">
           <Search className="h-4 w-4" aria-hidden="true" />
           <Input
             ref={inputRef}
@@ -85,31 +84,35 @@ export default function KeyboardShortcuts({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search actions"
             aria-label="Search actions"
-            className="h-auto border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-auto border-none bg-transparent p-0 text-body-sm text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
 
-        <div className="po-command__list" role="list">
+        <div className="flex max-h-screen flex-col gap-5 overflow-y-auto px-6 pb-5" role="list">
           {totalMatches === 0 ? (
-            <div className="po-command__empty">No matches for "{query.trim()}".</div>
+            <div className="rounded-md border border-dashed border-border bg-surface-2 p-6 text-center text-faint">
+              No matches for "{query.trim()}".
+            </div>
           ) : (
             filteredShortcuts.map((category) => (
-              <section key={category.category} className="po-command__section" aria-label={category.category}>
-                <div className="po-command__section-title">{category.category}</div>
-                <div className="po-command__items">
+              <section key={category.category} aria-label={category.category}>
+                <div className="mb-2 text-label-sm uppercase tracking-widest text-faint">
+                  {category.category}
+                </div>
+                <div className="flex flex-col gap-2">
                   {category.items.map((shortcut) => {
                     const formattedKeys = formatShortcut(shortcut.keys);
                     return (
                       <div
                         key={shortcut.id}
-                        className="po-command__item po-row po-row--interactive"
+                        className="flex items-center justify-between gap-4 rounded-md border border-transparent bg-surface-2 px-3 py-2.5 text-muted transition-colors duration-150 hover:border-border-strong hover:bg-surface-3 hover:text-foreground"
                         role="listitem"
                       >
                         <span>{shortcut.description}</span>
-                        <div className="po-command__keys" aria-label={`Shortcut: ${shortcut.keys.join(' + ')}`}>
+                        <div className="flex items-center gap-2 text-faint" aria-label={`Shortcut: ${shortcut.keys.join(' + ')}`}>
                           {formattedKeys.map((key, keyIdx) => (
                             <React.Fragment key={`${shortcut.id}-${key}`}>
-                              <kbd className="po-command__key po-kbd">
+                              <kbd className="min-w-7 rounded-sm border border-border bg-surface-3 px-1.5 py-0.5 text-label-sm font-mono text-muted">
                                 {key === 'Cmd' || key === 'Ctrl' ? (
                                   <Command className="h-3 w-3" aria-label={key} />
                                 ) : (
@@ -117,7 +120,7 @@ export default function KeyboardShortcuts({
                                 )}
                               </kbd>
                               {keyIdx < formattedKeys.length - 1 && (
-                                <span className="po-command__plus" aria-hidden="true">
+                                <span className="text-faint" aria-hidden="true">
                                   +
                                 </span>
                               )}
@@ -133,7 +136,7 @@ export default function KeyboardShortcuts({
           )}
         </div>
 
-        <div className="po-command__footer">
+        <div className="flex items-center justify-between border-t border-border px-6 py-4 text-label-sm text-faint">
           <span>{isMac ? 'Mac layout' : 'Windows/Linux layout'}</span>
           <span>{totalMatches} actions</span>
         </div>

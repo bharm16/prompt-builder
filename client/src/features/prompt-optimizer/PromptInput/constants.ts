@@ -1,7 +1,7 @@
 export type CoverageCategory = {
   key: string;
   label: string;
-  color: string;
+  colorClass: string;
   words: readonly string[];
 };
 
@@ -9,7 +9,7 @@ export const COVERAGE_CATEGORIES: readonly CoverageCategory[] = [
   {
     key: 'subject',
     label: 'Subject',
-    color: 'rgba(139,92,246,0.45)',
+    colorClass: 'bg-accent-2/40',
     words: [
       'person',
       'woman',
@@ -34,7 +34,7 @@ export const COVERAGE_CATEGORIES: readonly CoverageCategory[] = [
   {
     key: 'camera',
     label: 'Camera',
-    color: 'rgba(139,92,246,0.35)',
+    colorClass: 'bg-accent-2/30',
     words: [
       'wide',
       'close',
@@ -60,7 +60,7 @@ export const COVERAGE_CATEGORIES: readonly CoverageCategory[] = [
   {
     key: 'lighting',
     label: 'Lighting',
-    color: 'rgba(139,92,246,0.30)',
+    colorClass: 'bg-accent-2/25',
     words: [
       'soft',
       'hard',
@@ -83,7 +83,7 @@ export const COVERAGE_CATEGORIES: readonly CoverageCategory[] = [
   {
     key: 'motion',
     label: 'Motion',
-    color: 'rgba(139,92,246,0.26)',
+    colorClass: 'bg-accent-2/20',
     words: [
       'slow motion',
       'timelapse',
@@ -105,7 +105,7 @@ export const COVERAGE_CATEGORIES: readonly CoverageCategory[] = [
   {
     key: 'style',
     label: 'Style',
-    color: 'rgba(139,92,246,0.24)',
+    colorClass: 'bg-accent-2/15',
     words: [
       'cinematic',
       'film',

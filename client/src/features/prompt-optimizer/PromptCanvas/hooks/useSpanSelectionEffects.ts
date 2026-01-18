@@ -48,6 +48,9 @@ export function useSpanSelectionEffects({
 
     const editor = editorRef.current;
     const allHighlights = editor.querySelectorAll('.value-word');
+    const selectedClasses = ['border-2', 'ring-4', 'ring-[var(--highlight-ring)]', 'z-10'];
+    const dimmedClasses = ['opacity-40'];
+    const swappedClasses = ['ps-animate-span-swap'];
 
     const promptChanged =
       prevPromptRef.current !== null &&
@@ -59,25 +62,25 @@ export function useSpanSelectionEffects({
       const spanId = element.dataset?.spanId;
 
       if (selectedSpanId && spanId === selectedSpanId) {
-        element.classList.add('value-word--selected');
-        element.classList.remove('value-word--dimmed');
+        element.classList.add(...selectedClasses);
+        element.classList.remove(...dimmedClasses);
         element.dataset.open = 'true';
 
         if (promptChanged) {
-          element.classList.add('value-word--swapped');
+          element.classList.add(...swappedClasses);
           setTimeout(() => {
-            element.classList.remove('value-word--swapped');
+            element.classList.remove(...swappedClasses);
           }, 300);
         }
       } else if (selectedSpanId) {
-        element.classList.add('value-word--dimmed');
-        element.classList.remove('value-word--selected');
+        element.classList.add(...dimmedClasses);
+        element.classList.remove(...selectedClasses);
         delete element.dataset.open;
       } else {
         element.classList.remove(
-          'value-word--selected',
-          'value-word--dimmed',
-          'value-word--swapped'
+          ...selectedClasses,
+          ...dimmedClasses,
+          ...swappedClasses
         );
         delete element.dataset.open;
       }

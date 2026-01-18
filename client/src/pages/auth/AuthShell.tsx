@@ -88,7 +88,7 @@ export function AuthShell({
   footer,
 }: AuthShellProps): React.ReactElement {
   return (
-    <div className="min-h-full h-full overflow-y-auto bg-[#050508] text-white">
+    <div className="min-h-full h-full overflow-y-auto bg-app text-foreground">
       <div className="relative isolate min-h-full">
         <AuthBackground />
 
@@ -203,7 +203,7 @@ export function AuthShell({
                   'animate-slide-in-from-bottom'
                 )}
               >
-                <div className="rounded-[21px] border border-white/10 bg-[#07070D]/70 p-6 backdrop-blur-xl">
+                <div className="rounded-2xl border border-border bg-surface-1/70 p-6 backdrop-blur-xl">
                   {children}
                 </div>
               </div>

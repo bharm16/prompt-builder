@@ -59,6 +59,26 @@
     100% { background-position: 200% 0; }
   }
 
+  @keyframes ps-panel-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.98); }
+  }
+
+  @keyframes ps-active-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.2); }
+  }
+
+  @keyframes ps-span-pulse {
+    0% { box-shadow: 0 0 0 0 var(--highlight-border); }
+    100% { box-shadow: 0 0 0 6px transparent; }
+  }
+
+  @keyframes ps-span-swap {
+    0% { box-shadow: 0 0 0 0 var(--highlight-border); }
+    100% { box-shadow: 0 0 0 4px transparent; }
+  }
+
   /* ===== ANIMATION UTILITIES ===== */
   .ps-animate-fade-in { animation: ps-fade-in var(--ps-dur-2) var(--ps-ease-out); }
   .ps-animate-fade-out { animation: ps-fade-out var(--ps-dur-2) var(--ps-ease-out); }
@@ -68,6 +88,10 @@
   .ps-animate-spin { animation: ps-spin 1s linear infinite; }
   .ps-animate-pulse { animation: ps-pulse 2s var(--ps-ease-inout) infinite; }
   .ps-animate-bounce { animation: ps-bounce 1s var(--ps-ease-out) infinite; }
+  .ps-animate-panel-pulse { animation: ps-panel-pulse var(--ps-dur-4) var(--ps-ease-out); }
+  .ps-animate-active-dot-pulse { animation: ps-active-dot-pulse 1.4s var(--ps-ease-inout) infinite; }
+  .ps-animate-span-pulse { animation: ps-span-pulse var(--ps-dur-4) var(--ps-ease-inout) 0s 2 alternate; }
+  .ps-animate-span-swap { animation: ps-span-swap var(--ps-dur-2) var(--ps-ease-out); }
 
   .ps-shimmer {
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);

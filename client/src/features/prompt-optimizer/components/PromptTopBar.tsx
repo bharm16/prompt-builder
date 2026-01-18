@@ -7,7 +7,7 @@ import { useToast } from '@components/Toast';
 import { Button } from '@promptstudio/system/components/ui/button';
 import { Input } from '@promptstudio/system/components/ui/input';
 import { useDebugLogger } from '@hooks/useDebugLogger';
-import './PromptTopBar.css';
+import { cn } from '@/utils/cn';
 
 /**
  * PromptTopBar - Top Action Buttons
@@ -115,12 +115,12 @@ export const PromptTopBar = (): React.ReactElement | null => {
   ] as const;
 
   return (
-    <header className="po-topbar" role="banner">
-      <div className="po-topbar__inner topbar">
-        <div className="po-topbar__left">
+    <header className="sticky top-0 z-40 px-5 pt-5" role="banner">
+      <div className="flex h-14 items-center gap-4 rounded-2xl border border-border bg-surface-1/80 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex min-w-0 flex-1 items-center gap-5">
           <Button
             type="button"
-            className="po-topbar__iconbtn"
+            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
             aria-label={showHistory ? 'Hide history' : 'Show history'}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
@@ -130,13 +130,13 @@ export const PromptTopBar = (): React.ReactElement | null => {
             <PanelLeft size={16} />
           </Button>
 
-          <div className="po-topbar__brand brand">
-            <div className="po-topbar__product brand__name">VIDRA</div>
-            <div className="po-topbar__subtitle brand__sub">Prompt Studio</div>
+          <div className="hidden flex-col gap-0.5 px-1.5 lg:flex">
+            <div className="text-body font-bold uppercase tracking-widest text-foreground">VIDRA</div>
+            <div className="text-label-12 text-faint">Prompt Studio</div>
           </div>
 
-          <div className="po-topbar__title-field command-field">
-            <span className="po-topbar__title-accent" aria-hidden="true" />
+          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 shadow-inset">
+            <span className="h-2 w-2 rounded-full bg-accent ring-2 ring-accent/10" aria-hidden="true" />
             <Input
               type="text"
               value={titleValue}
@@ -151,58 +151,78 @@ export const PromptTopBar = (): React.ReactElement | null => {
                   setTitleValue(derivedTitle);
                 }
               }}
-              className="po-topbar__title-input"
+              className="flex-1 border-none bg-transparent p-0 text-body font-medium text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               aria-label="Prompt title"
             />
           </div>
         </div>
 
-        <div className="po-topbar__center" aria-label="Workflow steps">
-          <div className="po-topbar__stepper segmented">
+        <div className="hidden xl:flex" aria-label="Workflow steps">
+          <div className="inline-flex h-10 items-center rounded-lg border border-border bg-surface-2 shadow-inset">
             {steps.map((step) => {
               const isActive = step.id === activeStep;
               return (
                 <div
                   key={step.id}
-                  className="po-topbar__step"
-                  data-active={isActive ? 'true' : 'false'}
                   aria-current={isActive ? 'step' : undefined}
                 >
-                  <span className="po-topbar__step-pill segmented__tab" aria-selected={isActive}>
+                  <span
+                    className={cn(
+                      'flex h-10 items-center rounded-lg border border-transparent px-3.5 text-body-sm text-muted transition-all duration-150',
+                      isActive && 'border-border-strong bg-surface-3 text-foreground -translate-y-px'
+                    )}
+                    aria-selected={isActive}
+                  >
                     {step.label}
                   </span>
-                  <span className="po-topbar__step-underline" aria-hidden="true" />
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="po-topbar__right">
+        <div className="flex items-center gap-3">
           {saveLabel ? (
-            <div className="po-topbar__status env-pill" data-state={outputSaveState}>
-              <span className="env-pill__dot" aria-hidden="true" />
+            <div
+              className={cn(
+                'inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-12 text-muted',
+                outputSaveState === 'saving' && 'text-foreground',
+                outputSaveState === 'error' && 'border-error/40 text-error'
+              )}
+              data-state={outputSaveState}
+            >
+              <span
+                className={cn(
+                  'h-2 w-2 rounded-full',
+                  outputSaveState === 'saving' && 'bg-accent ring-2 ring-accent/10',
+                  outputSaveState === 'error' && 'bg-error ring-2 ring-error/10',
+                  outputSaveState === 'saved' && 'bg-success ring-2 ring-success/10'
+                )}
+                aria-hidden="true"
+              />
               {saveLabel}
             </div>
           ) : (
-            <div className="po-topbar__status po-topbar__status--idle" aria-hidden="true" />
+            <div className="h-10 w-28 opacity-0 pointer-events-none" aria-hidden="true" />
           )}
 
           <Button
             type="button"
-            className="po-topbar__command"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-body-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
             aria-label={showShortcuts ? 'Close command palette' : 'Open command palette'}
             aria-pressed={showShortcuts}
             onClick={() => setShowShortcuts(!showShortcuts)}
             variant="ghost"
           >
             <Command size={14} />
-            <span className="po-kbd">⌘K</span>
+            <span className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted">
+              ⌘K
+            </span>
           </Button>
 
           <Button
             type="button"
-            className="po-topbar__btn po-topbar__btn--primary"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-gradient-to-r from-accent to-accent-2 px-3 text-body-sm font-semibold text-app shadow-md transition-colors hover:from-accent/90 hover:to-accent-2/90"
             onClick={handleCreateNew}
             aria-label="Create new prompt"
             variant="ghost"
@@ -213,7 +233,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <Button
             type="button"
-            className="po-topbar__iconbtn"
+            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
             aria-label={shared ? 'Share link copied' : 'Share prompt'}
             onClick={() => {
               if (currentPromptUuid) {
@@ -228,10 +248,10 @@ export const PromptTopBar = (): React.ReactElement | null => {
             <Share2 size={16} />
           </Button>
 
-          <div className="po-topbar__menu" ref={exportMenuRef}>
+          <div className="relative" ref={exportMenuRef}>
             <Button
               type="button"
-              className="po-topbar__iconbtn"
+              className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
               aria-label="Export prompt"
               aria-expanded={showExportMenu}
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -242,16 +262,34 @@ export const PromptTopBar = (): React.ReactElement | null => {
             </Button>
             {showExportMenu && (
               <div
-                className="po-topbar__menu-popover po-popover po-surface po-surface--grad po-animate-pop-in"
+                className="absolute right-0 top-full z-10 mt-2.5 min-w-40 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
                 role="menu"
               >
-                <Button type="button" variant="ghost" onClick={() => handleExport('text')} role="menuitem">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleExport('text')}
+                  role="menuitem"
+                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                >
                   Export .txt
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handleExport('markdown')} role="menuitem">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleExport('markdown')}
+                  role="menuitem"
+                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                >
                   Export .md
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handleExport('json')} role="menuitem">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleExport('json')}
+                  role="menuitem"
+                  className="h-9 w-full justify-start rounded-lg px-2.5 text-body-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                >
                   Export .json
                 </Button>
               </div>
@@ -260,7 +298,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
 
           <Button
             type="button"
-            className="po-topbar__iconbtn"
+            className="h-10 w-10 rounded-lg border border-border bg-transparent text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
             aria-label={showSettings ? 'Close settings' : 'Open settings'}
             aria-pressed={showSettings}
             onClick={() => setShowSettings(!showSettings)}

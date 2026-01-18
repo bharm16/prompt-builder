@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@promptstudio/system/components/ui/button';
 import type { PromptHistoryEntry } from '@hooks/types';
-import './HistoryItem.css';
+import { cn } from '@/utils/cn';
 
 type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
 
@@ -36,14 +36,23 @@ export const HistoryItem = memo<HistoryItemProps>(({
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<boolean>(false);
 
-  const stageColor =
+  const stageColorClass =
     stage === 'generated'
-      ? '#22C55E'
+      ? 'bg-success'
       : stage === 'optimized'
-        ? '#8B5CF6'
+        ? 'bg-accent-2'
         : stage === 'error'
-          ? '#F59E0B'
-          : '#A1A1AA';
+          ? 'bg-warning'
+          : 'bg-muted';
+
+  const stageIconClass =
+    stage === 'generated'
+      ? 'text-success'
+      : stage === 'optimized'
+        ? 'text-accent-2'
+        : stage === 'error'
+          ? 'text-warning'
+          : 'text-muted';
 
   const handleDelete = (e: React.MouseEvent): void => {
     e.stopPropagation();
@@ -77,15 +86,15 @@ export const HistoryItem = memo<HistoryItemProps>(({
 
   if (showDeleteConfirm) {
     return (
-      <li className="po-session-delete">
-        <div className="po-session-delete__card">
-          <p>Delete this session?</p>
-          <div className="po-session-delete__actions">
+      <li>
+        <div className="rounded-lg border border-error/40 bg-error/10 p-4">
+          <p className="mb-3 text-body-sm text-foreground">Delete this session?</p>
+          <div className="flex gap-3">
             <Button
               onClick={handleDelete}
               size="sm"
               variant="destructive"
-              className="po-session-delete__btn po-session-delete__btn--danger"
+              className="flex-1"
             >
               Delete
             </Button>
@@ -93,7 +102,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
               onClick={handleCancel}
               size="sm"
               variant="secondary"
-              className="po-session-delete__btn"
+              className="flex-1"
             >
               Cancel
             </Button>
@@ -110,32 +119,46 @@ export const HistoryItem = memo<HistoryItemProps>(({
   return (
     <li>
       <div
-        className={`po-session-item${isSelected ? ' is-selected' : ''}${isHovering ? ' is-hovered' : ''}`}
+        className={cn(
+          'group relative flex items-center rounded-lg border border-transparent bg-transparent transition-all duration-150',
+          'hover:-translate-y-px hover:border-border-strong hover:bg-surface-1',
+          isSelected && 'border-accent-2/40 bg-accent-2/10 shadow-sm'
+        )}
         data-stage={stage}
       >
         <span
-          className={`po-session-item__accent${showAccentBar ? ' is-visible' : ''}`}
-          style={{ backgroundColor: stageColor }}
+          className={cn(
+            'absolute left-1.5 top-2 bottom-2 w-1 rounded-full opacity-0 transition-opacity duration-150',
+            stageColorClass,
+            showAccentBar && 'opacity-100',
+            'group-hover:opacity-100'
+          )}
           aria-hidden="true"
         />
         <Button
           type="button"
           onClick={handleLoad}
           variant="ghost"
-          className="po-session-item__button"
+          className="flex w-full min-w-0 items-center gap-3 py-2.5 pl-4 pr-3 text-left"
           aria-label={`Load prompt: ${title}`}
           title={title}
         >
-          <span className="po-session-item__dot" style={{ backgroundColor: stageColor }} />
-          <div className="po-session-item__body">
-            <div className="po-session-item__row">
-              {versionLabel ? <span className="po-session-item__version">{versionLabel}</span> : <span />}
+          <span className={cn('h-2 w-2 flex-shrink-0 rounded-full', stageColorClass)} />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-center justify-between gap-3">
+              {versionLabel ? <span className="text-body-sm font-semibold text-foreground">{versionLabel}</span> : <span />}
               {processingLabel ? (
-                <span className="po-session-item__status" data-state="processing">
+                <span
+                  className="rounded-full border border-accent/50 bg-surface-2 px-2 py-0.5 text-label-sm uppercase tracking-widest text-foreground"
+                  data-state="processing"
+                >
                   {processingLabel}
                 </span>
               ) : (
-                <span className="po-session-item__status" data-state={stage}>
+                <span
+                  className="rounded-full border border-border bg-surface-2 px-2 py-0.5 text-label-sm uppercase tracking-widest text-faint"
+                  data-state={stage}
+                >
                   {stage === 'generated'
                     ? 'Ready'
                     : stage === 'optimized'
@@ -146,7 +169,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
                 </span>
               )}
             </div>
-            <div className="po-session-item__meta">{processingLabel ?? meta}</div>
+            <div className="truncate text-label-sm text-faint">{processingLabel ?? meta}</div>
           </div>
         </Button>
 
@@ -156,11 +179,11 @@ export const HistoryItem = memo<HistoryItemProps>(({
             onClick={handleRetry}
             variant="ghost"
             size="icon"
-            className="po-session-item__retry"
+            className="h-8 w-8 rounded-md border border-border bg-surface-1 text-faint opacity-0 transition-opacity duration-150 group-hover:opacity-100"
             aria-label="Retry"
             title="Retry"
           >
-            <RotateCcw className="h-3.5 w-3.5" style={{ color: stageColor }} />
+            <RotateCcw className={cn('h-3.5 w-3.5', stageIconClass)} />
           </Button>
         )}
 
@@ -169,7 +192,7 @@ export const HistoryItem = memo<HistoryItemProps>(({
           onClick={handleDelete}
           variant="ghost"
           size="icon"
-          className="po-session-item__delete"
+          className="h-8 w-8 rounded-md border border-border bg-surface-1 text-faint opacity-0 transition-opacity duration-150 hover:border-error/60 hover:text-error group-hover:opacity-100"
           aria-label="Delete prompt"
           title="Delete prompt"
         >

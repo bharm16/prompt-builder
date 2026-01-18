@@ -192,6 +192,7 @@ export default {
         'text-secondary': 'var(--ps-brand-text-secondary)',
         'borders-lines': 'var(--ps-brand-borders-lines)',
       },
+      // Dense UI guideline: prefer spacing scale 2, 3, 4, 6, 8, 12, 16.
       spacing: {
         'ps-0': 'var(--ps-space-0)',
         'ps-1': 'var(--ps-space-1)',
@@ -235,7 +236,14 @@ export default {
         sm: 'var(--ps-shadow-sm)',
         md: 'var(--ps-shadow-md)',
         lg: 'var(--ps-shadow-lg)',
+        elevated: 'var(--ps-shadow-elevated)',
+        floating: 'var(--ps-shadow-floating)',
         inset: 'var(--ps-shadow-inset)',
+      },
+      transitionDuration: {
+        fast: 'var(--ps-motion-fast)',
+        base: 'var(--ps-motion-base)',
+        slow: 'var(--ps-motion-slow)',
       },
       zIndex: {
         base: 'var(--ps-z-base)',

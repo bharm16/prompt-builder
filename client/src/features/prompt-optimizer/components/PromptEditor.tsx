@@ -1,11 +1,13 @@
 import { forwardRef, useCallback } from 'react';
 import type { PromptEditorProps } from '../types';
+import { cn } from '@/utils/cn';
 
 /**
  * Prompt Editor Component
  * ContentEditable editor for the optimized prompt
  */
 export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
+  className,
   onTextSelection,
   onHighlightClick,
   onHighlightMouseDown,
@@ -37,13 +39,7 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
       onBlur={onBlur}
       contentEditable
       suppressContentEditableWarning
-      className="prompt-editor"
-      style={{
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-        minHeight: '1px',
-        width: '100%',
-      }}
+      className={cn('min-h-px w-full break-words', className)}
       role="textbox"
       aria-label="Optimized prompt"
     />
@@ -51,4 +47,3 @@ export const PromptEditor = forwardRef<HTMLDivElement, PromptEditorProps>(({
 });
 
 PromptEditor.displayName = 'PromptEditor';
-

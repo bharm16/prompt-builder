@@ -44,8 +44,6 @@ import {
 import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig, PanelIcon } from './components/types';
 import type { SuggestionItem } from './hooks/types';
 
-// Styles
-import './SuggestionsPanel.css';
 
 const EMPTY_SUGGESTIONS: SuggestionItem[] = [];
 
@@ -199,9 +197,9 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
       // Trigger pulse animation
       const panelElement = document.querySelector('[role="complementary"]');
       if (panelElement) {
-        panelElement.classList.add('suggestions-panel--pulse');
+        panelElement.classList.add('ps-animate-panel-pulse');
         setTimeout(() => {
-          panelElement.classList.remove('suggestions-panel--pulse');
+          panelElement.classList.remove('ps-animate-panel-pulse');
         }, 300);
       }
     }
@@ -218,6 +216,10 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
   // Check if we should show hover preview (from props)
   const hoverPreview = (suggestionsData as Record<string, unknown>)?.hoverPreview as boolean | undefined;
 
+  const hoverPreviewClass = hoverPreview
+    ? 'opacity-70 scale-95 transition-all duration-200'
+    : undefined;
+
   if (variant === 'tokenEditor') {
     const showTokenEditorHeader = (suggestionsData as Record<string, unknown>)?.tokenEditorHeader !== false;
     const tokenEditorLayout =
@@ -229,7 +231,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
     if (tokenEditorLayout === 'listOnly') {
       return (
         <aside
-          className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
+          className={cn(panelClassName, hoverPreviewClass)}
           role="complementary"
           aria-label="Refine suggestions"
         >
@@ -276,7 +278,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
             {hasActiveSuggestions && enableCustomRequest && (
               <>
-                <div className="suggestions-panel__divider" aria-hidden="true" />
+                <div className="my-3 h-px bg-border" aria-hidden="true" />
                 <CustomRequestForm
                   customRequest={customRequest}
                   onCustomRequestChange={setCustomRequest}
@@ -296,14 +298,14 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
     return (
       <aside
-        className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
+        className={cn(panelClassName, hoverPreviewClass)}
         role="complementary"
         aria-label="Refine suggestions"
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {showTokenEditorHeader ? (
             <div className="px-4 pt-3 pb-2">
-              <div className="text-[12px] font-medium text-muted uppercase tracking-[0.08em]">
+              <div className="text-label-12 font-medium uppercase tracking-wider text-muted">
                 Suggestions
               </div>
             </div>
@@ -374,7 +376,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
   return (
     <aside
-      className={`${panelClassName} ${hoverPreview ? 'suggestions-panel--hover-preview' : ''}`}
+      className={cn(panelClassName, hoverPreviewClass)}
       role="complementary"
       {...(panelTitle ? { 'aria-labelledby': 'suggestions-title' } : {})}
     >

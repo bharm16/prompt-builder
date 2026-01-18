@@ -25,6 +25,7 @@
     --ps-ls-normal: 0em;
     --ps-ls-label: 0.14em;
 
+    /* Dense UI guideline: primary sizes 12px, 13px, 14px, 16px, 18px, 22px. */
     --ps-fs-10: 10px;
     --ps-fs-11: 11px;
     --ps-fs-12: 12px;
@@ -41,6 +42,7 @@
     /* =========================
        Spacing (4px grid)
        ========================= */
+    /* Dense UI guideline: prefer Tailwind spacing scale 2, 3, 4, 6, 8, 12, 16. */
     --ps-s-0: 0px;
     --ps-s-1: 4px;
     --ps-s-2: 8px;
@@ -119,6 +121,10 @@
     --ps-dur-2: 140ms;
     --ps-dur-3: 200ms;
     --ps-dur-4: 320ms;
+    /* Semantic motion aliases */
+    --ps-motion-fast: 120ms;
+    --ps-motion-base: 160ms;
+    --ps-motion-slow: 220ms;
     --ps-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
     --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
@@ -291,6 +297,8 @@
     --ps-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.35);
     --ps-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
     --ps-shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.55);
+    --ps-shadow-elevated: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.6);
+    --ps-shadow-floating: 0 2px 0 rgba(255, 255, 255, 0.05), 0 16px 40px rgba(0, 0, 0, 0.7);
     --ps-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
     /* =========================
@@ -373,6 +381,8 @@
     --shadow-sm: var(--ps-shadow-sm);
     --shadow-md: var(--ps-shadow-md);
     --shadow-lg: var(--ps-shadow-lg);
+    --shadow-elevated: var(--ps-shadow-elevated);
+    --shadow-floating: var(--ps-shadow-floating);
     --shadow-inset: var(--ps-shadow-inset);
 
     --focus-ring: var(--ps-focus-ring);
@@ -469,6 +479,9 @@
     --dur-2: var(--ps-dur-2);
     --dur-3: var(--ps-dur-3);
     --dur-4: var(--ps-dur-4);
+    --motion-fast: var(--ps-motion-fast);
+    --motion-base: var(--ps-motion-base);
+    --motion-slow: var(--ps-motion-slow);
     --duration-fast: var(--ps-dur-2);
     --duration-normal: var(--ps-dur-3);
     --duration-slow: var(--ps-dur-4);
@@ -498,6 +511,9 @@
       --ps-dur-2: 0ms;
       --ps-dur-3: 0ms;
       --ps-dur-4: 0ms;
+      --ps-motion-fast: 0ms;
+      --ps-motion-base: 0ms;
+      --ps-motion-slow: 0ms;
     }
   }
 }

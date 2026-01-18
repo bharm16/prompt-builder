@@ -47,9 +47,7 @@ export const SpanBentoGrid = memo<SpanBentoGridProps>(({
   return (
     <>
       {/* SCROLL AREA: Custom scrollbar styling via Tailwind utilities */}
-      <div 
-        className="pc-outline-sections"
-      >
+      <div className="flex flex-col gap-2">
         {orderedCategories.map((category) => {
           const config = CATEGORY_CONFIG[category];
           if (!config) return null;

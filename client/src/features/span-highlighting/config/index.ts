@@ -20,7 +20,5 @@ export { calculateSmartDebounce } from './debounce';
 // Highlight styles
 export {
   getHighlightClassName,
-  HIGHLIGHT_STYLES,
   applyHighlightStyles,
 } from './highlightStyles';
-

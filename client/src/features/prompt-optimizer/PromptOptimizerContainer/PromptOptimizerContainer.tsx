@@ -32,7 +32,6 @@ import {
   useCoherenceReview,
 } from './hooks';
 import type { User } from '../context/types';
-import './PromptOptimizerContainer.css';
 
 /**
  * Inner component with access to PromptStateContext
@@ -320,20 +319,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
   // Render
   // ============================================================================
   return (
-    <div
-      className="prompt-optimizer-shell relative h-full min-h-0 overflow-hidden bg-white transition-colors duration-300"
-      style={{
-        '--sidebar-width': showHistory 
-          ? 'var(--layout-sidebar-width-expanded)' 
-          : 'var(--layout-sidebar-width-collapsed)',
-        display: 'grid',
-        gridTemplateColumns: `
-          var(--sidebar-width) 
-          minmax(0, 1fr)
-        `,
-        transition: 'grid-template-columns 120ms cubic-bezier(0.2, 0, 0, 1)',
-      } as React.CSSProperties}
-    >
+    <div className="relative flex h-full min-h-0 overflow-hidden bg-app text-foreground transition-colors duration-300">
       {/* Skip to main content - positioned absolute so it doesn't affect grid layout */}
       <a href="#main-content" className="ps-skip-link">
         Skip to main content
@@ -367,10 +353,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
       {/* Main Content */}
       <main
         id="main-content"
-        className="relative flex min-h-0 flex-col overflow-y-auto transition-all duration-300"
-        style={{
-          minWidth: 0, // Allows flex shrinking
-        }}
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto transition-all duration-300"
       >
         {/* Input Section */}
         {!showResults && !isLoading && (
@@ -385,10 +368,10 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+          <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
             <div className="flex flex-col items-center gap-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-600"></div>
-              <p className="text-neutral-500 text-sm">Loading prompt...</p>
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />
+              <p className="text-body-sm text-muted">Loading prompt...</p>
             </div>
           </div>
         )}
@@ -411,7 +394,7 @@ function PromptOptimizerContent({ user }: { user: User | null }): React.ReactEle
           <footer className="mt-auto py-8 text-center">
             <a
               href="/privacy-policy"
-              className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+              className="text-body-sm text-muted transition-colors hover:text-foreground"
             >
               Privacy Policy
             </a>

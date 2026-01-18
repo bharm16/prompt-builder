@@ -179,9 +179,9 @@ export const useLockedSpanInteractions = ({
       const element = highlight as HTMLElement;
       const spanId = element.dataset?.spanId;
       if (spanId && lockedSpanIds.has(spanId)) {
-        element.classList.add('value-word--locked');
+        element.classList.add('border-dashed');
       } else {
-        element.classList.remove('value-word--locked');
+        element.classList.remove('border-dashed');
       }
     });
   }, [lockedSpanIds, enableMLHighlighting, showHighlights, editorRef, highlightFingerprint]);

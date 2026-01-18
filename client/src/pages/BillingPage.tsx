@@ -233,7 +233,7 @@ export function BillingPage(): React.ReactElement {
                       : 'bg-white/10'
                   )}
                 >
-                  <div className="rounded-[21px] border border-white/10 bg-[#07070D]/70 p-5 backdrop-blur-xl">
+                  <div className="rounded-2xl border border-border bg-surface-1/70 p-5 backdrop-blur-xl">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">

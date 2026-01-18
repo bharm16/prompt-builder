@@ -42,14 +42,14 @@ export function CustomRequestForm({
     const tokenEditorCtaLabel = ctaLabel || 'Generate more';
 
     return (
-      <div className="suggestions-panel__custom-request">
-        <form onSubmit={handleSubmit} className="suggestions-panel__custom-form">
+      <div className="flex w-full flex-col gap-2 -mt-0.5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
           <Textarea
             id="custom-request"
             value={customRequest}
             onChange={(e) => onCustomRequestChange(e.target.value)}
             placeholder={tokenEditorPlaceholder}
-            className="suggestions-panel__custom-input w-full min-h-12 text-label-12 rounded-md focus:outline-none focus:ring-2 focus:ring-white/10 resize-y"
+            className="min-h-12 w-full resize-y rounded-md border border-border bg-surface-1 px-3 py-2 text-label-12 text-foreground placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/10 focus-visible:border-border-strong"
             maxLength={MAX_REQUEST_LENGTH}
           />
 
@@ -57,11 +57,7 @@ export function CustomRequestForm({
             type="submit"
             disabled={isLoading || !customRequest.trim()}
             variant="ghost"
-            className={`suggestions-panel__custom-button w-full h-8 gap-1 px-3 text-label-12 rounded-md border transition-colors duration-150 ${
-              isLoading || !customRequest.trim()
-                ? 'is-disabled'
-                : ''
-            }`}
+            className="h-8 w-full gap-1 rounded-md border border-white/10 bg-white/10 px-3 text-label-12 text-foreground transition-colors duration-150 hover:border-white/20 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
             aria-busy={isLoading}
             aria-live="polite"
           >

@@ -40,10 +40,10 @@ export function scrollToSpan(editorRef: RefObject<HTMLElement>, span: Span | und
   });
   
   // Add temporary pulse animation
-  wrapper.classList.add('highlight-pulse');
+  wrapper.classList.add('ps-animate-span-pulse');
   
   // Remove pulse after animation completes (1000ms as defined in CSS)
   setTimeout(() => {
-    wrapper.classList.remove('highlight-pulse');
-  }, 1000);
+    wrapper.classList.remove('ps-animate-span-pulse');
+  }, 700);
 }

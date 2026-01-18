@@ -1,5 +1,6 @@
 import { TAXONOMY, parseCategoryId, getAttributesForParent, resolveCategory } from '@shared/taxonomy';
 import { logger } from '@/services/LoggingService';
+import { categoryColors, DEFAULT_CATEGORY_COLOR } from '@/features/prompt-optimizer/config/categoryColors';
 
 const log = logger.child('CategoryStyles');
 
@@ -19,6 +20,7 @@ const log = logger.child('CategoryStyles');
 interface ColorScheme {
   bg: string;
   border: string;
+  ring: string;
 }
 
 /**
@@ -28,61 +30,7 @@ interface ColorScheme {
  * Using more saturated shades (level 3 bg, level 6 border) than before.
  * Colors chosen for maximum visual separation when viewed together.
  */
-const CATEGORY_PALETTE = {
-  // SHOT - Cyan (camera framing, "what you see")
-  shot: {
-    bg: '#cffafe',      // cyan-100
-    border: '#0891b2',  // cyan-600
-  },
-  
-  // SUBJECT - Orange (warm, protagonist, focal point)
-  subject: {
-    bg: '#fed7aa',      // orange-200
-    border: '#ea580c',  // orange-600
-  },
-  
-  // ACTION - Rose (energy, movement, activity)
-  action: {
-    bg: '#fecdd3',      // rose-200
-    border: '#e11d48',  // rose-600
-  },
-  
-  // ENVIRONMENT - Emerald (nature, location, setting)
-  environment: {
-    bg: '#a7f3d0',      // emerald-200
-    border: '#059669',  // emerald-600
-  },
-  
-  // LIGHTING - Yellow (light, brightness, golden hour)
-  lighting: {
-    bg: '#fef08a',      // yellow-200
-    border: '#ca8a04',  // yellow-600
-  },
-  
-  // CAMERA - Sky Blue (technical but distinct from Shot's cyan)
-  camera: {
-    bg: '#bae6fd',      // sky-200
-    border: '#0284c7',  // sky-600
-  },
-  
-  // STYLE - Violet (creative, aesthetic, artistry)
-  style: {
-    bg: '#ddd6fe',      // violet-200
-    border: '#7c3aed',  // violet-600
-  },
-  
-  // TECHNICAL - Slate (metadata, specs, neutral)
-  technical: {
-    bg: '#e2e8f0',      // slate-200
-    border: '#475569',  // slate-600
-  },
-  
-  // AUDIO - Fuchsia (sound waves, distinct from purple/violet)
-  audio: {
-    bg: '#f5d0fe',      // fuchsia-200
-    border: '#c026d3',  // fuchsia-600
-  },
-} as const;
+const CATEGORY_PALETTE = categoryColors as Record<string, ColorScheme>;
 
 /**
  * Legacy brainstorm category colors (backward compatibility)
@@ -99,10 +47,7 @@ const LEGACY_COLORS: Record<string, ColorScheme> = {
 /**
  * Default fallback color for unknown categories
  */
-const FALLBACK_COLOR: ColorScheme = {
-  bg: '#f1f5f9',      // slate-100
-  border: '#94a3b8',  // slate-400
-};
+const FALLBACK_COLOR: ColorScheme = DEFAULT_CATEGORY_COLOR;
 
 /**
  * Get category color for UI display

@@ -77,9 +77,8 @@ import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './components/
 import { usePromptState } from './context/PromptStateContext';
 import { useCapabilities } from './hooks/useCapabilities';
 import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
+import { cn } from '@/utils/cn';
 
-// Styles
-import './PromptCanvas.css';
 
 const RAIL_VIDEO_PREVIEW_MODEL = 'wan-2.2';
 const RUN_ARTIFACTS = {
@@ -220,7 +219,6 @@ export function PromptCanvas({
     generationParams,
     setGenerationParams,
     promptOptimizer,
-    showHistory,
     setShowSettings,
     promptHistory,
     currentPromptUuid,
@@ -333,13 +331,13 @@ export function PromptCanvas({
           disabled={disabled}
         >
           <SelectTrigger
-            className="po-inline-dropdown [&>svg]:hidden"
-            data-disabled={disabled ? 'true' : 'false'}
+            className={cn(
+              'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+              'hover:border-border-strong hover:bg-surface-3'
+            )}
             aria-label={ariaLabel}
           >
-            <span className="po-inline-dropdown__value">
-              <SelectValue />
-            </span>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {info.allowedValues.map((value) => (
@@ -754,14 +752,14 @@ export function PromptCanvas({
     const root = editorRef.current;
     if (!root || !enableMLHighlighting || !showHighlights || !outlineOverlayActive) {
       if (inspectedSpanElementRef.current) {
-        inspectedSpanElementRef.current.classList.remove('value-word--inspected');
+        inspectedSpanElementRef.current.classList.remove('brightness-90');
         inspectedSpanElementRef.current = null;
       }
       return;
     }
 
     if (inspectedSpanElementRef.current) {
-      inspectedSpanElementRef.current.classList.remove('value-word--inspected');
+      inspectedSpanElementRef.current.classList.remove('brightness-90');
       inspectedSpanElementRef.current = null;
     }
 
@@ -771,10 +769,10 @@ export function PromptCanvas({
 
     const el = root.querySelector(`[data-span-id="${escapeAttr(hoveredSpanId)}"]`) as HTMLElement | null;
     if (!el) return;
-    el.classList.add('value-word--inspected');
+    el.classList.add('brightness-90');
     inspectedSpanElementRef.current = el;
     return () => {
-      el.classList.remove('value-word--inspected');
+      el.classList.remove('brightness-90');
       if (inspectedSpanElementRef.current === el) {
         inspectedSpanElementRef.current = null;
       }
@@ -796,8 +794,8 @@ export function PromptCanvas({
       const nodes = root.querySelectorAll('span.value-word[data-span-id]');
       if (!nodes.length) return;
       const node = nodes[Math.floor(Math.random() * nodes.length)] as HTMLElement;
-      node.classList.add('value-word--ambient');
-      window.setTimeout(() => node.classList.remove('value-word--ambient'), 200);
+      node.classList.add('opacity-80');
+      window.setTimeout(() => node.classList.remove('opacity-80'), 200);
     }, 6000);
     return () => window.clearInterval(interval);
   }, [showHighlights, normalizedDisplayedPrompt]);
@@ -1410,7 +1408,7 @@ export function PromptCanvas({
       const isTextInput =
         !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       const isCustomRequestTarget =
-        !!target && Boolean(target.closest?.('.po-suggest-custom'));
+        !!target && Boolean(target.closest?.('[data-suggest-custom]'));
 
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -1653,769 +1651,948 @@ export function PromptCanvas({
     setRailVideoGenerateRequestId((current) => current + 1);
   }, [setStageTab]);
 
+  const outputStatusStyles = isOutputFocused
+    ? { text: 'text-warning', dot: 'bg-warning' }
+    : { text: 'text-foreground', dot: 'bg-accent' };
+
+  const runStatusStyles = (state: 'idle' | 'generating' | 'ready' | 'failed') => {
+    switch (state) {
+      case 'generating':
+        return { text: 'text-foreground', dot: 'bg-accent' };
+      case 'ready':
+        return { text: 'text-foreground', dot: 'bg-success' };
+      case 'failed':
+        return { text: 'text-error', dot: 'bg-error' };
+      default:
+        return { text: 'text-muted', dot: 'bg-border' };
+    }
+  };
+
+  const metricStyles = (state: 'pass' | 'warn' | 'fail') => {
+    switch (state) {
+      case 'warn':
+        return { text: 'text-warning', dot: 'bg-warning' };
+      case 'fail':
+        return { text: 'text-error', dot: 'bg-error' };
+      default:
+        return { text: 'text-foreground', dot: 'bg-success' };
+    }
+  };
+
+  const previewStatusStyles = runStatusStyles(previewStatusState);
+  const finalStatusStyles = runStatusStyles(finalStatusState);
+
+  const actionButtonClass =
+    'inline-flex items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
+  const iconButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-muted transition-colors hover:border-border hover:bg-surface-3 hover:text-foreground disabled:opacity-50 disabled:pointer-events-none';
+  const primaryButtonClass =
+    'inline-flex items-center gap-2 rounded-lg border border-border bg-gradient-to-r from-accent to-accent-2 px-4 py-2 text-label-sm font-semibold text-app shadow-md transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0';
+  const statusPillClass =
+    'inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2 py-1 text-label-sm font-semibold uppercase tracking-wide';
+
   // Render the component
   return (
     <div
-      className="prompt-canvas-root relative flex flex-col min-h-0 flex-1"
+      className={cn('relative flex min-h-0 flex-1 flex-col', isPreviewGenerating && 'cursor-progress')}
       data-mode={selectedMode}
       data-preview-generating={isPreviewGenerating ? 'true' : 'false'}
       data-outline-open={outlineOverlayActive ? 'true' : 'false'}
       aria-busy={isPreviewGenerating ? 'true' : 'false'}
-      style={
-        {
-          // Drive the history sidebar width from PromptCanvas state (avoid global vw tokens).
-          '--sidebar-width': showHistory ? 'var(--pc-sidebar-expanded)' : 'var(--pc-sidebar-collapsed)',
-        } as React.CSSProperties
-      }
     >
       {/* Category Legend */}
-	      <CategoryLegend
-	        show={showLegend}
-	        onClose={() => setShowLegend(false)}
-	        hasContext={promptContext?.hasContext() ?? false}
-	        isSuggestionsOpen={isSuggestionsOpen}
-	      />
+      <CategoryLegend
+        show={showLegend}
+        onClose={() => setShowLegend(false)}
+        hasContext={promptContext?.hasContext() ?? false}
+        isSuggestionsOpen={isSuggestionsOpen}
+      />
 
       {outlineOverlayActive && (
         <div
           ref={outlineOverlayRef}
-          className="pc-outline-overlay po-surface po-surface--grad po-animate-pop-in"
+          className={cn(
+            'absolute left-6 top-6 bottom-6 z-modal flex w-96 flex-col overflow-hidden rounded-xl border border-border bg-surface-1 shadow-lg',
+            'ps-animate-scale-in'
+          )}
           data-state={outlineOverlayState}
           role="dialog"
           aria-label="Prompt structure"
         >
-	          <div className="pc-outline-overlay__header">
-	            <div className="pc-outline-overlay__title">Prompt Structure</div>
-	            <div className="pc-outline-overlay__subtitle">
-	              Semantic breakdown used for generation
-	            </div>
-	          </div>
-	          <div className="pc-outline-overlay__sections">
-	            <HighlightingErrorBoundary>
+          <div className="border-b border-border p-4">
+            <div className="text-body-lg font-semibold text-foreground">Prompt Structure</div>
+            <div className="mt-1 text-label-sm text-muted">Semantic breakdown used for generation</div>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            <HighlightingErrorBoundary>
               <SpanBentoGrid
                 spans={bentoSpans}
                 editorRef={editorRef as React.RefObject<HTMLElement>}
                 onSpanHoverChange={setHoveredSpanId}
               />
-	            </HighlightingErrorBoundary>
-	          </div>
-	          <div className="pc-outline-overlay__footer">
-	            <div className="pc-outline-overlay__hint">Hover a token to locate it in the prompt</div>
-	          </div>
-	        </div>
-	      )}
+            </HighlightingErrorBoundary>
+          </div>
+          <div className="border-t border-border p-3 text-label-sm text-muted">
+            Hover a token to locate it in the prompt
+          </div>
+        </div>
+      )}
 
 	      {/* Main Content Container */}
-	      <div className="flex-1 overflow-hidden prompt-canvas-grid">
+      <div
+        className={cn(
+          'relative flex min-h-0 flex-1 flex-col gap-6 p-6 xl:flex-row',
+          outlineOverlayActive && 'pointer-events-none opacity-60'
+        )}
+      >
         {showVideoPreview && isAnyVideoPreviewGenerating && (
-          <div className="prompt-canvas-generation-overlay" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 z-20 bg-surface-1/70 backdrop-blur-sm"
+            aria-hidden="true"
+          />
         )}
 
 	        {/* History Sidebar */}
-	        <div className="prompt-canvas-history">
+        <div className="flex min-h-0 flex-shrink-0">
 	          <PromptSidebar user={user} />
 	        </div>
 
         {/* Context gutter (xl+ only) */}
-        <div className="prompt-canvas-gutter">
+        <div className="hidden min-h-0 flex-shrink-0 xl:flex xl:w-80">
           <VersionsPanel />
         </div>
-
-	        {/* Outline toggle when collapsed (overlay drawer default) */}
-	        {!outlineOverlayActive && (
-	          <CanvasButton
-	            type="button"
-	            onClick={openOutlineOverlay}
-	            className="prompt-outline-open-fab"
-	            aria-label="Open outline"
-	            title="Open outline"
-	          >
-	            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-	          </CanvasButton>
-	        )}
 
         {/* Main Editor Area - Optimized Prompt */}
         <div
           ref={editorColumnRef}
           id="main-content"
-          className="prompt-canvas-editor flex flex-col overflow-hidden min-h-0 min-w-0"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="prompt-canvas-editor-frame">
-            <div className="po-editor-stack">
-              <div className="po-editor-grid">
-                <div className="prompt-band prompt-band--original" data-optimizing={isOptimizing}>
-                  <div className="prompt-band__content prompt-canvas-content-wrapper">
-                    <div className="prompt-card card prompt-card--original">
-                      <div
-                        className="prompt-card__header card__header"
-                        data-has-video-controls={showVideoPreview ? 'true' : undefined}
-                      >
-                        <div className="prompt-card__header-row">
-                          <div className="prompt-card__header-left">
-                            <div className="prompt-card__title">Prompt</div>
-                          </div>
+          {!outlineOverlayActive && (
+            <div className="mx-auto flex w-full max-w-5xl">
+              <CanvasButton
+                type="button"
+                onClick={openOutlineOverlay}
+                className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-2 text-muted shadow-sm transition hover:border-border-strong hover:text-foreground"
+                aria-label="Open outline"
+                title="Open outline"
+              >
+                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              </CanvasButton>
+            </div>
+          )}
 
-                          <div className="prompt-card__header-actions">
-                            {!isEditing ? (
-                              <CanvasButton
-                                type="button"
-                                onClick={handleEditClick}
-                                disabled={isOptimizing}
-                                className="prompt-card__action-button"
-                                aria-label="Edit prompt"
-                                title="Edit prompt"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                                <span>Edit</span>
-                              </CanvasButton>
-                            ) : (
-                              <div className="prompt-card__action-group">
-                                <CanvasButton
-                                  type="button"
-                                  onClick={handleCancel}
-                                  disabled={isOptimizing}
-                                  className="prompt-card__action-button"
-                                  aria-label="Cancel editing"
-                                  title="Cancel editing"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                  <span>Cancel</span>
-                                </CanvasButton>
-                                <CanvasButton
-                                  type="button"
-                                  onClick={handleUpdate}
-                                  disabled={isReoptimizeDisabled}
-                                  className="prompt-card__action-primary"
-                                  aria-label="Update prompt"
-                                  title="Update and re-optimize (Cmd/Ctrl+Enter)"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                  <span>Update</span>
-                                </CanvasButton>
-                              </div>
-                            )}
-                          </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-6">
+              <div
+                className={cn(
+                  'rounded-xl border border-border bg-surface-2 shadow-sm transition-opacity',
+                  isOptimizing && 'opacity-70'
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex flex-col gap-3 border-b border-border p-4',
+                    showVideoPreview && 'items-stretch'
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-body-lg font-semibold text-foreground">Prompt</div>
+                    <div className="flex items-center gap-2">
+                      {!isEditing ? (
+                        <CanvasButton
+                          type="button"
+                          onClick={handleEditClick}
+                          disabled={isOptimizing}
+                          className={actionButtonClass}
+                          aria-label="Edit prompt"
+                          title="Edit prompt"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Edit</span>
+                        </CanvasButton>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <CanvasButton
+                            type="button"
+                            onClick={handleCancel}
+                            disabled={isOptimizing}
+                            className={actionButtonClass}
+                            aria-label="Cancel editing"
+                            title="Cancel editing"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span>Cancel</span>
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            onClick={handleUpdate}
+                            disabled={isReoptimizeDisabled}
+                            className={primaryButtonClass}
+                            aria-label="Update prompt"
+                            title="Update and re-optimize (Cmd/Ctrl+Enter)"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Update</span>
+                          </CanvasButton>
                         </div>
-
-                        {showVideoPreview && (
-                          <div className="prompt-card__chips chip-row" aria-label="Prompt controls">
-                            <Select
-                              value={selectedModel && selectedModel.trim() ? selectedModel : 'auto'}
-                              onValueChange={(value) => handleModelChange(value === 'auto' ? '' : value)}
-                              disabled={isOptimizing}
-                            >
-                              <SelectTrigger
-                                className="po-inline-dropdown [&>svg]:hidden"
-                                data-disabled={isOptimizing ? 'true' : 'false'}
-                                aria-label="Model"
-                              >
-                                <span className="po-inline-dropdown__value">
-                                  <SelectValue />
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="auto">Auto (Recommended)</SelectItem>
-                                {modelOptions.map((opt) => (
-                                  <SelectItem key={opt.id} value={opt.id}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            {aspectRatioInfo &&
-                              renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', isOptimizing)}
-
-                            {durationInfo &&
-                              renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
-
-                            {fpsInfo && renderDropdown(fpsInfo, 'fps', 'Frame rate', isOptimizing)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="prompt-card__body card__body">
-                        <label htmlFor="original-prompt-input" className="ps-sr-only">
-                          Input prompt
-                        </label>
-                        <div className="editor-well">
-                          <Textarea
-                            ref={textareaRef}
-                            id="original-prompt-input"
-                            value={inputPrompt}
-                            onChange={handleInputPromptChange}
-                            onKeyDown={handleInputPromptKeyDown}
-                            placeholder="Describe your shot..."
-                            rows={3}
-                            readOnly={isInputLocked}
-                            className="prompt-input prompt-input--original"
-                            aria-label="Original prompt input"
-                            aria-readonly={isInputLocked}
-                            aria-busy={isOptimizing}
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                <div
-                  className="prompt-band prompt-band--optimized"
-                  data-loading={isOutputLoading}
-                  data-has-content={!!normalizedDisplayedPrompt}
-                >
-                  <div className="prompt-band__content prompt-canvas-content-wrapper">
-                    <div
-                      className="prompt-card card card--raised prompt-card--optimized"
-                      data-settled={normalizedDisplayedPrompt ? 'true' : 'false'}
-                    >
-                      <div className="prompt-card__header card__header">
-                        <div className="prompt-output-header">
-                          <div className="prompt-output-title">
-                            <div className="prompt-output-label">Optimized Editor</div>
-                            <div className="prompt-output-subtitle">Click highlights → replace / edit (no overlay)</div>
-                          </div>
-                          <div className="prompt-output-actions">
-                            <span
-                              className="prompt-output-live status-pill"
-                              data-state={isOutputFocused ? 'editing' : 'live'}
-                            >
-                              <span className="status-pill__dot" aria-hidden="true" />
-                              {isOutputFocused ? 'Editing' : 'LIVE'}
-                            </span>
-                            <CanvasButton
-                              type="button"
-                              className="po-action-btn"
-                              onClick={handleCopy}
-                              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-                              title={copied ? 'Copied' : 'Copy'}
-                            >
-                              {copied ? (
-                                <Check className="h-4 w-4" aria-hidden="true" />
-                              ) : (
-                                <Copy className="h-4 w-4" aria-hidden="true" />
-                              )}
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              className="po-action-btn"
-                              onClick={() => setShowDiff(true)}
-                              aria-label="Open diff"
-                              title="Diff"
-                            >
-                              <Diff className="h-4 w-4" aria-hidden="true" />
-                            </CanvasButton>
-                            <div className="po-action-menu" ref={exportMenuRef}>
-                              <CanvasButton
-                                type="button"
-                                className="po-action-btn"
-                                onClick={() => setShowExportMenu(!showExportMenu)}
-                                aria-expanded={showExportMenu}
-                                aria-label="Export"
-                                title="Export"
-                              >
-                                <Download className="h-4 w-4" aria-hidden="true" />
-                              </CanvasButton>
-                              {showExportMenu && (
-                                <div
-                                  className="po-action-menu__popover po-popover po-surface po-surface--grad po-animate-pop-in"
-                                  role="menu"
-                                >
-                                  <CanvasButton type="button" onClick={() => handleExport('text')} role="menuitem">
-                                    Export .txt
-                                  </CanvasButton>
-                                  <CanvasButton type="button" onClick={() => handleExport('markdown')} role="menuitem">
-                                    Export .md
-                                  </CanvasButton>
-                                  <CanvasButton type="button" onClick={() => handleExport('json')} role="menuitem">
-                                    Export .json
-                                  </CanvasButton>
-                                </div>
-                              )}
-                            </div>
-                            <CanvasButton
-                              type="button"
-                              className="po-action-icon"
-                              onClick={handleShare}
-                              aria-label="Share prompt"
-                            >
-                              <Share2 className="h-4 w-4" />
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              className="po-action-icon"
-                              onClick={onUndo}
-                              disabled={!canUndo}
-                              aria-label="Undo"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </CanvasButton>
-                            <CanvasButton
-                              type="button"
-                              className="po-action-icon"
-                              onClick={onRedo}
-                              disabled={!canRedo}
-                              aria-label="Redo"
-                            >
-                              <RotateCw className="h-4 w-4" />
-                            </CanvasButton>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="prompt-card__body card__body">
-                        <div className="po-editor-surface">
-                          <div className="po-editor-surface__main">
-                            <div
-                              className="prompt-editor-wrapper editor-well"
-                              aria-busy={isOutputLoading}
-                              ref={editorWrapperRef}
-                            >
-                              <PromptEditor
-                                ref={editorRef as React.RefObject<HTMLDivElement>}
-                                onTextSelection={handleTextSelection}
-                                onHighlightClick={handleHighlightClick}
-                                onHighlightMouseDown={handleHighlightMouseDown}
-                                onHighlightMouseEnter={handleHighlightMouseEnter}
-                                onHighlightMouseLeave={handleHighlightMouseLeave}
-                                onCopyEvent={handleCopyEvent}
-                                onInput={handleInput}
-                                onFocus={handleOutputFocus}
-                                onBlur={handleOutputBlur}
-                              />
-                              <div
-                                ref={outputLocklineRef}
-                                className="prompt-output-lockline"
-                                data-active={stageIsGenerating ? 'true' : 'false'}
-                                aria-hidden="true"
-                              />
-                              {enableMLHighlighting &&
-                          !outlineOverlayActive &&
-                          hoveredSpanId &&
-                          lockButtonPosition &&
-                          !isOutputLoading && (
-                            <CanvasButton
-                              ref={lockButtonRef}
-                              type="button"
-                              onClick={handleToggleLock}
-                              onMouseEnter={cancelHideLockButton}
-                              onMouseLeave={handleLockButtonMouseLeave}
-                              onMouseDown={(e) => e.preventDefault()}
-                              className="prompt-lock-button po-fab po-animate-pop-in"
-                              style={{
-                                top: `${lockButtonPosition.top}px`,
-                                left: `${lockButtonPosition.left}px`,
-                              }}
-                              data-locked={isHoveredLocked ? 'true' : 'false'}
-                              aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                              title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
-                              aria-pressed={isHoveredLocked}
-                            >
-                              {isHoveredLocked ? (
-                                <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
-                              ) : (
-                                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                              )}
-                            </CanvasButton>
+                  {showVideoPreview && (
+                    <div className="flex flex-wrap items-center gap-2" aria-label="Prompt controls">
+                      <Select
+                        value={selectedModel && selectedModel.trim() ? selectedModel : 'auto'}
+                        onValueChange={(value) => handleModelChange(value === 'auto' ? '' : value)}
+                        disabled={isOptimizing}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+                            'hover:border-border-strong hover:bg-surface-3'
                           )}
-                              {isOutputLoading && (
-                                <div
-                                  className="prompt-editor-loading"
-                                  role="status"
-                                  aria-live="polite"
-                                  aria-label="Optimizing prompt"
-                                >
-                                  <LoadingDots size={3} color="rgb(163, 163, 163)" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          aria-label="Model"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto (Recommended)</SelectItem>
+                          {modelOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                          <aside
-                            className="po-suggest-sidecar"
-                            aria-label="Suggestions"
-                            data-active={selectedSpanId ? 'true' : 'false'}
-                          >
-                            <div className="inline-suggest-header po-suggest-header">
-                              <div className="inline-suggest-title">
-                                Suggestions
-                                <span className="inline-suggest-pill">{selectedSpanId ? suggestionCount : 0}</span>
-                              </div>
-                              <div className="inline-suggest-keys" aria-hidden="true">
-                                <span className="po-kbd">Up</span>
-                                <span className="po-kbd">Down</span>
-                                <span className="po-kbd">Enter</span>
-                                <span className="po-kbd">Esc</span>
-                              </div>
-                            </div>
+                      {aspectRatioInfo &&
+                        renderDropdown(aspectRatioInfo, 'aspect_ratio', 'Aspect ratio', isOptimizing)}
 
-                            {!selectedSpanId ? (
-                              <div className="po-surface-empty po-surface-empty--inline" aria-live="polite">
-                                <div className="po-surface-empty__icon" aria-hidden="true">
-                                  <Sparkles className="h-5 w-5" />
-                                </div>
-                                <div className="po-surface-empty__title">Select a highlight</div>
-                                <div className="po-surface-empty__sub">
-                                  Click a highlighted token to see suggestions.
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="inline-suggest-custom po-suggest-custom">
-                                  <form
-                                    className="inline-suggest-custom-form"
-                                    onSubmit={handleCustomRequestSubmit}
-                                  >
-                                    <Textarea
-                                      id="inline-custom-request"
-                                      value={customRequest}
-                                      onChange={(event) => {
-                                        setCustomRequest(event.target.value);
-                                        if (customRequestError) {
-                                          setCustomRequestError('');
-                                        }
-                                      }}
-                                      placeholder="Add a specific change (e.g. football field)"
-                                      className="inline-suggest-custom-input"
-                                      maxLength={MAX_REQUEST_LENGTH}
-                                      rows={1}
-                                      aria-label="Custom suggestion request"
-                                    />
-                                    <CanvasButton
-                                      type="submit"
-                                      className="inline-suggest-cta"
-                                      disabled={isCustomRequestDisabled}
-                                      aria-busy={isCustomLoading}
-                                    >
-                                      {isCustomLoading ? 'Applying...' : 'Apply'}
-                                    </CanvasButton>
-                                  </form>
-                                  {customRequestError && (
-                                    <div className="inline-suggest-custom-error" role="alert">
-                                      {customRequestError}
-                                    </div>
-                                  )}
-                                </div>
+                      {durationInfo &&
+                        renderDropdown(durationInfo, 'duration_s', 'Duration', isOptimizing)}
 
-                                {isInlineError && (
-                                  <div className="inline-suggest-error" role="alert">
-                                    {inlineErrorMessage}
-                                  </div>
-                                )}
-
-                                {isInlineLoading && (
-                                  <div className="inline-suggest-list">
-                                    <div className="skeleton-row" />
-                                    <div className="skeleton-row" />
-                                    <div className="skeleton-row" />
-                                  </div>
-                                )}
-
-                                {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
-                                  <div className="inline-suggest-list" ref={suggestionsListRef}>
-                                    {inlineSuggestions.map((suggestion, index) => (
-                                      <div
-                                        key={suggestion.key}
-                                        data-index={index}
-                                        data-selected={activeSuggestionIndex === index ? 'true' : 'false'}
-                                        className="inline-suggest-item po-row po-row--interactive"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onMouseEnter={() => {
-                                          interactionSourceRef.current = 'mouse';
-                                          setActiveSuggestionIndex(index);
-                                        }}
-                                        onClick={() => {
-                                          handleSuggestionClickWithFeedback(suggestion.item);
-                                          closeInlinePopover();
-                                        }}
-                                        role="button"
-                                        tabIndex={0}
-                                      >
-                                        <div className="inline-suggest-text">{suggestion.text}</div>
-                                        {index === 0 ? (
-                                          <span
-                                            className="inline-suggest-badge po-badge po-badge--best"
-                                            data-accent="true"
-                                          >
-                                            Best match
-                                          </span>
-                                        ) : suggestion.meta ? (
-                                          <div className="inline-suggest-meta">{suggestion.meta}</div>
-                                        ) : null}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {isInlineEmpty && (
-                                  <div className="inline-suggest-empty">No suggestions yet.</div>
-                                )}
-
-                                <div className="inline-suggest-footer">
-                                  <div className="inline-suggest-footnote">
-                                    {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
-                                  </div>
-                                  <div className="inline-suggest-actions">
-                                    <CanvasButton
-                                      type="button"
-                                      className="inline-suggest-cta"
-                                      onClick={closeInlinePopover}
-                                    >
-                                      Clear
-                                    </CanvasButton>
-                                    <CanvasButton
-                                      type="button"
-                                      className="inline-suggest-cta"
-                                      data-primary="true"
-                                      onClick={() => {
-                                        handleApplyActiveSuggestion();
-                                        closeInlinePopover();
-                                      }}
-                                      disabled={!suggestionCount}
-                                    >
-                                      Apply
-                                    </CanvasButton>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </aside>
-                        </div>
+                      {fpsInfo && renderDropdown(fpsInfo, 'fps', 'Frame rate', isOptimizing)}
                     </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <label htmlFor="original-prompt-input" className="ps-sr-only">
+                    Input prompt
+                  </label>
+                  <div className="rounded-lg border border-border bg-surface-1 p-3">
+                    <Textarea
+                      ref={textareaRef}
+                      id="original-prompt-input"
+                      value={inputPrompt}
+                      onChange={handleInputPromptChange}
+                      onKeyDown={handleInputPromptKeyDown}
+                      placeholder="Describe your shot..."
+                      rows={3}
+                      readOnly={isInputLocked}
+                      className="min-h-24 max-h-48 w-full resize-y bg-transparent p-0 text-body text-foreground placeholder:text-faint focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label="Original prompt input"
+                      aria-readonly={isInputLocked}
+                      aria-busy={isOptimizing}
+                    />
                   </div>
                 </div>
               </div>
 
-              <section className="po-runs card">
-                <div className="po-runs__header">
+              <div
+                className={cn(
+                  'rounded-xl border border-border bg-surface-3 shadow-sm transition-opacity',
+                  isOutputLoading && 'opacity-80'
+                )}
+              >
+                <div className="border-b border-border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex flex-col gap-1">
+                      <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
+                      <div className="text-label-sm text-muted">
+                        Click highlights → replace / edit (no overlay)
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn(statusPillClass, outputStatusStyles.text)}>
+                        <span
+                          className={cn('h-2 w-2 rounded-full', outputStatusStyles.dot)}
+                          aria-hidden="true"
+                        />
+                        {isOutputFocused ? 'Editing' : 'LIVE'}
+                      </span>
+                      <CanvasButton
+                        type="button"
+                        className={iconButtonClass}
+                        onClick={handleCopy}
+                        aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+                        title={copied ? 'Copied' : 'Copy'}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <Copy className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </CanvasButton>
+                      <CanvasButton
+                        type="button"
+                        className={iconButtonClass}
+                        onClick={() => setShowDiff(true)}
+                        aria-label="Open diff"
+                        title="Diff"
+                      >
+                        <Diff className="h-4 w-4" aria-hidden="true" />
+                      </CanvasButton>
+                      <div className="relative" ref={exportMenuRef}>
+                        <CanvasButton
+                          type="button"
+                          className={iconButtonClass}
+                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          aria-expanded={showExportMenu}
+                          aria-label="Export"
+                          title="Export"
+                        >
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                        </CanvasButton>
+                        {showExportMenu && (
+                          <div
+                            className="absolute right-0 top-full z-20 mt-2 w-40 rounded-lg border border-border bg-surface-2 p-2 shadow-md"
+                            role="menu"
+                          >
+                            <CanvasButton
+                              type="button"
+                              onClick={() => handleExport('text')}
+                              role="menuitem"
+                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            >
+                              Export .txt
+                            </CanvasButton>
+                            <CanvasButton
+                              type="button"
+                              onClick={() => handleExport('markdown')}
+                              role="menuitem"
+                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            >
+                              Export .md
+                            </CanvasButton>
+                            <CanvasButton
+                              type="button"
+                              onClick={() => handleExport('json')}
+                              role="menuitem"
+                              className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                            >
+                              Export .json
+                            </CanvasButton>
+                          </div>
+                        )}
+                      </div>
+                      <CanvasButton
+                        type="button"
+                        className={iconButtonClass}
+                        onClick={handleShare}
+                        aria-label="Share prompt"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </CanvasButton>
+                      <CanvasButton
+                        type="button"
+                        className={iconButtonClass}
+                        onClick={onUndo}
+                        disabled={!canUndo}
+                        aria-label="Undo"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </CanvasButton>
+                      <CanvasButton
+                        type="button"
+                        className={iconButtonClass}
+                        onClick={onRedo}
+                        disabled={!canRedo}
+                        aria-label="Redo"
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </CanvasButton>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div className="flex min-h-0 flex-col gap-6 xl:flex-row">
+                    <div
+                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-4"
+                      aria-busy={isOutputLoading}
+                      ref={editorWrapperRef}
+                    >
+                      <PromptEditor
+                        ref={editorRef as React.RefObject<HTMLDivElement>}
+                        className="min-h-44 w-full whitespace-pre-wrap font-sans text-body text-foreground outline-none"
+                        onTextSelection={handleTextSelection}
+                        onHighlightClick={handleHighlightClick}
+                        onHighlightMouseDown={handleHighlightMouseDown}
+                        onHighlightMouseEnter={handleHighlightMouseEnter}
+                        onHighlightMouseLeave={handleHighlightMouseLeave}
+                        onCopyEvent={handleCopyEvent}
+                        onInput={handleInput}
+                        onFocus={handleOutputFocus}
+                        onBlur={handleOutputBlur}
+                      />
+                      <div
+                        ref={outputLocklineRef}
+                        className={cn(
+                          'mt-4 h-px w-full origin-left scale-x-0 bg-border transition-transform duration-300',
+                          stageIsGenerating && 'scale-x-100'
+                        )}
+                        aria-hidden="true"
+                      />
+                      {enableMLHighlighting &&
+                        !outlineOverlayActive &&
+                        hoveredSpanId &&
+                        lockButtonPosition &&
+                        !isOutputLoading && (
+                          <CanvasButton
+                            ref={lockButtonRef}
+                            type="button"
+                            onClick={handleToggleLock}
+                            onMouseEnter={cancelHideLockButton}
+                            onMouseLeave={handleLockButtonMouseLeave}
+                            onMouseDown={(e) => e.preventDefault()}
+                            className={cn(
+                              'absolute z-10 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full -mt-1.5 items-center justify-center rounded-full border border-border bg-surface-2 text-muted shadow-md transition-colors',
+                              'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
+                              isHoveredLocked && 'border-accent text-foreground'
+                            )}
+                            style={{
+                              top: `${lockButtonPosition.top}px`,
+                              left: `${lockButtonPosition.left}px`,
+                            }}
+                            data-locked={isHoveredLocked ? 'true' : 'false'}
+                            aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                            title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                            aria-pressed={isHoveredLocked}
+                          >
+                            {isHoveredLocked ? (
+                              <Unlock className="h-3.5 w-3.5" aria-hidden="true" />
+                            ) : (
+                              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
+                          </CanvasButton>
+                        )}
+                      {isOutputLoading && (
+                        <div
+                          className="absolute inset-0 flex items-start justify-start rounded-lg bg-surface-1/80 p-5 backdrop-blur-sm"
+                          role="status"
+                          aria-live="polite"
+                          aria-label="Optimizing prompt"
+                        >
+                          <LoadingDots size={3} className="text-faint" />
+                        </div>
+                      )}
+                    </div>
+
+                    <aside
+                      className={cn(
+                        'flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-border bg-surface-2 shadow-sm xl:w-80',
+                        !selectedSpanId && 'opacity-80'
+                      )}
+                      aria-label="Suggestions"
+                    >
+                      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                        <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
+                          Suggestions
+                          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
+                            {selectedSpanId ? suggestionCount : 0}
+                          </span>
+                        </div>
+                        <div className="hidden items-center gap-1 text-muted sm:flex" aria-hidden="true">
+                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
+                            Up
+                          </span>
+                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
+                            Down
+                          </span>
+                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
+                            Enter
+                          </span>
+                          <span className="rounded-md border border-border bg-surface-3 px-2 py-0.5 text-label-sm font-semibold text-muted">
+                            Esc
+                          </span>
+                        </div>
+                      </div>
+
+                      {!selectedSpanId ? (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
+                            <Sparkles className="h-5 w-5" />
+                          </div>
+                          <div className="text-body-sm font-semibold text-foreground">Select a highlight</div>
+                          <div className="text-label-sm text-muted">
+                            Click a highlighted token to see suggestions.
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="border-b border-border px-4 py-3" data-suggest-custom>
+                            <form
+                              className="flex items-center gap-2"
+                              onSubmit={handleCustomRequestSubmit}
+                            >
+                              <Textarea
+                                id="inline-custom-request"
+                                value={customRequest}
+                                onChange={(event) => {
+                                  setCustomRequest(event.target.value);
+                                  if (customRequestError) {
+                                    setCustomRequestError('');
+                                  }
+                                }}
+                                placeholder="Add a specific change (e.g. football field)"
+                                className="min-h-9 flex-1 resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-body-sm text-foreground placeholder:text-faint focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-0"
+                                maxLength={MAX_REQUEST_LENGTH}
+                                rows={1}
+                                aria-label="Custom suggestion request"
+                              />
+                              <CanvasButton
+                                type="submit"
+                                className={cn(
+                                  'h-9 rounded-lg border border-accent bg-accent px-3 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
+                                  isCustomRequestDisabled && 'opacity-50'
+                                )}
+                                disabled={isCustomRequestDisabled}
+                                aria-busy={isCustomLoading}
+                              >
+                                {isCustomLoading ? 'Applying...' : 'Apply'}
+                              </CanvasButton>
+                            </form>
+                            {customRequestError && (
+                              <div className="mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
+                                {customRequestError}
+                              </div>
+                            )}
+                          </div>
+
+                          {isInlineError && (
+                            <div className="mx-4 mt-3 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
+                              {inlineErrorMessage}
+                            </div>
+                          )}
+
+                          {isInlineLoading && (
+                            <div className="flex flex-1 flex-col gap-2 px-4 py-3">
+                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
+                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
+                              <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
+                            </div>
+                          )}
+
+                          {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
+                            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3" ref={suggestionsListRef}>
+                              {inlineSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={suggestion.key}
+                                  data-index={index}
+                                  data-selected={activeSuggestionIndex === index ? 'true' : 'false'}
+                                  className={cn(
+                                    'flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2 text-body-sm text-foreground transition-colors',
+                                    'hover:border-border-strong hover:bg-surface-2',
+                                    activeSuggestionIndex === index && 'border-accent/50 bg-accent/10'
+                                  )}
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onMouseEnter={() => {
+                                    interactionSourceRef.current = 'mouse';
+                                    setActiveSuggestionIndex(index);
+                                  }}
+                                  onClick={() => {
+                                    handleSuggestionClickWithFeedback(suggestion.item);
+                                    closeInlinePopover();
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <div className="min-w-0 text-body-sm text-foreground">{suggestion.text}</div>
+                                  {index === 0 ? (
+                                    <span className="inline-flex flex-shrink-0 items-center rounded-full bg-accent/10 px-2 py-0.5 text-label-sm font-semibold text-accent">
+                                      Best match
+                                    </span>
+                                  ) : suggestion.meta ? (
+                                    <div className="flex-shrink-0 text-label-sm text-muted">{suggestion.meta}</div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {isInlineEmpty && (
+                            <div className="flex flex-1 items-center px-4 pb-4 text-label-sm text-muted">
+                              No suggestions yet.
+                            </div>
+                          )}
+
+                          <div className="border-t border-border px-4 py-3">
+                            <div className="text-label-sm text-muted">
+                              {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <CanvasButton
+                                type="button"
+                                className="rounded-lg border border-border bg-surface-3 px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                                onClick={closeInlinePopover}
+                              >
+                                Clear
+                              </CanvasButton>
+                              <CanvasButton
+                                type="button"
+                                className={cn(
+                                  'rounded-lg border border-accent bg-accent px-3 py-2 text-label-sm font-semibold text-app shadow-sm transition hover:opacity-90',
+                                  !suggestionCount && 'opacity-50'
+                                )}
+                                onClick={() => {
+                                  handleApplyActiveSuggestion();
+                                  closeInlinePopover();
+                                }}
+                                disabled={!suggestionCount}
+                              >
+                                Apply
+                              </CanvasButton>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </aside>
+                  </div>
+                </div>
+              </div>
+
+              <section className="flex min-h-0 flex-col gap-4 rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="po-runs__title">Runs</div>
-                    <div className="po-runs__subtitle">
+                    <div className="text-body-lg font-semibold text-foreground">Runs</div>
+                    <div className="mt-1 text-label-sm text-muted">
                       Preview + final generations (history, status, ETA)
                     </div>
                   </div>
-                  <span className="po-runs__badge status-pill" data-status="live">
-                    <span className="status-pill__dot" aria-hidden="true" />
+                  <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
+                    <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
                     Queue
                   </span>
                 </div>
 
-                <div className="po-runs__list">
+                <div className="flex flex-col gap-4">
                   <div
-                    className="po-run-card card card--raised card--interactive"
+                    className={cn(
+                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-4 shadow-sm',
+                      previewStatusState === 'ready' && 'border-accent/50'
+                    )}
                     data-status={previewStatusState}
-                    data-variant="preview"
                   >
-                    <div className="po-run-card__section po-run-card__header">
-                      <div className="po-run-card__heading">
-                        <div className="po-run-card__title">Preview Run</div>
-                        {runMetaLabel && <div className="po-run-card__run-meta">{runMetaLabel}</div>}
-                      </div>
-                      <div className="po-run-card__status-group">
-                        <span className="po-status-pill status-pill" data-status={previewStatusState}>
-                          <span className="status-pill__dot" aria-hidden="true" />
-                          {previewStatusLabel}
-                        </span>
-                        {previewEta && <span className="po-run-card__eta">{previewEta}</span>}
-                        <div className="po-run-card__menu po-action-menu" ref={previewRunMenuRef}>
-                          <CanvasButton
-                            type="button"
-                            className="po-run-card__menu-btn"
-                            onClick={() =>
-                              setOpenRunMenu(openRunMenu === 'preview' ? null : 'preview')
-                            }
-                            aria-label="Run menu"
-                            aria-haspopup="menu"
-                            aria-expanded={openRunMenu === 'preview'}
-                          >
-                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                          </CanvasButton>
-                          {openRunMenu === 'preview' && (
-                            <div className="po-action-menu__popover" role="menu">
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                View logs
-                              </CanvasButton>
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                Duplicate settings
-                              </CanvasButton>
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                Share artifact link
-                              </CanvasButton>
-                            </div>
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-body-sm font-semibold text-foreground">Preview Run</div>
+                          {runMetaLabel && (
+                            <div className="text-label-sm text-faint">{runMetaLabel}</div>
                           )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn(statusPillClass, previewStatusStyles.text, 'normal-case tracking-normal')}>
+                            <span
+                              className={cn('h-2 w-2 rounded-full', previewStatusStyles.dot)}
+                              aria-hidden="true"
+                            />
+                            {previewStatusLabel}
+                          </span>
+                          {previewEta && <span className="text-label-sm text-faint">{previewEta}</span>}
+                          <div className="relative" ref={previewRunMenuRef}>
+                            <CanvasButton
+                              type="button"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                              onClick={() =>
+                                setOpenRunMenu(openRunMenu === 'preview' ? null : 'preview')
+                              }
+                              aria-label="Run menu"
+                              aria-haspopup="menu"
+                              aria-expanded={openRunMenu === 'preview'}
+                            >
+                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                            </CanvasButton>
+                            {openRunMenu === 'preview' && (
+                              <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-lg border border-border bg-surface-2 p-2 shadow-md" role="menu">
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  View logs
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  Duplicate settings
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  Share artifact link
+                                </CanvasButton>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__meta">
+                    <div className="rounded-lg border border-border bg-surface-1 p-3 text-label-sm text-muted">
                       Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
                       · Seed {seedLabel}
                     </div>
-                    <div className="po-run-card__section po-run-card__metrics">
-                      <span className="po-run-card__metrics-label">Metrics:</span>
-                      <span className="po-run-card__metrics-item">Tokens {RUN_METRICS.preview.tokens}</span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item">Est. cost {RUN_METRICS.preview.cost}</span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item" data-state="pass">
-                        <span className="po-run-card__metric-dot" aria-hidden="true" />
-                        Quality: {RUN_METRICS.preview.quality}
-                      </span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item" data-state="pass">
-                        <span className="po-run-card__metric-dot" aria-hidden="true" />
-                        Safety: {RUN_METRICS.preview.safety}
-                      </span>
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
+                        <span className="font-semibold text-faint">Metrics:</span>
+                        <span>Tokens {RUN_METRICS.preview.tokens}</span>
+                        <span className="text-faint">·</span>
+                        <span>Est. cost {RUN_METRICS.preview.cost}</span>
+                        <span className="text-faint">·</span>
+                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
+                          Quality: {RUN_METRICS.preview.quality}
+                        </span>
+                        <span className="text-faint">·</span>
+                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
+                          Safety: {RUN_METRICS.preview.safety}
+                        </span>
+                      </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__artifacts">
-                      <div className="po-run-card__artifacts-label">Artifacts</div>
-                      <div className="po-run-card__artifact-strip">
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="text-label-sm text-faint">Artifacts</div>
+                      <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.preview.map((artifact) => (
                           <CanvasButton
                             key={artifact.id}
                             type="button"
-                            className="po-run-card__artifact"
+                            className={cn(
+                              'h-8 w-12 rounded-md border border-border bg-surface-3 transition-colors hover:border-border-strong',
+                              artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                            )}
                             data-kind={artifact.kind}
                             aria-label={artifact.label}
                           />
                         ))}
-                        <CanvasButton type="button" className="po-run-card__view-all">
+                        <CanvasButton
+                          type="button"
+                          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-label-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                        >
                           View all <span aria-hidden="true">&rarr;</span>
                         </CanvasButton>
                       </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__actions">
-                      <div className="po-run-card__links">
-                        <CanvasButton type="button" disabled={previewStatusState !== 'ready'}>
-                          Retry
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CanvasButton
+                            type="button"
+                            disabled={previewStatusState !== 'ready'}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Retry
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            disabled={!canCompareRuns}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Compare
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            disabled={previewStatusState === 'idle'}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Logs
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Copy settings
+                          </CanvasButton>
+                        </div>
+                        <CanvasButton
+                          type="button"
+                          onClick={
+                            previewStatusState === 'ready'
+                              ? () => setStageTab('preview')
+                              : handleGenerateVisualPreview
+                          }
+                          disabled={previewCtaDisabled}
+                          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
+                        >
+                          {previewCtaLabel}
                         </CanvasButton>
-                        <CanvasButton type="button" disabled={!canCompareRuns}>
-                          Compare
-                        </CanvasButton>
-                        <CanvasButton type="button" disabled={previewStatusState === 'idle'}>
-                          Logs
-                        </CanvasButton>
-                        <CanvasButton type="button">Copy settings</CanvasButton>
                       </div>
-                      <CanvasButton
-                        type="button"
-                        onClick={
-                          previewStatusState === 'ready'
-                            ? () => setStageTab('preview')
-                            : handleGenerateVisualPreview
-                        }
-                        disabled={previewCtaDisabled}
-                        className="po-run-card__cta"
-                      >
-                        {previewCtaLabel}
-                      </CanvasButton>
                     </div>
                   </div>
 
                   <div
-                    className="po-run-card card card--raised card--interactive"
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-4 shadow-sm"
                     data-status={finalStatusState}
                   >
-                    <div className="po-run-card__section po-run-card__header">
-                      <div className="po-run-card__heading">
-                        <div className="po-run-card__title">Final Render</div>
-                        {runMetaLabel && <div className="po-run-card__run-meta">{runMetaLabel}</div>}
-                      </div>
-                      <div className="po-run-card__status-group">
-                        <span className="po-status-pill status-pill" data-status={finalStatusState}>
-                          <span className="status-pill__dot" aria-hidden="true" />
-                          {finalStatusLabel}
-                        </span>
-                        {finalEta && <span className="po-run-card__eta">{finalEta}</span>}
-                        <div className="po-run-card__menu po-action-menu" ref={finalRunMenuRef}>
-                          <CanvasButton
-                            type="button"
-                            className="po-run-card__menu-btn"
-                            onClick={() =>
-                              setOpenRunMenu(openRunMenu === 'final' ? null : 'final')
-                            }
-                            aria-label="Run menu"
-                            aria-haspopup="menu"
-                            aria-expanded={openRunMenu === 'final'}
-                          >
-                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                          </CanvasButton>
-                          {openRunMenu === 'final' && (
-                            <div className="po-action-menu__popover" role="menu">
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                View logs
-                              </CanvasButton>
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                Duplicate settings
-                              </CanvasButton>
-                              <CanvasButton type="button" role="menuitem" onClick={() => setOpenRunMenu(null)}>
-                                Share artifact link
-                              </CanvasButton>
-                            </div>
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-body-sm font-semibold text-foreground">Final Render</div>
+                          {runMetaLabel && (
+                            <div className="text-label-sm text-faint">{runMetaLabel}</div>
                           )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
+                            <span
+                              className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
+                              aria-hidden="true"
+                            />
+                            {finalStatusLabel}
+                          </span>
+                          {finalEta && <span className="text-label-sm text-faint">{finalEta}</span>}
+                          <div className="relative" ref={finalRunMenuRef}>
+                            <CanvasButton
+                              type="button"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                              onClick={() =>
+                                setOpenRunMenu(openRunMenu === 'final' ? null : 'final')
+                              }
+                              aria-label="Run menu"
+                              aria-haspopup="menu"
+                              aria-expanded={openRunMenu === 'final'}
+                            >
+                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                            </CanvasButton>
+                            {openRunMenu === 'final' && (
+                              <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-lg border border-border bg-surface-2 p-2 shadow-md" role="menu">
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  View logs
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  Duplicate settings
+                                </CanvasButton>
+                                <CanvasButton
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => setOpenRunMenu(null)}
+                                  className="w-full justify-start rounded-md px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                                >
+                                  Share artifact link
+                                </CanvasButton>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__meta">
+                    <div className="rounded-lg border border-border bg-surface-1 p-3 text-label-sm text-muted">
                       Draft model: {target.label} · {aspectLabel} · {durationMetaLabel} · {fpsMetaLabel}
                       · Seed {seedLabel}
                     </div>
-                    <div className="po-run-card__section po-run-card__metrics">
-                      <span className="po-run-card__metrics-label">Metrics:</span>
-                      <span className="po-run-card__metrics-item">Tokens {RUN_METRICS.final.tokens}</span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item">Est. cost {RUN_METRICS.final.cost}</span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item" data-state="pass">
-                        <span className="po-run-card__metric-dot" aria-hidden="true" />
-                        Quality: {RUN_METRICS.final.quality}
-                      </span>
-                      <span className="po-run-card__metrics-sep">·</span>
-                      <span className="po-run-card__metrics-item" data-state="pass">
-                        <span className="po-run-card__metric-dot" aria-hidden="true" />
-                        Safety: {RUN_METRICS.final.safety}
-                      </span>
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center gap-2 text-label-sm text-muted">
+                        <span className="font-semibold text-faint">Metrics:</span>
+                        <span>Tokens {RUN_METRICS.final.tokens}</span>
+                        <span className="text-faint">·</span>
+                        <span>Est. cost {RUN_METRICS.final.cost}</span>
+                        <span className="text-faint">·</span>
+                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
+                          Quality: {RUN_METRICS.final.quality}
+                        </span>
+                        <span className="text-faint">·</span>
+                        <span className={cn('inline-flex items-center gap-1.5', metricStyles('pass').text)}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full', metricStyles('pass').dot)} aria-hidden="true" />
+                          Safety: {RUN_METRICS.final.safety}
+                        </span>
+                      </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__artifacts">
-                      <div className="po-run-card__artifacts-label">Artifacts</div>
-                      <div className="po-run-card__artifact-strip">
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="text-label-sm text-faint">Artifacts</div>
+                      <div className="mt-2 flex items-center gap-2 overflow-hidden">
                         {RUN_ARTIFACTS.final.map((artifact) => (
                           <CanvasButton
                             key={artifact.id}
                             type="button"
-                            className="po-run-card__artifact"
+                            className={cn(
+                              'h-8 w-12 rounded-md border border-border bg-surface-3 transition-colors hover:border-border-strong',
+                              artifact.kind === 'preview' && 'border-accent/50 bg-accent/10'
+                            )}
                             data-kind={artifact.kind}
                             aria-label={artifact.label}
                           />
                         ))}
-                        <CanvasButton type="button" className="po-run-card__view-all">
+                        <CanvasButton
+                          type="button"
+                          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-label-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                        >
                           View all <span aria-hidden="true">&rarr;</span>
                         </CanvasButton>
                       </div>
                     </div>
-                    <div className="po-run-card__section po-run-card__actions">
-                      <div className="po-run-card__links">
-                        <CanvasButton type="button" disabled={finalStatusState !== 'ready'}>
-                          Retry
+                    <div className="rounded-lg border border-border bg-surface-1 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CanvasButton
+                            type="button"
+                            disabled={finalStatusState !== 'ready'}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Retry
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            disabled={!canCompareRuns}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Compare
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            disabled={finalStatusState === 'idle'}
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Logs
+                          </CanvasButton>
+                          <CanvasButton
+                            type="button"
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-label-sm text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
+                          >
+                            Copy settings
+                          </CanvasButton>
+                        </div>
+                        <CanvasButton
+                          type="button"
+                          onClick={
+                            finalStatusState === 'ready'
+                              ? () => setStageTab('final')
+                              : handleGenerateRailVideoPreview
+                          }
+                          disabled={finalCtaDisabled}
+                          className={cn(primaryButtonClass, 'min-w-40 justify-center')}
+                        >
+                          {finalCtaLabel}
                         </CanvasButton>
-                        <CanvasButton type="button" disabled={!canCompareRuns}>
-                          Compare
-                        </CanvasButton>
-                        <CanvasButton type="button" disabled={finalStatusState === 'idle'}>
-                          Logs
-                        </CanvasButton>
-                        <CanvasButton type="button">Copy settings</CanvasButton>
                       </div>
-                      <CanvasButton
-                        type="button"
-                        onClick={
-                          finalStatusState === 'ready'
-                            ? () => setStageTab('final')
-                            : handleGenerateRailVideoPreview
-                        }
-                        disabled={finalCtaDisabled}
-                        className="po-run-card__cta"
-                      >
-                        {finalCtaLabel}
-                      </CanvasButton>
                     </div>
                   </div>
                 </div>
@@ -2424,50 +2601,59 @@ export function PromptCanvas({
           </div>
         </div>
 
-        </div>
-
         {/* Right Rail - Stage + Inspector */}
-        <div className="prompt-canvas-right-rail">
-          <section className="po-stage">
-            <div className="po-stage__header">
+        <div className="flex min-h-0 flex-col gap-6 xl:w-96">
+          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="po-stage__title">Stage</div>
-                <div className="po-stage__subtitle">Preview &amp; refine output</div>
+                <div className="text-body-lg font-semibold text-foreground">Stage</div>
+                <div className="mt-1 text-label-sm text-muted">Preview &amp; refine output</div>
               </div>
-              <div className="po-stage__tabs segmented">
+              <div className="flex items-center rounded-full border border-border bg-surface-1 p-1">
                 <CanvasButton
                   type="button"
                   onClick={() => setStageTab('preview')}
-                  data-active={stageTab === 'preview' ? 'true' : 'false'}
-                  className="segmented__tab"
                   aria-selected={stageTab === 'preview'}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-body-sm font-semibold transition-colors',
+                    stageTab === 'preview'
+                      ? 'bg-surface-2 text-foreground shadow-sm'
+                      : 'text-muted hover:text-foreground'
+                  )}
                 >
                   Preview
                 </CanvasButton>
                 <CanvasButton
                   type="button"
                   onClick={() => setStageTab('final')}
-                  data-active={stageTab === 'final' ? 'true' : 'false'}
-                  className="segmented__tab"
                   aria-selected={stageTab === 'final'}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-body-sm font-semibold transition-colors',
+                    stageTab === 'final'
+                      ? 'bg-surface-2 text-foreground shadow-sm'
+                      : 'text-muted hover:text-foreground'
+                  )}
                 >
                   Final
                 </CanvasButton>
               </div>
             </div>
 
-            <div className="po-stage__frame">
+            <div className="relative mt-5 flex min-h-72 flex-1 flex-col gap-3">
               {stageTab === 'preview' ? (
                 <>
-                  <div className="po-stagebar" aria-label="Preview controls">
-                    <div className="po-stagebar__left">
-                      <span className="po-stagebar__label">Provider</span>
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-label-sm font-semibold uppercase tracking-wide text-muted">Provider</span>
                       <Select
                         value={visualProvider}
                         onValueChange={(value) => setVisualProvider(value as PreviewProvider)}
                       >
                         <SelectTrigger
-                          className="po-stagebar__select [&>svg]:hidden"
+                          className={cn(
+                            'h-8 w-auto rounded-full border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground shadow-sm transition-colors',
+                            'hover:border-border-strong hover:bg-surface-3'
+                          )}
                           aria-label="Preview provider"
                         >
                           <SelectValue />
@@ -2479,9 +2665,9 @@ export function PromptCanvas({
                       </Select>
                     </div>
 
-                    <div className="po-stagebar__right">
+                    <div className="ml-auto flex items-center gap-2">
                       {visualProvider === 'replicate-flux-kontext-fast' && hasStoryboardFrames && (
-                        <label className="po-stagebar__toggle">
+                        <label className="inline-flex items-center gap-2 text-label-sm font-semibold text-muted">
                           <Checkbox
                             checked={useSelectedFrameAsBase}
                             onCheckedChange={(checked) => setUseSelectedFrameAsBase(Boolean(checked))}
@@ -2493,100 +2679,94 @@ export function PromptCanvas({
                   </div>
 
                   {visualProvider === 'replicate-flux-kontext-fast' ? (
-                    <div className="po-storyboard">
-                      <div className="po-storyboard__focused">
-                        <div className="po-storyboard__section-label">Focused frame (selected from timeline)</div>
-                        <div className="po-storyboard__focused-card">
-                          <div className="po-storyboard__focused-title">
-                            Frame {storyboardSelectedIndex + 1}{' '}
-                            <span className="po-storyboard__focused-sub">
-                              — {storyboardSelectedIndex === 0 ? 'Base' : `Edit ${storyboardSelectedIndex}`}
-                            </span>
-                          </div>
-                          <div className="po-storyboard__focused-surface">
-                            {selectedStoryboardFrameUrl ? (
-                              <img
-                                src={selectedStoryboardFrameUrl}
-                                alt={`Frame ${storyboardSelectedIndex + 1}`}
-                                className="po-storyboard__focused-media"
-                              />
-                            ) : (
-                              <div className="po-stage-surface__blank" />
-                            )}
-                            {hasStoryboardFrames && (
-                              <CanvasButton
-                                type="button"
-                                className="po-storyboard__play"
-                                onClick={() => setStoryboardPlaying((prev) => !prev)}
-                                aria-label={storyboardPlaying ? 'Pause storyboard playback' : 'Play storyboard'}
-                              >
-                                {storyboardPlaying ? (
-                                  <Pause className="h-4 w-4" aria-hidden="true" />
-                                ) : (
-                                  <Play className="h-4 w-4" aria-hidden="true" />
-                                )}
-                              </CanvasButton>
-                            )}
-                            {!isVisualPreviewGenerating && !hasStoryboardFrames && (
-                              <div className="po-surface-empty" aria-live="polite">
-                                <div className="po-surface-empty__icon" aria-hidden="true">
-                                  <Play className="h-5 w-5" />
-                                </div>
-                                <div className="po-surface-empty__title">Stage is set</div>
-                                <div className="po-surface-empty__sub">
-                                  Generate a preview to validate framing, lighting, and mood.
-                                </div>
+                    <div className="flex flex-1 flex-col gap-3">
+                      <div className="rounded-lg border border-border bg-surface-2">
+                        <div className="border-b border-border px-3 py-2 text-label-sm font-semibold text-foreground">
+                          Frame {storyboardSelectedIndex + 1}{' '}
+                          <span className="text-muted">
+                            — {storyboardSelectedIndex === 0 ? 'Base' : `Edit ${storyboardSelectedIndex}`}
+                          </span>
+                        </div>
+                        <div className="relative h-36 bg-surface-3">
+                          {selectedStoryboardFrameUrl ? (
+                            <img
+                              src={selectedStoryboardFrameUrl}
+                              alt={`Frame ${storyboardSelectedIndex + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-surface-3" />
+                          )}
+                          {hasStoryboardFrames && (
+                            <CanvasButton
+                              type="button"
+                              className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-md transition-colors hover:bg-surface-2"
+                              onClick={() => setStoryboardPlaying((prev) => !prev)}
+                              aria-label={storyboardPlaying ? 'Pause storyboard playback' : 'Play storyboard'}
+                            >
+                              {storyboardPlaying ? (
+                                <Pause className="h-4 w-4" aria-hidden="true" />
+                              ) : (
+                                <Play className="h-4 w-4" aria-hidden="true" />
+                              )}
+                            </CanvasButton>
+                          )}
+                          {!isVisualPreviewGenerating && !hasStoryboardFrames && (
+                            <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
+                                <Play className="h-5 w-5" />
                               </div>
-                            )}
-                          </div>
+                              <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+                              <div className="text-label-sm text-muted">
+                                Generate a preview to validate framing, lighting, and mood.
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="po-storyboard__timeline">
-                        <div className="po-storyboard__section-label">
-                          Timeline (Base &rarr; Edit 1 &rarr; Edit 2 &rarr; Edit 3)
-                        </div>
-                        <div className="po-storyboard__timeline-list" role="list">
-                          {[
-                            { title: '1. Base', delta: '(generated or seeded)' },
-                            { title: '2. Edit 1', delta: 'pose / gesture' },
-                            { title: '3. Edit 2', delta: 'lighting / skyline' },
-                            { title: '4. Edit 3', delta: 'final polish / tone' },
-                          ].map((step, index) => {
-                            const thumb = storyboardFrames[index];
-                            const isSelected = storyboardSelectedIndex === index;
-                            return (
-                              <CanvasButton
-                                key={step.title}
-                                type="button"
-                                className="po-timeline-item"
-                                data-selected={isSelected ? 'true' : 'false'}
-                                onClick={() => {
-                                  setStoryboardPlaying(false);
-                                  setStoryboardSelectedIndex(index);
-                                }}
-                                role="listitem"
-                              >
-                                <span className="po-timeline-item__rail" aria-hidden="true" />
-                                <span className="po-timeline-item__thumb" aria-hidden="true">
-                                  {typeof thumb === 'string' && thumb ? (
-                                    <img src={thumb} alt="" />
-                                  ) : (
-                                    <span className="po-timeline-item__thumb-blank" />
-                                  )}
-                                </span>
-                                <span className="po-timeline-item__text">
-                                  <span className="po-timeline-item__title">{step.title}</span>
-                                  <span className="po-timeline-item__delta">{step.delta}</span>
-                                </span>
-                              </CanvasButton>
-                            );
-                          })}
-                        </div>
+                      <div className="flex flex-col gap-3">
+                        {[
+                          { title: '1. Base', delta: '(generated or seeded)' },
+                          { title: '2. Edit 1', delta: 'pose / gesture' },
+                          { title: '3. Edit 2', delta: 'lighting / skyline' },
+                          { title: '4. Edit 3', delta: 'final polish / tone' },
+                        ].map((step, index) => {
+                          const thumb = storyboardFrames[index];
+                          const isSelected = storyboardSelectedIndex === index;
+                          return (
+                            <CanvasButton
+                              key={step.title}
+                              type="button"
+                              className={cn(
+                                'flex items-center gap-3 rounded-lg border border-border bg-surface-2 p-3 text-left transition-colors',
+                                'hover:border-border-strong hover:bg-surface-3',
+                                isSelected && 'border-accent/60 bg-accent/10'
+                              )}
+                              data-selected={isSelected ? 'true' : 'false'}
+                              onClick={() => {
+                                setStoryboardPlaying(false);
+                                setStoryboardSelectedIndex(index);
+                              }}
+                              role="listitem"
+                            >
+                              <span className="h-11 w-11 overflow-hidden rounded-md border border-border bg-surface-3">
+                                {typeof thumb === 'string' && thumb ? (
+                                  <img src={thumb} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="block h-full w-full" />
+                                )}
+                              </span>
+                              <span className="flex min-w-0 flex-col">
+                                <span className="text-body-sm font-semibold text-foreground">{step.title}</span>
+                                <span className="text-label-sm text-muted">{step.delta}</span>
+                              </span>
+                            </CanvasButton>
+                          );
+                        })}
                       </div>
 
-                      {/* Hidden renderer to run generation + keep state in sync */}
-                      <div className="po-storyboard__hidden" aria-hidden="true">
+                      <div className="hidden" aria-hidden="true">
                         <VisualPreview
                           prompt={previewSource}
                           aspectRatio={effectiveAspectRatio}
@@ -2603,8 +2783,8 @@ export function PromptCanvas({
                       </div>
                     </div>
                   ) : (
-                    <div className="po-stage-surface">
-                      <div className="po-stage-surface__media" aria-label="Image preview surface">
+                    <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1">
+                      <div className="h-full w-full" aria-label="Image preview surface">
                         <VisualPreview
                           prompt={previewSource}
                           aspectRatio={effectiveAspectRatio}
@@ -2619,12 +2799,12 @@ export function PromptCanvas({
                         />
                       </div>
                       {!isVisualPreviewGenerating && !stageHasOutput && (
-                        <div className="po-surface-empty" aria-live="polite">
-                          <div className="po-surface-empty__icon" aria-hidden="true">
+                        <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
                             <Play className="h-5 w-5" />
                           </div>
-                          <div className="po-surface-empty__title">Stage is set</div>
-                          <div className="po-surface-empty__sub">
+                          <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+                          <div className="text-label-sm text-muted">
                             Generate a preview to validate framing, lighting, and mood.
                           </div>
                         </div>
@@ -2634,22 +2814,25 @@ export function PromptCanvas({
                 </>
               ) : (
                 <>
-                  <div className="po-stagebar po-stagebar--final" aria-label="Final status">
-                    <span className="po-stagebar__status status-pill" data-status={finalStatusState}>
-                      <span className="status-pill__dot" aria-hidden="true" />
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+                    <span className={cn(statusPillClass, finalStatusStyles.text, 'normal-case tracking-normal')}>
+                      <span
+                        className={cn('h-2 w-2 rounded-full', finalStatusStyles.dot)}
+                        aria-hidden="true"
+                      />
                       {finalStatusState === 'generating'
                         ? 'Generating'
                         : finalStatusState === 'ready'
                           ? 'Ready'
                           : 'Idle'}
                     </span>
-                    <span className="po-stagebar__model">Model: WAN 2.2</span>
-                    <span className="po-stagebar__spacer" aria-hidden="true" />
+                    <span className="text-label-sm font-semibold text-muted">Model: WAN 2.2</span>
+                    <span className="ml-auto" aria-hidden="true" />
                     {finalStatusState === 'ready' && stageFinalVideoUrl && (
-                      <div className="po-stagebar__actions" role="group" aria-label="Final quick actions">
+                      <div className="flex items-center gap-2" role="group" aria-label="Final quick actions">
                         <CanvasButton
                           type="button"
-                          className="po-stagebar__action"
+                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
                           onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
                         >
                           <Download className="h-4 w-4" aria-hidden="true" />
@@ -2657,7 +2840,7 @@ export function PromptCanvas({
                         </CanvasButton>
                         <CanvasButton
                           type="button"
-                          className="po-stagebar__action"
+                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 text-label-sm font-semibold text-foreground transition-colors hover:bg-surface-3"
                           onClick={() => window.open(stageFinalVideoUrl, '_blank', 'noopener,noreferrer')}
                         >
                           <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -2667,9 +2850,9 @@ export function PromptCanvas({
                     )}
                   </div>
 
-                  <div className="po-final-surface">
+                  <div className="flex flex-1 flex-col gap-2">
                     <div
-                      className="po-final-surface__media"
+                      className="relative flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-1"
                       onClick={() => {
                         const el = finalVideoElRef.current;
                         if (!el) return;
@@ -2705,60 +2888,55 @@ export function PromptCanvas({
                         onLoadingChange={setRailVideoPreviewGenerating}
                         onPreviewStateChange={handleVideoPreviewStateChange}
                       />
-                      {!stageFinalVideoUrl && <div className="po-stage-surface__blank" />}
-                      <div className="po-final-surface__overlay" aria-hidden="true">
-                        <div className="po-final-surface__play">
+                      {!stageFinalVideoUrl && <div className="h-full w-full bg-surface-3" />}
+                      <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-surface-3 text-foreground shadow-sm">
                           <Play className="h-5 w-5" aria-hidden="true" />
                         </div>
                       </div>
                       {!isRailVideoPreviewGenerating && !stageFinalVideoUrl && (
-                        <div className="po-surface-empty" aria-live="polite">
-                          <div className="po-surface-empty__icon" aria-hidden="true">
+                        <div className="absolute inset-3 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-2 p-4 text-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
                             <Play className="h-5 w-5" />
                           </div>
-                          <div className="po-surface-empty__title">Stage is set</div>
-                          <div className="po-surface-empty__sub">
+                          <div className="text-body-sm font-semibold text-foreground">Stage is set</div>
+                          <div className="text-label-sm text-muted">
                             Generate the final render when you are ready.
                           </div>
                         </div>
                       )}
                     </div>
 
-                    <div className="po-final-surface__scrub" aria-label="Timeline scrub">
+                    <div className="rounded-lg border border-border bg-surface-1 px-3 py-2" aria-label="Timeline scrub">
                       <Slider min={0} max={100} defaultValue={[0]} disabled={!stageFinalVideoUrl} />
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Stage-owned overlays */}
-              {stageTab === 'preview' &&
-                visualPreviewState?.error &&
-                !isVisualPreviewGenerating && (
-                  <div className="po-stage__overlay po-stage__overlay--error" role="alert">
-                    Preview failed. Try again.
-                  </div>
-                )}
+              {stageTab === 'preview' && visualPreviewState?.error && !isVisualPreviewGenerating && (
+                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
+                  Preview failed. Try again.
+                </div>
+              )}
               {stageTab === 'final' && videoPreviewState?.error && !isRailVideoPreviewGenerating && (
-                <div className="po-stage__overlay po-stage__overlay--error" role="alert">
+                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-body-sm font-semibold text-foreground">
                   Final preview failed. Try again.
                 </div>
               )}
               {stageIsGenerating && (
-                <div className="po-stage__overlay po-stage__overlay--loading" aria-label="Generating">
-                  <LoadingDots size={3} color="rgb(163, 163, 163)" />
+                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border border-border bg-surface-2/90 p-4 text-muted" aria-label="Generating">
+                  <LoadingDots size={3} className="text-faint" />
                 </div>
               )}
             </div>
 
-            <div className="po-stage__footer">
-              <div className="po-stage__meta">
-                {stageFooterMeta}
-              </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-label-sm text-muted">{stageFooterMeta}</div>
               {stageTab === 'final' && (
                 <CanvasButton
                   type="button"
-                  className="po-stage__link"
+                  className="rounded-lg border border-border bg-transparent px-3 py-2 text-label-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                   onClick={() => setShowSettings(true)}
                 >
                   Edit settings
@@ -2768,7 +2946,7 @@ export function PromptCanvas({
                 type="button"
                 onClick={stageTab === 'preview' ? handleGenerateVisualPreview : handleGenerateRailVideoPreview}
                 disabled={stageCtaDisabled}
-                className="po-stage__cta"
+                className={cn(primaryButtonClass, 'min-w-40 justify-center')}
               >
                 {stageCtaLabel}
               </CanvasButton>
@@ -2780,29 +2958,33 @@ export function PromptCanvas({
       </div>
       {showDiff && (
         <Dialog open={showDiff} onOpenChange={setShowDiff}>
-          <DialogContent className="po-diff__card po-modal po-modal--xl po-surface po-surface--grad po-animate-pop-in p-0 gap-0 max-w-none [&>button]:hidden">
-            <div className="po-diff__header">
+          <DialogContent className="w-full max-w-5xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
+            <div className="flex items-center justify-between border-b border-border p-4">
               <div>
-                <div className="po-diff__title">Diff</div>
-                <div className="po-diff__subtitle">Input vs optimized output</div>
+                <div className="text-body-lg font-semibold text-foreground">Diff</div>
+                <div className="mt-1 text-label-sm text-muted">Input vs optimized output</div>
               </div>
               <CanvasButton
                 type="button"
-                className="po-diff__close"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
                 onClick={() => setShowDiff(false)}
                 aria-label="Close diff"
               >
                 <X className="h-4 w-4" />
               </CanvasButton>
             </div>
-            <div className="po-diff__body">
-              <div className="po-diff__panel">
-                <div className="po-diff__label">Input</div>
-                <pre>{inputPrompt || '—'}</pre>
+            <div className="grid gap-4 p-4 md:grid-cols-2">
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Input</div>
+                <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
+                  {inputPrompt || '—'}
+                </pre>
               </div>
-              <div className="po-diff__panel">
-                <div className="po-diff__label">Optimized</div>
-                <pre>{normalizedDisplayedPrompt || '—'}</pre>
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <div className="text-label-sm font-semibold uppercase tracking-widest text-muted">Optimized</div>
+                <pre className="mt-3 whitespace-pre-wrap font-mono text-body-sm text-muted">
+                  {normalizedDisplayedPrompt || '—'}
+                </pre>
               </div>
             </div>
           </DialogContent>

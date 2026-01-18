@@ -44,7 +44,7 @@ export default function Settings({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-3xl p-0 po-modal po-surface po-surface--grad [&>button]:hidden">
+      <DialogContent className="w-full max-w-3xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
         <Card className="border-none bg-transparent shadow-none">
           <CardHeader className="flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
             <DialogTitle id="settings-title" className="text-heading-20 text-foreground">

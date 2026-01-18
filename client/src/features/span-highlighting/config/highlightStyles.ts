@@ -7,36 +7,49 @@
 export interface HighlightColor {
   bg: string;
   border: string;
+  ring: string;
 }
 
 /**
  * Get CSS class name for a category
  */
 export function getHighlightClassName(category: string | null | undefined): string {
-  return `value-word value-word-${category ?? ''}`;
+  const baseClasses = [
+    'value-word',
+    'relative',
+    'cursor-pointer',
+    'rounded-sm',
+    'px-1.5',
+    'py-0.5',
+    'mx-px',
+    'border',
+    'border-[var(--highlight-border)]',
+    'bg-[var(--highlight-bg)]',
+    'transition-all',
+    'duration-150',
+    'ease-out',
+    'hover:brightness-95',
+    'hover:shadow-sm',
+    'box-decoration-clone',
+    'break-words',
+    'select-text',
+  ];
+  const categoryClass = category ? `value-word-${category}` : 'value-word-unknown';
+  return [...baseClasses, categoryClass].join(' ');
 }
 
-/**
- * Default highlight styles
- */
-export const HIGHLIGHT_STYLES = {
-  padding: '1px 3px',
-  borderRadius: '3px',
-  borderBottomWidth: '2px',
-  borderBottomStyle: 'solid',
-} as const;
 
 /**
  * Apply styles to a highlight element
  */
 export function applyHighlightStyles(element: HTMLElement, color: HighlightColor | undefined): void {
-  if (!color) return;
-  element.style.setProperty('--highlight-bg', color.bg);
-  element.style.setProperty('--highlight-border', color.border);
-  element.style.backgroundColor = color.bg;
-  element.style.borderBottomColor = color.border;
-  element.style.borderBottomWidth = HIGHLIGHT_STYLES.borderBottomWidth;
-  element.style.borderBottomStyle = HIGHLIGHT_STYLES.borderBottomStyle;
-  element.style.padding = HIGHLIGHT_STYLES.padding;
-  element.style.borderRadius = HIGHLIGHT_STYLES.borderRadius;
+  const fallback: HighlightColor = {
+    bg: 'rgba(104,134,255,0.12)',
+    border: 'rgba(104,134,255,0.35)',
+    ring: 'rgba(104,134,255,0.18)',
+  };
+  const resolved = color ?? fallback;
+  element.style.setProperty('--highlight-bg', resolved.bg);
+  element.style.setProperty('--highlight-border', resolved.border);
+  element.style.setProperty('--highlight-ring', resolved.ring);
 }

@@ -4,7 +4,6 @@ import type { User } from '../context/types';
 import type { PromptContext } from '@utils/PromptContext/PromptContext';
 import type { SuggestionPayload, SuggestionsData, SuggestionItem } from '../PromptCanvas/types';
 import type { OptimizationOptions } from '../types';
-import './PromptResultsLayout.css';
 
 /**
  * PromptResultsLayout - Results/Canvas View Layout
@@ -49,7 +48,7 @@ export const PromptResultsLayout = ({
   stablePromptContext,
 }: PromptResultsLayoutProps): React.ReactElement => {
   return (
-    <div className="prompt-results-layout">
+    <div className="relative h-full overflow-hidden bg-app transition-colors duration-300">
       <PromptResultsSection
         user={user}
         onDisplayedPromptChange={onDisplayedPromptChange}
