@@ -1740,7 +1740,7 @@ export function PromptCanvas({
       {/* Main Content Container */}
       <div
         className={cn(
-          'relative flex min-h-0 flex-1 flex-col gap-6 p-6 xl:flex-row',
+          'relative flex min-h-0 flex-1 flex-col gap-4 p-4 xl:flex-row',
           outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
@@ -1776,7 +1776,7 @@ export function PromptCanvas({
           )}
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-6">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 pb-4">
               <div
                 className={cn(
                   'rounded-xl border border-border bg-surface-2 shadow-sm transition-opacity',
@@ -1785,7 +1785,7 @@ export function PromptCanvas({
               >
                 <div
                   className={cn(
-                    'flex flex-col gap-3 border-b border-border p-4',
+                    'flex flex-col gap-2 border-b border-border p-3',
                     showVideoPreview && 'items-stretch'
                   )}
                 >
@@ -1869,7 +1869,7 @@ export function PromptCanvas({
                     </div>
                   )}
                 </div>
-                <div className="p-4">
+                <div className="p-3">
                   <label htmlFor="original-prompt-input" className="ps-sr-only">
                     Input prompt
                   </label>
@@ -1898,13 +1898,13 @@ export function PromptCanvas({
                   isOutputLoading && 'opacity-80'
                 )}
               >
-                <div className="border-b border-border p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex flex-col gap-1">
+                <div className="border-b border-border p-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                       <div className="text-body-lg font-semibold text-foreground">Optimized Editor</div>
-                      <div className="text-label-sm text-muted">
-                        Click highlights → replace / edit (no overlay)
-                      </div>
+                      {!selectedSpanId && (
+                        <div className="text-label-sm text-muted">Select a highlight to see suggestions</div>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={cn(statusPillClass, outputStatusStyles.text)}>
@@ -2009,10 +2009,10 @@ export function PromptCanvas({
                   </div>
                 </div>
 
-                <div className="p-4">
-                  <div className="flex min-h-0 flex-col gap-6 xl:flex-row">
+                <div className="p-3">
+                  <div className="flex min-h-0 flex-col gap-4 xl:flex-row">
                     <div
-                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-4"
+                      className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-surface-1 p-3"
                       aria-busy={isOutputLoading}
                       ref={editorWrapperRef}
                     >
@@ -2072,7 +2072,7 @@ export function PromptCanvas({
                         )}
                       {isOutputLoading && (
                         <div
-                          className="absolute inset-0 flex items-start justify-start rounded-lg bg-surface-1/80 p-5 backdrop-blur-sm"
+                          className="absolute inset-0 flex items-start justify-start rounded-lg bg-surface-1/80 p-4 backdrop-blur-sm"
                           role="status"
                           aria-live="polite"
                           aria-label="Optimizing prompt"
@@ -2082,18 +2082,16 @@ export function PromptCanvas({
                       )}
                     </div>
 
-                    <aside
-                      className={cn(
-                        'flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-border bg-surface-2 shadow-sm xl:w-80',
-                        !selectedSpanId && 'opacity-80'
-                      )}
-                      aria-label="Suggestions"
-                    >
-                      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                    {selectedSpanId ? (
+                      <aside
+                        className="flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-border bg-surface-2 shadow-sm xl:w-80"
+                        aria-label="Suggestions"
+                      >
+                      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
                         <div className="flex items-center gap-2 text-body-sm font-semibold text-foreground">
                           Suggestions
                           <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-surface-3 px-2 py-0.5 text-label-sm text-muted">
-                            {selectedSpanId ? suggestionCount : 0}
+                            {suggestionCount}
                           </span>
                         </div>
                         <div className="hidden items-center gap-1 text-muted sm:flex" aria-hidden="true">
@@ -2112,19 +2110,7 @@ export function PromptCanvas({
                         </div>
                       </div>
 
-                      {!selectedSpanId ? (
-                        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-3 text-muted shadow-sm">
-                            <Sparkles className="h-5 w-5" />
-                          </div>
-                          <div className="text-body-sm font-semibold text-foreground">Select a highlight</div>
-                          <div className="text-label-sm text-muted">
-                            Click a highlighted token to see suggestions.
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="border-b border-border px-4 py-3" data-suggest-custom>
+                      <div className="border-b border-border px-3 py-2" data-suggest-custom>
                             <form
                               className="flex items-center gap-2"
                               onSubmit={handleCustomRequestSubmit}
@@ -2164,13 +2150,13 @@ export function PromptCanvas({
                           </div>
 
                           {isInlineError && (
-                            <div className="mx-4 mt-3 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
+                            <div className="mx-3 mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-label-sm text-error" role="alert">
                               {inlineErrorMessage}
                             </div>
                           )}
 
                           {isInlineLoading && (
-                            <div className="flex flex-1 flex-col gap-2 px-4 py-3">
+                            <div className="flex flex-1 flex-col gap-2 px-3 py-2">
                               <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
                               <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
                               <div className="h-9 w-full animate-pulse rounded-lg bg-surface-3" />
@@ -2178,7 +2164,7 @@ export function PromptCanvas({
                           )}
 
                           {!isInlineLoading && !isInlineError && suggestionCount > 0 && (
-                            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3" ref={suggestionsListRef}>
+                            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2" ref={suggestionsListRef}>
                               {inlineSuggestions.map((suggestion, index) => (
                                 <div
                                   key={suggestion.key}
@@ -2215,12 +2201,12 @@ export function PromptCanvas({
                           )}
 
                           {isInlineEmpty && (
-                            <div className="flex flex-1 items-center px-4 pb-4 text-label-sm text-muted">
+                            <div className="flex flex-1 items-center px-3 py-2 text-label-sm text-muted">
                               No suggestions yet.
                             </div>
                           )}
 
-                          <div className="border-t border-border px-4 py-3">
+                          <div className="border-t border-border px-3 py-2">
                             <div className="text-label-sm text-muted">
                               {selectionLabel ? `Replace "${selectionLabel}"` : 'Replace selection'}
                             </div>
@@ -2248,20 +2234,16 @@ export function PromptCanvas({
                               </CanvasButton>
                             </div>
                           </div>
-                        </>
-                      )}
                     </aside>
+                    ) : null}
                   </div>
                 </div>
               </div>
 
-              <section className="flex min-h-0 flex-col gap-4 rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
+              <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-body-lg font-semibold text-foreground">Runs</div>
-                    <div className="mt-1 text-label-sm text-muted">
-                      Preview + final generations (history, status, ETA)
-                    </div>
                   </div>
                   <span className={cn(statusPillClass, 'text-foreground normal-case tracking-normal')}>
                     <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
@@ -2269,10 +2251,10 @@ export function PromptCanvas({
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   <div
                     className={cn(
-                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-4 shadow-sm',
+                      'flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm',
                       previewStatusState === 'ready' && 'border-accent/50'
                     )}
                     data-status={previewStatusState}
@@ -2432,7 +2414,7 @@ export function PromptCanvas({
                   </div>
 
                   <div
-                    className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-4 shadow-sm"
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-3 shadow-sm"
                     data-status={finalStatusState}
                   >
                     <div className="rounded-lg border border-border bg-surface-1 p-3">
@@ -2596,11 +2578,10 @@ export function PromptCanvas({
 
         {/* Right Rail - Stage + Inspector */}
         <div className="flex min-h-0 flex-col gap-6 xl:w-96 xl:flex-shrink-0">
-          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-4 shadow-sm">
+          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface-2 p-3 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-body-lg font-semibold text-foreground">Stage</div>
-                <div className="mt-1 text-label-sm text-muted">Preview &amp; refine output</div>
               </div>
               <div className="flex h-9 items-center rounded-full border border-border bg-surface-1 p-0.5">
                 <CanvasButton
@@ -2632,7 +2613,7 @@ export function PromptCanvas({
               </div>
             </div>
 
-            <div className="relative mt-5 flex min-h-72 flex-1 flex-col gap-3">
+            <div className="relative mt-4 flex min-h-72 flex-1 flex-col gap-3">
               {stageTab === 'preview' ? (
                 <>
                   <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
@@ -2924,7 +2905,7 @@ export function PromptCanvas({
               )}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <div className="text-label-sm text-muted">{stageFooterMeta}</div>
               {stageTab === 'final' && (
                 <CanvasButton

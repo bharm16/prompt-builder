@@ -115,7 +115,7 @@ export const PromptTopBar = (): React.ReactElement | null => {
   ] as const;
 
   return (
-    <header className="sticky top-0 z-40 px-6 pt-6" role="banner">
+    <header className="sticky top-0 z-40 px-4 pt-4" role="banner">
       <div className="flex h-14 items-center gap-4 rounded-xl border border-border bg-surface-1/80 px-4 py-3 shadow-sm backdrop-blur">
         <div className="flex min-w-0 flex-1 items-center gap-5">
           <Button
